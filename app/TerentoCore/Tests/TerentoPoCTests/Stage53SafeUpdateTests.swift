@@ -3,7 +3,7 @@ import Foundation
 
 protocol DeviceFileReader: Sendable {
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
-    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [UInt32: [UInt8]]
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]]
 }
 
 struct TransferVerification: Equatable, Sendable {
@@ -70,6 +70,8 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
         case writeFailure
         case verifyHashMismatch
         case deleteFailure
+        case deleteDisconnected
+        case oldMissingBeforeDelete
     }
 
     let oldObject: SafeUpdateRemoteObject
@@ -78,6 +80,7 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
     var freeSpace: UInt64 = 12 * 1024 * 1024 * 1024
     var mode: Mode = .success
     var postDeleteSnapshot: (([SafeUpdateRemoteObject]) -> [SafeUpdateRemoteObject])?
+    var rawSnapshotTransform: (([DeviceFile], Bool) throws -> [DeviceFile])?
     var events: [String] = []
     var objects: [SafeUpdateRemoteObject]
     var currentInspectionObject: SafeUpdateRemoteObject
@@ -136,6 +139,20 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
         return freeSpace
     }
 
+    func readProtectedInventory() throws -> SafeUpdateInventorySnapshot {
+        events.append("readProtectedInventory")
+        let afterDelete = !objects.contains { $0.file.path == oldObject.file.path }
+        let root = DeviceFile(itemID: 1, parentID: 0, storageID: 1,
+            path: "/GARMIN", filename: "GARMIN", sizeBytes: 0, isFolder: true)
+        let files = [root] + objects.map { object in
+            DeviceFile(itemID: object.file.itemID!, parentID: 1, storageID: 1,
+                path: object.file.path, filename: object.file.filename,
+                sizeBytes: object.file.sizeBytes, isFolder: false)
+        }
+        return SafeUpdateInventorySnapshot(storageID: 1,
+            files: try rawSnapshotTransform?(files, afterDelete) ?? files)
+    }
+
     func rescanObjects() throws -> [SafeUpdateRemoteObject] {
         events.append("rescanObjects")
         if !objects.contains(where: { $0.file.path == oldObject.file.path }), let postDeleteSnapshot {
@@ -146,6 +163,7 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
 
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject {
         events.append("inspectExactObject")
+        if mode == .oldMissingBeforeDelete { throw SafeDeleteTransportError.objectNotFound }
         return SafeDeleteDeviceObject(file: oldObject.file, sha256: oldHash)
     }
 
@@ -153,6 +171,9 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
         events.append("deleteExactObject")
         if mode == .deleteFailure {
             throw SafeDeleteTransportError.operationFailed("delete failed")
+        }
+        if mode == .deleteDisconnected {
+            throw SafeDeleteTransportError.deviceDisconnected("delete outcome unknown")
         }
         objects.removeAll { $0.file == oldObject.file }
     }
@@ -321,10 +342,10 @@ private func testSuccessfulUpdateAndOrdering() async throws {
     try require(!result.oldMapPreserved, "old map should be replaced only after verification")
     try require(harness.reconciler.called, "manifest reconciliation should be last domain step")
     try require(harness.transport.events == [
-        "inspectCurrentObject", "readFreeSpace", "rescanObjects",
+        "inspectCurrentObject", "readFreeSpace", "readProtectedInventory",
         "writeTransactionObject", "verifyTransactionObject",
         "inspectExactObject", "deleteExactObject", "rescanObjects",
-        "rescanObjects"
+        "readProtectedInventory", "rescanObjects"
     ], "update should write, verify, remove old, and finish without a local backup")
     try require(harness.artifact.workspaceRootURL.map { !FileManager.default.fileExists(atPath: $0.path) } == true, "successful update should remove its acquisition workspace")
 }
@@ -420,7 +441,7 @@ private func testCommitAndManifestFailuresAreNotSuccess() async throws {
     deleteFailure.transport.mode = .deleteFailure
     let deleteResult = await run(deleteFailure)
     try require(deleteResult.status == .failedCommit, "delete failure must fail commit")
-    try require(deleteResult.oldMapPreserved, "old map remains when commit delete fails")
+    try require(!deleteResult.oldMapPreserved, "an ambiguous delete failure cannot promise that the old map remains")
 
     let manifestFailure = makeHarness()
     manifestFailure.reconciler.shouldFail = true
@@ -601,11 +622,162 @@ private func testUpdateFinalSnapshotNegatives() async throws {
     }
 }
 
+private func rawFile(_ path: String, id: UInt32, storage: UInt32 = 1,
+                     size: UInt64 = 10, folder: Bool = false, parent: UInt32 = 1) -> DeviceFile {
+    DeviceFile(itemID: id, parentID: parent, storageID: storage, path: path,
+        filename: String(path.split(separator: "/").last!), sizeBytes: size, isFolder: folder)
+}
+
+private func testProtectedUpdateTransitionMatrix() async throws {
+    typealias Change = ([DeviceFile], Harness) -> [DeviceFile]
+    let cases: [(String, Bool, Change)] = [
+        ("only replacement", true, { files, _ in files }),
+        ("all handles renumber", true, { files, _ in files.map {
+            rawFile($0.path, id: $0.itemID + 10000, storage: $0.storageID,
+                size: $0.sizeBytes, folder: $0.isFolder, parent: $0.parentID + 10000)
+        } }),
+        ("historical handle reused", true, { files, h in files.map {
+            $0.path == "/GARMIN/external.img"
+                ? rawFile($0.path, id: h.request.currentObject.file.itemID!) : $0
+        } }),
+        ("exact device XML churn", true, { files, _ in files.map {
+            $0.path == "/GARMIN/GarminDevice.xml" ? rawFile($0.path, id: $0.itemID, size: 300) : $0
+        } }),
+        ("typed Monitor FIT churn", true, { files, _ in
+            files.filter { $0.path != "/GARMIN/Monitor/old.fit" }
+                + [rawFile("/GARMIN/Monitor/new.fit", id: 990, size: 789)]
+        }),
+        ("Garmin map removed", false, { files, _ in files.filter { $0.path != "/GARMIN/D123.img" } }),
+        ("third party removed", false, { files, _ in files.filter { $0.path != "/GARMIN/external.img" } }),
+        ("protected added", false, { files, _ in files + [rawFile("/GARMIN/extra.img", id: 990)] }),
+        ("protected renamed", false, { files, _ in files.map {
+            $0.path == "/GARMIN/external.img" ? rawFile("/GARMIN/moved.img", id: $0.itemID) : $0
+        } }),
+        ("protected size changed", false, { files, _ in files.map {
+            $0.path == "/GARMIN/external.img" ? rawFile($0.path, id: $0.itemID, size: 999) : $0
+        } }),
+        ("protected storage changed", false, { files, _ in
+            files.map { $0.path == "/GARMIN/external.img" ? rawFile($0.path, id: $0.itemID, storage: 2) : $0 }
+                + [rawFile("/GARMIN", id: 991, storage: 2, size: 0, folder: true)]
+        }),
+        ("protected kind changed", false, { files, _ in files.map {
+            $0.path == "/GARMIN/external.img" ? rawFile($0.path, id: $0.itemID, folder: true) : $0
+        } }),
+        ("duplicate identity", false, { files, _ in files + [rawFile("/GARMIN/external.img", id: 990)] }),
+        ("case alias ambiguity", false, { files, _ in files + [rawFile("/GARMIN/EXTERNAL.IMG", id: 990)] }),
+        ("unknown companion changed", false, { files, _ in files.map {
+            $0.path == "/GARMIN/unknown-companion" ? rawFile($0.path, id: $0.itemID, size: 999) : $0
+        } }),
+        ("old remains", false, { files, h in files + [rawFile(h.request.currentObject.file.path, id: 990, size: h.request.currentObject.file.sizeBytes)] }),
+        ("new missing", false, { files, h in files.filter { $0.path != h.transport.newObject.file.path } }),
+        ("new wrong path", false, { files, h in files.map {
+            $0.path == h.transport.newObject.file.path ? rawFile("/GARMIN/wrong.img", id: $0.itemID, size: $0.sizeBytes) : $0
+        } }),
+        ("new wrong size", false, { files, h in files.map {
+            $0.path == h.transport.newObject.file.path ? rawFile($0.path, id: $0.itemID, size: 999) : $0
+        } }),
+        ("new folder", false, { files, h in files.map {
+            $0.path == h.transport.newObject.file.path ? rawFile($0.path, id: $0.itemID, size: $0.sizeBytes, folder: true) : $0
+        } }),
+        ("duplicate current handle", false, { files, h in files + [rawFile("/GARMIN/extra.img", id: h.transport.newObject.file.itemID!)] }),
+        ("unknown XML not exempt", false, { files, _ in files.map {
+            $0.path == "/GARMIN/unknown.xml" ? rawFile($0.path, id: $0.itemID, size: 999) : $0
+        } }),
+        ("unknown FIT not exempt", false, { files, _ in files.map {
+            $0.path == "/GARMIN/unknown.fit" ? rawFile($0.path, id: $0.itemID, size: 999) : $0
+        } })
+    ]
+    for (name, success, change) in cases {
+        let h = makeHarness(withWorkspace: true)
+        h.transport.rawSnapshotTransform = { files, final in
+            let full = files + [rawFile("/GARMIN/D123.img", id: 500),
+                rawFile("/GARMIN/external.img", id: 501),
+                rawFile("/GARMIN/unknown-companion", id: 502),
+                rawFile("/GARMIN/GarminDevice.xml", id: 503),
+                rawFile("/GARMIN/Monitor", id: 504, size: 0, folder: true),
+                rawFile("/GARMIN/Monitor/old.fit", id: 505),
+                rawFile("/GARMIN/unknown.xml", id: 506),
+                rawFile("/GARMIN/unknown.fit", id: 507)]
+            return final ? change(full, h) : full
+        }
+        let result = await run(h)
+        try require(result.isSuccess == success, "protected transition outcome: " + name)
+        try require(h.reconciler.called == success, "protected failure must not reconcile: " + name)
+        try require(!result.oldMapPreserved, "successful delete must be reported truthfully: " + name)
+        try require(h.transport.events.filter { $0 == "writeTransactionObject" }.count == 1
+            && h.transport.events.filter { $0 == "deleteExactObject" }.count == 1
+            && !h.transport.events.contains("cleanupTransactionObject"),
+            "protected post-delete failure never retries or cleans up: " + name)
+        print("PASS: protected update " + name)
+    }
+}
+
+private func testProtectedBaselineRefusesBeforeSend() async throws {
+    for kind in 0..<5 {
+        let h = makeHarness(withWorkspace: true)
+        h.transport.rawSnapshotTransform = { files, _ in
+            switch kind {
+            case 0: throw SafeUpdateTransportError.operationFailed("physical binding mismatch")
+            case 1: return files + [files[0]]
+            case 2: return files.filter { $0.path != h.request.currentObject.file.path }
+            case 3: return files + [rawFile(h.transport.newObject.file.path, id: 999)]
+            default: return files + [rawFile("/GARMIN/missing/child.img", id: 999)]
+            }
+        }
+        let result = await run(h)
+        try require(!result.isSuccess && result.oldMapPreserved && !h.reconciler.called,
+            "invalid baseline must refuse before mutation")
+        try require(!h.transport.events.contains("writeTransactionObject")
+            && !h.transport.events.contains("deleteExactObject"), "baseline failure has zero mutations")
+    }
+}
+
+private func testDeletePostVerifyFailureReportsDeletion() async throws {
+    let h = makeHarness(withWorkspace: true)
+    h.transport.postDeleteSnapshot = { $0 + [h.request.currentObject] }
+    let result = await run(h)
+    try require(result.status == .failedCommit && !result.oldMapPreserved,
+        "delete completed but absence unverifiable must not claim old preserved")
+    try require(h.transport.events.filter { $0 == "deleteExactObject" }.count == 1
+        && !h.reconciler.called, "failed post-delete verification must not retry or reconcile")
+}
+
+private func testProtectedFinalReadFailure() async throws {
+    let h = makeHarness(withWorkspace: true)
+    h.transport.rawSnapshotTransform = { files, final in
+        if final { throw SafeUpdateTransportError.operationFailed("bound raw inventory unavailable") }
+        return files
+    }
+    let result = await run(h)
+    try require(result.status == .failedPostVerify && !result.oldMapPreserved && !h.reconciler.called,
+        "final raw read failure after deletion must retain actual state and no manifest success")
+    try require(h.transport.events.filter { $0 == "deleteExactObject" }.count == 1
+        && !h.transport.events.contains("cleanupTransactionObject"), "final read failure never mutates again")
+}
+
+private func testAmbiguousDeleteOutcomeIsNotPreserved() async throws {
+    for mode: FakeSafeUpdateTransport.Mode in [.deleteFailure, .deleteDisconnected, .oldMissingBeforeDelete] {
+        let h = makeHarness(withWorkspace: true)
+        h.transport.mode = mode
+        let result = await run(h)
+        try require(result.status == .failedCommit && !result.oldMapPreserved && !h.reconciler.called,
+            "unknown delete result cannot promise preserved old map or clean manifest")
+        try require(result.message.contains("could not be confirmed"), "unknown outcome message stays truthful")
+        try require(h.transport.events.filter { $0 == "deleteExactObject" }.count == (mode == .oldMissingBeforeDelete ? 0 : 1)
+            && !h.transport.events.contains("cleanupTransactionObject"), "unknown delete never retries or cleans up")
+    }
+}
+
 @main
 struct Stage53SafeUpdateTests {
     static func main() async throws {
         let tests: [(String, () async throws -> Void)] = [
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
+            ("protected replacement full raw matrix", testProtectedUpdateTransitionMatrix),
+            ("protected baseline and binding gate", testProtectedBaselineRefusesBeforeSend),
+            ("truthful delete postverify failure", testDeletePostVerifyFailureReportsDeletion),
+            ("protected final read failure", testProtectedFinalReadFailure),
+            ("ambiguous delete outcome", testAmbiguousDeleteOutcomeIsNotPreserved),
             ("post-commit renumber and old-handle reuse", testPostCommitHandleRenumberAndReuse),
             ("update final snapshot safety negatives", testUpdateFinalSnapshotNegatives),
             ("real reconciler durable negative guards", testRealReconcilerSnapshotNegatives),

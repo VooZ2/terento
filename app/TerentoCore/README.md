@@ -312,11 +312,22 @@ require historical handles to disappear. Native live-handle revalidation before
 deletion is a separate, unchanged gate; no cleanup authority or mutation retry
 follows from these post-delete checks.
 
-The Update adapter's final rescan currently contains only recognized map images.
-It is not a complete protected-inventory snapshot and cannot establish stability
-of unknown objects, sidecars, folders or storage identity. The post-delete handle
-fix does not close that separate validation gap or establish whole-device byte
-equality.
+Before an Update sends its replacement, a physically bound native session reads
+the complete raw inventory and builds the canonical `ProtectedMapInventory`.
+After verified replacement and old-map removal, another bound raw snapshot must
+match exactly the baseline minus the old target plus the verified replacement.
+Baseline protected locations remain protected in the final comparison. Unknown
+objects, sidecars, folders and storage identity participate in the same classifier
+used by installation. Invalid or ambiguous inventory blocks completion. A failed
+final check does not commit a clean manifest or trigger another mutation. Completed
+or uncertain deletion is never reported as proof that the old map was preserved.
+
+Prefix reads pass stable storage/path/name/size/kind descriptors into a new native
+session. That session resolves current handles before reading content; batches
+resolve every member before the first read and return results by stable identity.
+Lifecycle readers also validate the physical device in that session. Historical
+handles never identify a cross-session read target. These metadata checks do not
+establish whole-device byte equality.
 
 `ProtectedMapInventory` compares storage ID, exact full path, filename, size and
 file/folder kind; item/parent handles are session-scoped navigation and diagnostics.

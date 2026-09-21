@@ -25,6 +25,10 @@ App checks cover presentation behavior and wiring. Native checks cover manifests
 provider identity/acquisition, storage, safe install/update/removal and failure
 recovery. Text/layout checks are not hardware evidence. Prefer behavior and
 structural assertions to exact function names, spacing values or prose sentences.
+The native prefix-session runner executes the production C bridge and Swift
+transport against an offline libmtp fixture, including current-handle reuse and
+batch result correlation. It never requires a connected device. Update regression
+tests apply the canonical raw protected-inventory transition before manifest commit.
 Keep privacy, trusted destinations, release identity and safety guards explicit.
 
 Backend checks include unit tests and a real PostgreSQL migration/health round

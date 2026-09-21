@@ -52,6 +52,7 @@
     "app/TerentoCore/Tests/run-native-map-statistics-event-tests.sh",
     "app/TerentoCore/Tests/run-native-map-version-tests.sh",
     "app/TerentoCore/Tests/run-native-mtp-concurrency-tests.sh",
+    "app/TerentoCore/Tests/run-native-prefix-session-tests.sh",
     "app/TerentoCore/Tests/run-native-map-profile-contract-tests.sh",
     "app/TerentoCore/Tests/run-native-provider-neutral-tests.sh",
     "app/TerentoCore/Tests/run-native-custom-map-import-tests.sh",
