@@ -77,6 +77,7 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
     let oldHash: String
     var freeSpace: UInt64 = 12 * 1024 * 1024 * 1024
     var mode: Mode = .success
+    var postDeleteSnapshot: (([SafeUpdateRemoteObject]) -> [SafeUpdateRemoteObject])?
     var events: [String] = []
     var objects: [SafeUpdateRemoteObject]
     var currentInspectionObject: SafeUpdateRemoteObject
@@ -137,6 +138,9 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
 
     func rescanObjects() throws -> [SafeUpdateRemoteObject] {
         events.append("rescanObjects")
+        if !objects.contains(where: { $0.file.path == oldObject.file.path }), let postDeleteSnapshot {
+            return postDeleteSnapshot(objects)
+        }
         return objects
     }
 
@@ -480,11 +484,131 @@ private func testCrossComputerAbsenceNeverAuthorizesUpdate() async throws {
     }
 }
 
+private func snapshotObject(_ object: SafeUpdateRemoteObject, path: String? = nil,
+                            filename: String? = nil, itemID: UInt32? = nil,
+                            version: MapVersion? = nil, ownership: MapManagementState = .unknown,
+                            hash: String? = nil, size: UInt64? = nil, identity: MapIdentity? = nil) -> SafeUpdateRemoteObject {
+    SafeUpdateRemoteObject(file: InstalledMapFile(path: path ?? object.file.path,
+        filename: filename ?? object.file.filename, sizeBytes: size ?? object.file.sizeBytes,
+        itemID: itemID ?? object.file.itemID), identity: identity ?? object.identity,
+        version: version ?? object.version, ownership: ownership, sha256: hash)
+}
+
+private func testPostCommitHandleRenumberAndReuse() async throws {
+    for reuseOldHandle in [true, false] {
+        let harness = makeHarness(withWorkspace: true)
+        let old = harness.request.currentObject
+        let unrelated = snapshotObject(harness.transport.newObject, path: "/GARMIN/protected-other.img",
+            filename: "protected-other.img", itemID: 4000)
+        harness.transport.objects.append(unrelated)
+        harness.transport.postDeleteSnapshot = { objects in
+            objects.map { object in
+                object.file.path == unrelated.file.path
+                    ? snapshotObject(object, itemID: reuseOldHandle ? old.file.itemID : unrelated.file.itemID)
+                    : snapshotObject(object, itemID: reuseOldHandle ? object.file.itemID : (object.file.itemID ?? 0) + 1000)
+            }
+        }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-update-postverify-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalTerentoManifestStore(rootDirectory: root)
+        try store.record(TerentoManifestEntry(deviceKey: harness.request.deviceKey,
+            devicePath: old.file.path, filename: old.file.filename,
+            providerId: old.identity.provider, regionId: old.identity.region,
+            version: old.version!, sizeBytes: old.file.sizeBytes, sha256: old.sha256!, installedAt: Date()))
+        let unrelatedEntry = manifestEntry(unrelated, deviceKey: harness.request.deviceKey)
+        try store.record(unrelatedEntry)
+        let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
+            manifestReconciler: LocalSafeUpdateManifestReconciler(store: store))
+            .run(request: harness.request, provider: harness.provider, transport: harness.transport)
+        let persisted = try store.read(deviceKey: harness.request.deviceKey)?.entries ?? []
+        let sends = harness.transport.events.filter { $0 == "writeTransactionObject" }.count
+        let deletes = harness.transport.events.filter { $0 == "deleteExactObject" }.count
+        let diagnostic = "POSTVERIFY reuse=\(reuseOldHandle) status=\(result.status.rawValue) send=\(sends) delete=\(deletes) manifestOld=\(persisted.contains { $0.devicePath == old.file.path })\n"
+        FileHandle.standardError.write(Data(diagnostic.utf8))
+        try require(result.status == .success, "current snapshot handles must not invalidate verified replacement")
+        try require(sends == 1 && deletes == 1, "postverification never repeats mutation")
+        try require(harness.transport.objects.count == 2
+            && harness.transport.objects.contains { $0.file.path == harness.transport.newObject.file.path }
+            && !harness.transport.objects.contains { $0.file.path == old.file.path }
+            && harness.transport.objects.contains(unrelated),
+            "new target present, old stable path absent, preexisting unrelated map untouched")
+        try require(persisted.count == 2 && persisted.contains(unrelatedEntry)
+            && persisted.contains { $0.devicePath == harness.transport.newObject.file.path
+                && $0.sha256 == harness.transport.newObject.sha256 },
+            "durable manifest atomically advances to verified new target")
+    }
+}
+
+private func finalSnapshotNegatives() -> [(String, (Harness) -> [SafeUpdateRemoteObject])] {
+    let changes: [(String, (Harness) -> [SafeUpdateRemoteObject])] = [
+        ("old path survives", { h in [snapshotObject(h.transport.newObject), snapshotObject(h.request.currentObject, itemID: 999)] }),
+        ("new target missing", { _ in [] }),
+        ("new identity changed", { h in [snapshotObject(h.transport.newObject, identity: MapIdentity(provider: "freizeitkarte", region: "DEU")!)] }),
+        ("current handles duplicate", { h in [snapshotObject(h.transport.newObject, itemID: 99), snapshotObject(h.transport.newObject, path: "/GARMIN/other.img", filename: "other.img", itemID: 99)] }),
+        ("current handle zero", { h in [snapshotObject(h.transport.newObject, itemID: 0)] }),
+        ("case alias ambiguous", { h in [snapshotObject(h.transport.newObject), snapshotObject(h.transport.newObject, path: h.transport.newObject.file.path.uppercased(), itemID: 999)] }),
+        ("new target ambiguous", { h in [snapshotObject(h.transport.newObject), snapshotObject(h.transport.newObject, itemID: 999)] }),
+        ("new filename changed", { h in [snapshotObject(h.transport.newObject, filename: "other.img")] }),
+        ("new size changed", { h in [snapshotObject(h.transport.newObject, size: h.transport.newObject.file.sizeBytes + 1)] }),
+        ("new version changed", { h in [snapshotObject(h.transport.newObject, version: MapVersion(year: 2020, month: 1)!)] }),
+        ("new hash contradicts verified content", { h in [snapshotObject(h.transport.newObject, hash: String(repeating: "c", count: 64))] }),
+        ("new ownership contradicts managed proof", { h in [snapshotObject(h.transport.newObject, ownership: .detectedNotManaged)] })
+    ]
+    return changes
+}
+
+private func manifestEntry(_ object: SafeUpdateRemoteObject, deviceKey: String) -> TerentoManifestEntry {
+    TerentoManifestEntry(deviceKey: deviceKey, devicePath: object.file.path,
+        filename: object.file.filename, providerId: object.identity.provider,
+        regionId: object.identity.region, version: object.version!,
+        sizeBytes: object.file.sizeBytes, sha256: object.sha256 ?? String(repeating: "d", count: 64),
+        installedAt: Date(timeIntervalSince1970: 123))
+}
+
+private func testRealReconcilerSnapshotNegatives() async throws {
+    for (name, snapshot) in finalSnapshotNegatives() {
+        let h = makeHarness()
+        defer { try? FileManager.default.removeItem(at: h.artifact.localIMGURL) }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-reconciler-negative-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalTerentoManifestStore(rootDirectory: root)
+        try store.record(manifestEntry(h.request.currentObject, deviceKey: h.request.deviceKey))
+        try store.record(manifestEntry(snapshotObject(h.transport.newObject,
+            path: "/GARMIN/other.img", filename: "other.img", itemID: 300), deviceKey: h.request.deviceKey))
+        let before = try store.read(deviceKey: h.request.deviceKey)!.entries
+        var rejected = false
+        do {
+            try LocalSafeUpdateManifestReconciler(store: store).reconcile(deviceKey: h.request.deviceKey,
+                oldObject: h.request.currentObject, newObject: h.transport.newObject,
+                package: h.package, finalObjects: snapshot(h))
+        } catch { rejected = true }
+        try require(rejected, "real reconciler rejects " + name)
+        let after = try store.read(deviceKey: h.request.deviceKey)!.entries
+        try require(after == before, "real reconciler preserves durable entries for " + name)
+    }
+}
+
+private func testUpdateFinalSnapshotNegatives() async throws {
+    for (name, snapshot) in finalSnapshotNegatives() {
+        let harness = makeHarness(withWorkspace: true)
+        let values = snapshot(harness)
+        harness.transport.postDeleteSnapshot = { _ in values }
+        let result = await run(harness)
+        try require(!result.isSuccess && !harness.reconciler.called, "must reject final state: " + name)
+        try require(harness.transport.events.filter { $0 == "writeTransactionObject" }.count == 1
+            && harness.transport.events.filter { $0 == "deleteExactObject" }.count == 1,
+            "negative final snapshot does not repeat mutations")
+    }
+}
+
 @main
 struct Stage53SafeUpdateTests {
     static func main() async throws {
         let tests: [(String, () async throws -> Void)] = [
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
+            ("post-commit renumber and old-handle reuse", testPostCommitHandleRenumberAndReuse),
+            ("update final snapshot safety negatives", testUpdateFinalSnapshotNegatives),
+            ("real reconciler durable negative guards", testRealReconcilerSnapshotNegatives),
             ("install failure acquisition cleanup", testInstallFailureRemovesAcquisitionWorkspace),
             ("no-update and ownership gates", testNoUpdateAndOwnershipAreBlockedBeforeTransport),
             ("cross-computer and state-loss update refusal", testCrossComputerAbsenceNeverAuthorizesUpdate),

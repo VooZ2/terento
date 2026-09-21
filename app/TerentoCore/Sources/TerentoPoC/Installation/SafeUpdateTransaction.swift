@@ -317,6 +317,46 @@ protocol SafeUpdateManifestReconciler: Sendable {
     ) throws
 }
 
+/// Post-delete inventories come from a new MTP session. They establish current
+/// stable coordinates and metadata, not continuity of numeric object handles.
+/// The earlier full verification remains the content/ownership proof: the live
+/// rescan intentionally reports nil hash and unknown ownership.
+private enum UpdatePostDeleteSnapshot {
+    static func containsVerifiedReplacement(
+        old: SafeUpdateRemoteObject,
+        verified: SafeUpdateRemoteObject,
+        objects: [SafeUpdateRemoteObject]
+    ) -> Bool {
+        let paths = objects.map { $0.file.path.lowercased() }
+        let handles = objects.compactMap { $0.file.itemID }
+        guard handles.count == objects.count, !handles.contains(0),
+              Set(handles).count == handles.count,
+              Set(paths).count == paths.count,
+              !objects.contains(where: { $0.file.path.lowercased() == old.file.path.lowercased() }),
+              verified.file.path != old.file.path,
+              verified.ownership == .managedByTerento,
+              verified.version != nil,
+              let verifiedHash = verified.sha256?.lowercased(),
+              verifiedHash.count == 64,
+              verifiedHash.allSatisfy({ $0.isASCII && $0.isHexDigit }) else { return false }
+
+        let candidates = objects.filter { $0.file.path.lowercased() == verified.file.path.lowercased() }
+        guard candidates.count == 1, let current = candidates.first,
+              current.file.path == verified.file.path,
+              current.file.filename == verified.file.filename,
+              current.file.path.split(separator: "/").last.map(String.init) == current.file.filename,
+              current.file.sizeBytes == verified.file.sizeBytes,
+              current.file.itemID != nil, current.file.itemID != 0,
+              current.identity == verified.identity,
+              current.version == verified.version,
+              current.ownership == .unknown || current.ownership == .managedByTerento else { return false }
+        // A richer injected/current snapshot may carry content evidence; it
+        // must not contradict the verified replacement. Missing live hashes
+        // do not pretend that this metadata scan read the file again.
+        return current.sha256.map { $0.lowercased() == verifiedHash } ?? true
+    }
+}
+
 struct LocalSafeUpdateManifestReconciler: SafeUpdateManifestReconciler, Sendable {
     private let store: any TerentoManifestUpdateStore
     private let now: @Sendable () -> Date
@@ -336,12 +376,12 @@ struct LocalSafeUpdateManifestReconciler: SafeUpdateManifestReconciler, Sendable
         package: MapPackage,
         finalObjects: [SafeUpdateRemoteObject]
     ) throws {
-        guard finalObjects.contains(where: { $0.file == newObject.file }),
-              !finalObjects.contains(where: {
-                  $0.file.itemID == oldObject.file.itemID
-                      || $0.file.path == oldObject.file.path
-              }),
+        guard UpdatePostDeleteSnapshot.containsVerifiedReplacement(
+                old: oldObject, verified: newObject, objects: finalObjects
+              ),
               let identity = package.identity,
+              MapIdentityMatcher.matches(actual: newObject.identity, expected: identity,
+                  providerRegionId: package.providerRegionId, identifier: package.identifier),
               let hash = newObject.sha256,
               newObject.version == package.version,
               newObject.ownership == .managedByTerento else {
@@ -738,10 +778,9 @@ struct SafeUpdateTransaction: Sendable {
         } catch {
             return failure(.failedPostVerify, "The device could not be rescanned after the update.", storagePlan: storagePlan, newObject: verified, oldMapPreserved: false)
         }
-        guard finalObjects.contains(where: { $0.file == verified.file }),
-              !finalObjects.contains(where: {
-                  $0.file.itemID == current.file.itemID || $0.file.path == current.file.path
-              }) else {
+        guard UpdatePostDeleteSnapshot.containsVerifiedReplacement(
+            old: current, verified: verified, objects: finalObjects
+        ) else {
             return failure(.failedPostVerify, "The final device state did not match the verified update.", storagePlan: storagePlan, newObject: verified, oldMapPreserved: false, finalObjects: finalObjects)
         }
 

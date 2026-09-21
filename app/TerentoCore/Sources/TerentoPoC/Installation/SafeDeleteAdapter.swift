@@ -325,8 +325,11 @@ struct SafeDeleteAdapter: Sendable {
                 )
                 let remaining = try rescan()
                 observedSuccessfulRescan = true
+                // Rescans open fresh sessions, where the deleted object's
+                // handle may already identify an unrelated object. Its exact
+                // stable path, not its historical handle, proves presence.
                 let stillPresent = remaining.contains {
-                    $0.itemID == currentObjectID || $0.path == target.expectedPath
+                    $0.path == target.expectedPath
                 }
                 if !stillPresent {
                     progressReporter.report(state: .completed, fraction: 1)

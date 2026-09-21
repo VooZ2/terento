@@ -303,6 +303,21 @@ with a physically bound namespace or combine conflicting physical identities.
 Only the currently proven physical namespace may supply managed lifecycle records;
 unproven legacy records leave the external Remove fallback available.
 
+After an authorized deletion, a fresh inventory proves removal by the old exact
+path's absence. Historical MTP handles may identify unrelated objects in that
+session. Update completion and manifest reconciliation likewise identify the
+verified replacement by its unique stable path/name/size and compatible map
+metadata, retaining the earlier verified hash and ownership evidence. They do not
+require historical handles to disappear. Native live-handle revalidation before
+deletion is a separate, unchanged gate; no cleanup authority or mutation retry
+follows from these post-delete checks.
+
+The Update adapter's final rescan currently contains only recognized map images.
+It is not a complete protected-inventory snapshot and cannot establish stability
+of unknown objects, sidecars, folders or storage identity. The post-delete handle
+fix does not close that separate validation gap or establish whole-device byte
+equality.
+
 `ProtectedMapInventory` compares storage ID, exact full path, filename, size and
 file/folder kind; item/parent handles are session-scoped navigation and diagnostics.
 It conservatively protects unknown objects, all-storage IMG/GMA/UNL/SID, map and
