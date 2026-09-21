@@ -352,3 +352,8 @@ protocol InstallationInventoryReader: Sendable {
 protocol InstallationDeviceReader: InstallationInventoryReader {
     func readSnapshot() throws -> DeviceSnapshot
 }
+
+/// A cleanup request was refused before any device mutation.
+struct CleanupIdentityUnproven: LocalizedError {
+    var errorDescription: String? { "Automatic cleanup could not prove the created map identity. Recovery is required." }
+}

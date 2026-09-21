@@ -31,6 +31,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift" \
     "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
     "$project_root/Sources/TerentoPoC/Installation/Stage42TargetPolicy.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapSourceValidator.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift" \

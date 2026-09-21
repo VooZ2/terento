@@ -119,22 +119,56 @@ Swift source membership in both the Xcode target and explicit shell-runner
 source lists. The repository all-suite runner does not replace those separate
 PostgreSQL and Xcode gates.
 
-Comparator version 1 denotes existing semantics during diagnostics-only work.
-Version 2 is reserved for a separate safety change, independent review and real
-hardware gate. Neither accepting that value nor a green diagnostic test proves
-the comparator safe. No operation retries are introduced. The local app candidate
-now supplies typed context and a shared boundary-to-stage resolver for known
-preflight reads and protection failures, retaining original context when cleanup
-fails. Native categories are captured at explicit C failure branches. Final
-validation covers transport wrappers, local diagnostics, outbox reload, encoding
-and API delivery preserving observed provenance and component identity. The
-current encoder runner requires fresh preflight, protection and contours-cleanup
-fixtures, then verifies HTTP/storage/report round-trips and idempotent replay;
-committed fallback examples cannot satisfy that fresh-encoder requirement.
-Final focused/full-matrix results belong
-to the candidate's integration record, not the earlier server test results.
-Comparator version 2 remains unimplemented. Neither an app release nor a hardware
-pass is established by this local diagnostics implementation.
+Comparator version 1 denotes the earlier diagnostics-only comparison semantics.
+The hybrid safety implementation retains the accepted version 2 numeric value and
+existing payload schema with its bounded protected-inventory implementation.
+No backend field, accepted value, app version or public release is changed by this
+work. Release review must identify the exact app source/build and its comparator
+scope; the version number alone does not establish which files were compared.
+
+The safety contract uses native authorization and a local per-artifact
+mutation journal as primary controls, exact target verification, and a secondary
+protected inventory comparison. The stable metadata key is storage/path/name/size/
+kind; session handles are not cross-session identity. Whole-device equality is
+not an installation invariant. Existing protection booleans describe the bounded
+protected scope, not proof that every device byte stayed fixed.
+Unknown objects remain protected; only evidence-scoped runtime categories outside
+map and operation scope are diagnostic. Incomplete authorization/journal evidence,
+ambiguous targets and uncertain cleanup identity fail closed. No automatic retry
+or name-plus-size cleanup authority is introduced.
+
+Durable local ownership is independent of app version and mutation-journal lifetime.
+Without a reliable device/map manifest, managed Update is unavailable and no silent
+ownership inference is allowed. Explicit external Remove remains available after
+confirmation and native same-session physical-device, exact-target, protection and
+content revalidation. A prior install ledger is not required for this new removal
+operation. Confirmation is never a substitute for same-operation cleanup provenance.
+Cross-computer, app-upgrade and state-loss regressions must preserve these separate
+authorities; protected maps remain read-only with or without a manifest.
+Model-only legacy namespaces and conflicting physical-device namespaces must never
+be combined into managed ownership. Preserve legacy files as local evidence,
+without silently migrating or binding them to the current physical device.
+
+Native journal identifiers, exact paths, physical identity, handles, claim files
+and raw outcomes remain local; they are not new backend diagnostics fields.
+Existing privacy minimization, opt-out, outbox and idempotency contracts remain.
+The app retains typed failure provenance and original context when cleanup fails.
+Before any distribution, source/encoder/API validation must confirm that candidate
+protection semantics are documented without changing accepted schema values by
+accident. Independent reviews, native executable tests, full matrix and a fresh
+real-device hybrid gate are required. Source `7a6067a3` passed those integration
+gates with MapRando Malta on fēnix 8 47 mm AMOLED / firmware 23.31, including
+independent reconnect/full-target hashing and owner-confirmed on-watch use.
+This validates the tested fresh-install path; it does not establish destructive
+lifecycle hardware evidence, a new app release or historical #249 causation.
+
+The existing failure-context release gate still requires fresh encoder fixtures
+for preflight, protection and contours cleanup, followed by HTTP/storage/report
+round-trips and idempotent replay. Committed fallback examples cannot replace
+fresh encoder output. Native failure categories must reflect explicit failure
+branches, preserving original provenance and component identity through transport,
+local diagnostics, outbox reload, encoding and API delivery. Focused/full-matrix
+results belong to the candidate integration record, not earlier server results.
 
 ## Toolchain changes and final artifact startup
 

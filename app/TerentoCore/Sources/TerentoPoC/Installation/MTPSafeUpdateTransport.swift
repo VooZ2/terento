@@ -29,7 +29,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         self.mapTransport = MTPMapInstallationTransport(
             operationProfile: operationProfile,
             operationGate: operationGate,
-            lifecycleLease: lifecycleLease
+            lifecycleLease: lifecycleLease,
+            mutationPurpose: .updateNew
         )
     }
 
@@ -50,10 +51,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
     }
 
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject {
-        // Safe Update has already performed the full pre-write integrity read
-        // of the old map. At commit, re-establish the exact live object using
-        // read-only inventory only; copying and hashing the old IMG again is
-        // redundant and makes large-map updates unnecessarily slow.
+        // Inventory inspection is preliminary. The authorized native delete
+        // checks the old manifest hash again in the live mutation session.
         return try MTPSafeDeleteTransport(
             operationProfile: operationProfile,
             operationGate: operationGate,
@@ -63,9 +62,12 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
         do {
-            try mapTransport.deleteExact(
+            try mapTransport.deleteAuthorized(
                 targetFilename: target.expectedFilename,
-                expectedItemID: target.objectID
+                expectedItemID: target.objectID,
+                expectedSizeBytes: target.expectedSizeBytes,
+                expectedSHA256: target.expectedSHA256,
+                purpose: .updateOld
             )
         } catch let error as InstallationTransportError {
             throw mapError(error)
@@ -91,7 +93,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                 to: temporaryURL,
                 onProgress: nil
             )
-            guard transfer.itemID == itemID,
+            guard transfer.itemID != 0,
                   transfer.sourcePath == expected.file.path,
                   transfer.reportedSizeBytes == expected.file.sizeBytes else {
                 throw SafeUpdateTransportError.operationFailed(
@@ -112,6 +114,15 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                 throw SafeUpdateTransportError.metadataMismatch
             }
 
+            if let expectedHash = expected.sha256 {
+                guard hash.caseInsensitiveCompare(expectedHash) == .orderedSame else {
+                    throw SafeUpdateTransportError.metadataMismatch
+                }
+                try mapTransport.bindUpdateOldTarget(
+                    filename: expected.file.filename,
+                    size: expected.file.sizeBytes, sha256: expectedHash
+                )
+            }
             return SafeUpdateRemoteObject(
                 file: expected.file,
                 identity: identity,
@@ -208,6 +219,10 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             throw SafeUpdateTransportError.metadataMismatch
         }
 
+        try mapTransport.markUpdateVerified(
+            filename: inspected.file.filename, size: inspected.file.sizeBytes,
+            sha256: inspected.sha256 ?? ""
+        )
         return SafeUpdateRemoteObject(
             file: inspected.file,
             identity: inspected.identity,

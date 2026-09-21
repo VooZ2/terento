@@ -448,6 +448,38 @@ private func testBusyGateAndNoDowngrade() async throws {
     try require(downgradeResult.status == .blockedNewerInstalled, "newer installed map must never be downgraded")
 }
 
+private func testCrossComputerAbsenceNeverAuthorizesUpdate() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-update-owner-" + UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    for scenario in ["another-mac", "reinstalled-empty-state", "lost-local-manifest"] {
+        let harness = makeHarness()
+        let store = LocalTerentoManifestStore(rootDirectory: root.appendingPathComponent(scenario))
+        let manifest = try store.read(deviceKey: harness.request.deviceKey)
+        try require(manifest == nil, "scenario must have no durable local ownership")
+        let current = harness.request.currentObject
+        let metadata = GarminIMGMetadata(name: "France", provider: "freizeitkarte", region: "FRA",
+            family: nil, rawVersion: nil, version: current.version, identifier: nil, productId: nil, familyId: nil)
+        let ownership = MapOwnershipMatcher().managementState(for: current.file, metadata: metadata, records: [])
+        try require(ownership == .detectedNotManaged, "Terento filename cannot replace missing ownership")
+        let scanned = InstalledMap(name: "France", provider: "freizeitkarte", region: "FRA", family: nil,
+            rawVersion: nil, version: current.version, identifier: nil, productId: nil, familyId: nil,
+            sizeBytes: current.file.sizeBytes, sourceFile: current.file, metadataStatus: .parsed, managementState: ownership)
+        let item = MapLifecycleItem(id: harness.request.currentItem.id, title: "France", provider: "freizeitkarte",
+            region: "FRA", version: current.version, rawVersion: nil, sizeBytes: current.file.sizeBytes,
+            installedMaps: [scanned], classification: .externalRecognized)
+        let request = SafeUpdateRequest(deviceKey: harness.request.deviceKey, identity: harness.request.identity,
+            profile: harness.request.profile, selectedMap: harness.request.selectedMap, comparison: harness.request.comparison,
+            currentItem: item, currentObject: SafeUpdateRemoteObject(file: current.file, identity: current.identity,
+                version: current.version, ownership: ownership, sha256: current.sha256),
+            confirmed: true, deviceConnected: true)
+        let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
+            manifestReconciler: harness.reconciler).run(request: request, provider: harness.provider, transport: harness.transport)
+        try require(result.status == .blockedNotManaged, "confirmed external Remove eligibility never grants managed Update")
+        try require(harness.transport.events.isEmpty && !harness.reconciler.called,
+                    "missing manifest must block before update transport or ownership reconciliation")
+    }
+}
+
 @main
 struct Stage53SafeUpdateTests {
     static func main() async throws {
@@ -455,6 +487,7 @@ struct Stage53SafeUpdateTests {
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
             ("install failure acquisition cleanup", testInstallFailureRemovesAcquisitionWorkspace),
             ("no-update and ownership gates", testNoUpdateAndOwnershipAreBlockedBeforeTransport),
+            ("cross-computer and state-loss update refusal", testCrossComputerAbsenceNeverAuthorizesUpdate),
             ("current-object revalidation", testCurrentObjectChangedStopsBeforeWrite),
             ("map identity gate", testMismatchedMapIdentityIsBlockedBeforeTransport),
             ("storage gate and backup-free update", testStorageGateAndBackupFreeUpdate),

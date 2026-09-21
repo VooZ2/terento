@@ -69,6 +69,12 @@ final class MapLifecycleViewModel: ObservableObject {
     private let recoveryStore: any TerentoFailedInstallRecoveryStore
     private let contextProvider: (String) -> MapLifecycleContext?
     private let connectedDeviceProvider: () -> Bool
+    typealias ExternalSelectionPreparer = @Sendable (
+        SafeDeleteTarget, DeviceMapOperationProfile, MTPOperationGate, MTPOperationLease,
+        @escaping @Sendable (TransferProgress) -> Void
+    ) throws -> ExternalMapSelectionEvidence
+    private let externalSelectionPreparer: ExternalSelectionPreparer
+    private var externalSelection: (itemID: String, profile: DeviceMapOperationProfile, target: SafeDeleteTarget, displayName: String)?
     private let resolver = MapLifecyclePresentationResolver()
     private var lifecycleEpoch: UInt64 = 0
     private var inFlightOperationCount = 0
@@ -81,8 +87,13 @@ final class MapLifecycleViewModel: ObservableObject {
         operationController: MapLifecycleOperationController = MapLifecycleOperationController(),
         recoveryStore: any TerentoFailedInstallRecoveryStore = LocalTerentoFailedInstallRecoveryStore(),
         contextProvider: ((String) -> MapLifecycleContext?)? = nil,
-        connectedDeviceProvider: (() -> Bool)? = nil
+        connectedDeviceProvider: (() -> Bool)? = nil,
+        externalSelectionPreparer: ExternalSelectionPreparer? = nil
     ) {
+        self.externalSelectionPreparer = externalSelectionPreparer ?? { target, profile, gate, lease, progress in
+            try MTPSafeDeleteTransport(operationProfile: profile, operationGate: gate, lifecycleLease: lease)
+                .prepareExternalSelection(target, onProgress: progress)
+        }
         self.deviceEngine = deviceEngine
         self.mapEngine = mapEngine
         self.operationGate = operationGate
@@ -121,6 +132,7 @@ final class MapLifecycleViewModel: ObservableObject {
         operationGate.invalidateLifecycleOperations()
         operationTasks.values.forEach { $0.cancel() }
         pendingConfirmation = nil
+        externalSelection = nil
         operations.removeAll()
     }
 
@@ -246,10 +258,79 @@ final class MapLifecycleViewModel: ObservableObject {
             return
         }
 
-        pendingConfirmation = MapLifecycleConfirmation(
-            itemID: itemID,
-            action: .remove
-        )
+        if context.item.classification == .externalRecognized && context.failedInstallRecovery == nil {
+            prepareExternalConfirmation(itemID: itemID, context: context)
+        } else {
+            pendingConfirmation = MapLifecycleConfirmation(itemID: itemID, action: .remove)
+        }
+    }
+
+    private func prepareExternalConfirmation(itemID: String, context: MapLifecycleContext) {
+        guard connectedDeviceProvider(), context.item.installedMaps.count == 1,
+              let file = context.item.installedMaps.first?.sourceFile, let objectID = file.itemID,
+              let identity = context.mapIdentity ?? context.item.identity ?? MapIdentity(provider: "external", region: itemID),
+              let profile = DeviceMapOperationProfile(identity: context.identity, installProfile: context.profile,
+                  expectedStorageID: context.expectedStorageID),
+              let token = operationController.begin() else {
+            fail(itemID: itemID, action: .remove, message: "The map must be read before removal can be confirmed.")
+            return
+        }
+        externalSelection = nil
+        let target = SafeDeleteTarget(deviceKey: context.deviceKey, mapIdentity: identity,
+            ownership: .detectedNotManaged, objectID: objectID, expectedPath: file.path,
+            expectedFilename: file.filename, expectedSizeBytes: file.sizeBytes, expectedSHA256: "",
+            allowsExternalRemoval: true)
+        let epoch = lifecycleEpoch
+        let gate = operationGate
+        let controller = operationController
+        let preparer = externalSelectionPreparer
+        let relay = MapLifecycleProgressRelay(viewModel: self, itemID: itemID, action: .remove, epoch: epoch)
+        inFlightOperationCount += 1
+        setOperation(itemID: itemID, action: .remove, phase: .checking, progress: nil,
+                     message: "Reading the selected map before confirmation…")
+        operationTasks[itemID] = Task { [weak self] in
+            do {
+                let evidence = try await CancellableDetached.run(priority: .userInitiated) {
+                    let lease = try await gate.beginLifecycleAsync()
+                    defer { gate.endLifecycle(lease) }
+                    guard controller.isCurrent(token), gate.isValid(lease), !Task.isCancelled else { throw CancellationError() }
+                    let result = try preparer(target, profile, gate, lease) { progress in
+                        relay.send(SafeUpdateProgress(state: .verifying, bytesCompleted: progress.bytesTransferred,
+                            totalBytes: progress.totalBytes, bytesPerSecond: progress.bytesPerSecond))
+                    }
+                    guard controller.isCurrent(token), gate.isValid(lease), !Task.isCancelled else { throw CancellationError() }
+                    return result
+                }
+                guard let self else { controller.finish(token); return }
+                let current = controller.isCurrent(token) && lifecycleEpoch == epoch && !Task.isCancelled
+                controller.finish(token)
+                inFlightOperationCount = max(0, inFlightOperationCount - 1)
+                operationTasks.removeValue(forKey: itemID)
+                guard current, connectedDeviceProvider(), NativeMutationLedger.Scope.validHash(evidence.sha256) else {
+                    if lifecycleEpoch == epoch {
+                        fail(itemID: itemID, action: .remove, message: "Map selection changed. Prepare removal again.")
+                    }
+                    return
+                }
+                externalSelection = (itemID, profile, SafeDeleteTarget(deviceKey: target.deviceKey,
+                    mapIdentity: target.mapIdentity, ownership: target.ownership, objectID: target.objectID,
+                    expectedPath: target.expectedPath, expectedFilename: target.expectedFilename,
+                    expectedSizeBytes: target.expectedSizeBytes, expectedSHA256: evidence.sha256, allowsExternalRemoval: true),
+                    evidence.displayName)
+                setOperation(itemID: itemID, action: .remove, phase: .awaitingConfirmation, progress: nil,
+                             message: "Selected map verified. Awaiting confirmation.")
+                pendingConfirmation = MapLifecycleConfirmation(itemID: itemID, action: .remove)
+            } catch {
+                guard let self else { controller.finish(token); return }
+                let current = controller.isCurrent(token) && lifecycleEpoch == epoch
+                controller.finish(token)
+                inFlightOperationCount = max(0, inFlightOperationCount - 1)
+                operationTasks.removeValue(forKey: itemID)
+                guard current else { return }
+                externalSelection = nil
+                fail(itemID: itemID, action: .remove, message: "The selected map could not be verified. Nothing was removed.")
+            }
+        }
     }
 
     func requestUpdate(itemID: String) {
@@ -283,6 +364,9 @@ final class MapLifecycleViewModel: ObservableObject {
 
     func cancelPendingAction() {
         pendingConfirmation = nil
+        externalSelection = nil
+        operationTasks.values.forEach { $0.cancel() }
+        operations = operations.filter { $0.value.phase != .awaitingConfirmation }
     }
 
     var confirmationTitle: String {
@@ -317,6 +401,9 @@ final class MapLifecycleViewModel: ObservableObject {
     }
 
     var confirmationSubtitle: String {
+        if let selection = externalSelection, pendingConfirmation?.itemID == selection.itemID {
+            return selection.displayName
+        }
         guard let itemID = pendingConfirmation?.itemID,
               let item = contextProvider(itemID)?.item else {
             return "Selected map"
@@ -332,7 +419,8 @@ final class MapLifecycleViewModel: ObservableObject {
               context.item.installedMaps.count == 1,
               let operationProfile = DeviceMapOperationProfile(
                 identity: context.identity,
-                installProfile: context.profile
+                installProfile: context.profile,
+                expectedStorageID: context.expectedStorageID
               ),
               let operationToken = operationController.begin() else { return }
 
@@ -412,7 +500,7 @@ final class MapLifecycleViewModel: ObservableObject {
         epoch: UInt64,
         progress: SafeUpdateProgress
     ) {
-        guard epoch == lifecycleEpoch else { return }
+        guard epoch == lifecycleEpoch, operationTasks[itemID] != nil else { return }
 
         let phase: MapLifecycleOperationPhase
         switch progress.state {
@@ -473,7 +561,8 @@ final class MapLifecycleViewModel: ObservableObject {
               !context.item.installedMaps.isEmpty,
               let operationProfile = DeviceMapOperationProfile(
                 identity: context.identity,
-                installProfile: context.profile
+                installProfile: context.profile,
+                expectedStorageID: context.expectedStorageID
               ),
               connectedDeviceProvider(),
               !isBusy else {
@@ -484,6 +573,22 @@ final class MapLifecycleViewModel: ObservableObject {
         let installedMaps = context.item.installedMaps
         let isExternalRemoval = context.item.classification == .externalRecognized
             && context.failedInstallRecovery == nil
+        let capturedSelection = externalSelection
+        externalSelection = nil
+        guard !isExternalRemoval || (capturedSelection?.itemID == itemID
+            && capturedSelection?.profile == operationProfile
+            && installedMaps.count == 1
+            && capturedSelection?.target.expectedPath == installedMaps.first?.sourceFile.path
+            && capturedSelection?.target.expectedFilename == installedMaps.first?.sourceFile.filename
+            && capturedSelection?.target.expectedSizeBytes == installedMaps.first?.sourceFile.sizeBytes
+            && capturedSelection.map { NativeMutationLedger.Scope.validHash($0.target.expectedSHA256) } == true) else {
+            fail(itemID: itemID, action: .remove, message: "Prepare removal again for the current map and device. Nothing was changed.")
+            return
+        }
+        guard Set(installedMaps.map { $0.sourceFile.path }).count == installedMaps.count else {
+            fail(itemID: itemID, action: .remove, message: "The selected map components are ambiguous. Nothing was changed.")
+            return
+        }
         guard !isExternalRemoval || installedMaps.count == 1 else {
             fail(itemID: itemID, action: .remove, message: "Select one map to remove. Nothing was changed.")
             return
@@ -555,17 +660,18 @@ final class MapLifecycleViewModel: ObservableObject {
                         throw CancellationError()
                     }
 
-                    let transport = MTPSafeDeleteTransport(
-                        operationProfile: operationProfile,
-                        operationGate: operationGate,
-                        lifecycleLease: lease
-                    )
+                    // The approved component list is closed; each distinct artifact
+                    // gets one operation-owned transport, never recreated on retry.
+                    let plannedComponents = installedMaps.map { map in
+                        (map, MTPSafeDeleteTransport(operationProfile: operationProfile,
+                            operationGate: operationGate, lifecycleLease: lease))
+                    }
                     let deviceTransport = MTPTransport(
                         operationGate: operationGate,
                         lifecycleLease: lease
                     )
                     var lastResult: SafeDeleteResult?
-                    for installedMap in installedMaps {
+                    for (installedMap, transport) in plannedComponents {
                         guard let objectID = installedMap.sourceFile.itemID else {
                             lastResult = SafeDeleteResult(
                                 mapIdentity: mapIdentity,
@@ -583,7 +689,8 @@ final class MapLifecycleViewModel: ObservableObject {
                             expectedPath: installedMap.sourceFile.path,
                             expectedFilename: installedMap.sourceFile.filename,
                             expectedSizeBytes: installedMap.sourceFile.sizeBytes,
-                            expectedSHA256: context.expectedSHA256ByItemID[objectID] ?? "",
+                            expectedSHA256: isExternalRemoval ? (capturedSelection?.target.expectedSHA256 ?? "")
+                                : (context.expectedSHA256ByItemID[objectID] ?? ""),
                             expectedVersion: isExternalRemoval ? nil : context.item.version,
                             allowsExternalRemoval: isExternalRemoval
                         )
@@ -690,7 +797,8 @@ final class MapLifecycleViewModel: ObservableObject {
               let profile = context.profile,
               let operationProfile = DeviceMapOperationProfile(
                 identity: context.identity,
-                installProfile: profile
+                installProfile: profile,
+                expectedStorageID: context.expectedStorageID
               ),
               connectedDeviceProvider(),
               !isBusy else {

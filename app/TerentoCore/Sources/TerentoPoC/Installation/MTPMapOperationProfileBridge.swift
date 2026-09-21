@@ -12,14 +12,19 @@ func withNativeMapOperationProfile<Result>(
     try profile.manufacturer.withCString { manufacturer in
         try profile.rawModel.withCString { model in
             try profile.targetDirectory.withCString { targetDirectory in
-                var native = TerentoMTPMapOperationProfile()
-                native.version = profile.version
-                native.vendor_id = profile.vendorID
-                native.product_id = profile.productID
-                native.manufacturer = manufacturer
-                native.model = model
-                native.target_directory = targetDirectory
-                return try withUnsafePointer(to: &native, body)
+                try profile.physicalIdentifier.withCString { physicalIdentifier in
+                    var native = TerentoMTPMapOperationProfile()
+                    native.version = profile.version
+                    native.vendor_id = profile.vendorID
+                    native.product_id = profile.productID
+                    native.manufacturer = manufacturer
+                    native.model = model
+                    native.target_directory = targetDirectory
+                    native.physical_identifier = physicalIdentifier
+                    native.physical_identifier_source = profile.physicalIdentifierSource
+                    native.expected_storage_id = profile.expectedStorageID
+                    return try withUnsafePointer(to: &native, body)
+                }
             }
         }
     }

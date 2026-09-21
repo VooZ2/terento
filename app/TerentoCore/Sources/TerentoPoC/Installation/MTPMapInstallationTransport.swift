@@ -34,13 +34,18 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
     private let operationProfile: DeviceMapOperationProfile?
+    private let mutationPurpose: MapMutationPurpose
+    private let mutationOperation: NativeMutationOperation
 
     init(
         operationProfile: DeviceMapOperationProfile? = nil,
         operationGate: MTPOperationGate = .shared,
-        lifecycleLease: MTPOperationLease? = nil
+        lifecycleLease: MTPOperationLease? = nil,
+        mutationPurpose: MapMutationPurpose = .install
     ) {
         self.operationProfile = operationProfile
+        self.mutationPurpose = mutationPurpose
+        self.mutationOperation = NativeMutationOperation(mode: mutationPurpose)
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
     }
@@ -100,13 +105,15 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         // The C bridge invokes the callback synchronously and does not retain
         // its context. Keep the box alive for the complete C call anyway so
         // this remains safe if the bridge implementation changes later.
-        let result: Int32 = withExtendedLifetime(progressBox) {
-            withNativeMapOperationProfile(operationProfile) { nativeProfile in
-                sourceURL.path.withCString { sourcePath in
-                    targetFilename.withCString { filename in
-                        errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                            terento_mtp_install_map_file(
-                                nativeProfile,
+        let result: Int32 = try withExtendedLifetime(progressBox) {
+            try withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                try sourceURL.path.withCString { sourcePath in
+                    try targetFilename.withCString { filename in
+                        try errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                            try authorizedMutation(purpose: mutationPurpose, filename: targetFilename,
+                                size: validatedSourceSize ?? 0, sha256: nil) { authorization, record in
+                            terento_mtp_install_map_file_authorized(
+                                nativeProfile, authorization, record,
                                 sourcePath,
                                 filename,
                                 &itemID,
@@ -116,6 +123,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                                 errorPointer.baseAddress,
                                 errorPointer.count
                             )
+                            }
                         }
                     }
                 }
@@ -313,102 +321,102 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         )
     }
 
+    /// Upload sessions have ended by this point. Neither a historical handle nor
+    /// filename/size proves creation provenance, so automatic cleanup cannot delete.
     func deleteExact(targetFilename: String, expectedItemID: UInt32) throws {
-        try deleteExact(
-            targetFilename: targetFilename,
-            expectedItemID: expectedItemID,
-            expectedSizeBytes: nil
-        )
+        throw CleanupIdentityUnproven()
     }
 
-    func deleteExact(
-        targetFilename: String,
-        expectedItemID: UInt32,
-        expectedSizeBytes: UInt64?
-    ) throws {
-        try operationGate.withOperation(
-            kind: .remove,
-            lifecycleLease: lifecycleLease
-        ) {
-            try deleteExactUncoordinated(
-                targetFilename: targetFilename,
-                expectedItemID: expectedItemID,
-                expectedSizeBytes: expectedSizeBytes
-            )
+    func deleteExact(targetFilename: String, expectedItemID: UInt32, expectedSizeBytes: UInt64?) throws {
+        try deleteExact(targetFilename: targetFilename, expectedItemID: expectedItemID)
+    }
+
+    func deleteAuthorized(targetFilename: String, expectedItemID: UInt32,
+                          expectedSizeBytes: UInt64, expectedSHA256: String,
+                          purpose: MapMutationPurpose) throws {
+        guard [.removeManaged, .removeExternal, .updateOld].contains(purpose),
+              expectedSHA256.count == 64, expectedSHA256.allSatisfy({ $0.isHexDigit }),
+              expectedSHA256 != String(repeating: "0", count: 64) else {
+            throw InstallationTransportError.operationFailed("Removal evidence is incomplete. Nothing was removed.", createdItemID: nil)
         }
-    }
-
-    func deleteExternalExact(
-        targetFilename: String,
-        expectedItemID: UInt32,
-        expectedSizeBytes: UInt64
-    ) throws {
-        try operationGate.withOperation(
-            kind: .remove,
-            lifecycleLease: lifecycleLease
-        ) {
-            guard let operationProfile else {
-                throw InstallationTransportError.unsupportedDevice
-            }
+        try operationGate.withOperation(kind: .remove, lifecycleLease: lifecycleLease) {
+            guard let operationProfile else { throw InstallationTransportError.unsupportedDevice }
             var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-            let result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
-                targetFilename.withCString { filename in
-                    errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                        terento_mtp_delete_external_map(
-                            nativeProfile,
-                            filename,
-                            expectedItemID,
-                            expectedSizeBytes,
-                            errorPointer.baseAddress,
-                            errorPointer.count
-                        )
+            let result = try withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                try targetFilename.withCString { filename in
+                    try errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                        try authorizedMutation(purpose: purpose, filename: targetFilename,
+                            size: expectedSizeBytes, sha256: expectedSHA256) { authorization, record in
+                            if purpose == .removeExternal {
+                                return terento_mtp_delete_external_map_authorized(nativeProfile, authorization, record,
+                                    filename, expectedItemID, expectedSizeBytes, errorPointer.baseAddress, errorPointer.count)
+                            }
+                            return terento_mtp_delete_managed_map_authorized(nativeProfile, authorization, record,
+                                filename, expectedItemID, expectedSizeBytes, errorPointer.baseAddress, errorPointer.count)
+                        }
                     }
                 }
             }
-
-            guard result == 0 else {
-                throw Self.mapError(
-                    result: result,
-                    message: errorMessage(from: errorBuffer)
-                )
-            }
+            guard result == 0 else { throw Self.mapError(result: result, message: errorMessage(from: errorBuffer)) }
         }
     }
 
-    private func deleteExactUncoordinated(
-        targetFilename: String,
-        expectedItemID: UInt32,
-        expectedSizeBytes: UInt64?
-    ) throws {
-        guard let operationProfile else {
-            throw InstallationTransportError.unsupportedDevice
-        }
-        if !MTPFinishingWorker.isWorker {
-            _ = try MTPFinishingWorker.perform(.init(
-                operation: .cleanup, profile: operationProfile,
-                filename: targetFilename, itemID: expectedItemID, size: expectedSizeBytes
-            ))
-            return
-        }
-        var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-        let result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
-            targetFilename.withCString { filename in
-                errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                    terento_mtp_delete_managed_map(
-                        nativeProfile,
-                        filename,
-                        expectedItemID,
-                        expectedSizeBytes ?? 0,
-                        errorPointer.baseAddress,
-                        errorPointer.count
-                    )
+    func bindUpdateOldTarget(filename: String, size: UInt64, sha256: String) throws {
+        try mutationOperation.bindOldTarget(scope: mutationScope(filename: filename, size: size, sha256: sha256))
+    }
+
+    func markUpdateVerified(filename: String, size: UInt64, sha256: String) throws {
+        try mutationOperation.markUpdateVerified(filename: filename, size: size, sha256: sha256)
+    }
+
+    private func mutationScope(filename: String, size: UInt64, sha256: String?) throws -> NativeMutationLedger.Scope {
+        guard let profile = operationProfile else { throw InstallationTransportError.unsupportedDevice }
+        return NativeMutationLedger.Scope(physicalIdentifierSource: profile.physicalIdentifierSource,
+            physicalIdentifier: profile.physicalIdentifier, expectedStorageID: profile.expectedStorageID,
+            filename: filename, size: size, sha256: sha256)
+    }
+
+    private func authorizedMutation(purpose: MapMutationPurpose, filename: String,
+                                    size: UInt64, sha256: String?,
+                                    body: (UnsafePointer<TerentoMTPMutationAuthorization>,
+                                           UnsafeMutablePointer<TerentoMTPMutationRecord>) -> Int32) throws -> Int32 {
+        var ledger = try mutationOperation.begin(purpose: purpose,
+            scope: mutationScope(filename: filename, size: size, sha256: sha256))
+        try ledger.dispatch()
+        var record = TerentoMTPMutationRecord()
+        guard let profile = operationProfile else { throw InstallationTransportError.unsupportedDevice }
+        let result = ledger.operationID.withCString { operationID in
+            ledger.claimPath.withCString { claimPath in
+                filename.withCString { filenamePointer in
+                    (sha256 ?? "").withCString { hashPointer in
+                        profile.physicalIdentifier.withCString { physicalIdentifier in
+                            profile.targetDirectory.withCString { targetDirectory in
+                                var authorization = TerentoMTPMutationAuthorization()
+                                authorization.version = 1
+                                authorization.operation_id = operationID
+                                authorization.claim_path = claimPath
+                                authorization.sequence = ledger.sequence
+                                authorization.purpose = purpose.rawValue
+                                authorization.mutation_kind = purpose.kind
+                                authorization.expected_filename = filenamePointer
+                                authorization.expected_size = size
+                                authorization.expected_sha256 = hashPointer
+                                authorization.expected_physical_identifier = physicalIdentifier
+                                authorization.expected_physical_identifier_source = profile.physicalIdentifierSource
+                                authorization.expected_storage_id = profile.expectedStorageID
+                                authorization.expected_target_directory = targetDirectory
+                                return withUnsafePointer(to: &authorization) { body($0, &record) }
+                            }
+                        }
+                    }
                 }
             }
         }
-
-        guard result == 0 else {
-            throw Self.mapError(result: result, message: errorMessage(from: errorBuffer))
-        }
+        try ledger.finish(.init(authorized: record.authorized != 0, attempted: record.attempted != 0,
+            completed: record.completed != 0, nativeResult: record.native_result,
+            resultingObjectID: record.resulting_object_id, sessionID: record.session_id,
+            sequence: record.sequence, purpose: record.purpose, kind: record.mutation_kind), returnedResult: result)
+        return result
     }
 
     private static func mapError(
@@ -466,8 +474,9 @@ extension MapInstallationCoordinator {
     }
 }
 
-/// IPC is local to a fresh private temporary directory. It never contains a
-/// Garmin serial, Unit ID, XML, manifest, or map bytes. No worker can write maps.
+/// IPC is local to a fresh private temporary directory. It never contains
+/// raw XML, manifests or map bytes. Physical binding remains private local IPC.
+/// No worker can upload maps; legacy cleanup requests fail closed.
 enum MTPFinishingWorker {
     enum Operation: String, Codable { case samples, cleanup, inventory, snapshot }
     private static let inventoryTimeout: TimeInterval = 60
