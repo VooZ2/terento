@@ -963,7 +963,8 @@ final class MapEngine: ObservableObject {
             deviceKey: itemDeviceKey,
             expectedSHA256ByItemID: hashes,
             mapIdentity: itemMapIdentity ?? manifestMapIdentity,
-            failedInstallRecovery: item.failedInstallRecovery
+            failedInstallRecovery: item.failedInstallRecovery,
+            expectedStorageID: result.deviceFiles.first(where: { $0.path == "/GARMIN" && $0.isFolder })?.storageID ?? 0
         )
     }
 
@@ -1666,7 +1667,8 @@ final class MapEngine: ObservableObject {
                             )
                             let operationProfile = DeviceMapOperationProfile(
                                 identity: identity,
-                                installProfile: installProfile
+                                installProfile: installProfile,
+                                expectedStorageID: inventory.deviceFiles.first(where: { $0.path == "/GARMIN" && $0.isFolder })?.storageID ?? 0
                             )
 
                             let request = MapInstallationRequest(

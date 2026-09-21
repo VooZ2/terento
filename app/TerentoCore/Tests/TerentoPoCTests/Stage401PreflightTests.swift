@@ -136,7 +136,7 @@ struct Stage401PreflightTests {
         )
         let operationProfile = DeviceMapOperationProfile(
             identity: identity,
-            installProfile: installProfile
+            installProfile: installProfile, expectedStorageID: 1
         )
 
         expect(
@@ -167,7 +167,7 @@ struct Stage401PreflightTests {
         expect(
             DeviceMapOperationProfile(
                 identity: identity,
-                installProfile: anotherDeviceProfile
+                installProfile: anotherDeviceProfile, expectedStorageID: 1
             ) == nil,
             "production operation profile rejects a profile for another live PID"
         )
@@ -192,9 +192,9 @@ struct Stage401PreflightTests {
 
         expect(
             profile != nil
-                && DeviceMapOperationProfile(identity: identity, installProfile: profile) != nil
+                && DeviceMapOperationProfile(identity: identity, installProfile: profile, expectedStorageID: 1) == nil
                 && identity.localHardwareIdentifier == nil,
-            "C operation profile uses live write facts while durable ownership remains independently unavailable"
+            "mutation profile rejects missing physical identity"
         )
     }
 

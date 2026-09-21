@@ -413,7 +413,7 @@ private func testRemovalReportsMeasuredProgress() throws {
     )
 }
 
-private func testManagedRemovalCanUseExactIdentityWithoutFullHashRead() throws {
+private func testManagedDomainDefersContentProofToNativeBoundary() throws {
     let prepared = validTarget()
     let current = SafeDeleteDeviceObject(
         file: prepared.target.sourceFile,
@@ -428,11 +428,11 @@ private func testManagedRemovalCanUseExactIdentityWithoutFullHashRead() throws {
 
     try require(
         result.status == .success,
-        "managed Remove should accept exact live identity without copying the full map"
+        "managed domain accepts preliminary identity while native transport must verify full content"
     )
     try require(
         transport.events == ["inspect", "delete"],
-        "managed fast Remove must still inspect before the one destructive delete"
+        "managed domain must inspect before the one authorized native delete"
     )
 }
 
@@ -594,6 +594,76 @@ private func testLifecycleManagerCleansManifestAfterVerifiedDelete() throws {
     try require(failedResult.status == .failedManifestCleanup, "manifest cleanup failure must not report a clean success")
 }
 
+private func testDurableOwnershipAndCrossComputerRemoval() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-owner-regression-" + UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let selected = validTarget().target
+    let version = MapVersion(year: 2026, month: 5)!
+    let entry = TerentoManifestEntry(deviceKey: selected.deviceKey, devicePath: selected.expectedPath,
+        filename: selected.expectedFilename, providerId: "freizeitkarte", regionId: "FRA", version: version,
+        sizeBytes: selected.expectedSizeBytes, sha256: selected.expectedSHA256, installedAt: Date(timeIntervalSince1970: 100))
+    let firstMac = root.appendingPathComponent("first-mac")
+    try LocalTerentoManifestStore(rootDirectory: firstMac).record(entry)
+    // A new app process/build reads the same durable storage, including older
+    // records without optional package/artifact fields. No app version is a key.
+    let upgradedStore = LocalTerentoManifestStore(rootDirectory: firstMac)
+    let loaded = try upgradedStore.read(deviceKey: selected.deviceKey)
+    try require(loaded?.entries == [entry], "app restart/upgrade must preserve durable ownership")
+    let metadata = GarminIMGMetadata(name: "France", provider: "freizeitkarte", region: "FRA",
+        family: nil, rawVersion: nil, version: version, identifier: nil, productId: nil, familyId: nil)
+    func records(_ manifest: TerentoManifest?) -> [MapOwnershipRecord] {
+        (manifest?.entries ?? []).map { value in
+            MapOwnershipRecord(devicePath: value.devicePath, filename: value.filename,
+                providerId: value.providerId, regionId: value.regionId, version: value.version, sizeBytes: value.sizeBytes)
+        }
+    }
+    let matcher = MapOwnershipMatcher()
+    try require(matcher.managementState(for: selected.sourceFile, metadata: metadata, records: records(loaded)) == .managedByTerento,
+                "upgrade must not invalidate exact local ownership")
+    let managedTransport = FakeSafeDeleteTransport()
+    managedTransport.currentObject = deviceObject(for: selected)
+    let managedResult = MapLifecycleManager(manifestCleanupStore: upgradedStore).delete(target: selected,
+        confirmed: true, deviceConnected: true, rescan: { [] }, transport: managedTransport)
+    try require(managedResult.isSuccess && managedTransport.deletedObjectIDs.count == 1,
+                "manifest-backed map remains removable after upgrade")
+    for scenario in ["another-mac", "reinstalled-empty-state", "lost-local-manifest"] {
+        let scenarioRoot = root.appendingPathComponent(scenario)
+        let store = LocalTerentoManifestStore(rootDirectory: scenarioRoot)
+        if scenario == "lost-local-manifest" {
+            try store.record(entry)
+            try FileManager.default.removeItem(at: scenarioRoot.appendingPathComponent("Terento/devices")
+                .appendingPathComponent(selected.deviceKey).appendingPathComponent("manifest.json"))
+        }
+        let absent = try store.read(deviceKey: selected.deviceKey)
+        try require(absent == nil, "new computer/state-loss fixture has no manifest")
+        let ownership = matcher.managementState(for: selected.sourceFile, metadata: metadata, records: records(absent))
+        try require(ownership == .detectedNotManaged, "missing manifest must classify as external, including Terento-style names")
+        let external = SafeDeleteTarget(deviceKey: selected.deviceKey, mapIdentity: selected.mapIdentity,
+            ownership: ownership, objectID: selected.objectID, expectedPath: selected.expectedPath,
+            expectedFilename: selected.expectedFilename, expectedSizeBytes: selected.expectedSizeBytes,
+            expectedSHA256: selected.expectedSHA256, allowsExternalRemoval: true)
+        let denied = run(target: external, current: deviceObject(for: external), confirmed: false, scans: [[]])
+        try require(denied.1.deletedObjectIDs.isEmpty, "external fallback never deletes without confirmation")
+        let transport = FakeSafeDeleteTransport()
+        transport.currentObject = deviceObject(for: external)
+        let cleanup = FakeManifestCleanupStore()
+        let result = MapLifecycleManager(manifestCleanupStore: cleanup).delete(target: external,
+            confirmed: true, deviceConnected: true, rescan: { [] }, transport: transport, ownershipSource: .external)
+        try require(result.isSuccess && transport.deletedObjectIDs.count == 1,
+                    "explicit external removal stays available after cross-computer/state loss")
+        try require(cleanup.removed.isEmpty, "external removal cannot manufacture or remove local ownership")
+    }
+    for filename in ["gmapprom.img", "gmaptz.img", "D123456.img"] {
+        let protected = SafeDeleteTarget(deviceKey: selected.deviceKey, mapIdentity: selected.mapIdentity,
+            ownership: .detectedNotManaged, objectID: selected.objectID, expectedPath: "/GARMIN/\(filename)",
+            expectedFilename: filename, expectedSizeBytes: selected.expectedSizeBytes,
+            expectedSHA256: selected.expectedSHA256, allowsExternalRemoval: true)
+        let result = run(target: protected, current: deviceObject(for: protected), scans: [[]])
+        try require(!result.0.isSuccess && result.1.deletedObjectIDs.isEmpty,
+                    "empty manifest never makes a protected Garmin map removable")
+    }
+}
+
 @main
 struct SafeDeleteTests {
     static func main() {
@@ -609,14 +679,15 @@ struct SafeDeleteTests {
             ("external removal filename protection", testExternalRemovalFilenameBoundaries),
             ("confirmed external map deletes without manifest cleanup", testConfirmedExternalMapDeletesWithoutManifestCleanup),
             ("removal reports measured progress", testRemovalReportsMeasuredProgress),
-            ("managed Remove can skip a full hash read after exact identity proof", testManagedRemovalCanUseExactIdentityWithoutFullHashRead),
+            ("managed domain defers full content proof to native mutation boundary", testManagedDomainDefersContentProofToNativeBoundary),
             ("busy USB removal failure is actionable and non-destructive", testBusyDeviceFailureIsActionableAndNonDestructive),
             ("hash mismatch is blocked", testHashMismatchIsBlocked),
             ("disconnect and confirmation are blocked", testDisconnectAndConfirmationAreBlocked),
             ("post-delete rescan and exact identity are required", testPostDeleteRescanAndExactIdentityAreRequired),
             ("post-delete rescan retries without repeating delete", testPostDeleteRescanRetriesWithoutRepeatingDelete),
             ("transport failure is reported", testTransportFailureIsReported),
-            ("lifecycle manager cleans manifest after verified delete", testLifecycleManagerCleansManifestAfterVerifiedDelete)
+            ("lifecycle manager cleans manifest after verified delete", testLifecycleManagerCleansManifestAfterVerifiedDelete),
+            ("durable ownership and cross-computer removal", testDurableOwnershipAndCrossComputerRemoval)
         ]
 
         do {

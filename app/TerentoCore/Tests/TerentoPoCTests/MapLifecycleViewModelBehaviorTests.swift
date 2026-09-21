@@ -10,13 +10,17 @@ extension Bundle {
 @main
 struct MapLifecycleViewModelBehaviorTests {
     @MainActor
-    static func main() throws {
+    static func main() async throws {
         try testConfirmationDisablesEject()
         try testDisconnectedDeviceCannotStartRemoval()
         try testResetInvalidatesPresentationState()
-        try testUnownedTerentoFilenameReachesRemovalConfirmation()
+        try await testUnownedTerentoFilenameReachesRemovalConfirmation()
+        try await testExternalPreparationFailure()
+        try await testExternalSelectionDeviceChange()
+        try await testExternalPreparationReset()
+        try await testExternalPreparationReset(cancel: true)
 
-        print("PASS: 4 MapLifecycleViewModel behavior tests")
+        print("PASS: 8 MapLifecycleViewModel behavior tests")
     }
 
     @MainActor
@@ -108,27 +112,112 @@ struct MapLifecycleViewModelBehaviorTests {
     }
 
     @MainActor
-    private static func testUnownedTerentoFilenameReachesRemovalConfirmation() throws {
+    private static func waitUntil(_ condition: () -> Bool) async throws {
+        for _ in 0..<1000 {
+            if condition() { return }
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        throw Failure("timed out waiting for controlled preparation")
+    }
+
+    @MainActor
+    private static func testUnownedTerentoFilenameReachesRemovalConfirmation() async throws {
         let gate = MTPOperationGate()
         let context = try makeContext(external: true)
+        var connected = true
         let viewModel = MapLifecycleViewModel(
             deviceEngine: DeviceEngine(operationGate: gate),
             mapEngine: MapEngine(operationGate: gate), operationGate: gate,
-            contextProvider: { _ in context }, connectedDeviceProvider: { false }
+            contextProvider: { _ in context }, connectedDeviceProvider: { connected },
+            externalSelectionPreparer: { _, _, _, _, _ in
+                ExternalMapSelectionEvidence(sha256: String(repeating: "a", count: 64), displayName: "Captured France")
+            }
         )
         viewModel.requestRemove(itemID: context.item.id)
-        guard viewModel.pendingConfirmation?.action == .remove else {
-            throw Failure("unowned Terento-style filename did not offer removal confirmation")
+        guard viewModel.pendingConfirmation == nil, viewModel.isBusy else {
+            throw Failure("confirmation appeared before external content was captured")
         }
+        try await waitUntil { viewModel.pendingConfirmation != nil }
+        guard viewModel.confirmationSubtitle == "Captured France", !gate.isNativeOperationActive else {
+            throw Failure("confirmation did not use captured metadata")
+        }
+        connected = false
         viewModel.confirmPendingAction()
-        guard viewModel.operation(for: context.item.id)?.phase == .failed,
-              !gate.isNativeOperationActive else {
+        guard viewModel.operation(for: context.item.id)?.phase == .failed, !gate.isNativeOperationActive else {
             throw Failure("external confirmation bypassed disconnected-device protection")
         }
-        print("PASS: unowned Terento filename offers confirmation and retains device protection")
+        print("PASS: external content and displayed metadata captured before confirmation")
     }
 
-    private static func makeContext(external: Bool = false) throws -> MapLifecycleContext {
+    @MainActor
+    private static func testExternalPreparationFailure() async throws {
+        let gate = MTPOperationGate()
+        let context = try makeContext(external: true)
+        let viewModel = MapLifecycleViewModel(deviceEngine: DeviceEngine(operationGate: gate),
+            mapEngine: MapEngine(operationGate: gate), operationGate: gate,
+            contextProvider: { _ in context }, connectedDeviceProvider: { true },
+            externalSelectionPreparer: { _, _, _, _, _ in throw Failure("injected read failure") })
+        viewModel.requestRemove(itemID: context.item.id)
+        try await waitUntil { !viewModel.isBusy }
+        guard viewModel.pendingConfirmation == nil, viewModel.operation(for: context.item.id)?.phase == .failed else {
+            throw Failure("failed preparation permitted confirmation")
+        }
+    }
+
+    @MainActor
+    private static func testExternalSelectionDeviceChange() async throws {
+        let gate = MTPOperationGate()
+        var context = try makeContext(external: true)
+        let viewModel = MapLifecycleViewModel(deviceEngine: DeviceEngine(operationGate: gate),
+            mapEngine: MapEngine(operationGate: gate), operationGate: gate,
+            contextProvider: { _ in context }, connectedDeviceProvider: { true },
+            externalSelectionPreparer: { _, _, _, _, _ in
+                ExternalMapSelectionEvidence(sha256: String(repeating: "a", count: 64), displayName: "Captured map")
+            })
+        viewModel.requestRemove(itemID: context.item.id)
+        try await waitUntil { viewModel.pendingConfirmation != nil }
+        context = try makeContext(external: true, storageID: 2)
+        viewModel.confirmPendingAction()
+        guard viewModel.operation(for: context.item.id)?.phase == .failed, !gate.isNativeOperationActive else {
+            throw Failure("changed storage crossed external selection binding")
+        }
+    }
+
+    @MainActor
+    private static func testExternalPreparationReset(cancel: Bool = false) async throws {
+        let gate = MTPOperationGate()
+        let context = try makeContext(external: true)
+        let blocker = PreparationBlocker()
+        let viewModel = MapLifecycleViewModel(deviceEngine: DeviceEngine(operationGate: gate),
+            mapEngine: MapEngine(operationGate: gate), operationGate: gate,
+            contextProvider: { _ in context }, connectedDeviceProvider: { true },
+            externalSelectionPreparer: { _, _, _, _, _ in
+                blocker.wait()
+                return ExternalMapSelectionEvidence(sha256: String(repeating: "a", count: 64), displayName: "Old map")
+            })
+        viewModel.requestRemove(itemID: context.item.id)
+        try await waitUntil { blocker.started }
+        if cancel { viewModel.cancelPendingAction() }
+        else { viewModel.resetForDisconnectedDevice() }
+        blocker.release()
+        try await waitUntil { !viewModel.isBusy }
+        guard viewModel.pendingConfirmation == nil else { throw Failure("disconnect revived stale selection") }
+    }
+
+    private final class PreparationBlocker: @unchecked Sendable {
+        private let condition = NSCondition()
+        private var entered = false
+        private var released = false
+        var started: Bool { condition.lock(); defer { condition.unlock() }; return entered }
+        func wait() {
+            condition.lock(); defer { condition.unlock() }
+            entered = true
+            while !released { condition.wait() }
+        }
+        func release() { condition.lock(); released = true; condition.broadcast(); condition.unlock() }
+    }
+
+    private static func makeContext(external: Bool = false, storageID: UInt32 = 1) throws -> MapLifecycleContext {
         guard let version = MapVersion(year: 2026, month: 5),
               MapIdentity(provider: "Freizeitkarte", region: "FRA") != nil else {
             throw Failure("could not construct deterministic lifecycle test identity")
@@ -210,7 +299,8 @@ struct MapLifecycleViewModelBehaviorTests {
             availableStorage: deviceIdentity.freeSpace,
             profile: profile,
             deviceKey: "test-device",
-            expectedSHA256ByItemID: external ? [:] : [sourceFile.itemID ?? 0: String(repeating: "a", count: 64)]
+            expectedSHA256ByItemID: external ? [:] : [sourceFile.itemID ?? 0: String(repeating: "a", count: 64)],
+            expectedStorageID: storageID
         )
     }
 

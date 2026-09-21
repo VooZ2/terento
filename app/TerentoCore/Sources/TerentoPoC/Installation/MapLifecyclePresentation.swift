@@ -193,6 +193,7 @@ struct MapLifecycleContext: Sendable {
     let selectedMap: MapPackage?
     let identity: DeviceIdentity
     let availableStorage: UInt64
+    let expectedStorageID: UInt32
     let profile: DeviceInstallProfile?
     let deviceKey: String
     let expectedSHA256ByItemID: [UInt32: String]
@@ -211,12 +212,14 @@ struct MapLifecycleContext: Sendable {
         deviceKey: String,
         expectedSHA256ByItemID: [UInt32: String],
         mapIdentity: MapIdentity? = nil,
-        failedInstallRecovery: TerentoFailedInstallRecoveryRecord? = nil
+        failedInstallRecovery: TerentoFailedInstallRecoveryRecord? = nil,
+        expectedStorageID: UInt32 = 0
     ) {
         self.item = item
         self.comparison = comparison
         self.selectedMap = selectedMap
         self.identity = identity
+        self.expectedStorageID = expectedStorageID
         self.availableStorage = availableStorage
         self.profile = profile
         self.deviceKey = deviceKey

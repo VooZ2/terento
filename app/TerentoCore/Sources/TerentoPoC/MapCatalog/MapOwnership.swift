@@ -46,11 +46,11 @@ struct MapOwnershipRecord: Sendable, Equatable {
 /// Matches a scanned map to the local ownership manifest for presentation.
 ///
 /// This is deliberately not the destructive-operation authorization check.
-/// SafeDeleteAdapter still re-reads the exact object identity before deleting
-/// anything. A manual Remove of a Terento-owned object does not need to copy
-/// the complete map again: the exact live path, filename, size, object ID,
-/// and local manifest record are the ownership proof. Safe Update and Remove
-/// retain their full-content verification paths.
+/// Removal rechecks exact coordinates and full content at the native mutation
+/// boundary. Manifest-backed ownership enables managed update; a missing local
+/// manifest instead leaves the explicit, separately confirmed external Remove
+/// path available for a valid unprotected map. App versions do not grant or
+/// revoke ownership, and a filename alone never grants managed update.
 struct MapOwnershipMatcher: Sendable {
     /// A missing release is accepted only for a recorded managed OTM contour.
     /// Callers must still match the exact path, size and provider/region identity.
