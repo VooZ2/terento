@@ -99,7 +99,7 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.13 (build 33)**. The macOS app is notarized
+The latest public release is **beta.13 (build 34)**. The macOS app is notarized
 and does not require Homebrew.
 
 Beta.13 strengthens protection of existing maps during Update and improves
