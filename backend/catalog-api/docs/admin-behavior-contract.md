@@ -61,6 +61,45 @@ Do not retain raw rejected payloads, credentials, Unit IDs, serial numbers, loca
 paths or binaries. Raw native logs remain local; an admin technical-details view
 shows only received structured fields. Missing data must be labelled unavailable.
 
+## Structured failure detail
+
+Version-4 reports may supply top-level `failureContext` and
+`originalFailureContext` using the same nonrecursive closed contract, with
+`protection` nested inside each context. See the
+[shared event contract](../../../contracts/README.md#structured-installation-failure-context)
+for accepted fields. Server-first acceptance and presentation do not mean the
+app emits these fields, comparator version 2 is implemented, or deployment has
+occurred. Omitted and explicitly null contexts both display `unavailable` in
+Admin detail and generated GitHub reports, including historical missing fields;
+neither creates an empty or inferred context. Non-null original context requires
+a terminal cleanup context object. Never reconstruct
+boundary, presence or reason from a code, neighboring report or issue text.
+
+Keep Overview concise. Diagnostic detail presents stage, exact boundary,
+protection reason, native category, retry count and classification source.
+Remaining bounded observations belong in Technical details. The generated
+GitHub issue report includes exact boundary, classification source, device
+presence, protection reason and explicit custom-import wording. Generating a
+report does not authorize posting it or changing an issue's status.
+
+Pre-write protection belongs to preflight; post-write protection belongs to
+verify. Successful cleanup leaves that stage and reason intact. Cleanup failure
+uses terminal stage/boundary cleanup while retaining the complete originating
+context and protection reason separately. Read failure alone is not evidence
+of device absence. Show only received facts; absent observations are not false.
+
+A manually imported IMG remains a custom import even when its content originated
+from OpenTopoMap. A catalog OpenTopoMap operation remains a provider operation.
+Do not infer source from a private filename or map content. If a main map
+succeeded, context is allowed only with `componentKind=contours`,
+`optionalComponentSelected=true` and `optionalComponentOutcome=FAILED`; its
+boundary matches the optional component's failure stage. Show that component's
+context, including its separately retained original context on cleanup failure.
+An aggregate successful-cleanup flag may describe another component and must
+not erase this failure. Never pick context by dictionary order or
+rewrite the main-map outcome. These diagnostics do not alter counting,
+compatibility status, identity assignment, sharing or device safety.
+
 ## Counting and lifecycle
 
 | Concept | Required interpretation |

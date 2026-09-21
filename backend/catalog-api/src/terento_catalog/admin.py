@@ -27,6 +27,7 @@ from .compatibility_status import (
 )
 from .device_catalog import _official_source_image_url
 from .failure_reasons import failure_reason_label, normalize_failure_reason
+from .failure_context import validate_context
 from .map_capability import classify_map_capable
 from .device_labels import model_label, variant_label
 from .admin_world_map import WORLD_MAP_COUNTRY_ALIASES, WORLD_MAP_SVG
@@ -593,6 +594,49 @@ def _diagnostic_result(value: Any) -> str:
     )
 
 
+def _failure_context_fields(result: dict[str, Any], key: str, *, technical: bool = False) -> list[tuple[str, Any]]:
+    context = result.get(key)
+    try:
+        validate_context(context)
+    except ValueError:
+        context = {}
+    protection = context.get('protection', {})
+    fields = [
+        ('Boundary', context.get('boundary')), ('Protection reason', protection.get('protectionReason')),
+        ('Native category', context.get('nativeCategory')), ('Retry count', context.get('retryCount')),
+        ('Classification source', context.get('classificationSource')), ('Device presence', context.get('devicePresence')),
+        ('Component', context.get('componentKind')),
+    ]
+    if technical:
+        fields.extend((label, context.get(name)) for label, name in (
+            ('Last successful boundary', 'lastSuccessfulBoundary'), ('Operation', 'operation'),
+            ('Execution mode', 'executionMode'), ('Result kind', 'resultKind'),
+            ('Native code namespace', 'nativeCodeNamespace'), ('Native result code', 'nativeResultCode'),
+        ))
+        fields.extend((name, protection.get(name)) for name in (
+            'protectionBoundary', 'stableIdentityComparisonVersion', 'beforeObjectCount', 'afterObjectCount',
+            'addedObjectCount', 'removedObjectCount', 'changedObjectCount', 'targetPresent', 'targetUnique',
+            'targetKindMatches', 'targetFilenameMatches', 'targetSizeMatches', 'targetPathMatches', 'targetItemIDMatches',
+        ))
+    return [(label, 'unavailable' if value is None else value) for label, value in fields]
+
+
+def _failure_context_summary(results: list[dict[str, Any]]) -> str:
+    summaries = []
+    for number, result in enumerate(results, 1):
+        context = result.get('failure_context') or {}
+        stage = result.get('optional_component_failure_stage') if isinstance(context, dict) and context.get('componentKind') == 'contours' else result.get('failure_stage')
+        fields = [('Stage', stage or 'unavailable')] + _failure_context_fields(result, 'failure_context')
+        rows = ''.join(f'<div><dt>{html.escape(label)}</dt><dd>{_diagnostic_value(value)}</dd></div>' for label, value in fields)
+        summaries.append(f'<p>Failure context · {html.escape(_failure_result_label(result, number))}</p><dl class="diagnostic-detail-summary">{rows}</dl>')
+    return ''.join(summaries)
+
+
+def _failure_result_label(result: dict[str, Any], number: int) -> str:
+    index = result.get('map_result_index')
+    return f'mapResultIndex {index}' if type(index) is int and 0 <= index < 100 else f'displayed result {number} (mapResultIndex unavailable)'
+
+
 def _diagnostic_technical_details(result: dict[str, Any], result_number: int) -> str:
     fields: list[tuple[str, Any]] = []
     for label, key in (
@@ -620,6 +664,11 @@ def _diagnostic_technical_details(result: dict[str, Any], result_number: int) ->
     ):
         if result.get(key) is not None:
             fields.append((label, _diagnostic_boolean(result.get(key))))
+    for key, prefix in (('failure_context', 'Failure'), ('original_failure_context', 'Original failure')):
+        if key == 'original_failure_context' and result.get(key) is None:
+            fields.append(('Original failure context', 'unavailable'))
+        else:
+            fields.extend((f'{prefix}: {label}', value) for label, value in _failure_context_fields(result, key, technical=result.get(key) is not None))
     rows = "".join(
         f"<div><dt>{html.escape(label)}</dt><dd>{value if isinstance(value, str) and value.startswith('<span') else _diagnostic_value(value)}</dd></div>"
         for label, value in fields
@@ -4272,6 +4321,19 @@ def _github_issue_report(
         rows = [f"- {label}: {value}" for label, value in fields if value]
         if rows:
             rendered_sections.append(f"## {heading}\n\n" + "\n".join(rows))
+    for number, item in enumerate(results, 1):
+        source = 'Custom import' if item.get('provider') == 'custom' else _markdown_issue_value(item.get('provider')) or 'unavailable'
+        context = item.get('failure_context') or {}
+        stage = item.get('optional_component_failure_stage') if isinstance(context, dict) and context.get('componentKind') == 'contours' else item.get('failure_stage')
+        rows = [f'- Source: {source}', f'- Failure stage: {_markdown_issue_value(stage) or "unavailable"}']
+        if item.get('provider') == 'custom':
+            rows.extend(['- Acquisition: manually imported IMG', '- Original file provenance: not tracked'])
+        for key, label in (('failure_context', 'Failure'), ('original_failure_context', 'Original failure')):
+            if key == 'original_failure_context' and item.get(key) is None:
+                rows.append('- Original failure context: unavailable')
+            else:
+                rows.extend(f'- {label} {name.lower()}: {_markdown_issue_value(str(value))}' for name, value in _failure_context_fields(item, key, technical=item.get(key) is not None))
+        rendered_sections.append(f'## {_failure_result_label(item, number)} diagnostics\n\n' + '\n'.join(rows))
     if result == "FAILED":
         rendered_sections.append(
             "## Detailed diagnostics\n\n"
@@ -4491,6 +4553,7 @@ def _diagnostic_detail_dialog(
             {review_state}
           </dl>
           {failure_summary}
+          {_failure_context_summary(results)}
           {next_action}
           {_identity_checks_markup(results, identity_devices)}
           <div class='diagnostic-actions-grid'>{action_markup}</div>

@@ -132,3 +132,80 @@ check_identity_database(database)
 
 from check_download_lifecycle_database import check_download_lifecycle_database
 check_download_lifecycle_database(database)
+
+# Failure-context intake and diagnostic readback use production methods on one
+# rollback-only transaction in this guarded disposable database.
+from contextlib import contextmanager
+import json
+from pathlib import Path
+from terento_catalog.compatibility_evidence import validate_event
+
+
+class ContextRollback(Exception):
+    pass
+
+
+context_ids = [uuid4(), uuid4(), uuid4()]
+try:
+    with database.connection() as context_connection:
+        class ContextDatabase(Database):
+            @contextmanager
+            def connection(self):
+                yield context_connection
+
+        context_db = ContextDatabase(database.dsn)
+        fixture_path = Path(__file__).resolve().parents[3] / 'contracts/fixtures/compatibility-event.valid-context-cleanup.json'
+        event = json.loads(fixture_path.read_text())
+        event.update(id=str(context_ids[0]), operationId=str(uuid4()),
+                     releaseLabel='1.0.0-beta.11', selectedMapCount=3)
+        event = validate_event(json.dumps(event).encode())
+        assert context_db.insert_compatibility_event(event)
+        changed = {**event, 'failureContext': {**event['failureContext'], 'devicePresence': 'absent'}}
+        assert not context_db.insert_compatibility_event(changed)
+        assert not context_db.insert_compatibility_event({**event, 'failureContext': None, 'originalFailureContext': None})
+        rows = context_db.compatibility_operation_details()
+        row = next(row for row in rows if str(row['event_id']) == event['id'])
+        assert row['failure_context'] == event['failureContext']
+        assert row['original_failure_context'] == event['originalFailureContext']
+        old = {key: value for key, value in event.items() if key not in ('failureContext', 'originalFailureContext')}
+        old.update(id=str(context_ids[1]), mapResultIndex=1)
+        assert context_db.insert_compatibility_event(validate_event(json.dumps(old).encode()))
+        nulls = context_connection.execute('''
+            SELECT failure_context IS NULL AS terminal_null,
+                   original_failure_context IS NULL AS original_null
+            FROM compatibility_evidence_event WHERE event_id = %s
+        ''', (context_ids[1],)).fetchone()
+        assert nulls['terminal_null'] and nulls['original_null'], nulls
+        explicit_null = {**old, 'id': str(context_ids[2]), 'mapResultIndex': 2,
+                         'failureContext': None, 'originalFailureContext': None}
+        assert context_db.insert_compatibility_event(validate_event(json.dumps(explicit_null).encode()))
+        nulls = context_connection.execute('''
+            SELECT failure_context IS NULL AS terminal_null,
+                   original_failure_context IS NULL AS original_null
+            FROM compatibility_evidence_event WHERE event_id = %s
+        ''', (context_ids[2],)).fetchone()
+        assert nulls['terminal_null'] and nulls['original_null'], nulls
+        null_row = next(row for row in context_db.compatibility_operation_details()
+                        if str(row['event_id']) == explicit_null['id'])
+        assert null_row['failure_context'] is None and null_row['original_failure_context'] is None
+        from psycopg.errors import CheckViolation
+        for column in ('failure_context', 'original_failure_context'):
+            try:
+                with context_connection.transaction():
+                    context_connection.execute(
+                        f"UPDATE compatibility_evidence_event SET {column} = '[]'::jsonb WHERE event_id = %s",
+                        (context_ids[0],),
+                    )
+            except CheckViolation:
+                pass
+            else:
+                raise AssertionError('Context column accepted non-object JSON')
+        raise ContextRollback()
+except ContextRollback:
+    pass
+with database.connection() as connection:
+    assert connection.execute(
+        'SELECT count(*) AS count FROM compatibility_evidence_event WHERE event_id = ANY(%s)',
+        (context_ids,),
+    ).fetchone()['count'] == 0
+print('PASS: failure contexts round-trip, legacy SQL NULL, immutable replay, constraints and rollback')
