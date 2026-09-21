@@ -234,29 +234,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          content="$(base64 -w 0 "$RUNNER_TEMP/indexnow-state.json")"
+          # beta is protected against Contents API commits. Reuse the existing
+          # action commit/push path used by the compatibility snapshot updater.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          latest="$(git ls-remote origin refs/heads/beta | cut -f1)"
+          test "$latest" = "$GITHUB_SHA"
+          cp "$RUNNER_TEMP/indexnow-state.json" .github/indexnow/site-state.json
+          if git diff --quiet -- .github/indexnow/site-state.json; then
+            echo "IndexNow publication state unchanged."
+            exit 0
+          fi
+          git diff --check -- .github/indexnow/site-state.json
+          git config user.name "terento-bot"
+          git config user.email "actions@terento.app"
+          git add -- .github/indexnow/site-state.json
+          test "$(git diff --cached --name-only)" = ".github/indexnow/site-state.json"
+          git commit -m "chore: retain IndexNow publication state"
           for attempt in 1 2 3 4 5; do
-            sha="$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/indexnow/site-state.json?ref=beta" --jq .sha 2>/dev/null || true)"
-            if [ -n "$sha" ]; then
-              if gh api --silent --method PUT \
-                "repos/$GITHUB_REPOSITORY/contents/.github/indexnow/site-state.json" \
-                --field message='chore: retain IndexNow publication state' \
-                --field content="$content" --field sha="$sha" --field branch=beta; then
-                echo "IndexNow publication state persisted."
-                exit 0
-              fi
-            else
-              if gh api --silent --method PUT \
-                "repos/$GITHUB_REPOSITORY/contents/.github/indexnow/site-state.json" \
-                --field message='chore: retain IndexNow publication state' \
-                --field content="$content" --field branch=beta; then
-                echo "IndexNow publication state persisted."
-                exit 0
-              fi
+            if git push origin HEAD:beta; then
+              echo "IndexNow publication state persisted."
+              exit 0
             fi
             sleep "$attempt"
+            git fetch --no-tags origin beta
+            latest="$(git rev-parse refs/remotes/origin/beta)"
+            test "$latest" = "$GITHUB_SHA"
           done
-          echo "IndexNow state could not be persisted through the GitHub contents API; see the fallback artifact." >&2
+          echo "IndexNow state could not be persisted through the protected-branch action push; see the fallback artifact." >&2
           exit 1
 
       - name: Preserve IndexNow state fallback

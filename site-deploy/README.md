@@ -70,8 +70,9 @@ records are retained and deduplicated by URL plus content fingerprint; pending
 records, including their known oldest-pending time, are carried into the next
 plan and retried. A no-change run does not change either submission timestamp.
 The workflow updates only this file after successful live verification through
-the GitHub contents API; the path is outside the site deployment filters, so
-state retention does not trigger a second site deployment. If the file is
+the existing protected-branch action commit/push path; the path is outside the
+site deployment filters, so state retention does not trigger a second site
+deployment. If the file is
 missing or invalid, the next confirmed publication records a bootstrap
 baseline and sends no bulk notification; it does not infer a full-sitemap
 submission.
