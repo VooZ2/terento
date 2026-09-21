@@ -644,8 +644,8 @@ class Database:
             )
         values = {
             **event,
-            "failureContext": json.dumps(event['failureContext']) if 'failureContext' in event else None,
-            "originalFailureContext": json.dumps(event['originalFailureContext']) if 'originalFailureContext' in event else None,
+            "failureContext": json.dumps(event['failureContext']) if event.get('failureContext') is not None else None,
+            "originalFailureContext": json.dumps(event['originalFailureContext']) if event.get('originalFailureContext') is not None else None,
             # Swift Codable omits nil optional fields. PostgreSQL still needs
             # explicit NULL parameters for the named placeholders below.
             "family": event.get("family"),

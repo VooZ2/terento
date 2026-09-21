@@ -87,8 +87,11 @@ missing report or infer an unknown user's watch.
 ## Server-first structured failure context
 
 The version-4 additive contract accepts optional top-level `failureContext` and
-`originalFailureContext`, each using the same nonrecursive closed shape, with
-optional nested `protection`. The exact fields and bounds are defined in
+`originalFailureContext`. Either omitted or explicitly null context is
+unavailable; non-null objects use the same nonrecursive closed shape, with
+optional nested `protection`. Null normalizes to absence and SQL NULL, not JSONB
+`null`, without schema v5 or an additional migration. A non-null original
+context still requires a terminal cleanup context object. The exact fields and bounds are defined in
 [the shared event contract](README.md#structured-installation-failure-context).
 Versions 1–3 remain accepted without the new fields, and existing v4 payloads
 remain valid. Server acceptance alone is not app emission or a deployment claim.
@@ -100,7 +103,10 @@ rows retain unavailable context. Preserve both terminal cleanup context and its
 original failure context; do not reconstruct either from a legacy code.
 
 Validation must exercise nested privacy rejection and numeric bounds, legacy
-requests, idempotent replay, persistence and Admin/generated-report presentation.
+requests, absent/null equivalence, idempotent replay, SQL NULL persistence and
+Admin/generated-report unavailable presentation. Both optional fields,
+including explicit null, are v4-only; versions 1–3 remain accepted unchanged
+when both fields are absent. Non-null objects remain strictly validated.
 The loopback delivery suite uses SQLite and does not replace PostgreSQL migration
 and read-model integration. When app emission is added, run the actual Swift
 encoder-to-API gate, app/native suites and the Xcode product build; verify new

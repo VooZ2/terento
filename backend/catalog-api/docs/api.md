@@ -92,15 +92,18 @@ by the service health cycle.
 ### Optional v4 failure context: server-first acceptance
 
 The additive server contract accepts optional top-level `failureContext` and
-`originalFailureContext` only on version 4. Both have the same closed,
+`originalFailureContext` only on version 4, including explicit null values.
+In v4, omitted and explicitly null values both mean unavailable and normalize
+to absence. Non-null objects have the same closed,
 nonrecursive shape, with optional nested `protection`; the exact enums,
 required fields and numeric bounds are defined in the
 [shared event contract](../../../contracts/README.md#structured-installation-failure-context).
 Versions 1–3 remain accepted unchanged without these fields; existing v4 clients
-may omit them. This server-first change does not implement app emission or
+may omit them or send null. Null-as-absent requires no schema v5 or additional
+migration; persistence uses SQL NULL, not JSONB `null`. This server-first change does not implement app emission or
 comparator version 2 and does not establish deployment.
 
-Each context requires boundary, classification source and device presence.
+Each non-null context object requires boundary, classification source and device presence.
 Only allowlisted enums, bounded integers, and the documented nullable target
 booleans are accepted. Native namespace/code must occur together, with a signed
 32-bit code and no boolean-to-integer coercion. Unknown nested properties and
@@ -113,14 +116,15 @@ forbid context for a failed optional component: it requires explicit
 `componentKind=contours`, `optionalComponentSelected=true` and
 `optionalComponentOutcome=FAILED`, with boundary checked against
 `optionalComponentFailureStage`. Aggregate `cleanupSucceeded` may refer to
-another component and cannot alone invalidate that context. An original context
-requires a terminal context with boundary `cleanup`; component kinds must match
+another component and cannot alone invalidate that context. A non-null original context
+requires a non-null terminal context object with boundary `cleanup`; an absent
+or null terminal context is insufficient. Component kinds must match
 when both are supplied, and original protection is checked against its own
-boundary. Reject new context fields on versions 1–3 before any legacy validation
-early return. Intake checks consistency where the
+boundary. Reject either context field on versions 1–3, even when null, before
+null normalization or any legacy validation early return. Intake checks consistency where the
 reported fields establish it and preserves legacy requests without context.
 Context does not change statistical populations, event idempotency, sharing,
-retention or device-operation authority. Missing historical fields remain
+retention or device-operation authority. Missing or explicitly null fields remain
 unavailable in authenticated diagnostics and generated issue reports.
 
 ## `GET https://api.terento.app/admin`

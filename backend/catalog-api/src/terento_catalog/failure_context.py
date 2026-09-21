@@ -101,6 +101,8 @@ def validate_event_contexts(event: dict[str, Any]) -> None:
         if event['schemaVersion'] != 4:
             raise ValueError('failure_context_requires_v4')
         context = event[key]
+        if context is None:
+            continue
         validate_context(context)
         if event['phaseOutcome'] == 'NOT_STARTED':
             raise ValueError('inconsistent_not_started_context')
@@ -117,8 +119,8 @@ def validate_event_contexts(event: dict[str, Any]) -> None:
             stage = event.get('optionalComponentFailureStage') if context.get('componentKind') == 'contours' else event.get('failureStage')
             if stage is not None and stage != BOUNDARY_STAGES[context['boundary']]:
                 raise ValueError('inconsistent_context_stage')
-    if 'originalFailureContext' in event:
-        context = event.get('failureContext', {})
+    if event.get('originalFailureContext') is not None:
+        context = event.get('failureContext') or {}
         stage = event.get('optionalComponentFailureStage') if context.get('componentKind') == 'contours' else event.get('failureStage')
         if context.get('boundary') != 'cleanup' or stage != 'cleanup':
             raise ValueError('original_context_requires_cleanup')

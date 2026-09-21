@@ -97,13 +97,17 @@ not new allowed data uses.
 
 The server-first change adds optional top-level `failureContext` and
 `originalFailureContext` to compatibility-event version 4 without changing its
-schema version. Both use the same closed, nonrecursive object shape below;
-neither can contain another context. Versions 1–3 remain accepted unchanged
-without these fields; reject new fields on versions 1–3 before legacy validation
-early returns. Existing v4 clients may omit both fields. This change
+schema version. Both fields, including explicit JSON `null`, are v4-only.
+In v4, omission and explicit null both mean unavailable. Non-null objects use
+the same closed, nonrecursive shape below; neither can contain another context.
+Versions 1–3 retain legacy acceptance when both fields are absent; reject either
+field on versions 1–3 even when null, before null normalization or legacy
+validation early returns. For v4, normalize null as absent before applying
+object-specific rules. This correction requires neither schema v5 nor an
+additional database migration. This change
 does not implement app emission, comparator version 2, retries or a deployment.
 
-Each supplied context requires `boundary`, `classificationSource` (`native` or
+Each non-null context object requires `boundary`, `classificationSource` (`native` or
 `derived`) and `devicePresence` (`unknown`, `present` or `absent`). Missing
 observations must not be fabricated: a read error alone does not establish
 absence.
@@ -159,8 +163,10 @@ On cleanup failure, terminal `failureContext.boundary` is `cleanup`,
 `cleanupAttempted` must be true, and
 top-level `originalFailureContext` preserves the complete originating context,
 including protection, without rewriting it. Successful cleanup does not change
-the original failure stage or reason. Reject orphan `originalFailureContext`:
-it requires terminal `failureContext.boundary=cleanup`. When both contexts
+the original failure stage or reason. Reject a non-null orphan
+`originalFailureContext`: it requires a non-null terminal context object with
+`failureContext.boundary=cleanup`; an absent or null terminal context cannot
+satisfy this requirement. A null original context means unavailable. When both contexts
 specify `componentKind`, they must match. Validate original protection against
 the original boundary, not the terminal cleanup boundary.
 
@@ -191,10 +197,12 @@ observations do not bypass this reason-to-phase invariant. Apply the same rule
 to original context using its own boundary.
 
 The nested allowlist does not disable existing privacy rejection. These objects
-allow only the listed enums, bounded integers and booleans, with null allowed
-only for the listed target observations. They exclude raw text, paths, private
+allow only the listed enums, bounded integers and booleans. Within a non-null
+context object, null is allowed only for the listed target observations; the
+top-level null-as-absent rule does not relax nested validation. They exclude raw text, paths, private
 filenames, serials, Unit IDs, object identifiers, hashes and map contents.
-Historical absent context stays unavailable; it is not reconstructed.
+Absent or explicit-null context stays unavailable; it is not reconstructed.
+Persistence uses SQL NULL for either case, never a JSONB `null` value.
 
 ## Changing a contract
 

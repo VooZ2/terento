@@ -18,7 +18,7 @@ import unittest
 from urllib.parse import urlencode
 
 from terento_catalog.admin import (
-    _github_issue_report, _failure_context_summary,
+    _github_issue_report, _failure_context_summary, _diagnostic_technical_details,
     _admin_device_payload, _diagnostic_summary_by_identity, diagnostics_page, device_detail_page,
     hash_password, overview_page, token_hash,
 )
@@ -184,6 +184,29 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertNotIn(b'secret.img', body)
         self.assertEqual(len(self.db.rows()), 1)
+
+    def test_build32_http_null_and_omission_store_sql_null_and_render_equally(self):
+        path = Path(__file__).resolve().parents[3] / 'contracts/fixtures/compatibility-event.valid-build32-without-context.json'
+        base = json.loads(path.read_text())
+        rendered = []
+        for index, fields in enumerate(({}, {'failureContext': None}, {'originalFailureContext': None}, {'failureContext': None, 'originalFailureContext': None})):
+            payload = {**base, **fields, 'id': f'aabbccdd-1111-4111-8111-{index:012d}'}
+            self.assertEqual(self.send(payload)[0], 201)
+            row = self.db.rows()[-1]
+            self.assertIsNone(row['failure_context'])
+            self.assertIsNone(row['original_failure_context'])
+            raw = self.db.sqlite.execute(
+                'SELECT failure_context IS NULL, original_failure_context IS NULL FROM compatibility_evidence_event WHERE event_id = ?',
+                (payload['id'],),
+            ).fetchone()
+            self.assertEqual(tuple(raw), (1, 1))
+            replay = {**payload, 'failureContext': None, 'originalFailureContext': None}
+            self.assertEqual(self.send(replay)[0], 200)
+            row['event_id'] = base['id']  # Compare rendering without unrelated unique test IDs.
+            rendered.append((_failure_context_summary([row]), _diagnostic_technical_details(row, 1), _github_issue_report('Test watch', [row])))
+        self.assertTrue(all(value == rendered[0] for value in rendered))
+        self.assertIn('Failure boundary: unavailable', rendered[0][2][1])
+        self.assertEqual(len(self.db.rows()), 4)
 
     def test_every_native_failure_code_is_accepted_by_schema_and_api(self):
         from jsonschema import Draft202012Validator

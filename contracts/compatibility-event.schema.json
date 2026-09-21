@@ -235,10 +235,24 @@
       "maxLength": 80
     },
     "failureContext": {
-      "$ref": "#/$defs/failureContext"
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/failureContext"
+        }
+      ]
     },
     "originalFailureContext": {
-      "$ref": "#/$defs/failureContext"
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/failureContext"
+        }
+      ]
     }
   },
   "required": [
@@ -732,7 +746,8 @@
               "componentKind": {
                 "const": "contours"
               }
-            }
+            },
+            "type": "object"
           }
         }
       },
@@ -759,6 +774,9 @@
         "properties": {
           "phaseOutcome": {
             "const": "SUCCEEDED"
+          },
+          "failureContext": {
+            "type": "object"
           }
         }
       },
@@ -772,7 +790,8 @@
               "componentKind": {
                 "const": "contours"
               }
-            }
+            },
+            "type": "object"
           }
         }
       }
@@ -805,7 +824,8 @@
               "componentKind": {
                 "const": "contours"
               }
-            }
+            },
+            "type": "object"
           }
         }
       },
@@ -832,6 +852,9 @@
         "properties": {
           "phaseOutcome": {
             "const": "SUCCEEDED"
+          },
+          "originalFailureContext": {
+            "type": "object"
           }
         }
       },
@@ -845,7 +868,8 @@
               "componentKind": {
                 "const": "contours"
               }
-            }
+            },
+            "type": "object"
           }
         }
       }
@@ -854,7 +878,12 @@
       "if": {
         "required": [
           "originalFailureContext"
-        ]
+        ],
+        "properties": {
+          "originalFailureContext": {
+            "type": "object"
+          }
+        }
       },
       "then": {
         "required": [
@@ -866,7 +895,8 @@
               "boundary": {
                 "const": "cleanup"
               }
-            }
+            },
+            "type": "object"
           }
         },
         "allOf": [
@@ -881,7 +911,8 @@
                     "componentKind": {
                       "const": "contours"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               }
             },
@@ -917,7 +948,8 @@
                     "componentKind": {
                       "const": "main"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               }
             },
@@ -928,7 +960,8 @@
                     "componentKind": {
                       "const": "main"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               }
             }
@@ -944,7 +977,8 @@
                     "componentKind": {
                       "const": "contours"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               }
             },
@@ -955,7 +989,8 @@
                     "componentKind": {
                       "const": "contours"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               }
             }
@@ -967,7 +1002,12 @@
       "if": {
         "required": [
           "failureContext"
-        ]
+        ],
+        "properties": {
+          "failureContext": {
+            "type": "object"
+          }
+        }
       },
       "then": {
         "properties": {
@@ -984,7 +1024,12 @@
       "if": {
         "required": [
           "originalFailureContext"
-        ]
+        ],
+        "properties": {
+          "originalFailureContext": {
+            "type": "object"
+          }
+        }
       },
       "then": {
         "properties": {
@@ -1014,7 +1059,8 @@
                   "preflight_policy_passed"
                 ]
               }
-            }
+            },
+            "type": "object"
           }
         }
       },
@@ -1029,7 +1075,8 @@
                 "componentKind": {
                   "const": "contours"
                 }
-              }
+              },
+              "type": "object"
             }
           }
         },
@@ -1068,7 +1115,8 @@
                   "write"
                 ]
               }
-            }
+            },
+            "type": "object"
           }
         }
       },
@@ -1083,7 +1131,8 @@
                 "componentKind": {
                   "const": "contours"
                 }
-              }
+              },
+              "type": "object"
             }
           }
         },
@@ -1126,7 +1175,8 @@
                   "postwrite_protection"
                 ]
               }
-            }
+            },
+            "type": "object"
           }
         }
       },
@@ -1141,7 +1191,8 @@
                 "componentKind": {
                   "const": "contours"
                 }
-              }
+              },
+              "type": "object"
             }
           }
         },
@@ -1180,7 +1231,8 @@
                   "cleanup"
                 ]
               }
-            }
+            },
+            "type": "object"
           }
         }
       },
@@ -1195,7 +1247,8 @@
                 "componentKind": {
                   "const": "contours"
                 }
-              }
+              },
+              "type": "object"
             }
           }
         },
@@ -1234,7 +1287,8 @@
                   "manifest"
                 ]
               }
-            }
+            },
+            "type": "object"
           }
         }
       },
@@ -1249,7 +1303,8 @@
                 "componentKind": {
                   "const": "contours"
                 }
-              }
+              },
+              "type": "object"
             }
           }
         },
@@ -1288,7 +1343,8 @@
                   "source_validation_complete"
                 ]
               }
-            }
+            },
+            "type": "object"
           }
         }
       },
@@ -1303,7 +1359,8 @@
                 "componentKind": {
                   "const": "contours"
                 }
-              }
+              },
+              "type": "object"
             }
           }
         },
@@ -1340,7 +1397,8 @@
               "boundary": {
                 "const": "cleanup"
               }
-            }
+            },
+            "type": "object"
           }
         }
       },

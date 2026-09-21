@@ -58,6 +58,50 @@ class FailureContextTests(unittest.TestCase):
         for key, values in PROTECTION_ENUMS.items():
             self.assertEqual(schema['properties']['protection']['properties'][key]['enum'], list(values))
 
+    def test_v4_null_is_absent_but_objects_remain_strict(self):
+        for name in ('preflight', 'cleanup', 'contours-cleanup'):
+            base = fixture(name)
+            for terminal in ('absent', 'null', 'object'):
+                for original in ('absent', 'null', 'object'):
+                    if original == 'object' and 'originalFailureContext' not in base:
+                        continue
+                    candidate = deepcopy(base)
+                    for key, value in (('failureContext', terminal), ('originalFailureContext', original)):
+                        if value == 'absent':
+                            candidate.pop(key, None)
+                        elif value == 'null':
+                            candidate[key] = None
+                    self.check(candidate, original != 'object' or terminal == 'object')
+        for outcome in ('FAILED', 'SUCCEEDED', 'NOT_STARTED'):
+            candidate = fixture()
+            candidate.update(failureContext=None, originalFailureContext=None, phaseOutcome=outcome)
+            if outcome == 'SUCCEEDED':
+                candidate.update(automaticFinishingResult='VERIFIED', failureStage=None, failureCode=None)
+            else:
+                candidate['automaticFinishingResult'] = 'NOT_REACHED'
+            self.check(candidate)
+        for version in (1, 2, 3):
+            candidate = legacy_event(schemaVersion=version) if version < 3 else fixture()
+            candidate.update(schemaVersion=version, deletionToken='a' * 64)
+            candidate.pop('failureContext', None)
+            for key in ('failureContext', 'originalFailureContext'):
+                self.check({**candidate, key: None}, False)
+        for key in ('failureContext', 'originalFailureContext'):
+            for invalid in ({}, [], False, 0, ''):
+                candidate = fixture('cleanup')
+                candidate[key] = invalid
+                self.check(candidate, False)
+
+    def test_build32_wire_fixture_stays_accepted(self):
+        # Reconstructed from the fixture in the immutable build32 tag, with its
+        # release labels; not claimed to be captured production telemetry.
+        event = json.loads((ROOT / 'contracts/fixtures/compatibility-event.valid-build32-without-context.json').read_text())
+        self.assertEqual(event['appBuild'], '32')
+        self.assertNotIn('failureContext', event)
+        self.assertNotIn('originalFailureContext', event)
+        self.check(event)
+        self.check({**event, 'failureContext': None, 'originalFailureContext': None})
+
     def test_privacy_and_nonrecursive_allowlist(self):
         for key in ('rawPath', 'filename', 'serial', 'unitID', 'objectID', 'parentID', 'hash', 'sha256', 'nativeError', 'classSource', 'failureContext', 'originalFailureContext'):
             for location in ('context', 'protection', 'original'):
@@ -68,7 +112,7 @@ class FailureContextTests(unittest.TestCase):
                 target[key] = 'private'
                 self.check(candidate, False)
         for key in ('failureContext', 'originalFailureContext'):
-            for bad in (None, [], 'private'):
+            for bad in ({}, [], 'private'):
                 candidate = fixture('cleanup')
                 candidate[key] = bad
                 self.check(candidate, False)

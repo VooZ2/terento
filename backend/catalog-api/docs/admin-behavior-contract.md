@@ -69,7 +69,10 @@ Version-4 reports may supply top-level `failureContext` and
 [shared event contract](../../../contracts/README.md#structured-installation-failure-context)
 for accepted fields. Server-first acceptance and presentation do not mean the
 app emits these fields, comparator version 2 is implemented, or deployment has
-occurred. Historical missing fields display `unavailable`; never reconstruct
+occurred. Omitted and explicitly null contexts both display `unavailable` in
+Admin detail and generated GitHub reports, including historical missing fields;
+neither creates an empty or inferred context. Non-null original context requires
+a terminal cleanup context object. Never reconstruct
 boundary, presence or reason from a code, neighboring report or issue text.
 
 Keep Overview concise. Diagnostic detail presents stage, exact boundary,
