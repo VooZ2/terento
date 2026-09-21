@@ -14,7 +14,7 @@ private let targetPath = "/GARMIN/terento_freizeitkarte_fra.img"
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
-    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [UInt32: [UInt8]]
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]]
 }
 
 private final class AllowArtifactValidator: MapInstallationArtifactValidator, @unchecked Sendable {

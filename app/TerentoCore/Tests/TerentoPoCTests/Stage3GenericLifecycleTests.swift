@@ -3,7 +3,7 @@ import Foundation
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
-    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [UInt32: [UInt8]]
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]]
 }
 
 @main
@@ -641,9 +641,9 @@ private struct FixtureReader: DeviceFileReader {
     func readFilePrefixes(
         for files: [DeviceFile],
         maxLength: Int
-    ) throws -> [UInt32: [UInt8]] {
+    ) throws -> [DeviceFileIdentity: [UInt8]] {
         Dictionary(uniqueKeysWithValues: files.map {
-            ($0.itemID, Array(prefix.prefix(maxLength)))
+            ($0.stableIdentity, Array(prefix.prefix(maxLength)))
         })
     }
 }

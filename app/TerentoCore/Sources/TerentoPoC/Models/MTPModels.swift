@@ -62,6 +62,15 @@ struct StorageInfo: Codable, Identifiable, Sendable {
     let freeSpace: UInt64
 }
 
+/// Stable cross-session coordinates; never includes MTP object or parent handles.
+struct DeviceFileIdentity: Hashable, Sendable {
+    let storageID: UInt32
+    let path: String
+    let filename: String
+    let sizeBytes: UInt64
+    let isFolder: Bool
+}
+
 struct DeviceFile: Codable, Identifiable, Equatable, Sendable {
     let itemID: UInt32
     let parentID: UInt32
@@ -70,6 +79,10 @@ struct DeviceFile: Codable, Identifiable, Equatable, Sendable {
     let filename: String
     let sizeBytes: UInt64
     let isFolder: Bool
+
+    var stableIdentity: DeviceFileIdentity {
+        DeviceFileIdentity(storageID: storageID, path: path, filename: filename, sizeBytes: sizeBytes, isFolder: isFolder)
+    }
 
     var id: String {
         "\(storageID):\(itemID)"

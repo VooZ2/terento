@@ -379,6 +379,10 @@ static LIBMTP_mtpdevice_t *open_single_garmin_device_diagnostic(
     size_t error_message_capacity,
     int uncached, int *category
 ) {
+#ifdef TERENTO_NATIVE_TEST_OPEN
+    /* The same compile-time offline seam covers diagnostic read entrypoints. */
+    return TERENTO_NATIVE_TEST_OPEN(vendor_id, product_id);
+#else
     read_category(category, TERENTO_READ_DETECTION);
     LIBMTP_Init();
     LIBMTP_Set_Debug(0);
@@ -441,6 +445,7 @@ static LIBMTP_mtpdevice_t *open_single_garmin_device_diagnostic(
     }
 
     return device;
+#endif
 }
 
 static LIBMTP_mtpdevice_t *open_single_garmin_device(
@@ -622,6 +627,13 @@ int terento_mtp_read_file_inventory_diagnostic(
     TerentoMTPFileInventory *inventory, char *error_message,
     size_t error_message_capacity, int *category
 ) {
+    return terento_mtp_read_file_inventory_bound(NULL, inventory, error_message, error_message_capacity, category);
+}
+
+int terento_mtp_read_file_inventory_bound(
+    const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
+    char *error_message, size_t error_message_capacity, int *category
+) {
     read_category(category, TERENTO_READ_INVALID_ARGUMENT);
     if (inventory == NULL) {
         set_error(error_message, error_message_capacity, "File inventory output is unavailable");
@@ -637,9 +649,10 @@ int terento_mtp_read_file_inventory_diagnostic(
     read_category(category, TERENTO_READ_SESSION_OPEN);
     terento_trace_event(&trace, "session_open_begin", 0, 0, 0);
 
+    uint16_t vendor_id = 0, product_id = 0;
     LIBMTP_mtpdevice_t *device = open_single_garmin_device_diagnostic(
-        NULL,
-        NULL,
+        &vendor_id,
+        &product_id,
         error_message,
         error_message_capacity,
         1, category
@@ -647,6 +660,12 @@ int terento_mtp_read_file_inventory_diagnostic(
     terento_trace_event(&trace, "session_open_end", 0, device == NULL ? -2 : 0, 0);
     if (device == NULL) {
         result = -2;
+        goto cleanup;
+    }
+
+    if (profile != NULL && validate_live_map_operation_device(profile, vendor_id, product_id,
+            device, error_message, error_message_capacity) != 0) {
+        result = TERENTO_MTP_MAP_IDENTITY_MISMATCH;
         goto cleanup;
     }
 
@@ -702,179 +721,149 @@ cleanup:
     return result;
 }
 
-int terento_mtp_read_file_prefix(
-    uint32_t item_id,
-    uint64_t offset,
-    uint32_t max_length,
-    TerentoMTPByteBuffer *buffer,
-    char *error_message,
-    size_t error_message_capacity
+/* Read all current handles from this exact open session before reading any member. */
+static int read_prefixes_in_session(
+    const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPFileDescriptor *targets, size_t count, uint64_t offset,
+    uint32_t max_length, TerentoMTPByteBuffer *buffers,
+    char *error_message, size_t error_message_capacity, int *category
 ) {
-    return terento_mtp_read_file_prefix_diagnostic(item_id, offset, max_length, buffer,
+    read_category(category, TERENTO_READ_INVALID_ARGUMENT);
+    if ((count > 0 && (targets == NULL || buffers == NULL)) || max_length == 0
+        || count > MAX_SUPPORTED_FILES) {
+        set_error(error_message, error_message_capacity, "File prefix request is invalid");
+        return -1;
+    }
+    for (size_t i = 0; i < count; ++i) terento_mtp_free_byte_buffer(&buffers[i]);
+    if (count == 0) return 0;
+    for (size_t i = 0; i < count; ++i) {
+        const TerentoMTPFileDescriptor *t = &targets[i];
+        if (t->storage_id == 0 || t->is_folder || t->path == NULL || t->path[0] != '/'
+            || t->filename == NULL || t->filename[0] == '\0' || strchr(t->filename, '/') != NULL
+            || strrchr(t->path, '/') == NULL || strcmp(strrchr(t->path, '/') + 1, t->filename) != 0
+            || strstr(t->path, "//") != NULL || strstr(t->path, "/./") != NULL
+            || strstr(t->path, "/../") != NULL || !strcmp(t->filename, ".") || !strcmp(t->filename, "..")
+            || offset > t->size_bytes
+            || (profile != NULL && t->storage_id != profile->expected_storage_id)) {
+            set_error(error_message, error_message_capacity, "File prefix target is invalid");
+            return -1;
+        }
+    }
+    uint16_t vendor_id = 0, product_id = 0;
+    read_category(category, TERENTO_READ_SESSION_OPEN);
+    LIBMTP_mtpdevice_t *device = open_single_garmin_device_diagnostic(
+        &vendor_id, &product_id, error_message, error_message_capacity, 1, category);
+    if (device == NULL) return -2;
+    TerentoMTPFileInventory inventory = {0};
+    uint32_t *resolved = calloc(count, sizeof(*resolved));
+    int result = 0;
+    if (resolved == NULL) { read_category(category, TERENTO_READ_ALLOCATION); result = -4; goto cleanup; }
+    if (profile != NULL && validate_live_map_operation_device(profile, vendor_id, product_id,
+            device, error_message, error_message_capacity) != 0) {
+        result = TERENTO_MTP_MAP_IDENTITY_MISMATCH; goto cleanup;
+    }
+    read_category(category, TERENTO_READ_STORAGE);
+    LIBMTP_Clear_Errorstack(device);
+    if (LIBMTP_Get_Storage(device, LIBMTP_STORAGE_SORTBY_NOTSORTED) != 0) {
+        set_device_error(error_message, error_message_capacity, device, "Could not read storage information");
+        result = -3; goto cleanup;
+    }
+    for (LIBMTP_devicestorage_t *storage = device->storage; storage != NULL; storage = storage->next) {
+        read_category(category, TERENTO_READ_INVENTORY);
+        result = walk_file_tree(device, storage->id, LIBMTP_FILES_AND_FOLDERS_ROOT, "", 0,
+            &inventory, error_message, error_message_capacity, category);
+        if (result != 0) goto cleanup;
+    }
+    for (size_t i = 0; i < count; ++i) {
+        const TerentoMTPFileDescriptor *target = &targets[i];
+        const TerentoMTPFile *match = NULL;
+        size_t matches = 0;
+        for (size_t j = 0; j < inventory.file_count; ++j) {
+            const TerentoMTPFile *file = &inventory.files[j];
+            if (file->storage_id == target->storage_id && file->path != NULL
+                && strcasecmp(file->path, target->path) == 0) {
+                ++matches; match = file;
+            }
+        }
+        if (matches != 1 || strcmp(match->path, target->path) != 0
+            || match->item_id == 0 || match->filename == NULL
+            || strcmp(match->filename, target->filename) != 0
+            || match->size_bytes != target->size_bytes || match->is_folder != target->is_folder) {
+            read_category(category, TERENTO_READ_OBJECT);
+            set_error(error_message, error_message_capacity, "File prefix target is missing, changed or ambiguous");
+            result = -3; goto cleanup;
+        }
+        size_t handle_matches = 0;
+        for (size_t j = 0; j < inventory.file_count; ++j) {
+            if (inventory.files[j].item_id == match->item_id) ++handle_matches;
+        }
+        if (handle_matches != 1) {
+            read_category(category, TERENTO_READ_OBJECT);
+            set_error(error_message, error_message_capacity, "File prefix live handle is ambiguous");
+            result = -3; goto cleanup;
+        }
+        resolved[i] = match->item_id;
+    }
+    // Every target has a unique stable match before the first content read.
+    for (size_t i = 0; i < count; ++i) {
+        unsigned char *raw_bytes = NULL;
+        unsigned int actual_length = 0;
+        read_category(category, TERENTO_READ_OBJECT);
+        LIBMTP_Clear_Errorstack(device);
+        uint64_t available = targets[i].size_bytes - offset;
+        uint32_t length = available < max_length ? (uint32_t)available : max_length;
+        if (length == 0) continue;
+        int read_result = LIBMTP_GetPartialObject(device, resolved[i], offset, length, &raw_bytes, &actual_length);
+        if (read_result != 0 || actual_length > length || (actual_length > 0 && raw_bytes == NULL)) {
+            if (raw_bytes != NULL) LIBMTP_FreeMemory(raw_bytes);
+            set_device_error(error_message, error_message_capacity, device, "Could not read the device file prefix");
+            result = -3; goto cleanup;
+        }
+        if (actual_length > 0) {
+            buffers[i].bytes = malloc(actual_length);
+            if (buffers[i].bytes == NULL) {
+                LIBMTP_FreeMemory(raw_bytes);
+                read_category(category, TERENTO_READ_ALLOCATION);
+                result = -4; goto cleanup;
+            }
+            memcpy(buffers[i].bytes, raw_bytes, actual_length);
+            buffers[i].byte_count = actual_length;
+        }
+        if (raw_bytes != NULL) LIBMTP_FreeMemory(raw_bytes);
+    }
+cleanup:
+    free(resolved);
+    clear_file_inventory(&inventory);
+    LIBMTP_Release_Device(device);
+    if (result != 0) for (size_t i = 0; i < count; ++i) terento_mtp_free_byte_buffer(&buffers[i]);
+    return result;
+}
+
+int terento_mtp_read_file_prefix(
+    const TerentoMTPMapOperationProfile *profile, const TerentoMTPFileDescriptor *target,
+    uint64_t offset, uint32_t max_length, TerentoMTPByteBuffer *buffer,
+    char *error_message, size_t error_message_capacity
+) {
+    return terento_mtp_read_file_prefix_diagnostic(profile, target, offset, max_length, buffer,
         error_message, error_message_capacity, NULL);
 }
 
 int terento_mtp_read_file_prefix_diagnostic(
-    uint32_t item_id, uint64_t offset, uint32_t max_length,
-    TerentoMTPByteBuffer *buffer, char *error_message,
-    size_t error_message_capacity, int *category
+    const TerentoMTPMapOperationProfile *profile, const TerentoMTPFileDescriptor *target,
+    uint64_t offset, uint32_t max_length, TerentoMTPByteBuffer *buffer,
+    char *error_message, size_t error_message_capacity, int *category
 ) {
-    read_category(category, TERENTO_READ_INVALID_ARGUMENT);
-    if (buffer == NULL || max_length == 0) {
-        set_error(error_message, error_message_capacity, "File prefix output is unavailable");
-        return -1;
-    }
-
-    terento_mtp_free_byte_buffer(buffer);
-    set_error(error_message, error_message_capacity, "");
-    read_category(category, TERENTO_READ_SESSION_OPEN);
-
-    LIBMTP_mtpdevice_t *device = open_single_garmin_device_diagnostic(
-        NULL,
-        NULL,
-        error_message,
-        error_message_capacity,
-        1, category
-    );
-    if (device == NULL) {
-        return -2;
-    }
-
-    int result = 0;
-    unsigned char *raw_bytes = NULL;
-    unsigned int actual_length = 0;
-    read_category(category, TERENTO_READ_OBJECT);
-    LIBMTP_Clear_Errorstack(device);
-    result = LIBMTP_GetPartialObject(
-        device,
-        item_id,
-        offset,
-        max_length,
-        &raw_bytes,
-        &actual_length
-    );
-
-    if (result != 0) {
-        set_device_error(
-            error_message,
-            error_message_capacity,
-            device,
-            "Could not read the device file prefix"
-        );
-        if (raw_bytes != NULL) {
-            LIBMTP_FreeMemory(raw_bytes);
-        }
-        LIBMTP_Release_Device(device);
-        return -3;
-    }
-
-    if (actual_length > 0) {
-        buffer->bytes = malloc(actual_length);
-        if (buffer->bytes == NULL) {
-            read_category(category, TERENTO_READ_ALLOCATION);
-            LIBMTP_FreeMemory(raw_bytes);
-            LIBMTP_Release_Device(device);
-            set_error(error_message, error_message_capacity, "Could not allocate the device file prefix");
-            return -4;
-        }
-        memcpy(buffer->bytes, raw_bytes, actual_length);
-        buffer->byte_count = actual_length;
-    }
-
-    if (raw_bytes != NULL) {
-        LIBMTP_FreeMemory(raw_bytes);
-    }
-    LIBMTP_Release_Device(device);
-    return 0;
+    return read_prefixes_in_session(profile, target, 1, offset, max_length, buffer,
+        error_message, error_message_capacity, category);
 }
 
 int terento_mtp_read_file_prefixes(
-    const uint32_t *item_ids,
-    size_t item_count,
-    uint32_t max_length,
-    TerentoMTPByteBuffer *buffers,
-    char *error_message,
-    size_t error_message_capacity
+    const TerentoMTPMapOperationProfile *profile, const TerentoMTPFileDescriptor *targets,
+    size_t item_count, uint32_t max_length, TerentoMTPByteBuffer *buffers,
+    char *error_message, size_t error_message_capacity
 ) {
-    if ((item_count > 0 && (item_ids == NULL || buffers == NULL)) || max_length == 0) {
-        set_error(error_message, error_message_capacity, "File prefix output is unavailable");
-        return -1;
-    }
-
-    for (size_t index = 0; index < item_count; index += 1) {
-        terento_mtp_free_byte_buffer(&buffers[index]);
-    }
-    set_error(error_message, error_message_capacity, "");
-
-    if (item_count == 0) {
-        return 0;
-    }
-
-    LIBMTP_mtpdevice_t *device = open_single_garmin_device(
-        NULL,
-        NULL,
-        error_message,
-        error_message_capacity,
-        1
-    );
-    if (device == NULL) {
-        return -2;
-    }
-
-    int result = 0;
-    for (size_t index = 0; index < item_count; index += 1) {
-        unsigned char *raw_bytes = NULL;
-        unsigned int actual_length = 0;
-        LIBMTP_Clear_Errorstack(device);
-        int read_result = LIBMTP_GetPartialObject(
-            device,
-            item_ids[index],
-            0,
-            max_length,
-            &raw_bytes,
-            &actual_length
-        );
-
-        if (read_result != 0) {
-            set_device_error(
-                error_message,
-                error_message_capacity,
-                device,
-                "Could not read the device file prefix"
-            );
-            if (raw_bytes != NULL) {
-                LIBMTP_FreeMemory(raw_bytes);
-            }
-            result = -3;
-            break;
-        }
-
-        if (actual_length > 0) {
-            buffers[index].bytes = malloc(actual_length);
-            if (buffers[index].bytes == NULL) {
-                if (raw_bytes != NULL) {
-                    LIBMTP_FreeMemory(raw_bytes);
-                }
-                set_error(error_message, error_message_capacity, "Could not allocate the device file prefix");
-                result = -4;
-                break;
-            }
-            memcpy(buffers[index].bytes, raw_bytes, actual_length);
-            buffers[index].byte_count = actual_length;
-        }
-
-        if (raw_bytes != NULL) {
-            LIBMTP_FreeMemory(raw_bytes);
-        }
-    }
-
-    LIBMTP_Release_Device(device);
-    if (result != 0) {
-        for (size_t index = 0; index < item_count; index += 1) {
-            terento_mtp_free_byte_buffer(&buffers[index]);
-        }
-    }
-    return result;
+    return read_prefixes_in_session(profile, targets, item_count, 0, max_length, buffers,
+        error_message, error_message_capacity, NULL);
 }
 
 static int find_existing_file_by_stable_identity(

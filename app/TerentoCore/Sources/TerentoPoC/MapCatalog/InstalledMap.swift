@@ -614,10 +614,10 @@ struct GarminMapScanner: Sendable {
                     && $0.bbbikeMetadata.map { MapIdentity.normalizeRegion($0.canonicalRegion) } == MapIdentity.normalizeRegion($0.regionId)
             }
             let restoredBBBike = exactBBBikeRecords.count == 1 ? exactBBBikeRecords.first.flatMap { record in
-                record.bbbikeMetadata.flatMap { BBBikeIMGMetadata.metadata(prefixes[file.itemID] ?? [], context: $0, version: record.version) }
+                record.bbbikeMetadata.flatMap { BBBikeIMGMetadata.metadata(prefixes[file.stableIdentity] ?? [], context: $0, version: record.version) }
             } : nil
             let metadata = restoredBBBike ?? parser.parse(
-                prefixes[file.itemID] ?? [],
+                prefixes[file.stableIdentity] ?? [],
                 filename: file.filename
             )
 
@@ -728,7 +728,7 @@ struct GarminMapScanner: Sendable {
     private func readPrefixes(
         for files: [DeviceFile],
         reader: DeviceFileReader
-    ) -> [UInt32: [UInt8]] {
+    ) -> [DeviceFileIdentity: [UInt8]] {
         if let prefixes = try? reader.readFilePrefixes(
             for: files,
             maxLength: GarminIMGMetadataParser.prefixLength
@@ -736,13 +736,13 @@ struct GarminMapScanner: Sendable {
             return prefixes
         }
 
-        var prefixes: [UInt32: [UInt8]] = [:]
+        var prefixes: [DeviceFileIdentity: [UInt8]] = [:]
         for file in files {
             if let prefix = try? reader.readFilePrefix(
                 for: file,
                 maxLength: GarminIMGMetadataParser.prefixLength
             ) {
-                prefixes[file.itemID] = prefix
+                prefixes[file.stableIdentity] = prefix
             }
         }
         return prefixes

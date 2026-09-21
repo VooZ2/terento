@@ -51,6 +51,15 @@ typedef struct {
     char *filename;
 } TerentoMTPFile;
 
+/* Cross-session read identity. Object and parent handles are session-local. */
+typedef struct {
+    uint32_t storage_id;
+    uint64_t size_bytes;
+    uint8_t is_folder;
+    const char *path;
+    const char *filename;
+} TerentoMTPFileDescriptor;
+
 typedef struct {
     size_t file_count;
     TerentoMTPFile *files;
@@ -144,7 +153,10 @@ int terento_mtp_read_snapshot_diagnostic(TerentoMTPDeviceSnapshot *snapshot,
     char *error_message, size_t error_message_capacity, int *category);
 int terento_mtp_read_file_inventory_diagnostic(TerentoMTPFileInventory *inventory,
     char *error_message, size_t error_message_capacity, int *category);
-int terento_mtp_read_file_prefix_diagnostic(uint32_t item_id, uint64_t offset,
+int terento_mtp_read_file_inventory_bound(const TerentoMTPMapOperationProfile *profile,
+    TerentoMTPFileInventory *inventory, char *error_message, size_t error_message_capacity, int *category);
+int terento_mtp_read_file_prefix_diagnostic(const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPFileDescriptor *target, uint64_t offset,
     uint32_t max_length, TerentoMTPByteBuffer *buffer, char *error_message,
     size_t error_message_capacity, int *category);
 
@@ -168,7 +180,8 @@ void terento_mtp_free_file_inventory(TerentoMTPFileInventory *inventory);
 
 /* Read-only operation: read a bounded prefix of one existing device file. */
 int terento_mtp_read_file_prefix(
-    uint32_t item_id,
+    const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPFileDescriptor *target,
     uint64_t offset,
     uint32_t max_length,
     TerentoMTPByteBuffer *buffer,
@@ -178,7 +191,8 @@ int terento_mtp_read_file_prefix(
 
 /* Read-only operation: read bounded prefixes for multiple existing files in one session. */
 int terento_mtp_read_file_prefixes(
-    const uint32_t *item_ids,
+    const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPFileDescriptor *targets,
     size_t item_count,
     uint32_t max_length,
     TerentoMTPByteBuffer *buffers,

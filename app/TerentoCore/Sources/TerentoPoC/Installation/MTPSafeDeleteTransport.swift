@@ -97,7 +97,8 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
         do {
             files = try MTPTransport(
                 operationGate: operationGate,
-                lifecycleLease: lifecycleLease
+                lifecycleLease: lifecycleLease,
+                operationProfile: operationProfile
             ).readFileInventory()
         } catch let error as MTPTransportError {
             switch error {

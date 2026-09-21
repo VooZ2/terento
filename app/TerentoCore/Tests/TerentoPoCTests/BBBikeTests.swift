@@ -4,7 +4,7 @@ import Foundation
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
-    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [UInt32: [UInt8]]
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]]
 }
 private struct LocalDownload: MapPackageDownloadClient {
     let source: URL
@@ -18,8 +18,8 @@ private struct PrefixReader: DeviceFileReader {
     let prefix: [UInt8]
     func readFileInventory() throws -> [DeviceFile] { [] }
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8] { prefix }
-    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [UInt32: [UInt8]] {
-        Dictionary(uniqueKeysWithValues: files.map { ($0.itemID, prefix) })
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]] {
+        Dictionary(uniqueKeysWithValues: files.map { ($0.stableIdentity, prefix) })
     }
 }
 

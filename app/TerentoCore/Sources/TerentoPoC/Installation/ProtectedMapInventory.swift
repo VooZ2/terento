@@ -100,6 +100,16 @@ struct ProtectedMapInventory: Sendable {
                    added: protected.subtracting(baseline.protected))
     }
 
+    /// Exact expected replacement in the same canonical protected scope.
+    /// Session handles never participate; this grants no mutation authority.
+    func isExactReplacement(of baseline: ProtectedMapInventory, removing old: Key, adding new: Key) -> Bool {
+        guard old.storageID == new.storageID, old.location != new.location,
+              !old.isFolder, !new.isFolder,
+              baseline.protected.contains(old),
+              !baseline.protectedLocations.contains(new.location) else { return false }
+        return protected == baseline.protected.subtracting([old]).union([new])
+    }
+
     private static func key(_ file: DeviceFile) -> Key {
         Key(storageID: file.storageID, path: file.path, filename: file.filename,
             sizeBytes: file.sizeBytes, isFolder: file.isFolder)

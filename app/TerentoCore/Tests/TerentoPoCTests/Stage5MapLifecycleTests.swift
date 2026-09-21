@@ -2,7 +2,7 @@ import Foundation
 
 protocol DeviceFileReader: Sendable {
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
-    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [UInt32: [UInt8]]
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]]
 }
 
 private final class FakeLifecycleTransport: MapReplacementTransport, @unchecked Sendable {
