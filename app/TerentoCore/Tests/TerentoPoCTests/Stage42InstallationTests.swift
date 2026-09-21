@@ -11,11 +11,18 @@ private final class DiagnosticRecorder: @unchecked Sendable {
 private let gigabyte: UInt64 = 1024 * 1024 * 1024
 private let targetPath = "/GARMIN/terento_freizeitkarte_fra.img"
 
+#if !TERENTO_PRODUCTION_CLEANUP_TEST
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
     func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]]
 }
+#endif
+
+#if TERENTO_PRODUCTION_CLEANUP_TEST
+@_silgen_name("terento_cleanup_forbidden_calls")
+private func cleanupForbiddenNativeCalls() -> Int32
+#endif
 
 private final class AllowArtifactValidator: MapInstallationArtifactValidator, @unchecked Sendable {
     var shouldAllow = true
@@ -192,6 +199,10 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
     var readBackCount = 0
     var deleteCount = 0
     var declineCleanup = false
+    #if TERENTO_PRODUCTION_CLEANUP_TEST
+    var useProductionCleanup = false
+    var productionCleanupEvaluations = 0
+    #endif
     var deletedFilename: String?
     var deletedItemID: UInt32?
     var deletedSizeBytes: UInt64?
@@ -273,6 +284,16 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
         expectedItemID: UInt32,
         expectedSizeBytes: UInt64?
     ) throws {
+        #if TERENTO_PRODUCTION_CLEANUP_TEST
+        if useProductionCleanup {
+            productionCleanupEvaluations += 1
+            // Only the transport's upload/read side is simulated. Refusal is
+            // evaluated by the actual production cleanup entrypoint.
+            try MTPMapInstallationTransport().deleteExact(targetFilename: targetFilename,
+                expectedItemID: expectedItemID, expectedSizeBytes: expectedSizeBytes)
+            return
+        }
+        #endif
         if declineCleanup { throw CleanupIdentityUnproven() }
         deleteCount += 1
         deletedFilename = targetFilename
@@ -340,6 +361,9 @@ struct Stage42InstallationTests {
         passed += testRuntimeChurnIsDiagnostic()
         passed += testDeclinedCleanupPreservesEvidence()
         passed += testTargetStorageMismatch()
+        #if TERENTO_PRODUCTION_CLEANUP_TEST
+        passed += try testProductionCleanupRefusalRetainsDurableEvidence()
+        #endif
 
         guard failed == 0 else {
             print("FAIL: \(failed) Stage 4.2 installation assertions failed")
@@ -627,6 +651,46 @@ struct Stage42InstallationTests {
             && harness.transport.deleteCount == 0 && harness.recovery.records.count == 1,
             "unproven cleanup identity refuses mutation and retains recovery plus original failure")
     }
+
+    #if TERENTO_PRODUCTION_CLEANUP_TEST
+    private static func testProductionCleanupRefusalRetainsDurableEvidence() throws -> Int {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-production-cleanup-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalTerentoFailedInstallRecoveryStore(rootDirectory: root)
+        let harness = makeHarness()
+        harness.transport.readBackMode = .hashMismatch
+        harness.transport.useProductionCleanup = true
+        var simulatedDevice: MockDeviceReader?
+        let result = harness.run(configureReader: { simulatedDevice = $0 }, recoveryStore: store)
+        let restartedStore = LocalTerentoFailedInstallRecoveryStore(rootDirectory: root)
+        let records = try restartedStore.read(deviceKey: harness.request.identity.localManifestDeviceKey)
+        let protectedBefore = harness.request.beforeDeviceFiles
+        let protectedAfter = simulatedDevice?.files.filter { $0.path != targetPath }
+        let checks = expect(result.status == .failed && result.failure == .cleanupFailed
+            && result.originalFailure != nil && !result.diagnostics.cleanupAttempted
+            && !result.diagnostics.cleanupSucceeded && harness.manifest.entries.isEmpty,
+            "production cleanup refusal does not report success or record ownership")
+            + expect(harness.transport.writeCount == 1 && harness.transport.productionCleanupEvaluations == 1
+                && harness.transport.deleteCount == 0 && cleanupForbiddenNativeCalls() == 0,
+                "actual production cleanup evaluation performs no native open/send/delete")
+            + expect(records.count == 1 && records[0].devicePath == targetPath
+                && records[0].sizeBytes == UInt64(harness.remoteData.count)
+                && protectedBefore == protectedAfter,
+                "failed install retains durable recovery after restart and leaves unrelated fixture objects unchanged")
+        // Even a plausible target handle/size cannot confer creation authority
+        // after the original session is lost.
+        for historicalHandle: UInt32 in [77, 1077] {
+            do {
+                try MTPMapInstallationTransport().deleteExact(targetFilename: "terento_freizeitkarte_fra.img",
+                    expectedItemID: historicalHandle)
+                throw NSError(domain: "Production cleanup unexpectedly accepted", code: 1)
+            } catch is CleanupIdentityUnproven { }
+        }
+        print("LOCAL CLEANUP: simulated Send=1; actual cleanup evaluations=3; native open/send/delete=0; durable recovery retained")
+        return checks + expect(cleanupForbiddenNativeCalls() == 0, "stale and renumbered cleanup handles never reach native transport")
+    }
+    #endif
 
     private static func testCrossSessionMutationMatrix() -> Int {
         var passed = 0
@@ -1510,7 +1574,8 @@ struct Stage42InstallationTests {
             onProgress: (@Sendable (TransferProgress) -> Void)? = nil,
             onPhase: (@Sendable (InstallationProcessPhase) -> Void)? = nil,
             configureReader: (MockDeviceReader) -> Void = { _ in },
-            diagnostic: @escaping @Sendable (String, String) -> Void = { _, _ in }
+            diagnostic: @escaping @Sendable (String, String) -> Void = { _, _ in },
+            recoveryStore: (any TerentoFailedInstallRecoveryStore)? = nil
         ) -> MapInstallationResult {
             let reader = MockDeviceReader(
                 files: Self.makeAfterFiles(),
@@ -1524,7 +1589,7 @@ struct Stage42InstallationTests {
                 transport: transport,
                 deviceReader: reader,
                 manifestStore: manifest,
-                recoveryStore: recovery,
+                recoveryStore: recoveryStore ?? recovery,
                 transactionGate: transactionGate,
                 now: { Date(timeIntervalSince1970: 0) },
                 diagnostic: diagnostic

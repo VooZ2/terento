@@ -13,8 +13,12 @@ const candidatePath = path.join(root, "Packaging/release-candidate.json");
 function candidateIdentity(candidate, published) {
   if (!candidate) return published;
   assert.deepEqual(Object.keys(candidate).sort(), ["build", "releaseLabel", "version"]);
-  assert.equal(candidate.version, published.version, "same-beta candidate must preserve the version");
-  assert.equal(candidate.releaseLabel, published.releaseLabel, "same-beta candidate must preserve the beta label");
+  assert.equal(candidate.version, published.version, "candidate must preserve the marketing version");
+  const beta = published.releaseLabel.match(/^(\d+\.\d+\.\d+)-beta\.([1-9]\d*)$/);
+  assert.ok(beta, "candidate staging requires a published numbered beta");
+  const nextLabel = `${beta[1]}-beta.${Number(beta[2]) + 1}`;
+  assert.ok(candidate.releaseLabel === published.releaseLabel || candidate.releaseLabel === nextLabel,
+    "candidate must retain the beta label or advance exactly one beta");
   assert.ok(Number.isInteger(candidate.build) && candidate.build > published.build,
     "candidate build must be newer than the published build");
   return candidate;
@@ -29,6 +33,18 @@ for (const invalid of [
   { version: release.version, releaseLabel: release.releaseLabel, build: release.build - 1 },
   { version: release.version, releaseLabel: `${release.releaseLabel}-local`, build: release.build + 1 },
 ]) assert.throws(() => candidateIdentity(invalid, release));
+const stagedBeta = { version: "1.0.0", releaseLabel: "1.0.0-beta.12", build: 32 };
+for (const releaseLabel of ["1.0.0-beta.12", "1.0.0-beta.13"]) {
+  assert.equal(candidateIdentity({ version: "1.0.0", releaseLabel, build: 33 }, stagedBeta).releaseLabel, releaseLabel);
+}
+for (const candidate of [
+  { version: "1.0.0", releaseLabel: "1.0.0-beta.11", build: 33 },
+  { version: "1.0.0", releaseLabel: "1.0.0-beta.14", build: 33 },
+  { version: "1.0.0", releaseLabel: "1.0.0", build: 33 },
+  { version: "1.1.0", releaseLabel: "1.1.0-beta.13", build: 33 },
+  { version: "1.0.0", releaseLabel: "1.0.0-beta.13-local", build: 33 },
+  { version: "1.0.0", releaseLabel: "1.0.0-beta.13", build: 32 },
+]) assert.throws(() => candidateIdentity(candidate, stagedBeta));
 const label = release.releaseLabel;
 const releaseTag = release.releaseTag || `v${label}`;
 const semanticVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
@@ -130,7 +146,8 @@ const debugReleaseLabel = configurationBody("Debug").match(/TERENTO_RELEASE_LABE
 const distributedReleaseLabel = configurationBody("Release").match(/TERENTO_RELEASE_LABEL = "([^"]+)";/)?.[1];
 assert.match(debugReleaseLabel || "", semanticVersion, "Debug builds must carry a semantic release label");
 assert.match(debugReleaseLabel || "", /-local$/, "Debug builds must be purgeable local telemetry");
-assert.equal(distributedReleaseLabel, label, "Release builds must keep the public update-manifest label");
+assert.equal(distributedReleaseLabel, artifactIdentity.releaseLabel, "Release builds must match the reviewed artifact label");
+assert.equal(debugReleaseLabel, `${artifactIdentity.releaseLabel}-local`, "Debug must match the candidate with local telemetry identity");
 assert.doesNotMatch(label, /-local$/, "Public update manifests must never use a local release label");
 assert.doesNotMatch(distributedReleaseLabel || "", /-local$/, "Public Release builds must never use a local release label");
 assert.notEqual(distributedReleaseLabel, "development", "Public Release builds must never use development telemetry identity");

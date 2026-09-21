@@ -64,6 +64,7 @@
     "app/TerentoCore/Tests/run-native-map-lifecycle-tests.sh",
     "app/TerentoCore/Tests/run-native-safe-delete-tests.sh",
     "app/TerentoCore/Tests/run-native-safe-update-tests.sh",
+    "app/TerentoCore/Tests/run-native-local-managed-update-simulation-tests.sh",
     "app/TerentoCore/Tests/run-native-bounded-process-tests.sh",
     "app/TerentoCore/Tests/run-native-shared-api-contract-tests.sh",
     "app/TerentoCore/Tests/run-native-bbbike-tests.sh",
@@ -81,6 +82,7 @@
   "release": [
     "Tests/run-release-legal-content-tests.sh",
     "Tests/run-release-documentation-tests.sh",
+    "Tests/run-release-test-isolation-tests.sh",
     "app/TerentoCore/Tests/run-release-map-catalog-contract-gate-tests.sh"
   ],
   "shared": [

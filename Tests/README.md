@@ -53,6 +53,18 @@ routes for a candidate. Daily monitoring and API deployment additionally use
 not the downloaded application or Garmin hardware. Weekly CI does not duplicate
 the daily live monitor. CodeQL scans Python on affected paths and weekly.
 
+## Local mutation simulations
+
+The native managed-update simulation executes production coordinators, source
+validation, physical ownership, comparison, durable manifests, protected inventory
+and ledger transitions with injected I/O and an isolated temporary application
+support directory. Its mutation counts describe simulated device I/O. The native
+authorization executable separately counts calls at the real C mutation boundary.
+The installation runner also invokes the real cleanup-refusal path through an
+offline native fixture and verifies durable recovery with zero native operations.
+No simulated provider, fixture state or telemetry client enters the app target.
+Release isolation checks run on compiler inputs and the actual packaged bundle.
+
 ## Failures and retries
 
 Each runner streams output and saves its first-attempt log under ignored
@@ -91,7 +103,7 @@ candidate instructions in current build documentation. Public instructions must
 work without private `internal/` files. Preserve legal sources, migrations,
 legacy client contracts and regression fixtures even when they refer to old versions.
 
-For a same-beta candidate, release contracts separately validate the exact
+For a same-beta or next-numbered-beta candidate, release contracts separately validate the exact
 Xcode/candidate build and the still-published manifest/notes/downloads. The
 candidate must advance the build and preserve the public version/label; it
 cannot carry distribution URLs or checksums. Removing it restores the direct

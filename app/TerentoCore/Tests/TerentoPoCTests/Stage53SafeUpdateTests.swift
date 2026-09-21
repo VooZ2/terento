@@ -81,6 +81,7 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
     var mode: Mode = .success
     var postDeleteSnapshot: (([SafeUpdateRemoteObject]) -> [SafeUpdateRemoteObject])?
     var rawSnapshotTransform: (([DeviceFile], Bool) throws -> [DeviceFile])?
+    var renumberAfterOldDeletion = false
     var events: [String] = []
     var objects: [SafeUpdateRemoteObject]
     var currentInspectionObject: SafeUpdateRemoteObject
@@ -157,6 +158,16 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
         events.append("rescanObjects")
         if !objects.contains(where: { $0.file.path == oldObject.file.path }), let postDeleteSnapshot {
             return postDeleteSnapshot(objects)
+        }
+        if renumberAfterOldDeletion, !objects.contains(where: { $0.file.path == oldObject.file.path }) {
+            // A fresh inventory session retains stable coordinates/content but
+            // assigns a different handle to the verified new map.
+            return objects.map { object in
+                SafeUpdateRemoteObject(file: InstalledMapFile(path: object.file.path,
+                    filename: object.file.filename, sizeBytes: object.file.sizeBytes,
+                    itemID: (object.file.itemID ?? 0) + 1000), identity: object.identity,
+                    version: object.version, ownership: object.ownership, sha256: object.sha256)
+            }
         }
         return objects
     }
@@ -768,6 +779,35 @@ private func testAmbiguousDeleteOutcomeIsNotPreserved() async throws {
     }
 }
 
+private func testPostCommitHandleRenumberPreservesSuccessfulUpdate() async throws {
+    let harness = makeHarness(withWorkspace: true)
+    harness.transport.renumberAfterOldDeletion = true
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-update-renumber-repro-" + UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = LocalTerentoManifestStore(rootDirectory: root)
+    let old = harness.request.currentObject
+    try store.record(TerentoManifestEntry(deviceKey: harness.request.deviceKey,
+        devicePath: old.file.path, filename: old.file.filename,
+        providerId: old.identity.provider, regionId: old.identity.region,
+        version: old.version!, sizeBytes: old.file.sizeBytes, sha256: old.sha256!, installedAt: Date()))
+    let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
+        manifestReconciler: LocalSafeUpdateManifestReconciler(store: store))
+        .run(request: harness.request, provider: harness.provider, transport: harness.transport)
+    let persisted = try store.read(deviceKey: harness.request.deviceKey)?.entries ?? []
+    let sends = harness.transport.events.filter { $0 == "writeTransactionObject" }.count
+    let deletes = harness.transport.events.filter { $0 == "deleteExactObject" }.count
+    let oldPresent = harness.transport.objects.contains { $0.file.path == old.file.path }
+    let newPresent = harness.transport.objects.contains { $0.file.path == harness.transport.newObject.file.path }
+    let manifestStillOld = persisted.contains { $0.devicePath == old.file.path }
+    let diagnostic = "REPRO: handle-only post-commit renumber status=\(result.status.rawValue) send=\(sends) delete=\(deletes) oldPresent=\(oldPresent) newPresent=\(newPresent) manifestStillOld=\(manifestStillOld)\n"
+    FileHandle.standardError.write(Data(diagnostic.utf8))
+    try require(result.status == .success, "handle-only post-commit renumber must not fail the already committed update")
+    try require(sends == 1 && deletes == 1 && !oldPresent && newPresent,
+                "safe update must send once, verify, delete old once and retain new")
+    try require(persisted.count == 1 && persisted[0].devicePath == harness.transport.newObject.file.path,
+                "durable manifest must advance to the verified new map despite handle renumbering")
+}
+
 @main
 struct Stage53SafeUpdateTests {
     static func main() async throws {
@@ -778,6 +818,7 @@ struct Stage53SafeUpdateTests {
             ("truthful delete postverify failure", testDeletePostVerifyFailureReportsDeletion),
             ("protected final read failure", testProtectedFinalReadFailure),
             ("ambiguous delete outcome", testAmbiguousDeleteOutcomeIsNotPreserved),
+            ("post-commit handle renumber retains success", testPostCommitHandleRenumberPreservesSuccessfulUpdate),
             ("post-commit renumber and old-handle reuse", testPostCommitHandleRenumberAndReuse),
             ("update final snapshot safety negatives", testUpdateFinalSnapshotNegatives),
             ("real reconciler durable negative guards", testRealReconcilerSnapshotNegatives),

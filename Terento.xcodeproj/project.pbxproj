@@ -72,7 +72,6 @@
 		00000000000000000000008e /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/fenix8-render.png in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008d /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/fenix8-render.png */; };
 		000000000000000000000090 /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008f /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png */; };
 		000000000000000000000092 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000091 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png */; };
-		000000000000000000000094 /* app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000093 /* app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt */; };
 		000000000000000000000096 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000095 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json */; };
 		000000000000000000000098 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000099 /* LICENSE */; };
 		00000000000000000000009a /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000009b /* THIRD_PARTY_NOTICES.md */; };
@@ -409,7 +408,6 @@
 				000000000000000000000090 /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png in Resources */,
 				000000000000000000000092 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png in Resources */,
 				0000000000000000000000aa /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration-connecting.png in Resources */,
-				000000000000000000000094 /* app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt in Resources */,
 				000000000000000000000096 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json in Resources */,
 				000000000000000000000098 /* LICENSE in Resources */,
 				00000000000000000000009a /* THIRD_PARTY_NOTICES.md in Resources */,
@@ -581,7 +579,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 32;
+				CURRENT_PROJECT_VERSION = 33;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = VXALAZU3B5;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -623,7 +621,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/app/Terento/Terento-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TERENTO_RELEASE_CHANNEL = beta;
-				TERENTO_RELEASE_LABEL = "1.0.0-beta.12-local";
+				TERENTO_RELEASE_LABEL = "1.0.0-beta.13-local";
 			};
 			name = Debug;
 		};
@@ -637,7 +635,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 32;
+				CURRENT_PROJECT_VERSION = 33;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = VXALAZU3B5;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -680,7 +678,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/app/Terento/Terento-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				TERENTO_RELEASE_CHANNEL = beta;
-				TERENTO_RELEASE_LABEL = "1.0.0-beta.12";
+				TERENTO_RELEASE_LABEL = "1.0.0-beta.13";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

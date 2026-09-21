@@ -34,8 +34,10 @@ The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
 labels never use `-local`; local device-test candidates do.
 
-For a same-beta replacement, `Packaging/release-candidate.json` records only
-the reviewed version, unchanged release label, and next build number. Xcode
+For a same-beta replacement or the next numbered beta,
+`Packaging/release-candidate.json` records only the reviewed marketing version,
+release label and next build number. The label must stay unchanged or advance
+exactly one beta; marketing-version changes require a separate contract review. Xcode
 must match that candidate exactly; its build must be newer than the public
 manifest. This permits a clean verified source merge before signing, without
 publishing unavailable download links or invented checksums. After the real
@@ -65,6 +67,15 @@ top-level item, `Terento.app`. The DMG contains
 the same signed app and an `Applications` shortcut for drag-and-drop install.
 Both packages are mounted or extracted and checked before the pipeline reports
 success.
+
+Before signing, the release pipeline checks the effective Release compiler log
+and response/source lists for test flags and inputs, rejects fixture/device-state
+resources and known test hooks in the executable, and compares the bundled
+catalog with the canonical production catalog. The legacy write-test text remains
+a development fixture and is excluded from the app resources. This gate does not
+run a Garmin operation or generate installation telemetry. Before signing,
+distributed Mach-O debug symbol tables are stripped; dSYMs and build paths remain
+in the private build directory, outside the installer.
 
 ## Application icon and Help menu
 
