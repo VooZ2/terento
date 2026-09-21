@@ -234,6 +234,8 @@ final class MapEngine: ObservableObject {
     @Published private(set) var evidenceFailureStage: EvidenceFailureStage?
     @Published private(set) var evidenceFailure: InstallationFailure?
     @Published private(set) var evidenceNativeFailureCode: EvidenceNativeFailureCode?
+    @Published private(set) var evidenceFailureContext: InstallationFailureContext?
+    @Published private(set) var evidenceOriginalFailureContext: InstallationFailureContext?
     @Published private(set) var evidencePrimaryFailureMapIndex: Int?
     @Published private(set) var catalogSource: MapCatalogSource?
     @Published private(set) var catalogUpdatedAt: Date?
@@ -296,13 +298,17 @@ final class MapEngine: ObservableObject {
         currentIdentity = identity
         state = .scanned
     }
+
+    func setOperationDiagnosticsForTesting(_ diagnostics: InstallationOperationDiagnostics) {
+        operationDiagnostics = diagnostics
+    }
     #endif
 
     /// Invalidates all device-derived map state after a disconnect or eject.
     /// This only cancels local work and clears memory; it never calls an MTP
     /// write, delete, move, or rename operation.
-    func resetForDisconnectedDevice() {
-        operationDiagnostics?.deviceDisconnected()
+    func resetForDisconnectedDevice(presence: InstallationFailureContext.DevicePresence = .unknown) {
+        if presence == .absent { operationDiagnostics?.deviceDisconnected() }
         operationGate.invalidateLifecycleOperations()
         finishAcquisition(.downloadInterrupted)
         cancelActiveTaskAndCleanupWorkspaces()
@@ -319,6 +325,8 @@ final class MapEngine: ObservableObject {
         installationBatchResults = []
         packageInstallationOutcomes = []
         evidenceFailureStage = nil
+        evidenceFailureContext = nil
+        evidenceOriginalFailureContext = nil
         evidenceFailure = nil
         evidenceNativeFailureCode = nil
         evidencePrimaryFailureMapIndex = nil
@@ -1171,6 +1179,8 @@ final class MapEngine: ObservableObject {
         installationBatchResults = []
         packageInstallationOutcomes = []
         evidenceFailureStage = nil
+        evidenceFailureContext = nil
+        evidenceOriginalFailureContext = nil
         evidenceFailure = nil
         evidenceNativeFailureCode = nil
         evidencePrimaryFailureMapIndex = nil
@@ -1453,6 +1463,8 @@ final class MapEngine: ObservableObject {
                     && results.allSatisfy { $0.status == .confirmationRequired }
                 let finalResult = allReady ? first : (results.last ?? first)
                 self?.installationResult = finalResult
+                self?.evidenceFailureContext = finalResult.failureContext
+                self?.evidenceOriginalFailureContext = finalResult.originalFailureContext
                 self?.selectedPreflight = first.preflight
                 self?.installationProgress = TransferProgress(
                     bytesTransferred: 0,
@@ -1487,7 +1499,9 @@ final class MapEngine: ObservableObject {
                             outcome: .failed
                         )
                     }
-                    self?.evidenceFailureStage = Self.evidenceStage(for: finalResult.failure)
+                    self?.evidenceFailureStage = InstallationFailureStageResolver.stage(
+                        for: finalResult.failure, context: finalResult.failureContext,
+                        writeStarted: finalResult.diagnostics.writeStarted)
                     self?.evidenceFailure = finalResult.failure
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
                 }
@@ -1504,10 +1518,13 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 let known = (error as? MapAcquisitionError).map(Self.evidenceDiagnostic)
+                let readFailure = Self.readFailureDiagnostic(error)
+                self?.retainReadFailureContext(error)
                 diagnostics?.failed(index: activeMapIndex.value, stage: known?.stage ?? .preflight,
-                    failure: known?.failure,
-                    native: error is MTPTransportError ? .preflightMTPReadFailed : nil,
-                    cancelled: Task.isCancelled || error is CancellationError)
+                    failure: readFailure?.failure ?? known?.failure,
+                    native: readFailure?.native,
+                    cancelled: Self.isObservedCancellation(error),
+                    context: readFailure?.context)
                 guard !Task.isCancelled else { return }
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
@@ -1524,9 +1541,11 @@ final class MapEngine: ObservableObject {
                     self?.evidenceFailure = diagnostic.failure
                 } else {
                     self?.evidenceFailureStage = .preflight
-                    self?.evidenceFailure = .sourceArtifactInvalid
+                    self?.evidenceFailure = readFailure?.failure
                 }
-                self?.installationErrorMessage = (error as? MapAcquisitionError)?.userMessage
+                self?.evidenceNativeFailureCode = readFailure?.native
+                self?.installationErrorMessage = readFailure?.failure.userLabel
+                    ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
@@ -1614,9 +1633,13 @@ final class MapEngine: ObservableObject {
                                 operationGate: operationGate,
                                 lifecycleLease: lease
                             )
-                            let snapshot = try lifecycleReader.readSnapshot()
+                            let component = InstallationFailureContext.ComponentKind(rawValue: selectedArtifact.kind.rawValue)
+                            let snapshot = try Self.readAtInstallationBoundary(.initialSnapshot,
+                                componentKind: component) { try lifecycleReader.readSnapshot() }
                             let identity = CompatibilityEngine().evaluate(snapshot: snapshot).identity
-                            let inventory = try MapInventoryEngine(
+                            let inventory = try Self.readAtInstallationBoundary(.initialInventory,
+                                lastSuccessfulBoundary: .initialSnapshot, componentKind: component) {
+                              try MapInventoryEngine(
                                 reader: lifecycleReader,
                                 catalog: catalog,
                                 ownershipRecords: Self.loadOwnershipRecords(
@@ -1627,7 +1650,8 @@ final class MapEngine: ObservableObject {
                                     recoveryIdentities: [sessionIdentity, identity]
                                 ),
                                 additionalPackages: customPackages
-                            ).scan()
+                              ).scan()
+                            }
                             guard let comparison = inventory.comparisons.first(where: {
                                 $0.catalogMap.id == packagePlan.item.package.id
                             }) else {
@@ -1737,6 +1761,8 @@ final class MapEngine: ObservableObject {
                     )
                 }
                 self?.installationResult = finalResult
+                self?.evidenceFailureContext = finalResult.failureContext
+                self?.evidenceOriginalFailureContext = finalResult.originalFailureContext
                 self?.installationBatchResults = batch.packageOutcomes.compactMap { outcome in
                     guard let index = packagePlans.firstIndex(where: {
                         $0.item.package.id == outcome.packageID
@@ -1763,7 +1789,9 @@ final class MapEngine: ObservableObject {
                     }
                     self?.refreshCurrentDeviceMaps()
                 } else {
-                    self?.evidenceFailureStage = Self.evidenceStage(for: finalResult.failure)
+                    self?.evidenceFailureStage = InstallationFailureStageResolver.stage(
+                        for: finalResult.failure, context: finalResult.failureContext,
+                        writeStarted: finalResult.diagnostics.writeStarted)
                     self?.evidenceFailure = finalResult.failure
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
                     if finalResult.diagnostics.remoteObjectCreated {
@@ -1772,10 +1800,13 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 let known = (error as? MapAcquisitionError).map(Self.evidenceDiagnostic)
+                let readFailure = Self.readFailureDiagnostic(error)
+                self?.retainReadFailureContext(error)
                 diagnostics?.failed(index: activeMapIndex.value, stage: known?.stage ?? .preflight,
-                    failure: known?.failure,
-                    native: error is MTPTransportError ? .preflightMTPReadFailed : nil,
-                    cancelled: Task.isCancelled || error is CancellationError)
+                    failure: readFailure?.failure ?? known?.failure,
+                    native: readFailure?.native,
+                    cancelled: Self.isObservedCancellation(error),
+                    context: readFailure?.context)
                 guard !Task.isCancelled else { return }
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
@@ -1786,10 +1817,11 @@ final class MapEngine: ObservableObject {
                         outcome: .failed
                     )
                 }
-                self?.evidenceFailureStage = .preflight
-                self?.evidenceFailure = .deviceDisconnected
-                self?.evidenceNativeFailureCode = .preflightMTPReadFailed
-                self?.installationErrorMessage = (error as? MapAcquisitionError)?.userMessage
+                self?.evidenceFailureStage = known?.stage ?? .preflight
+                self?.evidenceFailure = readFailure?.failure ?? known?.failure
+                self?.evidenceNativeFailureCode = readFailure?.native
+                self?.installationErrorMessage = readFailure?.failure.userLabel
+                    ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
@@ -1800,6 +1832,61 @@ final class MapEngine: ObservableObject {
                 )
             }
         }
+    }
+
+    /// Retain the same concrete observation used by upload, even if a later task
+    /// cancellation prevents further UI transitions. No coordinator result exists yet.
+    func retainReadFailureContext(_ error: Error) {
+        guard let read = Self.readFailureDiagnostic(error) else { return }
+        evidenceFailureContext = read.context
+        evidenceOriginalFailureContext = nil
+        evidenceFailureStage = InstallationFailureStageResolver.stage(for: read.context.boundary)
+        evidenceFailure = read.failure
+        evidenceNativeFailureCode = read.native
+    }
+
+    nonisolated static func isObservedCancellation(_ error: Error) -> Bool {
+        error is CancellationError
+            || (error as? any InstallationFailureContextProviding)?.failureContext?.resultKind == .cancelled
+    }
+
+    /// Testable boundary seam; it observes one existing read and performs no recovery.
+    nonisolated static func readAtInstallationBoundary<T>(
+        _ boundary: InstallationFailureContext.Boundary,
+        lastSuccessfulBoundary: InstallationFailureContext.Boundary? = nil,
+        componentKind: InstallationFailureContext.ComponentKind? = nil,
+        read: () throws -> T
+    ) throws -> T {
+        do { return try read() }
+        catch {
+            if error is CancellationError { throw error }
+            let native = (error as? MTPTransportError)?.failureContext
+                ?? (error as? InstallationTransportError)?.failureContext
+            let presence = (error as? MTPTransportError)?.devicePresence
+                ?? native?.devicePresence ?? .unknown
+            let context = (native ?? InstallationFailureContext(
+                boundary: boundary, classificationSource: .derived, devicePresence: presence,
+                operation: boundary == .initialSnapshot ? .snapshot : .inventory,
+                executionMode: .inProcess, resultKind: .appError, retryCount: 0))
+                .at(boundary, lastSuccessfulBoundary: lastSuccessfulBoundary,
+                    componentKind: componentKind, classificationSource: .derived)
+            throw InstallationTransportError.contextual(
+                failure: presence == .absent ? .deviceDisconnected : .operationFailed,
+                message: error.localizedDescription, createdItemID: nil, context: context)
+        }
+    }
+
+    nonisolated static func readFailureDiagnostic(_ error: Error) -> (
+        failure: InstallationFailure, native: EvidenceNativeFailureCode,
+        context: InstallationFailureContext
+    )? {
+        guard let transport = error as? InstallationTransportError,
+              let context = transport.failureContext,
+              [.initialSnapshot, .initialInventory, .prewriteInventory].contains(context.boundary)
+        else { return nil }
+        return (transport.isConfirmedDeviceDisconnected ? .deviceDisconnected : .preflightMTPReadFailed,
+                transport.isConfirmedDeviceDisconnected ? .deviceDisconnected : .preflightMTPReadFailed,
+                context)
     }
 
     nonisolated private static func evidenceDiagnostic(

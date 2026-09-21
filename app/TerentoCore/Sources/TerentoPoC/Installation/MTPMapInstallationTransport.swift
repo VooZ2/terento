@@ -200,6 +200,8 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     fileprivate static func traceError(_ error: Error) -> String {
         guard let error = error as? InstallationTransportError else { return "other" }
         switch error {
+        case .contextual:
+            return error.isConfirmedDeviceDisconnected ? "deviceDisconnected" : "operationFailed"
         case .deviceDisconnected: return "deviceDisconnected"
         case .operationFailed: return "operationFailed"
         case .remoteFileMissing: return "remoteFileMissing"
@@ -215,7 +217,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         switch error {
         case .remoteFileMissing, .objectIdentityMismatch:
             return true
-        case .deviceDisconnected, .operationFailed, .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch:
+        case .contextual, .deviceDisconnected, .operationFailed, .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch:
             return false
         }
     }
@@ -427,10 +429,6 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
             return .liveIdentityMismatch
         default:
             let readable = message.isEmpty ? "The native MTP map operation failed." : message
-            if readable.localizedCaseInsensitiveContains("disconnect")
-                || readable.localizedCaseInsensitiveContains("no such file") {
-                return .deviceDisconnected(readable, createdItemID: createdItemID)
-            }
             return .operationFailed(readable, createdItemID: createdItemID)
         }
     }
@@ -474,6 +472,27 @@ enum MTPFinishingWorker {
     enum Operation: String, Codable { case samples, cleanup, inventory, snapshot }
     private static let inventoryTimeout: TimeInterval = 60
 
+    static func failure(
+        for operation: Operation, kind: InstallationFailureContext.ResultKind,
+        native: InstallationFailureContext? = nil
+    ) -> InstallationTransportError {
+        let boundary: InstallationFailureContext.Boundary
+        let contextOperation: InstallationFailureContext.Operation
+        switch operation {
+        case .samples: boundary = .readback; contextOperation = .readback
+        case .cleanup: boundary = .cleanup; contextOperation = .cleanup
+        case .inventory: boundary = .prewriteInventory; contextOperation = .inventory
+        case .snapshot: boundary = .postwriteSnapshot; contextOperation = .snapshot
+        }
+        let context = InstallationFailureContext(boundary: boundary,
+            classificationSource: native?.classificationSource ?? .derived,
+            devicePresence: native?.devicePresence ?? .unknown, operation: contextOperation,
+            executionMode: .worker, resultKind: kind, nativeCategory: native?.nativeCategory,
+            nativeCodeNamespace: native?.nativeCodeNamespace, nativeResultCode: native?.nativeResultCode)
+        return .contextual(failure: context.devicePresence == .absent ? .deviceDisconnected : .operationFailed,
+            message: "The device operation could not be completed.", createdItemID: nil, context: context)
+    }
+
     private static func timeout(
         for operation: Operation,
         sampleTimeout: TimeInterval
@@ -507,15 +526,34 @@ enum MTPFinishingWorker {
         var snapshot: DeviceSnapshot? = nil
         var error: InstallationTransportError? = nil
     }
+
+    static func decodeResponse(_ data: Data, operation: Operation) throws -> Response {
+        let response: Response
+        do { response = try JSONDecoder().decode(Response.self, from: data) }
+        catch { throw failure(for: operation, kind: .decodeError) }
+        if response.error == nil {
+            let valid: Bool
+            switch operation {
+            case .inventory: valid = response.files != nil
+            case .snapshot: valid = response.snapshot != nil
+            case .samples: valid = response.object != nil
+            case .cleanup: valid = true
+            }
+            guard valid else { throw failure(for: operation, kind: .invalidResponse) }
+        }
+        return response
+    }
     static var isWorker: Bool { CommandLine.arguments.dropFirst().first == "--terento-finishing-worker" }
 
     static func perform(_ request: Request, progress: (@Sendable (TransferProgress) -> Void)? = nil, sampleTimeout: TimeInterval = 600) throws -> Response {
         guard let executable = Bundle.main.executableURL else {
-            throw InstallationTransportError.operationFailed("Native verification is unavailable.", createdItemID: nil)
+            throw failure(for: request.operation, kind: .processLaunchError)
         }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
-                                               attributes: [.posixPermissions: 0o700])
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+                                                   attributes: [.posixPermissions: 0o700])
+        } catch { throw failure(for: request.operation, kind: .requestIOError) }
         defer { try? FileManager.default.removeItem(at: directory) }
         let operationStarted = ProcessInfo.processInfo.systemUptime
         let output = directory.appendingPathComponent("result.json")
@@ -554,10 +592,21 @@ enum MTPFinishingWorker {
                 cancelled: { request.operation != .cleanup && Task<Never, Never>.isCancelled })
         } catch {
             FinishingTrace.event("operation_worker_failed", "operation=\(request.operation.rawValue) elapsed=\(ProcessInfo.processInfo.systemUptime - operationStarted) trace=\(directory.lastPathComponent)")
-            throw InstallationTransportError.operationFailed(
-                "Native \(request.operation.rawValue) stopped: deadline, cancellation, or worker failure.", createdItemID: nil)
+            let kind: InstallationFailureContext.ResultKind
+            switch error as? NativeProcessFailure {
+            case .timeout: kind = .timeout
+            case .cancelled: kind = .cancelled
+            case .launchFailed: kind = .processLaunchError
+            case .requestIOFailed: kind = .requestIOError
+            case .processExit: kind = .processExit
+            default: kind = .appError
+            }
+            throw failure(for: request.operation, kind: kind)
         }
-        let response = try JSONDecoder().decode(Response.self, from: Data(contentsOf: output))
+        let data: Data
+        do { data = try Data(contentsOf: output) }
+        catch { throw failure(for: request.operation, kind: .responseIOError) }
+        let response = try decodeResponse(data, operation: request.operation)
         if let error = response.error {
             FinishingTrace.event("operation_failed", "operation=\(request.operation.rawValue) elapsed=\(ProcessInfo.processInfo.systemUptime - operationStarted) error=\(MTPMapInstallationTransport.traceError(error)) trace=\(directory.lastPathComponent)")
             throw error
@@ -571,10 +620,12 @@ enum MTPFinishingWorker {
         guard CommandLine.arguments.count == 3 else { return true }
         let output = URL(fileURLWithPath: CommandLine.arguments[2])
         var response = Response()
+        var operation: Operation?
         do {
             let input = try FileHandle.standardInput.read(upToCount: 8193) ?? Data()
             guard input.count <= 8192 else { throw NativeProcessFailure.failed }
             let request = try JSONDecoder().decode(Request.self, from: input)
+            operation = request.operation
             FinishingTrace.event("worker_operation_begin", "operation=\(request.operation.rawValue) trace=\(output.deletingLastPathComponent().lastPathComponent)")
             let transport = MTPMapInstallationTransport(operationProfile: request.profile)
             switch request.operation {
@@ -605,6 +656,12 @@ enum MTPFinishingWorker {
         } catch let error as InstallationTransportError {
             FinishingTrace.event("worker_operation_failed", "error=\(MTPMapInstallationTransport.traceError(error))")
             response.error = error
+        } catch let error as MTPTransportError {
+            if let operation {
+                response.error = failure(for: operation, kind: .nativeError, native: error.failureContext)
+            } else {
+                response.error = .operationFailed("Native finishing operation failed.", createdItemID: nil)
+            }
         } catch {
             response.error = .operationFailed("Native finishing operation failed.", createdItemID: nil)
         }
@@ -619,7 +676,7 @@ private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
     func readFileInventory() throws -> [DeviceFile] {
         try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
             guard let files = try MTPFinishingWorker.perform(.init(operation: .inventory)).files else {
-                throw InstallationTransportError.remoteFileMissing
+                throw MTPFinishingWorker.failure(for: .inventory, kind: .invalidResponse)
             }
             return files
         }
@@ -627,7 +684,7 @@ private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
     func readSnapshot() throws -> DeviceSnapshot {
         try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
             guard let snapshot = try MTPFinishingWorker.perform(.init(operation: .snapshot)).snapshot else {
-                throw InstallationTransportError.operationFailed("Final device check failed.", createdItemID: nil)
+                throw MTPFinishingWorker.failure(for: .snapshot, kind: .invalidResponse)
             }
             return snapshot
         }

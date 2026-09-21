@@ -12,6 +12,7 @@ final class DeviceEngine: ObservableObject {
     @Published private(set) var readingAttempt = 0
     @Published private(set) var logLines: [String] = ["Ready for a read-only device check."]
     @Published private(set) var operationAvailabilityRevision = 0
+    private(set) var invalidationDevicePresence: InstallationFailureContext.DevicePresence = .unknown
 
     private let logger = Logger(subsystem: "app.terento.native-connectivity-poc", category: "MTP")
     private let compatibilityEngine = CompatibilityEngine()
@@ -87,6 +88,7 @@ final class DeviceEngine: ObservableObject {
             return
         }
 
+        invalidationDevicePresence = .unknown
         cancelConnectionTasks()
         clearCachedDevice()
         stateManager.deviceDisconnected()
@@ -102,6 +104,7 @@ final class DeviceEngine: ObservableObject {
             return
         }
 
+        invalidationDevicePresence = .unknown
         cancelConnectionTasks()
         stateManager.beginDetection()
         state = stateManager.state
@@ -195,6 +198,7 @@ final class DeviceEngine: ObservableObject {
             return
         }
 
+        invalidationDevicePresence = .unknown
         state = stateManager.state
         cancelConnectionTasks()
         clearCachedDevice()
@@ -277,6 +281,7 @@ final class DeviceEngine: ObservableObject {
         }
 
         postEjectPresenceTask = nil
+        invalidationDevicePresence = .absent
         stateManager.deviceDisconnected()
         state = stateManager.state
         readingMessage = "Waiting for your Garmin…"
@@ -439,18 +444,23 @@ final class DeviceEngine: ObservableObject {
                         continue
                     }
 
-                    self?.handleUnexpectedDisconnect(error.localizedDescription)
+                    self?.handleUnexpectedDisconnect(error.localizedDescription,
+                        presence: (error as? MTPTransportError)?.devicePresence ?? .unknown)
                     return
                 }
             }
         }
     }
 
-    private func handleUnexpectedDisconnect(_ reason: String) {
+    private func handleUnexpectedDisconnect(
+        _ reason: String,
+        presence: InstallationFailureContext.DevicePresence = .unknown
+    ) {
         guard stateManager.canUseDevice else {
             return
         }
 
+        invalidationDevicePresence = presence
         cancelConnectionTasks()
         clearCachedDevice()
         stateManager.deviceDisconnected()

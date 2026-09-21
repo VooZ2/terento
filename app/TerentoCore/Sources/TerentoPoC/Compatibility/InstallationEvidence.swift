@@ -36,6 +36,27 @@ enum EvidenceFailureStage: String, Codable, Sendable {
     case sourceValidation = "source-validation"
 }
 
+enum InstallationFailureStageResolver {
+    static func stage(for boundary: InstallationFailureContext.Boundary) -> EvidenceFailureStage {
+        // Exhaustively supplied by the lower-layer boundary contract.
+        EvidenceFailureStage(rawValue: boundary.stageRawValue)!
+    }
+
+    static func stage(for failure: InstallationFailure?, context: InstallationFailureContext?,
+                      writeStarted: Bool) -> EvidenceFailureStage {
+        if let context { return stage(for: context.boundary) }
+        switch failure {
+        case .manifestFailed: return .manifest
+        case .cleanupFailed: return .cleanup
+        case .sizeMismatch, .hashMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired: return .verify
+        case .deviceDisconnected: return writeStarted ? .write : .preflight
+        case .writeFailed: return .write
+        case .sourceArtifactInvalid, .sourceValidationFailed: return .sourceValidation
+        default: return .preflight
+        }
+    }
+}
+
 enum EvidenceNativeFailureCode: String, Codable, Sendable {
     case targetAlreadyExists = "TARGET_ALREADY_EXISTS"
     case remoteFileMissing = "REMOTE_FILE_MISSING"
@@ -128,6 +149,13 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let cleanupAttempted: Bool?
     let cleanupSucceeded: Bool?
     let transferProgressBucket: EvidenceTransferProgressBucket?
+    let failureContext: InstallationFailureContext?
+    let originalFailureContext: InstallationFailureContext?
+    let optionalComponentSelected: Bool?
+    let optionalComponentOutcome: String?
+    let optionalComponentFailureStage: EvidenceFailureStage?
+    let optionalComponentFailureCode: String?
+    let optionalComponentNativeFailureCode: EvidenceNativeFailureCode?
 
     init(
         id: UUID = UUID(),
@@ -153,7 +181,14 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         cleanupSucceeded: Bool = false,
         transferProgressBucket: EvidenceTransferProgressBucket = .zero,
         terentoVersion: String = TerentoTelemetryMetadata.releaseLabel,
-        macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString
+        macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
+        failureContext: InstallationFailureContext? = nil,
+        originalFailureContext: InstallationFailureContext? = nil,
+        optionalComponentSelected: Bool? = nil,
+        optionalComponentOutcome: String? = nil,
+        optionalComponentFailureStage: EvidenceFailureStage? = nil,
+        optionalComponentFailureCode: String? = nil,
+        optionalComponentNativeFailureCode: EvidenceNativeFailureCode? = nil
     ) {
         self.schemaVersion = Self.schemaVersion
         self.id = id
@@ -209,9 +244,23 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.cleanupAttempted = cleanupAttempted
         self.cleanupSucceeded = cleanupSucceeded
         self.transferProgressBucket = transferProgressBucket
+        self.failureContext = failureContext
+        self.originalFailureContext = originalFailureContext
+        self.optionalComponentSelected = optionalComponentSelected
+        self.optionalComponentOutcome = optionalComponentOutcome
+        self.optionalComponentFailureStage = optionalComponentFailureStage
+        self.optionalComponentFailureCode = optionalComponentFailureCode
+        self.optionalComponentNativeFailureCode = optionalComponentNativeFailureCode
     }
 
     private enum CodingKeys: String, CodingKey {
+        case failureContext
+        case originalFailureContext
+        case optionalComponentSelected
+        case optionalComponentOutcome
+        case optionalComponentFailureStage
+        case optionalComponentFailureCode
+        case optionalComponentNativeFailureCode
         case schemaVersion, id, timestamp, model, compatibilityIdentity, variant, caseSizeMm,
              displayType, canonicalDeviceId, family, firmwareVersion, usbVendorID, usbProductID, transport, provider, region,
              mapRelease, terentoVersion, macOSVersion, phaseOutcome, automaticFinishingResult,
@@ -265,6 +314,13 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         cleanupAttempted = try container.decodeIfPresent(Bool.self, forKey: .cleanupAttempted)
         cleanupSucceeded = try container.decodeIfPresent(Bool.self, forKey: .cleanupSucceeded)
         transferProgressBucket = try container.decodeIfPresent(EvidenceTransferProgressBucket.self, forKey: .transferProgressBucket)
+        failureContext = try container.decodeIfPresent(InstallationFailureContext.self, forKey: .failureContext)
+        originalFailureContext = try container.decodeIfPresent(InstallationFailureContext.self, forKey: .originalFailureContext)
+        optionalComponentSelected = try container.decodeIfPresent(Bool.self, forKey: .optionalComponentSelected)
+        optionalComponentOutcome = try container.decodeIfPresent(String.self, forKey: .optionalComponentOutcome)
+        optionalComponentFailureStage = try container.decodeIfPresent(EvidenceFailureStage.self, forKey: .optionalComponentFailureStage)
+        optionalComponentFailureCode = try container.decodeIfPresent(String.self, forKey: .optionalComponentFailureCode)
+        optionalComponentNativeFailureCode = try container.decodeIfPresent(EvidenceNativeFailureCode.self, forKey: .optionalComponentNativeFailureCode)
     }
 
     private static func validModelDescription(_ value: String) -> String? {

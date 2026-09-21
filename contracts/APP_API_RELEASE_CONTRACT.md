@@ -97,9 +97,14 @@ Versions 1–3 remain accepted without the new fields, and existing v4 payloads
 remain valid. Server acceptance alone is not app emission or a deployment claim.
 
 The server group covers schema/explicit validation, additive persistence,
-Admin/report presentation and tests. Record its deployed source SHA, migration
-replay and old-client verification before implementing app emission. Historical
-rows retain unavailable context. Preserve both terminal cleanup context and its
+Admin/report presentation and tests. Its prerequisite gate is recorded by the
+release coordinator as passed for source `97e6cd9`, deployment
+[35565491844](https://github.com/VooZ2/terento/actions/runs/35565491844) and beta CI
+[35565491848](https://github.com/VooZ2/terento/actions/runs/35565491848): migration
+and legacy acceptance verified, production absent/null/object requests accepted
+with idempotent replays, and historical unavailable context verified in
+Admin/report presentation. This backend evidence does not release the app.
+Historical rows retain unavailable context. Preserve both terminal cleanup context and its
 original failure context; do not reconstruct either from a legacy code.
 
 Validation must exercise nested privacy rejection and numeric bounds, legacy
@@ -108,7 +113,7 @@ Admin/generated-report unavailable presentation. Both optional fields,
 including explicit null, are v4-only; versions 1–3 remain accepted unchanged
 when both fields are absent. Non-null objects remain strictly validated.
 The loopback delivery suite uses SQLite and does not replace PostgreSQL migration
-and read-model integration. When app emission is added, run the actual Swift
+and read-model integration. Before merging the local app candidate, run the actual Swift
 encoder-to-API gate, app/native suites and the Xcode product build; verify new
 Swift source membership in both the Xcode target and explicit shell-runner
 source lists. The repository all-suite runner does not replace those separate
@@ -117,8 +122,19 @@ PostgreSQL and Xcode gates.
 Comparator version 1 denotes existing semantics during diagnostics-only work.
 Version 2 is reserved for a separate safety change, independent review and real
 hardware gate. Neither accepting that value nor a green diagnostic test proves
-the comparator safe. No operation retries are introduced. App emission and
-comparator version 2 remain unimplemented by this server-first group.
+the comparator safe. No operation retries are introduced. The local app candidate
+now supplies typed context and a shared boundary-to-stage resolver for known
+preflight reads and protection failures, retaining original context when cleanup
+fails. Native categories are captured at explicit C failure branches. Final
+validation covers transport wrappers, local diagnostics, outbox reload, encoding
+and API delivery preserving observed provenance and component identity. The
+current encoder runner requires fresh preflight, protection and contours-cleanup
+fixtures, then verifies HTTP/storage/report round-trips and idempotent replay;
+committed fallback examples cannot satisfy that fresh-encoder requirement.
+Final focused/full-matrix results belong
+to the candidate's integration record, not the earlier server test results.
+Comparator version 2 remains unimplemented. Neither an app release nor a hardware
+pass is established by this local diagnostics implementation.
 
 ## Toolchain changes and final artifact startup
 

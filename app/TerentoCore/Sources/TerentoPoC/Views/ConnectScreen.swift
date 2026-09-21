@@ -250,7 +250,7 @@ struct ConnectScreen: View {
                 selectedInstallationPlan = nil
                 selectedMapProviderID = ""
                 lifecycleViewModel.resetForDisconnectedDevice()
-                mapEngine.resetForDisconnectedDevice()
+                mapEngine.resetForDisconnectedDevice(presence: deviceEngine.invalidationDevicePresence)
             }
 
             guard newState == .connected || newState == .ready else {
@@ -2290,7 +2290,7 @@ struct ConnectScreen: View {
             identity: identity,
             maps: (plan?.installItems ?? []).map { item in
                 InstallationIssueMap(
-                    provider: item.comparison.providerName,
+                    provider: item.package.sourceKind == .custom ? "Custom import" : item.comparison.providerName,
                     region: item.title,
                     package: item.package.providerRegionId,
                     release: item.package.displayVersionLabel,
@@ -2320,7 +2320,10 @@ struct ConnectScreen: View {
                 sampledBytes: verification?.sampledBytes,
                 sampleCount: verification?.sampleCount,
                 matchedSampleCount: verification?.matchedSampleCount
-            )
+            ),
+            failureContext: mapEngine.evidenceFailureContext ?? result?.failureContext,
+            originalFailureContext: mapEngine.evidenceFailureContext == nil
+                ? result?.originalFailureContext : mapEngine.evidenceOriginalFailureContext
         )
         diagnosticLogMessage = InstallationIssueReport.openGitHub(draft)
             ? nil

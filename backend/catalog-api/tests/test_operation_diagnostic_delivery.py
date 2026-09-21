@@ -16,6 +16,8 @@ import sqlite3
 import threading
 import unittest
 from urllib.parse import urlencode
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from terento_catalog.admin import (
     _github_issue_report, _failure_context_summary, _diagnostic_technical_details,
@@ -159,7 +161,7 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         dynamic = os.environ.get('TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT')
         if dynamic:
             values = json.loads(Path(dynamic).read_text())
-            return next(v for v in values if v['failureCode'] == 'INSTALL_FAILED_WRITE')
+            return next(v for v in values if v.get('failureCode') == 'INSTALL_FAILED_WRITE')
         return json.loads((Path(__file__).resolve().parents[3] / 'contracts/fixtures/compatibility-event.valid-failed-operation.json').read_text())
 
     def test_structured_context_http_storage_duplicate_and_rejection(self):
@@ -230,11 +232,107 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         schema = Draft202012Validator(json.loads((root / 'contracts/compatibility-event.schema.json').read_text()))
         path = os.environ.get('TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT')
-        values = json.loads(Path(path).read_text()) if path else [self.fixture()]
+        values = json.loads(Path(path).read_text()) if path else [
+            self.fixture(),
+            *[json.loads((root / f'contracts/fixtures/compatibility-event.valid-context-{name}.json').read_text())
+              for name in ('preflight', 'cleanup', 'contours-cleanup')],
+        ]
+        require_context = os.environ.get('TERENTO_DIAGNOSTIC_REQUIRE_FAILURE_CONTEXT') == '1'
+        if require_context:
+            self.assertTrue(path, 'Current encoder coverage requires a fresh Swift fixture path')
+            # A fresh Swift run must supply the new producer paths. Never let
+            # the committed fallback silently substitute for missing emissions.
+            contexts = [value for value in values if value.get('failureContext')]
+            self.assertTrue(any(
+                value['failureContext']['boundary'] in ('initial_snapshot', 'initial_inventory', 'prewrite_inventory')
+                and value.get('failureStage') == 'preflight'
+                and value.get('failureCode') == 'INSTALL_FAILED_PREFLIGHT_MTP_READ'
+                and value.get('writeStarted') is False
+                and value.get('errorCategory') == 'transport'
+                for value in contexts
+            ), 'Fresh Swift preflight read context missing')
+            self.assertTrue(any(
+                value['failureContext'].get('protection')
+                and value['failureContext']['boundary'] in ('prewrite_protection', 'postwrite_protection', 'target_validation')
+                for value in contexts
+            ), 'Fresh Swift protection context missing')
+            self.assertTrue(any(
+                value.get('phaseOutcome') == 'SUCCEEDED'
+                and value['failureContext'].get('componentKind') == 'contours'
+                and value['failureContext']['boundary'] == 'cleanup'
+                and value.get('optionalComponentSelected') is True
+                and value.get('optionalComponentOutcome') == 'FAILED'
+                and value.get('optionalComponentFailureStage') == 'cleanup'
+                and (value.get('originalFailureContext') or {}).get('protection')
+                for value in contexts
+            ), 'Fresh Swift successful-main/failed-contours cleanup provenance missing')
+        if not path:
+            # Committed examples intentionally reuse an example UUID. Give only
+            # these fallback copies distinct IDs so each shape reaches INSERT.
+            for index, payload in enumerate(values):
+                payload['id'] = f'aabbccdd-1111-4111-8111-{index:012d}'
+        stored = {}
+        source_payloads = {}
+        # Each fixture/replay pair represents a separate delivery window. Patch
+        # only the HTTP module's clock, not process/thread timeout clocks or the
+        # production limiter. Dedicated intake tests cover rate limiting.
+        delivery_time = [1000.0]
+        clock = patch('terento_catalog.http_api.time', SimpleNamespace(monotonic=lambda: delivery_time[0]))
+        clock.start()
+        self.addCleanup(clock.stop)
         for payload in values:
-            schema.validate(payload)
-            validated = validate_event(json.dumps(payload).encode())
-            self.assertEqual(str(validated['operationId']).lower(), payload['operationId'].lower())
+            delivery_time[0] += 61
+            with self.subTest(event=payload['id'], context=payload.get('failureContext')):
+                schema.validate(payload)
+                validated = validate_event(json.dumps(payload).encode())
+                self.assertEqual(str(validated['operationId']).lower(), payload['operationId'].lower())
+                # Send the actual encoder output unchanged; requests and INSERTs
+                # stay entirely on loopback and the disposable in-memory DB.
+                status, body = self.send(payload)
+                fresh = payload['id'] not in stored
+                self.assertEqual(status, 201 if fresh else 200)
+                self.assertEqual(json.loads(body)['status'], 'stored' if fresh else 'duplicate')
+                row = next(row for row in self.db.rows() if row['event_id'] == payload['id'])
+                if not fresh:
+                    self.assertEqual(payload, source_payloads[payload['id']], 'Fresh fixture reused an event ID for different observations')
+                    self.assertEqual(row, stored[payload['id']])
+                    continue
+                stored[payload['id']] = deepcopy(row)
+                source_payloads[payload['id']] = deepcopy(payload)
+                for wire, column in (
+                    ('failureContext', 'failure_context'), ('originalFailureContext', 'original_failure_context'),
+                    ('failureStage', 'failure_stage'), ('failureCode', 'failure_code'),
+                    ('optionalComponentFailureStage', 'optional_component_failure_stage'),
+                    ('optionalComponentOutcome', 'optional_component_outcome'),
+                ):
+                    self.assertEqual(row[column], payload.get(wire))
+                self.assertEqual(row['map_result_index'], payload['mapResultIndex'])
+                self.assertEqual(row['phase_outcome'], payload['phaseOutcome'])
+                _, report = _github_issue_report('Test watch', [row])
+                summary = _failure_context_summary([row])
+                context = payload.get('failureContext') or {}
+                if context:
+                    self.assertIn('Failure boundary: ' + context['boundary'].replace('_', r'\_'), report)
+                    self.assertIn('Failure classification source: ' + context['classificationSource'], report)
+                    self.assertIn('Failure device presence: ' + context['devicePresence'], report)
+                    self.assertIn(context['boundary'], summary)
+                    stage = payload.get('optionalComponentFailureStage') if context.get('componentKind') == 'contours' else payload.get('failureStage')
+                    self.assertIn('Failure stage: ' + (stage or 'unavailable'), report)
+                    if context.get('protection'):
+                        self.assertIn('Failure protection reason: ' + context['protection']['protectionReason'], report)
+                else:
+                    self.assertIn('Failure boundary: unavailable', report)
+                original = payload.get('originalFailureContext')
+                if original:
+                    self.assertIn('Original failure boundary: ' + original['boundary'].replace('_', r'\_'), report)
+                    if original.get('protection'):
+                        self.assertIn('Original failure protection reason: ' + original['protection']['protectionReason'], report)
+                else:
+                    self.assertIn('Original failure context: unavailable', report)
+                status, body = self.send(payload)
+                self.assertEqual((status, json.loads(body)['status']), (200, 'duplicate'))
+                self.assertEqual(next(row for row in self.db.rows() if row['event_id'] == payload['id']), stored[payload['id']])
+        self.assertEqual(len(self.db.rows()), len(stored))
 
     def test_native_failure_reaches_model_diagnostic_actions_and_review_queue(self):
         payload = self.fixture()

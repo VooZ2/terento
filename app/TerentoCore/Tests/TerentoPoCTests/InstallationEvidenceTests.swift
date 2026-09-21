@@ -26,6 +26,7 @@ struct InstallationEvidenceTests {
     @MainActor
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
+        try testFailureContextRoundTrip()
         try testCustomIMGEvidencePayload()
         try testOTMClassificationAudit()
         try testOriginalModelMetadata()
@@ -34,6 +35,61 @@ struct InstallationEvidenceTests {
         testDiagnosticSanitization()
         testPreparedInstallationIssue()
         print("PASS: installation evidence, privacy, default-on upload, report, and promotion tests")
+    }
+
+    static func testFailureContextRoundTrip() throws {
+        let expectedStages: [(InstallationFailureContext.Boundary, EvidenceFailureStage)] = [
+            (.initialSnapshot, .preflight), (.initialInventory, .preflight),
+            (.prewriteInventory, .preflight), (.prewriteProtection, .preflight),
+            (.write, .write), (.readback, .verify), (.postwriteInventory, .verify),
+            (.postwriteSnapshot, .verify), (.targetValidation, .verify),
+            (.postwriteProtection, .verify), (.cleanup, .cleanup), (.manifest, .manifest),
+            (.sourceValidationComplete, .sourceValidation), (.preflightPolicyPassed, .preflight)
+        ]
+        for (boundary, stage) in expectedStages {
+            precondition(boundary.stageRawValue == stage.rawValue
+                && InstallationFailureStageResolver.stage(for: boundary) == stage)
+        }
+        let original = InstallationFailureContext(boundary: .postwriteProtection,
+            classificationSource: .derived, devicePresence: .unknown, operation: .protectionCheck,
+            protection: InstallationProtectionContext(protectionBoundary: .postWrite,
+                protectionReason: .preexistingObjectChanged, stableIdentityComparisonVersion: 1,
+                beforeObjectCount: 3, afterObjectCount: 4, changedObjectCount: 1))
+        let terminal = InstallationFailureContext(boundary: .cleanup, classificationSource: .derived,
+            devicePresence: .unknown, operation: .cleanup, executionMode: .worker,
+            resultKind: .timeout, retryCount: 0)
+        let event = InstallationEvidenceEvent(identity: identity, package: package, outcome: .failed,
+            finishingResult: .failed, errorCategory: .transport, failureStage: .cleanup,
+            failureCode: "INSTALL_FAILED_CLEANUP", cleanupAttempted: true,
+            failureContext: terminal, originalFailureContext: original)
+        let encoded = try JSONEncoder().encode(event)
+        let decoded = try JSONDecoder().decode(InstallationEvidenceEvent.self, from: encoded)
+        precondition(decoded.failureContext == terminal && decoded.originalFailureContext == original)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        _ = try LocalInstallationEvidenceStore(rootURL: root).append(event, queueForUpload: true)
+        let reopened = LocalInstallationEvidenceStore(rootURL: root)
+        precondition(reopened.events().first?.failureContext == terminal
+            && reopened.events().first?.originalFailureContext == original
+            && reopened.pendingUploads().count == 1)
+        var object = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+        for explicitNull in [false, true] {
+            if explicitNull {
+                object["failureContext"] = NSNull(); object["originalFailureContext"] = NSNull()
+            } else {
+                object.removeValue(forKey: "failureContext"); object.removeValue(forKey: "originalFailureContext")
+            }
+            let legacy = try JSONDecoder().decode(InstallationEvidenceEvent.self,
+                from: JSONSerialization.data(withJSONObject: object))
+            precondition(legacy.failureContext == nil && legacy.originalFailureContext == nil)
+        }
+        let native = InstallationFailureContext(boundary: .initialSnapshot, classificationSource: .native,
+            devicePresence: .unknown, operation: .snapshot, resultKind: .nativeError,
+            nativeCategory: .detection, nativeCodeNamespace: .terentoSnapshot, nativeResultCode: -2)
+        precondition(native.at(.initialSnapshot, componentKind: .main).classificationSource == .native)
+        precondition(native.at(.initialSnapshot, classificationSource: .derived).classificationSource == .derived)
+        precondition(native.at(.initialSnapshot).nativeResultCode == -2)
+        print("PASS: all boundary stages, reopened context outbox, absent/null legacy context and explicit provenance")
     }
 
     static let identity = DeviceIdentity(

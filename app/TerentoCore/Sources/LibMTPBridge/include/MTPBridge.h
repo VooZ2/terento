@@ -90,8 +90,24 @@ enum {
     TERENTO_MTP_MAP_IDENTITY_MISMATCH = -24
 };
 
-/* Read-only USB presence probe. Returns the number of connected Garmin USB devices. */
+/* Read-only USB presence probe. Zero proves absence only after complete enumeration;
+ * negative means unavailable, including a partial enumeration with no Garmin found. */
 int terento_mtp_probe_garmin_presence(void);
+
+/* Diagnostic-only categories, never libmtp/libusb result codes. */
+enum {
+    TERENTO_READ_UNSPECIFIED = 0, TERENTO_READ_DETECTION = 1,
+    TERENTO_READ_SESSION_OPEN = 2, TERENTO_READ_STORAGE = 3,
+    TERENTO_READ_INVENTORY = 4, TERENTO_READ_OBJECT = 5,
+    TERENTO_READ_ALLOCATION = 6, TERENTO_READ_INVALID_ARGUMENT = 7
+};
+int terento_mtp_read_snapshot_diagnostic(TerentoMTPDeviceSnapshot *snapshot,
+    char *error_message, size_t error_message_capacity, int *category);
+int terento_mtp_read_file_inventory_diagnostic(TerentoMTPFileInventory *inventory,
+    char *error_message, size_t error_message_capacity, int *category);
+int terento_mtp_read_file_prefix_diagnostic(uint32_t item_id, uint64_t offset,
+    uint32_t max_length, TerentoMTPByteBuffer *buffer, char *error_message,
+    size_t error_message_capacity, int *category);
 
 /* Read-only operation: detect one Garmin MTP device and read its metadata. */
 int terento_mtp_read_snapshot(

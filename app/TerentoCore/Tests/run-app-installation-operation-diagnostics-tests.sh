@@ -64,6 +64,7 @@ print("PASS: distributed Xcode target includes the operation diagnostic producer
 PYPROJECT
 
 export TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT="$build_dir/native-events.json"
+export TERENTO_DIAGNOSTIC_REQUIRE_FAILURE_CONTEXT=1
 python3 - "$binary_path" <<'PYTEST'
 import subprocess, sys
 subprocess.run([sys.argv[1]], check=True, timeout=30)

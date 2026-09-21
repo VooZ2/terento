@@ -48,6 +48,10 @@ static void abort_failed_device(LIBMTP_mtpdevice_t *device) {
 #define TERENTO_PROFILE_TEXT_MAX_BYTES 255
 #define TERENTO_GARMIN_DEVICE_XML_MAX_BYTES (2 * 1024 * 1024)
 
+static void read_category(int *category, int value) {
+    if (category != NULL) *category = value;
+}
+
 static int validate_map_operation_profile(
     const TerentoMTPMapOperationProfile *profile,
     char *error_message,
@@ -93,9 +97,11 @@ int terento_mtp_probe_garmin_presence(void) {
     }
 
     int garmin_count = 0;
+    int enumeration_complete = 1;
     for (ssize_t index = 0; index < device_count; index += 1) {
         struct libusb_device_descriptor descriptor;
         if (libusb_get_device_descriptor(devices[index], &descriptor) != 0) {
+            enumeration_complete = 0;
             continue;
         }
 
@@ -106,7 +112,8 @@ int terento_mtp_probe_garmin_presence(void) {
 
     libusb_free_device_list(devices, 1);
     libusb_exit(context);
-    return garmin_count;
+    /* A partial enumeration cannot prove that every Garmin is absent. */
+    return garmin_count == 0 && !enumeration_complete ? -1 : garmin_count;
 }
 
 static void clear_snapshot(TerentoMTPDeviceSnapshot *snapshot) {
@@ -362,13 +369,14 @@ static void read_garmin_device_xml(
     LIBMTP_FreeMemory(raw_bytes);
 }
 
-static LIBMTP_mtpdevice_t *open_single_garmin_device(
+static LIBMTP_mtpdevice_t *open_single_garmin_device_diagnostic(
     uint16_t *vendor_id,
     uint16_t *product_id,
     char *error_message,
     size_t error_message_capacity,
-    int uncached
+    int uncached, int *category
 ) {
+    read_category(category, TERENTO_READ_DETECTION);
     LIBMTP_Init();
     LIBMTP_Set_Debug(0);
 
@@ -419,6 +427,7 @@ static LIBMTP_mtpdevice_t *open_single_garmin_device(
      * exposes the map files through those operations, so enumerate and read
      * files through an explicitly uncached session.
      */
+    read_category(category, TERENTO_READ_SESSION_OPEN);
     LIBMTP_mtpdevice_t *device = uncached
         ? LIBMTP_Open_Raw_Device_Uncached(&raw_devices[selected_index])
         : LIBMTP_Open_Raw_Device(&raw_devices[selected_index]);
@@ -429,6 +438,14 @@ static LIBMTP_mtpdevice_t *open_single_garmin_device(
     }
 
     return device;
+}
+
+static LIBMTP_mtpdevice_t *open_single_garmin_device(
+    uint16_t *vendor_id, uint16_t *product_id, char *error_message,
+    size_t error_message_capacity, int uncached
+) {
+    return open_single_garmin_device_diagnostic(vendor_id, product_id, error_message,
+        error_message_capacity, uncached, NULL);
 }
 
 static char *join_path(const char *parent_path, const char *filename) {
@@ -464,9 +481,10 @@ static int append_file(
     const LIBMTP_file_t *source,
     const char *path,
     char *error_message,
-    size_t error_message_capacity
+    size_t error_message_capacity, int *category
 ) {
     if (inventory == NULL || source == NULL || path == NULL) {
+        read_category(category, TERENTO_READ_INVALID_ARGUMENT);
         set_error(error_message, error_message_capacity, "Device file metadata is unavailable");
         return -1;
     }
@@ -487,6 +505,7 @@ static int append_file(
         new_count * sizeof(*inventory->files)
     );
     if (files == NULL) {
+        read_category(category, TERENTO_READ_ALLOCATION);
         set_error(error_message, error_message_capacity, "Could not allocate device file inventory");
         return -1;
     }
@@ -503,6 +522,7 @@ static int append_file(
     destination->filename = strdup(source->filename != NULL ? source->filename : "Unknown");
 
     if (destination->path == NULL || destination->filename == NULL) {
+        read_category(category, TERENTO_READ_ALLOCATION);
         free(destination->path);
         free(destination->filename);
         memset(destination, 0, sizeof(*destination));
@@ -522,8 +542,9 @@ static int walk_file_tree(
     size_t depth,
     TerentoMTPFileInventory *inventory,
     char *error_message,
-    size_t error_message_capacity
+    size_t error_message_capacity, int *category
 ) {
+    read_category(category, TERENTO_READ_INVENTORY);
     if (depth > MAX_FILE_TREE_DEPTH) {
         set_error(error_message, error_message_capacity, "Device file tree is unexpectedly deep");
         return -1;
@@ -554,7 +575,7 @@ static int walk_file_tree(
             child,
             path,
             error_message,
-            error_message_capacity
+            error_message_capacity, category
         );
 
         if (result == 0 && child->filetype == LIBMTP_FILETYPE_FOLDER) {
@@ -566,7 +587,7 @@ static int walk_file_tree(
                 depth + 1,
                 inventory,
                 error_message,
-                error_message_capacity
+                error_message_capacity, category
             );
         }
 
@@ -585,6 +606,15 @@ int terento_mtp_read_file_inventory(
     char *error_message,
     size_t error_message_capacity
 ) {
+    return terento_mtp_read_file_inventory_diagnostic(inventory, error_message,
+        error_message_capacity, NULL);
+}
+
+int terento_mtp_read_file_inventory_diagnostic(
+    TerentoMTPFileInventory *inventory, char *error_message,
+    size_t error_message_capacity, int *category
+) {
+    read_category(category, TERENTO_READ_INVALID_ARGUMENT);
     if (inventory == NULL) {
         set_error(error_message, error_message_capacity, "File inventory output is unavailable");
         return -1;
@@ -596,14 +626,15 @@ int terento_mtp_read_file_inventory(
     TerentoFinishingTrace trace = terento_trace_start();
     int result = 0;
     int list_started = 0;
+    read_category(category, TERENTO_READ_SESSION_OPEN);
     terento_trace_event(&trace, "session_open_begin", 0, 0, 0);
 
-    LIBMTP_mtpdevice_t *device = open_single_garmin_device(
+    LIBMTP_mtpdevice_t *device = open_single_garmin_device_diagnostic(
         NULL,
         NULL,
         error_message,
         error_message_capacity,
-        1
+        1, category
     );
     terento_trace_event(&trace, "session_open_end", 0, device == NULL ? -2 : 0, 0);
     if (device == NULL) {
@@ -613,6 +644,7 @@ int terento_mtp_read_file_inventory(
 
     terento_trace_event(&trace, "file_list_begin", 0, 0, 0);
     list_started = 1;
+    read_category(category, TERENTO_READ_STORAGE);
     LIBMTP_Clear_Errorstack(device);
     if (LIBMTP_Get_Storage(device, LIBMTP_STORAGE_SORTBY_NOTSORTED) != 0) {
         set_device_error(
@@ -628,6 +660,7 @@ int terento_mtp_read_file_inventory(
     for (LIBMTP_devicestorage_t *storage = device->storage;
          storage != NULL;
          storage = storage->next) {
+        read_category(category, TERENTO_READ_INVENTORY);
         result = walk_file_tree(
             device,
             storage->id,
@@ -636,7 +669,7 @@ int terento_mtp_read_file_inventory(
             0,
             inventory,
             error_message,
-            error_message_capacity
+            error_message_capacity, category
         );
         if (result != 0) {
             break;
@@ -669,6 +702,16 @@ int terento_mtp_read_file_prefix(
     char *error_message,
     size_t error_message_capacity
 ) {
+    return terento_mtp_read_file_prefix_diagnostic(item_id, offset, max_length, buffer,
+        error_message, error_message_capacity, NULL);
+}
+
+int terento_mtp_read_file_prefix_diagnostic(
+    uint32_t item_id, uint64_t offset, uint32_t max_length,
+    TerentoMTPByteBuffer *buffer, char *error_message,
+    size_t error_message_capacity, int *category
+) {
+    read_category(category, TERENTO_READ_INVALID_ARGUMENT);
     if (buffer == NULL || max_length == 0) {
         set_error(error_message, error_message_capacity, "File prefix output is unavailable");
         return -1;
@@ -676,13 +719,14 @@ int terento_mtp_read_file_prefix(
 
     terento_mtp_free_byte_buffer(buffer);
     set_error(error_message, error_message_capacity, "");
+    read_category(category, TERENTO_READ_SESSION_OPEN);
 
-    LIBMTP_mtpdevice_t *device = open_single_garmin_device(
+    LIBMTP_mtpdevice_t *device = open_single_garmin_device_diagnostic(
         NULL,
         NULL,
         error_message,
         error_message_capacity,
-        1
+        1, category
     );
     if (device == NULL) {
         return -2;
@@ -691,6 +735,7 @@ int terento_mtp_read_file_prefix(
     int result = 0;
     unsigned char *raw_bytes = NULL;
     unsigned int actual_length = 0;
+    read_category(category, TERENTO_READ_OBJECT);
     LIBMTP_Clear_Errorstack(device);
     result = LIBMTP_GetPartialObject(
         device,
@@ -718,6 +763,7 @@ int terento_mtp_read_file_prefix(
     if (actual_length > 0) {
         buffer->bytes = malloc(actual_length);
         if (buffer->bytes == NULL) {
+            read_category(category, TERENTO_READ_ALLOCATION);
             LIBMTP_FreeMemory(raw_bytes);
             LIBMTP_Release_Device(device);
             set_error(error_message, error_message_capacity, "Could not allocate the device file prefix");
@@ -867,7 +913,7 @@ static int find_existing_file_by_stable_identity(
             0,
             &inventory,
             error_message,
-            error_message_capacity
+            error_message_capacity, NULL
         );
         if (result != 0) {
             break;
@@ -3265,6 +3311,15 @@ int terento_mtp_read_snapshot(
     char *error_message,
     size_t error_message_capacity
 ) {
+    return terento_mtp_read_snapshot_diagnostic(snapshot, error_message,
+        error_message_capacity, NULL);
+}
+
+int terento_mtp_read_snapshot_diagnostic(
+    TerentoMTPDeviceSnapshot *snapshot, char *error_message,
+    size_t error_message_capacity, int *category
+) {
+    read_category(category, TERENTO_READ_INVALID_ARGUMENT);
     if (snapshot == NULL) {
         set_error(error_message, error_message_capacity, "Snapshot output is unavailable");
         return -1;
@@ -3278,6 +3333,7 @@ int terento_mtp_read_snapshot(
 
     LIBMTP_raw_device_t *raw_devices = NULL;
     int raw_device_count = 0;
+    read_category(category, TERENTO_READ_DETECTION);
     LIBMTP_error_number_t detect_result = LIBMTP_Detect_Raw_Devices(
         &raw_devices,
         &raw_device_count
@@ -3314,6 +3370,7 @@ int terento_mtp_read_snapshot(
     snapshot->vendor_id = selected_device.device_entry.vendor_id;
     snapshot->product_id = selected_device.device_entry.product_id;
 
+    read_category(category, TERENTO_READ_SESSION_OPEN);
     LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached(&raw_devices[selected_index]);
     free(raw_devices);
     raw_devices = NULL;
@@ -3325,6 +3382,7 @@ int terento_mtp_read_snapshot(
     }
 
     int result = 0;
+    read_category(category, TERENTO_READ_ALLOCATION);
 
     LIBMTP_Clear_Errorstack(device);
     if (copy_libmtp_text(
@@ -3370,6 +3428,7 @@ int terento_mtp_read_snapshot(
         goto cleanup;
     }
 
+    read_category(category, TERENTO_READ_STORAGE);
     LIBMTP_Clear_Errorstack(device);
     if (LIBMTP_Get_Storage(device, LIBMTP_STORAGE_SORTBY_NOTSORTED) != 0) {
         set_device_error(
@@ -3400,6 +3459,7 @@ int terento_mtp_read_snapshot(
         goto cleanup;
     }
 
+    read_category(category, TERENTO_READ_ALLOCATION);
     snapshot->storages = calloc(storage_count, sizeof(*snapshot->storages));
     if (snapshot->storages == NULL) {
         set_error(error_message, error_message_capacity, "Could not allocate storage information");

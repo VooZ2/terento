@@ -1,4 +1,5 @@
 import Foundation
+import LibMTPBridge
 
 extension Bundle { static var module: Bundle { .main } }
 private actor DiagnosticUploadRecorder: InstallationEvidenceUploading {
@@ -19,13 +20,23 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
     func upload(_ event: MapStatisticsEvent) async throws {}
 }
 @main struct InstallationOperationDiagnosticsTests {
+    @MainActor static var emittedFixtures: [InstallationEvidenceEvent] = []
     @MainActor static func main() async throws {
         try await testEngineWithoutScreen()
+        try await testReadBoundaryAndPresence()
+        try await testObservedReadSurvivesCancellation()
+        try testRetainedReadReport()
+        try await testContextFreeContourPreflight()
+        try await testContextualContours()
         try await testResultsAndPrivacy()
         try await testPartialBatchAndPreflight()
         try await testDisconnectAndCancellation()
         try await testRetryRestartAndConsent()
         try await testOptOutDuringUpload()
+        if let output = ProcessInfo.processInfo.environment["TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT"] {
+            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+            try encoder.encode(emittedFixtures).write(to: URL(fileURLWithPath: output))
+        }
         print("PASS: operation diagnostic creation, persisted delivery, privacy and per-map outcomes")
     }
     static func check(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -93,10 +104,7 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
             fixtures += events
         }
         // Optional transport to the backend regression: actual encoded Swift reports.
-        if let output = ProcessInfo.processInfo.environment["TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT"] {
-            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-            try encoder.encode(fixtures).write(to: URL(fileURLWithPath: output))
-        }
+        emittedFixtures += fixtures
     }
     @MainActor static func testPartialBatchAndPreflight() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -112,8 +120,9 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
         operation.record(result(package: b.item.package, failure: .hashMismatch, wrote: true), packageID: b.item.package.id, artifactID: b.artifactPlan.selectedArtifacts[1].id)
         await operation.waitForDeliveryForTesting()
         let events = controller.store.events().sorted { $0.mapResultIndex! < $1.mapResultIndex! }
-        check(events.map(\.phaseOutcome) == [.succeeded, .failed, .notStarted], "main success plus failed contour is FAILED for that map, later map NOT_STARTED")
-        check(events[1].failureCode == InstallationFailure.hashMismatch.rawValue && events[1].failureStage == .verify,
+        check(events.map(\.phaseOutcome) == [.succeeded, .succeeded, .notStarted], "main success survives context-free failed contour; later map NOT_STARTED")
+        check(events[1].optionalComponentFailureCode == InstallationFailure.hashMismatch.rawValue
+            && events[1].optionalComponentFailureStage == .verify && events[1].failureStage == nil,
               "failed contour details are retained instead of successful main-component details")
         check(events[2].writeStarted == false && events[2].nativeFailureCode == nil,
               "NOT_STARTED never inherits another map's native error or write evidence")
@@ -130,12 +139,272 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
         let pair = plan(regions: ["FRA", "LTU"])
         afterSuccess.record(result(package: pair.installItems[0].package, failure: nil, wrote: true), packageID: pair.installItems[0].package.id,
             artifactID: pair.selectedPackagePlans[0].artifactPlan.selectedArtifacts[0].id)
-        afterSuccess.failed(index: 1, stage: .preflight, failure: nil, native: .preflightMTPReadFailed)
+        afterSuccess.failed(index: 1, stage: .preflight, failure: .preflightMTPReadFailed,
+            native: .preflightMTPReadFailed,
+            context: InstallationFailureContext(boundary: .initialInventory,
+                classificationSource: .derived, devicePresence: .unknown, operation: .inventory))
         await afterSuccess.waitForDeliveryForTesting()
         let unexpected = controller.store.events().filter { $0.operationId == afterSuccess.operationID }
-        check(unexpected.contains { $0.phaseOutcome == .succeeded } && unexpected.contains { $0.failureCode == "INSTALL_FAILED_UNKNOWN" && $0.writeStarted == false },
+        check(unexpected.contains { $0.phaseOutcome == .succeeded } && unexpected.contains { $0.failureCode == "INSTALL_FAILED_PREFLIGHT_MTP_READ" && $0.writeStarted == false },
               "later read failure preserves earlier success and does not guess a disconnect")
     }
+    @MainActor static func testContextFreeContourPreflight() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let controller = InstallationEvidenceController(store: LocalInstallationEvidenceStore(rootURL: root),
+            uploader: DiagnosticUploadRecorder(), automaticRetryDelays: [0])
+        for thrownFailure in [false, true] {
+            let selection = plan(contours: true)
+            let packagePlan = selection.selectedPackagePlans[0]
+            let package = packagePlan.item.package
+            let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
+                plan: selection, controller: controller)
+            operation.record(result(package: package, failure: nil, wrote: true),
+                packageID: package.id, artifactID: packagePlan.artifactPlan.mainArtifact!.id)
+            if thrownFailure {
+                operation.failed(index: 0, stage: .preflight, failure: .insufficientSpace,
+                    componentKind: .contours)
+            } else {
+                operation.record(result(package: package, failure: .insufficientSpace, wrote: false),
+                    packageID: package.id, artifactID: packagePlan.artifactPlan.optionalArtifacts[0].id)
+            }
+            await operation.waitForDeliveryForTesting()
+            let event = controller.store.events().first { $0.operationId == operation.operationID }!
+            check(event.phaseOutcome == .succeeded && event.failureStage == nil && event.failureCode == nil
+                && event.optionalComponentOutcome == "FAILED" && event.optionalComponentSelected == true
+                && event.optionalComponentFailureStage == .preflight
+                && event.optionalComponentFailureCode == InstallationFailure.insufficientSpace.rawValue
+                && event.failureContext == nil && event.originalFailureContext == nil
+                && event.writeStarted == true,
+                "context-free contours preflight failure preserves main success without fabricated context")
+            emittedFixtures.append(event)
+        }
+    }
+
+    @MainActor static func testRetainedReadReport() throws {
+        let observed = InstallationFailureContext(boundary: .initialSnapshot, classificationSource: .derived,
+            devicePresence: .unknown, operation: .snapshot, executionMode: .inProcess,
+            resultKind: .nativeError, nativeCategory: .detection,
+            nativeCodeNamespace: .terentoSnapshot, nativeResultCode: -2, componentKind: .main)
+        let error = InstallationTransportError.contextual(failure: .operationFailed,
+            message: "PRIVATE-NATIVE-TEXT /Users/private/map.img", createdItemID: nil, context: observed)
+        let engine = MapEngine()
+        engine.retainReadFailureContext(error)
+        check(engine.installationResult == nil && engine.evidenceFailureContext == observed
+            && engine.evidenceFailure == .preflightMTPReadFailed && engine.evidenceFailureStage == .preflight
+            && engine.evidenceNativeFailureCode == .preflightMTPReadFailed
+            && engine.evidenceOriginalFailureContext == nil,
+            "initial read evidence is retained without a coordinator result")
+        let report = InstallationIssueReport.generate(identity: identity, maps: [], stage: "preflight",
+            error: engine.evidenceFailure?.userLabel, operationID: UUID(),
+            failureStages: [engine.evidenceFailureStage!.rawValue],
+            errorCodes: [engine.evidenceFailure!.rawValue], writeStarted: false,
+            failureContext: engine.evidenceFailureContext,
+            originalFailureContext: engine.evidenceOriginalFailureContext)
+        check(report.body.contains("initial_snapshot") && report.body.contains("detection")
+            && report.body.contains("terento_snapshot") && report.body.contains("-2")
+            && !report.body.contains("PRIVATE-NATIVE-TEXT") && !report.body.contains("/Users/private"),
+            "local initial-read report uses retained bounded native evidence")
+        check(!MapEngine.isObservedCancellation(error) && MapEngine.isObservedCancellation(CancellationError()),
+            "actual error provenance distinguishes concrete failure from CancellationError")
+        let cancelled = MTPFinishingWorker.failure(for: .inventory, kind: .cancelled)
+        check(MapEngine.isObservedCancellation(cancelled), "native cancellation remains an observed cancellation")
+    }
+
+    @MainActor static func testObservedReadSurvivesCancellation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let controller = InstallationEvidenceController(store: LocalInstallationEvidenceStore(rootURL: root),
+            uploader: DiagnosticUploadRecorder(), automaticRetryDelays: [0])
+        let observed = InstallationFailureContext(boundary: .initialSnapshot, classificationSource: .derived,
+            devicePresence: .unknown, operation: .snapshot, executionMode: .inProcess,
+            resultKind: .nativeError, nativeCategory: .detection,
+            nativeCodeNamespace: .terentoSnapshot, nativeResultCode: -2, componentKind: .main)
+        for laterAbsence in [false, true] {
+            let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
+                plan: plan(), controller: controller)
+            if laterAbsence { operation.deviceDisconnected() }
+            operation.failed(index: 0, stage: .preflight, failure: .preflightMTPReadFailed,
+                native: .preflightMTPReadFailed, cancelled: true, context: observed)
+            await operation.waitForDeliveryForTesting()
+            let event = controller.store.events().first { $0.operationId == operation.operationID }!
+            check(event.failureCode == InstallationFailure.preflightMTPReadFailed.rawValue
+                && event.nativeFailureCode == .preflightMTPReadFailed && event.errorCategory == .transport
+                && event.failureContext == observed && event.failureStage == .preflight
+                && event.writeStarted == false && event.cleanupAttempted == false,
+                "concrete native read failure survives later task cancellation and presence invalidation")
+            emittedFixtures.append(event)
+        }
+        let cancelled = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
+            plan: plan(), controller: controller)
+        cancelled.failed(index: 0, stage: .preflight, failure: .preflightMTPReadFailed,
+            native: .preflightMTPReadFailed, cancelled: true,
+            context: InstallationFailureContext(boundary: .prewriteInventory, classificationSource: .derived,
+                devicePresence: .unknown, operation: .inventory, resultKind: .cancelled))
+        await cancelled.waitForDeliveryForTesting()
+        check(!controller.store.events().contains { $0.operationId == cancelled.operationID },
+              "actual native cancellation remains cancellation despite preflight mapping")
+    }
+
+    @MainActor static func testContextualContours() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let controller = InstallationEvidenceController(store: LocalInstallationEvidenceStore(rootURL: root),
+            uploader: DiagnosticUploadRecorder(), automaticRetryDelays: [0])
+        for cleanupFailed in [false, true] {
+            let selection = plan(contours: true)
+            let packagePlan = selection.selectedPackagePlans[0]
+            let package = packagePlan.item.package
+            let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
+                plan: selection, controller: controller)
+            operation.record(result(package: package, failure: nil, wrote: true, cleanupSucceeded: cleanupFailed),
+                packageID: package.id, artifactID: packagePlan.artifactPlan.mainArtifact!.id)
+            let protection = InstallationFailureContext(boundary: .postwriteProtection,
+                classificationSource: .derived, devicePresence: .unknown, operation: .protectionCheck,
+                resultKind: .protectionFailed,
+                protection: InstallationProtectionContext(protectionBoundary: .postWrite,
+                    protectionReason: .preexistingObjectChanged, stableIdentityComparisonVersion: 1,
+                    beforeObjectCount: 3, afterObjectCount: 4, changedObjectCount: 1))
+            let terminal = cleanupFailed ? InstallationFailureContext(boundary: .cleanup,
+                classificationSource: .derived, devicePresence: .unknown, operation: .cleanup,
+                executionMode: .worker, resultKind: .timeout) : protection
+            operation.record(result(package: package, failure: cleanupFailed ? .cleanupFailed : .protectionViolation,
+                wrote: true, context: terminal, original: cleanupFailed ? protection : nil),
+                packageID: package.id, artifactID: packagePlan.artifactPlan.optionalArtifacts[0].id)
+            await operation.waitForDeliveryForTesting()
+            let event = controller.store.events().first { $0.operationId == operation.operationID }!
+            check(event.phaseOutcome == .succeeded && event.failureStage == nil
+                && event.optionalComponentSelected == true && event.optionalComponentOutcome == "FAILED"
+                && event.failureContext?.componentKind == .contours
+                && event.optionalComponentFailureStage == (cleanupFailed ? .cleanup : .verify),
+                "successful main retains explicit failing-contours boundary and outcome")
+            check(event.originalFailureContext?.protection == (cleanupFailed ? protection.protection : nil),
+                "cleanup retains original protection observation")
+            if cleanupFailed {
+                check(event.cleanupSucceeded == true && event.originalFailureContext?.componentKind == .contours,
+                      "aggregate cleanup success does not erase contour cleanup failure")
+            }
+            emittedFixtures.append(event)
+        }
+    }
+
+    @MainActor static func testReadBoundaryAndPresence() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let controller = InstallationEvidenceController(store: LocalInstallationEvidenceStore(rootURL: root),
+            uploader: DiagnosticUploadRecorder(), automaticRetryDelays: [0])
+        var category: Int32 = 0
+        let snapshotResult = terento_mtp_read_snapshot_diagnostic(nil, nil, 0, &category)
+        check(snapshotResult == -1
+            && category == TERENTO_READ_INVALID_ARGUMENT,
+            "native invalid snapshot argument retains category without opening a device")
+        check(terento_mtp_read_file_inventory_diagnostic(nil, nil, 0, &category) == -1
+            && category == TERENTO_READ_INVALID_ARGUMENT,
+            "native invalid inventory argument retains category without opening a device")
+        let observedNative = MTPTransport.nativeReadError(message: "PRIVATE-NATIVE-TEXT",
+            result: snapshotResult, operation: .snapshot, namespace: .terentoSnapshot,
+            boundary: .initialSnapshot, category: category)
+        let nativeOperation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
+            plan: plan(), controller: controller)
+        let nativePlan = plan().selectedPackagePlans[0]
+        nativeOperation.record(result(package: nativePlan.item.package, failure: .preflightMTPReadFailed,
+            wrote: false, context: observedNative.failureContext),
+            packageID: nativePlan.item.package.id, artifactID: nativePlan.artifactPlan.mainArtifact!.id)
+        await nativeOperation.waitForDeliveryForTesting()
+        let nativeEvent = controller.store.events().first { $0.operationId == nativeOperation.operationID }!
+        check(nativeEvent.failureContext?.classificationSource == .native
+            && nativeEvent.failureContext?.nativeCategory == .invalidArgument
+            && nativeEvent.failureContext?.nativeResultCode == snapshotResult
+            && nativeEvent.failureContext?.componentKind == .main,
+            "actual C category survives Swift error, component wrapper and persisted evidence")
+        emittedFixtures.append(nativeEvent)
+        let categories: [InstallationFailureContext.NativeCategory] = [
+            .detection, .sessionOpen, .storageRead, .inventoryRead, .objectRead, .allocation, .invalidArgument
+        ]
+        for (index, expected) in categories.enumerated() {
+            let error = MTPTransport.nativeReadError(message: "PRIVATE-NATIVE-TEXT", result: -2,
+                operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot,
+                category: Int32(index + 1))
+            check(error.failureContext?.nativeCategory == expected
+                && error.failureContext?.classificationSource == .native
+                && error.failureContext?.nativeResultCode == -2,
+                "observed category is retained independently of overloaded native result")
+        }
+        for boundary in [InstallationFailureContext.Boundary.initialSnapshot, .initialInventory, .prewriteInventory] {
+            var calls = 0
+            do {
+                let _: Int = try MapEngine.readAtInstallationBoundary(boundary, componentKind: .main) {
+                    calls += 1
+                    throw MTPTransportError.readFailed("No such file; private native text")
+                }
+                fatalError("read unexpectedly succeeded")
+            } catch {
+                guard let classified = MapEngine.readFailureDiagnostic(error) else { fatalError("lost read context") }
+                check(classified.failure == .preflightMTPReadFailed && classified.context.devicePresence == .unknown,
+                      "known read boundary is transport failure without inferred disconnect")
+                let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
+                    plan: plan(), controller: controller)
+                operation.failed(index: 0, stage: .preflight, failure: classified.failure,
+                    native: classified.native, context: classified.context)
+                await operation.waitForDeliveryForTesting()
+                let event = controller.store.events().first { $0.operationId == operation.operationID }!
+                emittedFixtures.append(event)
+                check(event.failureCode == classified.failure.rawValue && event.errorCategory == .transport
+                    && event.failureStage == .preflight && event.writeStarted == false
+                    && event.cleanupAttempted == false && event.remoteObjectCreated == false,
+                    "local classification equals uploaded classification with no write or cleanup facts")
+                let encoded = try JSONEncoder().encode(event)
+                let decoded = try JSONDecoder().decode(InstallationEvidenceEvent.self, from: encoded)
+                check(decoded.failureContext == classified.context && !String(decoding: encoded, as: UTF8.self).contains("private native"),
+                      "structured context survives queue serialization without native text")
+            }
+            check(calls == 1, "read observation adds no probe or retry")
+        }
+        for presence in [InstallationFailureContext.DevicePresence.unknown, .absent] {
+            let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
+                plan: plan(), controller: controller)
+            let engine = MapEngine(evidenceController: controller)
+            engine.setOperationDiagnosticsForTesting(operation)
+            engine.resetForDisconnectedDevice(presence: presence)
+            operation.failed(index: 0, stage: .preflight, failure: nil, cancelled: true)
+            await operation.waitForDeliveryForTesting()
+            let event = controller.store.events().first { $0.operationId == operation.operationID }
+            check(presence == .absent ? event?.failureCode == InstallationFailure.deviceDisconnected.rawValue : event == nil,
+                  "only confirmed absence converts reset cancellation into disconnect")
+        }
+        check(MTPTransportError.deviceAbsent.devicePresence == .absent
+            && MTPTransportError.readFailed("No Garmin connected").devicePresence == .unknown,
+            "typed presence evidence never comes from error text")
+        for (payload, expected) in [
+            ("not JSON", InstallationFailureContext.ResultKind.decodeError),
+            ("{}", .invalidResponse)
+        ] {
+            do {
+                _ = try MTPFinishingWorker.decodeResponse(Data(payload.utf8), operation: .inventory)
+                fatalError("invalid response accepted")
+            } catch let error as InstallationTransportError {
+                check(error.failureContext?.resultKind == expected && !error.isConfirmedDeviceDisconnected,
+                      "actual worker decoder distinguishes malformed and incomplete responses")
+            }
+        }
+        for kind in [InstallationFailureContext.ResultKind.timeout, .cancelled, .processLaunchError, .requestIOError,
+                     .processExit, .responseIOError, .decodeError, .invalidResponse, .nativeError] {
+            let error = MTPFinishingWorker.failure(for: .inventory, kind: kind)
+            check(error.failureContext?.resultKind == kind && !error.isConfirmedDeviceDisconnected,
+                  "worker category survives without inferred disconnect")
+            let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
+                plan: plan(), controller: controller)
+            operation.failed(index: 0, stage: .preflight, failure: .preflightMTPReadFailed,
+                native: .preflightMTPReadFailed, cancelled: kind == .cancelled,
+                context: error.failureContext)
+            await operation.waitForDeliveryForTesting()
+            let events = controller.store.events().filter { $0.operationId == operation.operationID }
+            check(kind == .cancelled ? events.isEmpty : events.count == 1,
+                  "worker cancellation stays separate from failed reports")
+            emittedFixtures += events
+        }
+    }
+
     @MainActor static func testDisconnectAndCancellation() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -223,14 +492,19 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
         return planner.plan(items: items, selectedIDs: Set(items.map(\.id)), currentFreeSpace: 20_000_000_000,
             selectedOptionalArtifactIDs: contours ? Dictionary(uniqueKeysWithValues: items.map { ($0.id, Set([$0.package.regionId + "-contours"])) }) : [:])
     }
-    static func result(package: MapPackage, failure: InstallationFailure?, wrote: Bool, confirmation: Bool = false) -> MapInstallationResult {
-        let diagnostics = MapInstallationDiagnostics(sourceSizeBytes: 100, sourceSHA256: "PRIVATE-HASH", targetPath: "/GARMIN/PRIVATE.img",
+    static func result(package: MapPackage, failure: InstallationFailure?, wrote: Bool, confirmation: Bool = false,
+                       context: InstallationFailureContext? = nil,
+                       original: InstallationFailureContext? = nil,
+                       cleanupSucceeded: Bool = false) -> MapInstallationResult {
+        var diagnostics = MapInstallationDiagnostics(sourceSizeBytes: 100, sourceSHA256: "PRIVATE-HASH", targetPath: "/GARMIN/PRIVATE.img",
             bytesTransferred: wrote ? 60 : 0, transferTotalBytes: 100, elapsedMilliseconds: 1,
             remoteObjectExists: wrote, remoteSizeBytes: nil, remoteSHA256: nil,
             metadataProvider: nil, metadataRegion: nil, metadataVersion: nil, metadataWarning: "SECRET-RAW-LOG /Users/private",
             freeSpaceBefore: 1000, freeSpaceAfter: nil, projectedFreeSpace: nil, existingFilesProtectionPassed: true,
             unrelatedFilesProtectionPassed: true, writeStarted: wrote, remoteObjectCreated: wrote,
-            cleanupAttempted: wrote && failure != nil, cleanupSucceeded: false, nativeFailureCode: nil)
+            cleanupAttempted: wrote && failure != nil, cleanupSucceeded: cleanupSucceeded, nativeFailureCode: nil)
+        diagnostics.failureContext = context
+        diagnostics.originalFailureContext = original
         let preflight = InstallationPreflightResult(selectedMap: package, installedMatch: nil, ownership: .unknown,
             comparisonStatus: .notInstalled, installTarget: nil, proposedFilename: nil, storagePlan: nil,
             replacementRequired: false, replacementConfirmationRequired: false,

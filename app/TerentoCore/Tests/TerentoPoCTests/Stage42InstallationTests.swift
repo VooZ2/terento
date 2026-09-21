@@ -76,13 +76,21 @@ private final class MockFailedInstallRecoveryStore: TerentoFailedInstallRecovery
     }
 }
 
+private struct RawReadFailure: InstallationFailureContextProviding, Sendable {
+    let failureContext: InstallationFailureContext?
+}
+
 private final class MockDeviceReader: InstallationDeviceReader, @unchecked Sendable {
     var files: [DeviceFile]
-    private let initialFiles: [DeviceFile]
+    var initialFiles: [DeviceFile]
     private(set) var inventoryReadCount = 0
     var missingTargetReads = 0
     var failInventoryRead: Int?
     var inventoryError: InstallationTransportError?
+    var inventoryErrorRead: Int?
+    var snapshotError: InstallationTransportError?
+    var rawReadError: RawReadFailure?
+    var rawReadErrorBoundary: InstallationFailureContext.Boundary?
     var inventoryFailureDelay: TimeInterval = 0
     var renumberExistingObjectIDs = false
     var snapshot: DeviceSnapshot
@@ -114,7 +122,12 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
     }
 
     func readFileInventory() throws -> [DeviceFile] {
-        if let inventoryError {
+        if let rawReadError,
+           (rawReadErrorBoundary == .prewriteInventory && inventoryReadCount == 0)
+            || (rawReadErrorBoundary == .postwriteInventory && inventoryReadCount > 0) {
+            throw rawReadError
+        }
+        if let inventoryError, inventoryErrorRead == nil || inventoryErrorRead == inventoryReadCount {
             if inventoryFailureDelay > 0 {
                 Thread.sleep(forTimeInterval: inventoryFailureDelay)
             }
@@ -151,6 +164,8 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
     }
 
     func readSnapshot() throws -> DeviceSnapshot {
+        if let rawReadError, rawReadErrorBoundary == .postwriteSnapshot { throw rawReadError }
+        if let snapshotError { throw snapshotError }
         if shouldFail {
             throw InstallationTransportError.deviceDisconnected(
                 "device disconnected",
@@ -308,8 +323,214 @@ struct Stage42InstallationTests {
         passed += testSuccessRequiresSampledVerification()
         passed += testSuccessClearsFailedInstallRecoveryRecord()
         passed += testFailedVerificationPreservesRecoveryRecordWhenCleanupFails()
+        passed += testProtectionContextObservations()
+        passed += testProtectionCleanupPreservesOriginalContext()
+        passed += testTargetReasonObservations()
+        passed += testContextualReadBoundaries()
+        passed += testRawReadContextProvider()
+        passed += testVersionOneDuplicateBehaviorUnchanged()
+        passed += testOversizedProtectionCountsAreOmitted()
 
         print("PASS: \(passed) Stage 4.2 installation tests")
+    }
+
+    private static func testProtectionContextObservations() -> Int {
+        var passed = 0
+        let reasons: [InstallationProtectionContext.Reason] = [
+            .nonTargetObjectAdded, .preexistingObjectRemoved, .preexistingObjectChanged,
+            .inventoryAmbiguous, .targetPresentBeforeWrite
+        ]
+        for prewrite in [true, false] {
+            for reason in reasons where prewrite || reason != .targetPresentBeforeWrite {
+                let harness = makeHarness()
+                var reader: MockDeviceReader?
+                let result = harness.run(configureReader: {
+                    reader = $0
+                    var files = prewrite ? $0.initialFiles : $0.files
+                    let existing = files[1]
+                    switch reason {
+                    case .nonTargetObjectAdded:
+                        files.append(DeviceFile(itemID: 600, parentID: 0, storageID: 1,
+                            path: "/GARMIN/unknown.img", filename: "unknown.img", sizeBytes: 42, isFolder: false))
+                    case .preexistingObjectRemoved: files.remove(at: 1)
+                    case .preexistingObjectChanged:
+                        // Parent-only changes must still reject under the unchanged v1 comparator.
+                        files[1] = DeviceFile(itemID: existing.itemID, parentID: existing.parentID + 100,
+                            storageID: existing.storageID, path: existing.path, filename: existing.filename,
+                            sizeBytes: existing.sizeBytes, isFolder: existing.isFolder)
+                    case .inventoryAmbiguous:
+                        files.append(DeviceFile(itemID: 600, parentID: 0, storageID: existing.storageID,
+                            path: existing.path, filename: existing.filename, sizeBytes: 42, isFolder: false))
+                    case .targetPresentBeforeWrite:
+                        files.append($0.files.first { $0.path == targetPath }!)
+                    default: fatalError("unexpected fixture")
+                    }
+                    if prewrite { $0.initialFiles = files } else { $0.files = files }
+                })
+                let context = result.failureContext
+                let protection = context?.protection
+                passed += expect(result.failure == .protectionViolation
+                    && context?.boundary == (prewrite ? .prewriteProtection : .postwriteProtection)
+                    && context?.boundary.stageRawValue == (prewrite ? "preflight" : "verify")
+                    && protection?.protectionReason == reason
+                    && protection?.beforeObjectCount == 3
+                    && protection?.stableIdentityComparisonVersion == (reason == .targetPresentBeforeWrite ? nil : 1)
+                    && protection?.targetItemIDMatches == nil
+                    && result.originalFailureContext == nil
+                    && harness.transport.writeCount == (prewrite ? 0 : 1)
+                    && harness.transport.deleteCount == (prewrite ? 0 : 1)
+                    && reader?.inventoryReadCount == (prewrite ? 1 : 2)
+                    && harness.manifest.entries.isEmpty,
+                    "\(prewrite ? "prewrite" : "postwrite") \(reason.rawValue) reports observed boundary without changing operations")
+                if reason == .inventoryAmbiguous {
+                    passed += expect(protection?.addedObjectCount == nil && protection?.removedObjectCount == nil
+                        && protection?.changedObjectCount == nil, "ambiguous pairing omits delta counts")
+                } else if reason != .targetPresentBeforeWrite {
+                    passed += expect(protection?.addedObjectCount == (reason == .nonTargetObjectAdded ? 1 : 0)
+                        && protection?.removedObjectCount == (reason == .preexistingObjectRemoved ? 1 : 0)
+                        && protection?.changedObjectCount == (reason == .preexistingObjectChanged ? 1 : 0),
+                        "non-target delta counts describe the current comparison")
+                }
+            }
+        }
+        return passed
+    }
+
+    private static func testProtectionCleanupPreservesOriginalContext() -> Int {
+        var contexts: [InstallationFailureContext] = []
+        var passed = 0
+        for cleanupFails in [false, true] {
+            let harness = makeHarness()
+            if cleanupFails {
+                harness.transport.deleteError = .contextual(failure: .operationFailed,
+                    message: "cleanup fixture", createdItemID: nil,
+                    context: InstallationFailureContext(boundary: .cleanup, classificationSource: .derived,
+                        devicePresence: .unknown, operation: .cleanup, executionMode: .worker, resultKind: .timeout))
+            }
+            let result = harness.run(configureReader: { $0.files.remove(at: 1) })
+            if let original = result.originalFailureContext ?? result.failureContext { contexts.append(original) }
+            passed += expect(result.failure == (cleanupFails ? .cleanupFailed : .protectionViolation)
+                && result.failureContext?.boundary == (cleanupFails ? .cleanup : .postwriteProtection)
+                && result.originalFailure == (cleanupFails ? .protectionViolation : nil)
+                && (!cleanupFails || result.failureContext?.resultKind == .timeout)
+                && result.diagnostics.cleanupSucceeded == !cleanupFails
+                && harness.transport.deletedFilename == "terento_freizeitkarte_fra.img"
+                && harness.transport.deletedItemID == 77
+                && harness.transport.deletedSizeBytes == UInt64(harness.remoteData.count)
+                && harness.recovery.records.isEmpty == !cleanupFails,
+                "cleanup outcome preserves original protection and exact cleanup/recovery behavior")
+        }
+        return passed + expect(contexts.count == 2 && contexts[0] == contexts[1],
+            "cleanup failure retains the full immutable originating context")
+    }
+
+    private static func testTargetReasonObservations() -> Int {
+        var passed = 0
+        let reasons: [InstallationProtectionContext.Reason] = [
+            .targetMissing, .targetDuplicate, .targetInvalid, .targetFilenameMismatch, .targetSizeMismatch
+        ]
+        for reason in reasons {
+            let harness = makeHarness()
+            var reader: MockDeviceReader?
+            let result = harness.run(configureReader: {
+                reader = $0
+                let target = $0.files.removeLast()
+                if reason != .targetMissing {
+                    $0.files.append(DeviceFile(itemID: reason == .targetInvalid ? 0 : target.itemID,
+                        parentID: target.parentID, storageID: target.storageID, path: target.path,
+                        filename: reason == .targetFilenameMismatch ? "different.img" : target.filename,
+                        sizeBytes: reason == .targetSizeMismatch ? target.sizeBytes + 1 : target.sizeBytes,
+                        isFolder: target.isFolder))
+                    if reason == .targetDuplicate { $0.files.append(target) }
+                }
+            })
+            passed += expect(result.failure == .remoteFileMissing
+                && result.failureContext?.boundary == .targetValidation
+                && result.failureContext?.boundary.stageRawValue == "verify"
+                && result.failureContext?.protection?.protectionReason == reason
+                && result.failureContext?.protection?.stableIdentityComparisonVersion == nil
+                && result.failureContext?.protection?.targetItemIDMatches == nil
+                && harness.transport.writeCount == 1 && harness.transport.deleteCount == 1
+                && reader?.inventoryReadCount == (reason == .targetMissing ? 3 : 2),
+                "\(reason.rawValue) retains target failure code and existing read/cleanup behavior")
+        }
+        return passed
+    }
+
+    private static func testContextualReadBoundaries() -> Int {
+        let native = InstallationFailureContext(boundary: .initialInventory, classificationSource: .native,
+            devicePresence: .unknown, operation: .inventory, executionMode: .worker, resultKind: .nativeError,
+            nativeCategory: .inventoryRead, nativeCodeNamespace: .terentoInventory, nativeResultCode: -3)
+        let error = InstallationTransportError.contextual(failure: .operationFailed, message: "private fixture",
+            createdItemID: nil, context: native)
+        var passed = 0
+        for boundary: InstallationFailureContext.Boundary in [.prewriteInventory, .readback, .postwriteInventory, .postwriteSnapshot] {
+            let harness = makeHarness()
+            if boundary == .readback { harness.transport.readError = error }
+            let result = harness.run(configureReader: {
+                if boundary == .prewriteInventory { $0.inventoryError = error }
+                if boundary == .postwriteInventory { $0.inventoryError = error; $0.inventoryErrorRead = 1 }
+                if boundary == .postwriteSnapshot { $0.snapshotError = error }
+            })
+            let context = result.failureContext
+            passed += expect(context?.boundary == boundary && context?.nativeResultCode == -3
+                && context?.nativeCodeNamespace == .terentoInventory && context?.executionMode == .worker
+                && context?.resultKind == .nativeError && context?.devicePresence == .unknown
+                && result.failure != .deviceDisconnected
+                && harness.transport.writeCount == (boundary == .prewriteInventory ? 0 : 1),
+                "observed \(boundary.rawValue) retains transport context through coordinator copies")
+        }
+        return passed
+    }
+
+    private static func testRawReadContextProvider() -> Int {
+        var passed = 0
+        for boundary: InstallationFailureContext.Boundary in [.prewriteInventory, .postwriteInventory, .postwriteSnapshot] {
+            let snapshot = boundary == .postwriteSnapshot
+            let native = InstallationFailureContext(
+                boundary: snapshot ? .initialSnapshot : .initialInventory,
+                classificationSource: .native, devicePresence: .unknown,
+                operation: snapshot ? .snapshot : .inventory, executionMode: .inProcess,
+                resultKind: .nativeError, nativeCategory: snapshot ? .storageRead : .inventoryRead,
+                nativeCodeNamespace: snapshot ? .terentoSnapshot : .terentoInventory, nativeResultCode: -3)
+            let harness = makeHarness()
+            let result = harness.run(configureReader: {
+                $0.rawReadError = RawReadFailure(failureContext: native)
+                $0.rawReadErrorBoundary = boundary
+            })
+            passed += expect(result.failureContext == native.at(boundary)
+                && result.failure == (boundary == .prewriteInventory ? .preflightMTPReadFailed : .verificationRequired)
+                && result.failureContext?.retryCount == nil
+                && harness.transport.writeCount == (boundary == .prewriteInventory ? 0 : 1)
+                && harness.transport.deleteCount == (boundary == .prewriteInventory ? 0 : 1),
+                "raw context provider survives \(boundary.rawValue) without a transport-specific dependency")
+        }
+        return passed
+    }
+
+    private static func testOversizedProtectionCountsAreOmitted() -> Int {
+        let harness = makeHarness()
+        let result = harness.run(configureReader: { reader in
+            reader.initialFiles += (0...16384).map { index in
+                DeviceFile(itemID: UInt32(index + 100), parentID: 0, storageID: 1,
+                    path: "/GARMIN/fixture-\(index).img", filename: "fixture-\(index).img",
+                    sizeBytes: 1, isFolder: false)
+            }
+        })
+        let protection = result.failureContext?.protection
+        return expect(result.failure == .protectionViolation && protection?.beforeObjectCount == 3
+            && protection?.afterObjectCount == nil && protection?.addedObjectCount == nil
+            && protection?.removedObjectCount == 0 && protection?.changedObjectCount == 0
+            && harness.transport.writeCount == 0 && harness.transport.deleteCount == 0,
+            "oversized observed counts are omitted rather than clamped or used as an inventory limit")
+    }
+
+    private static func testVersionOneDuplicateBehaviorUnchanged() -> Int {
+        let harness = makeHarness()
+        let result = harness.run(configureReader: { $0.files.append($0.files[1]) })
+        return expect(result.isSuccess && result.failureContext == nil && result.originalFailureContext == nil
+            && harness.transport.deleteCount == 0,
+            "telemetry-only change does not introduce duplicate rejection; v2 owns that safety change")
     }
 
     private static func testCanonicalTransferProgress() -> Int {

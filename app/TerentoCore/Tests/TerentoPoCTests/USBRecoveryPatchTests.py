@@ -101,11 +101,12 @@ swift = """import Foundation
 enum InstallationTransportError: Error {
 case targetAlreadyExists, remoteFileMissing, objectIdentityMismatch, unsupportedDevice, liveIdentityMismatch
 case deviceDisconnected(String, createdItemID: UInt32?), operationFailed(String, createdItemID: UInt32?)
+case contextual
 }
 struct Policy {
 """+method+"""
 }
-let fatalErrors: [InstallationTransportError] = [.deviceDisconnected("lost", createdItemID: nil), .operationFailed("deadline", createdItemID: nil), .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch]
+let fatalErrors: [InstallationTransportError] = [.deviceDisconnected("lost", createdItemID: nil), .operationFailed("deadline", createdItemID: nil), .contextual, .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch]
 for error in fatalErrors { precondition(!Policy.shouldRetryReadBack(error)) }
 precondition(Policy.shouldRetryReadBack(InstallationTransportError.remoteFileMissing))
 precondition(Policy.shouldRetryReadBack(InstallationTransportError.objectIdentityMismatch))

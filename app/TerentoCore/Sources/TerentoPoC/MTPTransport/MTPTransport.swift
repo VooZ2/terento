@@ -33,7 +33,7 @@ struct MTPTransport: Sendable {
             let count = try garminUSBDeviceCount()
             guard count == 1 else {
                 if count == 0 {
-                    throw MTPTransportError.readFailed("No Garmin MTP device connected")
+                    throw MTPTransportError.deviceAbsent
                 }
                 throw MTPTransportError.readFailed("More than one Garmin MTP device connected")
             }
@@ -67,14 +67,15 @@ struct MTPTransport: Sendable {
 
     private func readSnapshotUncoordinated() throws -> DeviceSnapshot {
         var rawSnapshot = TerentoMTPDeviceSnapshot()
+        var nativeCategory: Int32 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
 
         let result = errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
             withUnsafeMutablePointer(to: &rawSnapshot) { snapshotPointer in
-                terento_mtp_read_snapshot(
+                terento_mtp_read_snapshot_diagnostic(
                     snapshotPointer,
                     errorPointer.baseAddress,
-                    errorPointer.count
+                    errorPointer.count, &nativeCategory
                 )
             }
         }
@@ -88,9 +89,9 @@ struct MTPTransport: Sendable {
                 let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
                 return String(decoding: bytes, as: UTF8.self)
             }
-            throw MTPTransportError.readFailed(
-                message.isEmpty ? "Unknown MTP error" : message
-            )
+            throw Self.nativeReadError(message: message, result: result, operation: .snapshot,
+                                       namespace: .terentoSnapshot, boundary: .initialSnapshot,
+                                       category: nativeCategory)
         }
 
         let storages: [StorageInfo]
@@ -156,14 +157,15 @@ struct MTPTransport: Sendable {
 
     private func readFileInventoryUncoordinated() throws -> [DeviceFile] {
         var rawInventory = TerentoMTPFileInventory()
+        var nativeCategory: Int32 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
 
         let result = errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
             withUnsafeMutablePointer(to: &rawInventory) { inventoryPointer in
-                terento_mtp_read_file_inventory(
+                terento_mtp_read_file_inventory_diagnostic(
                     inventoryPointer,
                     errorPointer.baseAddress,
-                    errorPointer.count
+                    errorPointer.count, &nativeCategory
                 )
             }
         }
@@ -173,7 +175,9 @@ struct MTPTransport: Sendable {
         }
 
         guard result == 0 else {
-            throw MTPTransportError.readFailed(errorMessage(from: errorBuffer))
+            throw Self.nativeReadError(message: errorMessage(from: errorBuffer), result: result,
+                                       operation: .inventory, namespace: .terentoInventory,
+                                       boundary: .initialInventory, category: nativeCategory)
         }
 
         guard let filePointer = rawInventory.files else {
@@ -209,17 +213,18 @@ struct MTPTransport: Sendable {
         }
 
         var rawBuffer = TerentoMTPByteBuffer()
+        var nativeCategory: Int32 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
 
         let result = errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
             withUnsafeMutablePointer(to: &rawBuffer) { bufferPointer in
-                terento_mtp_read_file_prefix(
+                terento_mtp_read_file_prefix_diagnostic(
                     file.itemID,
                     0,
                     UInt32(maxLength),
                     bufferPointer,
                     errorPointer.baseAddress,
-                    errorPointer.count
+                    errorPointer.count, &nativeCategory
                 )
             }
         }
@@ -229,7 +234,9 @@ struct MTPTransport: Sendable {
         }
 
         guard result == 0 else {
-            throw MTPTransportError.readFailed(errorMessage(from: errorBuffer))
+            throw Self.nativeReadError(message: errorMessage(from: errorBuffer), result: result,
+                                       operation: .filePrefix, namespace: .terentoFilePrefix,
+                                       boundary: .initialInventory, category: nativeCategory)
         }
 
         guard let bytes = rawBuffer.bytes, rawBuffer.byte_count > 0 else {
@@ -294,7 +301,12 @@ struct MTPTransport: Sendable {
         }
 
         guard result == 0 else {
-            throw MTPTransportError.readFailed(errorMessage(from: errorBuffer))
+            // Batch-prefix codes are not the single-prefix namespace.
+            throw MTPTransportError.contextual(message: errorMessage(from: errorBuffer),
+                context: InstallationFailureContext(boundary: .initialInventory,
+                    classificationSource: .derived, devicePresence: .unknown,
+                    operation: .filePrefix, executionMode: .inProcess,
+                    resultKind: .nativeError, nativeCategory: .unspecified))
         }
 
         var prefixes: [UInt32: [UInt8]] = [:]
@@ -308,6 +320,30 @@ struct MTPTransport: Sendable {
             )
         }
         return prefixes
+    }
+
+    static func nativeReadError(
+        message: String, result: Int32, operation: InstallationFailureContext.Operation,
+        namespace: InstallationFailureContext.NativeCodeNamespace,
+        boundary: InstallationFailureContext.Boundary, category: Int32
+    ) -> MTPTransportError {
+        let nativeCategory: InstallationFailureContext.NativeCategory
+        switch category {
+        case 1: nativeCategory = .detection
+        case 2: nativeCategory = .sessionOpen
+        case 3: nativeCategory = .storageRead
+        case 4: nativeCategory = .inventoryRead
+        case 5: nativeCategory = .objectRead
+        case 6: nativeCategory = .allocation
+        case 7: nativeCategory = .invalidArgument
+        default: nativeCategory = .unspecified
+        }
+        return .contextual(message: message.isEmpty ? "The device read failed." : message,
+            context: InstallationFailureContext(boundary: boundary,
+                classificationSource: nativeCategory == .unspecified ? .derived : .native,
+                devicePresence: .unknown, operation: operation, executionMode: .inProcess,
+                resultKind: .nativeError, nativeCategory: nativeCategory,
+                nativeCodeNamespace: namespace, nativeResultCode: result))
     }
 
     private func string(from pointer: UnsafeMutablePointer<CChar>?, fallback: String) -> String {
@@ -376,12 +412,28 @@ extension DeviceFileReader {
 
 extension MTPTransport: DeviceFileReader {}
 
-enum MTPTransportError: LocalizedError, Sendable {
+enum MTPTransportError: LocalizedError, Sendable, InstallationFailureContextProviding {
     case readFailed(String)
+    case deviceAbsent
+    case contextual(message: String, context: InstallationFailureContext)
+
+    var failureContext: InstallationFailureContext? {
+        if case .contextual(_, let context) = self { return context }
+        return nil
+    }
+
+    var devicePresence: InstallationFailureContext.DevicePresence {
+        if case .deviceAbsent = self { return .absent }
+        return .unknown
+    }
 
     var errorDescription: String? {
         switch self {
         case .readFailed(let message):
+            return message
+        case .deviceAbsent:
+            return "No Garmin MTP device connected"
+        case .contextual(let message, _):
             return message
         }
     }

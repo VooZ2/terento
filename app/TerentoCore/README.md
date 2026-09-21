@@ -232,6 +232,38 @@ compatibility sharing preference. Untouched maps after a failure are
 `NOT_STARTED`; ordinary cancellation is not synthesized as `FAILED`.
 Unclassified failures use `INSTALL_FAILED_UNKNOWN`, without guessing a cause.
 
+The local installation-diagnostics candidate records a known initial snapshot,
+initial inventory or prewrite inventory failure as
+`INSTALL_FAILED_PREFLIGHT_MTP_READ`, with preflight stage and transport category.
+A generic read error does not establish device disconnection; presence remains
+unknown unless observed evidence establishes it. Confirmed disconnection retains
+its disconnect classification. The shared boundary-to-stage resolver supplies
+the local failure stage and uploaded result stage.
+
+Optional v4 `failureContext` records bounded observations at the failed boundary.
+Native read categories are captured explicitly in the C branch that encounters
+the failure, rather than parsed from unrestricted native error text. Worker
+timeout, process, I/O, decoding and native failures retain distinct result kinds.
+The candidate adds no device-operation retries, extra probes or timeout-policy
+changes. Regression coverage exercises native provenance through boundary and
+worker wrappers, the durable outbox, local reports and Swift-to-API delivery.
+
+Prewrite protection reports preflight; postwrite protection reports verify.
+Protection detail records the failed condition and only observed bounded counts
+and target booleans. Successful cleanup preserves the originating failure;
+failed cleanup records terminal cleanup context and retains the origin separately
+in `originalFailureContext`. A failed contours component is identified explicitly
+and retains its own failure stage without rewriting a successful main-map result.
+Manual IMG import remains custom, including an OTM-origin file; catalog OTM
+installation remains a provider operation. No private filename, path, object ID,
+hash or raw native message is added to uploaded context. The field contract lives
+in [the shared contracts](../../contracts/README.md#structured-installation-failure-context).
+
+These changes describe the local candidate, not a released app or hardware
+validation. Protection comparison still uses version 1; comparator version 2
+requires its separate safety change and hardware gate. Upload, exact-target
+cleanup, ownership, provider acquisition and sharing boundaries remain in force.
+
 Run `Tests/run-app-installation-operation-diagnostics-tests.sh` for the actual
 engine/no-screen regression and producer/outbox/privacy cases. Initial context
 is in memory; force-quitting before a terminal result is observed is not a
