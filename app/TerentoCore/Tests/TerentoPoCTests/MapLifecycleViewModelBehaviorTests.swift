@@ -19,8 +19,9 @@ struct MapLifecycleViewModelBehaviorTests {
         try await testExternalSelectionDeviceChange()
         try await testExternalPreparationReset()
         try await testExternalPreparationReset(cancel: true)
+        try testMapEngineOwnershipNamespaceBinding()
 
-        print("PASS: 8 MapLifecycleViewModel behavior tests")
+        print("PASS: 9 MapLifecycleViewModel behavior tests")
     }
 
     @MainActor
@@ -215,6 +216,72 @@ struct MapLifecycleViewModelBehaviorTests {
             while !released { condition.wait() }
         }
         func release() { condition.lock(); released = true; condition.broadcast(); condition.unlock() }
+    }
+
+    @MainActor
+    private static func testMapEngineOwnershipNamespaceBinding() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-engine-ownership-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let context = try makeContext()
+        func identity(_ physical: String?) -> DeviceIdentity {
+            let base = context.identity
+            return DeviceIdentity(manufacturer: base.manufacturer, model: base.model, family: base.family,
+                variant: base.variant, usbVendorId: base.usbVendorId, usbProductId: base.usbProductId,
+                firmware: base.firmware, storageCapacity: base.storageCapacity, freeSpace: base.freeSpace,
+                localHardwareIdentifier: physical, localIdentityResolution: physical == nil ? .unavailable : .mtpSerial)
+        }
+        let watchA = identity("TEST-WATCH-A")
+        let watchB = identity("TEST-WATCH-B")
+        let missing = identity(nil)
+        let file = context.item.installedMaps[0].sourceFile
+        let version = context.item.version!
+        let store = LocalTerentoManifestStore(rootDirectory: root)
+        func entry(_ key: String) -> TerentoManifestEntry {
+            TerentoManifestEntry(deviceKey: key, devicePath: file.path, filename: file.filename,
+                providerId: "freizeitkarte", regionId: "FRA", version: version, sizeBytes: file.sizeBytes,
+                sha256: String(repeating: "a", count: 64), installedAt: Date(timeIntervalSince1970: 100))
+        }
+        let legacyA = entry(watchA.legacyManifestDeviceKey)
+        let physicalA = entry(watchA.physicalManifestDeviceKey!)
+        try store.record(legacyA)
+        try store.record(physicalA)
+        // Both watches expose identical map coordinates/content. That does not
+        // prove that A's model-only local manifest owns the map on B.
+        let unavailableKeys = MapEngine.manifestDeviceKeys(for: [watchB, missing])
+        guard unavailableKeys.isEmpty,
+              MapEngine.ownershipManifestEntries(for: watchB, scanDeviceKeys: unavailableKeys, store: store).isEmpty else {
+            throw Failure("physical B plus unavailable live identity loaded a model-only A manifest")
+        }
+        let conflictKeys = MapEngine.manifestDeviceKeys(for: [watchA, watchB])
+        guard conflictKeys.isEmpty,
+              MapEngine.ownershipManifestEntries(for: watchB, scanDeviceKeys: conflictKeys, store: store).isEmpty,
+              MapEngine.ownershipManifestEntries(for: watchB,
+                scanDeviceKeys: [watchA.physicalManifestDeviceKey!], store: store).isEmpty,
+              MapEngine.ownershipManifestEntries(for: watchB,
+                scanDeviceKeys: [watchA.physicalManifestDeviceKey!, watchB.physicalManifestDeviceKey!], store: store).isEmpty else {
+            throw Failure("conflicting physical watches mixed ownership namespaces")
+        }
+        guard MapEngine.manifestDeviceKeys(for: [missing, missing]).isEmpty,
+              MapEngine.ownershipManifestEntries(for: missing,
+                scanDeviceKeys: [missing.legacyManifestDeviceKey], store: store).isEmpty else {
+            throw Failure("model-only records conferred automatic ownership")
+        }
+        let coherentB = MapEngine.manifestDeviceKeys(for: [watchB, watchB])
+        guard coherentB == [watchB.physicalManifestDeviceKey!],
+              MapEngine.ownershipManifestEntries(for: watchB, scanDeviceKeys: coherentB, store: store).isEmpty else {
+            throw Failure("B inherited A's legacy or physical ownership")
+        }
+        let physicalB = entry(watchB.physicalManifestDeviceKey!)
+        try store.record(physicalB)
+        let upgradedStore = LocalTerentoManifestStore(rootDirectory: root)
+        guard MapEngine.ownershipManifestEntries(for: watchB, scanDeviceKeys: coherentB, store: upgradedStore) == [physicalB] else {
+            throw Failure("physically bound ownership did not survive app/store reload")
+        }
+        guard try store.read(deviceKey: watchA.legacyManifestDeviceKey)?.entries == [legacyA],
+              try store.read(deviceKey: watchA.physicalManifestDeviceKey!)?.entries == [physicalA] else {
+            throw Failure("unproven ownership evidence was deleted or migrated")
+        }
+        print("PASS: actual MapEngine scan/context namespace path rejects model-only and conflicting keys; physical ownership survives reload")
     }
 
     private static func makeContext(external: Bool = false, storageID: UInt32 = 1) throws -> MapLifecycleContext {

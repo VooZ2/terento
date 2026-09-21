@@ -297,7 +297,11 @@ the physical device, storage, exact path/name/size/kind, presence, uniqueness,
 protected status and content hash. Missing manifest or old operation evidence never
 makes a valid external map inherently unremovable. It also never grants automatic
 replacement or Update authority. Garmin/protected objects stay read-only in every
-case.
+case. Historical model-only manifest records remain on disk, but cannot silently
+establish ownership of a physical watch. Scanning must not merge those records
+with a physically bound namespace or combine conflicting physical identities.
+Only the currently proven physical namespace may supply managed lifecycle records;
+unproven legacy records leave the external Remove fallback available.
 
 `ProtectedMapInventory` compares storage ID, exact full path, filename, size and
 file/folder kind; item/parent handles are session-scoped navigation and diagnostics.

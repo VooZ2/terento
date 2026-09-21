@@ -145,6 +145,9 @@ content revalidation. A prior install ledger is not required for this new remova
 operation. Confirmation is never a substitute for same-operation cleanup provenance.
 Cross-computer, app-upgrade and state-loss regressions must preserve these separate
 authorities; protected maps remain read-only with or without a manifest.
+Model-only legacy namespaces and conflicting physical-device namespaces must never
+be combined into managed ownership. Preserve legacy files as local evidence,
+without silently migrating or binding them to the current physical device.
 
 Native journal identifiers, exact paths, physical identity, handles, claim files
 and raw outcomes remain local; they are not new backend diagnostics fields.

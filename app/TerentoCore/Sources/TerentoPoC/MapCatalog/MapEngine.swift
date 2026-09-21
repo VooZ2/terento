@@ -425,12 +425,9 @@ final class MapEngine: ObservableObject {
                         lifecycleLease: lease
                     )
 
-                    // DeviceEngine's initial identity and the identity read
-                    // immediately before a map scan can use different
-                    // identifiers (for example a legacy model key first and
-                    // an MTP serial after the native session is ready). Read
-                    // both manifest namespaces for this same live device so
-                    // an exact ownership record is not lost between phases.
+                    // Automatic ownership requires one physical namespace across
+                    // both observations. Missing live identity or a changed watch
+                    // cannot widen lookup into a model-only legacy manifest.
                     let liveIdentity = (try? lifecycleReader.readSnapshot())
                         .map { CompatibilityEngine().evaluate(snapshot: $0).identity }
                     let manifestKeys = Self.manifestDeviceKeys(
@@ -448,8 +445,7 @@ final class MapEngine: ObservableObject {
                     return MapInventoryScanOutput(
                         inventory: inventory,
                         ownershipManifestDeviceKeys: manifestKeys,
-                        preferredOwnershipManifestDeviceKey: liveIdentity?.localManifestDeviceKey
-                            ?? deviceIdentity?.localManifestDeviceKey
+                        preferredOwnershipManifestDeviceKey: manifestKeys.first
                     )
                 }
 
@@ -631,7 +627,7 @@ final class MapEngine: ObservableObject {
         }
     }
 
-    private nonisolated static func manifestDeviceKeys(
+    nonisolated static func manifestDeviceKeys(
         for identity: DeviceIdentity?
     ) -> Set<String> {
         guard let identity else {
@@ -641,12 +637,13 @@ final class MapEngine: ObservableObject {
         return manifestDeviceKeys(for: [identity])
     }
 
-    private nonisolated static func manifestDeviceKeys(
+    nonisolated static func manifestDeviceKeys(
         for identities: [DeviceIdentity?]
     ) -> Set<String> {
-        Set(identities.compactMap { identity in
-            identity?.localManifestDeviceKey
-        })
+        guard let latest = identities.last ?? nil,
+              let liveKey = latest.physicalManifestDeviceKey else { return [] }
+        let keys = Set(identities.compactMap { $0?.physicalManifestDeviceKey })
+        return keys == Set([liveKey]) ? keys : []
     }
 
     private nonisolated static func loadOwnershipRecords(
@@ -670,7 +667,7 @@ final class MapEngine: ObservableObject {
             let manifest = try? LocalTerentoManifestStore().read(
                 deviceKey: deviceKey
             )
-            return (manifest?.entries ?? []).map { entry in
+            return (manifest?.entries ?? []).filter { $0.deviceKey == deviceKey }.map { entry in
                 MapOwnershipRecord(
                     devicePath: entry.devicePath,
                     filename: entry.filename,
@@ -688,6 +685,9 @@ final class MapEngine: ObservableObject {
 
         let recoveryRecords = recoveryIdentities
             .compactMap { $0 }
+            .filter { identity in
+                identity.physicalManifestDeviceKey.map { deviceKeys.contains($0) } == true
+            }
             .flatMap { identity in
                 loadFailedInstallRecoveryRecords(for: identity)
             }
@@ -712,30 +712,27 @@ final class MapEngine: ObservableObject {
     private nonisolated static func loadFailedInstallRecoveryRecords(
         for identity: DeviceIdentity?
     ) -> [TerentoFailedInstallRecoveryRecord] {
-        guard let identity else {
-            return []
-        }
-
-        return (try? LocalTerentoFailedInstallRecoveryStore().read(
-            deviceKey: identity.localManifestDeviceKey
-        )) ?? []
+        guard let key = identity?.physicalManifestDeviceKey else { return [] }
+        return ((try? LocalTerentoFailedInstallRecoveryStore().read(deviceKey: key)) ?? [])
+            .filter { $0.deviceKey == key }
     }
 
     private nonisolated static func failedInstallRecoveryRecords(
         for inventory: UnifiedMapInventory,
         identity: DeviceIdentity
     ) -> [TerentoFailedInstallRecoveryRecord] {
+        guard let physicalKey = identity.physicalManifestDeviceKey else { return [] }
         // Recovery records are the only safe source for an incomplete write.
         // An unknown or legacy device object must remain read-only; it must
         // never be reconstructed from a filename or a heuristic size.
         let manifestEntries = (try? LocalTerentoManifestStore().read(
-            deviceKey: identity.localManifestDeviceKey
+            deviceKey: physicalKey
         ))?.entries ?? []
         var records = loadFailedInstallRecoveryRecords(for: identity)
         records.removeAll { recoveryRecord in
             manifestEntries.contains { entry in
                 recoveryRecord.matches(
-                    deviceKey: identity.localManifestDeviceKey,
+                    deviceKey: physicalKey,
                     path: entry.devicePath,
                     filename: entry.filename,
                     sizeBytes: entry.sizeBytes,
@@ -828,8 +825,9 @@ final class MapEngine: ObservableObject {
         }
 
         let inventory = result.unifiedMapInventory()
-        let recoveryRecords = currentIdentity.map {
-            Self.failedInstallRecoveryRecords(for: inventory, identity: $0)
+        let recoveryRecords = currentIdentity.flatMap { identity in
+            hasBoundOwnership(for: identity)
+                ? Self.failedInstallRecoveryRecords(for: inventory, identity: identity) : nil
         } ?? []
         return MapLifecycleInventoryBuilder().build(
             from: inventory,
@@ -849,10 +847,8 @@ final class MapEngine: ObservableObject {
         }
 
         let inventory = result.unifiedMapInventory()
-        let recoveryRecords = Self.failedInstallRecoveryRecords(
-            for: inventory,
-            identity: identity
-        )
+        let recoveryRecords = hasBoundOwnership(for: identity)
+            ? Self.failedInstallRecoveryRecords(for: inventory, identity: identity) : []
         let lifecycleInventory = MapLifecycleInventoryBuilder().build(
             from: inventory,
             recoveryRecords: recoveryRecords
@@ -968,29 +964,25 @@ final class MapEngine: ObservableObject {
         )
     }
 
-    private func ownershipManifestEntries(
-        for identity: DeviceIdentity
+    private func hasBoundOwnership(for identity: DeviceIdentity) -> Bool {
+        guard let key = identity.physicalManifestDeviceKey else { return false }
+        return ownershipManifestDeviceKeys == Set([key])
+    }
+
+    private func ownershipManifestEntries(for identity: DeviceIdentity) -> [TerentoManifestEntry] {
+        Self.ownershipManifestEntries(for: identity, scanDeviceKeys: ownershipManifestDeviceKeys)
+    }
+
+    /// Shared scan-to-lifecycle authority resolution. Injectable local storage
+    /// lets regression tests exercise the actual namespace selection path.
+    nonisolated static func ownershipManifestEntries(
+        for identity: DeviceIdentity,
+        scanDeviceKeys: Set<String>,
+        store: LocalTerentoManifestStore = LocalTerentoManifestStore()
     ) -> [TerentoManifestEntry] {
-        let keys = ownershipManifestDeviceKeys.isEmpty
-            ? Set([identity.localManifestDeviceKey])
-            : ownershipManifestDeviceKeys.union([identity.localManifestDeviceKey])
-
-        var orderedKeys: [String] = []
-        if let preferredOwnershipManifestDeviceKey,
-           keys.contains(preferredOwnershipManifestDeviceKey) {
-            orderedKeys.append(preferredOwnershipManifestDeviceKey)
-        }
-        if keys.contains(identity.localManifestDeviceKey),
-           !orderedKeys.contains(identity.localManifestDeviceKey) {
-            orderedKeys.append(identity.localManifestDeviceKey)
-        }
-        orderedKeys.append(contentsOf: keys.sorted().filter {
-            !orderedKeys.contains($0)
-        })
-
-        return orderedKeys.flatMap { deviceKey in
-            (try? LocalTerentoManifestStore().read(deviceKey: deviceKey))?.entries ?? []
-        }
+        guard let key = identity.physicalManifestDeviceKey,
+              scanDeviceKeys == Set([key]) else { return [] }
+        return ((try? store.read(deviceKey: key))?.entries ?? []).filter { $0.deviceKey == key }
     }
 
     /// Refreshes the device-derived inventory after a successful lifecycle
@@ -1590,7 +1582,6 @@ final class MapEngine: ObservableObject {
             installPackageIDs.contains($0.item.package.id)
         }
         let sessionIdentity = currentIdentity
-        let sessionManifestDeviceKeys = ownershipManifestDeviceKeys
         let customPackages = plan.installItems
             .map(\.package)
             .filter { $0.sourceKind == .custom }
@@ -1644,10 +1635,7 @@ final class MapEngine: ObservableObject {
                                 reader: lifecycleReader,
                                 catalog: catalog,
                                 ownershipRecords: Self.loadOwnershipRecords(
-                                    forDeviceKeys: Set(
-                                        sessionManifestDeviceKeys
-                                            .union(Self.manifestDeviceKeys(for: identity))
-                                    ),
+                                    forDeviceKeys: Self.manifestDeviceKeys(for: [sessionIdentity, identity]),
                                     recoveryIdentities: [sessionIdentity, identity]
                                 ),
                                 additionalPackages: customPackages
