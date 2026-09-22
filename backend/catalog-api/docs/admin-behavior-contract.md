@@ -265,18 +265,24 @@ the GitHub `.dmg`/`.zip` panel: it uses the canonical acquisition populations
 and formulas in [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
 The visible labels are `Downloads`, `Failed downloads`, and `Download success`.
 
-The Activity by provider table uses this owner-approved column order:
-`Provider`, `Downloads`, `Failed downloads`, `Installs`, `Successful updates`,
-`Failed updates`, `Install success`, `Update success`, `Last install`, and
-`Average download time`. `Downloads` is terminal `DOWNLOAD_SUCCEEDED` and
-`Failed downloads` is terminal `DOWNLOAD_FAILED`; interrupted, cancelled,
-stale, and missing outcomes are not failed downloads. `Installs`, success rates,
-and update counts use the canonical populations and formulas in the statistics
-contract. `Last install` shows the latest successful fresh-install timestamp in
-the selected scope and timezone, or an em dash when none exists; updates,
-downloads, and provider health checks do not advance it. Average download time
-is shown as `mm:ss` when measured and as `—` when unavailable, never as `0`.
-The final column is therefore Average download time, not Last install. Admin
+Activity by provider has a two-row header: `Provider`; `Downloads`, `Installs`,
+and `Updates`, each with `Successful`, `Failed`, and `Rate`; then `Last install`.
+Admin installation and statistics UI uses `Installs` for the fresh main-map
+installation population and must not render `Fresh install`, `Fresh installs`,
+or `Fresh install success` as visible labels or copy. This vocabulary rule does
+not rename internal identifiers (for example `freshMapAttemptCount`) or the
+canonical population terminology in `contracts/STATISTICS_CONTRACT.md`.
+Provider-health `Freshness` describes catalog recency and is unrelated to
+installation vocabulary.
+The visible `Installs` group is the canonical fresh main-map install population;
+updates remain separate. Each provider rate divides its successful terminal
+count by successful plus failed terminal counts in that same group. A zero
+denominator displays `—`. Download failures include only terminal
+`DOWNLOAD_FAILED`, not interrupted, cancelled, stale, or missing outcomes.
+`Last install` shows the latest successful fresh-install timestamp in the
+selected scope and timezone, or `—` when none exists; updates, downloads, and
+provider health checks do not advance it. Average download time remains a
+separate provider metric and is not a column in this table. Admin
 tables keep descriptive text and dates left-aligned, counters and percentages
 centered, and status badges centered, with column headers aligned to their
 values. Sort controls retain their keyboard, focus, and `aria-sort` behavior.
@@ -289,9 +295,8 @@ synthesized from installs, and `Installs > Downloads` is valid when the two
 telemetry streams are incomplete. Install success, update success, and download
 success use the canonical populations and formulas in
 [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-The Activity by provider table shows Downloads and a separate Failed downloads
-column; failed downloads contains only terminal `DOWNLOAD_FAILED` and never
-interrupted or cancelled activity.
+Overview keeps the same three-metric layout per KPI group and separates each
+Failed row with the shared Map statistics KPI divider.
 
 The GitHub chart says `Observed download increases between checks`. In the 24h
 view it is a discrete hourly chart: each canonical hour has one equal-width

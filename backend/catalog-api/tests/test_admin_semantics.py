@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from html.parser import HTMLParser
 import inspect
 import json
 from datetime import datetime, timezone
@@ -189,6 +190,39 @@ class MissingReviewDatabase(Database):
 
 
 class AdminSemanticsTests(unittest.TestCase):
+    def test_rendered_admin_installation_and_statistics_copy_avoids_fresh_install_labels(self):
+        class VisibleText(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.hidden = 0
+                self.parts = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag in ("script", "style", "template"):
+                    self.hidden += 1
+
+            def handle_endtag(self, tag):
+                if tag in ("script", "style", "template"):
+                    self.hidden -= 1
+
+            def handle_data(self, data):
+                if not self.hidden:
+                    self.parts.append(data)
+
+        pages = {
+            "overview": overview_page({}, {"username": "operator"}, "csrf"),
+            "installations": dashboard_page([], {"username": "operator"}, "csrf"),
+            "statistics": map_statistics_page({"rows": []}, [], {"username": "operator"}, "csrf"),
+        }
+        forbidden = ("Fresh install", "Fresh installs", "Fresh install success")
+        for name, body in pages.items():
+            with self.subTest(page=name):
+                parser = VisibleText()
+                parser.feed(body.decode())
+                visible = " ".join(parser.parts).casefold()
+                for phrase in forbidden:
+                    self.assertNotIn(phrase.casefold(), visible)
+
     @staticmethod
     def _node() -> str:
         configured = os.environ.get("TERENTO_NODE_BIN", "").strip()
@@ -2327,7 +2361,14 @@ class AdminSemanticsTests(unittest.TestCase):
             body.count("<section class='diagnostic-action-form github-review github-review-collapsed'"),
             body.count("<dialog class='diagnostic-detail-dialog'"),
         )
-        self.assertIn(".diagnostic-detail-dialog{width:min(880px,calc(100% - 32px))", body)
+        self.assertIn(".diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px))", body)
+        self.assertNotIn("width:min(860px,calc(100% - 32px))", body)
+        self.assertIn(".github-review{grid-column:1/-1;overflow-wrap:anywhere}", body)
+        self.assertIn(".diagnostic-technical-details{margin:10px 0 0;padding:9px 11px", body)
+        self.assertNotIn(".diagnostic-technical-details{margin:10px 0 0;padding:0", body)
+        self.assertIn(".diagnostic-id code{overflow-wrap:anywhere", body)
+        self.assertIn(".diagnostic-technical-details dd{min-width:0", body)
+        self.assertIn(".diagnostic-detail-dialog{width:calc(100% - 32px);max-width:none", body)
         self.assertIn("<details class='github-issue-disclosure'>", body)
         self.assertIn("Manage linked issue", body)
         self.assertIn("Change linked issue", body)
@@ -2668,10 +2709,12 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn(">Downloads</th><th scope='col' class='column-number'>Failed downloads</th>", body)
+        self.assertIn("<th scope='colgroup' colspan='3'>Downloads</th><th scope='colgroup' colspan='3'>Installs</th><th scope='colgroup' colspan='3'>Updates</th>", body)
+        self.assertEqual(body.split("id='map-statistics-provider-table'", 1)[1].split("</thead>", 1)[0].count("<th scope='col' class='column-number'>"), 9)
         script = _map_statistics_script()
         self.assertIn("row.event_type === 'DOWNLOAD_FAILED' && row.outcome === 'FAILED'", script)
-        self.assertIn("emptyRow(9)", script)
+        self.assertIn("emptyRow(11)", script)
+        self.assertIn("table.closest('.device-sticky-header, .map-statistics-provider-table')", body)
 
         harness = r"""
         const assert = require('node:assert/strict');
@@ -2712,13 +2755,80 @@ class AdminSemanticsTests(unittest.TestCase):
         eval(process.argv[1]);
         const html = nodes['#provider-statistic-rows'].innerHTML;
         assert.match(html, /<td>OpenTopoMap<\/td><td class="column-number numeric">19<\/td><td class="column-number numeric">2<\/td>/);
-        assert.equal((html.match(/<td/g) || []).length, 9);
+        assert.equal((html.match(/<td/g) || []).length, 11);
         assert.ok(!html.includes('>3<'));
         const popular = nodes['#all-map-rows'].innerHTML;
         assert.match(popular, /<div class="popular-map-name-content"><button[^>]*>French Republic<\/button><small class="popular-map-detail">OpenTopoMap ·/);
         assert.ok(!popular.includes('<strong><button'));
         """
         self._run_node(harness, script)
+
+    def test_activity_by_provider_renders_three_independent_rate_groups(self):
+        fixture = {
+            "opentopomap": (14, 6), "maprando": (23, 2),
+            "freizeitkarte": (19, 6), "bbbike": (8, 1), "custom": (20, 3),
+        }
+        rows = []
+        for provider, (successful, failed) in fixture.items():
+            rows.extend((
+                {"provider_id": provider, "event_type": event_type, "outcome": outcome,
+                 "operation_count": count, "component_kind": "main",
+                 "last_occurred_at": "2026-09-18T09:39:00Z"}
+                for event_type, outcome, count in (
+                    ("INSTALL_SUCCEEDED", "SUCCEEDED", successful),
+                    ("INSTALL_FAILED", "FAILED", failed),
+                )
+            ))
+        rows.extend([
+            {"provider_id": "opentopomap", "event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 84},
+            {"provider_id": "opentopomap", "event_type": "DOWNLOAD_FAILED", "outcome": "FAILED", "operation_count": 4},
+            {"provider_id": "opentopomap", "event_type": "DOWNLOAD_INTERRUPTED", "outcome": "UNKNOWN", "operation_count": 7},
+            {"provider_id": "opentopomap", "event_type": "DOWNLOAD_STARTED", "outcome": "STARTED", "operation_count": 3},
+            {"provider_id": "maprando", "event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1, "last_occurred_at": "2026-09-19T09:39:00Z"},
+            {"provider_id": "maprando", "event_type": "MAP_UPDATE_FAILED", "outcome": "FAILED", "operation_count": 1},
+        ])
+        summary = _map_statistics_summary(rows)
+        self.assertEqual((summary["completedDownloads"], summary["failedDownloads"], summary["downloadSuccessRate"]), (84, 4, 84 / 88 * 100))
+        self.assertEqual((summary["completedInstalls"], summary["failedInstalls"], summary["installSuccessRate"]), (84, 18, 84 / 102 * 100))
+        self.assertEqual((summary["completedMapUpdates"], summary["failedMapUpdates"]), (1, 1))
+        harness = r"""
+        const assert = require('node:assert/strict');
+        const payload = JSON.parse(process.argv[2]);
+        const nodes = {};
+        const selectors = new Set(['#map-statistics-range','#map-statistics-provider','#map-statistics-map',
+          '#map-statistics-region','#map-statistics-event','#map-statistics-outcome','#map-statistics-status',
+          '#map-rows','#top-region-rows','#all-map-rows','#all-maps-page','#all-maps-prev','#all-maps-next',
+          '#map-statistics-rows','#provider-statistic-rows']);
+        const node = selector => selectors.has(selector) ? (nodes[selector] ||= {
+          value:'', textContent:'', innerHTML:'', hidden:false, disabled:false, open:false, dataset:{},
+          classList:{toggle(){}}, addEventListener(){}, querySelector(){return null}
+        }) : null;
+        global.document = {querySelector:node,querySelectorAll:()=>[]};
+        global.window = {terentoAdminProviders:payload.providers,terentoMapStatisticsFilters:{},
+          terentoWorldMapCountryAliases:{},terentoMapStatistics:payload.statistics,addEventListener(){}};
+        eval(process.argv[1]);
+        const html = nodes['#provider-statistic-rows'].innerHTML;
+        const byProvider = Object.fromEntries([...html.matchAll(/<tr><td>(.*?)<\/td>(.*?)<\/tr>/g)].map(match => [
+          match[1], [...match[2].matchAll(/<td[^>]*>(.*?)<\/td>/g)].map(cell => cell[1].replace(/<[^>]*>/g,''))
+        ]));
+        assert.deepEqual(byProvider.OpenTopoMap.slice(0,9), ['84','4','95.5%','14','6','70%','0','0','—']);
+        assert.deepEqual(byProvider.MapRando.slice(3,9), ['23','2','92%','1','1','50%']);
+        assert.deepEqual(byProvider.Freizeitkarte.slice(3,6), ['19','6','76%']);
+        assert.deepEqual(byProvider.BBBike.slice(3,6), ['8','1','88.9%']);
+        assert.deepEqual(byProvider.custom.slice(0,9), ['0','0','—','20','3','87.0%','0','0','—']);
+        assert.equal(byProvider.MapRando[9].includes('2026-09-18'),true,'updates do not advance Last install');
+        """
+        providers = [{"id": key, "name": name} for key, name in (
+            ("opentopomap", "OpenTopoMap"), ("maprando", "MapRando"),
+            ("freizeitkarte", "Freizeitkarte"), ("bbbike", "BBBike"),
+            ("custom", "custom"),
+        )]
+        try:
+            self._run_node(harness, _map_statistics_script(), json.dumps({
+                "providers": providers, "statistics": {"rows": rows, "summary": summary},
+            }))
+        except subprocess.CalledProcessError as error:
+            self.fail(error.stderr)
 
     def test_map_statistics_keeps_update_success_and_failure_counts_separate(self):
         summary = _map_statistics_summary([
@@ -2760,8 +2870,11 @@ class AdminSemanticsTests(unittest.TestCase):
             self.assertNotIn(text, body)
         self.assertEqual(main.count("class='map-statistics-kpi-group'"), 3)
         self.assertEqual(main.count("id='map-statistics-metrics'"), 1)
-        for text in ("Downloads", "Fresh installs", "Updates", "Diagnostic coverage", "Attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
+        for text in ("Downloads", "Installs", "Updates", "Diagnostic coverage", "Attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
             self.assertIn(text, main)
+        provider_head = main.split("id='map-statistics-provider-table'", 1)[1].split("</thead>", 1)[0]
+        self.assertNotIn("Fresh installs", provider_head)
+        self.assertNotIn("Fresh install success", provider_head)
         self.assertIn("class='admin-error-counter' data-stat='failedMapUpdates'>0</strong>", main)
         self.assertNotIn("map-statistics-reliability", main)
 
