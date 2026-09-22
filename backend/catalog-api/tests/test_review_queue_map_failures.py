@@ -122,6 +122,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
             CREATE TABLE compatibility_evidence_event(operation_id TEXT,
                 provider TEXT, region TEXT, phase_outcome TEXT, is_local_test BOOLEAN,
                 diagnostic_status TEXT, map_result_index INTEGER);
+            CREATE TABLE admin_map_review_task(event_id TEXT, task_type TEXT, status TEXT);
             INSERT INTO map_provider VALUES ('fzk', 'Freizeitkarte');
             INSERT INTO map_package VALUES ('fr', 'fzk', 'France', 'FRA', 'FR', 'France');
         ''')
@@ -132,8 +133,10 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
                        map_result_index=0):
             db.execute('INSERT INTO compatibility_evidence_event VALUES (?, ?, ?, ?, ?, ?, ?)',
                        (key, provider, region, 'FAILED', local, status, map_result_index))
-        for key in ('missing', 'active', 'resolved', 'alias', 'other-region', 'other-provider', 'test-report'):
+        for key in ('missing', 'active', 'resolved', 'alias', 'other-region', 'other-provider', 'test-report', 'dismissed'):
             event(key)
+        db.execute("INSERT INTO admin_map_review_task VALUES (?, ?, ?)",
+                   ('dismissed', 'MISSING_DIAGNOSTIC', 'DISMISSED'))
         diagnostic('active')
         diagnostic('resolved', status='RESOLVED')
         diagnostic('alias', region='FRA')
@@ -158,18 +161,21 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
             'data': {'hasData': True, 'missingDiagnosticFailureCount': 1,
                      'missingDiagnosticFailures': [{
                          'event_type': 'INSTALL_FAILED', 'outcome': 'FAILED',
+                         'event_id': 'a8098c1a-f86e-11da-bd1a-00112444be1e',
                          'provider_id': 'fzk', 'provider_name': 'Freizeitkarte',
                          'region': 'France', 'map_package_name': 'France',
                          'occurred_at': '2026-09-15T19:47:00Z',
                      }]},
-            'compatibility': {'allTimeOpenErrorCount': 0},
+            'compatibility': {'allTimeOpenErrorCount': 0, 'missingDiagnostics': 1},
         }, {'username': 'operator'}, 'csrf').decode()
         panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split('</section>', 1)[0]
         self.assertIn('Install failed', panel)
         self.assertIn('No device diagnostic report received', panel)
         self.assertIn('Missing diagnostics <strong>1</strong>', panel)
         self.assertIn("Failure diagnostics <strong>—</strong>", panel)
-        self.assertIn('period=all&amp;eventType=INSTALL_FAILED', panel)
+        self.assertIn("/admin#overview-attention-title", panel)
+        self.assertIn('eventId=a8098c1a-f86e-11da-bd1a-00112444be1e', panel)
+        self.assertIn("aria-label='Dismiss review item'", panel)
         self.assertIn('France', panel)
         self.assertNotIn('overview-attention-empty', body)
 class PreinstallDownloadFailureTests(unittest.TestCase):

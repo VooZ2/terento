@@ -7,6 +7,7 @@ import threading
 import unittest
 from datetime import datetime, timezone
 from http.client import HTTPConnection
+from urllib.parse import urlencode
 
 from terento_catalog.http_api import CatalogService, make_handler
 from terento_catalog.db import Database
@@ -102,6 +103,31 @@ class FakeDatabase(Database):
         ], datetime(2026, 5, 3, tzinfo=timezone.utc)
 
 
+class AdminReviewActionService:
+    def __init__(self) -> None:
+        self.calls = []
+        self.result = True
+        self.failure = None
+
+    def admin_session(self, session_token):
+        return {"id": 7} if session_token == "session" else None
+
+    def csrf_valid(self, session, csrf_token):
+        return csrf_token == "csrf"
+
+    def set_missing_diagnostic_review(self, event_id, *, status, admin_user_id, note=None, request_id=None):
+        if self.failure:
+            raise self.failure
+        self.calls.append({
+            "event_id": event_id,
+            "status": status,
+            "admin_user_id": admin_user_id,
+            "note": note,
+            "request_id": request_id,
+        })
+        return self.result
+
+
 class HTTPAPITests(unittest.TestCase):
     def setUp(self) -> None:
         self.server = ThreadingHTTPServer(
@@ -133,6 +159,71 @@ class HTTPAPITests(unittest.TestCase):
         response_body = response.read()
         connection.close()
         return response, response_body
+
+    def test_missing_diagnostic_dismiss_api_requires_csrf_and_targets_one_event(self) -> None:
+        service = AdminReviewActionService()
+        server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(service))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            event_id = "a8098c1a-f86e-11da-bd1a-00112444be1e"
+            body = urlencode({"csrf_token": "csrf", "event_id": event_id}).encode()
+            connection = HTTPConnection(*server.server_address)
+            connection.request(
+                "POST", "/admin/review/missing-diagnostics/dismiss", body=body,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Cookie": "terento_admin_session=session",
+                    "X-Request-Id": "review-test-1",
+                },
+            )
+            response = connection.getresponse()
+            response.read()
+            connection.close()
+            self.assertEqual(response.status, 303)
+            self.assertEqual(
+                response.headers["Location"],
+                f"/admin?reviewAction=dismissed&eventId={event_id}",
+            )
+            self.assertEqual(service.calls[0]["event_id"], event_id)
+            self.assertEqual(service.calls[0]["status"], "DISMISSED")
+            self.assertEqual(service.calls[0]["admin_user_id"], 7)
+            self.assertEqual(service.calls[0]["request_id"], "review-test-1")
+
+            connection = HTTPConnection(*server.server_address)
+            bad_body = urlencode({"csrf_token": "wrong", "event_id": event_id}).encode()
+            connection.request(
+                "POST", "/admin/review/missing-diagnostics/dismiss", body=bad_body,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Cookie": "terento_admin_session=session",
+                },
+            )
+            response = connection.getresponse()
+            response.read()
+            connection.close()
+            self.assertEqual(response.status, 403)
+            self.assertEqual(len(service.calls), 1)
+
+            service.failure = RuntimeError("database unavailable")
+            connection = HTTPConnection(*server.server_address)
+            connection.request(
+                "POST", "/admin/review/missing-diagnostics/dismiss", body=body,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Cookie": "terento_admin_session=session",
+                },
+            )
+            response = connection.getresponse()
+            response_body = response.read()
+            connection.close()
+            self.assertEqual(response.status, 503)
+            self.assertEqual(json.loads(response_body)["error"], "missing_diagnostic_review_unavailable")
+            self.assertEqual(len(service.calls), 1)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
     def test_catalog_contract_and_cache_headers(self) -> None:
         response, body = self.request("/maps/catalog.json")

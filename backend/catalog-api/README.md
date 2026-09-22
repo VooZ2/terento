@@ -129,6 +129,11 @@ runtime dependencies.
 - CSRF-protected `POST /admin/providers/<id>/check`, `/state`, `/collect`, and
   `/retire` operate only on known server-side adapters; they cannot upload
   parser or executable provider code.
+- CSRF-protected `POST /admin/review/missing-diagnostics/dismiss` and `/undo`
+  dismiss or reopen one exact map-event review gap. The operator state and
+  transition audit are separate from immutable map telemetry; the action is
+  idempotent and does not change statistics, coverage, compatibility, or
+  publication data.
 - `POST /map-events` accepts a separate rate-limited, idempotent,
   privacy-minimised map-operation event contract. `GET
   /admin/map-statistics.json` exposes its private aggregates and never returns

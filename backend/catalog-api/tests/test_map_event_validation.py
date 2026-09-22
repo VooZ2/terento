@@ -71,3 +71,12 @@ class MapEventValidationTests(unittest.TestCase):
         for label in (None, "", "development", "1.0", "1.0.0-local ", "v1.0.0"):
             with self.subTest(label=label), self.assertRaises(MapEventValidationError):
                 validate_map_event(json.dumps({**base, "releaseLabel": label}).encode())
+
+    def test_statistics_event_id_filter_is_a_validated_exact_identity(self):
+        event_id = "a8098c1a-f86e-11da-bd1a-00112444be1e"
+        self.assertEqual(
+            validate_statistics_filters({"eventId": event_id})["eventId"],
+            event_id,
+        )
+        with self.assertRaisesRegex(MapEventValidationError, "invalid_event_id_filter"):
+            validate_statistics_filters({"eventId": "not-an-event"})

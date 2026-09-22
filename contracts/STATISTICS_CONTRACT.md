@@ -210,6 +210,12 @@ The trend `state` carries interval continuity and rendering semantics;
 `unconfirmed`, `mixed`, or `changed` population evidence.
 
 - `baseline`: the first observation in the retained history; it has no delta.
+Every trusted non-negative interval is rendered as a normal bar, including a
+trusted `+1` in the final slot. A counter decrease or confirmed population
+change remains an unknown interval and is rendered with a visible `Unknown`
+label and accessible description; it is never represented as a dashed
+zero-only value.
+
 - `legacy`: a nonnegative counter delta retained from an interval where one or
   both observations lack the post-057 asset count or population fingerprint.
   It is a legacy observed counter delta, not a verified count of individual
@@ -267,6 +273,17 @@ labelled as a count of unique GitHub issues. A failed queue query is
 Queue actions use the operation-level diagnostic scope when a batch contains
 multiple map-result rows; this does not merge those rows in installation
 statistics or change their per-map historical outcomes.
+
+A map-operation install failure without a matching device diagnostic is a
+separate review task for the exact immutable `map_download_event.event_id`.
+Its dismiss/reopen state is stored in the operator-only review tables and is
+audited with administrator, time, transition and exact target; it never edits
+map telemetry, install outcomes, coverage, or compatibility evidence. The
+Overview dismiss action is idempotent, requires no reason, and offers Undo.
+Dismissed gaps are excluded from the active queue, while a later matching
+diagnostic independently removes the gap through normal reconciliation. A
+statistics link for a gap carries the exact `eventId` and opens Event detail;
+aggregate population KPIs remain unchanged.
 
 Across API and UI read models, numeric zero, unknown, unavailable, stale, and
 partial values are distinct. A present zero remains `0`; missing or invalid

@@ -418,7 +418,7 @@ class CatalogService:
         filters = validate_statistics_filters(filter_query)
         population_filters = {
             key: value for key, value in filters.items()
-            if key not in {"eventType", "outcome"}
+            if key not in {"eventType", "outcome", "eventId"}
         }
         try:
             detail_page = max(1, int(query.get("detailPage", "1") or "1"))
@@ -694,6 +694,23 @@ class CatalogService:
 
     def admin_review_summary(self) -> dict[str, Any]:
         return self.database.admin_review_summary()
+
+    def set_missing_diagnostic_review(
+        self,
+        event_id: str,
+        *,
+        status: str,
+        admin_user_id: int | None,
+        note: str | None = None,
+        request_id: str | None = None,
+    ) -> bool:
+        return self.database.set_missing_diagnostic_review(
+            event_id,
+            status=status,
+            admin_user_id=admin_user_id,
+            note=note,
+            request_id=request_id,
+        )
 
     def local_test_data(self) -> dict[str, Any]:
         return self.database.local_test_telemetry_summary()
@@ -1202,6 +1219,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     "githubIssuesInProgress": None,
                     "identityPending": None,
                     "readyToPublish": None,
+                    "missingDiagnostics": None,
                     "pendingReviewTasks": None,
                     "total": None,
                 }}
@@ -1427,6 +1445,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         service.admin_overview(period, time_zone),
                         session,
                         csrf_token,
+                        review_action=query.get("reviewAction", [""])[-1],
+                        review_event_id=query.get("eventId", [""])[-1],
                     )
                 except Exception:
                     LOGGER.exception("admin overview failed")
@@ -1709,6 +1729,51 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "local_test_data_purge_unavailable"}, send_body=True, cache_control="no-store")
                     return
                 self._redirect("/admin/test-data?purged=1", send_body=True)
+                return
+            if request_path in {
+                "/admin/review/missing-diagnostics/dismiss",
+                "/admin/review/missing-diagnostics/undo",
+            }:
+                is_dismiss = request_path.endswith("/dismiss")
+                try:
+                    event_id = str(UUID(form.get("event_id", "").strip()))
+                    changed = service.set_missing_diagnostic_review(
+                        event_id,
+                        status="DISMISSED" if is_dismiss else "OPEN",
+                        admin_user_id=int(session["id"]),
+                        note=form.get("note", "").strip() or None,
+                        request_id=self._request_id(),
+                    )
+                    if not changed:
+                        self._send_json(
+                            HTTPStatus.NOT_FOUND,
+                            {"error": "missing_diagnostic_review_not_found"},
+                            send_body=True,
+                            cache_control="no-store",
+                        )
+                        return
+                except ValueError:
+                    self._send_json(
+                        HTTPStatus.BAD_REQUEST,
+                        {"error": "invalid_missing_diagnostic_review"},
+                        send_body=True,
+                        cache_control="no-store",
+                    )
+                    return
+                except Exception:
+                    LOGGER.exception("missing diagnostic review mutation failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "missing_diagnostic_review_unavailable"},
+                        send_body=True,
+                        cache_control="no-store",
+                    )
+                    return
+                action = "dismissed" if is_dismiss else "reopened"
+                self._redirect(
+                    f"/admin?reviewAction={action}&eventId={quote(event_id, safe='')}",
+                    send_body=True,
+                )
                 return
             if request_path == "/admin/account":
                 try:
