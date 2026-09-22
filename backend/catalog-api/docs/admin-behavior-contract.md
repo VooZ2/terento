@@ -534,9 +534,10 @@ formulas, sorting, filtering, pagination, or device actions.
 
 - System health includes exactly one **IndexNow submissions** card. It reuses
   the common health badge, status sorting/filtering, disclosure behavior, and
-  authenticated workflow link. The collapsed view shows the safe result,
-  last real submission or `No submissions yet`, and pending URL count when the
-  sender knows it. The expanded view distinguishes Last check, Last
+  authenticated workflow link. Its collapsed summary contains only the
+  disclosure affordance, the title, and the common health badge. The expanded
+  view shows the safe result, last real submission or `No submissions yet`,
+  pending URL count when the sender knows it, and distinguishes Last check, Last
   submission, Last successful submission (HTTP 200), execution URL/HTTP
   counts, pending/oldest-pending values, safe error/action text, and a maximum
   ten-URL public preview. It includes the exact explanation `Submission status

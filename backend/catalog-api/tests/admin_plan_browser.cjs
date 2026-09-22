@@ -17,6 +17,17 @@ const {chromium}=require(process.argv[2]);
     const boxes=await page.locator('[data-health-status]').evaluateAll(es=>es.slice(0,4).map(e=>({x:e.offsetLeft,y:e.offsetTop})));
     const columns=width===1440?3:width===900?2:1;
     assert.equal(boxes.filter(b=>b.y===boxes[0].y).length,columns,`health/${width}: expected columns`);
+    const indexnow=page.locator("details[data-health-name='indexnow submissions']");
+    assert.equal(await indexnow.count(),1,'one IndexNow card');
+    const indexnowSummary=indexnow.locator('summary');
+    assert.equal(await indexnowSummary.locator('h2').innerText(),'IndexNow submissions');
+    assert.equal(await indexnowSummary.locator('.system-health-badge').count(),1,'IndexNow summary has one health badge');
+    assert.equal(await indexnowSummary.locator('.health-issue').count(),0,'IndexNow summary has no result detail');
+    assert(!/Last check|Pending URLs|Validation pending/i.test(await indexnowSummary.innerText()),'IndexNow summary has no expanded details');
+    await indexnowSummary.focus(); await page.keyboard.press('Space');
+    assert.match(await indexnow.locator('.disclosure-body').innerText(),/validation message remains readable/);
+    assert.match(await indexnow.locator('.disclosure-body').innerText(),/https:\/\/terento\.app\/guides\/install-garmin-maps-mac\//);
+    assert.equal(await page.locator('[data-health-name]').first().locator('.health-issue').count(),1,'other health card keeps its summary issue');
    }
    if(name==='overview'){
     const metrics=await page.locator('.overview-map-total').evaluateAll(es=>es.map(e=>({height:e.getBoundingClientRect().height,font:getComputedStyle(e.querySelector('strong')).fontSize,weight:getComputedStyle(e.querySelector('strong')).fontWeight})));
