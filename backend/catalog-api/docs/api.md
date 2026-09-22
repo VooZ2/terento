@@ -759,12 +759,10 @@ provider-table columns, and chart presentation are defined in
 [`admin-behavior-contract.md`](admin-behavior-contract.md); statistical
 populations and formulas are defined in
 [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-In the current HTML runtime, Activity by provider has nine columns:
-`Provider`, `Downloads`, `Failed downloads`, `Fresh installs`, `Successful
-updates`, `Failed updates`, `Fresh install success`, `Update success`, and
-`Last install`. It does not yet render `Average download time`; the target
-10-column presentation remains an Admin contract acceptance criterion, not an
-implemented API/UI claim.
+In the current HTML runtime, Activity by provider groups Downloads, Installs,
+and Updates under Successful, Failed, and Rate subcolumns, with Provider and
+Last install outside those groups. Average download time is not part of this
+table. The API populations and payload are unchanged.
 Popular-map grouping still uses only the eligible successful fresh main-map
 population, and the response searches the complete eligible set before any
 All maps pagination. Provider activity is an independent projection and does
