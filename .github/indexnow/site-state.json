@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "7c1f211fb396b761456c285376354a88fee7a154",
+    "commit": "f93b4354ed8926ca1a23abdd26cb5c388d9e5922",
     "pages": [
       {
         "path": "/",
@@ -295,19 +295,26 @@
     ]
   },
   "indexNow": {
-    "accepted": [],
+    "accepted": [
+      {
+        "url": "https://terento.app/",
+        "fingerprint": "75546ebd5d6fd560f752f55b9d8f8040c1b5d87055ddc2590d0012f47e723cfb",
+        "status": 200,
+        "acceptedAt": "2026-09-22T05:20:14Z"
+      }
+    ],
     "pending": [],
-    "lastSubmissionAt": null,
-    "lastSuccessfulSubmissionAt": null,
-    "lastResult": "bootstrap",
+    "lastSubmissionAt": "2026-09-22T05:20:13Z",
+    "lastSuccessfulSubmissionAt": "2026-09-22T05:20:13Z",
+    "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-09-21T21:45:06Z",
-    "status": "bootstrap",
-    "bootstrap": true,
-    "planned": 0,
-    "accepted": 0,
+    "at": "2026-09-22T05:20:14Z",
+    "status": "accepted",
+    "bootstrap": false,
+    "planned": 1,
+    "accepted": 1,
     "pending": 0,
     "previousAccepted": 0
   }
