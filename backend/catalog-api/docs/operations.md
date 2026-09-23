@@ -77,26 +77,28 @@ ledger exactly at 001–061 (or reports safe `ALREADY APPLIED` for exactly
 insert execute in one database transaction. For the current reviewed runner,
 any 063+ migration file is reported by name and rejected before DB execution.
 
-`GET /health` is read-only in the current source: it checks DB readiness but
-does not run retention. The existing scheduler performs retention once per
-configured collector cycle. The local default is daily at 03:00 UTC, preserving
-the 24-month cutoff; with a daily deployed schedule, deletion can lag by up to
-one day. The production `COLLECTOR_SCHEDULE_UTC` value has not been verified,
-and this code change has not been deployed. See the
+`GET /health` is read-only in this candidate source: it checks DB readiness
+but does not run retention. The existing scheduler performs retention once
+per configured collector cycle. The local default is daily at 03:00 UTC, and
+the production scheduler configuration was read as
+`COLLECTOR_SCHEDULE_UTC=03:00` on 2026-09-23. The 24-month cutoff is unchanged;
+daily cleanup may lag by up to 24 hours, which is accepted behavior. This
+candidate implementation has not been deployed. See the
 [production operations protocol](production-operations-protocol.md) and
 [recovery procedure](production-db-recovery.md) for exact gates. Fresh
-PostgreSQL-only backup creation/restore validation remains unproven: the host
-does not have `pg_dump`, the DB container has `pg_dump` 16.15, `pg_restore` and
-the live identity were not reverified, and no encrypted destination is yet
-approved. The old Hostinger points are whole-VPS restores and require owner
-selection and acceptance.
+PostgreSQL-only backup creation/restore validation remains unproven: the DB
+container provides `pg_dump` and `pg_restore` 16.15, matching the live server
+version, and the live DB identity/ledger were read-only verified. No approved
+encrypted off-host destination or isolated restore evidence is available. The
+Hostinger points are whole-VPS restores and require owner selection and
+acceptance; they are not a normal schema rollback.
 
-062 is still **NOT READY** for live approval or execution: no immutable
-candidate exists for this dirty working tree, required sources are not tracked,
-the new helper has not been installed, and the recovery point gate remains
-open. Do not call Docker/migrator directly, create a backup, deploy, or run the
-migration without separate authorization. If execution status is uncertain,
-use the SELECT-only postcheck; never replay SQL or downgrade.
+062 is still **NOT READY** for live approval or execution: the tracked source
+candidate is clean, but no immutable image/receipt or validated PostgreSQL
+recovery point exists; the new helper has not been installed, and the recovery
+point gate remains open. Do not call Docker/migrator directly, create a backup,
+deploy, or run the migration without separate authorization. If execution
+status is uncertain, use the SELECT-only postcheck; never replay SQL or downgrade.
 
 ## Scheduled collection
 

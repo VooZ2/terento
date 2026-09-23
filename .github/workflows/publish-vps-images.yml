@@ -6,6 +6,14 @@ on:
       role:
         required: true
         type: string
+      candidate_source_ref:
+        required: false
+        type: string
+        default: ''
+      candidate_source_sha:
+        required: false
+        type: string
+        default: ''
     outputs:
       digest:
         description: Immutable digest of the tested image at the caller commit
@@ -25,7 +33,17 @@ permissions:
 
 jobs:
   publish:
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    if: >-
+      github.repository == 'VooZ2/terento' &&
+      (
+        (inputs.candidate_source_ref == '' && inputs.candidate_source_sha == '' && github.ref == 'refs/heads/beta') ||
+        (
+          inputs.candidate_source_ref == 'refs/heads/terento/062-production-candidate' &&
+          inputs.candidate_source_sha == github.sha &&
+          github.ref == inputs.candidate_source_ref &&
+          github.workflow_ref == 'VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -44,11 +62,28 @@ jobs:
       - name: Validate release source and target
         env:
           ROLE: ${{ inputs.role }}
+          CANDIDATE_SOURCE_REF: ${{ inputs.candidate_source_ref }}
+          CANDIDATE_SOURCE_SHA: ${{ inputs.candidate_source_sha }}
         shell: bash
         run: |
           set -euo pipefail
           [[ "$ROLE" == site || "$ROLE" == api ]]
-          [[ "$GITHUB_REF" == refs/heads/beta ]]
+          [[ "$GITHUB_REPOSITORY" == "VooZ2/terento" ]]
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
+          git show --check --oneline "$GITHUB_SHA"
+          if [[ -n "$CANDIDATE_SOURCE_REF" || -n "$CANDIDATE_SOURCE_SHA" ]]; then
+            [[ "$ROLE" == api ]]
+            [[ "$CANDIDATE_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]
+            [[ "$CANDIDATE_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+            [[ "$GITHUB_REF" == "$CANDIDATE_SOURCE_REF" ]]
+            [[ "$GITHUB_SHA" == "$CANDIDATE_SOURCE_SHA" ]]
+            [[ "$GITHUB_WORKFLOW_REF" == "VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate" ]]
+            remote_source_sha="$(git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$CANDIDATE_SOURCE_REF" | cut -f1)"
+            [[ "$remote_source_sha" == "$CANDIDATE_SOURCE_SHA" ]]
+          else
+            [[ "$GITHUB_REF" == "refs/heads/beta" ]]
+          fi
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.12'

@@ -350,15 +350,28 @@ def main() -> int:
         assert "Synchronize operations ingest secret" not in source
 
     candidate = (WORKFLOWS / "build-catalog-migration-candidate.yml").read_text(encoding="utf-8")
+    publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
     assert "workflow_dispatch:" in candidate
+    assert "source_ref:" in candidate and "source_sha:" in candidate
+    assert "default: refs/heads/terento/062-production-candidate" in candidate
     assert "candidate-source-gate:" in candidate
-    assert '[[ "$GITHUB_REF" == "refs/heads/beta" ]]' in candidate
-    assert '[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]' in candidate
+    assert candidate.index("Validate workflow dispatch inputs before checkout") < candidate.index("uses: actions/checkout@", candidate.index("candidate-source-gate:"))
+    assert '[[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]' in candidate
+    assert '[[ "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]' in candidate
+    assert '[[ "$GITHUB_REF" == "$REQUESTED_SOURCE_REF" ]]' in candidate
+    assert '[[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
+    assert '[[ "$(git rev-parse HEAD)" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
+    assert 'git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$REQUESTED_SOURCE_REF"' in candidate
+    assert 'ref: ${{ inputs.source_sha }}' in candidate
     assert 'git status --porcelain=v1 --untracked-files=all' in candidate
     assert candidate.index("candidate-source-gate:") < candidate.index("  publish:")
     assert "needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]" in candidate
     assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in candidate
     assert "uses: ./.github/workflows/publish-vps-images.yml" in candidate
+    assert "candidate_source_ref: ${{ inputs.source_ref }}" in candidate
+    assert "candidate_source_sha: ${{ inputs.source_sha }}" in candidate
+    assert "github.ref == 'refs/heads/terento/062-production-candidate'" in candidate
+    assert "refs/heads/beta" not in candidate
     assert "candidate-contract-tests:" in candidate
     assert "Tests/run-ci-workflow-contract-tests.sh" in candidate
     assert "Tests/run-ci-documentation-tests.sh" in candidate
@@ -377,6 +390,34 @@ def main() -> int:
     assert "VPS_SSH_KEY" not in candidate and "environment:" not in candidate
     assert "TERENTO_FIXED_OPS_INSTALLED" not in candidate
     assert "scripts/infra/deploy-vps-image.sh" not in candidate
+    assert "inputs.candidate_source_ref == 'refs/heads/terento/062-production-candidate'" in publisher
+    assert "inputs.candidate_source_sha == github.sha" in publisher
+    assert "github.workflow_ref == 'VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate'" in publisher
+    assert '[[ "$GITHUB_WORKFLOW_REF" == "VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate" ]]' in publisher
+    assert '[[ "$GITHUB_REF" == "refs/heads/beta" ]]' in publisher
+    assert '[[ "$remote_source_sha" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
+    publisher_validation = publisher.index("name: Validate release source and target")
+    publisher_build = publisher.index("name: Build and publish immutable release")
+    assert publisher_validation < publisher_build
+    assert publisher.index('git status --porcelain=v1 --untracked-files=all', publisher_validation) < publisher.index('docker build --platform linux/amd64', publisher_build)
+    assert publisher.index('git show --check --oneline "$GITHUB_SHA"', publisher_validation) < publisher.index('docker push "$image:sha-$GITHUB_SHA"', publisher_build)
+    assert '[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]' in publisher
+    assert '[[ "$GITHUB_SHA" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
+
+    receipt = candidate[candidate.index("  receipt:"):]
+    assert "SOURCE_SHA: ${{ inputs.source_sha }}" in receipt
+    assert "IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}" in receipt
+    assert '[[ "$GITHUB_SHA" == "$SOURCE_SHA" ]]' in receipt
+    assert '[[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]' in receipt
+    assert 'image_ref="ghcr.io/vooz2/terento-catalog@$IMAGE_DIGEST"' in receipt
+    assert '[[ "$embedded_revision" == "$SOURCE_SHA" ]]' in receipt
+    assert '[[ "$image_migration_sha" == "$PUBLISHED_062_SHA" ]]' in receipt
+    assert '[[ "$image_runner_sha" == "$PUBLISHED_RUNNER_SHA" ]]' in receipt
+    assert '"$migration_sha" == "$PUBLISHED_062_SHA"' in receipt
+    assert '"$runner_sha" == "$PUBLISHED_RUNNER_SHA"' in receipt
+    assert '"- Source commit: $SOURCE_SHA"' in receipt
+    assert '"- Image digest: $IMAGE_DIGEST"' in receipt
+    assert 'name: catalog-migration-candidate-${{ github.sha }}-${{ github.run_id }}' in receipt
     assert "Approval: NOT GRANTED" in candidate
     rejection = (WORKFLOWS / "check-vps-access.yml").read_text(encoding="utf-8")
     assert "expect 64 id" in rejection

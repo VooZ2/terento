@@ -86,8 +86,12 @@ the existing model, variant, firmware, operation, outcome, and failure fields.
 Admin workflow metadata is extended separately by migration 040 and is not
 part of the public or native event contract.
 
-Compatibility events older than 24 months are pruned from the active database
-by the service health cycle.
+`GET /health` is read-only and does not run retention. Compatibility events
+older than 24 months are pruned by the catalog scheduler, not by a health
+request. The production scheduler is configured for 03:00 UTC daily; with
+that schedule, cleanup may lag by up to 24 hours, which is accepted behavior.
+The candidate scheduler implementation documenting this behavior has not
+been deployed to production.
 
 ### Optional v4 failure context: server-first acceptance
 

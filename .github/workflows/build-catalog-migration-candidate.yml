@@ -2,12 +2,22 @@ name: Build catalog migration candidate
 
 on:
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact same-repository candidate branch ref
+        required: true
+        type: string
+        default: refs/heads/terento/062-production-candidate
+      source_sha:
+        description: Exact 40-character commit SHA at source_ref
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: catalog-migration-candidate-${{ github.ref }}
+  group: catalog-migration-candidate-${{ inputs.source_ref }}-${{ inputs.source_sha }}
   cancel-in-progress: false
 
 jobs:
@@ -16,20 +26,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Verify exact beta source checkout is clean
+      - name: Validate workflow dispatch inputs before checkout
+        env:
+          REQUESTED_SOURCE_REF: ${{ inputs.source_ref }}
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
         shell: bash
         run: |
           set -euo pipefail
           [[ "$GITHUB_REPOSITORY" == "VooZ2/terento" ]]
-          [[ "$GITHUB_REF" == "refs/heads/beta" ]]
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
+          [[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]
+          [[ "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_REF" == "$REQUESTED_SOURCE_REF" ]]
+          [[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify requested same-repository candidate ref and exact commit
+        env:
+          REQUESTED_SOURCE_REF: ${{ inputs.source_ref }}
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$REQUESTED_SOURCE_SHA" ]]
+          remote_source_sha="$(git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$REQUESTED_SOURCE_REF" | cut -f1)"
+          [[ "$remote_source_sha" == "$REQUESTED_SOURCE_SHA" ]]
           [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
-          git show --check --oneline "$GITHUB_SHA"
+          git show --check --oneline "$REQUESTED_SOURCE_SHA"
 
   quality:
     name: Backend and production-operations quality
@@ -78,17 +103,19 @@ jobs:
 
   publish:
     needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && github.sha == inputs.source_sha
     permissions:
       contents: read
       packages: write
     uses: ./.github/workflows/publish-vps-images.yml
     with:
       role: api
+      candidate_source_ref: ${{ inputs.source_ref }}
+      candidate_source_sha: ${{ inputs.source_sha }}
 
   receipt:
     needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests, publish]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && github.sha == inputs.source_sha
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -103,8 +130,8 @@ jobs:
           python-version: "3.12"
       - name: Verify immutable candidate identity and prepare receipt
         env:
-          SOURCE_SHA: ${{ github.sha }}
-          SOURCE_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          SOURCE_REF: ${{ inputs.source_ref }}
           IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
           PUBLISHED_062_SHA: ${{ needs.publish.outputs.migration_062_sha256 }}
           PUBLISHED_RUNNER_SHA: ${{ needs.publish.outputs.migrate_py_sha256 }}
@@ -117,12 +144,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ "$SOURCE_REF" == refs/heads/beta ]]
+          [[ "$REPOSITORY" == "VooZ2/terento" ]]
+          [[ "$SOURCE_REF" == refs/heads/terento/062-production-candidate ]]
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_REF" == "$SOURCE_REF" ]]
+          [[ "$GITHUB_SHA" == "$SOURCE_SHA" ]]
           [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           [[ "$BUILD_TIMESTAMP" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
           [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
           [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          remote_source_sha="$(git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$SOURCE_REF" | cut -f1)"
+          [[ "$remote_source_sha" == "$SOURCE_SHA" ]]
+          git show --check --oneline "$SOURCE_SHA"
           mkdir -p "$DOCKER_CONFIG"
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
@@ -182,7 +215,7 @@ jobs:
             printf '# Catalog migration candidate receipt\n\n'
             printf '%s\n' '- Purpose: immutable API candidate for a separately authorized target-062 operation.'
             printf '%s\n' '- Production migration, deployment, and service changes: not performed by this workflow.'
-            printf '%s\n' '- Repository: VooZ2/terento' "- Source ref: beta" "- Source commit: $SOURCE_SHA"
+            printf '%s\n' '- Repository: VooZ2/terento' "- Source ref: $SOURCE_REF" "- Source commit: $SOURCE_SHA"
             printf '%s\n' "- OCI image: ghcr.io/vooz2/terento-catalog@$IMAGE_DIGEST" "- Image digest: $IMAGE_DIGEST"
             printf '%s\n' '- Clean source checkout verified: yes' "- Embedded revision: $embedded_revision (equals source commit: yes)"
             printf '%s\n' "- Image build timestamp (UTC): $BUILD_TIMESTAMP"
