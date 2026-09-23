@@ -10,8 +10,55 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; Freizeitkarte, OpenTopoMap, MapRando |
 | `map-catalog.schema.json` | `GET /maps/catalog-v4.json` | same body versions; adds BBBike and its two map types |
 | `device-catalog.schema.json` | `GET /devices/catalog.json` | independent `catalogVersion: 2` |
+| `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
+
+The installation policy contract contains exact Garmin catalog rows and
+`active`, normalized `baseModel` from the catalog model label, nullable
+`mapCapable`, derived `scope`, and derived
+`installationAuthorization`. `mapCapable=true` plus `active=true` is the only
+catalog condition that can produce `APPROVED`; `false` produces `BLOCKED`, and
+`null` produces `PENDING`. `support_status`, public Compatibility status,
+successful-install counts, and `TESTED`/`VERIFIED` are not included and cannot
+grant or revoke native write access. Candidate matching remains the native
+client's responsibility; authorization is determined from the Maps capability
+of all remaining possible candidates.
+
+For a connected device, require a reliable Garmin manufacturer and normalized
+exact base-model identity. Collect all active policy rows for that base model;
+use reliable, independently observed variant facts only to narrow the possible
+candidate set. Evaluate each variant attribute independently. If signals for a
+variant attribute conflict, treat that attribute as unknown and do not filter
+on it. **Conflicting variant evidence broadens the candidate set. It does not
+by itself deny authorization. Authorization is determined from the Maps
+capability of all remaining possible candidates.**
+
+A conflict in manufacturer or base-model identity itself is unreliable
+identity and produces `PENDING`; never let a preferred source select a
+different base model. `catalogDeviceID` is a prior hint, not identity proof,
+and cannot by itself narrow the candidate set. Missing case size, display,
+Solar, or inReach facts are not mandatory fields. If every remaining possible
+active candidate has Maps=Yes, authorize; if every candidate has Maps=No,
+block; if candidates have mixed Maps values, any candidate has Maps=NULL, or
+there are no candidates, return `PENDING`. An identified inactive row cannot
+grant approval and is `BLOCKED`. An unknown base model is `PENDING`, not
+permanently unsupported. No family or substring match may grant a write,
+including across Garmin product families.
+
+Fetch fresh policy before acquisition/extraction and at the final write
+boundary. Safe Update refreshes at operation start and immediately before its
+first remote write, checking connected identity around both requests. A
+missing, invalid, or unavailable policy fails closed as a temporary
+verification failure; a previous approval cannot be reused. After writing
+starts, exact-target cleanup uses the operation's established safety facts.
+Current Edge rows are absent from the audited API catalog and therefore
+pending; Edge is not permanently blacklisted and a future catalogued Edge
+model with Maps=Yes can be authorized by the same matching rules. Public
+compatibility remains a separate evidence-gated claim. The endpoint is implemented locally but was
+HTTP 404 in the 2026-09-22 live audit; this contract does not assert a
+deployed route. The valid fixture uses a synthetic Maps=No model; it is not a
+live catalog snapshot.
 
 HTTP authentication, idempotency and rate-limit headers are outside these body
 schemas. Schema versions are independent of Terento app versions and build
@@ -57,7 +104,7 @@ decodes in Swift. Missing `providers` fails native decoding, while the website
 retains its static fallback. Missing device `canonicalModel` fails decoding.
 
 Website provider cards consume the map catalog. The Compatibility page uses
-`/compatibility/public/models.json`, a separate payload outside these four
+`/compatibility/public/models.json`, a separate payload outside these five
 contracts. No website consumer of the device catalog is introduced here.
 
 ## Event strictness and privacy
@@ -268,7 +315,9 @@ intake boundary. No raw device or file identity is added.
 synthetic fixture from the Swift InstallationEvidenceEvent encoder for an
 operation-owned failed installation. The event schema adds the controlled
 `INSTALL_FAILED_UNKNOWN` failure code for genuinely unclassified failures and
-the optional-component outcome fields; no private data is added. The API must accept this code
+`INSTALL_AUTHORIZATION_UNAVAILABLE` for a temporary fail-closed policy
+verification failure, plus the optional-component outcome fields; no private
+data is added. The API must accept these codes
 before the corresponding client is published. Backend delivery tests can also
 consume fresh native fixture output through `TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT`.
 

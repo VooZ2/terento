@@ -9,6 +9,10 @@ import unittest
 from jsonschema import Draft202012Validator
 from terento_catalog.catalog import build_catalog, serialize_catalog
 from terento_catalog.device_catalog import build_device_catalog, serialize_device_catalog
+from terento_catalog.installation_policy import (
+    build_installation_policy,
+    serialize_installation_policy,
+)
 from terento_catalog.compatibility_evidence import ALLOWED_KEYS, EvidenceValidationError, validate_event
 from terento_catalog.map_events import ALLOWED_EVENT_KEYS, MapEventValidationError, validate_map_event
 from test_http_api import FakeDatabase
@@ -17,7 +21,13 @@ from test_compatibility_evidence import event as legacy_event
 ROOT = Path(__file__).resolve().parents[3]
 CONTRACTS = ROOT / 'contracts'
 FIXTURES = CONTRACTS / 'fixtures'
-NAMES = ('map-catalog', 'device-catalog', 'compatibility-event', 'map-event')
+NAMES = (
+    'map-catalog',
+    'device-catalog',
+    'installation-policy',
+    'compatibility-event',
+    'map-event',
+)
 
 
 def fixture(name):
@@ -69,15 +79,18 @@ class SharedContractTests(unittest.TestCase):
         for name, builder, serializer, snapshot in (
             ('map-catalog', build_catalog, serialize_catalog, database.catalog_snapshot()),
             ('device-catalog', build_device_catalog, serialize_device_catalog, database.device_catalog_snapshot()),
+            ('installation-policy', build_installation_policy, serialize_installation_policy, database.installation_policy_snapshot()),
         ):
             validator(name).validate(json.loads(serializer(builder(*snapshot))))
             rows, timestamp = copy.deepcopy(snapshot)
             if name == 'map-catalog':
                 rows[0]['install_size_bytes'] = None
-            else:
+            elif name == 'device-catalog':
                 rows[0]['asset_status'] = 'MISSING'
                 rows[0]['map_capable'] = None
                 rows[0]['source_image_url'] = None
+            else:
+                rows[0]['map_capable'] = None
             validator(name).validate(json.loads(serializer(builder(rows, timestamp))))
         rows, timestamp = database.catalog_snapshot()
         base = rows[0]

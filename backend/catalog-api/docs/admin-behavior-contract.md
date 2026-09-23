@@ -214,6 +214,35 @@ in the accessible link name and appears on icon hover or model-link keyboard
 focus. This marker does not change support, specifications or installation
 authorization; the device detail retains the explicit provenance label.
 
+The `Installation authorization` field reports the derived write decision,
+not a compatibility result. The per-row policy values come from that catalog
+row's `active` and `map_capable` fields: active Maps=Yes is Approved, Maps=No
+is Blocked, and unknown capability is Pending. The native resolver applies
+the exact normalized base-model match and evaluates Maps across every
+remaining plausible active variant; conflicting variant attributes broaden
+that candidate set rather than denying authorization. `support_status` remains
+a separate operator metadata field and is never translated into write
+permission. This decision is separate from
+`TESTING`/`TESTED`/`SUPPORTED`/`VERIFIED`, success counts, and public
+publication. A model with zero successful installations may still be
+Approved, while evidence or support metadata cannot authorize it.
+Admin payload `mapCapable` and the device list's `Catalog Maps` show only the
+stored nullable `device_model.map_capable` value. The separate
+`observedMapCapability` field holds classifier or successful-install evidence
+and is shown on device detail and in the list cell's secondary description.
+For example, stored NULL with observed Yes displays Catalog Maps Unknown and
+authorization Pending. Identity Review and public compatibility retain their
+own evidence semantics; neither derived value changes write permission.
+
+Only an exact catalog row with inactive or stored Maps=No state may receive
+server-side `OUT_OF_SCOPE_PREWRITE` classification; neither `support_status`
+nor an Edge name is a classification shortcut. Events so classified remain visible in
+diagnostic history with their reason and audit row, but are excluded from
+ordinary open-error, identity-review, publication, overview, model-card,
+fresh-install, update, and public statistics. A reported write boundary or
+remote object is retained as a separate `OUT_OF_SCOPE_WRITE` security review
+issue. Provider acquisition events remain a separate population.
+
 ### Map statistics and downloads
 
 Distinguish download phases, download outcomes and installation outcomes. Missing

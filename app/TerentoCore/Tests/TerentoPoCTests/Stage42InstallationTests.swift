@@ -316,6 +316,8 @@ struct Stage42InstallationTests {
         passed += testExistingFranceBlocksNewInstall()
         passed += testInsufficientSpaceBlocksWrite()
         passed += testUnknownProfileBlocksWrite()
+        passed += testInstallationAuthorizationBlocksBeforeTransport()
+        passed += testUnavailableAuthorizationBlocksBeforeTransport()
         passed += testTargetPolicyRejectsUnsupportedProviderBeforeTransport()
         passed += testTargetPolicyAcceptsAnotherFreizeitkarteRegion()
         passed += testTargetPolicyAcceptsOpenTopoMapProvider()
@@ -834,6 +836,35 @@ struct Stage42InstallationTests {
         )
     }
 
+    private static func testInstallationAuthorizationBlocksBeforeTransport() -> Int {
+        let harness = makeHarness(authorization: .blocked(.unknownModel))
+        let result = harness.run()
+        return expect(
+            result.status == .blockedInstallationAuthorization
+                && result.failure == .installationAuthorization
+                && harness.transport.writeCount == 0
+                && harness.transport.readBackCount == 0
+                && harness.transport.deleteCount == 0
+                && harness.manifest.entries.isEmpty,
+            "out-of-scope authorization blocks direct coordinator before transport or statistics-worthy mutation"
+        )
+    }
+
+    private static func testUnavailableAuthorizationBlocksBeforeTransport() -> Int {
+        let harness = makeHarness(authorization: .blocked(.catalogUnavailable))
+        let result = harness.run()
+        return expect(
+            result.status == .blockedInstallationAuthorization
+                && result.failure == .installationAuthorizationUnavailable
+                && result.failure?.userLabel.contains("try again") == true
+                && harness.transport.writeCount == 0
+                && harness.transport.readBackCount == 0
+                && harness.transport.deleteCount == 0
+                && harness.manifest.entries.isEmpty,
+            "temporary authorization failure blocks before transport with retry guidance"
+        )
+    }
+
     private static func testTargetPolicyRejectsUnsupportedProviderBeforeTransport() -> Int {
         let harness = makeHarness()
         let unsupportedPackage = MapPackage(
@@ -854,7 +885,8 @@ struct Stage42InstallationTests {
                 artifact: harness.request.artifact!,
                 profile: harness.request.profile,
                 identity: harness.request.identity,
-                deviceFiles: harness.request.beforeDeviceFiles
+                deviceFiles: harness.request.beforeDeviceFiles,
+                installationAuthorization: authorization(for: harness.request.identity)
             )
             return expect(false, "unknown provider is rejected before transport")
         } catch Stage42TargetPolicyError.unsupportedPackage {
@@ -883,7 +915,8 @@ struct Stage42InstallationTests {
                 artifact: artifact,
                 profile: DeviceInstallProfileRegistry.local.profiles.first,
                 identity: harness.request.identity,
-                deviceFiles: harness.request.beforeDeviceFiles
+                deviceFiles: harness.request.beforeDeviceFiles,
+                installationAuthorization: authorization(for: harness.request.identity)
             )
             return expect(true, "another validated Freizeitkarte region is accepted")
         } catch {
@@ -914,7 +947,8 @@ struct Stage42InstallationTests {
                 artifact: artifact,
                 profile: DeviceInstallProfileRegistry.local.profiles.first,
                 identity: harness.request.identity,
-                deviceFiles: harness.request.beforeDeviceFiles
+                deviceFiles: harness.request.beforeDeviceFiles,
+                installationAuthorization: authorization(for: harness.request.identity)
             )
             return expect(true, "validated OpenTopoMap provider passes the final write policy")
         } catch {
@@ -970,7 +1004,8 @@ struct Stage42InstallationTests {
                 artifact: artifact,
                 profile: DeviceInstallProfileRegistry.local.profiles.first,
                 identity: harness.request.identity,
-                deviceFiles: harness.request.beforeDeviceFiles
+                deviceFiles: harness.request.beforeDeviceFiles,
+                installationAuthorization: authorization(for: harness.request.identity)
             )
             return expect(
                 true,
@@ -1034,7 +1069,8 @@ struct Stage42InstallationTests {
             let files = [betaGarminRoot()]
             try Stage42TargetPolicy().validate(package: package, artifact: artifact,
                 profile: DeviceInstallProfileRegistry.local.profile(for: identity, deviceFiles: files),
-                identity: identity, deviceFiles: files)
+                identity: identity, deviceFiles: files,
+                installationAuthorization: authorization(for: identity))
             // A changed local file must still fail the final hash recheck.
             var changed = data
             changed[changed.count - 1] ^= 1
@@ -1081,7 +1117,8 @@ struct Stage42InstallationTests {
                 artifact: artifact,
                 profile: profile,
                 identity: identity,
-                deviceFiles: files
+                deviceFiles: files,
+                installationAuthorization: authorization(for: identity)
             )
             return expect(true, "map-capable beta profile passes the final write policy")
         } catch {
@@ -1109,7 +1146,8 @@ struct Stage42InstallationTests {
                 artifact: artifact,
                 profile: profile,
                 identity: identity,
-                deviceFiles: []
+                deviceFiles: [],
+                installationAuthorization: authorization(for: identity)
             )
             return expect(false, "missing /GARMIN is rejected again at final write policy")
         } catch Stage42TargetPolicyError.unsupportedDeviceProfile {
@@ -1179,6 +1217,26 @@ struct Stage42InstallationTests {
             localHardwareIdentifier: "UNIT-ID-PRO-51",
             localIdentityResolution: .garminUnitID
         )
+    }
+
+    private static func authorization(for identity: DeviceIdentity) -> InstallationAuthorizationState {
+        let record = InstallationAuthorizationRecord(
+            id: identity.catalogDeviceID ?? "test-device",
+            manufacturer: identity.manufacturer,
+        model: identity.model,
+        baseModel: identity.canonicalModel ?? identity.model,
+            canonicalModel: identity.canonicalModel ?? identity.model,
+            variant: identity.variant ?? "",
+            caseSizeMm: identity.caseSizeMm,
+            displayType: identity.displayType,
+            screenTechnology: identity.screenTechnology,
+            solar: identity.solar,
+            inReach: identity.inReach,
+            active: true,
+            scope: "IN_SCOPE",
+            installationAuthorization: "APPROVED"
+        )
+        return .approved(record: record, policyVersion: 1)
     }
 
     private static func betaGarminRoot() -> DeviceFile {
@@ -1534,6 +1592,7 @@ struct Stage42InstallationTests {
             artifact: ValidatedMapArtifact? = nil,
             noArtifact: Bool = false,
             userConfirmed: Bool = true,
+            authorization: InstallationAuthorizationState? = nil,
             beforeFilesTransform: ([DeviceFile]) -> [DeviceFile] = { $0 }
         ) {
             remoteData = Self.makeIMG()
@@ -1565,7 +1624,8 @@ struct Stage42InstallationTests {
                 availableStorage: availableStorage,
                 profile: profile,
                 artifact: noArtifact ? nil : resolvedArtifact,
-                userConfirmed: userConfirmed
+                userConfirmed: userConfirmed,
+                installationAuthorization: authorization ?? Stage42InstallationTests.authorization(for: resolvedIdentity)
             )
         }
 
@@ -1770,17 +1830,19 @@ struct Stage42InstallationTests {
         installedFrance: Bool = false,
         availableStorage: UInt64 = 15 * gigabyte,
        profile: DeviceInstallProfile? = DeviceInstallProfileRegistry.local.profiles.first,
-       artifact: ValidatedMapArtifact? = nil,
+        artifact: ValidatedMapArtifact? = nil,
         noArtifact: Bool = false,
-        userConfirmed: Bool = true
+        userConfirmed: Bool = true,
+        authorization: InstallationAuthorizationState? = nil
    ) -> Harness {
         Harness(
             installedFrance: installedFrance,
             availableStorage: availableStorage,
            profile: profile,
-           artifact: artifact,
+            artifact: artifact,
             noArtifact: noArtifact,
-            userConfirmed: userConfirmed
+            userConfirmed: userConfirmed,
+            authorization: authorization
        )
     }
 

@@ -10,6 +10,15 @@ on:
       digest:
         description: Immutable digest of the tested image at the caller commit
         value: ${{ jobs.publish.outputs.digest }}
+      migration_062_sha256:
+        description: SHA-256 label value for migration 062 (API images only)
+        value: ${{ jobs.publish.outputs.migration_062_sha256 }}
+      migrate_py_sha256:
+        description: SHA-256 label value for the migration runner (API images only)
+        value: ${{ jobs.publish.outputs.migrate_py_sha256 }}
+      build_timestamp:
+        description: UTC image-build start timestamp
+        value: ${{ jobs.publish.outputs.build_timestamp }}
 
 permissions:
   contents: read
@@ -24,6 +33,9 @@ jobs:
       packages: write
     outputs:
       digest: ${{ steps.image.outputs.digest }}
+      migration_062_sha256: ${{ steps.image.outputs.migration_062_sha256 }}
+      migrate_py_sha256: ${{ steps.image.outputs.migrate_py_sha256 }}
+      build_timestamp: ${{ steps.image.outputs.build_timestamp }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -64,10 +76,28 @@ jobs:
             api) image=ghcr.io/vooz2/terento-catalog; context=backend/catalog-api; dockerfile=backend/catalog-api/Dockerfile ;;
             *) exit 64 ;;
           esac
+          build_timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          migration_062_sha=""
+          migrate_py_sha=""
+          image_labels=(
+            --label "org.opencontainers.image.source=https://github.com/VooZ2/terento"
+            --label "org.opencontainers.image.revision=$GITHUB_SHA"
+            --label "org.opencontainers.image.licenses=GPL-3.0-or-later"
+          )
+          if [[ "$ROLE" == api ]]; then
+            migration_062="backend/catalog-api/src/terento_catalog/migrations/062_reconcile_installation_statistics_schema.sql"
+            migrate_py="backend/catalog-api/src/terento_catalog/migrate.py"
+            [[ -f "$migration_062" && -f "$migrate_py" ]]
+            migration_062_sha="$(sha256sum "$migration_062" | cut -d ' ' -f 1)"
+            migrate_py_sha="$(sha256sum "$migrate_py" | cut -d ' ' -f 1)"
+            [[ "$migration_062_sha" =~ ^[0-9a-f]{64}$ && "$migrate_py_sha" =~ ^[0-9a-f]{64}$ ]]
+            image_labels+=(
+              --label "io.terento.migration.062.sha256=$migration_062_sha"
+              --label "io.terento.migrate.py.sha256=$migrate_py_sha"
+            )
+          fi
           docker build --platform linux/amd64 \
-            --label "org.opencontainers.image.source=https://github.com/VooZ2/terento" \
-            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
-            --label "org.opencontainers.image.licenses=GPL-3.0-or-later" \
+            "${image_labels[@]}" \
             --file "$dockerfile" --tag "$image:sha-$GITHUB_SHA" "$context"
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
@@ -89,4 +119,7 @@ jobs:
           digest="${reference#*@}"
           [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
           printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+          printf 'migration_062_sha256=%s\n' "$migration_062_sha" >> "$GITHUB_OUTPUT"
+          printf 'migrate_py_sha256=%s\n' "$migrate_py_sha" >> "$GITHUB_OUTPUT"
+          printf 'build_timestamp=%s\n' "$build_timestamp" >> "$GITHUB_OUTPUT"
           printf '%s\n' "### $image" "Commit: $GITHUB_SHA" "Digest: $reference" >> "$GITHUB_STEP_SUMMARY"

@@ -38,6 +38,14 @@ second execution. Deployment repeats backend checks on its own exact commit;
 removing that repeat requires a verified same-SHA quality artifact handoff, not
 trust in an earlier PR head. The current explicit rerun is retained.
 
+The production-operations contract runner separately exercises the fixed root
+helper, read-only status, migration-only target/digest enforcement, shared
+deploy/migrate lock, deploy guard, SSH argument allowlist, and owner installer
+preflight/apply behavior using offline fakes and temporary files. It never
+connects to a production host, database, registry, or Docker daemon. A passing
+run does not prove the helper is installed or authorize its installer apply
+mode.
+
 Backend test modules are named by current ownership: provider acquisition and
 catalog projection live in `test_provider_catalog.py` and `test_maprando.py`,
 event validation/lifecycle tests live in their respective modules, and Admin
@@ -112,6 +120,8 @@ Xcode/public-manifest equality requirement.
 Release documentation checks also protect the current Compatibility semantics:
 the public page is a successful-installation directory, exact model/variant
 entries require at least one successful shared installation, and a missing
-model is not an unsupported claim. The release gate checks all six guide
-locales, release identity parity, generator-produced help copy, and known
-retired public wording without scanning internal status terminology.
+model is not an unsupported claim. This public evidence threshold does not
+grant or revoke native write authorization, which is determined separately
+from catalog Maps capability. The release gate checks all six guide locales,
+release identity parity, generator-produced help copy, and known retired
+public wording without scanning internal status terminology.

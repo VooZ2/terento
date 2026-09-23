@@ -1481,7 +1481,7 @@ class AdminSemanticsTests(unittest.TestCase):
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
-        self.assertIn("installation authorization", source)
+        self.assertIn("installation write authorization", source)
         self.assertNotIn("compatibility_evidence_event", source)
         self.assertIn("device_authorization_audit", source)
 
@@ -1887,7 +1887,7 @@ class AdminSemanticsTests(unittest.TestCase):
         body = devices_page([], None, {"username": "operator"}, "csrf").decode()
         for label in (
             "Installation authorization", "Compatibility status", "Last success",
-            "aria-label=\"Map capability\"", "aria-label=\"Installation authorization\"",
+            "aria-label=\"Catalog Maps\"", "aria-label=\"Installation authorization\"",
             "aria-label=\"Successful installations\"", "position:sticky", "z-index:3",
         ):
             self.assertIn(label, body if "aria-label" in label or "position:" in label or "z-index" in label else admin_source)
@@ -1987,7 +1987,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("id='diagnostic-history-page-size'", detail_body)
         self.assertIn("Installation authorization", detail_body)
         self.assertIn('textarea name=\'note\'', detail_body)
-        self.assertIn("Save authorization", detail_body)
+        self.assertIn("Save support metadata", detail_body)
         self.assertIn("Device information", detail_body)
         self.assertIn("device-information-section", detail_body)
         self.assertIn(".device-information-section .model-information-list{max-width:780px}", detail_body)
@@ -3305,7 +3305,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "ghp_FAKE_TOKEN_123", "github_pat_FAKE", "Bearer FAKE_TOKEN",
             "Authorization: Bearer FAKE", "token=FAKEQUERY", "access_token=FAKE",
             "api_key=FAKE", "DATABASE_URL=postgres://fake", "test@example.com",
-            "/Users/gediminas/private/file", r"C:\Users\gediminas\private\file",
+            "/Users/example/private/file", r"C:\Users\example\private\file",
             "<script>alert(1)</script>", "&title=injected", "?body=injected",
         )
         results = [{
@@ -3314,9 +3314,9 @@ class AdminSemanticsTests(unittest.TestCase):
             "failure_code": "ghp_FAKE_TOKEN_123", "native_failure_code": "github_pat_FAKE",
             "error_category": "Authorization: Bearer FAKE", "region": "token=FAKEQUERY",
             "map_release": "DATABASE_URL=postgres://fake", "release_label": "test@example.com",
-            "firmware_version": "/Users/gediminas/private/file",
+            "firmware_version": "/Users/example/private/file",
             "raw_mtp_model": "<script>alert(1)</script>",
-            "transport": r"C:\Users\gediminas\private\file", "write_started": False,
+            "transport": r"C:\Users\example\private\file", "write_started": False,
             "remote_object_created": False, "cleanup_attempted": False,
         }]
         title, body = _github_issue_report(

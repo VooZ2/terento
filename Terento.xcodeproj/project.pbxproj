@@ -19,6 +19,7 @@
 		000000000000000000000028 /* app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000027 /* app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift */; };
 		00000000000000000000002a /* app/TerentoCore/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000029 /* app/TerentoCore/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift */; };
 		00000000000000000000002c /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002b /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallProfile.swift */; };
+		B12560000000000000000006 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12560000000000000000005 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationAuthorization.swift */; };
 		00000000000000000000002e /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationFailureRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002d /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationFailureRecovery.swift */; };
 		000000000000000000000030 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationPreflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002f /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationPreflight.swift */; };
 		000000000000000000000032 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000031 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift */; };
@@ -118,6 +119,7 @@
 		000000000000000000000027 /* app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000029 /* app/TerentoCore/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000002b /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallProfile.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/InstallProfile.swift; sourceTree = SOURCE_ROOT; };
+		B12560000000000000000005 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationAuthorization.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/InstallationAuthorization.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000002d /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationFailureRecovery.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/InstallationFailureRecovery.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000002f /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationPreflight.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/InstallationPreflight.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000031 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift; sourceTree = SOURCE_ROOT; };
@@ -251,6 +253,7 @@
 				000000000000000000000027 /* app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift */,
 				000000000000000000000029 /* app/TerentoCore/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift */,
 				00000000000000000000002b /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallProfile.swift */,
+				B12560000000000000000005 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationAuthorization.swift */,
 				00000000000000000000002d /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationFailureRecovery.swift */,
 				00000000000000000000002f /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationPreflight.swift */,
 				000000000000000000000031 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift */,
@@ -476,6 +479,7 @@
 				000000000000000000000028 /* app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift in Sources */,
 				00000000000000000000002a /* app/TerentoCore/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift in Sources */,
 				00000000000000000000002c /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallProfile.swift in Sources */,
+				B12560000000000000000006 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationAuthorization.swift in Sources */,
 				00000000000000000000002e /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationFailureRecovery.swift in Sources */,
 				000000000000000000000030 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationPreflight.swift in Sources */,
 				000000000000000000000032 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift in Sources */,

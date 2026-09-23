@@ -23,6 +23,8 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
     case transactionAlreadyRunning = "INSTALL_BLOCKED_TRANSACTION_ALREADY_RUNNING"
     case invalidStateTransition = "INSTALL_FAILED_INVALID_STATE_TRANSITION"
     case verificationRequired = "INSTALL_BLOCKED_VERIFICATION_REQUIRED"
+    case installationAuthorization = "INSTALL_BLOCKED_TERENTO_DEVICE_SCOPE"
+    case installationAuthorizationUnavailable = "INSTALL_AUTHORIZATION_UNAVAILABLE"
 
     var userLabel: String {
         switch self {
@@ -70,6 +72,10 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
             return "The installation stopped because its safety sequence was invalid."
         case .verificationRequired:
             return "The installation cannot complete until the transferred file is verified."
+        case .installationAuthorization:
+            return "Map installation is not available for this device in Terento."
+        case .installationAuthorizationUnavailable:
+            return "Terento could not verify this device's installation authorization right now. Check your connection and try again."
         }
     }
 }

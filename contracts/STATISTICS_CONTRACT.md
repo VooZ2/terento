@@ -24,7 +24,8 @@ Terento keeps four related but separate populations:
   package/map, and component/acquisition correlations where available. An
   `operationId` alone is a batch identity, and provider + region alone is not a
   map identity. Legacy events use their event ID because their stronger
-  identity was not available.
+  identity was not available; a missing historical `mapResultIndex` is never
+  backfilled by inference.
 - **Optional components** (for example OpenTopoMap contours) belong to the
   selected main map. They are never another fresh install. Their selected,
   verified, failed, not-started, and unknown state remains visible as an
@@ -42,6 +43,20 @@ all required components are verified and the device installation result is
 real. A failed fresh install requires reliable evidence that installation or
 verification was attempted; `writeStarted=false` is not a failure. A write can
 fail at zero bytes, so a byte count is not the write-boundary test.
+
+The server may classify an event as `OUT_OF_SCOPE_PREWRITE` only when its
+canonical catalog row has `active=false` or stored `map_capable=false`, and
+the event explicitly reports
+`writeStarted=false` and no remote object. This is a policy block, not an
+installation failure: it contributes no fresh attempt, failure, success rate,
+update result, provider/custom statistic, model-card count, review task or
+public statistic. The raw diagnostic, reason and exclusion audit remain
+retained. An out-of-scope event that reports a write boundary or remote object
+is instead retained as a separate `OUT_OF_SCOPE_WRITE` security-review issue;
+it is not silently removed from statistics. Missing/NULL write facts,
+historical unknown devices, and unrelated models are preserved and are never
+mass-excluded from name heuristics. `support_status` and model-name heuristics
+do not classify a new event as out of scope.
 
 Pre-install download, extraction, source validation, device-check, storage,
 identity, cancellation, or unknown failures do not create a fresh attempt or a

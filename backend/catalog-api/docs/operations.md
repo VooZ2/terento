@@ -37,6 +37,67 @@ For a read-only provider check:
 terento-catalog-backfill-sizes --dry-run
 ```
 
+## Live installation-statistics migration 062
+
+The 2026-09-23 live audit and confirmed schema drift are recorded in the
+[062 runbook](installation-statistics-062-live-runbook.md). Three production
+operations are distinct:
+
+- **STATUS** — `terento-deploy api status` reads existing container/image
+  metadata and the migration ledger in an explicit read-only transaction. It
+  does not call HTTP health, pull an image, run maintenance, or mutate services.
+- **MIGRATE** — `terento-deploy api migrate --target 062 ...` is a root-owned,
+  migration-only source path pinned to a registry digest, revision, migration
+  SQL hash, and runner hash. It runs only the one-shot migration service; the
+  API and scheduler are not restarted or replaced.
+- **DEPLOY** — the existing `terento-deploy api <digest> <revision>` remains a
+  separate service deployment operation. Its combined deploy behavior is not
+  a substitute for target-062 migration. The API workflow no longer deploys on
+  pushes; a manual dispatch requires a positive target-062 completion input
+  and the owner-controlled `TERENTO_FIXED_OPS_INSTALLED=true` repository
+  variable. Migration-source pushes are excluded as an additional guard, and
+  the new helper requires a valid candidate identity and rejects deployment
+  unless candidate inventory and live ledger both match exactly 001–062. DEPLOY
+  does not run a migrator; a pending/later schema blocks service replacement.
+  Images with 063+ are refused until a separately reviewed migration gate is
+  implemented. The variable is not set by this task.
+
+The canonical helper, migration module, installer, and tests are prepared in
+the local working tree but remain untracked/uncommitted and are **not installed
+on the VPS**. The forced-SSH template has also not been installed; therefore
+these command forms are not currently available remotely. The owner-run
+installer requires a clean committed checkout and a separate authorized apply
+step. No production migration or deployment is authorized by this code.
+
+The operations share one non-blocking host lock for deploy and migration;
+read-only status does not take the lock. The migration runner verifies an
+immutable candidate and the exact 001–062 image inventory, requires a live
+ledger exactly at 001–061 (or reports safe `ALREADY APPLIED` for exactly
+001–062), and rejects gaps or later entries. Its 062 SQL statements and ledger
+insert execute in one database transaction. For the current reviewed runner,
+any 063+ migration file is reported by name and rejected before DB execution.
+
+`GET /health` is read-only in the current source: it checks DB readiness but
+does not run retention. The existing scheduler performs retention once per
+configured collector cycle. The local default is daily at 03:00 UTC, preserving
+the 24-month cutoff; with a daily deployed schedule, deletion can lag by up to
+one day. The production `COLLECTOR_SCHEDULE_UTC` value has not been verified,
+and this code change has not been deployed. See the
+[production operations protocol](production-operations-protocol.md) and
+[recovery procedure](production-db-recovery.md) for exact gates. Fresh
+PostgreSQL-only backup creation/restore validation remains unproven: the host
+does not have `pg_dump`, the DB container has `pg_dump` 16.15, `pg_restore` and
+the live identity were not reverified, and no encrypted destination is yet
+approved. The old Hostinger points are whole-VPS restores and require owner
+selection and acceptance.
+
+062 is still **NOT READY** for live approval or execution: no immutable
+candidate exists for this dirty working tree, required sources are not tracked,
+the new helper has not been installed, and the recovery point gate remains
+open. Do not call Docker/migrator directly, create a backup, deploy, or run the
+migration without separate authorization. If execution status is uncertain,
+use the SELECT-only postcheck; never replay SQL or downgrade.
+
 ## Scheduled collection
 
 The provider catalog sweep runs daily at 03:00 UTC:
@@ -106,11 +167,13 @@ operator selects `All` or `Resolved`.
 
 Migration 025 also records its application time in
 `compatibility_device_card_failure_epoch`. Device cards exclude failures
-received before that timestamp and count every distinct eligible failure
-received afterward; current pre-write and unknown-write results remain visible
-diagnostic history but stay outside completed installation counts. Successful
-device-card history is preserved. Do not edit the epoch after deployment unless
-a separately reviewed counter reset is explicitly requested.
+received before that timestamp and count distinct eligible failures received
+afterward, except server-classified `OUT_OF_SCOPE_PREWRITE` blocks. Current
+pre-write and unknown-write results remain visible in diagnostic history but
+stay outside completed installation counts. A reported write boundary or
+remote object is retained for security review. Successful device-card history
+is preserved. Do not edit the epoch after deployment unless a separately
+reviewed counter reset is explicitly requested.
 
 Migration `021_canonical_admin_semantics.sql` keeps its SQL
 compatibility-status classifier parameter as `BIGINT`, matching PostgreSQL's

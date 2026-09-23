@@ -46,6 +46,7 @@
     "app/TerentoCore/Tests/run-native-connection-lifecycle-tests.sh",
     "app/TerentoCore/Tests/run-native-device-asset-matching-tests.sh",
     "app/TerentoCore/Tests/run-native-installation-evidence-tests.sh",
+    "app/TerentoCore/Tests/run-native-installation-authorization-tests.sh",
     "app/TerentoCore/Tests/run-native-installation-safety-tests.sh",
     "app/TerentoCore/Tests/run-native-managed-map-recovery-tests.sh",
     "app/TerentoCore/Tests/run-native-manifest-store-tests.sh",
@@ -92,6 +93,7 @@
   "ci": [
     "Tests/run-ci-test-selection-tests.sh",
     "Tests/run-ci-workflow-contract-tests.sh",
-    "Tests/run-ci-documentation-tests.sh"
+    "Tests/run-ci-documentation-tests.sh",
+    "Tests/run-ci-production-operations-contract-tests.sh"
   ]
 }

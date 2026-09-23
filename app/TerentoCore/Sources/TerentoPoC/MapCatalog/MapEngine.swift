@@ -250,6 +250,7 @@ final class MapEngine: ObservableObject {
     private let reader: MTPTransport
     private let operationGate: MTPOperationGate
     private let catalogLoader: MapCatalogLoader
+    private let installationAuthorizationClient: InstallationAuthorizationClient
     private var activeTask: Task<Void, Never>?
     private var loadedCatalog: MapCatalog?
     private var currentIdentity: DeviceIdentity?
@@ -258,6 +259,7 @@ final class MapEngine: ObservableObject {
     private var preferredOwnershipManifestDeviceKey: String?
     private var installationSpeedEstimator = TransferSpeedEstimator()
     private var installationAuthorizationGranted = false
+    private var deviceInstallationAuthorization: InstallationAuthorizationState = .blocked(.catalogUnavailable)
     private var customMapImportAcknowledged = false
     private var selectedInstallationPlan: InstallationPlan?
     private var mapStatisticsOperationID = UUID()
@@ -280,13 +282,15 @@ final class MapEngine: ObservableObject {
         catalogLoader: MapCatalogLoader = MapCatalogLoader(),
         operationGate: MTPOperationGate = .shared,
         statisticsController: MapStatisticsEventController? = nil,
-        evidenceController: InstallationEvidenceController? = nil
+        evidenceController: InstallationEvidenceController? = nil,
+        installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient()
     ) {
         self.reader = reader
         self.statisticsController = statisticsController
         self.evidenceController = evidenceController
         self.catalogLoader = catalogLoader
         self.operationGate = operationGate
+        self.installationAuthorizationClient = installationAuthorizationClient
     }
 
     #if TERENTO_TESTING
@@ -347,8 +351,33 @@ final class MapEngine: ObservableObject {
         preferredOwnershipManifestDeviceKey = nil
         installationSpeedEstimator.reset()
         installationAuthorizationGranted = false
+        deviceInstallationAuthorization = .blocked(.catalogUnavailable)
         selectedInstallationPlan = nil
         mapStatisticsEvents = []
+    }
+
+    /// Device authorization is intentionally supplied by the live device
+    /// engine, not inferred from map capability, public compatibility, or a
+    /// remembered plan. A transition back to a blocked state invalidates any
+    /// already-prepared artifacts before another operation can reach MTP.
+    func setInstallationAuthorization(_ authorization: InstallationAuthorizationState) {
+        let wasApproved = deviceInstallationAuthorization.canInstall
+        deviceInstallationAuthorization = authorization
+        guard wasApproved, !authorization.canInstall else { return }
+        guard state == .acquiringArtifact || state == .preparingInstallation || state == .installing
+            || (state == .scanned && installationPhase == .awaitingConfirmation) else {
+            return
+        }
+        cancelActiveTaskAndCleanupWorkspaces()
+        validatedArtifacts = [:]
+        validatedArtifactSets = [:]
+        selectedPreflight = nil
+        installationResult = nil
+        selectedInstallationPlan = nil
+        installationAuthorizationGranted = false
+        installationPhase = .idle
+        installationPhaseProgress = nil
+        state = .scanned
     }
 
     func scanDeviceMaps(
@@ -481,6 +510,12 @@ final class MapEngine: ObservableObject {
     /// device. A ready candidate is added to the same selection/preflight
     /// model as provider maps, so the later installation path stays shared.
     func importCustomMap(fileURL: URL) {
+        guard deviceInstallationAuthorization.canInstall,
+              currentIdentity.map({ deviceInstallationAuthorization.matches(identity: $0) }) == true else {
+            customMapImportErrorMessage = deviceInstallationAuthorization.userMessage
+                ?? "Map installation is not available for this device in Terento."
+            return
+        }
         guard state == .scanned,
               installationPhase == .idle,
               !isBusy else {
@@ -1132,6 +1167,12 @@ final class MapEngine: ObservableObject {
     /// one guarded operation. No second map is written if its own validation
     /// or preflight fails.
     func beginInstallation(plan: InstallationPlan, operationId: UUID = UUID()) {
+        guard deviceInstallationAuthorization.canInstall,
+              currentIdentity.map({ deviceInstallationAuthorization.matches(identity: $0) }) == true else {
+            installationErrorMessage = deviceInstallationAuthorization.userMessage
+                ?? "Map installation is not available for this device in Terento."
+            return
+        }
         guard state == .scanned,
               installationPhase == .idle,
               plan.canContinue,
@@ -1201,7 +1242,8 @@ final class MapEngine: ObservableObject {
                 emitMapStatisticsEvent(
                     package: package,
                     type: .installFailed,
-                    outcome: .failed
+                    outcome: .failed,
+                    mapResultIndex: 0
                 )
             }
             operationDiagnostics?.failed(index: 0, stage: .preflight,
@@ -1214,7 +1256,10 @@ final class MapEngine: ObservableObject {
     }
 
     private func prepareInstallationArtifacts() {
-        guard state == .scanned,
+        guard deviceInstallationAuthorization.canInstall,
+              let authorizationIdentity = currentIdentity,
+              deviceInstallationAuthorization.matches(identity: authorizationIdentity),
+              state == .scanned,
               let plan = selectedInstallationPlan,
               plan.canContinue,
               customMapImportReadyForInstallation else {
@@ -1247,6 +1292,7 @@ final class MapEngine: ObservableObject {
         )
         let customAcquirer = CustomMapSourceAcquirer()
         let customCandidate = customMapImportCandidate
+        let authorizationClient = installationAuthorizationClient
         let stateRelay = MapEngineAcquisitionRelay(engine: self)
         let progressRelay = MapEngineDownloadProgressRelay(engine: self)
         activeTask?.cancel()
@@ -1264,63 +1310,71 @@ final class MapEngine: ObservableObject {
             }
             var activePackageIndex = 0
             do {
-                for (index, packagePlan) in packagePlans.enumerated() {
-                    let package = packagePlan.item.package
-                    activePackageIndex = index
-                    try Task.checkCancellation()
-                    for selectedArtifact in packagePlan.artifactPlan.selectedArtifacts {
-                        let artifact: ValidatedMapArtifact
-                        if package.sourceKind == .custom {
-                            guard selectedArtifact.kind == .main,
-                                  let customCandidate,
-                                  customCandidate.package.id == package.id else {
-                                throw MapAcquisitionError.invalidPackage(
-                                    "The selected custom map is no longer available."
-                                )
-                            }
-                            stateRelay.send(.validatingDownload)
-                            artifact = try await CancellableDetached.run(priority: .userInitiated) {
-                                try customAcquirer.revalidate(customCandidate)
-                            }
-                            stateRelay.send(.inspectingIMG)
-                            stateRelay.send(.hashing)
-                            stateRelay.send(.validated)
-                        } else {
-                            let start = MapStatisticsEvent(operationId: self?.mapStatisticsOperationID ?? UUID(),
-                                package: package, eventType: .downloadStarted, outcome: .unknown,
-                                acquisitionId: UUID(), componentKind: selectedArtifact.kind)
-                            self?.activeAcquisition = start
-                            self?.statisticsController?.record(start)
-                            let statistics = self?.statisticsController
-                            do {
-                                artifact = try await CancellableDetached.run(priority: .userInitiated) {
-                                    try await acquirer.acquire(
-                                        package: package,
-                                        artifact: selectedArtifact,
-                                        canonicalRegion: package.canonicalRegionId,
-                                        onStateChange: { state in
-                                            stateRelay.send(state)
-                                            if state == .validatingDownload {
-                                                Task { @MainActor in statistics?.record(start.phase(.downloadProcessing)) }
-                                            }
-                                        },
-                                        onDownloadProgress: { progress in progressRelay.send(progress) }
+                try await InstallationAuthorizationAcquisitionGate.run(
+                    identity: authorizationIdentity,
+                    client: authorizationClient,
+                    onAuthorized: { [weak self] authorization in
+                        self?.setInstallationAuthorization(authorization)
+                    }
+                ) {
+                    for (index, packagePlan) in packagePlans.enumerated() {
+                        let package = packagePlan.item.package
+                        activePackageIndex = index
+                        try Task.checkCancellation()
+                        for selectedArtifact in packagePlan.artifactPlan.selectedArtifacts {
+                            let artifact: ValidatedMapArtifact
+                            if package.sourceKind == .custom {
+                                guard selectedArtifact.kind == .main,
+                                      let customCandidate,
+                                      customCandidate.package.id == package.id else {
+                                    throw MapAcquisitionError.invalidPackage(
+                                        "The selected custom map is no longer available."
                                     )
                                 }
-                                try Task.checkCancellation()
-                                statistics?.record(start.phase(.downloadSucceeded))
-                            } catch {
-                                statistics?.record(start.phase(Task.isCancelled ? .downloadCancelled : .downloadFailed))
+                                stateRelay.send(.validatingDownload)
+                                artifact = try await CancellableDetached.run(priority: .userInitiated) {
+                                    try customAcquirer.revalidate(customCandidate)
+                                }
+                                stateRelay.send(.inspectingIMG)
+                                stateRelay.send(.hashing)
+                                stateRelay.send(.validated)
+                            } else {
+                                let start = MapStatisticsEvent(operationId: self?.mapStatisticsOperationID ?? UUID(),
+                                    package: package, eventType: .downloadStarted, outcome: .unknown,
+                                    acquisitionId: UUID(), componentKind: selectedArtifact.kind)
+                                self?.activeAcquisition = start
+                                self?.statisticsController?.record(start)
+                                let statistics = self?.statisticsController
+                                do {
+                                    artifact = try await CancellableDetached.run(priority: .userInitiated) {
+                                        try await acquirer.acquire(
+                                            package: package,
+                                            artifact: selectedArtifact,
+                                            canonicalRegion: package.canonicalRegionId,
+                                            onStateChange: { state in
+                                                stateRelay.send(state)
+                                                if state == .validatingDownload {
+                                                    Task { @MainActor in statistics?.record(start.phase(.downloadProcessing)) }
+                                                }
+                                            },
+                                            onDownloadProgress: { progress in progressRelay.send(progress) }
+                                        )
+                                    }
+                                    try Task.checkCancellation()
+                                    statistics?.record(start.phase(.downloadSucceeded))
+                                } catch {
+                                    statistics?.record(start.phase(Task.isCancelled ? .downloadCancelled : .downloadFailed))
+                                    if self?.activeAcquisition?.acquisitionId == start.acquisitionId {
+                                        self?.activeAcquisition = nil
+                                    }
+                                    throw error
+                                }
                                 if self?.activeAcquisition?.acquisitionId == start.acquisitionId {
                                     self?.activeAcquisition = nil
                                 }
-                                throw error
                             }
-                            if self?.activeAcquisition?.acquisitionId == start.acquisitionId {
-                                self?.activeAcquisition = nil
-                            }
+                            artifactSets[package.id, default: [:]][selectedArtifact.id] = artifact
                         }
-                        artifactSets[package.id, default: [:]][selectedArtifact.id] = artifact
                     }
                 }
 
@@ -1339,6 +1393,18 @@ final class MapEngine: ObservableObject {
                 Task { @MainActor [weak self] in
                     self?.prepareInstallationConfirmation()
                 }
+            } catch let authorizationError as InstallationAuthorizationAcquisitionError {
+                guard !Task.isCancelled, let self else { return }
+                self.setInstallationAuthorization(authorizationError.authorization)
+                let userMessage = authorizationError.authorization.userMessage
+                    ?? "Terento could not verify this device's installation authorization right now."
+                self.acquisitionState = .failed
+                self.acquisitionErrorMessage = userMessage
+                self.installationErrorMessage = userMessage
+                self.installationPhase = .idle
+                self.installationPhaseProgress = nil
+                self.state = .scanned
+                return
             } catch {
                 let known = (error as? MapAcquisitionError).map(Self.evidenceDiagnostic)
                 diagnostics?.failed(index: activePackageIndex, stage: known?.stage ?? .download,
@@ -1372,7 +1438,9 @@ final class MapEngine: ObservableObject {
     /// Runs a no-write preflight for every selected package. The actual device
     /// write is reachable only after all selected packages pass this phase.
     private func prepareInstallationConfirmation() {
-        guard let plan = selectedInstallationPlan,
+        guard deviceInstallationAuthorization.canInstall,
+              currentIdentity.map({ deviceInstallationAuthorization.matches(identity: $0) }) == true,
+              let plan = selectedInstallationPlan,
               let inventory = result,
               let identity = currentIdentity,
               let availableStorage = currentAvailableStorage,
@@ -1394,6 +1462,7 @@ final class MapEngine: ObservableObject {
             deviceFiles: inventory.deviceFiles
         )
         let coordinator = MapInstallationCoordinator.live()
+        let installationAuthorization = deviceInstallationAuthorization
         let activeMapIndex = InstallationMapIndexState()
         activeTask?.cancel()
         let diagnostics = operationDiagnostics
@@ -1433,7 +1502,8 @@ final class MapEngine: ObservableObject {
                                 availableStorage: availableStorage,
                                 profile: profile,
                                 artifact: artifact,
-                                userConfirmed: false
+                                userConfirmed: false,
+                                installationAuthorization: installationAuthorization
                             )
                             let result = coordinator.run(request)
                             diagnostics?.record(result, packageID: item.package.id, artifactID: selectedArtifact.id)
@@ -1485,11 +1555,13 @@ final class MapEngine: ObservableObject {
                         $0.status != .confirmationRequired
                     } ?? activeMapIndex.value
                     self?.evidencePrimaryFailureMapIndex = failureIndex
-                    if plan.installItems.indices.contains(failureIndex) {
+                    if finalResult.status != .blockedInstallationAuthorization,
+                       plan.installItems.indices.contains(failureIndex) {
                         self?.emitMapStatisticsEvent(
                             package: plan.installItems[failureIndex].package,
                             type: .installFailed,
-                            outcome: .failed
+                            outcome: .failed,
+                            mapResultIndex: failureIndex
                         )
                     }
                     self?.evidenceFailureStage = InstallationFailureStageResolver.stage(
@@ -1525,7 +1597,8 @@ final class MapEngine: ObservableObject {
                     self?.emitMapStatisticsEvent(
                         package: plan.installItems[failureIndex].package,
                         type: .installFailed,
-                        outcome: .failed
+                        outcome: .failed,
+                        mapResultIndex: failureIndex
                     )
                 }
                 if let acquisitionError = error as? MapAcquisitionError {
@@ -1555,7 +1628,13 @@ final class MapEngine: ObservableObject {
     /// shared coordinator sequentially. A successful batch refreshes the
     /// catalog-backed inventory so Install and Manage show the same state.
     func installSelectedMaps() {
-        guard let plan = selectedInstallationPlan else { return }
+        guard deviceInstallationAuthorization.canInstall,
+              currentIdentity.map({ deviceInstallationAuthorization.matches(identity: $0) }) == true,
+              let plan = selectedInstallationPlan else {
+            installationErrorMessage = deviceInstallationAuthorization.userMessage
+                ?? "Map installation is not available for this device in Terento."
+            return
+        }
         let installPackageIDs = Set(plan.installItems.map { $0.package.id })
         guard installationResult?.status == .confirmationRequired,
               validatedArtifactSets.count == installPackageIDs.count,
@@ -1586,6 +1665,7 @@ final class MapEngine: ObservableObject {
             .map(\.package)
             .filter { $0.sourceKind == .custom }
         let catalog = loadedCatalog
+        let authorizationClient = installationAuthorizationClient
         let progressRelay = MapEngineProgressRelay(engine: self)
         let phaseRelay = MapEnginePhaseRelay(engine: self)
         let phaseProgressRelay = MapEnginePhaseProgressRelay(engine: self)
@@ -1653,6 +1733,7 @@ final class MapEngine: ObservableObject {
                                 for: identity,
                                 deviceFiles: inventory.deviceFiles
                             )
+                            let liveAuthorization = await authorizationClient.resolve(identity: identity)
                             let operationProfile = DeviceMapOperationProfile(
                                 identity: identity,
                                 installProfile: installProfile,
@@ -1669,7 +1750,8 @@ final class MapEngine: ObservableObject {
                                 availableStorage: snapshot.freeSpace,
                                 profile: installProfile,
                                 artifact: artifact,
-                                userConfirmed: true
+                                userConfirmed: true,
+                                installationAuthorization: liveAuthorization
                             )
 
                             let result = MapInstallationCoordinator.live(
@@ -1744,10 +1826,16 @@ final class MapEngine: ObservableObject {
                 let hasPartialSuccess = batch.packageOutcomes.contains { $0.hasWarnings }
                 for (index, outcome) in batch.packageOutcomes.enumerated()
                 where plan.installItems.indices.contains(index) {
+                    let componentOffset = packagePlans[..<index]
+                        .reduce(0) { $0 + $1.artifactPlan.selectedArtifacts.count }
+                    let authorizationBlocked = batch.componentResults.indices.contains(componentOffset)
+                        && batch.componentResults[componentOffset].status == .blockedInstallationAuthorization
+                    guard !authorizationBlocked else { continue }
                     self?.emitMapStatisticsEvent(
                         package: plan.installItems[index].package,
                         type: outcome.isComplete ? .installSucceeded : .installFailed,
-                        outcome: outcome.isComplete ? .succeeded : .failed
+                        outcome: outcome.isComplete ? .succeeded : .failed,
+                        mapResultIndex: index
                     )
                 }
                 self?.installationResult = finalResult
@@ -1804,7 +1892,8 @@ final class MapEngine: ObservableObject {
                     self?.emitMapStatisticsEvent(
                         package: plan.installItems[failureIndex].package,
                         type: .installFailed,
-                        outcome: .failed
+                        outcome: .failed,
+                        mapResultIndex: failureIndex
                     )
                 }
                 self?.evidenceFailureStage = known?.stage ?? .preflight
@@ -1900,7 +1989,8 @@ final class MapEngine: ObservableObject {
     private func emitMapStatisticsEvent(
         package: MapPackage,
         type: MapStatisticsEventType,
-        outcome: MapStatisticsEventOutcome
+        outcome: MapStatisticsEventOutcome,
+        mapResultIndex: Int? = nil
     ) {
         // Custom local files have no registered provider catalog identity and
         // are intentionally outside provider-popularity statistics.
@@ -1909,7 +1999,8 @@ final class MapEngine: ObservableObject {
                 operationId: mapStatisticsOperationID,
                 package: package,
                 eventType: type,
-                outcome: outcome
+                outcome: outcome,
+                mapResultIndex: mapResultIndex
             )
         statisticsController?.record(event)
         mapStatisticsEvents.append(event)

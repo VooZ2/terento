@@ -37,6 +37,36 @@ rows have `record_source = HISTORICAL_REVIEWED` and
 The existing validated fēnix 8 USB identity (`VID 0x091e`, `PID 0x51b8`) is
 stored separately and is not copied to other devices.
 
+The native write gate uses the separate `/devices/installation-policy.json`
+projection. It requires a reliable Garmin base-model match and uses available
+variant facts only to narrow the candidate rows. Evaluate each variant
+attribute independently. If reliable signals for one variant attribute
+conflict, treat that attribute as unknown and do not filter candidates on it.
+**Conflicting variant evidence broadens the candidate set. It does not by
+itself deny authorization. Authorization is determined from the Maps
+capability of all remaining possible candidates.** All remaining active
+candidates with `mapCapable=true` produce `APPROVED`; all with `false` produce
+`BLOCKED`; mixed or any `null` capability produces `PENDING`. Unknown variant
+facts are not mandatory when they do not change the candidate Maps result.
+`support_status`, public Compatibility status, success counts, and USB/MTP
+facts are not substitutes for this policy. Unknown base models, ambiguous
+base-model identity, mixed/unknown candidate capabilities, blocked rows, and
+temporarily unavailable policy results are read-only for map operations.
+Matching is normalized exact base-model matching, never a family or substring
+match. A conflict between base-model identities (unlike a variant-attribute
+conflict) remains `PENDING`.
+The policy payload's `baseModel` is derived from `model`, while
+`canonicalModel` retains SKU detail; all active rows with the same exact
+normalized base identity remain candidates until known variant facts narrow
+them. A prior or stale `catalogDeviceID` is only a hint and cannot narrow or
+select candidates by itself. A single variant may be selected only when
+current connected-device facts independently establish it; otherwise, retain
+all remaining candidates. Thus conflicting variant hints with all-Yes
+candidates still produce `APPROVED`. Edge is not permanently excluded: an
+Edge base model absent from the catalog is `PENDING`, while a future catalogued
+Edge model with Maps=Yes may be authorized by the same rules. Safe Update
+refreshes the policy at start and before its first write.
+
 The historical registry in `terento_catalog.historical_devices` is versioned
 and sourced from Garmin's official Connect IQ compatible-device references.
 It includes fēnix 7/7S/7X, the fēnix 7 Pro/7S Pro/7X Pro identities (including
@@ -49,9 +79,10 @@ The private admin view is additive and is not part of this public contract.
 `/admin/devices.json` is authenticated and may include catalogue sync
 metadata, map-capability state, operator support state, installation
 aggregates joined by the exact canonical device record ID, and image
-observability fields (`asset`, `sourceAsset`, `image`). When
-`device_model.map_capable` is NULL, the admin payload classifies the
-canonical model with the same Map Manager prefix list as the native client.
+observability fields (`asset`, `sourceAsset`, `image`). Admin `mapCapable` and
+`Catalog Maps` expose the stored nullable `device_model.map_capable` value
+without a Map Manager fallback. A classifier or installation observation is
+reported separately as `observedMapCapability` and cannot authorize a write.
 The HTML page may render an allowlisted `res.garmin.com` `sourceAsset` as a
 thumbnail when no controlled `AVAILABLE` asset exists; that image is not
 proxied by Terento. Public clients must continue to use
@@ -231,8 +262,11 @@ registries, based on Garmin's official [Map Manager instructions](https://www8.g
 The public catalog now applies the same fallback as admin when stored map
 capability is null; an explicit stored true/false remains authoritative. Existing
 rows become classifiable without a database migration or a source-specification
-rewrite. Capability is not installation authorization or compatibility evidence.
-This task adds no other unknown family without reviewed additional-map evidence.
+rewrite. This public catalog classification is a display/evidence hint, not a
+write grant or public compatibility evidence. Native write authorization uses
+the separate installation-policy projection and resolver above, including its
+stored nullable capability and active-state checks. This task adds no other
+unknown family without reviewed additional-map evidence.
 
 Identity review presents the original XML model first. When explicitly
 reported Solar/inReach features have matching catalog rows, operator suggestions

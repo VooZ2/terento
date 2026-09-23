@@ -13,19 +13,41 @@ from terento_catalog.http_api import CatalogService, make_handler
 from terento_catalog.db import Database
 from terento_catalog.device_catalog import build_device_catalog
 from terento_catalog.asset_storage import AssetStorage
+from terento_catalog.scheduler import _run_scheduled_cycle
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
 
 
 class FakeDatabase(Database):
     def __init__(self) -> None:
         self.operational_observations = []
+        self.compatibility_rows = [
+            {"event_id": "expired-event", "age": "older than 24 months"},
+            {"event_id": "current-event", "age": "within 24 months"},
+        ]
+        self.sql_statements: list[str] = []
+        self.scheduler_heartbeats = []
 
     def health(self) -> bool:
+        self.sql_statements.append("SELECT 1")
         return True
 
     def prune_compatibility_events(self) -> int:
-        return 0
+        statement = (
+            "DELETE FROM compatibility_evidence_event "
+            "WHERE received_at < now() - interval '24 months'"
+        )
+        self.sql_statements.append(statement)
+        before = len(self.compatibility_rows)
+        self.compatibility_rows = [
+            row for row in self.compatibility_rows
+            if row["age"] != "older than 24 months"
+        ]
+        return before - len(self.compatibility_rows)
+
+    def record_scheduler_heartbeat(self, **values) -> None:
+        self.scheduler_heartbeats.append(values)
 
     def provider_rows(self):
         now = datetime.now(timezone.utc)
@@ -102,6 +124,25 @@ class FakeDatabase(Database):
             }
         ], datetime(2026, 5, 3, tzinfo=timezone.utc)
 
+    def installation_policy_snapshot(self):
+        return [
+            {
+                "device_id": "garmin-fenix-8-47-amoled",
+                "manufacturer": "Garmin",
+                "model": "fēnix 8",
+                "canonical_model": "fenix 8",
+                "variant": "47 mm, AMOLED",
+                "case_size_mm": 47,
+                "display_type": "AMOLED",
+                "screen_technology": "AMOLED",
+                "solar": False,
+                "inreach": False,
+                "active": True,
+                "map_capable": True,
+                "support_status": "UNSUPPORTED",
+            },
+        ], datetime(2026, 5, 3, tzinfo=timezone.utc)
+
 
 class AdminReviewActionService:
     def __init__(self) -> None:
@@ -130,9 +171,10 @@ class AdminReviewActionService:
 
 class HTTPAPITests(unittest.TestCase):
     def setUp(self) -> None:
+        self.database = FakeDatabase()
         self.server = ThreadingHTTPServer(
             ("127.0.0.1", 0),
-            make_handler(CatalogService(FakeDatabase(), operations_ingest_secret="test-operations-secret")),
+            make_handler(CatalogService(self.database, operations_ingest_secret="test-operations-secret")),
         )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -249,10 +291,35 @@ class HTTPAPITests(unittest.TestCase):
         self.assertEqual(cached_body, b"")
 
     def test_health_is_not_cached(self) -> None:
-        response, body = self.request("/health")
-        self.assertEqual(response.status, 200)
-        self.assertEqual(json.loads(body), {"status": "ok"})
-        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        original_rows = [dict(row) for row in self.database.compatibility_rows]
+        for _ in range(2):
+            response, body = self.request("/health")
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(body), {"status": "ok"})
+            self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+        self.assertEqual(self.database.compatibility_rows, original_rows)
+        self.assertEqual(self.database.sql_statements, ["SELECT 1", "SELECT 1"])
+        self.assertFalse(any(
+            statement.lstrip().upper().startswith(("DELETE", "INSERT", "UPDATE"))
+            for statement in self.database.sql_statements
+        ))
+
+    def test_compatibility_retention_runs_in_the_existing_scheduled_cycle(self) -> None:
+        with patch("terento_catalog.scheduler.official_provider_adapters", return_value=()), \
+             patch("terento_catalog.scheduler.collect_all_providers", return_value={}), \
+             patch("terento_catalog.scheduler.collect_devices_once"):
+            _run_scheduled_cycle(self.database, collect_device_catalog=False)
+
+        self.assertEqual(
+            self.database.sql_statements,
+            ["DELETE FROM compatibility_evidence_event "
+             "WHERE received_at < now() - interval '24 months'"],
+        )
+        self.assertEqual(
+            [row["event_id"] for row in self.database.compatibility_rows],
+            ["current-event"],
+        )
 
     def test_operational_observation_requires_bearer_secret_and_is_idempotent(self) -> None:
         document = {
@@ -350,6 +417,28 @@ class HTTPAPITests(unittest.TestCase):
 
         source = inspect.getsource(Database.device_catalog_snapshot)
         self.assertIn("dm.map_capable", source)
+
+    def test_installation_policy_is_private_write_authorization_projection(self) -> None:
+        response, body = self.request("/devices/installation-policy.json")
+        document = json.loads(body)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/json; charset=utf-8")
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertEqual(document["schemaVersion"], 3)
+        self.assertEqual(document["policyVersion"], 3)
+        self.assertEqual(document["devices"][0]["scope"], "IN_SCOPE")
+        self.assertEqual(document["devices"][0]["installationAuthorization"], "APPROVED")
+        self.assertTrue(document["devices"][0]["mapCapable"])
+        self.assertNotIn("supportStatus", document["devices"][0])
+        self.assertNotIn("successfulInstallCount", json.dumps(document))
+        self.assertNotIn("compatibilityStatus", json.dumps(document))
+
+    def test_installation_policy_database_projection_excludes_support_metadata(self) -> None:
+        import inspect
+
+        source = inspect.getsource(Database.installation_policy_snapshot)
+        self.assertIn("dm.map_capable", source)
+        self.assertNotIn("dm.support_status", source)
 
     def test_non_approved_asset_is_not_serialized(self) -> None:
         row = {

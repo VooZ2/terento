@@ -289,6 +289,14 @@ def main() -> int:
 
     deploy_api = (WORKFLOWS / "deploy-catalog-api.yml").read_text(encoding="utf-8")
     assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in deploy_api
+    assert "migration-source-impact:" in deploy_api
+    assert "backend/catalog-api/src/terento_catalog/(migrations/|migrate\\.py$)" in deploy_api
+    assert "migration_source_changed != 'true'" in deploy_api
+    assert "target_062_separately_applied:" in deploy_api
+    assert "default: false" in deploy_api
+    assert "github.event_name == 'workflow_dispatch'" in deploy_api
+    assert "inputs.target_062_separately_applied == true" in deploy_api
+    assert "vars.TERENTO_FIXED_OPS_INSTALLED == 'true'" in deploy_api
 
     assert "needs: tests" in deploy_api, "catalog deploy must wait for backend tests"
     assert "Retain API deployment health" in deploy_api
@@ -316,11 +324,22 @@ def main() -> int:
     assert 'sleep $((attempt * 2))' in publisher
     assert "VPS_SSH_KEY" not in publisher and "environment:" not in publisher
     assert "secrets." not in publisher.replace("secrets.GITHUB_TOKEN", "TOKEN")
+    assert "io.terento.migration.062.sha256" in publisher
+    assert "io.terento.migrate.py.sha256" in publisher
+    assert "062_reconcile_installation_statistics_schema.sql" in publisher
+    assert 'sha256sum "$migration_062"' in publisher
+    assert 'sha256sum "$migrate_py"' in publisher
+    assert "value: ${{ jobs.publish.outputs.migration_062_sha256 }}" in publisher
+    assert "value: ${{ jobs.publish.outputs.migrate_py_sha256 }}" in publisher
+    assert "value: ${{ jobs.publish.outputs.build_timestamp }}" in publisher
     for gate in ("Tests/run-site-tests.sh", "Tests/run-release-documentation-tests.sh",
                  "Tests/run-release-legal-content-tests.sh"):
         assert gate in publisher
     for role, source in (("api", deploy_api), ("site", deploy_site)):
-        assert "needs: publish" in source
+        if role == "api":
+            assert "needs: [publish, migration-source-impact]" in source
+        else:
+            assert "needs: publish" in source
         assert f"environment: rukas-{role}" in source
         assert f"bash scripts/infra/deploy-vps-image.sh {role}" in source
         assert "${{ needs.publish.outputs.digest }}" in source
@@ -329,6 +348,36 @@ def main() -> int:
         assert "TERENTO_SITE_SSH" not in source
         assert "scp " not in source and "bash -s" not in source
         assert "Synchronize operations ingest secret" not in source
+
+    candidate = (WORKFLOWS / "build-catalog-migration-candidate.yml").read_text(encoding="utf-8")
+    assert "workflow_dispatch:" in candidate
+    assert "candidate-source-gate:" in candidate
+    assert '[[ "$GITHUB_REF" == "refs/heads/beta" ]]' in candidate
+    assert '[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]' in candidate
+    assert 'git status --porcelain=v1 --untracked-files=all' in candidate
+    assert candidate.index("candidate-source-gate:") < candidate.index("  publish:")
+    assert "needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]" in candidate
+    assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in candidate
+    assert "uses: ./.github/workflows/publish-vps-images.yml" in candidate
+    assert "candidate-contract-tests:" in candidate
+    assert "Tests/run-ci-workflow-contract-tests.sh" in candidate
+    assert "Tests/run-ci-documentation-tests.sh" in candidate
+    assert "git show --check --oneline HEAD" in candidate
+    assert "swift-authorization-tests:" in candidate
+    assert "app/TerentoCore/Tests/run-native-installation-authorization-tests.sh" in candidate
+    assert "packages: read" in candidate
+    assert "docker pull \"$image_ref\"" in candidate
+    assert "--network none --read-only --cap-drop ALL" in candidate
+    assert "migration_root.glob(\"*.sql\")" in candidate
+    assert "list(range(1, 63))" in candidate
+    assert "image_migration_sha" in candidate and "image_runner_sha" in candidate
+    assert "migration inventory" in candidate
+    assert "actions/upload-artifact@" in candidate
+    assert "retention-days: 90" in candidate
+    assert "VPS_SSH_KEY" not in candidate and "environment:" not in candidate
+    assert "TERENTO_FIXED_OPS_INSTALLED" not in candidate
+    assert "scripts/infra/deploy-vps-image.sh" not in candidate
+    assert "Approval: NOT GRANTED" in candidate
     rejection = (WORKFLOWS / "check-vps-access.yml").read_text(encoding="utf-8")
     assert "expect 64 id" in rejection
     assert "expect 0 " not in rejection and "expect 1 " not in rejection

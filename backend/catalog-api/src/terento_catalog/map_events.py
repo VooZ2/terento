@@ -14,7 +14,7 @@ from .telemetry import validate_release_label
 MAX_EVENT_BYTES = 8 * 1024
 ALLOWED_EVENT_KEYS = {
     "acquisitionId", "componentKind",
-    "schemaVersion",
+    "schemaVersion", "mapResultIndex",
     "id",
     "operationId",
     "timestamp",
@@ -63,6 +63,10 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         raise MapEventValidationError("unsupported_schema")
     if not isinstance(event.get("eventType"), str):
         raise MapEventValidationError("invalid_event_type")
+    if event.get("mapResultIndex") is not None and (
+        not isinstance(event["mapResultIndex"], int) or event["mapResultIndex"] < 0
+    ):
+        raise MapEventValidationError("invalid_mapResultIndex")
     has_acquisition = event.get("acquisitionId") is not None
     if has_acquisition != (event.get("componentKind") is not None):
         raise MapEventValidationError("incomplete_acquisition_identity")

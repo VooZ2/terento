@@ -30,6 +30,7 @@ from .device_catalog import _official_source_image_url
 from .failure_reasons import failure_reason_label, normalize_failure_reason
 from .failure_context import validate_context
 from .map_capability import classify_map_capable
+from .installation_policy import installation_authorization_for_row
 from .device_labels import model_label, variant_label
 from .admin_world_map import WORLD_MAP_COUNTRY_ALIASES, WORLD_MAP_SVG
 from .maprando_geography import (
@@ -4961,14 +4962,15 @@ def device_detail_page(
     )
     status = calculate_compatibility_status(
         successful_install_count=successful,
-        recognized_map_capable_evidence=device.get("mapCapable") is True,
+        recognized_map_capable_evidence=device.get("observedMapCapability") is True,
     )
     status_value = device.get("evidenceStatus") or (status.value if status else "")
     last_activity = _timestamp_markup(stats.get("lastEvidenceAt")) if stats.get("lastEvidenceAt") else "—"
     publication = device.get("publicCompatibility") or {}
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
-    authorization_label, authorization_kind, _ = _admin_installation_authorization(
-        device.get("supportStatus")
+    observed_label, _ = _admin_map_capability(device.get("observedMapCapability"))
+    authorization_label, authorization_kind, _ = _admin_installation_authorization_code(
+        device.get("installationAuthorization")
     )
     if variant == "Historical":
         variant = "—"
@@ -4976,7 +4978,7 @@ def device_detail_page(
     else:
         provenance = ""
     summary_badges = provenance + "".join((
-        _admin_status_badge(f"Maps: {map_label}", f"map-{map_kind}"),
+        _admin_status_badge(f"Catalog Maps: {map_label}", f"map-{map_kind}"),
         _status_badge(status_value),
         _admin_status_badge(authorization_label, f"authorization-{authorization_kind}"),
         _admin_status_badge("Published", "publication-published") if publication.get("published") else "",
@@ -5105,6 +5107,7 @@ def device_detail_page(
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
+        <p class='table-help'>Catalog Maps: {html.escape(map_label)} · Observed map capability: {html.escape(observed_label)} · Installation authorization: {html.escape(authorization_label)}</p>
         <section class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><div class='map-statistics-kpi-groups model-kpi-groups'><section class='map-statistics-kpi-group' aria-labelledby='model-installation-kpis-title'><h2 id='model-installation-kpis-title' class='sr-only'>Installation outcomes</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.' title='Each map installation counts separately. Verified successful map installations determine compatibility status.'><span>Attempts</span><strong>{attempts}</strong></div><div class='map-statistics-kpi-value'><span>Successful</span><strong>{successful}</strong></div><div class='map-statistics-kpi-secondary'><div class='map-statistics-kpi-value error-counter-kpi'><span>Failed</span>{_admin_error_counter(failed)}</div><div class='map-statistics-kpi-value error-counter-kpi'><span>Open errors</span>{_admin_error_counter(open_errors)}</div></div></div></section><section class='map-statistics-kpi-group model-activity-kpi-group' aria-labelledby='model-activity-kpis-title'><h2 id='model-activity-kpis-title'>Activity</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></div></div></section></div></section>
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
@@ -5115,7 +5118,7 @@ def device_detail_page(
           <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing {1 if history else 0}–{min(len(history), 25)} of {len(history)} · page 1 of {max(1, (len(history) + 24) // 25)}</span><button type='button' data-history-page='next' {'disabled' if len(history) <= 25 else ''}>Next</button></div>
         </section>
         <details class='model-page-section model-administration admin-disclosure' {'open' if device.get('supportStatus') == 'NOT_EVALUATED' or not publication.get('published') else ''}><summary id='administration-title'>Administration</summary><div class='administration-grid'>
-          <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending review</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
+          <article><h3>Installation authorization</h3><p class='table-help'>Catalog Maps is the stored catalog value used for write authorization. Observed map capability is separate evidence and cannot grant installation.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><h3>Support metadata</h3><p class='table-help'>This operator field is retained for review and evidence workflow only. Changing it cannot grant or revoke native map-write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
           <article><h3>Public compatibility</h3><p>{public_copy}</p>{public_form}</article>
         </div></details>
         <div class='model-information-columns device-overview-sections'>
@@ -5315,14 +5318,22 @@ def _admin_map_capability(value: Any) -> tuple[str, str]:
     return "Unknown", "unknown"
 
 
-def _admin_installation_authorization(value: Any) -> tuple[str, str, str]:
-    status = str(value or "NOT_EVALUATED").upper()
+def _admin_installation_authorization(map_capable: Any, active: Any = True) -> tuple[str, str, str]:
+    _, authorization = installation_authorization_for_row({
+        "active": active is True,
+        "map_capable": map_capable,
+    })
+    return _admin_installation_authorization_code(authorization)
+
+
+def _admin_installation_authorization_code(value: Any) -> tuple[str, str, str]:
+    status = str(value or "PENDING").upper()
     labels = {
-        "SUPPORTED": ("Approved", "approved", "APPROVED"),
-        "UNSUPPORTED": ("Blocked", "blocked", "BLOCKED"),
-        "NOT_EVALUATED": ("Pending review", "pending", "PENDING"),
+        "APPROVED": ("Approved", "approved", "APPROVED"),
+        "BLOCKED": ("Blocked", "blocked", "BLOCKED"),
+        "PENDING": ("Pending", "pending", "PENDING"),
     }
-    return labels.get(status, ("Pending review", "pending", "PENDING"))
+    return labels.get(status, ("Pending", "pending", "PENDING"))
 
 
 def _admin_device_payload(
@@ -5350,9 +5361,7 @@ def _admin_device_payload(
             row.get("canonical_model") or row.get("model"),
             row.get("manufacturer") or "Garmin",
         )
-        map_capable = (
-            stored_map_capable if stored_map_capable is not None else classified_map_capable
-        )
+        map_capable = classified_map_capable
         if map_capable is None and successful > 0:
             # A verified successful installation is model/variant-specific
             # evidence that the catalog classifier has not learned yet.
@@ -5362,7 +5371,8 @@ def _admin_device_payload(
             recognized_map_capable_evidence=map_capable is True,
         )
         authorization_label, _, authorization_code = _admin_installation_authorization(
-            row.get("support_status")
+            row.get("map_capable"),
+            row.get("active"),
         )
         public_identity = str(row.get("public_compatibility_identity") or "").strip()
         public_review_status = str(row.get("public_review_status") or "PENDING").upper()
@@ -5398,7 +5408,8 @@ def _admin_device_payload(
             "partNumber": row.get("part_number"),
             "productURL": row.get("product_url"),
             "active": bool(row.get("active", True)),
-            "mapCapable": map_capable,
+            "mapCapable": stored_map_capable,
+            "observedMapCapability": map_capable,
             "supportStatus": str(row.get("support_status") or "NOT_EVALUATED").upper(),
             "installationAuthorization": authorization_code,
             "installationAuthorizationLabel": authorization_label,
@@ -5478,8 +5489,8 @@ def _admin_device_row(device: dict[str, Any], index: int) -> str:
     variant = "—" if provenance else variant or "—"
     family = str(device.get("familyName") or device.get("family") or "")
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
-    authorization_label, authorization_kind, _ = _admin_installation_authorization(
-        device.get("supportStatus")
+    authorization_label, authorization_kind, _ = _admin_installation_authorization_code(
+        device.get("installationAuthorization")
     )
     evidence_status = str(device.get("evidenceStatus") or "").upper()
     stats = device["installationStats"]
@@ -5500,7 +5511,7 @@ def _admin_device_row(device: dict[str, Any], index: int) -> str:
     return f"""<tr data-device-index='{index}' data-device-url='{html.escape(detail_url, quote=True)}' data-search='{html.escape(search, quote=True)}' data-model='{html.escape(model.lower(), quote=True)}' data-updated='{html.escape(str(catalog.get('updatedAt') or ''), quote=True)}' data-installs='{stats['attempts']}' data-evidence='{html.escape(str(stats.get('lastSuccessfulAt') or ''), quote=True)}' data-status='{html.escape(evidence_status.lower())}'>
       <td><a class='device-model-button' href='{html.escape(detail_url, quote=True)}'>{image}<span class='device-model-copy'><strong>{html.escape(model)}</strong>{provenance}{new_badge}</span></a></td>
       <td>{html.escape(variant)}</td>
-      <td class='column-status'>{_admin_status_badge(map_label, f'map-{map_kind}')}</td>
+      <td class='column-status' title='Observed map capability: {html.escape(_admin_map_capability(device.get("observedMapCapability"))[0], quote=True)}'>{_admin_status_badge(map_label, f'map-{map_kind}')}</td>
       <td class='column-status'>{_admin_status_badge(authorization_label, f'authorization-{authorization_kind}')}</td>
       <td class='column-status'>{_status_badge(evidence_status)}</td>
       <td class='column-number numeric'>{stats['attempts']}</td>
@@ -5561,7 +5572,7 @@ def devices_page(
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
             <label><span class="sr-only">Filter by family</span><select id="device-family"><option value="all">All families</option>{family_options}</select></label>
             <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
-            <label><span class="sr-only">Filter by installation authorization</span><select id="device-support"><option value="all">All authorizations</option><option value="SUPPORTED">Approved</option><option value="UNSUPPORTED">Blocked</option><option value="NOT_EVALUATED">Pending review</option></select></label>
+            <label><span class="sr-only">Filter by installation authorization</span><select id="device-support"><option value="all">All authorizations</option><option value="APPROVED">Approved</option><option value="BLOCKED">Blocked</option><option value="PENDING">Pending</option></select></label>
             <label><span class="sr-only">Filter by compatibility status</span><select id="device-status"><option value="all">All statuses</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
             <label class="device-mobile-sort"><span class="sr-only">Sort devices</span><select id="device-mobile-sort">{mobile_sort_options}</select></label>
             <p class="results-count" id="device-results-count" aria-live="polite">{_count_label(summary['mapCapable'], 'result')}</p>
@@ -5579,7 +5590,7 @@ def devices_page(
 
 
 def _device_table_header() -> str:
-    return """<thead><tr><th scope="col" class="column-text" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" class="column-text" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
+    return """<thead><tr><th scope="col" class="column-text" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" class="column-text" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Catalog Maps" title="Stored catalog map capability">Catalog Maps <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
 
 
 def _device_table_columns() -> str:
@@ -5818,13 +5829,13 @@ def _devices_script() -> str:
       const textCompare = (a, b) => String(a || '').localeCompare(String(b || ''), undefined, {sensitivity: 'base', numeric: true});
       const statusOrder = {unavailable: 0, TESTING: 1, TESTED: 2, SUPPORTED: 3, VERIFIED: 4};
       const mapOrder = {unknown: 0, no: 1, yes: 2};
-      const authorizationOrder = {NOT_EVALUATED: 0, UNSUPPORTED: 1, SUPPORTED: 2};
+      const authorizationOrder = {PENDING: 0, BLOCKED: 1, APPROVED: 2};
       const compareLastSuccess = __TERENTO_LAST_SUCCESS_COMPARATOR__;
       const sortValue = (device, key) => ({
         model: device.model,
         variant: device.variant,
         maps: mapOrder[mapValue(device)],
-        authorization: authorizationOrder[device.supportStatus || 'NOT_EVALUATED'],
+        authorization: authorizationOrder[device.installationAuthorization || 'PENDING'],
         status: statusOrder[device.evidenceStatus || 'unavailable'],
         attempts: Number(device.installationStats.attempts || 0),
         success: Number(device.installationStats.successful || 0),
@@ -5873,7 +5884,7 @@ def _devices_script() -> str:
           const matchesSearch = !query || deviceSearch(device).includes(query);
           const matchesFamily = family.value === 'all' || family.value === (device.familyName || device.family);
           const matchesMap = map.value === 'all' || mapValue(device) === map.value;
-          const matchesAuthorization = support.value === 'all' || (device.supportStatus || 'NOT_EVALUATED') === support.value;
+          const matchesAuthorization = support.value === 'all' || (device.installationAuthorization || 'PENDING') === support.value;
           const matchesStatus = status.value === 'all' || (device.evidenceStatus || 'unavailable') === status.value;
           return matchesSearch && matchesFamily && matchesMap && matchesAuthorization && matchesStatus;
         }).sort(compareDevices);
@@ -6373,10 +6384,10 @@ def _diagnostics_script() -> str:
         if (!window.confirm(form.dataset.confirm || 'Continue?')) event.preventDefault();
       }));
       document.querySelectorAll('[data-authorization-form]').forEach((form) => form.addEventListener('submit', (event) => {
-        const current = form.dataset.currentAuthorization;
+        const current = form.dataset.currentSupportStatus;
         const next = form.querySelector('select[name="support_status"]')?.value;
-        if (current === 'SUPPORTED' && next !== 'SUPPORTED'
-          && !window.confirm('Reduce installation authorization? This changes the operator decision but does not alter compatibility evidence or installation history.')) {
+        if (current !== next
+          && !window.confirm('Change support metadata? This does not change native map-write authorization, compatibility evidence, or installation history.')) {
           event.preventDefault();
         }
       }));

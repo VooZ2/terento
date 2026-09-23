@@ -288,14 +288,22 @@ Migration `014` also adds the independently reviewed `device_model.map_capable` 
 contract. Map capability, support state, and installation evidence remain
 independent concepts. The migration carries forward the existing exact
 write-capable `garmin-fenix-8-47-amoled` profile as `map_capable = true` and
-`support_status = 'SUPPORTED'`. The public device-catalog v2 contract exposes
-this as additive nullable `mapCapable`; it remains capability metadata, not a
-support status or write grant. For other records, a stored `map_capable`
-value still wins, but a `NULL` column is classified at admin-read time and on
-the next Garmin collection from the same Map Manager prefix list used by the
-native client (`terento_catalog.map_capability`, kept aligned with
-`GarminMapCapabilityRegistry`). That classification is not a support claim
-and does not authorize writes. Unrecognised models remain `NULL` / Unknown.
+`support_status = 'SUPPORTED'`. The public-read installation-policy v3
+contract exposes the stored nullable capability as `mapCapable` and derives
+`baseModel` from the catalog model label. Only an active Maps=Yes row derives
+`APPROVED`; Maps=No or an inactive row derives `BLOCKED`, and an active
+Maps=NULL row derives `PENDING`.
+`support_status` remains Admin/operator metadata and is not projected into or
+used by that write policy. The native client uses normalized base-model and
+available variant matching to determine which active catalog rows are
+plausible. Conflicting variant evidence broadens the candidate set; it does
+not by itself deny authorization. Authorization is determined from the Maps
+capability of all remaining possible candidates. It approves only when all
+plausible rows are Maps=Yes; all Maps=No blocks, and mixed or NULL values are
+pending. A base-model conflict remains pending. Unrecognised models remain
+pending/unknown rather than being treated as permanently unsupported. The
+public device-catalog `mapCapable` display remains separate from the native
+write-policy decision.
 
 ## Compatibility evidence and statistics
 
@@ -404,6 +412,38 @@ Migration `056_statistics_semantics.sql` replaces the earlier per-operation and
 explicit pre-install exclusion and conflict-safe deduplication. It retains raw
 evidence and historical failure visibility; it does not migrate or invent
 production counts.
+
+The alternate `060_installation_authorization_statistics_exclusions.sql` draft
+is preserved only as [non-executable migration-source provenance](migration-source-provenance/060_installation_authorization_statistics_exclusions.sql.txt).
+The executable beta migration `060_missing_diagnostic_review_tasks.sql` remains
+unchanged. Candidate migration 062 adds server-classified statistics-exclusion
+and security-review fields.
+Only explicit `write_started=false` plus no remote object can receive
+`OUT_OF_SCOPE_PREWRITE`; NULL or legacy write facts are not guessed. This
+general exclusion mechanism preserves historical evidence and does not infer
+missing write facts.
+
+The complete `2026-09-23` live schema preflight ran from
+`tools/installation-statistics-schema-preflight.sql` as one audit inside a
+`READ ONLY` transaction (`transaction_read_only = on`) and ended with
+`ROLLBACK`. Of 25 expected objects, 24 matched. The live `schema_migrations`
+history contains versions through `061`, but confirmed drift remains:
+`compatibility_evidence_event` lacks `statistics_exclusion_code`,
+`statistics_exclusion_reason`, and `security_issue_code`;
+`map_download_event` lacks `map_result_index` and those same three fields;
+`statistics_exclusion_audit` and the expected exclusion/audit constraints and
+indexes are absent; and the live `compatibility_model_statistics` view does
+not apply the exclusion filter. The exact missing-object matrix is recorded in
+the full preflight result and final task report. The original SQL executed for
+the live migration records is unknown because the history stores no content
+checksum. The new `062_reconcile_installation_statistics_schema.sql` is a local
+additive draft derived from the full preflight; isolated migration tests cover
+clean, live-like, and already-reconciled schemas, and confirm existing map
+events keep `map_result_index = NULL`. The draft has **not** been approved or
+applied. Do not treat the version marks or local SQL as proof of schema parity.
+Historical map-download rows without a recorded result index remain `NULL`; the
+reconciliation does not invent or backfill historical `map_result_index`
+values.
 
 Migration `015_canonical_compatibility_aggregation.sql` replaces the earlier
 view rule that promoted one successful install to `SUPPORTED`. The view now

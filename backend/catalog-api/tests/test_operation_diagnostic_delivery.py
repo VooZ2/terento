@@ -63,7 +63,9 @@ class IntakeDatabase(FakeEvidenceDatabase, Database):
             optional_component_selected BOOLEAN, optional_component_outcome TEXT,
             optional_component_failure_stage TEXT, optional_component_failure_code TEXT,
             optional_component_native_failure_code TEXT,
-            failure_context TEXT, original_failure_context TEXT'''
+            failure_context TEXT, original_failure_context TEXT,
+            statistics_exclusion_code TEXT, statistics_exclusion_reason TEXT,
+            security_issue_code TEXT'''
         self.sqlite.execute('CREATE TABLE compatibility_evidence_event (' + columns + ')')
         self.mappings = deepcopy(MAPPINGS)
         self.identity_scope_calls = []

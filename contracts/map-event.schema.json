@@ -20,6 +20,14 @@
       "type": "string",
       "description": "Random UUID linking map events within an operation; no persistent device identity."
     },
+    "mapResultIndex": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Optional zero-based index of the independent map result within the operation."
+    },
     "timestamp": {
       "type": "string",
       "description": "ISO timestamp parsed by datetime.fromisoformat; timezone required."

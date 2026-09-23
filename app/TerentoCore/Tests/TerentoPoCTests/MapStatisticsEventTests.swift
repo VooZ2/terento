@@ -173,6 +173,7 @@ struct MapStatisticsEventTests {
             package: package,
             eventType: .downloadSucceeded,
             outcome: .succeeded,
+            mapResultIndex: 2,
             appBuild: "7-local",
             releaseLabel: "1.0.0-beta.10-local"
         )
@@ -190,7 +191,7 @@ struct MapStatisticsEventTests {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let payload = String(decoding: try encoder.encode(first), as: UTF8.self)
-        for field in ["schemaVersion", "id", "operationId", "providerId", "mapId", "region", "eventType", "outcome", "timestamp", "appBuild", "releaseLabel"] {
+        for field in ["schemaVersion", "id", "operationId", "providerId", "mapId", "region", "mapResultIndex", "eventType", "outcome", "timestamp", "appBuild", "releaseLabel"] {
             expect(payload.contains("\"\(field)\""), "payload includes \(field)")
         }
         expect(first.releaseLabel == "1.0.0-beta.10-local", "map events carry the local release label")

@@ -1,0 +1,67 @@
+#!/usr/bin/python3 -I
+"""Fixed SSH command dispatcher; installer substitutes only @PROJECT@."""
+
+import os
+import re
+import subprocess
+import sys
+
+PROJECT = '@PROJECT@'
+HELPER = '/usr/local/sbin/terento-deploy'
+SUDO = '/usr/bin/sudo'
+
+DEPLOY = re.fullmatch(
+    r'deploy (sha256:[0-9a-f]{64}) ([0-9a-f]{40})',
+    os.environ.get('SSH_ORIGINAL_COMMAND', ''),
+)
+STATUS = re.fullmatch(
+    r'status(?: --candidate-digest (sha256:[0-9a-f]{64})'
+    r' --candidate-revision ([0-9a-f]{40})'
+    r'(?: --expected-migration-062-sha256 ([0-9a-f]{64}))?)?',
+    os.environ.get('SSH_ORIGINAL_COMMAND', ''),
+)
+MIGRATE = re.fullmatch(
+    r'migrate --target (062) --image (sha256:[0-9a-f]{64})'
+    r' --revision ([0-9a-f]{40})'
+    r' --expected-migration-062-sha256 ([0-9a-f]{64})'
+    r' --expected-migrate-py-sha256 ([0-9a-f]{64})',
+    os.environ.get('SSH_ORIGINAL_COMMAND', ''),
+)
+
+if PROJECT not in ('site', 'api'):
+    print('This SSH principal has no valid fixed deployment role.', file=sys.stderr)
+    raise SystemExit(64)
+
+if DEPLOY:
+    command = [SUDO, '-n', HELPER, PROJECT, *DEPLOY.groups()]
+elif PROJECT == 'api' and STATUS:
+    candidate_digest, candidate_revision, expected_sql_sha = STATUS.groups()
+    if (candidate_digest is None) != (candidate_revision is None):
+        print('Invalid fixed API status request.', file=sys.stderr)
+        raise SystemExit(64)
+    command = [SUDO, '-n', HELPER, 'api', 'status']
+    if candidate_digest:
+        command += ['--candidate-digest', candidate_digest,
+                    '--candidate-revision', candidate_revision]
+        if expected_sql_sha:
+            command += ['--expected-migration-062-sha256', expected_sql_sha]
+elif PROJECT == 'api' and MIGRATE:
+    target, image, revision, expected_sql_sha, expected_runner_sha = MIGRATE.groups()
+    command = [
+        SUDO, '-n', HELPER, 'api', 'migrate',
+        '--target', target,
+        '--image', image,
+        '--revision', revision,
+        '--expected-migration-062-sha256', expected_sql_sha,
+        '--expected-migrate-py-sha256', expected_runner_sha,
+    ]
+else:
+    print('Only the fixed image deployment command is permitted for this principal.', file=sys.stderr)
+    raise SystemExit(64)
+
+raise SystemExit(subprocess.call(
+    command,
+    stdin=subprocess.DEVNULL,
+    cwd='/',
+    env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin'},
+))

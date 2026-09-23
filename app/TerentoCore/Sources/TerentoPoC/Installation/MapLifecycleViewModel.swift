@@ -337,6 +337,11 @@ final class MapLifecycleViewModel: ObservableObject {
         guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.update),
               !isBusy else {
+            if !deviceEngine.installationAuthorization.canInstall {
+                fail(itemID: itemID, action: .update,
+                     message: deviceEngine.installationAuthorization.userMessage
+                        ?? "Map installation is not available for this device in Terento.")
+            }
             return
         }
 
@@ -822,10 +827,12 @@ final class MapLifecycleViewModel: ObservableObject {
             currentItem: context.item,
             currentObject: currentObject,
             confirmed: true,
-            deviceConnected: true
+            deviceConnected: true,
+            installationAuthorization: deviceEngine.installationAuthorization
         )
         let operationGate = self.operationGate
         let operationController = self.operationController
+        let authorizationDeviceEngine = self.deviceEngine
         guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
         let mapStatisticsOperationID = UUID()
@@ -865,7 +872,14 @@ final class MapLifecycleViewModel: ObservableObject {
                         currentObject: request.currentObject,
                         confirmed: request.confirmed,
                         deviceConnected: operationGate.isValid(lease),
-                        deviceConnectionCheck: { operationGate.isValid(lease) }
+                        installationAuthorization: request.installationAuthorization,
+                        deviceConnectionCheck: { operationGate.isValid(lease) },
+                        authorizationRefresh: { identity in
+                            await authorizationDeviceEngine.resolveFreshInstallationAuthorization(for: identity)
+                        },
+                        currentIdentity: {
+                            await authorizationDeviceEngine.currentInstallationIdentity
+                        }
                     )
                     return await SafeUpdateTransaction().run(
                         request: liveRequest,
@@ -912,11 +926,13 @@ final class MapLifecycleViewModel: ObservableObject {
                     errorCodes: [result.status.rawValue]
                 ))
             }
-            self?.mapEngine.recordMapUpdateStatistics(
-                package: selectedMap,
-                operationID: mapStatisticsOperationID,
-                outcome: result.isSuccess ? .succeeded : .failed
-            )
+            if result.status != .blockedInstallationAuthorization {
+                self?.mapEngine.recordMapUpdateStatistics(
+                    package: selectedMap,
+                    operationID: mapStatisticsOperationID,
+                    outcome: result.isSuccess ? .succeeded : .failed
+                )
+            }
             guard let self else { return }
             let isCurrent = operationController.isCurrent(operationToken)
             operationController.finish(operationToken)

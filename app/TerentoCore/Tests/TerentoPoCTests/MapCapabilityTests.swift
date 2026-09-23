@@ -59,7 +59,7 @@ struct MapCapabilityTests {
         )
         expect(
             registry.evaluate(identity: identity(model: "Garmin Future Watch")).canAttemptTerentoMapInstall,
-            "an unrecognised Garmin model may attempt beta installation after live device safety checks"
+            "this presentation property is not write authorization; an unknown catalog model remains pending"
         )
         print("PASS: 11 Map Manager capability tests")
     }

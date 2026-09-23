@@ -63,6 +63,11 @@ from .device_catalog import (
     device_catalog_etag,
     serialize_device_catalog,
 )
+from .installation_policy import (
+    build_installation_policy,
+    installation_policy_etag,
+    serialize_installation_policy,
+)
 from .compatibility_evidence import (
     EvidenceValidationError,
     validate_event,
@@ -128,7 +133,6 @@ class CatalogService:
         self.opentopomap_contour_allowlist = frozenset(opentopomap_contour_allowlist)
 
     def health(self) -> bool:
-        self.database.prune_compatibility_events()
         return self.database.health()
 
     def receive_operational_observation(self, document: dict[str, Any]) -> bool:
@@ -201,6 +205,11 @@ class CatalogService:
         rows, updated_at = self.database.device_catalog_snapshot()
         body = serialize_device_catalog(build_device_catalog(rows, updated_at))
         return body, device_catalog_etag(body), updated_at
+
+    def installation_policy_response(self) -> tuple[bytes, str, datetime]:
+        rows, updated_at = self.database.installation_policy_snapshot()
+        body = serialize_installation_policy(build_installation_policy(rows, updated_at))
+        return body, installation_policy_etag(body), updated_at
 
     def admin_providers(self, *, include_download_times: bool = False) -> dict[str, Any]:
         rows = {str(row["provider_id"]): row for row in self.database.provider_rows()}
@@ -604,7 +613,7 @@ class CatalogService:
         reason: str | None = None,
         note: str | None = None,
     ) -> bool:
-        """Keep the legacy backend enum while exposing authorization in UI."""
+        """Keep the legacy backend enum as operator metadata for the Admin UI."""
         return self.database.update_device_support_status(
             device_id,
             support_status,
@@ -979,6 +988,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     service.device_catalog_response,
                     send_body=send_body,
                     unavailable_error="device_catalog_unavailable",
+                )
+                return
+            if request_path == "/devices/installation-policy.json":
+                self._handle_catalog(
+                    service.installation_policy_response,
+                    send_body=send_body,
+                    unavailable_error="installation_policy_unavailable",
+                    cache_control="no-store",
                 )
                 return
             if request_path.startswith("/assets/devices/"):
@@ -2310,6 +2327,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             *,
             send_body: bool,
             unavailable_error: str,
+            cache_control: str = "public, max-age=300, stale-while-revalidate=86400",
         ) -> None:
             try:
                 body, etag, updated_at = response_factory()
@@ -2325,7 +2343,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
             last_modified = _http_date(updated_at)
             etag_header = self.headers.get("If-None-Match")
-            not_modified = (
+            not_modified = cache_control != "no-store" and (
                 _not_modified(etag_header, etag)
                 if etag_header
                 else _not_modified_since(
@@ -2335,7 +2353,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if not_modified:
                 self.send_response(HTTPStatus.NOT_MODIFIED)
                 self._common_headers(
-                    cache_control="public, max-age=300, stale-while-revalidate=86400",
+                    cache_control=cache_control,
                     etag=etag,
                     last_modified=last_modified,
                 )
@@ -2344,7 +2362,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
             self.send_response(HTTPStatus.OK)
             self._common_headers(
-                cache_control="public, max-age=300, stale-while-revalidate=86400",
+                cache_control=cache_control,
                 etag=etag,
                 last_modified=last_modified,
                 content_type="application/json; charset=utf-8",

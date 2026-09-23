@@ -9,6 +9,25 @@ private enum SimulationError: Error { case refused(String) }
 private func check(_ value: @autoclosure () -> Bool, _ message: String) throws {
     if !value() { throw SimulationError.refused(message) }
 }
+private func approvedAuthorization(for identity: DeviceIdentity) -> InstallationAuthorizationState {
+    let record = InstallationAuthorizationRecord(
+        id: identity.catalogDeviceID ?? "test-device",
+        manufacturer: identity.manufacturer,
+        model: identity.model,
+        baseModel: identity.canonicalModel ?? identity.model,
+        canonicalModel: identity.canonicalModel ?? identity.model,
+        variant: identity.variant ?? "",
+        caseSizeMm: identity.caseSizeMm,
+        displayType: identity.displayType,
+        screenTechnology: identity.screenTechnology,
+        solar: identity.solar,
+        inReach: identity.inReach,
+        active: true,
+        scope: "IN_SCOPE",
+        installationAuthorization: "APPROVED"
+    )
+    return .approved(record: record, policyVersion: 1)
+}
 private func hash(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
 private let oldPath = "/GARMIN/terento_freizeitkarte_fra.img"
 private let newPath = "/GARMIN/terento_freizeitkarte_fra_2026-06.img"
@@ -218,8 +237,9 @@ struct LocalManagedUpdateSimulationTests {
         let result = MapInstallationCoordinator(transport: installer, deviceReader: device, manifestStore: store,
             recoveryStore: LocalTerentoFailedInstallRecoveryStore(rootDirectory: root.appendingPathComponent("recovery")),
             transactionGate: InstallationTransactionGate()).run(.init(identity: id, selectedMap: package(5),
-                comparison: initialComparison, installedMaps: [], inspectedFiles: [], beforeDeviceFiles: try device.readFileInventory(),
-                availableStorage: 16_000_000_000, profile: profile, artifact: v1, userConfirmed: true))
+            comparison: initialComparison, installedMaps: [], inspectedFiles: [], beforeDeviceFiles: try device.readFileInventory(),
+                availableStorage: 16_000_000_000, profile: profile, artifact: v1, userConfirmed: true,
+                installationAuthorization: approvedAuthorization(for: id)))
         try check(result.isSuccess && installer.sends == 1 && installer.deletes == 0, "real v1 install failed: \(result.status)")
         device.reconnect()
         // Reopened store models a new app process/version; ownership has no app-version dependency.
@@ -253,7 +273,10 @@ struct LocalManagedUpdateSimulationTests {
             profile: profile, selectedMap: package(6), comparison: comparison, currentItem: item,
             currentObject: .init(file: current.file, identity: current.identity, version: current.version,
                 ownership: owned ? .managedByTerento : .detectedNotManaged, sha256: entries.first?.sha256),
-            confirmed: true, deviceConnected: true)
+            confirmed: true, deviceConnected: true,
+            installationAuthorization: approvedAuthorization(for: currentIdentity),
+            authorizationRefresh: { identity in approvedAuthorization(for: identity) },
+            currentIdentity: { currentIdentity })
         let updater = LocalUpdateIO(device, mode: .updateNew, root: ledgerRoot)
         if scenario == "wrong-device" || scenario == "live-substitution" { device.serial = "SIMULATED-WATCH-B" }
         if scenario == "target-changed" { device.bytes[oldPath]![1000] = 1 }

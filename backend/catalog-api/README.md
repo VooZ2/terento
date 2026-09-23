@@ -36,6 +36,55 @@ serial numbers, manifests, accounts, private logs, or map binaries.
 
 ## Local development
 
+Live schema gate (2026-09-23): the complete
+`tools/installation-statistics-schema-preflight.sql` ran as one audit inside a
+`READ ONLY` transaction (`transaction_read_only = on`), followed by `ROLLBACK`.
+Of 25 expected objects, 24 matched. Live schema history contains versions
+through `061`, but drift remains: `statistics_exclusion_audit` is absent;
+`compatibility_evidence_event` lacks `statistics_exclusion_code`,
+`statistics_exclusion_reason`, and `security_issue_code`; `map_download_event`
+lacks `map_result_index` and those three exclusion/security fields; the event
+exclusion indexes and audit primary-key, unique, check, and lookup indexes are
+absent; and the live `compatibility_model_statistics` view has no exclusion
+filter. The migration history stores no SQL checksum, so the original SQL for
+the recorded 060/061 entries is unknown. Treat this as confirmed schema drift,
+not successful reconciliation. A local additive 062 reconciliation draft has
+been prepared and tested against isolated clean, live-like, and already-
+reconciled schemas; it has not been approved or applied to the live database.
+Do not replay migrations or run schema/data operations from version marks alone.
+The SELECT-only 062 pre/postchecks and operator runbook are in
+[`docs/installation-statistics-062-live-runbook.md`](docs/installation-statistics-062-live-runbook.md).
+The local working tree now contains separate root-helper source paths for
+`STATUS`, `MIGRATE --target 062`, and `DEPLOY`, plus an owner-run installer and
+offline protocol tests. These sources are still untracked/uncommitted and are
+not installed on the VPS; the existing SSH entry point has not been changed.
+See [`docs/production-operations-protocol.md`](docs/production-operations-protocol.md).
+Thus no production status/migration-only remote command is available yet, and
+062 remains NOT READY. API deployment is manual-only; dispatch requires
+`target_062_separately_applied=true` and the owner-managed
+`TERENTO_FIXED_OPS_INSTALLED=true` variable. Migration-source commits are
+excluded as an additional gate, and the helper requires a valid 062 image
+identity plus an already-applied 062 ledger before service changes. Do not use
+deploy or ad-hoc Docker/shell commands as a substitute for the explicit
+migration path.
+
+The owner-run installer accepts only clean, committed helper sources and its
+apply mode is a separate production file update; it was not run. The 062
+candidate workflow is manual and creates an immutable receipt only; it does
+not execute migration or deploy. API deployment is also manual-only and gated
+on confirmed 062 completion plus an owner-set helper-installation variable.
+DEPLOY does not apply migrations; it requires the candidate inventory and live
+ledger to match exactly at 001–062. Future schema versions need their own
+reviewed migration gate before they can be deployed. Required source files
+must first be tracked,
+committed, and tested. Hostinger listed old whole-VPS restore points
+`52757820` (2026-09-19) and `51894425` (2026-09-12); neither is a validated
+PostgreSQL-only recovery. The VPS host lacks `pg_dump`; the database container
+has client version 16.15, but server identity/version, `pg_restore`, encrypted
+storage destination, and isolated restore have not all been verified. The
+owner must accept a fresh validated DB-only recovery point or select and
+explicitly accept an exact whole-VPS recovery point and its restore impact.
+
 Admin presentation checks must inspect the rendered page, including populated
 and empty map statistics. Each component must have a unique DOM ID: duplicated
 targets can leave a second table or map empty while the first updates normally.
@@ -115,6 +164,17 @@ runtime dependencies.
   includes reusable legal metadata and validated `asset.source` attribution
   metadata. It uses the same cache validators and never includes a
   compatibility status.
+- `GET /devices/installation-policy.json` returns policy schema version 3 for
+  exact Garmin catalog rows. Native write authorization is derived from
+  `active` plus nullable `mapCapable`: Yes is `APPROVED`, No is `BLOCKED`, and
+  NULL is `PENDING`. The client matches a normalized base model and narrows
+  candidates only with reliable variant facts. Conflicting variant evidence
+  broadens the candidate set; it does not by itself deny authorization.
+  Authorization is determined from the Maps capability of all remaining
+  possible candidates: all Yes is `APPROVED`, all No is `BLOCKED`, and mixed
+  or NULL capabilities are `PENDING`. An unidentifiable/conflicting base
+  model or no candidates is `PENDING`. `support_status`, public compatibility
+  and successful-install counts are not policy inputs.
 - `GET /assets/devices/<name>.webp` serves validated runtime assets from the
   same API domain.
 - `GET /admin/providers`, `GET /admin/providers/<id>`, and
@@ -144,8 +204,11 @@ runtime dependencies.
   body. Exact model variants are retained separately; reconnect observations are
   optional and never gate compatibility status.
 - Uploaded compatibility events are immutable through the public API;
-  `DELETE /compatibility/events` returns `405 Method Not Allowed`. Events are
-  also pruned automatically after 24 months by the service health cycle.
+  `DELETE /compatibility/events` returns `405 Method Not Allowed`. The current
+  local source prunes events after 24 months during the existing scheduler
+  cycle. Its configured default is daily at 03:00 UTC. The production
+  environment override is not verified. `GET /health` performs only read-only
+  readiness checks and never triggers retention cleanup.
 - `GET https://api.terento.app/admin` serves the authenticated, noindex
   aggregate operator dashboard from the same API container as the catalog
   and account settings. The first account requires `ADMIN_BOOTSTRAP_SECRET`;

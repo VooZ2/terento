@@ -27,6 +27,7 @@ from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
 from .telemetry import is_local_release_label
+from .statistics_exclusions import classify_compatibility_event
 
 
 OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
@@ -610,7 +611,8 @@ class Database:
                 cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,
                 raw_mtp_model, identity_resolution_code, is_local_test,
                 garmin_model_description, garmin_model_part_number, identity_assessment,
-                failure_context, original_failure_context
+                failure_context, original_failure_context,
+                statistics_exclusion_code, statistics_exclusion_reason, security_issue_code
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
                 %(displayType)s, %(canonicalDeviceId)s, %(identityResolutionState)s,
@@ -624,7 +626,8 @@ class Database:
                 %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
                 %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s,
                 %(isLocalTest)s, %(garminModelDescription)s, %(garminModelPartNumber)s, %(identityAssessment)s::jsonb,
-                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb
+                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb,
+                %(statisticsExclusionCode)s, %(statisticsExclusionReason)s, %(securityIssueCode)s
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -683,6 +686,9 @@ class Database:
             "rawMTPModel": event.get("rawMTPModel"),
             "identityResolutionCode": event.get("identityResolutionCode"),
             "isLocalTest": is_local_release_label(event.get("releaseLabel")),
+            "statisticsExclusionCode": None,
+            "statisticsExclusionReason": None,
+            "securityIssueCode": None,
         }
         with self.connection() as connection:
             devices = list(connection.execute("SELECT * FROM device_model").fetchall())
@@ -691,7 +697,29 @@ class Database:
             values["canonicalDeviceId"] = assessment["canonicalDeviceId"]
             values["identityResolutionState"] = assessment["state"]
             values["identityAssessment"] = json.dumps(assessment)
-            inserted = connection.execute(query, values).fetchone() is not None
+            classification = classify_compatibility_event(event, devices, assessment)
+            if classification:
+                values["statisticsExclusionCode"] = classification.get("statisticsExclusionCode")
+                values["statisticsExclusionReason"] = classification.get("reason")
+                values["securityIssueCode"] = classification.get("securityIssueCode")
+            inserted_row = connection.execute(query, values).fetchone()
+            inserted = inserted_row is not None
+            if inserted and classification:
+                connection.execute(
+                    """
+                    INSERT INTO statistics_exclusion_audit (
+                        stream, event_id, exclusion_code, reason,
+                        security_issue_code, source
+                    ) VALUES ('compatibility', %s, %s, %s, %s, 'server-classifier')
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (
+                        event["id"],
+                        classification.get("statisticsExclusionCode") or "SECURITY_REVIEW_REQUIRED",
+                        classification["reason"],
+                        classification.get("securityIssueCode"),
+                    ),
+                )
         return inserted
 
     @staticmethod
@@ -761,7 +789,7 @@ class Database:
 
     def compatibility_issue_queue_operations(self) -> list[dict[str, Any]]:
         """Return the complete active operation population for the review queue."""
-        return self._compatibility_operation_details("ACTIVE", None)
+        return self._compatibility_operation_details("ACTIVE", None, exclude_statistics=True)
 
     def compatibility_resolved_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("RESOLVED", limit)
@@ -769,9 +797,12 @@ class Database:
     def compatibility_identity_details(self, diagnostic_status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
         if not device_id and not identity:
             raise ValueError("Diagnostic identity is required")
-        return self._compatibility_operation_details(diagnostic_status, None, device_id=device_id, identity=identity)
+        return self._compatibility_operation_details(
+            diagnostic_status, None, device_id=device_id, identity=identity,
+            exclude_statistics=True,
+        )
 
-    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str = "", exclude_statistics: bool = False) -> list[dict[str, Any]]:
         limit_clause = "LIMIT %s" if limit is not None else ""
         identity_clause = ""
         scope_values = []
@@ -781,6 +812,7 @@ class Database:
         elif identity:
             identity_clause = " AND canonical_device_model_id IS NULL AND COALESCE(NULLIF(trim(compatibility_identity), ''), model, 'Unknown') = %s"
             scope_values = [identity]
+        statistics_clause = " AND statistics_exclusion_code IS NULL" if exclude_statistics else ""
         query = """
             SELECT
                 CASE
@@ -810,12 +842,13 @@ class Database:
                 resolution_code, resolution_reason,
                 resolution_note, resolved_at, resolved_by, linked_github_issue,
                 admin_user.username AS resolved_by_username,
-                identity_resolution_state, canonical_device_model_id
+                identity_resolution_state, canonical_device_model_id,
+                statistics_exclusion_code, statistics_exclusion_reason, security_issue_code
             FROM compatibility_evidence_event
             LEFT JOIN admin_user ON admin_user.id = compatibility_evidence_event.resolved_by
             WHERE diagnostic_status = %s
               AND is_local_test IS NOT TRUE
-        """ + identity_clause + """
+        """ + statistics_clause + identity_clause + """
             ORDER BY occurred_at DESC, operation_key, map_result_index NULLS FIRST
         """ + limit_clause
         with self.connection() as connection:
@@ -980,6 +1013,7 @@ class Database:
                 FROM compatibility_evidence_event
                 WHERE diagnostic_status = 'ACTIVE'
                   AND is_local_test IS NOT TRUE
+                  AND statistics_exclusion_code IS NULL
                 GROUP BY COALESCE(operation_id::text, 'legacy:' || event_id::text)
             ), publication_reviews AS (
                 SELECT count(*) AS ready_to_publish
@@ -1001,6 +1035,7 @@ class Database:
                   ON review_task.event_id = e.event_id
                  AND review_task.task_type = 'MISSING_DIAGNOSTIC'
                 WHERE e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
                   AND e.event_type = 'INSTALL_FAILED'
                   AND e.outcome = 'FAILED'
                   AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
@@ -1009,6 +1044,7 @@ class Database:
                           SELECT 1
                           FROM compatibility_evidence_event AS diagnostic
                           WHERE diagnostic.is_local_test IS NOT TRUE
+                            AND diagnostic.statistics_exclusion_code IS NULL
                             AND diagnostic.operation_id = e.operation_id
                             AND diagnostic.map_result_index IS NOT NULL
                             AND diagnostic.provider = e.provider_id
@@ -1031,6 +1067,7 @@ class Database:
                           LEFT JOIN map_package AS sibling_package
                             ON sibling_package.id = sibling.map_package_id
                           WHERE sibling.is_local_test IS NOT TRUE
+                            AND sibling.statistics_exclusion_code IS NULL
                             AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                             AND sibling.operation_id = e.operation_id
                             AND sibling.provider_id = e.provider_id
@@ -1225,6 +1262,7 @@ class Database:
                     END AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
             ), result_flags AS (
                 SELECT
                     result_key,
@@ -1509,7 +1547,7 @@ class Database:
             # for a young installation with only a few days of history.
             with self.connection() as connection:
                 extent = connection.execute(
-                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event WHERE is_local_test IS NOT TRUE UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE) AS chart_events"
+                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event WHERE is_local_test IS NOT TRUE AND statistics_exclusion_code IS NULL UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE AND statistics_exclusion_code IS NULL) AS chart_events"
                 ).fetchone() or {}
             first = extent.get("first_occurred_at")
             last = extent.get("last_occurred_at")
@@ -1530,6 +1568,7 @@ class Database:
             LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
             WHERE e.occurred_at >= %s
               AND e.is_local_test IS NOT TRUE
+              AND e.statistics_exclusion_code IS NULL
         """
         compatibility_fallback_cte = """
             WITH classified_fallback AS (
@@ -1563,6 +1602,7 @@ class Database:
                     END AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
                   AND e.occurred_at >= %s
             ), result_flags AS (
                 SELECT
@@ -1622,6 +1662,7 @@ class Database:
                              )
                          )
                          AND installed.is_local_test IS NOT TRUE
+                         AND installed.statistics_exclusion_code IS NULL
                          AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                          AND ((e.result_classification_effective = 'SUCCESS'
                                AND installed.event_type = 'INSTALL_SUCCEEDED')
@@ -1737,6 +1778,7 @@ class Database:
                         END AS lifecycle_key
                     FROM map_download_event AS e
                     WHERE e.is_local_test IS NOT TRUE
+                      AND e.statistics_exclusion_code IS NULL
                 ), acquisition_activity AS (
                     SELECT DISTINCT ON (e.lifecycle_key)
                         e.*,
@@ -1816,12 +1858,14 @@ class Database:
                   ON review_task.event_id = e.event_id
                  AND review_task.task_type = 'MISSING_DIAGNOSTIC'
                 WHERE e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
                   AND e.event_type = 'INSTALL_FAILED' AND e.outcome = 'FAILED'
                   AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
                   AND (
                       NOT EXISTS (
                           SELECT 1 FROM compatibility_evidence_event AS diagnostic
                           WHERE diagnostic.is_local_test IS NOT TRUE
+                            AND diagnostic.statistics_exclusion_code IS NULL
                             AND diagnostic.operation_id = e.operation_id
                             AND diagnostic.map_result_index IS NOT NULL
                             AND diagnostic.provider = e.provider_id
@@ -1847,6 +1891,7 @@ class Database:
                           LEFT JOIN map_package AS sibling_package
                             ON sibling_package.id = sibling.map_package_id
                           WHERE sibling.is_local_test IS NOT TRUE
+                            AND sibling.statistics_exclusion_code IS NULL
                             AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                             AND sibling.operation_id = e.operation_id
                             AND sibling.provider_id = e.provider_id
@@ -1880,6 +1925,7 @@ class Database:
                     FROM map_download_event AS e
                     WHERE e.occurred_at >= %s
                       AND e.is_local_test IS NOT TRUE
+                      AND e.statistics_exclusion_code IS NULL
                     UNION ALL
                     SELECT
                         c.operation_key,
@@ -2038,11 +2084,13 @@ class Database:
         reason: str | None = None,
         note: str | None = None,
     ) -> bool:
-        """Update only the operator's installation authorization.
+        """Update only the operator's support metadata.
 
         Evidence counts/statuses are computed from compatibility events and are
-        intentionally absent from this UPDATE. In particular, this method is
-        never used as a device write authorization gate.
+        intentionally absent from this UPDATE. The value is retained for
+        operator review and audit history; installation write authorization is
+        derived from active plus map_capable in the policy projection and this
+        method is never used as its gate.
         """
         allowed = {"SUPPORTED", "UNSUPPORTED", "NOT_EVALUATED"}
         normalized = support_status.strip().upper()
@@ -3740,8 +3788,9 @@ class Database:
                 INSERT INTO map_download_event (
                     event_id, operation_id, provider_id, map_package_id,
                     region, event_type, outcome, occurred_at, app_build,
-                    release_label, is_local_test, acquisition_id, component_kind
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    release_label, is_local_test, acquisition_id, component_kind,
+                    map_result_index
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 RETURNING event_id
                 """,
@@ -3751,6 +3800,7 @@ class Database:
                     event["outcome"], event["timestamp"], event.get("appBuild"),
                     event["releaseLabel"], is_local_release_label(event.get("releaseLabel")),
                     event.get("acquisitionId"), event.get("componentKind"),
+                    event.get("mapResultIndex"),
                 ),
             ).fetchone()
         return row is not None
@@ -3883,7 +3933,10 @@ class Database:
 
     @staticmethod
     def _map_statistics_filter(filters: dict[str, Any], alias: str = "e") -> tuple[list[str], list[Any]]:
-        clauses = [f"{alias}.is_local_test IS NOT TRUE"]
+        clauses = [
+            f"{alias}.is_local_test IS NOT TRUE",
+            f"{alias}.statistics_exclusion_code IS NULL",
+        ]
         values: list[Any] = []
         if filters.get("provider"):
             clauses.append(f"{alias}.provider_id = %s")
@@ -3925,6 +3978,7 @@ class Database:
         """
         clauses = [
             f"{alias}.is_local_test IS NOT TRUE",
+            f"{alias}.statistics_exclusion_code IS NULL",
         ]
         values: list[Any] = []
         if filters.get("provider"):
@@ -4582,6 +4636,46 @@ class Database:
                 ),
             )
         return changed
+
+    def installation_policy_snapshot(self) -> tuple[list[dict[str, Any]], datetime]:
+        """Return the Garmin catalog fields used to decide map-write access.
+
+        Historical rows remain available for identity resolution. Authorization
+        consumes only active/map capability plus identity fields; support status
+        and public compatibility evidence are intentionally not projected.
+        """
+        query = """
+            SELECT
+                dm.id AS device_id,
+                dm.manufacturer,
+                dm.model,
+                dm.canonical_model,
+                dm.variant,
+                dm.case_size_mm,
+                dm.display_type,
+                dm.screen_technology,
+                dm.solar,
+                dm.inreach,
+                dm.active,
+                dm.map_capable
+            FROM device_model AS dm
+            WHERE lower(dm.manufacturer) = 'garmin'
+            ORDER BY dm.id
+        """
+        updated_at_query = """
+            SELECT COALESCE(MAX(changed_at), TIMESTAMPTZ 'epoch') AS updated_at
+            FROM (
+                SELECT updated_at AS changed_at FROM device_model
+                WHERE lower(manufacturer) = 'garmin'
+            ) AS changes
+        """
+        with self.connection() as connection:
+            rows = list(connection.execute(query).fetchall())
+            updated_row = connection.execute(updated_at_query).fetchone()
+        updated_at = updated_row["updated_at"]
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+        return rows, updated_at
 
     def device_catalog_snapshot(self) -> tuple[list[dict[str, Any]], datetime]:
         query = """

@@ -90,6 +90,12 @@ directory: it shows exact Garmin models and variants with at least one
 successful shared installation. The list grows as more successful
 installations are shared, and a model missing from the list does not mean it
 is unsupported. Terento is intended for Garmin smartwatches with map support.
+When connected, the app checks catalog authorization before writing a map;
+appearance or absence in public results is not that authorization. Authorization
+matches a Garmin base model and evaluates Maps capability across every
+remaining plausible variant. Conflicting variant hints alone do not deny
+authorization; if all candidates have Maps=Yes, the device may be authorized.
+Public compatibility evidence and install counts do not grant write permission.
 
 **[Check your watch's compatibility](https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_compatibility)**
 

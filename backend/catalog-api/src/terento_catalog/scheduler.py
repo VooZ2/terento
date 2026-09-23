@@ -42,7 +42,30 @@ def run_schedule(database: Database, schedule_utc: str) -> None:
         time.sleep(wait_seconds)
         started_at = datetime.now(timezone.utc)
         _record_heartbeat(database, status="RUNNING", started_at=started_at)
-        run_collection_cycle(database, collect_device_catalog=target.weekday() == 0)
+        _run_scheduled_cycle(
+            database,
+            collect_device_catalog=target.weekday() == 0,
+        )
+
+
+def _run_scheduled_cycle(database: Database, *, collect_device_catalog: bool) -> None:
+    """Run scheduled maintenance alongside the existing catalog collection."""
+
+    _run_compatibility_retention(database)
+    run_collection_cycle(database, collect_device_catalog=collect_device_catalog)
+
+
+def _run_compatibility_retention(database: Database) -> None:
+    """Prune old compatibility evidence once per existing collector cycle."""
+
+    try:
+        deleted = database.prune_compatibility_events()
+    except Exception:
+        # A transient maintenance failure must not terminate the long-lived
+        # collector; the next configured cycle retries the same retention job.
+        LOGGER.exception("scheduled compatibility retention failed; next cycle will retry")
+        return
+    LOGGER.info("scheduled compatibility retention removed=%s", deleted)
 
 
 def run_collection_cycle(
