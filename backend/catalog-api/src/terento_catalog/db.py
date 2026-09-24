@@ -152,6 +152,8 @@ def _fill_overview_trend_buckets(
             "success_count": 0,
             "failed_count": 0,
             "custom_count": 0,
+            "download_success_count": 0,
+            "download_failed_count": 0,
             "map_update_count": 0,
             "map_update_success_count": 0,
             "map_update_failed_count": 0,
@@ -1628,6 +1630,11 @@ class Database:
                 SELECT
                     e.operation_key,
                     e.operation_id,
+                    e.map_result_index,
+                    e.canonical_device_model_id,
+                    e.compatibility_identity,
+                    e.model,
+                    e.variant,
                     e.provider AS provider_id,
                     e.region,
                     e.occurred_at,
@@ -1753,6 +1760,24 @@ class Database:
                         WHERE e.event_type = 'MAP_UPDATE_FAILED'
                           AND e.outcome = 'FAILED'
                     ) AS all_time_map_update_failed_count
+                    ,count(DISTINCT CASE
+                        WHEN e.event_type = 'DOWNLOAD_SUCCEEDED'
+                             AND e.outcome = 'SUCCEEDED'
+                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                                 || ':' || COALESCE(e.operation_id::text, '')
+                                 || ':' || COALESCE(e.provider_id, '')
+                                 || ':' || COALESCE(e.map_package_id::text, '')
+                                 || ':' || COALESCE(e.component_kind, '')
+                     END) AS all_time_completed_download_count
+                    ,count(DISTINCT CASE
+                        WHEN e.event_type = 'DOWNLOAD_FAILED'
+                             AND e.outcome = 'FAILED'
+                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                                 || ':' || COALESCE(e.operation_id::text, '')
+                                 || ':' || COALESCE(e.provider_id, '')
+                                 || ':' || COALESCE(e.map_package_id::text, '')
+                                 || ':' || COALESCE(e.component_kind, '')
+                     END) AS all_time_failed_download_count
                 {event_scope}
                 """,
                 (all_time_since, all_time_since),
@@ -1811,12 +1836,115 @@ class Database:
                     e.component_kind,
                     e.lifecycle,
                     e.has_recorded_outcome,
+                    linked_device.canonical_device_model_id,
+                    linked_device.compatibility_identity,
+                    linked_device.model,
+                    linked_device.variant,
+                    linked_device.device_link_state,
                     (
                         e.event_type IN ('DOWNLOAD_STARTED', 'DOWNLOAD_PROCESSING')
                         AND NOT e.has_recorded_outcome
                         AND e.occurred_at < now() - interval '{ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS} hours'
                     ) AS is_stale
-                {event_scope.replace('FROM map_download_event AS e', 'FROM acquisition_activity AS e')}
+                {event_scope.replace(
+                    'FROM map_download_event AS e',
+                    'FROM acquisition_activity AS e',
+                ).replace(
+                    '            WHERE e.occurred_at >= %s',
+                    '''
+                    LEFT JOIN LATERAL (
+                        SELECT
+                            CASE WHEN count(DISTINCT d.map_result_index) = 1
+                                      AND count(DISTINCT COALESCE(
+                                          d.canonical_device_model_id::text,
+                                          NULLIF(d.compatibility_identity, ''),
+                                          NULLIF(d.model, '')
+                                      )) = 1
+                                THEN max(d.canonical_device_model_id::text) END
+                                AS canonical_device_model_id,
+                            CASE WHEN count(DISTINCT d.map_result_index) = 1
+                                      AND count(DISTINCT COALESCE(
+                                          d.canonical_device_model_id::text,
+                                          NULLIF(d.compatibility_identity, ''),
+                                          NULLIF(d.model, '')
+                                      )) = 1
+                                THEN max(d.compatibility_identity) END
+                                AS compatibility_identity,
+                            CASE WHEN count(DISTINCT d.map_result_index) = 1
+                                      AND count(DISTINCT COALESCE(
+                                          d.canonical_device_model_id::text,
+                                          NULLIF(d.compatibility_identity, ''),
+                                          NULLIF(d.model, '')
+                                      )) = 1
+                                THEN max(d.model) END AS model,
+                            CASE WHEN count(DISTINCT d.map_result_index) = 1
+                                      AND count(DISTINCT COALESCE(
+                                          d.canonical_device_model_id::text,
+                                          NULLIF(d.compatibility_identity, ''),
+                                          NULLIF(d.model, '')
+                                      )) = 1
+                                THEN max(d.variant) END AS variant,
+                            CASE
+                                WHEN count(*) = 0 THEN 'MISSING'
+                                WHEN count(DISTINCT d.map_result_index) = 1
+                                  AND count(DISTINCT COALESCE(
+                                      d.canonical_device_model_id::text,
+                                      NULLIF(d.compatibility_identity, ''),
+                                      NULLIF(d.model, '')
+                                  )) = 1 THEN 'LINKED'
+                                ELSE 'AMBIGUOUS'
+                            END AS device_link_state
+                        FROM compatibility_evidence_event AS d
+                        WHERE d.operation_id = e.operation_id
+                          AND d.map_result_index IS NOT NULL
+                          AND d.provider = e.provider_id
+                          AND d.is_local_test IS NOT TRUE
+                          AND d.statistics_exclusion_code IS NULL
+                          AND (
+                              d.region IS NOT DISTINCT FROM e.region
+                              OR (
+                                  mp.provider_id = e.provider_id
+                                  AND d.region IN (
+                                      mp.provider_region_id,
+                                      mp.canonical_region_id,
+                                      mp.region
+                                  )
+                                  AND e.region IN (
+                                      mp.provider_region_id,
+                                      mp.canonical_region_id,
+                                      mp.region
+                                  )
+                              )
+                          )
+                          AND NOT EXISTS (
+                              SELECT 1
+                              FROM map_download_event AS sibling
+                              LEFT JOIN map_package AS sibling_package
+                                ON sibling_package.id = sibling.map_package_id
+                              WHERE sibling.is_local_test IS NOT TRUE
+                                AND sibling.statistics_exclusion_code IS NULL
+                                AND sibling.event_type IN (
+                                    'INSTALL_SUCCEEDED', 'INSTALL_FAILED'
+                                )
+                                AND sibling.operation_id = e.operation_id
+                                AND sibling.provider_id = e.provider_id
+                                AND sibling.map_package_id
+                                    IS DISTINCT FROM e.map_package_id
+                                AND COALESCE(
+                                    sibling_package.canonical_region_id,
+                                    sibling_package.provider_region_id,
+                                    sibling_package.region,
+                                    sibling.region
+                                ) IS NOT DISTINCT FROM COALESCE(
+                                    mp.canonical_region_id,
+                                    mp.provider_region_id,
+                                    mp.region,
+                                    e.region
+                                )
+                          )
+                    ) AS linked_device ON true
+                    WHERE e.occurred_at >= %s'''
+                )}
                 UNION ALL
                 SELECT
                     c.operation_id::text AS operation_id,
@@ -1835,6 +1963,11 @@ class Database:
                     NULL AS component_kind,
                     NULL AS lifecycle,
                     false AS has_recorded_outcome,
+                    c.canonical_device_model_id,
+                    c.compatibility_identity,
+                    c.model,
+                    c.variant,
+                    'LINKED' AS device_link_state,
                     false AS is_stale
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
@@ -1950,6 +2083,14 @@ class Database:
                     ) AS failed_count,
                     count(*) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED') AS custom_count,
                     count(DISTINCT operation_key) FILTER (
+                        WHERE event_type = 'DOWNLOAD_SUCCEEDED'
+                          AND outcome = 'SUCCEEDED'
+                    ) AS download_success_count,
+                    count(DISTINCT operation_key) FILTER (
+                        WHERE event_type = 'DOWNLOAD_FAILED'
+                          AND outcome = 'FAILED'
+                    ) AS download_failed_count,
+                    count(DISTINCT operation_key) FILTER (
                         WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
                     ) AS map_update_count,
                     count(DISTINCT operation_key) FILTER (
@@ -1963,6 +2104,8 @@ class Database:
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_SUCCEEDED' AND outcome = 'SUCCEEDED'))[1:20] AS success_times,
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_FAILED' AND outcome = 'FAILED'))[1:20] AS failed_times,
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED'))[1:20] AS custom_times,
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'DOWNLOAD_SUCCEEDED' AND outcome = 'SUCCEEDED'))[1:20] AS download_success_times,
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'DOWNLOAD_FAILED' AND outcome = 'FAILED'))[1:20] AS download_failed_times,
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')))[1:20] AS map_update_times
                 FROM localized_events
                 GROUP BY {bucket_expression}
@@ -1987,6 +2130,24 @@ class Database:
         completed_downloads = int(summary.get("completed_download_count") or 0)
         failed_downloads = int(summary.get("failed_download_count") or 0)
         download_attempts = completed_downloads + failed_downloads
+        all_time_install_successes = int(
+            all_time_summary.get("all_time_success_count") or 0
+        )
+        all_time_install_failures = int(
+            all_time_summary.get("all_time_failed_count") or 0
+        )
+        all_time_install_attempts = (
+            all_time_install_successes + all_time_install_failures
+        )
+        all_time_download_successes = int(
+            all_time_summary.get("all_time_completed_download_count") or 0
+        )
+        all_time_download_failures = int(
+            all_time_summary.get("all_time_failed_download_count") or 0
+        )
+        all_time_download_attempts = (
+            all_time_download_successes + all_time_download_failures
+        )
         all_time_update_successes = int(all_time_summary.get("all_time_map_update_success_count") or 0)
         all_time_update_failures = int(all_time_summary.get("all_time_map_update_failed_count") or 0)
         return {
@@ -2003,8 +2164,18 @@ class Database:
             "completedMapUpdateCount": completed_updates,
             "failedMapUpdateCount": failed_updates,
             "mapUpdateCount": completed_updates + failed_updates,
-            "allTimeSuccessCount": int(all_time_summary.get("all_time_success_count") or 0),
-            "allTimeFailedCount": int(all_time_summary.get("all_time_failed_count") or 0),
+            "allTimeSuccessCount": all_time_install_successes,
+            "allTimeFailedCount": all_time_install_failures,
+            "allTimeInstallSuccessRate": (
+                all_time_install_successes / all_time_install_attempts * 100
+                if all_time_install_attempts else None
+            ),
+            "allTimeCompletedDownloadCount": all_time_download_successes,
+            "allTimeFailedDownloadCount": all_time_download_failures,
+            "allTimeDownloadSuccessRate": (
+                all_time_download_successes / all_time_download_attempts * 100
+                if all_time_download_attempts else None
+            ),
             "allTimeCustomCount": int(all_time_summary.get("all_time_custom_count") or 0),
             "allTimeMapUpdateCount": all_time_update_successes + all_time_update_failures,
             "allTimeMapUpdateSuccessCount": all_time_update_successes,
@@ -2018,6 +2189,60 @@ class Database:
             ) if missing_diagnostics else 0,
             "trend": trend_rows,
             "bucket": bucket,
+        }
+
+    def admin_overview_device_install_coverage(self) -> dict[str, Any]:
+        """Return exact current map-capable models with verified install evidence."""
+        query = """
+            WITH classified_results AS (
+                SELECT
+                    e.canonical_device_model_id,
+                    CASE
+                        WHEN e.operation_id IS NOT NULL
+                             AND e.map_result_index IS NOT NULL
+                            THEN e.operation_id::text || ':' || e.map_result_index::text
+                        ELSE 'event:' || e.event_id::text
+                    END AS result_key,
+                    CASE
+                        WHEN e.phase_outcome = 'SUCCEEDED'
+                             AND e.automatic_finishing_result = 'VERIFIED'
+                            THEN 'SUCCESS'
+                        ELSE 'OTHER'
+                    END AS result_classification
+                FROM compatibility_evidence_event AS e
+                WHERE e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
+                  AND e.canonical_device_model_id IS NOT NULL
+            ), successful_results AS (
+                SELECT canonical_device_model_id, result_key
+                FROM classified_results
+                GROUP BY canonical_device_model_id, result_key
+                HAVING bool_or(result_classification = 'SUCCESS')
+            ), eligible_models AS (
+                SELECT id
+                FROM device_model
+                WHERE active IS TRUE
+                  AND map_capable IS TRUE
+            )
+            SELECT
+                count(*) AS eligible_model_count,
+                count(*) FILTER (
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM successful_results AS success
+                        WHERE success.canonical_device_model_id = eligible.id
+                    )
+                ) AS successful_model_count
+            FROM eligible_models AS eligible
+        """
+        with self.connection() as connection:
+            row = connection.execute(query).fetchone() or {}
+        eligible = int(row.get("eligible_model_count") or 0)
+        successful = int(row.get("successful_model_count") or 0)
+        return {
+            "successfulModelCount": successful,
+            "eligibleModelCount": eligible,
+            "coverageRate": successful / eligible * 100 if eligible else None,
         }
 
     def admin_user_count(self) -> int:

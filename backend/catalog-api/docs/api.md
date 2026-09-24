@@ -134,10 +134,13 @@ unavailable in authenticated diagnostics and generated issue reports.
 ## `GET https://api.terento.app/admin`
 
 Returns the authenticated operator Overview. The default period is the last 24
-hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. Its
-primary operational domain is the existing `map_download_event` table: fresh
-map installs, fresh-install success, failed fresh installs, recent map activity,
-and the map-installations-over-time chart reconcile retained per-map results only
+hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
+Headline acquisition and fresh-install outcome KPIs are all-time and link to the
+same all-time Map statistics population. The selected period controls the map
+download chart, map-installation chart and unified Activity list. Its primary
+operational domain is the existing `map_download_event` table: fresh map
+installs, acquisition outcomes and recent map activity reconcile retained
+per-map results only
 at the map/package boundary using shared operation, provider and exact or
 unambiguous package-region identity; an operation ID alone is not a unique-map
 count. Historical
@@ -158,11 +161,13 @@ idempotent, requires no reason, and the Overview provides an Undo action through
 `POST /admin/review/missing-diagnostics/undo`. Failed mutations leave the gap
 visible. Activity links include `eventId` and open the matching Map statistics
 Event detail; aggregate population KPIs remain unchanged.
-Compatibility evidence remains a separate, explicitly labelled Overview block
-with its own variants, write-started attempts, evidence success, open errors,
-and normalized failure reasons. The separate `Device/model activity` panel is
-not that block; its target presentation is defined in
-[`admin-behavior-contract.md`](admin-behavior-contract.md). Common reason
+Compatibility evidence remains a separate source for unresolved review work and
+exact-device facts. Overview exposes exact-model evidence coverage as active
+stored Maps=Yes catalog rows with at least one retained verified success divided
+by all active stored Maps=Yes rows. This is not support, publication, observed
+capability, or write authorization. The unified Activity list includes a device
+label only when operation, provider and exact or unambiguous package-region facts
+reliably link both streams; missing or ambiguous reports stay explicit. Common reason
 spelling variants are collapsed into stable canonical groups such as
 `source_validation`; only events without a classifiable category, stage, or
 code remain `unknown`. A successful full statistics query with no matching rows
@@ -339,25 +344,22 @@ change evidence events, calculated status, installation counts, installation
 authorization, or any existing public/native/device API field.
 
 At widths up to 700px, admin card groups use the shared 12px
-`--admin-mobile-card-gap`. Overview spacing belongs to its parent grid, including
-when the review panel moves before the KPIs; nested chart cards have no extra
+`--admin-mobile-card-gap`. Dashboard spacing belongs to its parent grid; Needs
+attention stays first. Nested chart cards have no extra
 outer margins. Provider, model, system-health and map-statistics card groups use
 the same spacing, while headings and internal control spacing retain their roles.
 Mobile Devices filters retain a 12px gap before empty or populated result cards.
 
-The Overview review panel uses the same heading style and header layout in
-empty and populated states. Queue shortcuts occupy a separate row below the
-header and any issue list. The panel retains its heading and shortcuts when empty,
+The Dashboard Needs attention panel uses the same heading style and header layout in
+empty and populated states. The panel retains its heading when empty,
 without an additional “No issues need attention” sentence.
 
-The shared authenticated admin navigation shows `Review queue` only when an
+The shared authenticated admin navigation shows `Review` only when an
 actionable queue is non-empty. Its count is labelled `Pending review tasks` and
-is split into distinct active failed installation operations without linked
-issues, active GitHub review-task operations,
-unresolved-identity operations, and exact eligible models awaiting first
-public publication. The popover links GitHub work to the dedicated review queue,
-failures and identity work to Installation evidence, and publication work to
-Devices.
+links to Dashboard Needs attention. The count still covers distinct active failed
+installation operations without linked issues, active GitHub review-task
+operations, unresolved-identity operations, and exact eligible models awaiting
+first public publication.
 Resolved diagnostics, `NOT_IDENTIFIABLE` identities, rejected publication
 reviews, and already-published models are excluded. The summary is private,
 no-store, and does not add fields to any public or native API response.
@@ -597,7 +599,7 @@ provider binaries or executable adapter configuration.
 
 These authenticated, no-store/noindex HTML pages provide the operator views
 for the provider registry and each registered provider. The list shows provider name and
-secondary ID, lifecycle/health state, package count, catalog sync, last check,
+secondary ID, lifecycle/health state, package count, current problems and catalog sync,
 and current Problems (affected packages · problematic sources), with a compact
 total/active/healthy/package/problem summary. The
 detail page shows metadata, license/attribution, provider-level original

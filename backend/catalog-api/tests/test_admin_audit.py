@@ -32,7 +32,8 @@ class AdminAuditTests(unittest.TestCase):
         body = overview_page({}, {"username": "operator"}, "csrf").decode()
         panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split("</section>", 1)[0]
         self.assertTrue(panel.startswith("<div class='section-heading'>"))
-        self.assertIn("</span></div><nav class='attention-shortcuts'", panel)
+        self.assertIn("Needs attention</h2>", panel)
+        self.assertNotIn("attention-shortcuts", panel)
         self.assertNotIn(".overview-attention-empty h2", ADMIN_STYLES)
         self.assertNotIn(".overview-attention-empty{display:grid", ADMIN_STYLES)
 
@@ -42,24 +43,22 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn("@media(max-width:700px)", mobile)
         self.assertIn("--admin-mobile-card-gap:12px", mobile)
         self.assertIn("main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-mobile-card-gap)}", mobile)
-        self.assertIn(".overview-page>.overview-kpis,.overview-page>.overview-panel{margin:0}", mobile)
+        self.assertIn(".overview-page>.overview-panel{margin:0}", mobile)
         self.assertIn(".overview-columns>.overview-panel{margin:0}", mobile)
         self.assertIn(".provider-dashboard-grid>.provider-card{margin-top:0}", mobile)
         self.assertIn(".device-filter-bar{margin-bottom:var(--admin-mobile-card-gap)}", mobile)
-        for group in (".system-health-grid", ".model-information-columns", ".administration-grid", ".map-statistics-reliability", ".admin-kpi-grid"):
+        for group in (".system-health-list", ".model-information-columns", ".administration-grid", ".map-statistics-reliability", ".admin-kpi-grid"):
             self.assertIn(group, mobile)
 
     def test_overview_kpis_match_installation_card_density(self):
         from terento_catalog.admin import ADMIN_STYLES
 
-        self.assertIn(
+        self.assertNotIn(
             '.overview-kpi{display:flex;min-height:84px;flex-direction:column;justify-content:flex-start;padding:14px 16px;',
             ADMIN_STYLES,
         )
-        self.assertIn(
-            '.overview-kpi{min-height:80px;padding:12px}',
-            ADMIN_STYLES,
-        )
+        self.assertNotIn('.overview-kpi{min-height:80px;padding:12px}', ADMIN_STYLES)
+        self.assertIn('.admin-kpi-panel .overview-kpi-link{display:block;', ADMIN_STYLES)
 
     def test_overview_model_activity_matches_chart_height_and_scrolls(self):
         from terento_catalog.admin import ADMIN_STYLES
@@ -221,10 +220,15 @@ class AdminAuditTests(unittest.TestCase):
             with self.subTest(state=state):
                 card = _system_health_card('API <test>', state, '<p>Live check</p>',
                     {'observed_at':'2026-09-07T16:43:00Z'}, reason='failure', action='inspect')
-                attrs = next(attrs for tag,attrs in Tags(card['html']).tags if tag=='details')
-                self.assertEqual('open' in attrs, False)
                 self.assertIn('API &lt;test&gt;',card['html'])
-                self.assertIn('Last checked:',card['html'])
+                self.assertIn('data-admin-timestamp',card['html'])
+                if str(state or '').upper() == 'HEALTHY':
+                    self.assertNotIn('<details', card['html'])
+                else:
+                    attrs = next(attrs for tag,attrs in Tags(card['html']).tags if tag=='details')
+                    self.assertEqual('open' in attrs, False)
+                    self.assertIn('<dt>Why</dt>', card['html'])
+                    self.assertIn('<dt>Next action</dt>', card['html'])
 
     def test_provider_explains_mixed_releases_without_relabelling_packages(self):
         body = provider_detail_page({'provider':{'id':'opentopomap','maps':[

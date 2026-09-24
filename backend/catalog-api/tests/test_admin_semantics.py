@@ -379,7 +379,16 @@ class AdminSemanticsTests(unittest.TestCase):
                     "hasData": True, "eventCount": 6,
                     "completedInstallCount": 4, "failedInstallCount": 2,
                     "mapUpdateCount": 1, "installSuccessRate": 66.7,
+                    "allTimeSuccessCount": 4, "allTimeFailedCount": 2,
+                    "allTimeInstallSuccessRate": 66.7,
+                    "allTimeCompletedDownloadCount": 3,
+                    "allTimeFailedDownloadCount": 1,
+                    "allTimeDownloadSuccessRate": 75,
                     "recentActivity": [], "trend": [],
+                },
+                "deviceCoverage": {
+                    "successfulModelCount": 2, "eligibleModelCount": 5,
+                    "coverageRate": 40,
                 },
                 "compatibility": {"hasData": True, "allTimeOpenErrorCount": 0},
                 "providers": [{"id": "freizeitkarte", "health": "HEALTHY"}],
@@ -387,17 +396,30 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         overview_panel = overview.split(
-            "class='map-statistics-kpi-panel provider-card admin-kpi-panel overview-kpis overview-kpi-panel'",
+            "class='map-statistics-kpi-panel provider-card admin-kpi-panel overview-kpi-panel'",
             1,
         )[1].split("\n        </section>", 1)[0]
-        self.assertEqual(overview_panel.count("class='map-statistics-kpi-value "), 6)
-        self.assertEqual(overview_panel.count("class='map-statistics-kpi-group overview-kpi-group'"), 2)
+        self.assertEqual(overview_panel.count("class='map-statistics-kpi-value "), 8)
+        self.assertEqual(
+            overview_panel.count(
+                "<section class='map-statistics-kpi-group overview-kpi-group"
+            ),
+            3,
+        )
         self.assertIn(">Installs</h2>", overview_panel)
         self.assertIn(">Downloads</h2>", overview_panel)
+        self.assertIn(">Model coverage</h2>", overview_panel)
         self.assertIn("admin-error-counter is-positive", overview_panel)
-        self.assertIn("<span>Downloads</span><strong>0</strong>", overview_panel)
-        self.assertIn("<span>Failed downloads</span><strong class='admin-error-counter'>—</strong>", overview_panel)
+        self.assertIn("<span>Successful</span><strong>3</strong>", overview_panel)
+        self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>1</strong>", overview_panel)
+        self.assertIn("<span>Map-capable models</span><strong>2 / 5</strong>", overview_panel)
+        self.assertIn("<span>Coverage</span><strong>40%</strong>", overview_panel)
+        self.assertNotIn("support", overview_panel.casefold())
         self.assertNotIn("<span>Open errors</span>", overview_panel)
+        self.assertLess(
+            overview.index("overview-attention-title"),
+            overview.index("overview-kpi-panel"),
+        )
 
         installations = dashboard_page(
             [{
@@ -493,19 +515,16 @@ class AdminSemanticsTests(unittest.TestCase):
         global.matchMedia = ()=>media;
         const control = ()=>({attrs:{},hidden:false,events:{},setAttribute(k,v){this.attrs[k]=v},getAttribute(k){return this.attrs[k]},addEventListener(k,f){this.events[k]=f},focus(){this.focused=true}});
         const toggle=control(), panel=control(), header={contains:target=>target==='inside',classList:{add:()=>{}}};
-        let before=0,after=0;
-        let kpis={before:()=>before++,after:()=>after++};
-        global.document={querySelector:s=>({'.admin-topbar':header,'#admin-menu-toggle':toggle,'#admin-menu-panel':panel,'.overview-kpis':kpis,'.overview-attention-panel':{},'.attention-shortcuts':{}}[s]||null),querySelectorAll:()=>[],addEventListener:(k,f)=>documentEvents[k]=f};
+        global.document={querySelector:s=>({'.admin-topbar':header,'#admin-menu-toggle':toggle,'#admin-menu-panel':panel,'.overview-attention-panel':{}}[s]||null),querySelectorAll:()=>[],addEventListener:(k,f)=>documentEvents[k]=f};
         global.window={addEventListener:(k,f)=>windowEvents[k]=f};
         eval(process.argv[1]);
-        assert.equal(panel.hidden,true); assert.equal(toggle.hidden,false); assert.equal(before,1);
+        assert.equal(panel.hidden,true); assert.equal(toggle.hidden,false);
         toggle.events.click(); assert.equal(panel.hidden,false); assert.equal(toggle.attrs['aria-expanded'],'true');
         documentEvents.keydown({key:'Escape'}); assert.equal(panel.hidden,true);assert.equal(toggle.focused,true);
         toggle.events.click();documentEvents.click({target:'outside'});assert.equal(panel.hidden,true);
         toggle.events.click();panel.events.click({target:{closest:()=>({})}});assert.equal(panel.hidden,true);
-        media.matches=false;mediaEvents.forEach(f=>f());assert.equal(panel.hidden,false);assert.equal(toggle.hidden,true);assert.equal(after,1);
+        media.matches=false;mediaEvents.forEach(f=>f());assert.equal(panel.hidden,false);assert.equal(toggle.hidden,true);
         media.matches=true;mediaEvents.forEach(f=>f());assert.equal(panel.hidden,true);
-        kpis={before:()=>before+=10,after:()=>after+=10};windowEvents['terento-admin-content-changed']();assert.equal(before,12);
         """
         self._run_node(harness, _admin_mobile_script())
 
@@ -568,9 +587,10 @@ class AdminSemanticsTests(unittest.TestCase):
                     "has_failed": True, "last_occurred_at": "2026-01-01T00:00:00Z"}]},
         }, {"username": "operator"}, "csrf").decode()
         self.assertIn("Old unresolved watch", body)
-        self.assertIn("Unresolved work · all dates", body)
+        self.assertIn("Needs attention</h2>", body)
         self.assertNotIn("No issues need attention", body)
-        self.assertIn("Review queue shortcuts", body)
+        self.assertNotIn("attention-shortcuts", body)
+        self.assertNotIn("Review queue shortcuts", body)
 
     def test_overview_query_uses_independent_unresolved_queue(self):
         from unittest.mock import MagicMock
@@ -592,6 +612,31 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("('TESTED', 'SUPPORTED', 'VERIFIED')", review[0])
         activity = next(args for args in queries if "AS model_key" in args[0])
         self.assertEqual(activity[1], (since, 5))
+
+    def test_overview_device_coverage_uses_exact_active_stored_maps_rows(self):
+        from unittest.mock import MagicMock
+        connection = MagicMock()
+        connection.execute.return_value.fetchone.return_value = {
+            "eligible_model_count": 5,
+            "successful_model_count": 2,
+        }
+        database = Database("unused")
+        database.connection = MagicMock()
+        database.connection.return_value.__enter__.return_value = connection
+
+        coverage = database.admin_overview_device_install_coverage()
+
+        self.assertEqual(coverage, {
+            "successfulModelCount": 2,
+            "eligibleModelCount": 5,
+            "coverageRate": 40,
+        })
+        query = connection.execute.call_args.args[0]
+        self.assertIn("active IS TRUE", query)
+        self.assertIn("map_capable IS TRUE", query)
+        self.assertIn("automatic_finishing_result = 'VERIFIED'", query)
+        self.assertIn("statistics_exclusion_code IS NULL", query)
+        self.assertNotIn("diagnostic_status = 'ACTIVE'", query)
 
     def test_overview_model_activity_keeps_resolved_failures_in_historical_counts(self):
         source = inspect.getsource(Database.admin_overview_snapshot)
@@ -624,12 +669,14 @@ class AdminSemanticsTests(unittest.TestCase):
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("1 successful · 2 failed · Historical failures", body)
+        self.assertNotIn("1 successful · 2 failed · Historical failures", body)
+        self.assertIn("<h2 id='overview-activity-title'>Activity</h2>", body)
         self.assertNotIn(
             "Includes resolved historical outcomes; Needs attention counts unresolved issues only.",
             body,
         )
-        self.assertIn("state=resolved-errors#installations", body)
+        self.assertNotIn("state=resolved-errors#installations", body)
+        self.assertNotIn("class='overview-model-item", body)
 
     def test_overview_model_activity_shows_five_latest_operations(self):
         source = inspect.getsource(Database.admin_overview_snapshot)
@@ -666,7 +713,8 @@ class AdminSemanticsTests(unittest.TestCase):
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertEqual(body.count("class='overview-model-item"), 5)
+        self.assertEqual(body.count("class='overview-model-item"), 0)
+        self.assertNotIn("Device/model activity", body)
         self.assertNotIn(
             "Includes resolved historical outcomes; Needs attention counts unresolved issues only.",
             body,
@@ -683,7 +731,7 @@ class AdminSemanticsTests(unittest.TestCase):
     def test_health_sorts_failures_before_healthy_and_exposes_sync(self):
         body = system_health_page({"api":"HEALTHY", "database":"FAILED",
             "githubSync":{"overdue":1,"errors":1}}, {"username":"operator"}, "csrf").decode()
-        cards = body.split("aria-label='System health summary'>")[1]
+        cards = body.split("id='main-content'", 1)[1]
         self.assertLess(cards.index("<h2>Database</h2>"), cards.index("<h2>API</h2>"))
         self.assertIn("GitHub issue sync", cards)
         self.assertNotIn("class='admin-health-summary'", body)
@@ -711,9 +759,9 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<h1>Overview</h1>", body)
-        self.assertIn("<span>Installs</span><strong>—</strong>", body)
-        self.assertIn("<span>Failed installs</span><strong class='admin-error-counter'>—</strong>", body)
+        self.assertIn("<h1>Dashboard</h1>", body)
+        self.assertIn("<span>Successful</span><strong>—</strong>", body)
+        self.assertIn("<span>Failed</span><strong class='admin-error-counter'>—</strong>", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -728,6 +776,12 @@ class AdminSemanticsTests(unittest.TestCase):
                     "completedDownloadCount": 2,
                     "failedDownloadCount": 1,
                     "downloadSuccessRate": 66.7,
+                    "allTimeSuccessCount": 3,
+                    "allTimeFailedCount": 1,
+                    "allTimeInstallSuccessRate": 75,
+                    "allTimeCompletedDownloadCount": 2,
+                    "allTimeFailedDownloadCount": 1,
+                    "allTimeDownloadSuccessRate": 66.7,
                     "hasData": True,
                     "recentActivity": [{
                         "event_type": "INSTALL_FAILED",
@@ -775,18 +829,20 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Install failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
-        self.assertIn("<span>Installs</span><strong>4</strong>", body)
-        self.assertIn("<span>Install success</span><strong>75%</strong>", body)
-        self.assertIn("<span>Failed installs</span><strong class='admin-error-counter is-positive'>1</strong>", body)
-        self.assertIn("<span>Downloads</span><strong>2</strong>", body)
-        self.assertIn("<span>Download success</span><strong>66.7%</strong>", body)
-        self.assertIn("<span>Failed downloads</span><strong class='admin-error-counter is-positive'>1</strong>", body)
+        self.assertIn("<span>Successful</span><strong>3</strong>", body)
+        self.assertIn("<span>Success rate</span><strong>75%</strong>", body)
+        self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>1</strong>", body)
+        self.assertIn("<span>Successful</span><strong>2</strong>", body)
+        self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
+        self.assertIn("/admin/map-statistics?period=all", body)
+        self.assertIn("/admin/map-statistics?period=7d", body)
+        self.assertNotIn("/admin/installations", body.split("<section class='map-statistics-kpi-panel", 1)[1].split("</section>", 1)[0])
         self.assertIn("eventType=DOWNLOAD_SUCCEEDED", body)
         self.assertIn("eventType=DOWNLOAD_FAILED", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
-        self.assertIn("Recent map activity", body)
+        self.assertIn("<h2 id='overview-activity-title'>Activity</h2>", body)
         self.assertIn("Downloads</h2>", body)
         self.assertIn("overview-download-panel", body)
         self.assertNotIn("Failures by reason", body)
@@ -797,7 +853,17 @@ class AdminSemanticsTests(unittest.TestCase):
         body = overview_page(
             {
                 "period": "24h",
-                "data": {"hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "hour"},
+                "data": {
+                    "hasData": True,
+                    "recentActivity": [{
+                        "provider_id": "custom", "event_type": "INSTALL_SUCCEEDED",
+                        "outcome": "SUCCEEDED", "model": "fēnix 7 Pro",
+                        "compatibility_identity": "fēnix 7 Pro",
+                        "device_link_state": "LINKED",
+                        "occurred_at": "2026-09-04T08:00:00+00:00",
+                    }],
+                    "attention": [], "trend": [], "bucket": "hour",
+                },
                 "compatibility": {
                     "hasData": True,
                     "recentActivity": [{
@@ -821,10 +887,10 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         self.assertNotIn("Recent compatibility activity", body)
-        self.assertNotIn("Custom installation", body)
-        self.assertNotIn("fēnix 7 Pro · Custom", body)
+        self.assertIn("Custom .img", body)
+        self.assertIn("Reported device: fēnix 7 Pro", body)
         self.assertNotIn("No map telemetry in this period", body)
-        self.assertIn("No map activity in this period", body)
+        self.assertNotIn("No map activity in this period", body)
 
     def test_overview_presents_model_activity_and_exact_period_vocabulary(self):
         body = overview_page(
@@ -847,19 +913,15 @@ class AdminSemanticsTests(unittest.TestCase):
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("Device/model activity", body)
-        self.assertIn("fēnix 8 · 47 mm, AMOLED", body)
-        self.assertIn("New / review-required devices", body)
-        self.assertIn("Review queue", body)
+        self.assertNotIn("Device/model activity", body)
+        self.assertNotIn("fēnix 8 · 47 mm, AMOLED", body)
+        self.assertNotIn("New / review-required devices", body)
+        self.assertIn("Needs attention", body)
         self.assertIn("Review required", body)
         self.assertIn("Last 24 hours", body)
         self.assertIn("<div class='overview-primary-grid'>", body)
-        self.assertIn("<div class='overview-secondary-grid'>", body)
-        self.assertIn("overview-model-panel", body)
-        model_panel = body.split("overview-model-panel", 1)[1].split("</section>", 1)[0]
-        self.assertIn("Device/model activity", model_panel)
-        self.assertNotIn("Compatibility evidence", model_panel)
-        self.assertNotIn("Diagnostic activity", model_panel)
+        self.assertIn("overview-activity-panel", body)
+        self.assertNotIn("overview-model-panel", body)
         self.assertNotIn("Failures by reason", body)
         self.assertNotIn("build", body.lower())
 
@@ -876,7 +938,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("overview-model-title", body)
         self.assertIn("<div class='overview-primary-grid'>", body)
         self.assertNotIn("No diagnostic activity in this period.", body)
-        self.assertIn("overview-secondary-grid-single", body)
+        self.assertIn("overview-activity-panel", body)
 
     def test_overview_period_control_updates_without_hard_reload(self):
         body = overview_page(
@@ -956,8 +1018,9 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         attention = body.split("<section class='overview-panel overview-attention-panel", 1)[1].split("</section>", 1)[0]
         self.assertNotIn("No issues need attention", attention)
-        self.assertIn("Review queue</h2>", attention)
-        self.assertIn("Review queue shortcuts", attention)
+        self.assertIn("Needs attention</h2>", attention)
+        self.assertNotIn("attention-shortcuts", attention)
+        self.assertIn("No pending work.", attention)
         self.assertNotIn("Download failed", attention)
 
     def test_failure_reason_normalizes_source_validation_variants(self):
@@ -1063,7 +1126,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn(".map-statistics-coverage-layout{align-items:start;grid-template-columns:minmax(0,3fr) minmax(300px,1fr)}", body)
         self.assertIn("height:auto;min-height:0;aspect-ratio:900 / 365", body)
         self.assertIn(".map-statistics-world-map-card .world-map-controls{position:absolute;z-index:3;top:8px;left:8px;padding:0;gap:6px}", body)
-        self.assertIn("@media(min-width:1101px){.map-statistics-popularity{contain:size;align-self:stretch;overflow:auto", body)
+        self.assertIn("<summary>Popular maps</summary>", body)
+        self.assertIn("id='map-statistics-diagnostic-coverage'", body)
+        self.assertIn("<summary>Diagnostic coverage</summary>", body)
         self.assertIn("window.terentoWorldMapSvg", body)
         popular_maps = body.split("id='map-statistics-popularity'", 1)[1].split("map-events-card", 1)[0]
         self.assertIn("id='top-maps-view'", popular_maps)
@@ -1347,6 +1412,10 @@ class AdminSemanticsTests(unittest.TestCase):
                 "data": {
                     "hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "hour",
                     "allTimeSuccessCount": 16, "allTimeFailedCount": 4, "allTimeCustomCount": 2,
+                    "allTimeInstallSuccessRate": 80,
+                    "allTimeCompletedDownloadCount": 21,
+                    "allTimeFailedDownloadCount": 3,
+                    "allTimeDownloadSuccessRate": 87.5,
                 },
                 "compatibility": {"hasData": False, "recentActivity": [], "failureReasons": []},
                 "downloads": {
@@ -1368,9 +1437,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("overview-download-total' aria-label='.zip downloads total: 11'><strong>11</strong><small>.zip", body)
         self.assertIn("overview-download-totals", body)
         self.assertIn("overview-map-heading", body)
-        self.assertIn("overview-map-total' aria-label='All-time successful installs: 16'><strong>16</strong><small>Successful", body)
-        self.assertIn("overview-map-total' aria-label='All-time failed installs: 4'><strong class='admin-error-counter is-positive'>4</strong><small>Failed", body)
-        self.assertIn("overview-map-total' aria-label='All-time custom .img installs: 2'><strong>2</strong><small>Custom", body)
+        self.assertIn("<span>Successful</span><strong>16</strong>", body)
+        self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>4</strong>", body)
+        self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>3</strong>", body)
         self.assertNotIn("Total downloads:</span>", body)
         heading_index = body.index("overview-download-heading")
         self.assertLess(
@@ -1606,20 +1675,23 @@ class AdminSemanticsTests(unittest.TestCase):
                 "total": 6,
             },
         }, "csrf").decode()
-        self.assertIn('aria-label="Review queue: 6"', body)
-        self.assertIn('class="needs-review-count">6</span>', body)
-        self.assertIn("Failure diagnostics</span><strong>1", body)
-        self.assertIn("GitHub review tasks</span><strong>0", body)
-        self.assertIn("Identity review</span><strong>2", body)
-        self.assertIn("Publication review</span><strong>3", body)
-        self.assertIn("needs-review-popover", body)
+        header = body[body.index("<header"):body.index("</header>")]
+        self.assertIn("aria-label='Review: 6'", header)
+        self.assertIn("class='needs-review-count'>6</span>", header)
+        self.assertIn(">Dashboard</a>", header)
+        self.assertIn(">Health</a>", header)
+        self.assertIn(">Maps</a>", header)
+        self.assertIn(">Review <span", header)
+        self.assertNotIn("needs-review-popover", header)
+        self.assertNotIn("Failure diagnostics", header)
+        self.assertNotIn("Publication review", header)
 
         zero_body = devices_page([], None, {
             "username": "operator",
             "admin_review_summary": {"total": 0},
         }, "csrf").decode()
         zero_header = zero_body[zero_body.index("<header"):zero_body.index("</header>")]
-        self.assertNotIn("needs-review-menu", zero_header)
+        self.assertNotIn("admin-review-link", zero_header)
 
     def test_resolve_and_reopen_persist_lifecycle_metadata_without_deleting_evidence(self):
         database = RecordingDatabase(
@@ -1949,6 +2021,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn('href="https://terento.app/" aria-label="Terento home"', body)
         self.assertIn('class="admin-header-zone admin-header-left"', body)
         self.assertIn('class="admin-section-nav" aria-label="Admin sections"', body)
+        self.assertIn('class="admin-nav-group" role="group" aria-label="Daily"', body)
+        self.assertIn('aria-label="Catalog"', body)
+        self.assertIn('aria-label="Analytics"', body)
         self.assertIn('class="admin-nav" aria-label="Admin navigation"', body)
         self.assertIn(
             'class="admin-website-link" href="https://terento.app/"',
@@ -2415,6 +2490,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<h1>Installations</h1>", body)
+        self.assertIn("All-time model evidence", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
         for label in ("Variants", "Installation attempts", "Successful", "Success rate", "Open errors"):
             self.assertIn(f"<span>{label}</span>", body)
@@ -2964,7 +3040,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("1 provider", body)
         self.assertIn("0 active · 1 healthy · 177 packages · 0 affected packages · 0 problematic sources", body)
         self.assertIn("<th scope='col'>Provider</th><th scope='col' class='column-status'>Activity</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-number'>Packages</th>", body)
-        self.assertIn("<th scope='col' class='column-date'>Last check</th><th scope='col' class='column-number'>Problems</th>", body)
+        self.assertIn("<th scope='col' class='column-number'>Problems</th><th scope='col' class='column-date'>Catalog sync</th>", body)
+        self.assertNotIn(">Last check</th>", body)
+        self.assertNotIn(">Average download time</th>", body)
 
     def test_provider_problems_keep_packages_sources_and_health_separate(self):
         body = providers_page(
@@ -3639,10 +3717,9 @@ class SystemHealthPageTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<h1>System health</h1>", body)
+        self.assertIn("<h1>Health</h1>", body)
         self.assertIn("Search checks", body)
         self.assertIn("Freizeitkarte</h2>", body)
-        self.assertIn("63 packages", body)
         self.assertIn("No weekly test report received yet", body)
         self.assertIn("system-health-unknown", body)
         self.assertIn("<dt>Why</dt>", body)
@@ -3691,9 +3768,10 @@ class SystemHealthPageTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("deployed website manifest was verified as 1.0.0-beta.10 · build 11", body)
+        self.assertIn("<h2>Release / manifest</h2>", body)
+        self.assertIn("data-health-status='HEALTHY'", body)
         self.assertIn("data-admin-timestamp", body)
-        release_card = body.split("<h2>Release / manifest</h2>", 1)[1].split("</article>", 1)[0]
+        release_card = body.split("<h2>Release / manifest</h2>", 1)[1].split("</div>", 1)[0]
         self.assertIn("system-health-healthy", release_card)
 
 

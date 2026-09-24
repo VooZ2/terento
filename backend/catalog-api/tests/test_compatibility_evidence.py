@@ -850,7 +850,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         allowed, body = self.request("GET", "/admin", headers={"Cookie": cookie_header})
         self.assertEqual(allowed.status, 200)
         self.assertEqual(allowed.headers["X-Robots-Tag"], "noindex, nofollow")
-        self.assertIn(b">Overview<", body)
+        self.assertIn(b">Dashboard<", body)
 
         installations, installations_body = self.request(
             "GET", "/admin/installations", headers={"Cookie": cookie_header}
@@ -861,9 +861,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)
         self.assertIn(b">Devices<", devices_body)
-        self.assertIn(b"Review queue", devices_body)
-        self.assertIn(b'aria-label="Review queue: 3"', devices_body)
-        self.assertIn(b"Publication review", devices_body)
+        self.assertIn(b">Review <span", devices_body)
+        self.assertIn(b"aria-label='Review: 3'", devices_body)
+        self.assertNotIn(b"needs-review-popover", devices_body)
         self.assertIn(b'data-device-sort="maps"', devices_body)
         self.assertIn(
             "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",
