@@ -29,6 +29,30 @@ def load(name: str, relative: str):
 
 sitemap = load("terento_generate_sitemap", "scripts/generate-sitemap.py")
 indexnow = load("terento_submit_indexnow", "scripts/submit-indexnow.py")
+live_site = load("terento_verify_live_site", "scripts/verify-live-site.py")
+
+
+def test_live_page_cloudflare_email_equivalence() -> None:
+    email = b'hello&#64;terento.app?subject=Terento%20installation%20issue'
+    expected = b'<body><a href="mailto:' + email + b'">Support</a>  </body>'
+    decoder = (b'<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/'
+               b'cloudflare-static/email-decode.min.js"></script>')
+    assert live_site.page_matches(expected, expected)
+    for key in (1, 14, 255):
+        encoded = bytes([key] + [value ^ key for value in email]).hex().encode()
+        live = expected.replace(b'mailto:' + email, b'/cdn-cgi/l/email-protection#' + encoded)
+        live = live.replace(b'</body>', decoder + b'</body>')
+        assert live_site.page_matches(expected, live)
+        assert not live_site.page_matches(expected, live.replace(b'Support', b'Wrong release'))
+        assert not live_site.page_matches(expected, live.replace(decoder, b''))
+        assert not live_site.page_matches(expected, live.replace(decoder, decoder + decoder))
+        assert not live_site.page_matches(expected, live.replace(b'/cdn-cgi/scripts/', b'https://evil.test/'))
+        assert not live_site.page_matches(expected, live.replace(b'</body>', b'<script>bad()</script></body>'))
+        assert not live_site.page_matches(expected, live.replace(encoded, b'0'))
+        changed = bytes([key] + [value ^ key for value in b'wrong@example.test']).hex().encode()
+        assert not live_site.page_matches(expected, live.replace(encoded, changed))
+    assert not live_site.page_matches(expected, expected.replace(b'</body>', decoder + b'</body>'))
+    assert not live_site.page_matches(b'<body>build35</body>', b'<body>build34</body>')
 
 
 ISOLATED_SENDER = r'''
@@ -511,6 +535,7 @@ def test_secret_and_runtime_boundaries() -> None:
 
 
 if __name__ == "__main__":
+    test_live_page_cloudflare_email_equivalence()
     test_sitemap_contract()
     test_sitemap_reproducibility_from_clean_git_history()
     test_delta_selection_and_bootstrap()

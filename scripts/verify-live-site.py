@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -13,6 +14,45 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 SITEMAP_PATH = ROOT / "site" / "sitemap.xml"
+
+
+def page_matches(expected: bytes, live: bytes) -> bool:
+    """Compare exact HTML, undoing only the observed Cloudflare mailto rewrite.
+
+    Every decoded href must already occur in the expected source. Other edge
+    injections, changed content and unexpected decoder shapes still fail closed.
+    """
+    if live == expected:
+        return True
+    restored = 0
+
+    def restore_href(match: re.Match[bytes]) -> bytes:
+        nonlocal restored
+        try:
+            encoded = bytes.fromhex(match.group(1).decode("ascii"))
+            decoded = bytes(value ^ encoded[0] for value in encoded[1:])
+        except (ValueError, IndexError):
+            return match.group(0)
+        href = b'href="mailto:' + decoded + b'"'
+        if not decoded or href not in expected:
+            return match.group(0)
+        restored += 1
+        return href
+
+    normalized = re.sub(
+        rb'href="/cdn-cgi/l/email-protection#([0-9a-fA-F]+)"',
+        restore_href, live,
+    )
+    if not restored:
+        return False
+    # Match the exact observed same-origin decoder immediately before </body>.
+    # Do not discard arbitrary script tags or normalize other HTML differences.
+    normalized, decoder_count = re.subn(
+        rb'<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/'
+        rb'cloudflare-static/email-decode\.min\.js"></script>(?=</body>)',
+        b'', normalized,
+    )
+    return decoder_count == 1 and normalized == expected
 
 
 def load_http():
@@ -88,7 +128,7 @@ def main() -> int:
             if not isinstance(url, str) or not isinstance(page, dict) or not isinstance(page.get("file"), str):
                 raise RuntimeError("IndexNow plan contains a current URL without a local page")
             expected = (ROOT / page["file"]).read_bytes()
-            if fetch(http, "live changed public page", url) != expected:
+            if not page_matches(expected, fetch(http, "live changed public page", url)):
                 raise RuntimeError(f"live page differs from the tested public page: {url}")
             checked += 1
 
