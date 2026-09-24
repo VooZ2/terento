@@ -8,6 +8,24 @@ statistics populations and formulas are canonical in
 [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md).
 A build number is not an API schema version.
 
+## Next-client authorization delta (not yet distributed)
+
+Compared with beta.13 build 34, integrated native source refreshes schema-3
+installation policy before acquisition and at the final write boundary, including
+Safe Update. Matching and unknown/conflicting identity semantics are owned by
+[`INSTALLATION_AUTHORIZATION.md`](INSTALLATION_AUTHORIZATION.md), independently
+of public Compatibility status. Authorization refusals do not manufacture an
+installation diagnostic result. The API accepts the additive failure codes
+`INSTALL_BLOCKED_TERENTO_DEVICE_SCOPE` and `INSTALL_AUTHORIZATION_UNAVAILABLE`.
+Map activity adds optional `mapResultIndex`; older payloads without it remain
+accepted, and historical indices are not inferred.
+
+Deployed backend source `0f9905fa63e6c61bd21cc68539bc680f84a86e99` includes these
+contracts. Integrated source `e8f6005a3da20c0588da59ec569abd0b9c9b46fa` has no
+backend runtime differences from that revision: subsequent differences are
+workflow/helper, tests and documentation only. This compatibility record does not
+replace fresh encoder-to-API, PostgreSQL, live-read and final artifact gates.
+
 ## Required compatibility record
 
 Every affected release receipt must identify the app build/tag and packaged

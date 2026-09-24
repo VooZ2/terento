@@ -55,9 +55,10 @@ starts, exact-target cleanup uses the operation's established safety facts.
 Current Edge rows are absent from the audited API catalog and therefore
 pending; Edge is not permanently blacklisted and a future catalogued Edge
 model with Maps=Yes can be authorized by the same matching rules. Public
-compatibility remains a separate evidence-gated claim. The endpoint is implemented locally but was
-HTTP 404 in the 2026-09-22 live audit; this contract does not assert a
-deployed route. The valid fixture uses a synthetic Maps=No model; it is not a
+compatibility remains a separate evidence-gated claim. The endpoint returned
+HTTP 200 with schemaVersion 3 and policyVersion 3 in the 2026-09-24 read-only
+check. This proves backend availability, not publication of the native enforcement
+changes. The valid fixture uses a synthetic Maps=No model; it is not a
 live catalog snapshot.
 
 HTTP authentication, idempotency and rate-limit headers are outside these body

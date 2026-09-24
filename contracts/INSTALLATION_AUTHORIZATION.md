@@ -2,9 +2,10 @@
 
 This is the canonical product decision for starting or continuing a native map
 write. The API device catalog, not public Compatibility or the local Map Manager
-presentation registry, owns the capability decision. The current implementation
-is local and has not been released; the live policy endpoint returned HTTP 404
-in the 2026-09-22 read-only audit.
+presentation registry, owns the capability decision. The backend policy is live:
+the 2026-09-24 read-only check returned HTTP 200 with schemaVersion 3 and
+policyVersion 3. Native enforcement is integrated source awaiting a separately
+validated app build; backend availability does not mean that beta.13 enforces it.
 
 The client must identify the connected Garmin manufacturer and a reliable,
 normalized **base model** without substring or broad family matching. Collect
@@ -44,11 +45,10 @@ target cleanup and rollback use the operation's established safety facts and
 do not require another policy request. All other live-device, ownership,
 no-overwrite, storage, and transfer checks remain in force.
 
-`installation-policy.schema.json` defines the response shape. Local backend
+`installation-policy.schema.json` defines the response shape. The backend
 code serves a public-read, metadata-only `GET /devices/installation-policy.json`
-projection with `schemaVersion: 3`. The local implementation requires a fresh
+projection with `schemaVersion: 3`. The implementation requires a fresh
 response and uses `Cache-Control: no-store`; conditional requests return a
 new 200 policy rather than 304. The deploy smoke check now includes this
-endpoint. None of these local changes proves a live 200 or authorizes an app
-release: schema reconciliation, backend deployment, live projection validation,
-and a separate release decision remain gates.
+endpoint. Live route validation is independent of app packaging and publication;
+a separate validated app build and publication decision remain required.

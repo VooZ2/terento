@@ -9,6 +9,16 @@ produces no installation attempt, then supply the shared approved catalog
 fixture before exercising downstream preflight failures. Tests must not bypass
 the production authorization gate or depend on a live policy request.
 
+Release audits may additionally pass a freshly downloaded read-only response via
+`TERENTO_POLICY_CONTRACT_PATH` to the native authorization runner and
+`TERENTO_COMPATIBILITY_CONTRACT_PATH` to the compatibility-status runner. These
+optional checks use the real Swift clients and temporary test caches, never
+upload events or contact a Garmin device. Ordinary CI remains fixture-based.
+The policy check requires schema 3, policy version at least 3, a known approved
+fēnix 8 and pending unknown/absent Edge identities. Update the audit assertions
+explicitly if the live catalog scope changes; do not reinterpret a failed check
+as success. Local Docker skips require separate actual CI runtime evidence.
+
 | Change | Required checks |
 | --- | --- |
 | Ordinary Markdown, including component and contracts README | shared/CI documentation and inventory checks |
