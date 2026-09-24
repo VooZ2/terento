@@ -14,6 +14,17 @@ struct CompatibilityStatusClientTests {
             .appendingPathComponent("terento-compatibility-status-\(UUID().uuidString).json")
         let cache = CompatibilityStatusCache(fileURL: cacheURL)
 
+        if let path = ProcessInfo.processInfo.environment["TERENTO_COMPATIBILITY_CONTRACT_PATH"] {
+            let data = try! Data(contentsOf: URL(fileURLWithPath: path))
+            let liveClient = CompatibilityStatusClient(cache: cache, dataLoader: { _ in
+                (data, httpResponse())
+            })
+            let live = await liveClient.resolve(identity: identity(size: 47, variant: "47 mm, AMOLED"))
+            require(live.source == .remote && live.record != nil,
+                    "current Swift decoder accepts the live public fenix 8 compatibility record")
+            print("PASS: live public compatibility payload decodes with the current app client")
+        }
+
         let initialResponse = response([
             record(identity: "fēnix 8 · 47 mm", size: 47, status: "SUPPORTED"),
             record(identity: "fēnix 8 · 51 mm", size: 51, status: "TESTED"),

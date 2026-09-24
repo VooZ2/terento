@@ -129,6 +129,19 @@ private let allMapsYesPolicy = try! policyData([
 @main
 struct InstallationAuthorizationTests {
     static func main() async throws {
+        if let path = ProcessInfo.processInfo.environment["TERENTO_POLICY_CONTRACT_PATH"] {
+            let data = try Data(contentsOf: URL(fileURLWithPath: path))
+            let document = try JSONDecoder().decode(InstallationAuthorizationDocument.self, from: data)
+            try require(document.schemaVersion == 3 && document.policyVersion >= 3,
+                        "live policy uses the supported schema and policy version")
+            let known = await client(for: data).resolve(identity: identity())
+            try require(known.canInstall, "live fenix 8 47 AMOLED remains approved")
+            let unknown = await client(for: data).resolve(identity: identity(model: "unknown audit model", displayType: nil))
+            try require(unknown.blockReason == .pending, "unknown live model remains pending")
+            let edge = await client(for: data).resolve(identity: identity(model: "Edge 840", family: "Edge", displayType: nil))
+            try require(edge.blockReason == .pending, "absent live Edge remains pending")
+            print("PASS: current native resolver accepts the live policy and preserves unknown/Edge pending")
+        }
         let exact = await client(for: allMapsYesPolicy).resolve(identity: identity())
         try require(exact.canInstall, "exact fenix 8 47 AMOLED Maps=Yes is installable")
         try require(exact.matches(identity: identity()), "exact authorization remains bound to the model and known variant facts")
