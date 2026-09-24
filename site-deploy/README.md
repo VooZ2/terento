@@ -193,6 +193,13 @@ by a site deployment.
 
 After deployment, compare the live update manifest's version, label, build,
 channel, minimum macOS, official URLs and checksum against the tested input.
+Changed-page verification remains byte-exact after reversing only the observed
+Cloudflare Email Address Obfuscation mailto rewrite: the decoded address/query
+must match an expected source href, and only the exact same-origin decoder tag
+immediately before the closing body is removed. Changed release content,
+unexpected addresses/scripts and malformed encodings still fail. Sitemap and
+manifest checks are not normalized. This preserves edge protection without
+changing Cloudflare settings. See [Cloudflare's obfuscation documentation](https://developers.cloudflare.com/waf/tools/scrape-shield/email-address-obfuscation/).
 Transport retries discard partial responses. The fixed SSH request retries only
 connection-establishment timeouts; an established-session failure has unknown
 remote outcome and is not automatically replayed. Observation delivery is
