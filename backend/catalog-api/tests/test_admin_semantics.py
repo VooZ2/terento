@@ -412,7 +412,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("admin-error-counter is-positive", overview_panel)
         self.assertIn("<span>Successful</span><strong>3</strong>", overview_panel)
         self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>1</strong>", overview_panel)
-        self.assertIn("<span>Map-capable models</span><strong>2 / 5</strong>", overview_panel)
+        self.assertIn("<span>Map-capable models</span><strong><bdi dir='ltr'>2 / 5</bdi></strong>", overview_panel)
         self.assertIn("<span>Coverage</span><strong>40%</strong>", overview_panel)
         self.assertNotIn("support", overview_panel.casefold())
         self.assertNotIn("<span>Open errors</span>", overview_panel)

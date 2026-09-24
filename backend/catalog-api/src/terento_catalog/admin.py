@@ -1984,7 +1984,7 @@ def overview_page(
         device_coverage.get("eligibleModelCount")
     )
     coverage_counts = (
-        f"{coverage_successful} / {coverage_eligible}"
+        f"<bdi dir='ltr'>{coverage_successful} / {coverage_eligible}</bdi>"
         if coverage_successful is not None and coverage_eligible is not None
         else "—"
     )
