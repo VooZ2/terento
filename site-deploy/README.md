@@ -219,7 +219,8 @@ the workflow verifies the exact beta merge SHA and dispatches one site deploy,
 or reuses an existing exact-SHA active/successful deployment. A failed existing
 deploy requires investigation rather than a duplicate dispatch. Concurrent beta
 changes fail closed. The automation branch is deleted with an exact lease after
-successful deployment. Workflow enablement alone is not a deployment trigger.
+successful deployment (already-auto-deleted branches are a successful no-op).
+Workflow enablement alone is not a deployment trigger.
 
 Production content acceptance also requires live HTML/asset and localized Guide
 validation plus a recorded Google Rich Results Test for relevant structured-data

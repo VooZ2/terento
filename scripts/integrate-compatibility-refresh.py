@@ -37,6 +37,16 @@ def exact_runs(values, sha):
     return [r for r in values if r["headSha"] == sha]
 
 
+def delete_merged_branch(sha):
+    remote = run("git", "ls-remote", "origin", f"refs/heads/{BRANCH}")
+    if not remote:
+        return  # Repository auto-delete-on-merge may already have removed it.
+    if remote.split()[0] != sha:
+        raise RuntimeError("Automation branch changed after merge; preserve it")
+    run("git", "push", f"--force-with-lease=refs/heads/{BRANCH}:{sha}",
+        "origin", f":refs/heads/{BRANCH}")
+
+
 def dispatch_and_wait(workflow, branch, sha, reuse=False):
     before = runs(workflow, branch)
     matching = exact_runs(before, sha)
@@ -130,6 +140,12 @@ def main():
         "--fail-fast", timeout=7200)
     pr = gh("pr", "view", number, "--repo", REPO,
             "--json", "headRefOid,mergeStateStatus")
+    for _ in range(12):
+        if pr["mergeStateStatus"] != "UNKNOWN":
+            break
+        time.sleep(5)
+        pr = gh("pr", "view", number, "--repo", REPO,
+                "--json", "headRefOid,mergeStateStatus")
     if pr["headRefOid"] != sha or pr["mergeStateStatus"] != "CLEAN":
         raise RuntimeError("Exact PR head does not satisfy current branch protection")
     run("gh", "pr", "merge", number, "--repo", REPO, "--merge", "--match-head-commit", sha)
@@ -145,8 +161,7 @@ def main():
                    "--base", "beta", "--state", "open", "--json", "number")
     if remaining:
         raise RuntimeError("Unexpected open refresh PR remains")
-    run("git", "push", f"--force-with-lease=refs/heads/{BRANCH}:{sha}",
-        "origin", f":refs/heads/{BRANCH}")
+    delete_merged_branch(sha)
     print(f"Merged refresh PR {number}; exact beta {beta} deployment passed")
 
 

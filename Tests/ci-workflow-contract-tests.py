@@ -35,6 +35,16 @@ def verify_refresh_flow():
     assert all(c[0] == "git" for c in calls), "no diff must not touch GitHub"
 
     sha = "a" * 40
+    with patch.object(flow, "run", return_value="") as command:
+        flow.delete_merged_branch(sha)
+        assert command.call_count == 1, "auto-deleted branch must not cause a second delete"
+    with patch.object(flow, "run", return_value="b" * 40 + "\trefs/heads/" + flow.BRANCH):
+        try:
+            flow.delete_merged_branch(sha)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("changed branch deleted")
     old = dict(databaseId=1, headSha=sha, event="workflow_dispatch", status="completed", conclusion="success")
     wrong = dict(old, databaseId=2, headSha="b" * 40)
     fresh = dict(old, databaseId=3)
