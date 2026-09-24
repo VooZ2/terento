@@ -74,7 +74,7 @@ or claim complete telemetry coverage.
 
 ## Responses and client compatibility
 
-The current beta.13 client requests `/maps/catalog-v4.json`. The legacy route
+The current beta.14 client requests `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
 Older clients can reject a complete snapshot containing an unknown installable
 provider, so these projections must remain separate. v4 additionally exposes
