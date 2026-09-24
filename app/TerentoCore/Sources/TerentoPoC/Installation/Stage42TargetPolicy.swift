@@ -6,6 +6,8 @@ enum Stage42TargetPolicyError: LocalizedError, Equatable, Sendable {
     case unsupportedVersion
     case unsupportedFilename
     case unsupportedDeviceProfile
+    case installationAuthorizationRequired
+    case installationAuthorizationUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -19,6 +21,10 @@ enum Stage42TargetPolicyError: LocalizedError, Equatable, Sendable {
             return "The selected map filename is not a valid Terento-managed target."
         case .unsupportedDeviceProfile:
             return "This device does not match the validated Terento installation profile."
+        case .installationAuthorizationRequired:
+            return "Map installation is not available for this device in Terento."
+        case .installationAuthorizationUnavailable:
+            return "Terento could not verify this device's installation authorization right now. Check your connection and try again."
         }
     }
 }
@@ -38,8 +44,16 @@ struct Stage42TargetPolicy: Sendable {
         artifact: ValidatedMapArtifact,
         profile: DeviceInstallProfile?,
         identity: DeviceIdentity,
-        deviceFiles: [DeviceFile]
+        deviceFiles: [DeviceFile],
+        installationAuthorization: InstallationAuthorizationState
     ) throws {
+        guard installationAuthorization.canInstall,
+              installationAuthorization.matches(identity: identity) else {
+            if installationAuthorization.blockReason == .catalogUnavailable {
+                throw Stage42TargetPolicyError.installationAuthorizationUnavailable
+            }
+            throw Stage42TargetPolicyError.installationAuthorizationRequired
+        }
         if deviceFiles.contains(where: { BBBikeProviderAdapter.conflicts(package, filename: $0.filename) }) {
             throw Stage42TargetPolicyError.unsupportedPackage
         }
@@ -141,7 +155,6 @@ struct Stage42TargetPolicy: Sendable {
         deviceFiles: [DeviceFile]
     ) throws {
         guard identity.usbVendorId == 0x091e,
-              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canAttemptTerentoMapInstall,
               DeviceInstallProfileRegistry.hasSingleGarminRootFolder(in: deviceFiles),
               let profile,
               profile.matches(identity),

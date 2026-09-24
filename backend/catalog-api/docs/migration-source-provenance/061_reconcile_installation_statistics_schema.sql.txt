@@ -1,0 +1,22 @@
+-- Reconcile only the two objects confirmed absent by the 2026-09-22
+-- read-only live audit. Migration 060 was recorded as applied, but its
+-- original live SQL is unknown. Never replay or edit that migration.
+-- Existing map events keep a NULL map_result_index; no historical identity
+-- or other event fact is inferred or rewritten here.
+ALTER TABLE map_download_event
+    ADD COLUMN IF NOT EXISTS map_result_index INTEGER;
+
+CREATE TABLE IF NOT EXISTS statistics_exclusion_audit (
+    id BIGSERIAL PRIMARY KEY,
+    stream TEXT NOT NULL CHECK (stream IN ('compatibility', 'map')),
+    event_id UUID NOT NULL,
+    exclusion_code TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    security_issue_code TEXT,
+    source TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (stream, event_id, exclusion_code)
+);
+
+CREATE INDEX IF NOT EXISTS statistics_exclusion_audit_event_idx
+    ON statistics_exclusion_audit(stream, event_id, created_at DESC);

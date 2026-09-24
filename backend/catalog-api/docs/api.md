@@ -86,8 +86,12 @@ the existing model, variant, firmware, operation, outcome, and failure fields.
 Admin workflow metadata is extended separately by migration 040 and is not
 part of the public or native event contract.
 
-Compatibility events older than 24 months are pruned from the active database
-by the service health cycle.
+`GET /health` is read-only and does not run retention. Compatibility events
+older than 24 months are pruned by the catalog scheduler, not by a health
+request. The production scheduler is configured for 03:00 UTC daily; with
+that schedule, cleanup may lag by up to 24 hours, which is accepted behavior.
+The candidate scheduler implementation documenting this behavior has not
+been deployed to production.
 
 ### Optional v4 failure context: server-first acceptance
 
@@ -292,10 +296,10 @@ Returns the authenticated Garmin device observability page. The page is
 limited to Garmin catalog records and combines catalog metadata, map
 capability, separate installation authorization, exact-ID installation
 aggregates, approved cached assets or allowlisted Garmin `sourceAsset`
-thumbnails, and latest successful sync metadata. Map-capable Yes/No uses a
-stored `device_model.map_capable` value when present; otherwise the page
-classifies the canonical model with the same Map Manager prefix list as the
-native macOS client. Unknown remains only for models outside that list. The
+thumbnails, and latest successful sync metadata. `Catalog Maps` shows the
+stored nullable `device_model.map_capable` value; NULL remains Unknown. The
+separately reported `observedMapCapability` is evidence from a classifier
+or installation and cannot override that value or authorize a native write. The
 page keeps the dense list paginated in the browser and opens a detail dialog
 for technical fields, including which image origin was used
 (controlled Terento asset vs official Garmin product media).
@@ -306,22 +310,23 @@ is no-store/noindex, and joins installation events only through
 `canonical_device_model_id`. It is not part of the native or public device
 catalog API contracts.
 
-Device-card installation statistics preserve successful operation history but
-exclude every failure received before migration
-`025_device_card_failure_epoch.sql`. From that migration's production
-application time onward, each distinct failed operation contributes one card
-Attempt and one Failed result even when the device write did not start. This
-epoch rule is private to the device card and does not change the Installations
-dashboard or public compatibility aggregate.
+Device-card installation statistics preserve successful operation history and
+exclude server-classified `OUT_OF_SCOPE_PREWRITE` blocks. Other historical
+failure-epoch rules remain private to the device card and do not change the
+Installations dashboard or public compatibility aggregate. An event with a
+reported write boundary or remote object is retained as a separate security
+review issue rather than being hidden by this exclusion.
 
-The page labels the operator field `Installation authorization` and shows a
-separate, classifier-derived `Compatibility status`. The visible values are
-Pending, Approved, and Blocked; the existing internal enum remains
-`NOT_EVALUATED`, `SUPPORTED`, or `UNSUPPORTED`. CSRF-protected
-`POST /admin/devices/authorization` (with the legacy `/admin/devices/support`
-alias retained) updates only `device_model.support_status` and records an
-audit entry. It cannot change evidence events, operation-level install counts,
-compatibility status, or any native device write authorization.
+The page labels the derived field `Installation authorization` and shows a
+separate operator `Support status` plus classifier-derived `Compatibility
+status`. The visible authorization values are Pending, Approved, and Blocked;
+they are derived from the exact catalog row's `active` and stored
+`map_capable` values. CSRF-protected `POST /admin/devices/authorization` (with
+the legacy `/admin/devices/support` alias retained) updates only
+`device_model.support_status` and records an audit entry. `support_status` is
+review metadata and never grants or revokes a native write; changing it cannot
+change the policy endpoint, evidence events, operation-level install counts,
+or calculated/public compatibility status.
 
 The detail dialog also exposes the independent `Public compatibility` review.
 An exact catalog record becomes eligible only after it has recognized,
@@ -907,9 +912,49 @@ The device endpoint supports the same public cache policy as the map endpoint:
 stale-while-revalidate=86400`, and conditional GET responses with HTTP 304.
 
 The device catalog is metadata only. It has no route for connected-device
-identifiers and it does not authorize MTP operations, map installation, or
-ownership decisions. Those decisions remain local to the macOS client and its
-compatibility/manifest layers.
+identifiers or ownership decisions.
+
+## `GET /devices/installation-policy.json`
+
+Returns the small, public-read policy projection consumed before any native
+write. Schema version 3 contains exact internal catalog model/variant records,
+the nullable `mapCapable` value, and derived `installationAuthorization`
+(`APPROVED`, `BLOCKED`, or `PENDING`) plus `scope` (`IN_SCOPE`,
+`OUT_OF_SCOPE`, or `UNKNOWN`). `active=true` and `mapCapable=true` are the only
+catalog conditions that produce `APPROVED`; `support_status` is intentionally
+absent. It contains no compatibility counts, evidence status, Unit IDs,
+operation IDs, or map data. A model absent from this response is pending/unknown
+and a failed or invalid response is unavailable; both must fail closed.
+
+`baseModel` is derived from the catalog `model` label, whose identity is shared
+by SKU variants; `canonicalModel` may contain Solar, Sapphire or no-Wi-Fi
+details. The app first matches a normalized exact base model, then narrows
+candidates only with reliable variant facts. A conflicting variant attribute
+is treated as unknown and does not filter candidates: conflicting variant
+evidence broadens the candidate set. It does not by itself deny authorization.
+Authorization is determined from the Maps capability of all remaining
+possible candidates. All active candidates with Maps=Yes permit installation;
+all Maps=No block it; mixed or NULL capability, an unresolved base-model
+identity, or no candidates produces `PENDING`. A base-model conflict is not
+treated as a variant conflict and remains pending. This endpoint is not the
+public Compatibility surface and successful-install counts never grant
+authorization. A stale `catalogDeviceID` is only a hint and cannot narrow the
+candidate set by itself. The
+read-only `tools/installation-policy-audit.sql` query reports the live Garmin
+row counts and expected row-level decisions; it does not mutate the database.
+
+The local policy implementation sends `Cache-Control: no-store` and returns
+fresh HTTP 200 JSON even when a conditional request is supplied; it does not
+reuse the public device-catalog 304/stale-cache behavior. The native client
+also requests a fresh response and treats invalid payloads as unavailable.
+Safe Update fetches policy at operation start and again immediately before
+its first remote mutation, and aborts if the connected identity changes.
+Cleanup after writing begins requires no further policy request.
+This route returned HTTP 404 in the 2026-09-22 live audit, so the local
+contract must not be read as a deployed capability. The backend must be
+deployed and the live route, schema, projection and cache headers checked
+before distributing a dependent app. See the
+[tracked authorization rule](../../../contracts/README.md).
 
 ## `GET /assets/devices/<asset>.webp`
 

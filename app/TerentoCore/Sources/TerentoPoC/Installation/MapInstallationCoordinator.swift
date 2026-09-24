@@ -8,6 +8,7 @@ enum MapInstallationStatus: String, Codable, Equatable, Sendable {
     case blockedInsufficientSpace = "BLOCKED_INSUFFICIENT_SPACE"
     case blockedUnknownTarget = "BLOCKED_UNKNOWN_TARGET"
     case blockedUnsupportedDevice = "BLOCKED_UNSUPPORTED_DEVICE"
+    case blockedInstallationAuthorization = "BLOCKED_TERENTO_DEVICE_SCOPE"
     case blockedSourceArtifact = "BLOCKED_SOURCE_ARTIFACT"
     case blockedAmbiguousMapIdentity = "BLOCKED_AMBIGUOUS_MAP_IDENTITY"
     case failed = "FAILED"
@@ -83,6 +84,7 @@ struct MapInstallationRequest: Sendable {
     let profile: DeviceInstallProfile?
     let artifact: ValidatedMapArtifact?
     let userConfirmed: Bool
+    let installationAuthorization: InstallationAuthorizationState
 }
 
 struct MapInstallationResult: Equatable, Sendable {
@@ -342,6 +344,33 @@ struct MapInstallationCoordinator: Sendable {
         onPhase: (@Sendable (InstallationProcessPhase) -> Void)? = nil,
         onPhaseProgress: (@Sendable (InstallationProcessPhase, Double) -> Void)? = nil
     ) -> MapInstallationResult {
+        guard request.installationAuthorization.canInstall,
+              request.installationAuthorization.matches(identity: request.identity) else {
+            let failure: InstallationFailure = request.installationAuthorization.blockReason == .catalogUnavailable
+                ? .installationAuthorizationUnavailable
+                : .installationAuthorization
+            let preflight = preflightEngine.evaluate(
+                identity: request.identity,
+                selectedMap: request.selectedMap,
+                comparison: request.comparison,
+                installedMaps: request.installedMaps,
+                inspectedFiles: request.inspectedFiles,
+                availableStorage: request.availableStorage,
+                profile: request.profile,
+                artifactKind: request.artifact?.artifactKind ?? .main
+            )
+            return blocked(
+                status: .blockedInstallationAuthorization,
+                failure: failure,
+                preflight: preflight,
+                transaction: InstallationTransaction(),
+                diagnostics: MapInstallationDiagnostics.initial(
+                    artifact: request.artifact,
+                    freeSpaceBefore: request.availableStorage
+                )
+            )
+        }
+
         let planningMap = request.artifact.map {
             request.selectedMap.withInstallSize($0.installSizeBytes)
         } ?? request.selectedMap
@@ -441,9 +470,23 @@ struct MapInstallationCoordinator: Sendable {
                 artifact: artifact,
                 profile: request.profile,
                 identity: request.identity,
-                deviceFiles: request.beforeDeviceFiles
+                deviceFiles: request.beforeDeviceFiles,
+                installationAuthorization: request.installationAuthorization
             )
         } catch let error as Stage42TargetPolicyError {
+            if error == .installationAuthorizationRequired
+                || error == .installationAuthorizationUnavailable {
+                let failure: InstallationFailure = error == .installationAuthorizationUnavailable
+                    ? .installationAuthorizationUnavailable
+                    : .installationAuthorization
+                return blocked(
+                    status: .blockedInstallationAuthorization,
+                    failure: failure,
+                    preflight: preflight,
+                    transaction: transaction,
+                    diagnostics: diagnostics
+                )
+            }
             let failure: InstallationFailure = error == .unsupportedDeviceProfile
                 ? .unknownInstallTarget
                 : .sourceArtifactInvalid

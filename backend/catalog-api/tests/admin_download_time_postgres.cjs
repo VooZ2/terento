@@ -6,7 +6,8 @@ const {randomUUID} = require('node:crypto');
  const db = new PGlite();
  await db.exec(`CREATE TABLE map_download_event(event_id uuid, acquisition_id uuid, operation_id uuid,
  provider_id text, map_package_id text, component_kind text, region text, event_type text,
- outcome text, occurred_at timestamptz, is_local_test boolean)`);
+ outcome text, occurred_at timestamptz, is_local_test boolean,
+ statistics_exclusion_code text)`);
  let rows=[]; const base=Date.parse('2026-09-01T00:00:00Z'); const op=randomUUID();
  const acquisition=(seconds, opts={})=>{
    const id=randomUUID(), start=base + (opts.cross ? -10000 : 10000);
@@ -14,7 +15,8 @@ const {randomUUID} = require('node:crypto');
      event_id:randomUUID(),acquisition_id:id,operation_id:op,provider_id:opts.provider || 'test',map_package_id:'map',
      component_kind:opts.component || 'main',region:'LT',event_type:'DOWNLOAD_'+phase,
      outcome:phase==='SUCCEEDED'?'SUCCEEDED':phase==='FAILED'?'FAILED':'UNKNOWN',
-     occurred_at:new Date(start+(i===0?0:i===1?seconds*1000:Math.max(seconds*1000+1000,20000))).toISOString(),is_local_test:!!opts.local
+     occurred_at:new Date(start+(i===0?0:i===1?seconds*1000:Math.max(seconds*1000+1000,20000))).toISOString(),is_local_test:!!opts.local,
+     statistics_exclusion_code:null
    }));
    rows.push(...phases);return phases;
  };

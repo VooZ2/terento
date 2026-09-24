@@ -116,6 +116,41 @@ def device_row(**changes):
 
 
 class AdminDevicesTests(unittest.TestCase):
+    def test_installation_authorization_uses_map_capability_not_support_status(self):
+        payload = _admin_device_payload(
+            [
+                device_row(support_status="UNSUPPORTED", map_capable=True),
+                device_row(
+                    device_id="garmin-edge-840",
+                    model="Edge 840",
+                    canonical_model="Edge 840",
+                    variant="",
+                    case_size_mm=None,
+                    display_type=None,
+                    support_status="SUPPORTED",
+                    map_capable=False,
+                ),
+                device_row(
+                    device_id="garmin-future",
+                    model="Future",
+                    canonical_model="future",
+                    variant="",
+                    case_size_mm=None,
+                    display_type=None,
+                    support_status="SUPPORTED",
+                    map_capable=None,
+                ),
+            ],
+            None,
+        )
+        by_id = {device["id"]: device for device in payload["devices"]}
+        self.assertEqual(by_id["garmin-fenix-8-47-amoled"]["installationAuthorization"], "APPROVED")
+        self.assertIs(by_id["garmin-fenix-8-47-amoled"]["mapCapable"], True)
+        self.assertEqual(by_id["garmin-edge-840"]["installationAuthorization"], "BLOCKED")
+        self.assertIs(by_id["garmin-edge-840"]["mapCapable"], False)
+        self.assertEqual(by_id["garmin-future"]["installationAuthorization"], "PENDING")
+        self.assertIsNone(by_id["garmin-future"]["mapCapable"])
+
     def test_summary_counts_use_independent_capability_support_and_evidence(self):
         payload = _admin_device_payload(
             [
@@ -228,10 +263,13 @@ class AdminDevicesTests(unittest.TestCase):
             ],
             None,
         )
-        self.assertTrue(payload["devices"][0]["mapCapable"])
-        self.assertTrue(payload["devices"][1]["mapCapable"])
+        self.assertIsNone(payload["devices"][0]["mapCapable"])
+        self.assertIsNone(payload["devices"][1]["mapCapable"])
+        self.assertTrue(payload["devices"][0]["observedMapCapability"])
+        self.assertTrue(payload["devices"][1]["observedMapCapability"])
         self.assertIsNone(payload["devices"][2]["mapCapable"])
-        self.assertEqual(payload["summary"]["mapCapable"], 2)
+        self.assertEqual(payload["summary"]["mapCapable"], 0)
+        self.assertTrue(all(device["installationAuthorization"] == "PENDING" for device in payload["devices"]))
 
     def test_fenix_8_51mm_has_independent_tested_evidence_status(self) -> None:
         payload = _admin_device_payload(
@@ -267,7 +305,9 @@ class AdminDevicesTests(unittest.TestCase):
             None,
         )
         device = payload["devices"][0]
-        self.assertTrue(device["mapCapable"])
+        self.assertIsNone(device["mapCapable"])
+        self.assertTrue(device["observedMapCapability"])
+        self.assertEqual(device["installationAuthorization"], "PENDING")
         self.assertEqual(device["evidenceStatus"], "TESTED")
         self.assertTrue(device["publicCompatibility"]["eligible"])
 
@@ -464,7 +504,7 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("Date.parse(device.installationStats.lastSuccessfulAt)", body)
         self.assertNotIn("Date.parse(device.installationStats.lastEvidenceAt)", body)
         self.assertIn("mapOrder = {unknown: 0, no: 1, yes: 2}", body)
-        self.assertIn("authorizationOrder = {NOT_EVALUATED: 0, UNSUPPORTED: 1, SUPPORTED: 2}", body)
+        self.assertIn("authorizationOrder = {PENDING: 0, BLOCKED: 1, APPROVED: 2}", body)
         self.assertIn("if (aValue === null || aValue === undefined || aValue === '')", body)
         self.assertIn('th[aria-sort="ascending"] .device-sort-button', body)
         self.assertIn('th[aria-sort="descending"] .device-sort-button', body)

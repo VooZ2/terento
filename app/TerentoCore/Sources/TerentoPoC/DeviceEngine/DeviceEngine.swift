@@ -6,6 +6,7 @@ final class DeviceEngine: ObservableObject {
     @Published private(set) var state: DeviceConnectionState = .disconnected
     @Published private(set) var snapshot: DeviceSnapshot?
     @Published private(set) var compatibility: CompatibilityDecision?
+    @Published private(set) var installationAuthorization: InstallationAuthorizationState = .blocked(.catalogUnavailable)
     @Published private(set) var errorMessage: String?
     @Published private(set) var userErrorMessage: String?
     @Published private(set) var readingMessage = "Connect your Garmin watch to this Mac."
@@ -17,6 +18,7 @@ final class DeviceEngine: ObservableObject {
     private let logger = Logger(subsystem: "app.terento.native-connectivity-poc", category: "MTP")
     private let compatibilityEngine = CompatibilityEngine()
     private let compatibilityStatusClient: CompatibilityStatusClient
+    private let installationAuthorizationClient: InstallationAuthorizationClient
     private let transport: any DeviceSnapshotReader
     private let operationGate: MTPOperationGate
     private var stateManager = DeviceStateManager()
@@ -33,11 +35,13 @@ final class DeviceEngine: ObservableObject {
     init(
         transport: any DeviceSnapshotReader = MTPTransport(),
         operationGate: MTPOperationGate = .shared,
-        compatibilityStatusClient: CompatibilityStatusClient = CompatibilityStatusClient()
+        compatibilityStatusClient: CompatibilityStatusClient = CompatibilityStatusClient(),
+        installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient()
     ) {
         self.transport = transport
         self.operationGate = operationGate
         self.compatibilityStatusClient = compatibilityStatusClient
+        self.installationAuthorizationClient = installationAuthorizationClient
     }
 
     var isReading: Bool {
@@ -91,10 +95,29 @@ final class DeviceEngine: ObservableObject {
         invalidationDevicePresence = .unknown
         cancelConnectionTasks()
         clearCachedDevice()
+        installationAuthorization = .resolving
         stateManager.deviceDisconnected()
         state = stateManager.state
         readingMessage = "Device search stopped. Connect your Garmin watch and try again."
         appendLog("Read-only device check cancelled")
+    }
+
+    func retryInstallationAuthorization() {
+        guard let compatibility, snapshot != nil else { return }
+        installationAuthorization = .resolving
+        refreshPublicCompatibilityStatus(for: compatibility)
+    }
+
+    var currentInstallationIdentity: DeviceIdentity? {
+        guard hasConnectedDevice, snapshot != nil else { return nil }
+        return compatibility?.identity
+    }
+
+    func resolveFreshInstallationAuthorization(for expected: DeviceIdentity) async -> InstallationAuthorizationState {
+        guard currentInstallationIdentity == expected else { return .blocked(.pending) }
+        let decision = await installationAuthorizationClient.resolve(identity: expected)
+        guard currentInstallationIdentity == expected else { return .blocked(.pending) }
+        return decision
     }
 
     func readDevice() {
@@ -573,16 +596,19 @@ final class DeviceEngine: ObservableObject {
     private func clearCachedDevice() {
         snapshot = nil
         compatibility = nil
+        installationAuthorization = .blocked(.catalogUnavailable)
         readingAttempt = 0
     }
 
     private func refreshPublicCompatibilityStatus(for decision: CompatibilityDecision) {
         compatibilityStatusTask?.cancel()
         let client = compatibilityStatusClient
+        let authorizationClient = installationAuthorizationClient
         let identity = decision.identity
         compatibilityStatusTask = Task { [weak self] in
             let catalogMetadata = await client.resolveCatalogMetadata(identity: identity)
             let catalogDecision = decision.applying(catalogMetadata: catalogMetadata)
+            let installationAuthorization = await authorizationClient.resolve(identity: catalogDecision.identity)
             let resolution = await client.resolve(identity: catalogDecision.identity)
             guard !Task.isCancelled,
                   let self,
@@ -591,8 +617,12 @@ final class DeviceEngine: ObservableObject {
                 return
             }
 
+            self.installationAuthorization = installationAuthorization
             let updatedDecision = catalogDecision.applying(resolution)
             self.compatibility = updatedDecision
+            self.appendLog(
+                "Installation authorization: \(installationAuthorization.canInstall ? "approved" : "blocked")"
+            )
             self.appendLog(
                 "Compatibility status: \(updatedDecision.status?.userLabel ?? "Unavailable") "
                     + "(\(updatedDecision.statusSource.rawValue))"

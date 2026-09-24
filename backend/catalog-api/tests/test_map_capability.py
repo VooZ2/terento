@@ -73,7 +73,9 @@ class MapCapabilityTests(unittest.TestCase):
                 device = build_device_catalog([row], datetime.now(timezone.utc))['devices'][0]
                 admin = _admin_device_payload([row], None)['devices'][0]
                 self.assertTrue(device['mapCapable'])
-                self.assertTrue(admin['mapCapable'])
+                self.assertIsNone(admin['mapCapable'])
+                self.assertTrue(admin['observedMapCapability'])
+                self.assertEqual(admin['installationAuthorization'], 'PENDING')
                 self.assertFalse(admin['publicCompatibility']['published'])
                 self.assertEqual(admin['supportStatus'], 'NOT_EVALUATED')
                 self.assertEqual(device['model'], row['model'])

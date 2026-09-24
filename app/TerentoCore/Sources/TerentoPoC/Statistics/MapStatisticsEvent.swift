@@ -42,6 +42,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
     let region: String?
     let acquisitionId: UUID?
     let componentKind: MapArtifactKind?
+    let mapResultIndex: Int?
     let eventType: MapStatisticsEventType
     let outcome: MapStatisticsEventOutcome
     let timestamp: Date
@@ -57,6 +58,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         timestamp: Date = Date(),
         acquisitionId: UUID? = nil,
         componentKind: MapArtifactKind? = nil,
+        mapResultIndex: Int? = nil,
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
         releaseLabel: String = TerentoTelemetryMetadata.releaseLabel
     ) {
@@ -65,6 +67,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         self.operationId = operationId
         self.acquisitionId = acquisitionId
         self.componentKind = componentKind
+        self.mapResultIndex = mapResultIndex
 
         // A custom package ID may be derived from a local file hash. Never
         // disclose that identity; custom imports use deliberately coarse,
@@ -99,6 +102,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         region = start.region
         acquisitionId = start.acquisitionId
         componentKind = start.componentKind
+        mapResultIndex = start.mapResultIndex
         eventType = type
         outcome = type == .downloadSucceeded ? .succeeded : type == .downloadFailed ? .failed : .unknown
         self.timestamp = timestamp

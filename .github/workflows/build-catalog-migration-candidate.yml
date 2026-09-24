@@ -1,0 +1,267 @@
+name: Build catalog migration candidate
+
+on:
+  push:
+    branches:
+      - terento/062-production-candidate
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact same-repository candidate branch ref
+        required: true
+        type: string
+        default: refs/heads/terento/062-production-candidate
+      source_sha:
+        description: Exact 40-character commit SHA at source_ref
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-migration-candidate-${{ inputs.source_ref || github.ref }}-${{ inputs.source_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  candidate-source-gate:
+    name: Pin and verify clean candidate source before publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Validate candidate source identity before checkout
+        env:
+          REQUESTED_SOURCE_REF: ${{ inputs.source_ref || github.ref }}
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REPOSITORY" == "VooZ2/terento" ]]
+          [[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]
+          [[ "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_REF" == "$REQUESTED_SOURCE_REF" ]]
+          [[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify requested same-repository candidate ref and exact commit
+        env:
+          REQUESTED_SOURCE_REF: ${{ inputs.source_ref || github.ref }}
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$REQUESTED_SOURCE_SHA" ]]
+          remote_source_sha="$(git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$REQUESTED_SOURCE_REF" | cut -f1)"
+          [[ "$remote_source_sha" == "$REQUESTED_SOURCE_SHA" ]]
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
+          git show --check --oneline "$REQUESTED_SOURCE_SHA"
+
+  quality:
+    name: Backend and production-operations quality
+    uses: ./.github/workflows/reusable-catalog-api-quality.yml
+
+  production-operations-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Test fixed root operations boundary
+        run: Tests/run-ci-production-operations-contract-tests.sh
+
+  candidate-contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Check workflow and operator contracts
+        run: Tests/run-ci-workflow-contract-tests.sh
+      - name: Check tracked documentation contracts
+        run: Tests/run-ci-documentation-tests.sh
+      - name: Check candidate commit whitespace
+        run: git show --check --oneline HEAD
+
+  swift-authorization-tests:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Test native installation authorization contract
+        run: app/TerentoCore/Tests/run-native-installation-authorization-tests.sh
+
+  publish:
+    needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && (inputs.source_sha == '' || github.sha == inputs.source_sha)
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-vps-images.yml
+    with:
+      role: api
+      candidate_source_ref: ${{ inputs.source_ref || github.ref }}
+      candidate_source_sha: ${{ inputs.source_sha || github.sha }}
+
+  receipt:
+    needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests, publish]
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && (inputs.source_sha == '' || github.sha == inputs.source_sha)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Verify immutable candidate identity and prepare receipt
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+          SOURCE_REF: ${{ inputs.source_ref || github.ref }}
+          IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+          PUBLISHED_062_SHA: ${{ needs.publish.outputs.migration_062_sha256 }}
+          PUBLISHED_RUNNER_SHA: ${{ needs.publish.outputs.migrate_py_sha256 }}
+          BUILD_TIMESTAMP: ${{ needs.publish.outputs.build_timestamp }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          REPOSITORY: ${{ github.repository }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_CONFIG: ${{ runner.temp }}/terento-candidate-docker
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$REPOSITORY" == "VooZ2/terento" ]]
+          [[ "$SOURCE_REF" == refs/heads/terento/062-production-candidate ]]
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_REF" == "$SOURCE_REF" ]]
+          [[ "$GITHUB_SHA" == "$SOURCE_SHA" ]]
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$BUILD_TIMESTAMP" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          remote_source_sha="$(git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$SOURCE_REF" | cut -f1)"
+          [[ "$remote_source_sha" == "$SOURCE_SHA" ]]
+          git show --check --oneline "$SOURCE_SHA"
+          mkdir -p "$DOCKER_CONFIG"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          image_ref="ghcr.io/vooz2/terento-catalog@$IMAGE_DIGEST"
+          docker pull "$image_ref"
+          embedded_revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$image_ref")"
+          [[ "$embedded_revision" == "$SOURCE_SHA" ]]
+          image_report="$(docker run --rm --pull=never --network none --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint python "$image_ref" -c '
+          import hashlib, json, re
+          from pathlib import Path
+          migration_root = Path("/app/src/terento_catalog/migrations")
+          migration_files = sorted(migration_root.glob("*.sql"))
+          versions = []
+          for path in migration_files:
+              match = re.match(r"^(\d{3})_.+\.sql$", path.name)
+              if not match:
+                  raise SystemExit("noncanonical SQL migration filename")
+              versions.append(int(match.group(1)))
+          if versions != list(range(1, 63)):
+              raise SystemExit("image must contain exactly canonical migrations 001-062")
+          migration_062 = migration_root / "062_reconcile_installation_statistics_schema.sql"
+          runner = Path("/app/src/terento_catalog/migrate.py")
+          digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+          print(json.dumps({"files": [path.name for path in migration_files],
+                            "migration_062_sha256": digest(migration_062),
+                            "migrate_py_sha256": digest(runner)}))
+          ' )"
+          mapfile -t image_values < <(printf '%s\n' "$image_report" | python3 -c '
+          import json, sys
+          report = json.load(sys.stdin)
+          print(len(report["files"]))
+          print(",".join(report["files"]))
+          print(report["migration_062_sha256"])
+          print(report["migrate_py_sha256"])
+          ')
+          [[ "${#image_values[@]}" == 4 ]]
+          migration_count="${image_values[0]}"
+          migration_inventory="${image_values[1]}"
+          image_migration_sha="${image_values[2]}"
+          image_runner_sha="${image_values[3]}"
+          [[ "$migration_count" == 62 ]]
+          [[ "$image_migration_sha" == "$PUBLISHED_062_SHA" ]]
+          [[ "$image_runner_sha" == "$PUBLISHED_RUNNER_SHA" ]]
+          migration_062="backend/catalog-api/src/terento_catalog/migrations/062_reconcile_installation_statistics_schema.sql"
+          migrate_py="backend/catalog-api/src/terento_catalog/migrate.py"
+          migration_sha="$(sha256sum "$migration_062" | cut -d ' ' -f 1)"
+          runner_sha="$(sha256sum "$migrate_py" | cut -d ' ' -f 1)"
+          [[ "$migration_sha" == "$PUBLISHED_062_SHA" ]]
+          [[ "$runner_sha" == "$PUBLISHED_RUNNER_SHA" ]]
+          statistics_contract_sha="$(sha256sum contracts/STATISTICS_CONTRACT.md | cut -d ' ' -f 1)"
+          installation_contract_sha="$(sha256sum contracts/INSTALLATION_AUTHORIZATION.md | cut -d ' ' -f 1)"
+          contract_schema_sha="$(sha256sum contracts/installation-policy.schema.json | cut -d ' ' -f 1)"
+          deploy_helper_sha="$(sha256sum scripts/infra/terento-deploy.py | cut -d ' ' -f 1)"
+          migration_helper_sha="$(sha256sum scripts/infra/terento-deploy-migration.py | cut -d ' ' -f 1)"
+          installer_sha="$(sha256sum scripts/infra/install-terento-production-ops.py | cut -d ' ' -f 1)"
+          ssh_entry_sha="$(sha256sum scripts/infra/terento-deploy-ssh-entry.py.in | cut -d ' ' -f 1)"
+          for helper_sha in "$deploy_helper_sha" "$migration_helper_sha" "$installer_sha" "$ssh_entry_sha"; do
+            [[ "$helper_sha" =~ ^[0-9a-f]{64}$ ]]
+          done
+          policy_schema_version="$(python3 -c 'import json, pathlib; print(json.loads(pathlib.Path("contracts/installation-policy.schema.json").read_text())["properties"]["schemaVersion"]["const"])')"
+          runner_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("backend/catalog-api/pyproject.toml").read_text())["project"]["version"])')"
+          receipt="$RUNNER_TEMP/terento-catalog-migration-candidate.md"
+          {
+            printf '# Catalog migration candidate receipt\n\n'
+            printf '%s\n' '- Purpose: immutable API candidate for a separately authorized target-062 operation.'
+            printf '%s\n' '- Production migration, deployment, and service changes: not performed by this workflow.'
+            printf '%s\n' '- Repository: VooZ2/terento' "- Source ref: $SOURCE_REF" "- Source commit: $SOURCE_SHA"
+            printf '%s\n' "- OCI image: ghcr.io/vooz2/terento-catalog@$IMAGE_DIGEST" "- Image digest: $IMAGE_DIGEST"
+            printf '%s\n' '- Clean source checkout verified: yes' "- Embedded revision: $embedded_revision (equals source commit: yes)"
+            printf '%s\n' "- Image build timestamp (UTC): $BUILD_TIMESTAMP"
+            printf '%s\n' "- Migration runner package version: $runner_version (source revision $SOURCE_SHA)"
+            printf '%s\n' "- Migration runner in-image source path: /app/src/terento_catalog/migrate.py"
+            printf '%s\n' '- Validated runner invocation: explicit --target 062 (backend/operations test evidence below)'
+            printf '%s\n' "- Installation-policy schemaVersion: $policy_schema_version"
+            printf '%s\n' "- Authorization contract revision: $SOURCE_SHA (contracts/INSTALLATION_AUTHORIZATION.md)"
+            printf '%s\n' "- Canonical migration inventory inside image ($migration_count files; no 063+):"
+            for migration_name in $(printf '%s' "$migration_inventory" | tr ',' ' '); do
+              printf -- '- %s\n' "$migration_name"
+            done
+            printf '%s\n' "- 062 SQL SHA-256 (image): $image_migration_sha" "- migrate.py SHA-256 (image): $image_runner_sha"
+            printf '%s\n' "- Statistics contract SHA-256: $statistics_contract_sha" \
+              "- Installation authorization contract SHA-256: $installation_contract_sha" \
+              "- Installation policy schema SHA-256: $contract_schema_sha"
+            printf '%s\n' "- terento-deploy.py SHA-256 (source): $deploy_helper_sha" \
+              "- terento-deploy-migration.py SHA-256 (source): $migration_helper_sha" \
+              "- install-terento-production-ops.py SHA-256 (source): $installer_sha" \
+              "- terento-deploy-ssh-entry.py.in SHA-256 (source; not installed): $ssh_entry_sha"
+            printf '%s\n' '- Candidate source checkout: clean and equal to the tested commit.'
+            printf '%s\n' '- Backend full suite and live PostgreSQL migration integration: PASS (quality job).'
+            printf '%s\n' '- Production STATUS/MIGRATE/DEPLOY, target, lock, and SSH boundary tests: PASS.'
+            printf '%s\n' '- Workflow contracts, tracked documentation checks, and committed-diff check: PASS.'
+            printf '%s\n' '- Native installation-authorization Swift tests: PASS.'
+            printf '%s\n' "- Workflow run: https://github.com/$REPOSITORY/actions/runs/$RUN_ID (attempt $RUN_ATTEMPT)."
+            printf '%s\n' '- Immutable image revision, exact migration inventory, migration/runner bytes and hashes were independently inspected from this digest in a read-only, network-isolated container.'
+            printf '%s\n' '- Runner target enforcement is exercised by the backend migration and production-operations test jobs.'
+            printf '%s\n' '- Approval: NOT GRANTED by candidate creation.'
+          } > "$receipt"
+          cat "$receipt" >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain immutable receipt artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: catalog-migration-candidate-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/terento-catalog-migration-candidate.md
+          if-no-files-found: error
+          retention-days: 90

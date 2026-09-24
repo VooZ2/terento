@@ -37,6 +37,7 @@ full specification; generated public HTML is output, not an independent source.
 | Native app behavior | `app/TerentoCore/README.md`; release-specific details also belong in `RELEASE_NOTES.md` |
 | Admin behavior | `backend/catalog-api/docs/admin-behavior-contract.md` |
 | API routes, payloads, and runtime behavior | `backend/catalog-api/docs/api.md` |
+| Native installation authorization and policy freshness | `contracts/INSTALLATION_AUTHORIZATION.md` |
 | Statistics populations and formulas | `contracts/STATISTICS_CONTRACT.md` |
 | Cross-component app/API release sequencing | `contracts/APP_API_RELEASE_CONTRACT.md` |
 | Public website semantics | Canonical generators and localized content sources under `scripts/` and `site/`; generated HTML is output |
@@ -50,7 +51,7 @@ boundary:
 
 | Area | Purpose |
 | --- | --- |
-| `internal/` | Canonical private architecture, state, research, security, and roadmap documents |
+| `internal/` | Git-ignored operator architecture, state, research, security, and roadmap context; unique durable rules belong in tracked owners above |
 | `docs/` | Local task and deployment notes |
 | `deploy/` | Environment-specific deployment/operator material |
 | `lab/test-site/` | Local test-site experiments |

@@ -4,6 +4,11 @@
 test counts. `ci-test-inventory-tests.py` rejects unassigned, missing, duplicate
 and non-executable runners. `select-test-suites.py` selects affected suites.
 
+Operation-diagnostics engine fixtures first verify that missing authorization
+produces no installation attempt, then supply the shared approved catalog
+fixture before exercising downstream preflight failures. Tests must not bypass
+the production authorization gate or depend on a live policy request.
+
 | Change | Required checks |
 | --- | --- |
 | Ordinary Markdown, including component and contracts README | shared/CI documentation and inventory checks |
@@ -37,6 +42,14 @@ Applying migrations twice deliberately tests idempotency; do not remove the
 second execution. Deployment repeats backend checks on its own exact commit;
 removing that repeat requires a verified same-SHA quality artifact handoff, not
 trust in an earlier PR head. The current explicit rerun is retained.
+
+The production-operations contract runner separately exercises the fixed root
+helper, read-only status, migration-only target/digest enforcement, shared
+deploy/migrate lock, deploy guard, SSH argument allowlist, and owner installer
+preflight/apply behavior using offline fakes and temporary files. It never
+connects to a production host, database, registry, or Docker daemon. A passing
+run does not prove the helper is installed or authorize its installer apply
+mode.
 
 Backend test modules are named by current ownership: provider acquisition and
 catalog projection live in `test_provider_catalog.py` and `test_maprando.py`,
@@ -112,6 +125,8 @@ Xcode/public-manifest equality requirement.
 Release documentation checks also protect the current Compatibility semantics:
 the public page is a successful-installation directory, exact model/variant
 entries require at least one successful shared installation, and a missing
-model is not an unsupported claim. The release gate checks all six guide
-locales, release identity parity, generator-produced help copy, and known
-retired public wording without scanning internal status terminology.
+model is not an unsupported claim. This public evidence threshold does not
+grant or revoke native write authorization, which is determined separately
+from catalog Maps capability. The release gate checks all six guide locales,
+release identity parity, generator-produced help copy, and known retired
+public wording without scanning internal status terminology.

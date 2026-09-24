@@ -177,12 +177,16 @@ Opening Diagnostics neither sends a report nor starts a device operation.
 Model labels and catalog IDs have no compiled per-model identification rules.
 The client fetches public catalog v2 without uploading device observations,
 then compares original model/size/screen/features conservatively. Shared or
-missing variant evidence cannot select an exact ID. Catalog-derived screen
-properties are labelled separately from MTP/XML observations; a submitted
-catalog ID remains a hint rechecked by the server. API failure preserves raw
-device metadata. Local map-capability and installation permission registries
-are unchanged. Historical manifest naming is frozen in the storage layer and
-is never a model-identification source.
+missing variant evidence cannot assign a unique exact catalog ID for
+model-specific diagnostic linkage. That linkage rule is separate from write
+authorization, which matches a base model and evaluates Maps capability across
+all remaining candidates. Catalog-derived screen properties are labelled
+separately from MTP/XML observations; a submitted catalog ID remains a hint,
+not identity proof. API failure preserves raw device metadata. The local
+Map Manager registry is presentation/classification evidence, not a write
+allowlist; native write permission comes from fresh API catalog authorization.
+Historical manifest naming is frozen in the storage layer and is never a
+model-identification source.
 
 The existing v4 event queue sends bounded optional model and component-outcome
 fields, with the existing diagnostic opt-out and local-test partition. The API
@@ -204,6 +208,14 @@ Missing specifications are not inferred from model names. This formatting does
 not alter identity/evidence strings, catalog matching, local manifest keys or
 installation authorization. The Map Manager registry includes the officially
 documented fēnix 9 family; exact-model public evidence remains independent.
+That local registry is presentation evidence, not a native write allowlist.
+The install/update path requires fresh API catalog authorization before
+acquisition and again before writing. It matches a normalized base model and
+filters candidates only with reliable variant facts. Conflicting variant
+evidence broadens the candidate set rather than denying authorization; the
+Maps capability of all remaining candidates determines the result. Unknown
+base models, mixed or unknown candidate capability, and unavailable policy
+remain pending/fail closed. See the [tracked authorization contract](../../contracts/INSTALLATION_AUTHORIZATION.md).
 
 ### Map acquisition reporting
 

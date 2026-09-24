@@ -21,6 +21,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPresentation.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/InstallationAuthorization.swift" \
     "$project_root/Sources/TerentoPoC/Installation/StoragePlanner.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallProfile.swift" \
     "$project_root/Sources/TerentoPoC/Installation/ManagedFilename.swift" \

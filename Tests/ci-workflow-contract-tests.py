@@ -16,6 +16,66 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 PINNED_ACTION = re.compile(r"^\s*uses:\s*[^\s@]+@[0-9a-f]{40}\s*$")
 
 
+def verify_refresh_flow():
+    import importlib.util
+    from unittest.mock import patch
+    spec = importlib.util.spec_from_file_location("refresh_flow", REPO_ROOT / "scripts/integrate-compatibility-refresh.py")
+    flow = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(flow)
+    flow.allowed(flow.FILES)
+    try:
+        flow.allowed(["site/index.html"])
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("unrelated content accepted")
+    calls = []
+    with patch.dict(os.environ, GITHUB_REPOSITORY=flow.REPO), patch.object(flow, "run", side_effect=lambda *a, **k: calls.append(a) or ""):
+        flow.main()
+    assert all(c[0] == "git" for c in calls), "no diff must not touch GitHub"
+
+    sha = "a" * 40
+    with patch.object(flow, "run", return_value="") as command:
+        flow.delete_merged_branch(sha)
+        assert command.call_count == 1, "auto-deleted branch must not cause a second delete"
+    with patch.object(flow, "run", return_value="b" * 40 + "\trefs/heads/" + flow.BRANCH):
+        try:
+            flow.delete_merged_branch(sha)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("changed branch deleted")
+    old = dict(databaseId=1, headSha=sha, event="workflow_dispatch", status="completed", conclusion="success")
+    wrong = dict(old, databaseId=2, headSha="b" * 40)
+    fresh = dict(old, databaseId=3)
+    calls = []
+    with patch.object(flow, "runs", side_effect=[[old], [old, wrong, fresh]]), \
+         patch.object(flow, "run", side_effect=lambda *a, **k: calls.append(a) or ""), \
+         patch.object(flow, "gh", return_value={"headSha": sha, "conclusion": "success", "jobs": [{"name": "build-and-test", "conclusion": "success"}]}):
+        assert flow.dispatch_and_wait("swift-ci.yml", flow.BRANCH, sha) == 3
+    assert any(c[:4] == ("gh", "workflow", "run", "swift-ci.yml") for c in calls)
+    assert any(c[:4] == ("gh", "run", "watch", "3") for c in calls)
+    with patch.object(flow, "runs", return_value=[old]), patch.object(flow, "run") as command:
+        assert flow.dispatch_and_wait("deploy-site.yml", "beta", sha, reuse=True) == 1
+        command.assert_not_called()
+    for result in ({"headSha": "b" * 40, "conclusion": "success", "jobs": []},
+                   {"headSha": sha, "conclusion": "success", "jobs": [{"name": "build-and-test", "conclusion": "failure"}]}):
+        with patch.object(flow, "runs", side_effect=[[], [fresh]]), patch.object(flow, "run"), patch.object(flow, "gh", return_value=result):
+            try:
+                flow.dispatch_and_wait("swift-ci.yml", flow.BRANCH, sha)
+            except RuntimeError:
+                pass
+            else:
+                raise AssertionError("wrong SHA or failed required job accepted")
+    source = (REPO_ROOT / "scripts/integrate-compatibility-refresh.py").read_text()
+    for guard in ('len(prs) > 1', 'MARKER not in', '--force-with-lease=refs/heads/{BRANCH}:{old}',
+                  '"--required", "--watch"', '"CLEAN"', '"--match-head-commit", sha',
+                  'merged["state"] != "MERGED"', 'merged["mergeCommit"]["oid"]', 'reuse=True'):
+        assert guard in source, guard
+    assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
+    assert "HEAD:beta" not in source and "--admin" not in source
+
+
 def verify_scoped_transport() -> None:
     """Exercise the real request script with a local SSH spy; no network or secrets."""
     script = REPO_ROOT / "scripts/infra/deploy-vps-image.sh"
@@ -289,6 +349,14 @@ def main() -> int:
 
     deploy_api = (WORKFLOWS / "deploy-catalog-api.yml").read_text(encoding="utf-8")
     assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in deploy_api
+    assert "migration-source-impact:" in deploy_api
+    assert "backend/catalog-api/src/terento_catalog/(migrations/|migrate\\.py$)" in deploy_api
+    assert "migration_source_changed != 'true'" in deploy_api
+    assert "target_062_separately_applied:" in deploy_api
+    assert "default: false" in deploy_api
+    assert "github.event_name == 'workflow_dispatch'" in deploy_api
+    assert "inputs.target_062_separately_applied == true" in deploy_api
+    assert "vars.TERENTO_FIXED_OPS_INSTALLED == 'true'" in deploy_api
 
     assert "needs: tests" in deploy_api, "catalog deploy must wait for backend tests"
     assert "Retain API deployment health" in deploy_api
@@ -316,11 +384,22 @@ def main() -> int:
     assert 'sleep $((attempt * 2))' in publisher
     assert "VPS_SSH_KEY" not in publisher and "environment:" not in publisher
     assert "secrets." not in publisher.replace("secrets.GITHUB_TOKEN", "TOKEN")
+    assert "io.terento.migration.062.sha256" in publisher
+    assert "io.terento.migrate.py.sha256" in publisher
+    assert "062_reconcile_installation_statistics_schema.sql" in publisher
+    assert 'sha256sum "$migration_062"' in publisher
+    assert 'sha256sum "$migrate_py"' in publisher
+    assert "value: ${{ jobs.publish.outputs.migration_062_sha256 }}" in publisher
+    assert "value: ${{ jobs.publish.outputs.migrate_py_sha256 }}" in publisher
+    assert "value: ${{ jobs.publish.outputs.build_timestamp }}" in publisher
     for gate in ("Tests/run-site-tests.sh", "Tests/run-release-documentation-tests.sh",
                  "Tests/run-release-legal-content-tests.sh"):
         assert gate in publisher
     for role, source in (("api", deploy_api), ("site", deploy_site)):
-        assert "needs: publish" in source
+        if role == "api":
+            assert "needs: [publish, migration-source-impact]" in source
+        else:
+            assert "needs: publish" in source
         assert f"environment: rukas-{role}" in source
         assert f"bash scripts/infra/deploy-vps-image.sh {role}" in source
         assert "${{ needs.publish.outputs.digest }}" in source
@@ -329,6 +408,100 @@ def main() -> int:
         assert "TERENTO_SITE_SSH" not in source
         assert "scp " not in source and "bash -s" not in source
         assert "Synchronize operations ingest secret" not in source
+
+    candidate = (WORKFLOWS / "build-catalog-migration-candidate.yml").read_text(encoding="utf-8")
+    publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
+    assert "push:" in candidate
+    assert "- terento/062-production-candidate" in candidate
+    assert "workflow_dispatch:" in candidate
+    assert "source_ref:" in candidate and "source_sha:" in candidate
+    assert "default: refs/heads/terento/062-production-candidate" in candidate
+    assert "candidate-source-gate:" in candidate
+    assert candidate.index("Validate candidate source identity before checkout") < candidate.index("uses: actions/checkout@", candidate.index("candidate-source-gate:"))
+    assert '[[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]' in candidate
+    assert '[[ "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]' in candidate
+    assert '[[ "$GITHUB_REF" == "$REQUESTED_SOURCE_REF" ]]' in candidate
+    assert '[[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
+    assert '[[ "$(git rev-parse HEAD)" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
+    assert 'git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$REQUESTED_SOURCE_REF"' in candidate
+    assert 'ref: ${{ inputs.source_sha || github.sha }}' in candidate
+    assert 'REQUESTED_SOURCE_REF: ${{ inputs.source_ref || github.ref }}' in candidate
+    assert 'REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}' in candidate
+    assert 'git status --porcelain=v1 --untracked-files=all' in candidate
+    assert candidate.index("candidate-source-gate:") < candidate.index("  publish:")
+    assert "needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]" in candidate
+    assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in candidate
+    assert "uses: ./.github/workflows/publish-vps-images.yml" in candidate
+    assert "candidate_source_ref: ${{ inputs.source_ref || github.ref }}" in candidate
+    assert "candidate_source_sha: ${{ inputs.source_sha || github.sha }}" in candidate
+    assert "github.ref == 'refs/heads/terento/062-production-candidate'" in candidate
+    assert "refs/heads/beta" not in candidate
+    assert "candidate-contract-tests:" in candidate
+    assert "Tests/run-ci-workflow-contract-tests.sh" in candidate
+    assert "Tests/run-ci-documentation-tests.sh" in candidate
+    assert "git show --check --oneline HEAD" in candidate
+    assert "swift-authorization-tests:" in candidate
+    assert "app/TerentoCore/Tests/run-native-installation-authorization-tests.sh" in candidate
+    assert "packages: read" in candidate
+    assert "docker pull \"$image_ref\"" in candidate
+    assert "--network none --read-only --cap-drop ALL" in candidate
+    assert "migration_root.glob(\"*.sql\")" in candidate
+    assert "list(range(1, 63))" in candidate
+    assert "image_migration_sha" in candidate and "image_runner_sha" in candidate
+    assert "migration inventory" in candidate
+    assert "actions/upload-artifact@" in candidate
+    assert "retention-days: 90" in candidate
+    assert "VPS_SSH_KEY" not in candidate and "environment:" not in candidate
+    assert "TERENTO_FIXED_OPS_INSTALLED" not in candidate
+    assert "scripts/infra/deploy-vps-image.sh" not in candidate
+    assert "inputs.candidate_source_ref == 'refs/heads/terento/062-production-candidate'" in publisher
+    assert "inputs.candidate_source_sha == github.sha" in publisher
+    assert "github.workflow_ref == 'VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate'" in publisher
+    assert '[[ "$GITHUB_WORKFLOW_REF" == "VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate" ]]' in publisher
+    assert '[[ "$GITHUB_REF" == "refs/heads/beta" ]]' in publisher
+    assert '[[ "$remote_source_sha" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
+    publisher_validation = publisher.index("name: Validate release source and target")
+    publisher_build = publisher.index("name: Build and publish immutable release")
+    assert publisher_validation < publisher_build
+    assert publisher.index('git status --porcelain=v1 --untracked-files=all', publisher_validation) < publisher.index('docker build --platform linux/amd64', publisher_build)
+    assert publisher.index('git show --check --oneline "$GITHUB_SHA"', publisher_validation) < publisher.index('docker push "$image:$image_tag"', publisher_build)
+    assert 'image_tag="candidate-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"' in publisher
+    assert 'CANDIDATE_SOURCE_SHA: ${{ inputs.candidate_source_sha }}' in publisher
+    assert 'image_tag="sha-$GITHUB_SHA"' in publisher
+    assert "state=active" in publisher and "state=deleted" not in publisher
+    assert 'grep -Fqx -- "$image_tag"' in publisher
+    assert 'local_image_id="$(docker image inspect --format \'{{.Id}}\' "$image:$image_tag")"' in publisher
+    assert '[[ "$pulled_image_id" == "$local_image_id" ]]' in publisher
+    assert 'docker push "$image:latest"' not in publisher
+    assert 'docker push "$image:current"' not in publisher
+    assert 'docker push "$image:production"' not in publisher
+    assert '[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]' in publisher
+    assert '[[ "$GITHUB_SHA" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
+
+    receipt = candidate[candidate.index("  receipt:"):]
+    receipt_checkout = receipt[:receipt.index("      - uses: actions/setup-python@")]
+    assert "fetch-depth: 0" in receipt_checkout
+    assert "SOURCE_SHA: ${{ inputs.source_sha || github.sha }}" in receipt
+    assert "IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}" in receipt
+    assert '[[ "$GITHUB_SHA" == "$SOURCE_SHA" ]]' in receipt
+    assert '[[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]' in receipt
+    assert 'image_ref="ghcr.io/vooz2/terento-catalog@$IMAGE_DIGEST"' in receipt
+    assert '[[ "$embedded_revision" == "$SOURCE_SHA" ]]' in receipt
+    assert '[[ "$image_migration_sha" == "$PUBLISHED_062_SHA" ]]' in receipt
+    assert '[[ "$image_runner_sha" == "$PUBLISHED_RUNNER_SHA" ]]' in receipt
+    assert '"$migration_sha" == "$PUBLISHED_062_SHA"' in receipt
+    assert '"$runner_sha" == "$PUBLISHED_RUNNER_SHA"' in receipt
+    assert '"- Source commit: $SOURCE_SHA"' in receipt
+    assert '"- Image digest: $IMAGE_DIGEST"' in receipt
+    for helper in (
+        "terento-deploy.py SHA-256 (source)",
+        "terento-deploy-migration.py SHA-256 (source)",
+        "install-terento-production-ops.py SHA-256 (source)",
+        "terento-deploy-ssh-entry.py.in SHA-256 (source; not installed)",
+    ):
+        assert helper in receipt
+    assert 'name: catalog-migration-candidate-${{ github.sha }}-${{ github.run_id }}' in receipt
+    assert "Approval: NOT GRANTED" in candidate
     rejection = (WORKFLOWS / "check-vps-access.yml").read_text(encoding="utf-8")
     assert "expect 64 id" in rejection
     assert "expect 0 " not in rejection and "expect 1 " not in rejection
@@ -374,10 +547,14 @@ def main() -> int:
     assert "workflow_dispatch:" in refresh
     assert "scripts/update-compatibility-snapshot.py" in refresh
     assert "git diff --quiet" in refresh
-    assert "git push origin HEAD:beta" in refresh
+    assert not re.search(r"git\s+push[^\n]*:beta", refresh)
     assert "actions: write" in refresh
-    assert "gh workflow run deploy-site.yml --ref beta" in refresh
-    assert "gh run watch" in refresh
+    assert "pull-requests: write" in refresh
+    assert "scripts/ci_http.py compatibility-snapshot --fail" in refresh
+    assert '--input "$RUNNER_TEMP/compatibility-live.json"' in refresh
+    assert "if: steps.diff.outputs.changed == 'true'" in refresh
+    assert "scripts/integrate-compatibility-refresh.py" in refresh
+    verify_refresh_flow()
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "compatibility-page" in deploy_site
     assert "live-compatibility.html" in deploy_site

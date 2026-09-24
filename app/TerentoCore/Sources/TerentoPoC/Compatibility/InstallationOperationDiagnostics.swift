@@ -45,7 +45,8 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
     }
 
     func record(_ result: MapInstallationResult, packageID: String, artifactID: String) {
-        guard result.status != .confirmationRequired else { return }
+        guard result.status != .confirmationRequired,
+              result.status != .blockedInstallationAuthorization else { return }
         lock.lock(); defer { lock.unlock() }
         guard let index = items.firstIndex(where: { $0.package.id == packageID }),
               !items[index].recorded, items[index].artifactIDs.contains(artifactID) else { return }

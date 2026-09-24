@@ -18,6 +18,26 @@ private func require(_ condition: @autoclosure () -> Bool, _ message: String) th
     guard condition() else { throw Stage53TestError.failed(message) }
 }
 
+private func approvedAuthorization(for identity: DeviceIdentity) -> InstallationAuthorizationState {
+    let record = InstallationAuthorizationRecord(
+        id: identity.catalogDeviceID ?? "test-device",
+        manufacturer: identity.manufacturer,
+        model: identity.model,
+        baseModel: identity.canonicalModel ?? identity.model,
+        canonicalModel: identity.canonicalModel ?? identity.model,
+        variant: identity.variant ?? "",
+        caseSizeMm: identity.caseSizeMm,
+        displayType: identity.displayType,
+        screenTechnology: identity.screenTechnology,
+        solar: identity.solar,
+        inReach: identity.inReach,
+        active: true,
+        scope: "IN_SCOPE",
+        installationAuthorization: "APPROVED"
+    )
+    return .approved(record: record, policyVersion: 1)
+}
+
 private final class AllowSafeUpdateSourceValidator: SafeUpdateSourceValidator, @unchecked Sendable {
     var shouldFail = false
 
@@ -325,7 +345,8 @@ private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false
         currentItem: item,
         currentObject: oldObject,
         confirmed: true,
-        deviceConnected: true
+        deviceConnected: true,
+        installationAuthorization: approvedAuthorization(for: identity)
     )
     let transport = FakeSafeUpdateTransport(oldObject: oldObject, newObject: newObject)
     let provider = FakeSafeUpdateProvider(artifact: artifact)
@@ -340,10 +361,122 @@ private func run(_ harness: Harness) async -> SafeUpdateResult {
         sourceValidator: harness.validator,
         manifestReconciler: harness.reconciler
     ).run(
-        request: harness.request,
+        request: withFixtureAuthorization(harness.request),
         provider: harness.provider,
         transport: harness.transport
     )
+}
+
+private func withFixtureAuthorization(_ request: SafeUpdateRequest) -> SafeUpdateRequest {
+    let decision = request.installationAuthorization
+    let expected = request.identity
+    return SafeUpdateRequest(deviceKey: request.deviceKey, identity: expected, profile: request.profile,
+        selectedMap: request.selectedMap, comparison: request.comparison,
+        currentItem: request.currentItem, currentObject: request.currentObject,
+        confirmed: request.confirmed, deviceConnected: request.deviceConnected,
+        installationAuthorization: decision, deviceConnectionCheck: request.deviceConnectionCheck,
+        authorizationRefresh: { _ in decision }, currentIdentity: { expected })
+}
+
+private actor AuthorizationProbe {
+    var decisions: [InstallationAuthorizationState]
+    var calls = 0
+    var identityChecks = 0
+    let expected: DeviceIdentity
+    let swapAfterChecks: Int?
+
+    init(_ decisions: [InstallationAuthorizationState], expected: DeviceIdentity, swapAfterChecks: Int? = nil) {
+        self.decisions = decisions
+        self.expected = expected
+        self.swapAfterChecks = swapAfterChecks
+    }
+
+    func resolve(_ identity: DeviceIdentity) -> InstallationAuthorizationState {
+        calls += 1
+        return decisions[min(calls - 1, decisions.count - 1)]
+    }
+
+    func currentIdentity() -> DeviceIdentity? {
+        identityChecks += 1
+        if let swapAfterChecks, identityChecks > swapAfterChecks { return nil }
+        return expected
+    }
+}
+
+private func withFreshAuthorization(_ request: SafeUpdateRequest, probe: AuthorizationProbe) -> SafeUpdateRequest {
+    SafeUpdateRequest(
+        deviceKey: request.deviceKey, identity: request.identity, profile: request.profile,
+        selectedMap: request.selectedMap, comparison: request.comparison,
+        currentItem: request.currentItem, currentObject: request.currentObject,
+        confirmed: request.confirmed, deviceConnected: request.deviceConnected,
+        installationAuthorization: request.installationAuthorization,
+        authorizationRefresh: { identity in await probe.resolve(identity) },
+        currentIdentity: { await probe.currentIdentity() }
+    )
+}
+
+private func testFreshUpdateAuthorization() async throws {
+    let missing = makeHarness()
+    let missingResult = await SafeUpdateTransaction(gate: missing.gate,
+        sourceValidator: missing.validator, manifestReconciler: missing.reconciler).run(
+        request: missing.request, provider: missing.provider, transport: missing.transport)
+    try require(missingResult.status == .blockedInstallationAuthorization && missing.transport.events.isEmpty,
+        "direct update without a fresh policy source cannot touch the device")
+
+    let decisions: [(InstallationAuthorizationState?, SafeUpdateStatus, Int)] = [
+        (nil, .success, 2),
+        (.blocked(.pending), .blockedInstallationAuthorization, 1),
+        (.blocked(.outOfScope), .blockedInstallationAuthorization, 1),
+        (.blocked(.catalogUnavailable), .blockedInstallationAuthorization, 1),
+    ]
+    for (decision, expectedStatus, expectedCalls) in decisions {
+        let harness = makeHarness()
+        let probe = AuthorizationProbe([decision ?? harness.request.installationAuthorization], expected: harness.request.identity)
+        let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
+            manifestReconciler: harness.reconciler).run(
+            request: withFreshAuthorization(harness.request, probe: probe),
+            provider: harness.provider, transport: harness.transport)
+        try require(result.status == expectedStatus, "fresh policy controls stale approved update")
+        let callCount = await probe.calls
+        try require(callCount == expectedCalls, "authorization is fetched at start and before write")
+        if expectedStatus != .success {
+            try require(harness.transport.events.isEmpty, "rejected update never reaches transport")
+        }
+    }
+
+    let changed = makeHarness()
+    let changedProbe = AuthorizationProbe([changed.request.installationAuthorization, .blocked(.pending)],
+        expected: changed.request.identity)
+    let changedResult = await SafeUpdateTransaction(gate: changed.gate, sourceValidator: changed.validator,
+        manifestReconciler: changed.reconciler).run(
+        request: withFreshAuthorization(changed.request, probe: changedProbe),
+        provider: changed.provider, transport: changed.transport)
+    try require(changedResult.status == .blockedInstallationAuthorization, "policy change before mutation aborts")
+    try require(!changed.transport.events.contains("writeTransactionObject"), "changed policy prevents write")
+
+    let swapped = makeHarness()
+    let swapProbe = AuthorizationProbe([swapped.request.installationAuthorization],
+        expected: swapped.request.identity, swapAfterChecks: 2)
+    let swapResult = await SafeUpdateTransaction(gate: swapped.gate, sourceValidator: swapped.validator,
+        manifestReconciler: swapped.reconciler).run(
+        request: withFreshAuthorization(swapped.request, probe: swapProbe),
+        provider: swapped.provider, transport: swapped.transport)
+    try require(swapResult.status == .blockedInstallationAuthorization, "identity swap before write aborts")
+    try require(!swapped.transport.events.contains("writeTransactionObject"), "swapped device receives no write")
+
+    let cleanup = makeHarness()
+    cleanup.transport.mode = .verifyHashMismatch
+    let cleanupProbe = AuthorizationProbe([cleanup.request.installationAuthorization,
+        cleanup.request.installationAuthorization, .blocked(.catalogUnavailable)],
+        expected: cleanup.request.identity)
+    let cleanupResult = await SafeUpdateTransaction(gate: cleanup.gate,
+        sourceValidator: cleanup.validator, manifestReconciler: cleanup.reconciler).run(
+        request: withFreshAuthorization(cleanup.request, probe: cleanupProbe),
+        provider: cleanup.provider, transport: cleanup.transport)
+    try require(cleanupResult.status == .failedHashMismatch, "postwrite verification fails as expected")
+    try require(cleanup.transport.events.contains("cleanupTransactionObject"), "postwrite cleanup still runs")
+    let cleanupCalls = await cleanupProbe.calls
+    try require(cleanupCalls == 2, "cleanup needs no third policy request")
 }
 
 private func testSuccessfulUpdateAndOrdering() async throws {
@@ -372,18 +505,66 @@ private func testInstallFailureRemovesAcquisitionWorkspace() async throws {
 private func testNoUpdateAndOwnershipAreBlockedBeforeTransport() async throws {
     let harness = makeHarness()
     var request = harness.request
-    request = SafeUpdateRequest(deviceKey: request.deviceKey, identity: request.identity, profile: request.profile, selectedMap: request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: request.selectedMap, installedMap: request.comparison.installedMap, status: .upToDate), currentItem: request.currentItem, currentObject: request.currentObject, confirmed: true, deviceConnected: true)
-    let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator, manifestReconciler: harness.reconciler).run(request: request, provider: harness.provider, transport: harness.transport)
+    request = SafeUpdateRequest(deviceKey: request.deviceKey, identity: request.identity, profile: request.profile, selectedMap: request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: request.selectedMap, installedMap: request.comparison.installedMap, status: .upToDate), currentItem: request.currentItem, currentObject: request.currentObject, confirmed: true, deviceConnected: true, installationAuthorization: request.installationAuthorization)
+    let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator, manifestReconciler: harness.reconciler).run(request: withFixtureAuthorization(request), provider: harness.provider, transport: harness.transport)
     try require(result.status == .blockedNoUpdate, "up-to-date map must not enter update")
     try require(harness.transport.events.isEmpty, "blocked update must not touch transport")
 
     let unmanaged = makeHarness()
     let unmanagedMap = InstalledMap(name: "External", provider: "Freizeitkarte", region: "FRA", family: nil, rawVersion: "Release 26.05", version: MapVersion(year: 2026, month: 5), identifier: nil, productId: nil, familyId: nil, sizeBytes: unmanaged.request.currentObject.file.sizeBytes, sourceFile: unmanaged.request.currentObject.file, metadataStatus: .parsed, managementState: .detectedNotManaged)
     let unmanagedItem = MapLifecycleItem(id: "freizeitkarte-fra", title: "External", provider: "freizeitkarte", region: "FRA", version: unmanagedMap.version, rawVersion: unmanagedMap.rawVersion, sizeBytes: unmanagedMap.sizeBytes, installedMaps: [unmanagedMap], classification: .externalRecognized)
-    let unmanagedRequest = SafeUpdateRequest(deviceKey: unmanaged.request.deviceKey, identity: unmanaged.request.identity, profile: unmanaged.request.profile, selectedMap: unmanaged.request.selectedMap, comparison: unmanaged.request.comparison, currentItem: unmanagedItem, currentObject: unmanaged.request.currentObject, confirmed: true, deviceConnected: true)
-    let unmanagedResult = await SafeUpdateTransaction(gate: unmanaged.gate, sourceValidator: unmanaged.validator, manifestReconciler: unmanaged.reconciler).run(request: unmanagedRequest, provider: unmanaged.provider, transport: unmanaged.transport)
+    let unmanagedRequest = SafeUpdateRequest(deviceKey: unmanaged.request.deviceKey, identity: unmanaged.request.identity, profile: unmanaged.request.profile, selectedMap: unmanaged.request.selectedMap, comparison: unmanaged.request.comparison, currentItem: unmanagedItem, currentObject: unmanaged.request.currentObject, confirmed: true, deviceConnected: true, installationAuthorization: unmanaged.request.installationAuthorization)
+    let unmanagedResult = await SafeUpdateTransaction(gate: unmanaged.gate, sourceValidator: unmanaged.validator, manifestReconciler: unmanaged.reconciler).run(request: withFixtureAuthorization(unmanagedRequest), provider: unmanaged.provider, transport: unmanaged.transport)
     try require(unmanagedResult.status == .blockedNotManaged, "external map must be blocked")
     try require(unmanaged.transport.events.isEmpty, "unmanaged map must not touch transport")
+}
+
+private func testInstallationAuthorizationIsCheckedBeforeUpdateAcquisition() async throws {
+    let harness = makeHarness()
+    let request = SafeUpdateRequest(
+        deviceKey: harness.request.deviceKey,
+        identity: harness.request.identity,
+        profile: harness.request.profile,
+        selectedMap: harness.request.selectedMap,
+        comparison: harness.request.comparison,
+        currentItem: harness.request.currentItem,
+        currentObject: harness.request.currentObject,
+        confirmed: true,
+        deviceConnected: true,
+        installationAuthorization: .blocked(.unknownModel)
+    )
+    let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
+        manifestReconciler: harness.reconciler).run(
+            request: withFixtureAuthorization(request), provider: harness.provider, transport: harness.transport)
+    try require(result.status == .blockedInstallationAuthorization,
+                "unknown installation authorization blocks update")
+    try require(harness.transport.events.isEmpty && !harness.reconciler.called,
+                "blocked update does not acquire, inspect, write, delete or reconcile")
+}
+
+private func testUnavailableInstallationAuthorizationIsRetryable() async throws {
+    let harness = makeHarness()
+    let request = SafeUpdateRequest(
+        deviceKey: harness.request.deviceKey,
+        identity: harness.request.identity,
+        profile: harness.request.profile,
+        selectedMap: harness.request.selectedMap,
+        comparison: harness.request.comparison,
+        currentItem: harness.request.currentItem,
+        currentObject: harness.request.currentObject,
+        confirmed: true,
+        deviceConnected: true,
+        installationAuthorization: .blocked(.catalogUnavailable)
+    )
+    let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
+        manifestReconciler: harness.reconciler).run(
+            request: withFixtureAuthorization(request), provider: harness.provider, transport: harness.transport)
+    try require(result.status == .blockedInstallationAuthorization,
+                "unavailable installation authorization blocks update")
+    try require(result.message.contains("try again"),
+                "unavailable installation authorization provides retry guidance")
+    try require(harness.transport.events.isEmpty && !harness.reconciler.called,
+                "unavailable authorization does not acquire, inspect, write, delete or reconcile")
 }
 
 private func testCurrentObjectChangedStopsBeforeWrite() async throws {
@@ -413,13 +594,14 @@ private func testMismatchedMapIdentityIsBlockedBeforeTransport() async throws {
         currentItem: harness.request.currentItem,
         currentObject: mismatchedObject,
         confirmed: true,
-        deviceConnected: true
+        deviceConnected: true,
+        installationAuthorization: harness.request.installationAuthorization
     )
     let result = await SafeUpdateTransaction(
         gate: harness.gate,
         sourceValidator: harness.validator,
         manifestReconciler: harness.reconciler
-    ).run(request: request, provider: harness.provider, transport: harness.transport)
+    ).run(request: withFixtureAuthorization(request), provider: harness.provider, transport: harness.transport)
     try require(result.status == .blockedAmbiguousMapIdentity, "mismatched map identity must be blocked")
     try require(harness.transport.events.isEmpty, "identity mismatch must not touch transport")
 }
@@ -479,8 +661,8 @@ private func testBusyGateAndNoDowngrade() async throws {
 
     let downgrade = makeHarness()
     let newerInstalled = SafeUpdateRemoteObject(file: downgrade.request.currentObject.file, identity: downgrade.request.currentObject.identity, version: MapVersion(year: 2026, month: 7), ownership: .managedByTerento, sha256: downgrade.request.currentObject.sha256)
-    let request = SafeUpdateRequest(deviceKey: downgrade.request.deviceKey, identity: downgrade.request.identity, profile: downgrade.request.profile, selectedMap: downgrade.request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: downgrade.request.selectedMap, installedMap: downgrade.request.comparison.installedMap, status: .newerInstalled), currentItem: downgrade.request.currentItem, currentObject: newerInstalled, confirmed: true, deviceConnected: true)
-    let downgradeResult = await SafeUpdateTransaction(gate: downgrade.gate, sourceValidator: downgrade.validator, manifestReconciler: downgrade.reconciler).run(request: request, provider: downgrade.provider, transport: downgrade.transport)
+    let request = SafeUpdateRequest(deviceKey: downgrade.request.deviceKey, identity: downgrade.request.identity, profile: downgrade.request.profile, selectedMap: downgrade.request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: downgrade.request.selectedMap, installedMap: downgrade.request.comparison.installedMap, status: .newerInstalled), currentItem: downgrade.request.currentItem, currentObject: newerInstalled, confirmed: true, deviceConnected: true, installationAuthorization: downgrade.request.installationAuthorization)
+    let downgradeResult = await SafeUpdateTransaction(gate: downgrade.gate, sourceValidator: downgrade.validator, manifestReconciler: downgrade.reconciler).run(request: withFixtureAuthorization(request), provider: downgrade.provider, transport: downgrade.transport)
     try require(downgradeResult.status == .blockedNewerInstalled, "newer installed map must never be downgraded")
 }
 
@@ -506,10 +688,11 @@ private func testCrossComputerAbsenceNeverAuthorizesUpdate() async throws {
         let request = SafeUpdateRequest(deviceKey: harness.request.deviceKey, identity: harness.request.identity,
             profile: harness.request.profile, selectedMap: harness.request.selectedMap, comparison: harness.request.comparison,
             currentItem: item, currentObject: SafeUpdateRemoteObject(file: current.file, identity: current.identity,
-                version: current.version, ownership: ownership, sha256: current.sha256),
-            confirmed: true, deviceConnected: true)
+            version: current.version, ownership: ownership, sha256: current.sha256),
+            confirmed: true, deviceConnected: true,
+            installationAuthorization: harness.request.installationAuthorization)
         let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
-            manifestReconciler: harness.reconciler).run(request: request, provider: harness.provider, transport: harness.transport)
+            manifestReconciler: harness.reconciler).run(request: withFixtureAuthorization(request), provider: harness.provider, transport: harness.transport)
         try require(result.status == .blockedNotManaged, "confirmed external Remove eligibility never grants managed Update")
         try require(harness.transport.events.isEmpty && !harness.reconciler.called,
                     "missing manifest must block before update transport or ownership reconciliation")
@@ -551,7 +734,7 @@ private func testPostCommitHandleRenumberAndReuse() async throws {
         try store.record(unrelatedEntry)
         let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
             manifestReconciler: LocalSafeUpdateManifestReconciler(store: store))
-            .run(request: harness.request, provider: harness.provider, transport: harness.transport)
+            .run(request: withFixtureAuthorization(harness.request), provider: harness.provider, transport: harness.transport)
         let persisted = try store.read(deviceKey: harness.request.deviceKey)?.entries ?? []
         let sends = harness.transport.events.filter { $0 == "writeTransactionObject" }.count
         let deletes = harness.transport.events.filter { $0 == "deleteExactObject" }.count
@@ -792,7 +975,7 @@ private func testPostCommitHandleRenumberPreservesSuccessfulUpdate() async throw
         version: old.version!, sizeBytes: old.file.sizeBytes, sha256: old.sha256!, installedAt: Date()))
     let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
         manifestReconciler: LocalSafeUpdateManifestReconciler(store: store))
-        .run(request: harness.request, provider: harness.provider, transport: harness.transport)
+        .run(request: withFixtureAuthorization(harness.request), provider: harness.provider, transport: harness.transport)
     let persisted = try store.read(deviceKey: harness.request.deviceKey)?.entries ?? []
     let sends = harness.transport.events.filter { $0 == "writeTransactionObject" }.count
     let deletes = harness.transport.events.filter { $0 == "deleteExactObject" }.count
@@ -824,6 +1007,9 @@ struct Stage53SafeUpdateTests {
             ("real reconciler durable negative guards", testRealReconcilerSnapshotNegatives),
             ("install failure acquisition cleanup", testInstallFailureRemovesAcquisitionWorkspace),
             ("no-update and ownership gates", testNoUpdateAndOwnershipAreBlockedBeforeTransport),
+            ("installation authorization gate", testInstallationAuthorizationIsCheckedBeforeUpdateAcquisition),
+            ("fresh update authorization", testFreshUpdateAuthorization),
+            ("temporary installation authorization gate", testUnavailableInstallationAuthorizationIsRetryable),
             ("cross-computer and state-loss update refusal", testCrossComputerAbsenceNeverAuthorizesUpdate),
             ("current-object revalidation", testCurrentObjectChangedStopsBeforeWrite),
             ("map identity gate", testMismatchedMapIdentityIsBlockedBeforeTransport),

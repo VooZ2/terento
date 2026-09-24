@@ -85,6 +85,17 @@ canonical documentation in the same change. Remove or rewrite superseded
 guidance instead of appending conflicting prose. Do not create documentation
 for transient implementation details that are self-evident from code and are
 not durable contracts or user/operator behavior.
+Native map-write authorization and policy freshness are owned by the tracked
+`contracts/INSTALLATION_AUTHORIZATION.md`; statistical populations and
+historical linkage are owned by `contracts/STATISTICS_CONTRACT.md`. An
+untracked draft or ignored `internal/` note cannot be the sole authority for
+either rule. Native authorization matches a normalized Garmin base model and
+uses reliable variant evidence only to narrow candidates. Conflicting variant
+evidence broadens the candidate set; it does not by itself deny authorization.
+The Maps capability of all remaining plausible candidates determines the
+result. Unknown base models are `PENDING`; support status, public
+Compatibility, install counts, and `TESTED`/`VERIFIED` never grant or revoke
+write permission.
 
 ## Admin and diagnostic workflow contract
 

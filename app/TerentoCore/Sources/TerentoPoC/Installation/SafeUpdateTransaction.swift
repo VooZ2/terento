@@ -42,6 +42,7 @@ enum SafeUpdateStatus: String, Equatable, Sendable {
     case blockedInsufficientSpace = "UPDATE_BLOCKED_INSUFFICIENT_SPACE"
     case blockedUnknownTarget = "UPDATE_BLOCKED_UNKNOWN_TARGET"
     case blockedUnsupportedDevice = "UPDATE_BLOCKED_UNSUPPORTED_DEVICE"
+    case blockedInstallationAuthorization = "UPDATE_BLOCKED_TERENTO_DEVICE_SCOPE"
     case blockedConfirmationRequired = "UPDATE_BLOCKED_CONFIRMATION_REQUIRED"
     case blockedTransactionAlreadyRunning = "UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING"
     case failedAcquisition = "UPDATE_FAILED_ACQUISITION"
@@ -430,7 +431,10 @@ struct SafeUpdateRequest: Sendable {
     let currentObject: SafeUpdateRemoteObject
     let confirmed: Bool
     let deviceConnected: Bool
+    let installationAuthorization: InstallationAuthorizationState
     let deviceConnectionCheck: (@Sendable () -> Bool)?
+    let authorizationRefresh: (@Sendable (DeviceIdentity) async -> InstallationAuthorizationState)?
+    let currentIdentity: (@Sendable () async -> DeviceIdentity?)?
 
     init(
         deviceKey: String,
@@ -442,7 +446,10 @@ struct SafeUpdateRequest: Sendable {
         currentObject: SafeUpdateRemoteObject,
         confirmed: Bool,
         deviceConnected: Bool,
-        deviceConnectionCheck: (@Sendable () -> Bool)? = nil
+        installationAuthorization: InstallationAuthorizationState,
+        deviceConnectionCheck: (@Sendable () -> Bool)? = nil,
+        authorizationRefresh: (@Sendable (DeviceIdentity) async -> InstallationAuthorizationState)? = nil,
+        currentIdentity: (@Sendable () async -> DeviceIdentity?)? = nil
     ) {
         self.deviceKey = deviceKey
         self.identity = identity
@@ -453,7 +460,10 @@ struct SafeUpdateRequest: Sendable {
         self.currentObject = currentObject
         self.confirmed = confirmed
         self.deviceConnected = deviceConnected
+        self.installationAuthorization = installationAuthorization
         self.deviceConnectionCheck = deviceConnectionCheck
+        self.authorizationRefresh = authorizationRefresh
+        self.currentIdentity = currentIdentity
     }
 
     func isDeviceConnectedNow() -> Bool {
@@ -496,6 +506,32 @@ struct SafeUpdateTransaction: Sendable {
     ) async -> SafeUpdateResult {
         let transactionID = UUID()
 
+        guard request.authorizationRefresh != nil, request.currentIdentity != nil else {
+            return failure(.blockedInstallationAuthorization,
+                InstallationFailure.installationAuthorizationUnavailable.userLabel)
+        }
+
+        func freshAuthorization() async -> InstallationAuthorizationState {
+            if let currentIdentity = request.currentIdentity,
+               await currentIdentity() != request.identity {
+                return .blocked(.pending)
+            }
+            let decision = await request.authorizationRefresh!(request.identity)
+            if let currentIdentity = request.currentIdentity,
+               await currentIdentity() != request.identity {
+                return .blocked(.pending)
+            }
+            return decision
+        }
+
+        let initialAuthorization = await freshAuthorization()
+        guard initialAuthorization.canInstall,
+              initialAuthorization.matches(identity: request.identity) else {
+            let message = initialAuthorization.blockReason == .catalogUnavailable
+                ? InstallationFailure.installationAuthorizationUnavailable.userLabel
+                : InstallationFailure.installationAuthorization.userLabel
+            return failure(.blockedInstallationAuthorization, message)
+        }
         guard request.isDeviceConnectedNow() else {
             return failure(.failedDeviceDisconnected, "The Garmin device is not connected. Nothing was changed.")
         }
@@ -674,6 +710,20 @@ struct SafeUpdateTransaction: Sendable {
         } catch {
             return failure(.failedPostVerify,
                 "Existing device content could not be checked safely. Nothing was changed.", storagePlan: storagePlan)
+        }
+
+        // This is the last policy gate before the first remote mutation. Once
+        // writing starts, verification and cleanup must work without network.
+        let writeAuthorization = await freshAuthorization()
+        guard writeAuthorization.canInstall,
+              writeAuthorization.matches(identity: request.identity) else {
+            let message = writeAuthorization.blockReason == .catalogUnavailable
+                ? InstallationFailure.installationAuthorizationUnavailable.userLabel
+                : InstallationFailure.installationAuthorization.userLabel
+            return failure(.blockedInstallationAuthorization, message, storagePlan: storagePlan)
+        }
+        guard deviceIsConnected() else {
+            return failure(.failedDeviceDisconnected, "The Garmin connection changed before writing. Nothing was changed.", storagePlan: storagePlan)
         }
 
         emit(.writing, onProgress)

@@ -115,24 +115,26 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
         db.executescript('''
             CREATE TABLE map_download_event(event_id TEXT, operation_id TEXT,
                 provider_id TEXT, map_package_id TEXT, region TEXT, event_type TEXT,
-                outcome TEXT, occurred_at TEXT, is_local_test BOOLEAN);
+                outcome TEXT, occurred_at TEXT, is_local_test BOOLEAN,
+                statistics_exclusion_code TEXT);
             CREATE TABLE map_provider(id TEXT, name TEXT);
             CREATE TABLE map_package(id TEXT, provider_id TEXT, name TEXT,
                 provider_region_id TEXT, canonical_region_id TEXT, region TEXT);
             CREATE TABLE compatibility_evidence_event(operation_id TEXT,
                 provider TEXT, region TEXT, phase_outcome TEXT, is_local_test BOOLEAN,
-                diagnostic_status TEXT, map_result_index INTEGER);
+                diagnostic_status TEXT, map_result_index INTEGER,
+                statistics_exclusion_code TEXT);
             CREATE TABLE admin_map_review_task(event_id TEXT, task_type TEXT, status TEXT);
             INSERT INTO map_provider VALUES ('fzk', 'Freizeitkarte');
             INSERT INTO map_package VALUES ('fr', 'fzk', 'France', 'FRA', 'FR', 'France');
         ''')
         def event(key, region='FR', event_type='INSTALL_FAILED', local=False):
-            db.execute('INSERT INTO map_download_event VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                       (key, key, 'fzk', 'fr', region, event_type, 'FAILED', '2020-01-01', local))
+            db.execute('INSERT INTO map_download_event VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                       (key, key, 'fzk', 'fr', region, event_type, 'FAILED', '2020-01-01', local, None))
         def diagnostic(key, region='FR', status='ACTIVE', provider='fzk', local=False,
                        map_result_index=0):
-            db.execute('INSERT INTO compatibility_evidence_event VALUES (?, ?, ?, ?, ?, ?, ?)',
-                       (key, provider, region, 'FAILED', local, status, map_result_index))
+            db.execute('INSERT INTO compatibility_evidence_event VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                       (key, provider, region, 'FAILED', local, status, map_result_index, None))
         for key in ('missing', 'active', 'resolved', 'alias', 'other-region', 'other-provider', 'test-report', 'dismissed'):
             event(key)
         db.execute("INSERT INTO admin_map_review_task VALUES (?, ?, ?)",

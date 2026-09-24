@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "installation-policy.schema.json",
+  "title": "Terento installation authorization policy",
+  "description": "GET /devices/installation-policy.json. Exact Garmin catalog rows used for native map-write authorization. support_status, compatibility status and success counts are not part of this contract.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 3
+    },
+    "policyVersion": {
+      "type": "integer",
+      "minimum": 3
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "manufacturer": {
+      "const": "Garmin"
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/device"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "policyVersion",
+    "updatedAt",
+    "manufacturer",
+    "devices"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "device": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "baseModel": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Normalized catalog model identity shared by SKU variants; derived from model, not canonicalModel."
+        },
+        "canonicalModel": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "caseSizeMm": {
+          "type": ["integer", "null"]
+        },
+        "displayType": {
+          "type": ["string", "null"]
+        },
+        "screenTechnology": {
+          "type": ["string", "null"]
+        },
+        "solar": {
+          "type": ["boolean", "null"]
+        },
+        "inReach": {
+          "type": ["boolean", "null"]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "mapCapable": {
+          "type": ["boolean", "null"],
+          "description": "The only catalog capability input to native write authorization. true can authorize, false blocks, null remains pending."
+        },
+        "scope": {
+          "enum": ["IN_SCOPE", "OUT_OF_SCOPE", "UNKNOWN"]
+        },
+        "installationAuthorization": {
+          "enum": ["APPROVED", "BLOCKED", "PENDING"]
+        }
+      },
+      "required": [
+        "id",
+        "manufacturer",
+        "model",
+        "baseModel",
+        "canonicalModel",
+        "variant",
+        "caseSizeMm",
+        "displayType",
+        "screenTechnology",
+        "solar",
+        "inReach",
+        "active",
+        "mapCapable",
+        "scope",
+        "installationAuthorization"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

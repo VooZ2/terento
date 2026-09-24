@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 3,
+  "policyVersion": 3,
+  "updatedAt": "2026-09-22T00:00:00Z",
+  "manufacturer": "Garmin",
+  "devices": [
+    {
+      "id": "garmin-fenix-8-47-amoled",
+      "manufacturer": "Garmin",
+      "model": "fēnix 8",
+      "baseModel": "fenix 8",
+      "canonicalModel": "fenix 8",
+      "variant": "47 mm, AMOLED",
+      "caseSizeMm": 47,
+      "displayType": "AMOLED",
+      "screenTechnology": "AMOLED",
+      "solar": false,
+      "inReach": false,
+      "active": true,
+      "mapCapable": true,
+      "scope": "IN_SCOPE",
+      "installationAuthorization": "APPROVED"
+    },
+    {
+      "id": "garmin-example-maps-no",
+      "manufacturer": "Garmin",
+      "model": "Example Maps No",
+      "baseModel": "example maps no",
+      "canonicalModel": "Example Maps No",
+      "variant": "",
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "active": true,
+      "mapCapable": false,
+      "scope": "OUT_OF_SCOPE",
+      "installationAuthorization": "BLOCKED"
+    },
+    {
+      "id": "garmin-future-model",
+      "manufacturer": "Garmin",
+      "model": "Future model",
+      "baseModel": "future model",
+      "canonicalModel": "future model",
+      "variant": "",
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "active": true,
+      "mapCapable": null,
+      "scope": "UNKNOWN",
+      "installationAuthorization": "PENDING"
+    }
+  ]
+}

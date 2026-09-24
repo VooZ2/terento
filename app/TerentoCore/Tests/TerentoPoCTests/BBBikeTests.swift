@@ -28,6 +28,26 @@ private struct PrefixReader: DeviceFileReader {
         guard condition() else { fatalError("FAIL: \(label)") }
         print("PASS: \(label)")
     }
+
+    static func authorization(for identity: DeviceIdentity) -> InstallationAuthorizationState {
+        let record = InstallationAuthorizationRecord(
+            id: identity.catalogDeviceID ?? "test-device",
+            manufacturer: identity.manufacturer,
+        model: identity.model,
+        baseModel: identity.canonicalModel ?? identity.model,
+            canonicalModel: identity.canonicalModel ?? identity.model,
+            variant: identity.variant ?? "",
+            caseSizeMm: identity.caseSizeMm,
+            displayType: identity.displayType,
+            screenTechnology: identity.screenTechnology,
+            solar: identity.solar,
+            inReach: identity.inReach,
+            active: true,
+            scope: "IN_SCOPE",
+            installationAuthorization: "APPROVED"
+        )
+        return .approved(record: record, policyVersion: 1)
+    }
     static func main() async throws {
         let defaultFixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Fixtures/BBBike/catalog.json")
@@ -177,12 +197,12 @@ private struct PrefixReader: DeviceFileReader {
                     localHardwareIdentifier: "BBBIKE-LOCAL-FIXTURE", localIdentityResolution: .garminUnitID)
                 let root = DeviceFile(itemID: 9, parentID: 0, storageID: 1, path: "/GARMIN", filename: "GARMIN", sizeBytes: 0, isFolder: true)
                 let profile = DeviceInstallProfileRegistry.local.profile(for: identity, deviceFiles: [root])!
-                try Stage42TargetPolicy().validate(package: package, artifact: artifact, profile: profile, identity: identity, deviceFiles: [root])
+                try Stage42TargetPolicy().validate(package: package, artifact: artifact, profile: profile, identity: identity, deviceFiles: [root], installationAuthorization: authorization(for: identity))
                 let sibling = andorra.first { $0.id != package.id }!
                 let siblingName = try TerentoManagedFilenameGenerator().filename(providerId: sibling.providerId, regionId: sibling.canonicalRegionId)
                 let siblingFile = DeviceFile(itemID: 102, parentID: 9, storageID: 1, path: "/GARMIN/" + siblingName,
                     filename: siblingName, sizeBytes: sibling.installSizeBytes!, isFolder: false)
-                do { try Stage42TargetPolicy().validate(package: package, artifact: artifact, profile: profile, identity: identity, deviceFiles: [root, siblingFile]); fatalError("sibling reached target") }
+                do { try Stage42TargetPolicy().validate(package: package, artifact: artifact, profile: profile, identity: identity, deviceFiles: [root, siblingFile], installationAuthorization: authorization(for: identity)); fatalError("sibling reached target") }
                 catch Stage42TargetPolicyError.unsupportedPackage { print("PASS: direct final target rejects installed other type independent of catalog") }
                 let comparison = MapComparison(providerName: "BBBike", regionName: package.name, catalogMap: package, installedMap: nil, status: .notInstalled)
                 let preflight = InstallationPreflightEngine().evaluate(identity: identity, selectedMap: package, comparison: comparison,
