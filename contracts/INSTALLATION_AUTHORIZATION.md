@@ -4,8 +4,10 @@ This is the canonical product decision for starting or continuing a native map
 write. The API device catalog, not public Compatibility or the local Map Manager
 presentation registry, owns the capability decision. The backend policy is live:
 the 2026-09-24 read-only check returned HTTP 200 with schemaVersion 3 and
-policyVersion 3. Native enforcement is integrated source awaiting a separately
-validated app build; backend availability does not mean that beta.13 enforces it.
+policyVersion 3. Native enforcement is distributed in beta.14 build 35 from
+packaged source `19d465dc97c53198dff3ec10c4cd73dad13fa2df`; beta.13 did not
+enforce this policy. The published ZIP and DMG passed signing, notarization,
+launch checks and independent published-asset checksum verification.
 
 The client must identify the connected Garmin manufacturer and a reliable,
 normalized **base model** without substring or broad family matching. Collect

@@ -57,8 +57,8 @@ pending; Edge is not permanently blacklisted and a future catalogued Edge
 model with Maps=Yes can be authorized by the same matching rules. Public
 compatibility remains a separate evidence-gated claim. The endpoint returned
 HTTP 200 with schemaVersion 3 and policyVersion 3 in the 2026-09-24 read-only
-check. This proves backend availability, not publication of the native enforcement
-changes. The valid fixture uses a synthetic Maps=No model; it is not a
+check. Native enforcement is now published in beta.14 build 35; backend
+availability alone was not its release gate. The valid fixture uses a synthetic Maps=No model; it is not a
 live catalog snapshot.
 
 HTTP authentication, idempotency and rate-limit headers are outside these body
