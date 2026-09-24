@@ -190,6 +190,9 @@ struct MapStatisticsEventTests {
 
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
+        if let output = ProcessInfo.processInfo.environment["TERENTO_MAP_EVENT_FIXTURE_OUTPUT"] {
+            try encoder.encode([first, second]).write(to: URL(fileURLWithPath: output), options: .atomic)
+        }
         let payload = String(decoding: try encoder.encode(first), as: UTF8.self)
         for field in ["schemaVersion", "id", "operationId", "providerId", "mapId", "region", "mapResultIndex", "eventType", "outcome", "timestamp", "appBuild", "releaseLabel"] {
             expect(payload.contains("\"\(field)\""), "payload includes \(field)")

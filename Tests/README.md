@@ -18,6 +18,10 @@ The policy check requires schema 3, policy version at least 3, a known approved
 fēnix 8 and pending unknown/absent Edge identities. Update the audit assertions
 explicitly if the live catalog scope changes; do not reinterpret a failed check
 as success. Local Docker skips require separate actual CI runtime evidence.
+The map-statistics runner accepts `TERENTO_MAP_EVENT_FIXTURE_OUTPUT` to export
+fresh Swift-encoded current and legacy-shaped events for API validation, including
+present and absent `mapResultIndex`. Export only synthetic fixtures, never live
+device telemetry; the audit must pass them through API validation locally.
 
 | Change | Required checks |
 | --- | --- |
