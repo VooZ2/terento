@@ -632,11 +632,12 @@ class AdminSemanticsTests(unittest.TestCase):
             "coverageRate": 40,
         })
         query = connection.execute.call_args.args[0]
+        self.assertIn("FROM device_model AS dm", query)
         self.assertIn("active IS TRUE", query)
         self.assertIn("map_capable IS TRUE", query)
-        self.assertIn("automatic_finishing_result = 'VERIFIED'", query)
-        self.assertIn("statistics_exclusion_code IS NULL", query)
-        self.assertNotIn("diagnostic_status = 'ACTIVE'", query)
+        self.assertIn("compatibility_model_statistics", query)
+        self.assertIn("successful_install_count", query)
+        self.assertNotIn("classified_results", query)
 
     def test_overview_model_activity_keeps_resolved_failures_in_historical_counts(self):
         source = inspect.getsource(Database.admin_overview_snapshot)
@@ -2490,7 +2491,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<h1>Installations</h1>", body)
-        self.assertIn("All-time model evidence", body)
+        self.assertIn("All time", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
         for label in ("Variants", "Installation attempts", "Successful", "Success rate", "Open errors"):
             self.assertIn(f"<span>{label}</span>", body)

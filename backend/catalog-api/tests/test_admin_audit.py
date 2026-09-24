@@ -44,7 +44,8 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn("--admin-mobile-card-gap:12px", mobile)
         self.assertIn("main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-mobile-card-gap)}", mobile)
         self.assertIn(".overview-page>.overview-panel{margin:0}", mobile)
-        self.assertIn(".overview-columns>.overview-panel{margin:0}", mobile)
+        self.assertIn(".overview-primary-grid>.overview-panel{margin:0}", mobile)
+        self.assertNotIn(".overview-columns>.overview-panel{margin:0}", mobile)
         self.assertIn(".provider-dashboard-grid>.provider-card{margin-top:0}", mobile)
         self.assertIn(".device-filter-bar{margin-bottom:var(--admin-mobile-card-gap)}", mobile)
         for group in (".system-health-list", ".model-information-columns", ".administration-grid", ".map-statistics-reliability", ".admin-kpi-grid"):
@@ -63,16 +64,10 @@ class AdminAuditTests(unittest.TestCase):
     def test_overview_model_activity_matches_chart_height_and_scrolls(self):
         from terento_catalog.admin import ADMIN_STYLES
 
-        self.assertIn('.overview-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
-        self.assertIn('.overview-primary-grid,.overview-secondary-grid{align-items:stretch}', ADMIN_STYLES)
-        self.assertIn(
-            '.overview-secondary-grid>.overview-panel{display:flex;min-height:0;max-height:320px;flex-direction:column;overflow:auto}',
-            ADMIN_STYLES,
-        )
-        self.assertIn(
-            '.overview-secondary-grid .overview-activity-list,.overview-secondary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}',
-            ADMIN_STYLES,
-        )
+        self.assertIn('.overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
+        self.assertIn('.overview-primary-grid{align-items:start}', ADMIN_STYLES)
+        self.assertNotIn('max-height:320px', ADMIN_STYLES)
+        self.assertNotIn('.overview-secondary-grid', ADMIN_STYLES)
 
     def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):
         from terento_catalog.admin import ADMIN_STYLES, _layout
@@ -89,8 +84,6 @@ class AdminAuditTests(unittest.TestCase):
             ".table-wrap",
             ".overview-chart-wrap",
             ".identity-search-results",
-            ".overview-secondary-grid .overview-activity-list",
-            ".overview-secondary-grid .overview-model-list",
             "#admin-menu-panel",
             ".quick-filter-group",
             ".diagnostic-detail-inner",

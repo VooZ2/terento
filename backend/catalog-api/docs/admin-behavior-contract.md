@@ -200,8 +200,8 @@ implemented. Never borrow a model from another user or nearby timestamp.
 
 ### Installations, device history and Diagnostic detail
 
-Installations is all-time model installation evidence. It is not the selected
-Dashboard period.
+Installations is all-time model evidence. The page label is `All time`. It is
+not the selected Dashboard period.
 
 All/Failed/Open errors/Successful/Identity review filters have separate meanings.
 Failed history includes resolved failures; Open errors excludes resolved work.

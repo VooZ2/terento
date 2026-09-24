@@ -542,18 +542,8 @@ class CatalogService:
             "lastObservedAt": None,
             "trend": [],
         }
-        coverage_getter = getattr(
-            self.database, "admin_overview_device_install_coverage", None,
-        )
-        device_coverage = (
-            coverage_getter()
-            if callable(coverage_getter)
-            else {
-                "successfulModelCount": None,
-                "eligibleModelCount": None,
-                "coverageRate": None,
-            }
-        )
+        coverage_fn = getattr(self.database, "admin_overview_device_install_coverage", None)
+        device_coverage = coverage_fn() if callable(coverage_fn) else {}
         return {
             "schemaVersion": 1,
             "period": period,
