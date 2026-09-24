@@ -152,6 +152,8 @@ def _fill_overview_trend_buckets(
             "success_count": 0,
             "failed_count": 0,
             "custom_count": 0,
+            "download_success_count": 0,
+            "download_failed_count": 0,
             "map_update_count": 0,
             "map_update_success_count": 0,
             "map_update_failed_count": 0,
@@ -1628,6 +1630,11 @@ class Database:
                 SELECT
                     e.operation_key,
                     e.operation_id,
+                    e.map_result_index,
+                    e.canonical_device_model_id,
+                    e.compatibility_identity,
+                    e.model,
+                    e.variant,
                     e.provider AS provider_id,
                     e.region,
                     e.occurred_at,
@@ -1753,6 +1760,24 @@ class Database:
                         WHERE e.event_type = 'MAP_UPDATE_FAILED'
                           AND e.outcome = 'FAILED'
                     ) AS all_time_map_update_failed_count
+                    ,count(DISTINCT CASE
+                        WHEN e.event_type = 'DOWNLOAD_SUCCEEDED'
+                             AND e.outcome = 'SUCCEEDED'
+                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                                 || ':' || COALESCE(e.operation_id::text, '')
+                                 || ':' || COALESCE(e.provider_id, '')
+                                 || ':' || COALESCE(e.map_package_id::text, '')
+                                 || ':' || COALESCE(e.component_kind, '')
+                     END) AS all_time_completed_download_count
+                    ,count(DISTINCT CASE
+                        WHEN e.event_type = 'DOWNLOAD_FAILED'
+                             AND e.outcome = 'FAILED'
+                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                                 || ':' || COALESCE(e.operation_id::text, '')
+                                 || ':' || COALESCE(e.provider_id, '')
+                                 || ':' || COALESCE(e.map_package_id::text, '')
+                                 || ':' || COALESCE(e.component_kind, '')
+                     END) AS all_time_failed_download_count
                 {event_scope}
                 """,
                 (all_time_since, all_time_since),
@@ -1811,6 +1836,10 @@ class Database:
                     e.component_kind,
                     e.lifecycle,
                     e.has_recorded_outcome,
+                    NULL AS canonical_device_model_id,
+                    NULL AS compatibility_identity,
+                    NULL AS model,
+                    NULL AS variant,
                     (
                         e.event_type IN ('DOWNLOAD_STARTED', 'DOWNLOAD_PROCESSING')
                         AND NOT e.has_recorded_outcome
@@ -1835,6 +1864,10 @@ class Database:
                     NULL AS component_kind,
                     NULL AS lifecycle,
                     false AS has_recorded_outcome,
+                    c.canonical_device_model_id,
+                    c.compatibility_identity,
+                    c.model,
+                    c.variant,
                     false AS is_stale
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
@@ -1950,6 +1983,14 @@ class Database:
                     ) AS failed_count,
                     count(*) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED') AS custom_count,
                     count(DISTINCT operation_key) FILTER (
+                        WHERE event_type = 'DOWNLOAD_SUCCEEDED'
+                          AND outcome = 'SUCCEEDED'
+                    ) AS download_success_count,
+                    count(DISTINCT operation_key) FILTER (
+                        WHERE event_type = 'DOWNLOAD_FAILED'
+                          AND outcome = 'FAILED'
+                    ) AS download_failed_count,
+                    count(DISTINCT operation_key) FILTER (
                         WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
                     ) AS map_update_count,
                     count(DISTINCT operation_key) FILTER (
@@ -1963,6 +2004,8 @@ class Database:
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_SUCCEEDED' AND outcome = 'SUCCEEDED'))[1:20] AS success_times,
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_FAILED' AND outcome = 'FAILED'))[1:20] AS failed_times,
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED'))[1:20] AS custom_times,
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'DOWNLOAD_SUCCEEDED' AND outcome = 'SUCCEEDED'))[1:20] AS download_success_times,
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'DOWNLOAD_FAILED' AND outcome = 'FAILED'))[1:20] AS download_failed_times,
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')))[1:20] AS map_update_times
                 FROM localized_events
                 GROUP BY {bucket_expression}
@@ -1987,6 +2030,12 @@ class Database:
         completed_downloads = int(summary.get("completed_download_count") or 0)
         failed_downloads = int(summary.get("failed_download_count") or 0)
         download_attempts = completed_downloads + failed_downloads
+        all_time_install_successes = int(all_time_summary.get("all_time_success_count") or 0)
+        all_time_install_failures = int(all_time_summary.get("all_time_failed_count") or 0)
+        all_time_install_attempts = all_time_install_successes + all_time_install_failures
+        all_time_download_successes = int(all_time_summary.get("all_time_completed_download_count") or 0)
+        all_time_download_failures = int(all_time_summary.get("all_time_failed_download_count") or 0)
+        all_time_download_attempts = all_time_download_successes + all_time_download_failures
         all_time_update_successes = int(all_time_summary.get("all_time_map_update_success_count") or 0)
         all_time_update_failures = int(all_time_summary.get("all_time_map_update_failed_count") or 0)
         return {
@@ -2003,8 +2052,18 @@ class Database:
             "completedMapUpdateCount": completed_updates,
             "failedMapUpdateCount": failed_updates,
             "mapUpdateCount": completed_updates + failed_updates,
-            "allTimeSuccessCount": int(all_time_summary.get("all_time_success_count") or 0),
-            "allTimeFailedCount": int(all_time_summary.get("all_time_failed_count") or 0),
+            "allTimeSuccessCount": all_time_install_successes,
+            "allTimeFailedCount": all_time_install_failures,
+            "allTimeInstallSuccessRate": (
+                all_time_install_successes / all_time_install_attempts * 100
+                if all_time_install_attempts else None
+            ),
+            "allTimeCompletedDownloadCount": all_time_download_successes,
+            "allTimeFailedDownloadCount": all_time_download_failures,
+            "allTimeDownloadSuccessRate": (
+                all_time_download_successes / all_time_download_attempts * 100
+                if all_time_download_attempts else None
+            ),
             "allTimeCustomCount": int(all_time_summary.get("all_time_custom_count") or 0),
             "allTimeMapUpdateCount": all_time_update_successes + all_time_update_failures,
             "allTimeMapUpdateSuccessCount": all_time_update_successes,
@@ -2018,6 +2077,35 @@ class Database:
             ) if missing_diagnostics else 0,
             "trend": trend_rows,
             "bucket": bucket,
+        }
+
+    def admin_overview_device_install_coverage(self) -> dict[str, Any]:
+        """Count active Maps=Yes catalog models that already have a successful install."""
+        query = """
+            SELECT
+                count(*) FILTER (
+                    WHERE dm.active IS TRUE AND dm.map_capable IS TRUE
+                ) AS eligible_model_count,
+                count(*) FILTER (
+                    WHERE dm.active IS TRUE
+                      AND dm.map_capable IS TRUE
+                      AND EXISTS (
+                          SELECT 1
+                          FROM compatibility_model_statistics AS stats
+                          WHERE stats.canonical_device_model_id = dm.id
+                            AND COALESCE(stats.successful_install_count, 0) > 0
+                      )
+                ) AS successful_model_count
+            FROM device_model AS dm
+        """
+        with self.connection() as connection:
+            row = connection.execute(query).fetchone() or {}
+        eligible = int(row.get("eligible_model_count") or 0)
+        successful = int(row.get("successful_model_count") or 0)
+        return {
+            "successfulModelCount": successful,
+            "eligibleModelCount": eligible,
+            "coverageRate": successful / eligible * 100 if eligible else None,
         }
 
     def admin_user_count(self) -> int:

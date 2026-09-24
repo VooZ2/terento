@@ -142,15 +142,23 @@ while a measured zero is 0.
 
 ## Page and navigation behavior
 
-### Overview and Review queue
+Primary Admin section links are grouped by Daily (`Dashboard`, `Health`,
+`Installations`), Catalog (`Devices`, `Providers`), and Analytics
+(`Maps`). Tools remain a utility menu. A single `Review` count links to Dashboard
+Needs attention. Grouping is visual only; destinations stay the same.
 
-Period-filtered KPIs describe the selected period. Review queue covers unresolved
-work across all dates. Keep that scope explicit. Show failures, linked issue work,
-identity/publication review and provider/system problems as distinct work types.
+### Dashboard and Needs attention
+
+Dashboard headline KPIs describe all retained history and link to the same all-time
+Map statistics population. The two charts and unified activity list describe the
+selected period. Period chart totals keep that selected period when they open
+Map statistics. Needs attention covers unresolved work across all dates. Keep each
+scope explicit. Show failures, linked issue work, identity/publication review and
+provider/system problems as distinct work types.
 Counts and list links must lead to the corresponding work, even when the preview
 is truncated. Empty active work does not mean there have been no failures.
 
-The Review queue is labelled and counted as `Pending review tasks`. A failed
+Needs attention is labelled and counted as `Pending review tasks`. A failed
 diagnostic and GitHub handling linked to the same operation are alternative
 states of one task; linking an issue moves the task between categories and
 does not increase the total. Identity review is an additional task and
@@ -191,6 +199,9 @@ present that workflow, watch assignment or GitHub actions as available before
 implemented. Never borrow a model from another user or nearby timestamp.
 
 ### Installations, device history and Diagnostic detail
+
+Installations is all-time model evidence. The page label is `All time`. It is
+not the selected Dashboard period.
 
 All/Failed/Open errors/Successful/Identity review filters have separate meanings.
 Failed history includes resolved failures; Open errors excludes resolved work.
@@ -275,24 +286,29 @@ install. Session totals are separate.
 The visible Map statistics KPI summary is one compact container. On wide
 layouts it has equal Downloads, Installs, and Updates groups, with
 Successful and Success rate on the first row and Failed below in each group.
-Diagnostic coverage is a compact secondary row in the same container with
-Fresh attempts, Linked reports, Report gaps, and Coverage rate. A positive
+Diagnostic coverage is a secondary disclosure, not a primary KPI row, and
+still shows Fresh attempts, Linked reports, Report gaps, and Coverage rate. A positive
 Failed value uses the same semantic error token as Open errors; zero is neutral
 and an unavailable value is shown as an em dash. These are presentation rules
 only; the existing summary counts and formulas remain authoritative.
 
 Popular maps uses the population and grouping defined in
 [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-Admin provides Top 5, Regions, and All maps views; All maps searches the
-complete eligible set before pagination, and view navigation does not change
-the selected population. The canonical row geometry is defined once in the
+It is a secondary disclosure beside Installations by country. Admin provides
+Top 5, Regions, and All maps views; All maps searches the complete eligible
+set before pagination, and view navigation does not change the selected
+population. The canonical row geometry is defined once in the
 Admin visual consistency addendum below.
 
-Overview has exactly two KPI groups: `Installs` and `Downloads`; it has no
-`Current status` group. The Downloads group is map-acquisition telemetry, not
+Dashboard has three KPI groups: `Downloads`, `Installs`, and `Model coverage`;
+it has no `Current status` group. Installs and Downloads show all-time successful,
+failed, and success-rate values. The Downloads group is map-acquisition telemetry, not
 the GitHub `.dmg`/`.zip` panel: it uses the canonical acquisition populations
 and formulas in [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-The visible labels are `Downloads`, `Failed downloads`, and `Download success`.
+The model group shows active exact catalog rows with stored Maps=Yes that have at
+least one verified successful installation, divided by all active exact catalog
+rows with stored Maps=Yes. It is evidence coverage, not support, public
+compatibility, or installation authorization.
 
 Activity by provider has a two-row header: `Provider`; `Downloads`, `Installs`,
 and `Updates`, each with `Successful`, `Failed`, and `Rate`; then `Last install`.
@@ -324,8 +340,8 @@ synthesized from installs, and `Installs > Downloads` is valid when the two
 telemetry streams are incomplete. Install success, update success, and download
 success use the canonical populations and formulas in
 [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-Overview keeps the same three-metric layout per KPI group and separates each
-Failed row with the shared Map statistics KPI divider.
+Overview keeps the same three-metric layout in its outcome groups and separates
+each Failed row with the shared Map statistics KPI divider.
 
 The GitHub chart says `Observed download increases between checks`. In the 24h
 view it is a discrete hourly chart: each canonical hour has one equal-width
@@ -364,10 +380,13 @@ Admin renders the available value as `mm:ss` and an unavailable value as `—`,
 never `0`; the selected population is not reduced by pagination or recent
 activity limits.
 
-- Overview `Device/model activity` starts with that heading and has no
-  `COMPATIBILITY EVIDENCE` eyebrow or `Diagnostic activity` disclosure.
-  Models, variants, outcomes, Active state, timestamps and dividers remain
-  visible; diagnostics elsewhere in Admin are unaffected.
+- Overview has one `Activity` list for the selected period. It groups provider
+  acquisition phases and shows install outcomes in the same chronological list.
+  A device model appears only when operation plus provider and exact or
+  unambiguous package-region facts reliably link the map and compatibility
+  streams. Missing or ambiguous linkage is explicit and never filled from time,
+  nearby activity, or another result. Full diagnostics elsewhere in Admin remain
+  unaffected.
 
 ## Identity Review operator-assisted assignment addendum (2026-09-17)
 
@@ -553,17 +572,19 @@ formulas, sorting, filtering, pagination, or device actions.
   refreshes must use explicit numeric checks and preserve the same 0 → positive
   → 0 → unknown semantics.
 
-- Overview, Installations, and device detail KPI summaries use the same
+- Dashboard, Installations, and device detail KPI summaries use the same
   `map-statistics-kpi-panel`, `map-statistics-kpi-groups`,
   `map-statistics-kpi-group`, and `map-statistics-kpi-value` hierarchy as Map
-  statistics. Overview retains six metrics with Installs and Downloads grouped
-  in the same compact panel. Installations retains five metrics in one panel.
+  statistics. Dashboard retains eight all-time metrics in three groups:
+  Downloads, Installs, and Model coverage. Installations retains five
+  metrics in one panel.
   Device detail groups Attempts, Successful,
   Failed, and Open errors together, while Last activity remains in that panel
   with smaller date typography and the Attempts explanation control.
 
-- System health retains its result cards, badges, collapsed/expanded evidence,
-  and diagnostic actions, but does not show the explanatory summary paragraph
+- System health uses compact rows: name, badge, and relative time. Healthy
+  checks stay collapsed with no description. Problems expand to Why, Next
+  action, and Technical details. There is no explanatory summary paragraph
   about healthy checks staying collapsed.
 
 - System health includes exactly one **IndexNow submissions** card. It reuses

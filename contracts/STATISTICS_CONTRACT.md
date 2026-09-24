@@ -116,6 +116,21 @@ fresh map diagnostic coverage = reliably linked fresh map attempts /
                                 all selected fresh map attempts * 100
 ```
 
+Admin Overview also has a separate catalog-evidence coverage metric:
+
+```text
+map-capable model evidence coverage =
+    active exact catalog models with stored Maps=Yes and at least one
+    retained verified successful installation /
+    all active exact catalog models with stored Maps=Yes * 100
+```
+
+The numerator is a distinct exact-model count, not a count of installations.
+Resolved diagnostics retain their historical verified result. Stored Maps=NULL
+or Maps=No, inactive rows, unresolved text identities and inferred capability
+are excluded from both sides. This metric is not support status, public
+compatibility, diagnostic linkage coverage, or native write authorization.
+
 The linkage object keeps its historical operation/session compatibility fields
 (`mapOperationCount`, `linkedOperationCount`, `mapInstallationCount`, and the
 related `*InstallationCount`/`linkageRate` values) at operation-key scope.

@@ -30,9 +30,10 @@ class DeviceInformationLayoutTests(unittest.TestCase):
                       specificationEvidence={'display_resolution': {'value': '466 x 466 pixels'}})
         body = _device_information_markup(device)
         primary = body.split("<div class='device-information-more'>")[0]
-        for value in ('Watch &lt;Example&gt;', 'Watch size', '51 mm', 'AMOLED',
+        for value in ('Watch size', '51 mm', 'AMOLED',
                       '<dt>Solar charging</dt><dd><bdi>Not confirmed</bdi></dd>', '<dt>inReach</dt><dd><bdi>Available</bdi></dd>'):
             self.assertIn(value, primary)
+        self.assertNotIn('Watch &lt;Example&gt;', body)
         for value in ('010-example', '466 x 466', 'https://', '<form'):
             self.assertNotIn(value, primary)
         self.assertIn('<summary>More specifications</summary>', body)
@@ -489,6 +490,7 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertNotIn("id=\"device-sort\"", body)
         self.assertIn("statusOrder = {unavailable: 0, TESTING: 1, TESTED: 2, SUPPORTED: 3, VERIFIED: 4}", body)
         self.assertIn('class="filter-bar admin-filter-bar device-filter-bar"', body)
+        self.assertIn('id="device-more-filters"', body)
         self.assertIn('class="admin-table"', body)
         self.assertIn("formatToParts", body)
         self.assertIn("${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}", body)
@@ -558,6 +560,9 @@ class AdminDevicesTests(unittest.TestCase):
         ):
             self.assertIn(value, detail)
         self.assertNotIn("Change history", detail)
+        self.assertNotIn("Catalog Maps:", detail)
+        self.assertNotIn("Observed map capability:", detail)
+        self.assertIn("Maps: Yes", detail)
 
     def test_narrow_sticky_header_and_body_share_canonical_column_geometry(self):
         body = devices_page(

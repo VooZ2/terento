@@ -169,13 +169,17 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
                          'occurred_at': '2026-09-15T19:47:00Z',
                      }]},
             'compatibility': {'allTimeOpenErrorCount': 0, 'missingDiagnostics': 1},
-        }, {'username': 'operator'}, 'csrf').decode()
+        }, {
+            'username': 'operator',
+            'admin_review_summary': {'missingDiagnostics': 1, 'total': 1},
+        }, 'csrf').decode()
         panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split('</section>', 1)[0]
         self.assertIn('Install failed', panel)
         self.assertIn('No device diagnostic report received', panel)
-        self.assertIn('Missing diagnostics <strong>1</strong>', panel)
-        self.assertIn("Failure diagnostics <strong>—</strong>", panel)
-        self.assertIn("/admin#overview-attention-title", panel)
+        self.assertNotIn('Missing diagnostics <strong>', panel)
+        self.assertNotIn('attention-shortcuts', panel)
+        self.assertIn("aria-label='Review: 1'", body)
+        self.assertIn("/admin#overview-attention-title", body)
         self.assertIn('eventId=a8098c1a-f86e-11da-bd1a-00112444be1e', panel)
         self.assertIn("aria-label='Dismiss review item'", panel)
         self.assertIn('France', panel)

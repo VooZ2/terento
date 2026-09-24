@@ -542,6 +542,8 @@ class CatalogService:
             "lastObservedAt": None,
             "trend": [],
         }
+        coverage_fn = getattr(self.database, "admin_overview_device_install_coverage", None)
+        device_coverage = coverage_fn() if callable(coverage_fn) else {}
         return {
             "schemaVersion": 1,
             "period": period,
@@ -554,6 +556,7 @@ class CatalogService:
                 since, period=period, time_zone=time_zone,
             ),
             "compatibility": self.database.admin_overview_snapshot(since),
+            "deviceCoverage": device_coverage,
             "downloads": downloads,
             "providers": self.admin_providers().get("providers", []),
             "system": self.operational_health(),
