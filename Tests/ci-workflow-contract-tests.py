@@ -351,25 +351,29 @@ def main() -> int:
 
     candidate = (WORKFLOWS / "build-catalog-migration-candidate.yml").read_text(encoding="utf-8")
     publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
+    assert "push:" in candidate
+    assert "- terento/062-production-candidate" in candidate
     assert "workflow_dispatch:" in candidate
     assert "source_ref:" in candidate and "source_sha:" in candidate
     assert "default: refs/heads/terento/062-production-candidate" in candidate
     assert "candidate-source-gate:" in candidate
-    assert candidate.index("Validate workflow dispatch inputs before checkout") < candidate.index("uses: actions/checkout@", candidate.index("candidate-source-gate:"))
+    assert candidate.index("Validate candidate source identity before checkout") < candidate.index("uses: actions/checkout@", candidate.index("candidate-source-gate:"))
     assert '[[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]' in candidate
     assert '[[ "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]' in candidate
     assert '[[ "$GITHUB_REF" == "$REQUESTED_SOURCE_REF" ]]' in candidate
     assert '[[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
     assert '[[ "$(git rev-parse HEAD)" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
     assert 'git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$REQUESTED_SOURCE_REF"' in candidate
-    assert 'ref: ${{ inputs.source_sha }}' in candidate
+    assert 'ref: ${{ inputs.source_sha || github.sha }}' in candidate
+    assert 'REQUESTED_SOURCE_REF: ${{ inputs.source_ref || github.ref }}' in candidate
+    assert 'REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}' in candidate
     assert 'git status --porcelain=v1 --untracked-files=all' in candidate
     assert candidate.index("candidate-source-gate:") < candidate.index("  publish:")
     assert "needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]" in candidate
     assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in candidate
     assert "uses: ./.github/workflows/publish-vps-images.yml" in candidate
-    assert "candidate_source_ref: ${{ inputs.source_ref }}" in candidate
-    assert "candidate_source_sha: ${{ inputs.source_sha }}" in candidate
+    assert "candidate_source_ref: ${{ inputs.source_ref || github.ref }}" in candidate
+    assert "candidate_source_sha: ${{ inputs.source_sha || github.sha }}" in candidate
     assert "github.ref == 'refs/heads/terento/062-production-candidate'" in candidate
     assert "refs/heads/beta" not in candidate
     assert "candidate-contract-tests:" in candidate
@@ -415,7 +419,7 @@ def main() -> int:
     assert '[[ "$GITHUB_SHA" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
 
     receipt = candidate[candidate.index("  receipt:"):]
-    assert "SOURCE_SHA: ${{ inputs.source_sha }}" in receipt
+    assert "SOURCE_SHA: ${{ inputs.source_sha || github.sha }}" in receipt
     assert "IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}" in receipt
     assert '[[ "$GITHUB_SHA" == "$SOURCE_SHA" ]]' in receipt
     assert '[[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]' in receipt

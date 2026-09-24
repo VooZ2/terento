@@ -70,9 +70,11 @@ migration path.
 
 The owner-run installer accepts only clean, committed helper sources and its
 apply mode is a separate production file update; it was not run. On the
-candidate branch, the 062 workflow is manual and builds/publishes only a
-run-unique GHCR image tag plus an immutable digest receipt; it has no VPS, DB,
-deployment, `latest`, or production-tag action. API deployment is also manual-only and gated
+candidate branch, the candidate-image workflow runs only on pushes to that
+branch (and declares a manual dispatch for when it is available from the
+default branch). It builds/publishes only a run-unique GHCR image tag plus an
+immutable digest receipt; it has no VPS, DB, deployment, `latest`, or
+production-tag action. API deployment is also manual-only and gated
 on confirmed 062 completion plus an owner-set helper-installation variable.
 DEPLOY does not apply migrations; it requires the candidate inventory and live
 ledger to match exactly at 001–062. Future schema versions need their own

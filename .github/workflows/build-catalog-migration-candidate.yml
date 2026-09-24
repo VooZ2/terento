@@ -1,6 +1,9 @@
 name: Build catalog migration candidate
 
 on:
+  push:
+    branches:
+      - terento/062-production-candidate
   workflow_dispatch:
     inputs:
       source_ref:
@@ -17,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: catalog-migration-candidate-${{ inputs.source_ref }}-${{ inputs.source_sha }}
+  group: catalog-migration-candidate-${{ inputs.source_ref || github.ref }}-${{ inputs.source_sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -26,10 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Validate workflow dispatch inputs before checkout
+      - name: Validate candidate source identity before checkout
         env:
-          REQUESTED_SOURCE_REF: ${{ inputs.source_ref }}
-          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+          REQUESTED_SOURCE_REF: ${{ inputs.source_ref || github.ref }}
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -40,13 +43,13 @@ jobs:
           [[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: ${{ inputs.source_sha }}
+          ref: ${{ inputs.source_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Verify requested same-repository candidate ref and exact commit
         env:
-          REQUESTED_SOURCE_REF: ${{ inputs.source_ref }}
-          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+          REQUESTED_SOURCE_REF: ${{ inputs.source_ref || github.ref }}
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -103,19 +106,19 @@ jobs:
 
   publish:
     needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && github.sha == inputs.source_sha
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && (inputs.source_sha == '' || github.sha == inputs.source_sha)
     permissions:
       contents: read
       packages: write
     uses: ./.github/workflows/publish-vps-images.yml
     with:
       role: api
-      candidate_source_ref: ${{ inputs.source_ref }}
-      candidate_source_sha: ${{ inputs.source_sha }}
+      candidate_source_ref: ${{ inputs.source_ref || github.ref }}
+      candidate_source_sha: ${{ inputs.source_sha || github.sha }}
 
   receipt:
     needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests, publish]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && github.sha == inputs.source_sha
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && (inputs.source_sha == '' || github.sha == inputs.source_sha)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -130,8 +133,8 @@ jobs:
           python-version: "3.12"
       - name: Verify immutable candidate identity and prepare receipt
         env:
-          SOURCE_SHA: ${{ inputs.source_sha }}
-          SOURCE_REF: ${{ inputs.source_ref }}
+          SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+          SOURCE_REF: ${{ inputs.source_ref || github.ref }}
           IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
           PUBLISHED_062_SHA: ${{ needs.publish.outputs.migration_062_sha256 }}
           PUBLISHED_RUNNER_SHA: ${{ needs.publish.outputs.migrate_py_sha256 }}

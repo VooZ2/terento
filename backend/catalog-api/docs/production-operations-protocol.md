@@ -181,8 +181,10 @@ DEPLOY as part of install validation.
 
 1. Track, commit, and test every normative source path listed in the
    [candidate receipt](production-candidate-receipt.md). Build only from a
-   clean exact commit using the manual `build-catalog-migration-candidate`
-   workflow. The receipt is evidence, not approval.
+   clean exact commit using the `build-catalog-migration-candidate` workflow,
+   whose push trigger is restricted to `terento/062-production-candidate`.
+   Its manual-dispatch form is available only after the workflow also exists
+   on the repository's default branch. The receipt is evidence, not approval.
 2. Separately authorize installation of the helper pair; if remote SSH
    invocation is required, separately review/install the SSH template and
    sudo policy. Capture helper source hashes and prove the actual installed
