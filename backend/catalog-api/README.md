@@ -54,10 +54,10 @@ reconciled schemas; it has not been approved or applied to the live database.
 Do not replay migrations or run schema/data operations from version marks alone.
 The SELECT-only 062 pre/postchecks and operator runbook are in
 [`docs/installation-statistics-062-live-runbook.md`](docs/installation-statistics-062-live-runbook.md).
-The local working tree now contains separate root-helper source paths for
+The candidate source contains separate root-helper source paths for
 `STATUS`, `MIGRATE --target 062`, and `DEPLOY`, plus an owner-run installer and
-offline protocol tests. These sources are still untracked/uncommitted and are
-not installed on the VPS; the existing SSH entry point has not been changed.
+offline protocol tests. They are not installed on the VPS; the existing SSH
+entry point has not been changed.
 See [`docs/production-operations-protocol.md`](docs/production-operations-protocol.md).
 Thus no production status/migration-only remote command is available yet, and
 062 remains NOT READY. API deployment is manual-only; dispatch requires
@@ -69,21 +69,25 @@ deploy or ad-hoc Docker/shell commands as a substitute for the explicit
 migration path.
 
 The owner-run installer accepts only clean, committed helper sources and its
-apply mode is a separate production file update; it was not run. The 062
-candidate workflow is manual and creates an immutable receipt only; it does
-not execute migration or deploy. API deployment is also manual-only and gated
+apply mode is a separate production file update; it was not run. On the
+candidate branch, the 062 workflow is manual and builds/publishes only a
+run-unique GHCR image tag plus an immutable digest receipt; it has no VPS, DB,
+deployment, `latest`, or production-tag action. API deployment is also manual-only and gated
 on confirmed 062 completion plus an owner-set helper-installation variable.
 DEPLOY does not apply migrations; it requires the candidate inventory and live
 ledger to match exactly at 001–062. Future schema versions need their own
 reviewed migration gate before they can be deployed. Required source files
-must first be tracked,
-committed, and tested. Hostinger listed old whole-VPS restore points
+must be tracked, committed, and tested. Hostinger's 2026-09-24 read-only
+listing contained old whole-VPS restore points
 `52757820` (2026-09-19) and `51894425` (2026-09-12); neither is a validated
-PostgreSQL-only recovery. The VPS host lacks `pg_dump`; the database container
-has client version 16.15, but server identity/version, `pg_restore`, encrypted
-storage destination, and isolated restore have not all been verified. The
-owner must accept a fresh validated DB-only recovery point or select and
-explicitly accept an exact whole-VPS recovery point and its restore impact.
+PostgreSQL-only recovery, and the snapshot API reported no usable current
+snapshot. The VPS host lacks `pg_dump`; the last shell check found client
+version 16.15 inside the DB container, but `pg_restore`, current container and
+image identity, secure credential path, root-only backup directory, free
+space, and isolated restore image still need read-only confirmation. The
+pre-062 gate requires both a fresh Hostinger whole-VPS recovery point and a
+fresh VPS-local PostgreSQL dump restored into an isolated PostgreSQL 16 target.
+Neither has been created or validated.
 
 Admin presentation checks must inspect the rendered page, including populated
 and empty map statistics. Each component must have a unique DOM ID: duplicated

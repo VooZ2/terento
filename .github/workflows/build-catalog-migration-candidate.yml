@@ -208,6 +208,13 @@ jobs:
           statistics_contract_sha="$(sha256sum contracts/STATISTICS_CONTRACT.md | cut -d ' ' -f 1)"
           installation_contract_sha="$(sha256sum contracts/INSTALLATION_AUTHORIZATION.md | cut -d ' ' -f 1)"
           contract_schema_sha="$(sha256sum contracts/installation-policy.schema.json | cut -d ' ' -f 1)"
+          deploy_helper_sha="$(sha256sum scripts/infra/terento-deploy.py | cut -d ' ' -f 1)"
+          migration_helper_sha="$(sha256sum scripts/infra/terento-deploy-migration.py | cut -d ' ' -f 1)"
+          installer_sha="$(sha256sum scripts/infra/install-terento-production-ops.py | cut -d ' ' -f 1)"
+          ssh_entry_sha="$(sha256sum scripts/infra/terento-deploy-ssh-entry.py.in | cut -d ' ' -f 1)"
+          for helper_sha in "$deploy_helper_sha" "$migration_helper_sha" "$installer_sha" "$ssh_entry_sha"; do
+            [[ "$helper_sha" =~ ^[0-9a-f]{64}$ ]]
+          done
           policy_schema_version="$(python3 -c 'import json, pathlib; print(json.loads(pathlib.Path("contracts/installation-policy.schema.json").read_text())["properties"]["schemaVersion"]["const"])')"
           runner_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("backend/catalog-api/pyproject.toml").read_text())["project"]["version"])')"
           receipt="$RUNNER_TEMP/terento-catalog-migration-candidate.md"
@@ -232,6 +239,10 @@ jobs:
             printf '%s\n' "- Statistics contract SHA-256: $statistics_contract_sha" \
               "- Installation authorization contract SHA-256: $installation_contract_sha" \
               "- Installation policy schema SHA-256: $contract_schema_sha"
+            printf '%s\n' "- terento-deploy.py SHA-256 (source): $deploy_helper_sha" \
+              "- terento-deploy-migration.py SHA-256 (source): $migration_helper_sha" \
+              "- install-terento-production-ops.py SHA-256 (source): $installer_sha" \
+              "- terento-deploy-ssh-entry.py.in SHA-256 (source; not installed): $ssh_entry_sha"
             printf '%s\n' '- Candidate source checkout: clean and equal to the tested commit.'
             printf '%s\n' '- Backend full suite and live PostgreSQL migration integration: PASS (quality job).'
             printf '%s\n' '- Production STATUS/MIGRATE/DEPLOY, target, lock, and SSH boundary tests: PASS.'

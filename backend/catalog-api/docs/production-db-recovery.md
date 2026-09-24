@@ -1,325 +1,293 @@
-# Production PostgreSQL recovery procedure
+# Production PostgreSQL recovery preparation
 
-## Status and observed facts
+## Scope and current evidence
 
-**Future procedure only — not executed.** No production backup was created,
-copied, or verified, and no restore validation was performed. No production
-database or service command was run for this document. These steps do not
-authorize a migration, deployment, restore, or other production change.
+This document defines a future VPS-only PostgreSQL dump and isolated restore
+check. No dump, restore, Hostinger snapshot, database write, migration, or
+deployment was performed for this preparation. The Mac is not a backup or
+restore target. A successful logical restore check is not off-host disaster
+recovery; a fresh Hostinger VPS recovery point is also required before the
+separately approved 062 operation.
 
-The operator-reported read-only terminal findings for 2026-09-23 are:
+Read-only observations available for this candidate:
 
-| Check | Observation | Meaning / limit |
+| Check | Observation | Limit |
 | --- | --- | --- |
-| Host `pg_dump --version` | `command not found` | A host client is not currently available. |
-| `docker exec terento-catalog-catalog-db-1 pg_dump --version` | PostgreSQL 16.15 | This establishes the container `pg_dump` client version only; it is not the server version, a dump, or a restore test. |
-| `pg_restore` availability/version | Not checked | Safari had switched to a non-terminal window after the `pg_dump` checks; no `pg_restore --version` command was run. Verify it before any TOC check or restore. |
-| PostgreSQL server version and database identity | Not checked during the terminal check described here; no additional server command was run | The earlier 062 runbook contains historical preflight values (`16.15`, `terento_catalog`, schema `public`); they were not refreshed or corroborated in this check and must be re-verified at execution time. |
-| Hostinger VPS API inventory (2026-09-23) | VPS `1958677` (`rukas.terento.app`) reported `running`; details report a 100 GiB plan disk | This is control-plane metadata only; it does not establish free filesystem space or DB-container state. |
-| Hostinger Docker Manager project inventory (2026-09-23) | Unavailable: API reports that the installed operating system does not support Docker Manager | No container/project inventory, mount, image, or DB-container capability fact was verified through this API. Use an authenticated VPS shell and narrow read-only checks before any backup operation. |
-| Hostinger backups (refreshed 2026-09-23) | `52757820` from 2026-09-19 11:10:29 UTC and `51894425` from 2026-09-12 14:15:16 UTC | The live Hostinger API still lists only these old whole-VPS points; they are not accepted fresh database recovery points for a later migration. |
-| Hostinger snapshot (2026-09-23) | Snapshot endpoint returned ID `0` and no usable snapshot | No current snapshot was confirmed. |
-| Database-only backup / isolated restore | None performed | Do not claim a backup exists or is verified. |
+| Hostinger VPS | `rukas.terento.app`, VPS `1958677`, running; Ubuntu 26.04 LTS, 100 GiB disk plan | Provider metadata does not prove container state or filesystem headroom. |
+| Hostinger recovery points, refreshed 2026-09-24 | Weekly backups `52757820` (2026-09-19 11:10:29 UTC) and `51894425` (2026-09-12 14:15:16 UTC) | Neither is accepted as the fresh pre-062 recovery point. |
+| Current Hostinger snapshot | API returned ID `0` with no usable timestamp | No current snapshot is available. |
+| Hostinger Docker Manager API | Unsupported by the VPS operating system | Use the authenticated VPS shell for narrowly scoped, read-only Docker checks. |
+| Production DB client, last shell observation 2026-09-23 | `pg_dump (PostgreSQL) 16.15` inside the existing DB container; host `pg_dump` unavailable | This was a version check, not a dump. `pg_restore --version`, current container/image identity, credential path, and restore image digest still need confirmation in the VPS shell. |
+| Previous storage check, 2026-09-23 | `/var/backups` was on the same filesystem as the VPS root; approximately 87 GiB was free | Recheck at execution time. `/var/backups` is not the selected destination and is not evidence that `/var/lib/terento/backups` exists or is protected. |
+| Database-only recovery | No archive or restore validation exists | Do not report PostgreSQL recovery as ready until an exact fresh archive is restored and checked. |
 
-This record is supplemental to the [062 live runbook](installation-statistics-062-live-runbook.md).
+Hostinger's current guidance (updated one week before this check) says backups
+are stored separately from the server; weekly backups are enabled by default,
+daily backups may require an eligible paid option, and at most two daily plus
+two weekly points are retained (each new point replaces the oldest in its
+set). Backup or restore can take 10 minutes to a few hours. The VPS is locked
+and cannot be managed during either action; availability/performance may vary,
+but this does not say that the VPS is necessarily stopped. A manual snapshot
+captures the whole VPS, only one is stored, a new one overwrites the previous
+snapshot, and it expires after one day. Restore overwrites all current VPS
+content, is irreversible/non-cancelable, and may roll back later data. Inspect
+the live hPanel action summary before scheduling. No provider recovery point
+was created here. See [Hostinger VPS backup and restore guidance](https://www.hostinger.com/support/1583232-how-to-back-up-or-restore-a-vps-at-hostinger/).
 
-## Preconditions before a future backup
+## Recovery gate
 
-1. Obtain separate authorization for the backup window and confirm the exact
-   production VPS, Docker DB container ID/image, active database, and database
-   role using narrow read-only queries. Do not infer identity from a container
-   name alone.
-2. Confirm the exact PostgreSQL server version and both container client
-   versions (`pg_dump` and `pg_restore`) before using either client. The dump
-   client must not be older than the server major version. Verify that
-   `pg_restore` exists and record its version before `pg_restore --list` or any
-   restore; use the same major version as the archive producer, preferably the
-   exact same minor version. Stop on a mismatch or if either client is absent.
-3. Use a database credential path that is already provisioned and protected,
-   such as an approved Unix-socket authentication path or a mounted
-   `PGPASSFILE` readable only by the dump process. Never put a password in a
-   command argument, URL, pasted SQL, shell history, terminal output, or this
-   repository. Use `--no-password` so a batch command fails closed instead of
-   prompting. Do not print container environment, `docker inspect` environment,
-   Compose-expanded configuration, or secret-file contents. PostgreSQL's
-   password-file permission requirement is documented in its
-   [password-file documentation](https://www.postgresql.org/docs/16/libpq-pgpass.html).
-4. Confirm an approved **encrypted-at-rest** destination and enough free space
-   for the encrypted archive, temporary validation material, and metadata.
-   Root-only file permissions are necessary but are not encryption. No
-   encryption recipient, key path, or independent off-host destination has
-   been established by this task. If those are unavailable, stop; do not leave
-   an unencrypted dump on the VPS and call it a secure recovery point.
-5. Decide the acceptable recovery point and RPO. `pg_dump` produces a
-   transaction-consistent snapshot while the database is in use, but it cannot
-   recover writes committed after that snapshot. If the required RPO excludes
-   that interval, arrange a separately approved write freeze and record its
-   start/end; do not stop application services ad hoc.
-6. Treat the archive as sensitive production data. Keep its directory private,
-   avoid row contents and SQL text in the operator receipt, and transfer an
-   accepted recovery copy only to a separately approved encrypted off-host
-   destination over an authenticated channel. A copy left only on this VPS
-   cannot recover from loss of that VPS or its disk.
+Before live 062, both conditions must be evidenced:
 
-`pg_dump` reads one database; it does not include cluster-wide role definitions
-or tablespace definitions. The archive should retain database object ownership
-and ACL metadata; do not use `--no-owner` or `--no-acl` when creating it. Global
-role passwords and other secrets must not be added to this database-only
-backup. If the database refers to non-default tablespaces, record and reproduce
-their mapping in the isolated clone or stop the restore test.
-See the [PostgreSQL 16 `pg_dump` documentation](https://www.postgresql.org/docs/16/app-pgdump.html).
+1. **HOSTINGER RECOVERY POINT READY** — a fresh provider backup/snapshot has
+   completed, its exact ID and timestamp are recorded, and the owner has
+   accepted its whole-VPS restore consequences and recovery window.
+2. **POSTGRESQL RESTORE VALIDATED** — a fresh custom-format logical dump is
+   stored root-only on the VPS and has restored successfully into a separate,
+   temporary PostgreSQL 16 instance on that VPS. The archive remains available
+   until 062 and the separately approved backend deployment are complete.
 
-## Future backup sequence
+Normal schema problems use forward recovery; a logical DB failure uses the
+validated `pg_dump`; loss/corruption of the VPS or its filesystem uses the
+Hostinger recovery point. Do not attempt an automatic 062 downgrade.
 
-The following are command patterns, not commands run or approved for immediate
-execution. Replace only non-secret placeholders after the preconditions above
-have passed. Do not enable shell tracing (`set -x`).
+Creating the Hostinger point, producing a production dump, and creating or
+removing the temporary restore resources are external production operations.
+They require a separate explicit owner authorization. The procedures below
+are not run instructions for the current turn.
 
-### 1. Capture narrow identity and version metadata
+## Read-only preflight before an authorized backup
 
-Use the exact container name already supplied by the read-only inventory, then
-capture its immutable container/image identifiers without printing its
-environment. Reconfirm the database identity and server version through the
-approved credential path:
+Using the authenticated VPS shell, re-confirm only the facts needed for this
+run. Do not print container environment, Compose-expanded configuration,
+secret files, credentials, database rows, or full `docker inspect` output.
 
-```sh
-DB_CONTAINER=terento-catalog-catalog-db-1
+- Identify the exact production DB container ID and immutable image ID/digest;
+  confirm it is running and belongs to the expected Compose project.
+- Read database identity, PostgreSQL server version, migration ledger and
+  selected row counts through an explicit read-only transaction. Record only
+  database/user/schema/version, counts, and migration versions.
+- Confirm `pg_dump --version` and `pg_restore --version` inside the approved
+  container. Both must be PostgreSQL 16 tooling compatible with the live
+  server; stop if either is missing or mismatched.
+- Verify an existing credential source that works with `--no-password`, such
+  as a mounted, protected `PGPASSFILE` readable only to the dump process or an
+  already-approved local socket-auth path. Never put a password in command
+  arguments, a URL, shell history, SQL, logs, or this repository. Do not infer
+  that container environment values are safe to print or relay.
+- Recheck free space and mount identity. `/var/lib/terento/backups` must be
+  on the intended VPS filesystem and have no symlink components. Create it
+  only during the separately authorized backup operation, as `root:root`
+  mode `0700`; archive and receipt files must be `root:root` mode `0600`.
+- Confirm enough free space for the compressed custom archive, a second
+  temporary restore database/volume, and normal production headroom. The
+  restore target must use a separately verified PostgreSQL 16 image digest
+  and required extensions.
 
-docker inspect --format '{{.Id}} {{.Image}}' "$DB_CONTAINER"
-docker exec "$DB_CONTAINER" pg_dump --version
-docker exec "$DB_CONTAINER" pg_restore --version
+If the credential source, container identity, versions, free space, or paths
+cannot be verified without exposing secrets, stop. A database name or count
+is not a secret, but no row values or identifying device data belong in the
+receipt.
 
-# PGPASSFILE must name an already-mounted, protected file; the path is not a
-# password. If no such credential path is configured, stop rather than inline
-# or print credentials.
-docker exec \
-  --user postgres \
-  --env PGPASSFILE=/approved/mounted/path/catalog.pgpass \
-  -i "$DB_CONTAINER" sh -eu -s <<'IN_CONTAINER'
-test -r "$PGPASSFILE"
-psql -X --no-password -At \
-  --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" \
-  --command="SELECT current_database(), current_user, current_schema(), current_setting('server_version');"
-IN_CONTAINER
-```
+## Logical dump procedure (future, requires approval)
 
-Record the query's database/role/server-version result privately. Confirm it
-matches the intended production database. The `docker inspect` format above
-intentionally selects only container and image IDs; never replace it with an
-unfiltered `docker inspect` or `docker compose config` dump.
-
-### 2. Create, validate, and atomically publish the archive
-
-Use a root-owned directory on the already-confirmed encrypted filesystem. The
-staging directory and final bundle must be on the same filesystem. Keep the
-entire operation under a separately reviewed maintenance/backup lock so two
-operators cannot publish the same timestamp. Do not automatically delete older
-recovery points.
+Use a fresh unique UTC directory under `/var/lib/terento/backups`; do not use
+`/tmp`, the repository, an image layer, or a world-readable location. Use
+`umask 077`, `set -euo pipefail`, and no shell tracing. The following is a
+template: replace only non-secret placeholders after preflight. `PGPASSFILE`
+must already be securely mounted; do not create or copy credentials as part
+of an ad-hoc command.
 
 ```sh
-set -euo pipefail
 umask 077
-
-BACKUP_ROOT=/approved/encrypted/backup/path/terento-catalog
+set -euo pipefail
+DB_CONTAINER='__verified_container_name_or_id__'
+BACKUP_ROOT=/var/lib/terento/backups
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-install -d -o root -g root -m 0700 "$BACKUP_ROOT"
-STAGE=$(mktemp -d "$BACKUP_ROOT/.stage-${STAMP}.XXXXXX")
-chmod 0700 "$STAGE"
-FINAL="$BACKUP_ROOT/$STAMP"
-test ! -e "$FINAL"
+FINAL="$BACKUP_ROOT/terento-catalog-$STAMP"
+STAGE="$BACKUP_ROOT/.stage-$STAMP"
+test ! -e "$FINAL" && test ! -e "$STAGE"
+test ! -L "$BACKUP_ROOT"
+if test -e "$BACKUP_ROOT"; then
+  test -d "$BACKUP_ROOT"
+  test "$(stat -c '%u:%g:%a' "$BACKUP_ROOT")" = '0:0:700'
+else
+  install -d -o root -g root -m 0700 "$BACKUP_ROOT"
+fi
+mkdir -m 0700 "$STAGE"
+chown root:root "$STAGE"
 
-# This writes a single-database custom-format dump to the encrypted staging
-# filesystem. PGPASSFILE must already be mounted and readable by the postgres
-# OS user inside this container. The command fails instead of prompting.
-docker exec \
-  --user postgres \
-  --env PGPASSFILE=/approved/mounted/path/catalog.pgpass \
+# DB_USER, DB_NAME, and PGPASSFILE are non-secret identifiers/path values
+# from the approved runtime configuration; never print their source env.
+docker exec --user postgres \
+  --env PGPASSFILE='__verified_existing_secret_file_path__' \
   "$DB_CONTAINER" sh -eu -c '
     test -r "$PGPASSFILE"
     exec pg_dump --no-password --format=custom --lock-wait-timeout=30s \
       --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"
   ' > "$STAGE/catalog.dump.partial"
-
 test -s "$STAGE/catalog.dump.partial"
+chown root:root "$STAGE/catalog.dump.partial"
 chmod 0600 "$STAGE/catalog.dump.partial"
 
-# Parse the archive TOC with the PostgreSQL container client; suppress object
-# names from terminal output. This is a structural check, not a restore test.
+# Validate the archive structure without exposing its TOC/object names.
 docker exec -i "$DB_CONTAINER" pg_restore --list - \
   < "$STAGE/catalog.dump.partial" > /dev/null
-
 mv -- "$STAGE/catalog.dump.partial" "$STAGE/catalog.dump"
-sha256sum "$STAGE/catalog.dump" > "$STAGE/SHA256SUMS"
+(cd "$STAGE" && sha256sum catalog.dump > SHA256SUMS)
+chown root:root "$STAGE/SHA256SUMS"
 chmod 0600 "$STAGE/SHA256SUMS"
-stat -c '%s bytes; mode=%a; owner=%U:%G' "$STAGE/catalog.dump"
-```
-
-Before continuing, write a root-only `manifest.txt` in `STAGE` with only:
-
-- UTC start/end timestamps;
-- VPS identifier and exact DB container ID/image ID or immutable image digest;
-- `current_database()`, `current_user`, schema, server version, `pg_dump`, and
-  `pg_restore` versions;
-- archive format, byte size, SHA-256, file mode, owner/group, and encrypted
-  storage destination identifier;
-- the accepted recovery point/RPO and operator identity;
-- the dump and archive-list check exit statuses.
-
-Do not include credentials, environment dumps, table rows, raw SQL, or full
-diagnostic output. Confirm the archive checksum, mode `0600`, owner `root:root`,
-and stage directory mode `0700`. Then atomically publish the complete bundle
-with a same-filesystem directory rename, only if `FINAL` is still absent:
-
-```sh
+stat -c '%s %a %U:%G' "$STAGE/catalog.dump"
 test ! -e "$FINAL"
 mv -T -- "$STAGE" "$FINAL"
 ```
 
-An incomplete staging directory is never a backup. A successful rename only
-proves atomic publication on that filesystem; it does not prove recoverability.
-Keep the encrypted local bundle until an independently stored copy has been
-transferred and its SHA-256 rechecked. Do not label the backup verified until
-the isolated restore below succeeds and its evidence is recorded.
+The credential variables above are deliberately placeholders: confirm the
+container actually receives the approved identifiers and password file
+without printing them. If this cannot be done safely, do not substitute
+`PGPASSWORD` on a command line. The `docker exec` invocation must run
+`pg_dump -Fc` with `--no-password`; an absent/invalid credential must fail
+closed. On any dump, archive-list, checksum, permission, or rename failure,
+do not call the partial output a backup.
 
-If the approved encrypted destination requires client-side encryption instead
-of encrypted filesystem storage, the dump stream must pass through a separately
-installed and reviewed encryptor using only an approved recipient key. That
-encryptor and key are not currently identified; do not invent a command or
-write plaintext to disk while waiting for one. Decrypt only into a protected,
-short-lived scratch area for validation.
+Write a root-only manifest alongside the archive containing only the UTC
+start/end, VPS ID, DB container/image IDs, database/schema/user, server and
+client versions, archive filename/size/SHA-256, ownership/mode, exit statuses,
+selected table counts and migration ledger. Include no credentials, row
+contents, raw SQL, or full command environment. Record counts for
+`device_model`, `compatibility_evidence_event`, and `map_download_event`, plus
+`schema_migrations` and the `compatibility_model_statistics` view. Record the
+complete migration version ledger. The pre-dump counts and ledger must be
+captured read-only and rechecked against the restored database.
 
-## Isolated restore validation
+`pg_dump` is transaction-consistent but does not freeze subsequent writes or
+include cluster-wide roles/tablespaces. Record the accepted recovery point and
+RPO. Preserve ownership/ACL metadata in the archive. If non-default
+tablespaces or required roles cannot be reproduced in the isolated instance,
+record that limitation or stop; never add production role passwords or use
+`pg_dumpall` as a shortcut.
 
-Run only after a backup has been created in a separate, approved operation.
-Prefer a disposable lab host. If an owner separately approves using the
-production VPS for the rehearsal, first confirm that disk, memory, and CPU
-headroom are adequate; the rehearsal itself must remain disconnected from
-production services and networks.
+## Isolated PostgreSQL 16 restore (future, requires approval)
 
-1. Verify the published bundle's SHA-256 before decrypting or mounting it. Use
-   a fresh scratch directory with mode `0700` on encrypted storage or a
-   sufficiently sized protected temporary filesystem. Never overwrite the
-   published archive during validation.
-2. Start one uniquely named throwaway PostgreSQL container from an immutable
-   image digest matching the source PostgreSQL major version and required
-   extensions. Give it a new private data directory on a sufficiently sized
-   protected tmpfs (or an approved encrypted scratch volume). Set Docker
-   network mode to `none`, publish no ports, mount only the archive read-only,
-   and do not attach the production DB data volume, production Docker network,
-   production Compose project, or production environment files. Confirm these
-   properties from narrow `docker inspect` fields before restore. This is a
-   template only; fill each placeholder from separately verified local state:
+Use a unique throwaway PostgreSQL 16 container and a new named volume that is
+not used by production. Pin its image by the verified immutable digest and
+ensure required extensions are present. Do not mount production data, Compose
+files, environment files, secrets, sockets, or networks. Publish no ports.
+Use `--network none` (stronger isolation than an internal production network)
+and mount only the verified archive read-only. Generate a unique temporary
+database password into a root-only secret file; mount it read-only into this
+throwaway container. Do not print it or include it in command arguments or
+logs. Do not use production credentials.
 
-   ```sh
-   RESTORE_CONTAINER=terento-restore-check-__UNIQUE_SUFFIX__
-   RESTORE_ARCHIVE=/protected/scratch/__REPLACE_WITH_ARCHIVE_PATH__
-   PGDATA_TMPFS_SIZE=__REPLACE_WITH_MEASURED_SIZE__
-   APPROVED_POSTGRES_IMAGE=__REPLACE_WITH_APPROVED_IMAGE_DIGEST__
+Illustrative command skeleton (all identifiers, paths and the image digest
+must be verified before separately approved execution):
 
-   docker run --pull=never --detach --name "$RESTORE_CONTAINER" \
-     --network none \
-     --tmpfs "/var/lib/postgresql/data:rw,noexec,nosuid,size=$PGDATA_TMPFS_SIZE" \
-     --mount "type=bind,src=$RESTORE_ARCHIVE,dst=/restore/catalog.dump,readonly" \
-     --env POSTGRES_HOST_AUTH_METHOD=trust \
-     "$APPROVED_POSTGRES_IMAGE"
-   ```
+```sh
+umask 077
+RESTORE_NAME="terento-pg16-restore-$STAMP"
+RESTORE_VOLUME="terento-pg16-restore-$STAMP"
+RESTORE_PASSWORD_FILE="$FINAL/.restore-password"
+RESTORE_PGPASS_FILE="$FINAL/.restore-pgpass"
+RESTORE_IMAGE='__verified_postgresql_16_image@sha256:...__'
+RESTORE_PASSWORD=$(openssl rand -hex 32)
+printf '%s' "$RESTORE_PASSWORD" > "$RESTORE_PASSWORD_FILE"
+printf '127.0.0.1:5432:*:postgres:%s\n' "$RESTORE_PASSWORD" > "$RESTORE_PGPASS_FILE"
+unset RESTORE_PASSWORD
+chown root:root "$RESTORE_PASSWORD_FILE" "$RESTORE_PGPASS_FILE"
+chmod 0600 "$RESTORE_PASSWORD_FILE" "$RESTORE_PGPASS_FILE"
 
-   The `__REPLACE_...__` values are deliberately non-runnable placeholders. Do
-   not use them literally or select an unverified image. `trust` applies only to
-   this isolated container under the network/mount restrictions above.
-3. If archive decryption is needed, decrypt only into the protected scratch
-   area and verify its SHA-256 against the recorded plaintext checksum, if one
-   was recorded. Keep private keys out of command arguments, logs, terminal
-   output, and the repository. Remove the plaintext scratch copy after the
-   test.
-4. Initialize a fresh empty validation database from `template0`. A temporary
-   `trust` authentication setting is acceptable only inside this one-off
-   container while it has `network=none`, no published ports, no production
-   mounts, and no other services; destroy that isolated instance after the
-   test. Never change production authentication to `trust`.
-5. A DB-only archive does not contain global roles. For a schema/data restore
-   check, restore into the empty validation database with
-   `pg_restore --exit-on-error --single-transaction --no-owner --no-acl` and
-   explicitly record that this did not validate production role ownership or
-   grants. For a fuller database-object check, create only the required role
-   names as `NOLOGIN` roles in the isolated instance from a reviewed,
-   secret-free role manifest, then restore without `--no-owner` or `--no-acl`.
-   Do not add production role passwords or use a cluster-wide `pg_dumpall`.
-6. Restore without `--clean` and without `--create` into the newly created
-   scratch database. Use `--exit-on-error`; `--single-transaction` is preferred
-   for an all-or-nothing test, and do not combine it with parallel jobs. For
-   example, after verifying the exact throwaway container and archive paths:
+docker volume create "$RESTORE_VOLUME"
+docker run --pull=never --detach --name "$RESTORE_NAME" \
+  --network none \
+  --mount "type=volume,src=$RESTORE_VOLUME,dst=/var/lib/postgresql/data" \
+  --mount "type=bind,src=$RESTORE_PASSWORD_FILE,dst=/run/secrets/pg-password,readonly" \
+  --mount "type=bind,src=$RESTORE_PGPASS_FILE,dst=/run/secrets/pgpass,readonly" \
+  --mount "type=bind,src=$FINAL/catalog.dump,dst=/restore/catalog.dump,readonly" \
+  --env POSTGRES_PASSWORD_FILE=/run/secrets/pg-password \
+  "$RESTORE_IMAGE"
 
-   ```sh
-   docker exec "$RESTORE_CONTAINER" \
-     createdb --username=postgres --template=template0 terento_restore_validation
+# Inspect only container ID, image ID, network mode, mounts and published ports.
+docker inspect --format '{{.Id}} {{.Image}} {{.HostConfig.NetworkMode}} {{json .Mounts}} {{json .NetworkSettings.Ports}}' "$RESTORE_NAME"
+ready=false
+for attempt in $(seq 1 60); do
+  if docker exec --env PGPASSFILE=/run/secrets/pgpass "$RESTORE_NAME" \
+    pg_isready --host=127.0.0.1 --username=postgres --dbname=postgres >/dev/null; then
+    ready=true
+    break
+  fi
+  sleep 2
+done
+test "$ready" = true
+docker exec --env PGPASSFILE=/run/secrets/pgpass "$RESTORE_NAME" \
+  createdb --host=127.0.0.1 --username=postgres --template=template0 terento_restore_validation
+docker exec --env PGPASSFILE=/run/secrets/pgpass "$RESTORE_NAME" \
+  pg_restore --host=127.0.0.1 --username=postgres --exit-on-error --single-transaction \
+    --dbname=terento_restore_validation /restore/catalog.dump
+```
 
-   docker exec "$RESTORE_CONTAINER" \
-     pg_restore --username=postgres --exit-on-error --single-transaction \
-       --no-owner --no-acl \
-       --dbname=terento_restore_validation /restore/catalog.dump
-   ```
+The password values above are generated at runtime and are never printed or
+placed in a Docker command argument; Docker receives only paths to root-only,
+read-only mounted files. Do not run `docker inspect` without the narrow format
+above because its full output can expose configuration. Before the restore,
+independently confirm the exact container ID, image digest, volume, network,
+mounts, and absence of published ports. If the verified PostgreSQL image uses
+a different supported data path or secret-file behavior, stop and review the
+command before running it.
 
-   The second command performs a schema/data check only; use the reviewed
-   `NOLOGIN`-role path in step 5 for ownership/ACL validation. Any failure means
-   the restore validation failed; discard only that exact throwaway
-   database/container and investigate. Never retry against a production
-   database. PostgreSQL notes that restore executes SQL from the archive, which
-   is another reason this clone must have no network or production mounts
-   ([`pg_restore` documentation](https://www.postgresql.org/docs/16/app-pgrestore.html)).
-7. On the restored clone, compare the source receipt with read-only results:
-   server/encoding/collation, expected schemas and relation signatures, the
-   complete `schema_migrations` ledger, selected table row counts recorded
-   before the dump, and the target migration state. Do not print row data.
-   Missing extensions/roles, count or schema mismatches, a different unexpected
-   ledger, warnings indicating omitted objects, or incomplete output are a
-   hard FAIL. Record exact client/server versions and pass/fail results.
-8. Only after the checks pass, mark the recovery point **restore-tested** for
-   the tested scope, not as a proof of PITR, cluster-global role recovery, or
-   full-VPS recovery. Remove only the exact disposable container and scratch
-   paths after confirming their recorded IDs/paths; retain the encrypted
-   published archive and its receipt according to the approved retention
-   policy.
+Because `pg_dump` does not include global roles, inventory object owners and
+grantees without exposing row data. For a full ownership/ACL restore, create
+only the required role names as `NOLOGIN` roles from a reviewed, secret-free
+role manifest in the isolated instance, then restore without `--no-owner` or
+`--no-acl`. Never copy production role passwords. If roles/grants are omitted
+with `--no-owner --no-acl`, record the result as a schema/data-only rehearsal,
+not a full restore validation, unless the owner explicitly accepts that scope.
 
-`pg_dump` creates a consistent snapshot without blocking normal readers or
-writers, but that does not stop later commits from occurring. Its output can
-restore to the same or a newer PostgreSQL major, not reliably to an older one;
-keep the isolated validation target on the same major and record its exact
-version ([PostgreSQL 16 `pg_dump` documentation](https://www.postgresql.org/docs/16/app-pgdump.html)).
+After confirming the container ID, image digest, volume, network, mounts and
+absence of published ports with narrow `docker inspect` fields:
 
-## Hard stop conditions
+0. Recheck the retained archive before using it: `(cd "$FINAL" && sha256sum
+   --check --status SHA256SUMS)` must exit 0.
+1. Create an empty validation database from `template0`.
+2. Run `pg_restore --exit-on-error --single-transaction` against only that
+   validation database. Use the approved role/ownership restoration plan;
+   if production roles are absent, a schema/data-only `--no-owner --no-acl`
+   restore does not validate ownership/grants and must be reported as such.
+3. Require restore exit status 0. Compare server/encoding/collation, required
+   schemas, tables, views, PK/FK/CHECK constraints, complete
+   `schema_migrations` ledger and highest version, plus pre-dump counts for
+   `device_model`, `compatibility_evidence_event`, and `map_download_event`.
+   Run read-only sanity SELECTs and verify
+   `compatibility_model_statistics`. Never print row data.
+4. Record the exact archive SHA, dump/restore/image versions, restore exit
+   status, ledger/count/schema checks, and PASS/FAIL in the root-only receipt.
+5. Only after all checks pass report **POSTGRESQL RESTORE VALIDATED** for this
+   database-only scope. Then, under the separately approved cleanup step,
+   remove only the exact temporary container and volume after verifying their
+   recorded IDs/names. Keep the production dump and receipt until 062 and
+   backend deployment have both been separately approved and verified.
 
-Stop without publishing or accepting a recovery point if any of these apply:
+For the separately approved cleanup, confirm the exact recorded temporary
+container and volume are not production objects; stop and remove only that
+container, remove only its named temporary volume, then unlink the two exact
+temporary credential files. Do not delete the archive, checksum, or receipt.
 
-- production container/database/role identity is ambiguous or differs from the
-  approved target;
-- server or client version check fails, the dump client is older than the
-  server major, or `pg_restore` is unavailable;
-- no already-provisioned private credential path works with `--no-password`;
-- encrypted-at-rest storage or the approved encryption/key path is unverified;
-- insufficient disk/temporary capacity, dump timeout/error, empty archive,
-  failed checksum/TOC parse, unsafe ownership/modes, or failed atomic rename;
-- the isolated clone can reach production, has a published port, or uses any
-  production data volume, environment file, or network;
-- restore, schema/ledger comparison, or selected count validation fails;
-- the backup exists only on the VPS but is being represented as protection
-  against VPS/disk loss.
+`pg_restore` executes SQL from the archive. The network/mount/volume isolation
+is mandatory, not optional. Any restore, count, schema, ledger, extension,
+ownership, or checksum mismatch is a hard FAIL. Do not retry against
+production, downgrade 062, or delete the known-good logical archive.
 
-Do not suppress a failing command with `|| true`, accept a partial archive, or
-infer success from file existence or size alone.
+## Hostinger whole-VPS recovery point
 
-## Hostinger whole-VPS fallback
+The Hostinger points listed above are stale for a pre-062 gate. Obtain separate
+owner approval before creating a fresh provider recovery point. Check the
+current hPanel summary immediately before confirming: exact VPS, selected
+backup/snapshot type, expected duration, retention/overwrite behavior, and
+availability impact. A new manual snapshot may overwrite the previous single
+snapshot. A provider restore replaces the whole VPS state; it is not a
+database-only rollback and may lose all changes after its timestamp. Do not
+restore it without a separate explicit approval naming the exact recovery
+point and target.
 
-The two currently listed Hostinger points (2026-09-19 and 2026-09-12 UTC) are
-not fresh accepted database recovery points for a later migration. A Hostinger
-backup/snapshot restore is a last-resort whole-server rollback, not a
-PostgreSQL-only restore: Hostinger warns that it overwrites the VPS's current
-content and is irreversible, so data and configuration created after the
-selected point can be lost; availability may also be affected while the VPS
-is restored ([Hostinger VPS backup and restore guidance](https://www.hostinger.com/support/1583232-how-to-back-up-or-restore-a-vps-at-hostinger/)).
-This can roll back application images, configuration, local files, and the
-database together, potentially reintroducing an older or incompatible
-application state. Refresh the available points, identify the exact point in
-time, assess the full-VPS data-loss window, and obtain separate explicit
-owner approval before any Hostinger restore. No Hostinger restore or test was
-performed for this procedure.
+After provider completion, verify its exact ID/timestamp is listed and record
+**HOSTINGER RECOVERY POINT READY** only if the owner accepts the point-in-time
+loss window and full-server restore semantics. Do not treat a requested,
+pending, expired, or unverified point as ready.

@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import fcntl
+import json
 import os
 from pathlib import Path
 import stat
@@ -33,6 +34,7 @@ class InstallerTests(unittest.TestCase):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
         root = Path(self.temporary_directory.name).resolve()
+        self.fixture_root = root
         self.sbin = root / "usr" / "local" / "sbin"
         self.sbin.mkdir(parents=True)
         os.chmod(self.sbin, 0o755)
@@ -42,6 +44,7 @@ class InstallerTests(unittest.TestCase):
         self.deploy_target = self.sbin / "terento-deploy"
         self.migration_target = self.sbin / "terento-deploy-migration.py"
         self.lock_path = self.state / "operations.lock"
+        self.backup_root = self.state
         self.deploy_target.write_bytes(b"old deployment helper\n")
         self.migration_target.write_bytes(b"old migration module\n")
         os.chmod(self.deploy_target, 0o755)
@@ -89,29 +92,35 @@ class InstallerTests(unittest.TestCase):
             mock.patch.object(INSTALLER, "DEPLOY_TARGET", self.deploy_target),
             mock.patch.object(INSTALLER, "MIGRATION_TARGET", self.migration_target),
             mock.patch.object(INSTALLER, "OPERATIONS_LOCK", self.lock_path),
+            mock.patch.object(INSTALLER, "BACKUP_ROOT", self.backup_root),
             mock.patch.object(INSTALLER.subprocess, "run", side_effect=fake_run),
             mock.patch.object(INSTALLER.os, "geteuid", return_value=0),
+            mock.patch.object(INSTALLER.os, "fchown", return_value=None),
+            mock.patch.object(INSTALLER.os, "chown", return_value=None),
         ]
         for patcher in self.patches:
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def _lstat_with_root_owned_targets(self, *, uid_overrides=None, mode_overrides=None):
+    def _lstat_with_root_owned_targets(self, *, uid_overrides=None, gid_overrides=None, mode_overrides=None):
         uid_overrides = uid_overrides or {}
+        gid_overrides = gid_overrides or {}
         mode_overrides = mode_overrides or {}
         original = INSTALLER.os.lstat
 
         def spoofed(path):
             entry = original(path)
             key = Path(path)
-            uid = uid_overrides.get(key, entry.st_uid)
+            fixture_root = self.fixture_root
+            in_fixture = key == fixture_root or fixture_root in key.parents
+            uid = uid_overrides.get(key, 0 if in_fixture else entry.st_uid)
+            gid = gid_overrides.get(key, 0 if in_fixture else entry.st_gid)
             mode = mode_overrides.get(key, entry.st_mode)
-            if uid == entry.st_uid and mode == entry.st_mode:
+            if uid == entry.st_uid and gid == entry.st_gid and mode == entry.st_mode:
                 return entry
-            class Entry:
-                st_mode = mode
-                st_uid = uid
-            return Entry()
+            values = {name: getattr(entry, name) for name in dir(entry) if name.startswith("st_")}
+            values.update(st_mode=mode, st_uid=uid, st_gid=gid)
+            return type("Entry", (), values)()
 
         return mock.patch.object(INSTALLER.os, "lstat", side_effect=spoofed)
 
@@ -131,6 +140,11 @@ class InstallerTests(unittest.TestCase):
             return type("RootStat", (), {
                 "st_mode": entry.st_mode,
                 "st_uid": 0,
+                "st_gid": 0,
+                "st_dev": entry.st_dev,
+                "st_ino": entry.st_ino,
+                "st_size": entry.st_size,
+                "st_mtime_ns": entry.st_mtime_ns,
             })()
 
         return [lstat_patch, mock.patch.object(INSTALLER.os, "fstat", side_effect=root_fstat)]
@@ -183,7 +197,7 @@ class InstallerTests(unittest.TestCase):
             "sys.stderr", new_callable=__import__("io").StringIO
         ) as stderr:
             self.assertEqual(self._invoke(["--apply", "--confirm-production-helper-update"]), 2)
-        self.assertIn("requires root", stderr.getvalue())
+        self.assertIn("require root", stderr.getvalue())
         self.assertFalse(self.lock_path.exists())
 
     def test_dirty_and_untracked_checkout_are_refused(self):
@@ -243,12 +257,12 @@ class InstallerTests(unittest.TestCase):
                 self.assertEqual(self._invoke([]), 2)
         self.assertFalse(self.lock_path.exists())
 
-    def test_missing_target_and_parent_are_rejected_without_creation(self):
+    def test_missing_migration_target_is_allowed_but_missing_parent_is_rejected_without_creation(self):
         self.migration_target.unlink()
         with self._successful_metadata_patches()[0], mock.patch(
             "sys.stderr", new_callable=__import__("io").StringIO
         ):
-            self.assertEqual(self._invoke([]), 2)
+            self.assertEqual(self._invoke([]), 0)
         self.assertTrue(self.migration_target.parent.is_dir())
         self.assertFalse(self.migration_target.exists())
 
@@ -259,6 +273,106 @@ class InstallerTests(unittest.TestCase):
         ):
             self.assertEqual(self._invoke([]), 2)
         self.assertFalse(missing_parent.exists())
+
+    def test_first_install_records_absent_module_and_rollback_removes_it(self):
+        self.migration_target.unlink()
+        original_deploy = self.deploy_target.read_bytes()
+        metadata = self._successful_metadata_patches()
+        with metadata[0], metadata[1], mock.patch("sys.stdout", new_callable=__import__("io").StringIO) as stdout:
+            self.assertEqual(self._invoke(["--apply", "--confirm-production-helper-update"]), 0)
+        self.assertEqual(self.deploy_target.read_bytes(), self.deploy_source)
+        self.assertEqual(self.migration_target.read_bytes(), self.migration_source)
+        rollback_id = next(
+            line.split(maxsplit=1)[1]
+            for line in stdout.getvalue().splitlines()
+            if line.startswith("rollback-state ")
+        )
+        record_dir = self.backup_root / rollback_id
+        manifest = json.loads((record_dir / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(stat.S_IMODE(record_dir.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE((record_dir / "manifest.json").stat().st_mode), 0o600)
+        deploy_record = manifest["targets"][str(self.deploy_target)]
+        self.assertEqual(deploy_record["sha256"], hashlib.sha256(original_deploy).hexdigest())
+        self.assertEqual(deploy_record["mode"], 0o755)
+        self.assertEqual(manifest["targets"][str(self.migration_target)]["state"], "ABSENT")
+
+        with metadata[0], metadata[1], mock.patch("sys.stdout", new_callable=__import__("io").StringIO):
+            self.assertEqual(
+                self._invoke(["--rollback", rollback_id, "--confirm-production-helper-rollback"]), 0
+            )
+        self.assertEqual(self.deploy_target.read_bytes(), original_deploy)
+        self.assertFalse(self.migration_target.exists())
+
+    def test_rollback_refuses_unexpectedly_modified_installed_helper(self):
+        self.migration_target.unlink()
+        metadata = self._successful_metadata_patches()
+        with metadata[0], metadata[1], mock.patch("sys.stdout", new_callable=__import__("io").StringIO) as stdout:
+            self.assertEqual(self._invoke(["--apply", "--confirm-production-helper-update"]), 0)
+        rollback_id = next(
+            line.split(maxsplit=1)[1]
+            for line in stdout.getvalue().splitlines()
+            if line.startswith("rollback-state ")
+        )
+        self.deploy_target.write_bytes(b"unexpected third-party change\n")
+        os.chmod(self.deploy_target, 0o755)
+        with metadata[0], metadata[1], mock.patch("sys.stderr", new_callable=__import__("io").StringIO) as stderr:
+            self.assertEqual(
+                self._invoke(["--rollback", rollback_id, "--confirm-production-helper-rollback"]), 2
+            )
+        self.assertIn("changed since backup", stderr.getvalue())
+        self.assertEqual(self.deploy_target.read_bytes(), b"unexpected third-party change\n")
+
+    def test_existing_helper_pair_is_restored_from_backed_up_bytes(self):
+        original_deploy = self.deploy_target.read_bytes()
+        original_migration = self.migration_target.read_bytes()
+        metadata = self._successful_metadata_patches()
+        with metadata[0], metadata[1], mock.patch("sys.stdout", new_callable=__import__("io").StringIO) as stdout:
+            self.assertEqual(self._invoke(["--apply", "--confirm-production-helper-update"]), 0)
+        rollback_id = next(
+            line.split(maxsplit=1)[1]
+            for line in stdout.getvalue().splitlines()
+            if line.startswith("rollback-state ")
+        )
+        with metadata[0], metadata[1], mock.patch("sys.stdout", new_callable=__import__("io").StringIO):
+            self.assertEqual(
+                self._invoke(["--rollback", rollback_id, "--confirm-production-helper-rollback"]), 0
+            )
+        self.assertEqual(self.deploy_target.read_bytes(), original_deploy)
+        self.assertEqual(self.migration_target.read_bytes(), original_migration)
+
+    def test_partial_first_install_failure_can_be_rolled_back(self):
+        self.migration_target.unlink()
+        original_deploy = self.deploy_target.read_bytes()
+        metadata = self._successful_metadata_patches()
+        real_replace = os.replace
+        replace_count = 0
+
+        def fail_second_replace(source, destination):
+            nonlocal replace_count
+            replace_count += 1
+            if replace_count == 2:
+                raise OSError("simulated executable-helper replacement failure")
+            real_replace(source, destination)
+
+        with metadata[0], metadata[1], mock.patch.object(INSTALLER.os, "replace", side_effect=fail_second_replace), \
+                mock.patch("sys.stdout", new_callable=__import__("io").StringIO) as stdout, \
+                mock.patch("sys.stderr", new_callable=__import__("io").StringIO) as stderr:
+            self.assertEqual(self._invoke(["--apply", "--confirm-production-helper-update"]), 2)
+        self.assertEqual(self.deploy_target.read_bytes(), original_deploy)
+        self.assertFalse(self.migration_target.exists())
+        self.assertIn("previous helper state was restored", stderr.getvalue())
+        rollback_id = next(
+            line.split(maxsplit=1)[1]
+            for line in stdout.getvalue().splitlines()
+            if line.startswith("rollback-state ")
+        )
+
+        with metadata[0], metadata[1], mock.patch("sys.stdout", new_callable=__import__("io").StringIO):
+            self.assertEqual(
+                self._invoke(["--rollback", rollback_id, "--confirm-production-helper-rollback"]), 0
+            )
+        self.assertEqual(self.deploy_target.read_bytes(), original_deploy)
+        self.assertFalse(self.migration_target.exists())
 
     def test_apply_uses_nonblocking_operations_lock(self):
         root_patches = self._successful_metadata_patches()
@@ -323,8 +437,8 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(self.deploy_target.read_bytes(), self.deploy_source)
         self.assertEqual(stat.S_IMODE(self.migration_target.stat().st_mode), 0o755)
         self.assertEqual(stat.S_IMODE(self.deploy_target.stat().st_mode), 0o755)
-        self.assertEqual(fchown_calls, [(0, 0), (0, 0)])
-        self.assertEqual(fchmod_modes, [0o755, 0o755])
+        self.assertEqual(fchown_calls, [(0, 0)] * 5)
+        self.assertEqual(fchmod_modes, [0o755, 0o755, 0o600, 0o600, 0o600])
         self.assertGreaterEqual(len(fsync_calls), 4)
         self.assertEqual(len(list(self.sbin.iterdir())), 2)
         self.assertIn(self.revision, stdout.getvalue())

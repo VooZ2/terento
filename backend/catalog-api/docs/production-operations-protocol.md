@@ -140,11 +140,42 @@ installed.
 
 The owner installer verifies clean Git state, both tracked canonical paths,
 the full commit id, AST parseability, root-owned safe destinations, and the
-shared lock. It stages same-directory root-owned mode-0755 files, replaces the
-migration module first and helper last, and never calls Docker, Compose,
-systemd, SQL, or deployment commands. Its apply mode changes production helper
-files and was not run in this task. Because the old helper may not share the
-new lock, the owner must separately authorize and schedule a quiescent install.
+shared lock. The migration-module destination may be absent on first install;
+its parent must already exist and be secure. Before replacing either file,
+apply creates `/var/lib/terento/deployment/<UTC timestamp>-<source SHA>/` as
+`root:root` mode `0700`. The root-only manifest records each target as
+`PRESENT` (backup bytes, SHA-256, owner/group and mode) or `ABSENT`; backup
+files and manifest are `root:root` mode `0600`. The installer stages
+same-directory root-owned mode-0755 files, replaces the migration module
+first and executable helper last, and prints the rollback ID before the first
+replacement. Each rename is atomic; the pair is not one filesystem
+transaction. If a caught install step fails, the installer attempts to roll
+back automatically and reports whether that completed; the saved rollback ID
+remains usable for explicit recovery. A crash or power loss can still interrupt
+between renames, so inspect the target hashes and use the recorded rollback
+procedure rather than assuming either complete state. The installer never
+calls Docker, Compose, systemd, SQL, or deployment commands. Apply changes
+production helper files and has not been run. Because the old helper may not
+share the new lock, the owner must separately authorize and schedule a
+quiescent install.
+
+If rollback is required, use the clean committed installer from the recorded
+source revision with:
+
+```sh
+python3 scripts/infra/install-terento-production-ops.py \
+  --rollback <recorded-rollback-id> \
+  --confirm-production-helper-rollback
+```
+
+Rollback verifies the saved bytes and current installed hashes before changing
+either target. It restores prior bytes/owner/mode atomically, or removes the
+migration helper if its recorded pre-install state was `ABSENT`. Unexpected
+post-install file changes fail closed. The rollback record is retained for
+operator review; cleanup needs a separate decision. Do not change the existing
+`/usr/local/bin/terento-ops-entry` forced-command entrypoint. After a future
+authorized install, run only `terento-deploy api status`; do not run MIGRATE or
+DEPLOY as part of install validation.
 
 ## Required future gate order for target 062
 
@@ -156,10 +187,11 @@ new lock, the owner must separately authorize and schedule a quiescent install.
    invocation is required, separately review/install the SSH template and
    sudo policy. Capture helper source hashes and prove the actual installed
    version.
-3. Resolve/accept a specific recovery point. Prefer a fresh PostgreSQL-only
-   dump whose checksum and isolated restore are validated. If unavailable,
-   explicitly accept the exact Hostinger whole-VPS recovery point and its
-   point-in-time data loss and full-server replacement consequences.
+3. Resolve/accept both recovery layers: a fresh Hostinger VPS backup/snapshot
+   for off-host disaster recovery and a fresh PostgreSQL-only dump stored
+   root-only on the VPS whose checksum and isolated PostgreSQL 16 restore are
+   validated. A VPS-local logical dump alone is not protection against VPS or
+   disk loss.
 4. Run read-only STATUS; independently confirm the correct DB, API/scheduler
    image identity, ledger, and target environment. Do not use `/health` as the
    status command.

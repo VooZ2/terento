@@ -400,7 +400,17 @@ def main() -> int:
     publisher_build = publisher.index("name: Build and publish immutable release")
     assert publisher_validation < publisher_build
     assert publisher.index('git status --porcelain=v1 --untracked-files=all', publisher_validation) < publisher.index('docker build --platform linux/amd64', publisher_build)
-    assert publisher.index('git show --check --oneline "$GITHUB_SHA"', publisher_validation) < publisher.index('docker push "$image:sha-$GITHUB_SHA"', publisher_build)
+    assert publisher.index('git show --check --oneline "$GITHUB_SHA"', publisher_validation) < publisher.index('docker push "$image:$image_tag"', publisher_build)
+    assert 'image_tag="candidate-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"' in publisher
+    assert 'CANDIDATE_SOURCE_SHA: ${{ inputs.candidate_source_sha }}' in publisher
+    assert 'image_tag="sha-$GITHUB_SHA"' in publisher
+    assert "state=active" in publisher and "state=deleted" not in publisher
+    assert 'grep -Fqx -- "$image_tag"' in publisher
+    assert 'local_image_id="$(docker image inspect --format \'{{.Id}}\' "$image:$image_tag")"' in publisher
+    assert '[[ "$pulled_image_id" == "$local_image_id" ]]' in publisher
+    assert 'docker push "$image:latest"' not in publisher
+    assert 'docker push "$image:current"' not in publisher
+    assert 'docker push "$image:production"' not in publisher
     assert '[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]' in publisher
     assert '[[ "$GITHUB_SHA" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
 
@@ -417,6 +427,13 @@ def main() -> int:
     assert '"$runner_sha" == "$PUBLISHED_RUNNER_SHA"' in receipt
     assert '"- Source commit: $SOURCE_SHA"' in receipt
     assert '"- Image digest: $IMAGE_DIGEST"' in receipt
+    for helper in (
+        "terento-deploy.py SHA-256 (source)",
+        "terento-deploy-migration.py SHA-256 (source)",
+        "install-terento-production-ops.py SHA-256 (source)",
+        "terento-deploy-ssh-entry.py.in SHA-256 (source; not installed)",
+    ):
+        assert helper in receipt
     assert 'name: catalog-migration-candidate-${{ github.sha }}-${{ github.run_id }}' in receipt
     assert "Approval: NOT GRANTED" in candidate
     rejection = (WORKFLOWS / "check-vps-access.yml").read_text(encoding="utf-8")

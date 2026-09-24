@@ -62,12 +62,13 @@ operations are distinct:
   Images with 063+ are refused until a separately reviewed migration gate is
   implemented. The variable is not set by this task.
 
-The canonical helper, migration module, installer, and tests are prepared in
-the local working tree but remain untracked/uncommitted and are **not installed
-on the VPS**. The forced-SSH template has also not been installed; therefore
-these command forms are not currently available remotely. The owner-run
-installer requires a clean committed checkout and a separate authorized apply
-step. No production migration or deployment is authorized by this code.
+The candidate source includes the canonical helper, migration module,
+first-install-aware installer, tests, and the tracked SSH template. None is
+installed on the VPS. The existing forced-SSH entrypoint remains unchanged;
+the template is not installed by this helper installer, so those remote
+command forms are not available. The owner-run installer requires a clean
+committed checkout and a separate authorized apply step. No production
+migration or deployment is authorized by this code.
 
 The operations share one non-blocking host lock for deploy and migration;
 read-only status does not take the lock. The migration runner verifies an
@@ -85,20 +86,24 @@ the production scheduler configuration was read as
 daily cleanup may lag by up to 24 hours, which is accepted behavior. This
 candidate implementation has not been deployed. See the
 [production operations protocol](production-operations-protocol.md) and
-[recovery procedure](production-db-recovery.md) for exact gates. Fresh
-PostgreSQL-only backup creation/restore validation remains unproven: the DB
-container provides `pg_dump` and `pg_restore` 16.15, matching the live server
-version, and the live DB identity/ledger were read-only verified. No approved
-encrypted off-host destination or isolated restore evidence is available. The
-Hostinger points are whole-VPS restores and require owner selection and
-acceptance; they are not a normal schema rollback.
+[VPS-only recovery procedure](production-db-recovery.md) for exact gates. The
+last read-only shell observation (2026-09-23) confirmed `pg_dump` 16.15 inside
+the database container; `pg_restore`, current image identity, secure credential
+path, and the selected root-only destination still need read-only verification.
+No PostgreSQL archive or isolated restore validation exists. Hostinger's
+refreshed 2026-09-24 listing contains only the older whole-VPS points
+`52757820` and `51894425`, and no usable current snapshot. Neither is accepted
+as the fresh pre-062 recovery point.
 
-062 is still **NOT READY** for live approval or execution: the tracked source
-candidate is clean, but no immutable image/receipt or validated PostgreSQL
-recovery point exists; the new helper has not been installed, and the recovery
-point gate remains open. Do not call Docker/migrator directly, create a backup,
-deploy, or run the migration without separate authorization. If execution
-status is uncertain, use the SELECT-only postcheck; never replay SQL or downgrade.
+062 remains **NOT READY** for live approval or execution until the candidate
+source is committed, reviewed, pushed and built into a verified immutable
+image; both recovery gates pass (fresh Hostinger recovery point and validated
+VPS-local PostgreSQL 16 restore); and the helper is separately installed and
+validated with STATUS. Each operation requires its own explicit owner
+authorization. Do not call Docker/migrator directly, create a backup, install
+a helper, deploy, or run the migration without the applicable authorization.
+If execution status is uncertain, use the SELECT-only postcheck; never replay
+SQL or downgrade.
 
 ## Scheduled collection
 

@@ -3,7 +3,7 @@
 ## Status
 
 **NOT READY for separate 062 approval or execution.** The complete 2026-09-23
-live audit confirmed the drift below. The current local working tree contains
+live audit confirmed the drift below. The candidate source contains
 separate source implementations for read-only STATUS, root-owned MIGRATE
 `--target 062`, and the existing DEPLOY operation. Migration requires a pinned
 image digest, full revision, 062 SQL hash and runner hash; it verifies the
@@ -12,7 +12,7 @@ and does not invoke API/scheduler services. A shared non-blocking operations
 lock serializes migration and deployment. See
 [`production-operations-protocol.md`](production-operations-protocol.md).
 
-These files remain untracked/uncommitted and are not installed on the VPS. The
+The production helper and migration module are not installed on the VPS. The
 existing forced-SSH entry point remains unchanged; the tracked SSH template is
 not installed by the owner-run helper installer. Therefore neither the direct
 root commands nor status/migration SSH commands are currently available in
@@ -21,33 +21,38 @@ not bypass the root boundary with an ad-hoc Docker or shell command. The
 installed helper version was not inspected or updated.
 
 This document and its SQL checks are preparation only. They do not authorize a
-live migration, service change, deployment, or release. The 062
-SQL and runner changes are uncommitted working-tree content; there is no
-immutable candidate image digest/revision for this exact content yet. The
-no-commit requirement means migration-source pinning is still an unmet gate.
-For later artifact comparison only, the current local 062 SQL SHA-256 is
+live migration, service change, deployment, or release. The SQL and runner
+source must be bound to the exact clean candidate commit and immutable image
+receipt before execution; this preparation itself grants no permission to
+build, deploy, or migrate. For source comparison, the current 062 SQL SHA-256 is
 `92aa31455667de34701a9d4810bde282e0e648e5f42fa53163c397ad0a761203`; this is
-not proof that any published image contains those bytes.
+not proof that any image contains those bytes. The CI receipt must independently
+verify the image digest, embedded revision, migration inventory and file hash.
 
 ## Recovery-path audit (read-only provider check plus local evidence)
 
-On 2026-09-23, the authenticated Hostinger account API was used read-only to
-confirm the VPS is running and list provider backup points. A separate
-terminal check found no host `pg_dump`; the DB container reported
-`pg_dump (PostgreSQL) 16.15`. The account API returned two
-available VPS backup IDs: `52757820` created `2026-09-19T11:10:29Z`, and
-`51894425` created `2026-09-12T14:15:16Z`. The snapshot query returned no
-current snapshot (`id=0`). No backup was created, restored, or tested, and no
-database write was performed; prior production-shell use was limited to the
-reported client-version check and the SELECT-only schema audit. Hostinger
-describes these as whole-VPS backups; restoring one replaces the current VPS
-contents rather than performing a database-only restore ([Hostinger VPS backup and restore
-documentation](https://www.hostinger.com/support/1583232-how-to-back-up-or-restore-a-vps-at-hostinger/)).
-The read-only Hostinger VPS Docker Manager endpoint returned an unsupported-OS
-error for the installed Ubuntu system, so this API audit could not refresh the
-container/image/mount inventory or verify DB-container binaries, credentials,
-destination permissions, encryption, or free space. Those remain mandatory
-read-only shell checks before any backup procedure can be considered ready.
+On 2026-09-24, the authenticated Hostinger account API was used read-only to
+confirm VPS `1958677` (`rukas.terento.app`) is running and refresh provider
+recovery points. It lists `52757820` from 2026-09-19 11:10:29 UTC and
+`51894425` from 2026-09-12 14:15:16 UTC; the snapshot endpoint returns ID `0`,
+so neither is a fresh accepted pre-062 recovery point. The last VPS-shell
+check on 2026-09-23 found no host `pg_dump`; the DB container reported
+`pg_dump (PostgreSQL) 16.15`. No backup was created, restored or tested, and
+no database write was performed. Hostinger provider restore replaces the
+whole VPS, not only PostgreSQL ([Hostinger VPS backup and restore guidance](https://www.hostinger.com/support/1583232-how-to-back-up-or-restore-a-vps-at-hostinger/)).
+Hostinger's current help page says provider backups/restores can take 10 minutes
+to a few hours and lock the VPS from management until complete; availability
+and performance can vary, but it does not claim the VPS is necessarily
+stopped. Up to two daily and two weekly backups are retained, with each new
+backup replacing the oldest in its set. Only one manual snapshot exists; a new
+one overwrites it and it expires after one day. Restore overwrites the whole
+current VPS and cannot be canceled or reverted. Check the current hPanel action
+summary before scheduling.
+The Hostinger Docker Manager endpoint reports this Ubuntu OS is unsupported by
+that feature. `pg_restore`, container/image identity, a secure credential path,
+the proposed root-only backup directory, free space, and the PostgreSQL 16
+restore image digest remain to be verified read-only in the authenticated VPS
+shell; a provider-control-plane response does not verify these.
 
 `/deploy/` and `/internal/` are Git-ignored by `.gitignore`, so their paths
 below describe this workstation's operator material, not a guaranteed release
@@ -56,19 +61,20 @@ artifact or proof of what is installed on the VPS.
 | Mechanism / record | What the local evidence establishes | What it does not establish |
 | --- | --- | --- |
 | `deploy/hostinger/catalog/backup.sh` (ignored local file) | A manual PostgreSQL dump piped through gzip to a local directory; `umask 077`; default 14-day deletion of older matching files. | It backs up the database volume only, not `catalog-asset-data`; it has no `pipefail`, dump validation, checksum/restore verification, off-host copy, or timer installation. A `pg_dump` failure may be hidden by successful `gzip`. The ignored operator notes say not to enable it unchanged. It was not run during this audit. |
-| Hostinger VPS backup list (read-only account API, 2026-09-23) | Two provider VPS backup points were listed as available: `52757820` (2026-09-19 11:10:29 UTC) and `51894425` (2026-09-12 14:15:16 UTC). A current snapshot was not present. | The API listing does not prove a restore was tested or provide PostgreSQL-only recovery. A provider restore replaces the whole VPS. The operator/owner must choose and accept an exact backup ID and its recovery point before any separately approved migration. |
+| Hostinger VPS backup list (read-only account API, refreshed 2026-09-24) | Two provider VPS backup points are listed: `52757820` (2026-09-19 11:10:29 UTC) and `51894425` (2026-09-12 14:15:16 UTC). A current snapshot was not present. | Neither is the fresh pre-062 provider recovery point. The API listing does not prove restore; provider restore replaces the whole VPS. A fresh point requires separate owner approval. |
 | Hostinger backup notes in ignored `internal/infra/vps/deployment/MIGRATION.md` | The owner accepted a weekly-backup policy on 2026-09-06. The historical hPanel check reported no completed automatic backups and a manual snapshot at 2026-09-06 01:10, expiring 2026-09-07. | This older note predates the two backup points now listed by the read-only account API. It remains evidence only of the earlier state; it does not test provider restore. |
 | Historical stopped-writer export and restore | The ignored migration record reports a 2026-09-06 final database-and-assets bundle restored into fresh volumes: schema 034, 29 tables, 1,305 rows, asset hash/count checks, and native API checks passed. The earlier isolated rehearsal also passed at schema 034 with 29 tables and 1,303 rows. | These are historical logical restore results, not a Hostinger full-VPS backup restore and not a recovery point for the current schema through 061 or a future 062. The record said the final bundle was retained root-only at that time; its present availability was not verified. |
 | `restore-final-data.py` and its tests (ignored local operator material) | The one-time restore code verifies outer/member hashes and exact table counts, refuses existing destination volumes, and starts API only; its offline tests check refusal/preflight behavior without Docker. The historical migration record reports a successful execution. | The script is pinned to a historical schema-034 cutover and is not a general current-production/062 restore command. Offline refusal tests alone do not prove that a current backup can be restored. |
 | `internal/backups/beta11-*` | Local Git bundles and working-tree patches exist as source/repository recovery material. | They are not PostgreSQL or asset-volume backups. |
 
-An actual provider recovery point is currently listed, so a PostgreSQL dump is
-not the only possible recovery source. The 2026-09-19 point is the newest
-observed candidate; the owner must explicitly accept the point-in-time/RPO and
-the consequences of a whole-VPS restore before any separately approved 062
-execution. No restore rehearsal was done. The old schema-034 logical restore
-and PGlite migration tests are not substitutes for this provider recovery
-point or evidence of current database-only restore capability.
+The pre-062 gate requires both a fresh Hostinger whole-VPS recovery point and a
+fresh VPS-local PostgreSQL custom-format dump successfully restored into a
+separate PostgreSQL 16 instance. The logical dump validates database restore
+capability; it is not protection from VPS/disk loss. Mac is not part of this
+recovery path. The historical schema-034 restore and PGlite migration tests
+are not substitutes for either current recovery gate. See
+[`production-db-recovery.md`](production-db-recovery.md) for the future
+procedure; none of it was executed for this audit.
 
 ## Confirmed starting state
 
@@ -157,11 +163,11 @@ assume that a mismatch was harmless.
 `READY FOR 062` is a schema-state result only. It is not permission to run the
 migration and does not replace image, target, backup, or execution-path checks.
 
-## Execution procedure — prepared locally, production gate still blocked
+## Execution procedure — candidate source prepared, production gate blocked
 
 This is the gate order for a future separately authorized run. The command
-implementations exist only as untracked, uncommitted local source; no root
-helper has been installed and no new SSH entry point is active. The command
+implementations are included in the candidate source; no root helper has been
+installed and no new SSH entry point is active. The command
 examples describe the reviewed source protocol, not currently executable VPS
 commands. Do not invoke Docker or the migrator directly.
 
@@ -179,15 +185,17 @@ scheduler once per configured collector cycle. The local default is daily at
 03:00 UTC, but the production `COLLECTOR_SCHEDULE_UTC` override has not been
 verified; the up-to-24-hour cleanup lag assumes the deployed schedule is daily.
 
-### Step 1 — recovery point (identified, owner acceptance pending)
+### Step 1 — two recovery layers (not ready)
 
-The newest observed Hostinger recovery point is backup `52757820` from
-2026-09-19 11:10:29 UTC; backup `51894425` from 2026-09-12 14:15:16 UTC is also
-listed. Before a separately approved run, refresh the read-only availability
-check and record which exact ID the owner accepts, including the accepted
-recovery point/RPO and whole-VPS restore impact. Hostinger restore changes the
-entire VPS; no restore rehearsal was performed. Do not create a snapshot or
-restore anything as part of this runbook.
+The newest listed Hostinger recovery point is backup `52757820` from
+2026-09-19 11:10:29 UTC; the 2026-09-24 snapshot API response has no usable
+snapshot. Neither listed backup is the fresh pre-062 provider point. Obtain
+separate owner approval to create a fresh Hostinger recovery point and record
+its exact ID/timestamp, accepted RPO and whole-VPS restore impact. Also obtain
+separate owner approval for a VPS-local `pg_dump -Fc` and isolated PostgreSQL
+16 restore validation. Both must pass; a VPS-local dump alone is not protection
+from VPS/disk loss. Do not create a snapshot, backup or restore anything as
+part of this runbook. See [`production-db-recovery.md`](production-db-recovery.md).
 
 ### Step 2 — SELECT-only precheck
 
@@ -240,17 +248,15 @@ Before a future separate approval, the operator must be able to record:
 3. The immutable candidate API image digest and source revision containing the
    reviewed 062 file, plus the SHA-256 of that exact file. Verify the image's
    migration directory and confirm no pending migration other than 062 can
-   run. No such image/revision currently exists for this uncommitted tree.
-4. A recent, owner-approved recovery point: either an available provider
-   backup/snapshot whose full-restore impact is accepted, or a tested
-   PostgreSQL backup/restore path. The listed provider points are old whole-VPS
-   backups, not automatically acceptable recovery points. A DB-only path is
-   technically plausible because `pg_dump` 16.15 is present inside the DB
-   container, but host `pg_dump` is absent; `pg_restore`, current DB identity,
-   protected credential mount, encrypted destination, and isolated restore
-   capability still need verification. No backup or restore was performed.
-   Creating a snapshot or backup is a separate operation and is not done by
-   this runbook.
+   run. The immutable receipt must be from the exact reviewed candidate SHA.
+4. Both recovery gates: a fresh Hostinger whole-VPS point with the exact ID,
+   timestamp, accepted RPO and full-restore impact; and a fresh VPS-local
+   PostgreSQL custom-format dump restored successfully into an isolated
+   PostgreSQL 16 target. Last observed `pg_dump` was 16.15 inside the DB
+   container; host `pg_dump` is absent. `pg_restore`, container/image identity,
+   secure credential source, root-only destination, free space and isolated
+   restore image remain to be verified in the VPS shell. No backup or restore
+   was performed. Both actions require separate owner approval.
 5. A fixed, root-owned migration-only invocation that passes
    `terento-catalog-migrate --target 062` using the reviewed image, existing
    private DB network/configuration, and `catalog-migrate` service; validates
@@ -362,21 +368,19 @@ the live endpoint has been validated after 062.
 The candidate receipt enumerates the normative paths that must be tracked at
 the exact candidate commit. This includes the migration SQL and runner,
 precheck/postcheck/runbook, installation authorization contract, root helper
-and migration module, installer, SSH template when used, build/deploy/publish
-workflows, operation tests and runner, and recovery procedure. Several are
-currently untracked. No required policy rule may exist only in ignored
-`internal/` context, and nothing is staged or committed in this task.
+and migration module, first-install-aware installer, SSH template when used,
+build/deploy/publish workflows, operation tests and runner, and VPS recovery
+procedure. Confirm the committed manifest and clean candidate checkout before
+building; no required policy rule may exist only in ignored `internal/`
+context. The immutable workflow receipt is the authoritative build/test result.
 
 ## Test receipt
 
-The backend suite passed 546 tests with 2 skipped. The production-operations
-runner passed 11 installer, 21 root-helper, 23 migration-only, and 6 SSH
-dispatcher tests. Workflow contracts passed for 10 workflows plus 4 admin
-boundary tests; documentation checks covered 50 tracked Markdown paths and 55
-public-copy files; the test inventory passed for 82 runners and 59 sources;
-`git diff --check` passed. These are local/offline results only. They do not
-prove that the root helper or SSH entry is installed, that a candidate image
-exists, or that any backup has been restored.
-
-No migration, backend deployment, release, stage, commit, or push was performed
-while preparing this procedure.
+Before the first-install change, the backend suite passed 546 tests with 2
+skipped and the production-operations runner passed 11 installer tests among
+its operations checks. Those earlier counts are historical and are superseded
+by the exact candidate workflow run for the committed source. The focused
+installer regression now exercises both existing-helper restoration and the
+first-install `ABSENT` rollback case. Passing code/CI tests do not prove that a
+production helper is installed, that a live backup was created, or that an
+isolated restore was validated.

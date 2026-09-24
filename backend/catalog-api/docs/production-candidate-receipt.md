@@ -20,6 +20,18 @@ the completed receipt after the build and retain it as an immutable CI/build
 artifact associated with that run; do not amend the source commit just to add
 the resulting image digest to it.
 
+The candidate workflow publishes a unique run-scoped tag containing the full
+source SHA, workflow run ID, and attempt. It publishes only the API candidate
+image and records its immutable digest; it does not update `current`, `latest`,
+or production tags and does not deploy or contact a VPS. Before pushing, CI
+checks GHCR's active version tag inventory and fails closed if the candidate
+tag already exists. CI also verifies that the image pulled back from GHCR has
+the same image ID as the local build before recording its registry digest.
+The digest—not the tag—is the immutable artifact identity recorded in the
+receipt. Deleted tags are not queried because that endpoint requires package
+deletion/admin permissions that the candidate workflow intentionally lacks;
+the full-SHA/run-ID/attempt tag is unique to one workflow attempt.
+
 Before building, verify at minimum that the commit tracks the complete
 canonical migration set through 062, the target-limited migration runner, its
 tests, the 062 precheck and postcheck, and the reviewed schema/operations
@@ -84,6 +96,7 @@ value.
 - `062_reconcile_installation_statistics_schema.sql` SHA-256: `[64 lowercase hex characters]`
 - `terento_catalog/migrate.py` source path in image: `[path]`
 - `migrate.py` SHA-256: `[64 lowercase hex characters]`
+- Production operations source hashes: `[terento-deploy.py, terento-deploy-migration.py, install-terento-production-ops.py, and terento-deploy-ssh-entry.py.in; exact clean-source SHA-256 values, with the template marked not installed]`
 - Migration runner version/revision: `[package version plus source commit; do not infer from tag]`
 - Runner invocation validated for this artifact: `[exact --target 062 evidence]`
 - Installation-policy schema version: [integer from the tracked schema source]

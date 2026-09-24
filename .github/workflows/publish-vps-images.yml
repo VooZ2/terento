@@ -101,6 +101,8 @@ jobs:
         id: image
         env:
           ROLE: ${{ inputs.role }}
+          CANDIDATE_SOURCE_SHA: ${{ inputs.candidate_source_sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_CONFIG: ${{ runner.temp }}/terento-docker
         shell: bash
@@ -111,6 +113,21 @@ jobs:
             api) image=ghcr.io/vooz2/terento-catalog; context=backend/catalog-api; dockerfile=backend/catalog-api/Dockerfile ;;
             *) exit 64 ;;
           esac
+          image_tag="sha-$GITHUB_SHA"
+          if [[ -n "${CANDIDATE_SOURCE_SHA:-}" ]]; then
+            # A unique run-scoped SHA tag prevents a rerun from retargeting an
+            # already-published candidate tag. Refuse if the active tag exists;
+            # the receipt binds the result by immutable digest.
+            image_tag="candidate-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            existing_tags="$(gh api --paginate \
+              -H 'Accept: application/vnd.github+json' \
+              '/users/VooZ2/packages/container/terento-catalog/versions?per_page=100&state=active' \
+              --jq '.[].metadata.container.tags[]?')"
+            if printf '%s\n' "$existing_tags" | grep -Fqx -- "$image_tag"; then
+              printf 'Refusing to reuse previously published candidate tag: %s\n' "$image_tag" >&2
+              exit 1
+            fi
+          fi
           build_timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           migration_062_sha=""
           migrate_py_sha=""
@@ -133,13 +150,15 @@ jobs:
           fi
           docker build --platform linux/amd64 \
             "${image_labels[@]}" \
-            --file "$dockerfile" --tag "$image:sha-$GITHUB_SHA" "$context"
+            --file "$dockerfile" --tag "$image:$image_tag" "$context"
+          local_image_id="$(docker image inspect --format '{{.Id}}' "$image:$image_tag")"
+          [[ "$local_image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-          docker push "$image:sha-$GITHUB_SHA"
+          docker push "$image:$image_tag"
           pull_succeeded=false
           for attempt in 1 2 3 4 5; do
-            if docker pull "$image:sha-$GITHUB_SHA"; then
+            if docker pull "$image:$image_tag"; then
               pull_succeeded=true
               break
             fi
@@ -149,7 +168,9 @@ jobs:
             fi
           done
           [[ "$pull_succeeded" == true ]]
-          reference="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image:sha-$GITHUB_SHA")"
+          pulled_image_id="$(docker image inspect --format '{{.Id}}' "$image:$image_tag")"
+          [[ "$pulled_image_id" == "$local_image_id" ]]
+          reference="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image:$image_tag")"
           [[ "$reference" == "$image"@sha256:* ]]
           digest="${reference#*@}"
           [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
@@ -157,4 +178,4 @@ jobs:
           printf 'migration_062_sha256=%s\n' "$migration_062_sha" >> "$GITHUB_OUTPUT"
           printf 'migrate_py_sha256=%s\n' "$migrate_py_sha" >> "$GITHUB_OUTPUT"
           printf 'build_timestamp=%s\n' "$build_timestamp" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "### $image" "Commit: $GITHUB_SHA" "Digest: $reference" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "### $image" "Commit: $GITHUB_SHA" "Candidate tag: $image_tag" "Digest: $reference" >> "$GITHUB_STEP_SUMMARY"
