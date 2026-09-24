@@ -419,6 +419,8 @@ def main() -> int:
     assert '[[ "$GITHUB_SHA" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
 
     receipt = candidate[candidate.index("  receipt:"):]
+    receipt_checkout = receipt[:receipt.index("      - uses: actions/setup-python@")]
+    assert "fetch-depth: 0" in receipt_checkout
     assert "SOURCE_SHA: ${{ inputs.source_sha || github.sha }}" in receipt
     assert "IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}" in receipt
     assert '[[ "$GITHUB_SHA" == "$SOURCE_SHA" ]]' in receipt
