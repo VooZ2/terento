@@ -252,7 +252,7 @@ class MigrationOperationTests(unittest.TestCase):
                  if migration.MIGRATION_SERVICE in call[2]),
             ("api", IMAGE, (
                 "--profile", "manual", "run", "--rm", "--no-deps", "-T",
-                "catalog-migrate", "--target", "062",
+                "catalog-migrate", "terento-catalog-migrate", "--target", "062",
             )),
         )
         self.assertEqual(
@@ -391,11 +391,27 @@ class MigrationOperationTests(unittest.TestCase):
         run(host)
         migration_call = next(call for call in reversed(host.compose_calls)
                               if migration.MIGRATION_SERVICE in call[2])
-        self.assertEqual(migration_call[2][-3:], ("catalog-migrate", "--target", "062"))
+        self.assertEqual(
+            migration_call[2][-4:],
+            ("catalog-migrate", "terento-catalog-migrate", "--target", "062"),
+        )
         self.assertTrue(any(
             call[0][0:1] == ("exec",) and "BEGIN TRANSACTION READ ONLY" in call[0][-1]
             for call in host.docker_calls
         ))
+
+    def test_compose_run_receives_explicit_migration_executable(self):
+        """Compose run SERVICE COMMAND replaces the service command."""
+        host = FakeHost(ledger=ledger_through(61))
+        run(host)
+        migration_call = next(call for call in reversed(host.compose_calls)
+                              if migration.MIGRATION_SERVICE in call[2])
+        args = migration_call[2]
+        service_index = args.index(migration.MIGRATION_SERVICE)
+        self.assertEqual(
+            args[service_index + 1:service_index + 4],
+            ("terento-catalog-migrate", "--target", "062"),
+        )
 
     def test_exact_001_through_062_is_explicit_noop(self):
         host = FakeHost(ledger=ledger_through(62))
@@ -459,7 +475,10 @@ class MigrationOperationTests(unittest.TestCase):
         migration_calls = [event for event in host.events
                            if event[0] == "compose" and migration.MIGRATION_SERVICE in event[1]]
         self.assertEqual(len(migration_calls), 1)
-        self.assertEqual(migration_calls[0][1][-3:], ("catalog-migrate", "--target", "062"))
+        self.assertEqual(
+            migration_calls[0][1][-4:],
+            ("catalog-migrate", "terento-catalog-migrate", "--target", "062"),
+        )
         self.assertEqual(host.events[-1], migration_calls[0])
         self.assertFalse(any("catalog-api" in repr(event) or "catalog-scheduler" in repr(event)
                              for event in host.events))

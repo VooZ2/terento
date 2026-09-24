@@ -74,11 +74,15 @@ container and verifies the exact 001–062 ledger in a fresh read-only
 transaction before reporting `MIGRATION_PASS`. A failed postcondition is a
 nonzero refusal, even if the runner printed success.
 
-Only the Compose `catalog-migrate --target 062` one-shot is invoked. No API or
-scheduler container is started, stopped, recreated, or health-checked by this
-path. SQL statements and the `schema_migrations` insert share one PostgreSQL
-transaction; failure rolls both back and returns nonzero. The helper does not
-perform automatic schema downgrade or replay.
+Only the Compose `catalog-migrate` one-shot is invoked with the explicit
+command `terento-catalog-migrate --target 062`; its argv is therefore
+`... run ... catalog-migrate terento-catalog-migrate --target 062`. Compose's
+positional command replaces the service command, so the helper passes the
+reviewed executable explicitly. No API or scheduler container is started,
+stopped, recreated, or health-checked by this path. SQL statements and the
+`schema_migrations` insert share one PostgreSQL transaction; failure rolls both
+back and returns nonzero. The helper does not perform automatic schema
+downgrade or replay.
 
 ### DEPLOY — separate service replacement path
 

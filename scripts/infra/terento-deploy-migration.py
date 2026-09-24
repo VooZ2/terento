@@ -499,6 +499,7 @@ def run_migration(
         "--no-deps",
         "-T",
         MIGRATION_SERVICE,
+        "terento-catalog-migrate",
         "--target",
         "062",
     )
