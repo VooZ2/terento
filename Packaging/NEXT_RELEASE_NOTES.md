@@ -1,9 +1,10 @@
-# Next app release — unpublished draft
+# Terento 1.0.0-beta.14 (build 35) — unpublished draft
 
 This draft describes source changes since beta.13 build 34, not an available
 download. The published manifest and RELEASE_NOTES.md remain authoritative for
-the currently distributed app. Identity and artifact checksums are assigned only
-after the release audit and build gates.
+the currently distributed app. Candidate identity is staged after the source
+audit; artifact checksums await the build gates. No installer is published by
+merging this preparation.
 
 - Installation and Update check the current Garmin catalog before acquiring a
   map and again before writing. Active models with Maps=Yes can be authorized
