@@ -8,6 +8,7 @@ on:
 permissions:
   actions: write
   contents: write
+  pull-requests: write
 
 concurrency:
   group: refresh-compatibility-snapshot
@@ -17,14 +18,21 @@ jobs:
   refresh:
     if: github.repository == 'VooZ2/terento'
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - name: Check out beta
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: beta
+          fetch-depth: 0
 
       - name: Refresh snapshot and generated pages
-        run: python3 scripts/update-compatibility-snapshot.py
+        run: |
+          python3 scripts/ci_http.py compatibility-snapshot --fail --silent --show-error \
+            --connect-timeout 5 --max-time 30 \
+            'https://api.terento.app/compatibility/public/models.json?limit=500' \
+            -o "$RUNNER_TEMP/compatibility-live.json"
+          python3 scripts/update-compatibility-snapshot.py --input "$RUNNER_TEMP/compatibility-live.json"
 
       - name: Validate public compatibility output
         run: |
@@ -47,48 +55,8 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit and push factual changes
-        id: commit
-        if: steps.diff.outputs.changed == 'true'
-        run: |
-          git config user.name "terento-bot"
-          git config user.email "actions@terento.app"
-          git add site/compatibility/public-models.snapshot.json \
-            site/compatibility/index.html \
-            site/de/compatibility/index.html \
-            site/fr/compatibility/index.html \
-            site/pl/compatibility/index.html \
-            site/cs/compatibility/index.html \
-            site/it/compatibility/index.html
-          git commit -m "chore: refresh compatibility snapshot"
-          git push origin HEAD:beta
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Dispatch and wait for production site deployment
+      - name: Integrate factual refresh through protected PR and deploy once
         if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          COMMIT_SHA: ${{ steps.commit.outputs.sha }}
-        run: |
-          set -euo pipefail
-
-          gh workflow run deploy-site.yml --ref beta
-
-          deploy_run_id=""
-          for attempt in $(seq 1 60); do
-            deploy_run_id="$(gh run list \
-              --workflow deploy-site.yml \
-              --branch beta \
-              --event workflow_dispatch \
-              --limit 20 \
-              --json databaseId,headSha \
-              | jq -r --arg sha "$COMMIT_SHA" 'map(select(.headSha == $sha)) | .[0].databaseId // empty')"
-            if [ -n "$deploy_run_id" ]; then
-              break
-            fi
-            sleep 5
-          done
-
-          test -n "$deploy_run_id"
-          gh run view "$deploy_run_id" --json url --jq .url
-          gh run watch "$deploy_run_id" --interval 30 --exit-status
+        run: python3 scripts/integrate-compatibility-refresh.py

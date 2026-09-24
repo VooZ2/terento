@@ -198,10 +198,28 @@ connection-establishment timeouts; an established-session failure has unknown
 remote outcome and is not automatically replayed. Observation delivery is
 reported separately; transient reporting failure cannot invalidate passed tests.
 
-Public compatibility pages use a loading shell and the live API, not checked-in
-model evidence rows. Initial failure shows Retry; a failed background refresh
-labels the last loaded results potentially outdated. API data may change without
-requiring a site deployment.
+Public compatibility pages contain a generated factual snapshot and refresh
+from the live API. Failed background refresh retains the snapshot with a stale
+notice and Retry. The six-hour scheduled/manual snapshot workflow fetches the
+public API through the bounded CI HTTP transport, validates and regenerates
+the snapshot/pages. An unchanged factual snapshot succeeds without a commit,
+PR or deployment.
+
+Factual changes use the single workflow-owned
+`terento/compatibility-snapshot-refresh` branch and a reusable PR into protected
+`beta`; only the snapshot JSON and six generated compatibility HTML files may
+be committed. Existing branch ownership is checked before an explicit
+force-with-lease update. The workflow never pushes beta directly. It explicitly
+dispatches Swift CI and waits for a new run on the exact PR head, including
+`build-and-test`, then checks all required PR checks and mergeability before
+merging without bypass. Failed checks retain the PR for investigation/reuse.
+
+GitHub-token event suppression is handled explicitly: after a factual PR merge,
+the workflow verifies the exact beta merge SHA and dispatches one site deploy,
+or reuses an existing exact-SHA active/successful deployment. A failed existing
+deploy requires investigation rather than a duplicate dispatch. Concurrent beta
+changes fail closed. The automation branch is deleted with an exact lease after
+successful deployment. Workflow enablement alone is not a deployment trigger.
 
 Production content acceptance also requires live HTML/asset and localized Guide
 validation plus a recorded Google Rich Results Test for relevant structured-data

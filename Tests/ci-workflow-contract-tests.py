@@ -16,6 +16,56 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 PINNED_ACTION = re.compile(r"^\s*uses:\s*[^\s@]+@[0-9a-f]{40}\s*$")
 
 
+def verify_refresh_flow():
+    import importlib.util
+    from unittest.mock import patch
+    spec = importlib.util.spec_from_file_location("refresh_flow", REPO_ROOT / "scripts/integrate-compatibility-refresh.py")
+    flow = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(flow)
+    flow.allowed(flow.FILES)
+    try:
+        flow.allowed(["site/index.html"])
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("unrelated content accepted")
+    calls = []
+    with patch.dict(os.environ, GITHUB_REPOSITORY=flow.REPO), patch.object(flow, "run", side_effect=lambda *a, **k: calls.append(a) or ""):
+        flow.main()
+    assert all(c[0] == "git" for c in calls), "no diff must not touch GitHub"
+
+    sha = "a" * 40
+    old = dict(databaseId=1, headSha=sha, event="workflow_dispatch", status="completed", conclusion="success")
+    wrong = dict(old, databaseId=2, headSha="b" * 40)
+    fresh = dict(old, databaseId=3)
+    calls = []
+    with patch.object(flow, "runs", side_effect=[[old], [old, wrong, fresh]]), \
+         patch.object(flow, "run", side_effect=lambda *a, **k: calls.append(a) or ""), \
+         patch.object(flow, "gh", return_value={"headSha": sha, "conclusion": "success", "jobs": [{"name": "build-and-test", "conclusion": "success"}]}):
+        assert flow.dispatch_and_wait("swift-ci.yml", flow.BRANCH, sha) == 3
+    assert any(c[:4] == ("gh", "workflow", "run", "swift-ci.yml") for c in calls)
+    assert any(c[:4] == ("gh", "run", "watch", "3") for c in calls)
+    with patch.object(flow, "runs", return_value=[old]), patch.object(flow, "run") as command:
+        assert flow.dispatch_and_wait("deploy-site.yml", "beta", sha, reuse=True) == 1
+        command.assert_not_called()
+    for result in ({"headSha": "b" * 40, "conclusion": "success", "jobs": []},
+                   {"headSha": sha, "conclusion": "success", "jobs": [{"name": "build-and-test", "conclusion": "failure"}]}):
+        with patch.object(flow, "runs", side_effect=[[], [fresh]]), patch.object(flow, "run"), patch.object(flow, "gh", return_value=result):
+            try:
+                flow.dispatch_and_wait("swift-ci.yml", flow.BRANCH, sha)
+            except RuntimeError:
+                pass
+            else:
+                raise AssertionError("wrong SHA or failed required job accepted")
+    source = (REPO_ROOT / "scripts/integrate-compatibility-refresh.py").read_text()
+    for guard in ('len(prs) > 1', 'MARKER not in', '--force-with-lease=refs/heads/{BRANCH}:{old}',
+                  '"--required", "--watch"', '"CLEAN"', '"--match-head-commit", sha',
+                  'merged["state"] != "MERGED"', 'merged["mergeCommit"]["oid"]', 'reuse=True'):
+        assert guard in source, guard
+    assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
+    assert "HEAD:beta" not in source and "--admin" not in source
+
+
 def verify_scoped_transport() -> None:
     """Exercise the real request script with a local SSH spy; no network or secrets."""
     script = REPO_ROOT / "scripts/infra/deploy-vps-image.sh"
@@ -487,10 +537,14 @@ def main() -> int:
     assert "workflow_dispatch:" in refresh
     assert "scripts/update-compatibility-snapshot.py" in refresh
     assert "git diff --quiet" in refresh
-    assert "git push origin HEAD:beta" in refresh
+    assert not re.search(r"git\s+push[^\n]*:beta", refresh)
     assert "actions: write" in refresh
-    assert "gh workflow run deploy-site.yml --ref beta" in refresh
-    assert "gh run watch" in refresh
+    assert "pull-requests: write" in refresh
+    assert "scripts/ci_http.py compatibility-snapshot --fail" in refresh
+    assert '--input "$RUNNER_TEMP/compatibility-live.json"' in refresh
+    assert "if: steps.diff.outputs.changed == 'true'" in refresh
+    assert "scripts/integrate-compatibility-refresh.py" in refresh
+    verify_refresh_flow()
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "compatibility-page" in deploy_site
     assert "live-compatibility.html" in deploy_site
