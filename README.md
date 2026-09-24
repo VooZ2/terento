@@ -90,8 +90,7 @@ directory: it shows exact Garmin models and variants with at least one
 successful shared installation. The list grows as more successful
 installations are shared, and a model missing from the list does not mean it
 is unsupported. Terento is intended for Garmin smartwatches with map support.
-The integrated next-app source (not yet distributed in beta.13) checks catalog
-authorization before writing a map;
+Beta.14 checks current catalog authorization before acquiring and writing a map;
 appearance or absence in public results is not that authorization. Authorization
 matches a Garmin base model and evaluates Maps capability across every
 remaining plausible variant. Conflicting variant hints alone do not deny
@@ -106,11 +105,12 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.13 (build 34)**. The macOS app is notarized
+The latest public release is **beta.14 (build 35)**. The macOS app is notarized
 and does not require Homebrew.
 
-Beta.13 strengthens protection of existing maps during Update and improves
-Update, Remove, and installed-map reading across Garmin session changes.
+Beta.14 checks installation and Update authorization against the Garmin catalog,
+keeps unknown or ambiguous devices pending, and improves per-map diagnostics
+correlation without treating an authorization refusal as a failed installation.
 Confirmed removal of valid external maps remains available after an app
 reinstall or on another Mac; automatic Update still requires durable local
 ownership. Uncertain failed-install cleanup keeps recovery information and

@@ -8,9 +8,9 @@ statistics populations and formulas are canonical in
 [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md).
 A build number is not an API schema version.
 
-## Next-client authorization delta (not yet distributed)
+## Beta.14 build 35 authorization delta
 
-Compared with beta.13 build 34, integrated native source refreshes schema-3
+Compared with beta.13 build 34, beta.14 build 35 refreshes schema-3
 installation policy before acquisition and at the final write boundary, including
 Safe Update. Matching and unknown/conflicting identity semantics are owned by
 [`INSTALLATION_AUTHORIZATION.md`](INSTALLATION_AUTHORIZATION.md), independently
@@ -25,6 +25,14 @@ contracts. Integrated source `e8f6005a3da20c0588da59ec569abd0b9c9b46fa` has no
 backend runtime differences from that revision: subsequent differences are
 workflow/helper, tests and documentation only. This compatibility record does not
 replace fresh encoder-to-API, PostgreSQL, live-read and final artifact gates.
+
+Published tag `v1.0.0-beta.14-build35` points to packaged source
+`19d465dc97c53198dff3ec10c4cd73dad13fa2df`. Full packaging tests, Developer ID
+signing, Apple notarization, stapling and ZIP/DMG launch checks passed. Tag CI
+[36043055010](https://github.com/VooZ2/terento/actions/runs/36043055010) passed
+the native-to-API, PostgreSQL, app/native and release contracts. Downloaded
+published ZIP/DMG checksums match the approved artifacts. These automated and
+artifact gates do not add real-device lifecycle evidence or resolve #278.
 
 ## Required compatibility record
 
