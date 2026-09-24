@@ -4,6 +4,11 @@
 test counts. `ci-test-inventory-tests.py` rejects unassigned, missing, duplicate
 and non-executable runners. `select-test-suites.py` selects affected suites.
 
+Operation-diagnostics engine fixtures first verify that missing authorization
+produces no installation attempt, then supply the shared approved catalog
+fixture before exercising downstream preflight failures. Tests must not bypass
+the production authorization gate or depend on a live policy request.
+
 | Change | Required checks |
 | --- | --- |
 | Ordinary Markdown, including component and contracts README | shared/CI documentation and inventory checks |

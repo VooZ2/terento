@@ -60,6 +60,18 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
             storageCapacity: identity.storageCapacity, freeSpace: identity.freeSpace)
         engine.setDiagnosticTestIdentity(unstable)
         let operationID = UUID()
+        // Authorization precedes diagnostic-producing installation preflight.
+        engine.beginInstallation(plan: plan(), operationId: operationID)
+        check(engine.mapStatisticsEvents.isEmpty && store.events().isEmpty,
+              "unavailable authorization blocks before installation diagnostics")
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        let policy = try JSONDecoder().decode(InstallationAuthorizationDocument.self,
+            from: Data(contentsOf: policyURL))
+        let authorization = InstallationAuthorizationState.approved(
+            record: policy.devices[0], policyVersion: policy.policyVersion)
+        check(authorization.matches(identity: unstable), "catalog fixture matches diagnostic test identity")
+        engine.setInstallationAuthorization(authorization)
         engine.beginInstallation(plan: plan(), operationId: operationID)
         check(engine.mapStatisticsEvents.contains { $0.eventType == .installFailed && $0.operationId == operationID },
               "fixture reaches the real INSTALL_FAILED branch")
