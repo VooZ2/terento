@@ -1335,8 +1335,10 @@ struct Stage42InstallationTests {
             result.status == .failed
                 && result.failure == .writeFailed
                 && result.transaction.state == .failed
-                && harness.transport.readBackCount == 0,
-            "write failure does not report success"
+                && harness.transport.readBackCount == 0
+                && harness.transport.deleteCount == 0
+                && !result.diagnostics.cleanupAttempted,
+            "write failure without a new object neither reports success nor performs cleanup"
         )
     }
 

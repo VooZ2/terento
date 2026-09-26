@@ -163,11 +163,11 @@ private func testManagedMapDeletesWithoutLocalBackup() throws {
     let prepared = validTarget()
     let (result, transport) = run(
         target: prepared.target,
-        current: deviceObject(for: prepared.target),
+        current: deviceObject(for: prepared.target, sha256: prepared.target.expectedSHA256.uppercased()),
         scans: [ [] ]
     )
 
-    try require(result.status == .success, "managed map should delete successfully")
+    try require(result.status == .success, "managed map accepts the same verified content hash regardless of hex letter case")
     try require(transport.events == ["inspect", "delete"], "delete must inspect first and use one delete operation")
 }
 

@@ -385,11 +385,11 @@ struct InstallationSafetyTests {
             "a transaction cannot complete before verification"
         )
         try transaction.recordTransferVerification(
-            verifier.verify(
+            TransferVerification.sampled(
                 sourceSizeBytes: 10,
                 sourceSHA256: "abc",
                 remoteSizeBytes: 10,
-                remoteSHA256: "abc"
+                sampledBytes: 10, sampleCount: 1, matchedSampleCount: 1
             )
         )
         try transaction.transition(to: .completed)
@@ -433,11 +433,11 @@ struct InstallationSafetyTests {
         try mismatchedTransaction.transition(to: .writing)
         try mismatchedTransaction.transition(to: .verifying)
         try mismatchedTransaction.recordTransferVerification(
-            verifier.verify(
+            TransferVerification.sampled(
                 sourceSizeBytes: 10,
                 sourceSHA256: "abc",
                 remoteSizeBytes: 10,
-                remoteSHA256: "def"
+                sampledBytes: 10, sampleCount: 1, matchedSampleCount: 0
             )
         )
         try mismatchedTransaction.fail(.hashMismatch)
