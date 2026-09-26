@@ -60,7 +60,6 @@
 		000000000000000000000074 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000073 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapPresentation.swift */; };
 		000000000000000000000076 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000075 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift */; };
 		000000000000000000000078 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000077 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift */; };
-		00000000000000000000007a /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapStorageEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000079 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapStorageEvaluator.swift */; };
 		00000000000000000000007c /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007b /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapVersion.swift */; };
 		00000000000000000000007e /* app/TerentoCore/Sources/TerentoPoC/Models/MTPModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007d /* app/TerentoCore/Sources/TerentoPoC/Models/MTPModels.swift */; };
 		000000000000000000000080 /* app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007f /* app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift */; };
@@ -160,7 +159,6 @@
 		000000000000000000000073 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapPresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapPresentation.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000075 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000077 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift; sourceTree = SOURCE_ROOT; };
-		000000000000000000000079 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapStorageEvaluator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapStorageEvaluator.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000007b /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapVersion.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapVersion.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000007d /* app/TerentoCore/Sources/TerentoPoC/Models/MTPModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Models/MTPModels.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000007f /* app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift; sourceTree = SOURCE_ROOT; };
@@ -296,7 +294,6 @@
 				000000000000000000000075 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift */,
 				000000000000000000000077 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift */,
 				CA7A10600000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Views/MapInventoryListPresentation.swift */,
-				000000000000000000000079 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapStorageEvaluator.swift */,
 				00000000000000000000007b /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapVersion.swift */,
 				00000000000000000000007d /* app/TerentoCore/Sources/TerentoPoC/Models/MTPModels.swift */,
 				00000000000000000000007f /* app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift */,
@@ -523,7 +520,6 @@
 				000000000000000000000076 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift in Sources */,
 				000000000000000000000078 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift in Sources */,
 				CA7A10600000000000000002 /* app/TerentoCore/Sources/TerentoPoC/Views/MapInventoryListPresentation.swift in Sources */,
-				00000000000000000000007a /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapStorageEvaluator.swift in Sources */,
 				00000000000000000000007c /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapVersion.swift in Sources */,
 				00000000000000000000007e /* app/TerentoCore/Sources/TerentoPoC/Models/MTPModels.swift in Sources */,
 				000000000000000000000080 /* app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift in Sources */,

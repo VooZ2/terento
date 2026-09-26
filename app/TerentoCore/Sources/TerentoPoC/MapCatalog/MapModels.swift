@@ -198,31 +198,6 @@ enum MapProviderLifecycleStatus: String, Codable, Equatable, Sendable {
     }
 }
 
-struct MapProviderHealthStatus: Codable, Equatable, Sendable {
-    let providerId: String
-    let health: MapProviderHealth
-    let lifecycleStatus: MapProviderLifecycleStatus
-    let lastCheckedAt: Date?
-    let lastSuccessfulCatalogSync: Date?
-    let activePackageCount: Int
-    let brokenPackageCount: Int
-    let lastError: String?
-}
-
-enum MapSource: Equatable, Sendable {
-    case provider(package: MapPackage)
-    case custom(fileURL: URL, displayName: String)
-
-    var kind: MapSourceKind {
-        switch self {
-        case .provider:
-            return .provider
-        case .custom:
-            return .custom
-        }
-    }
-}
-
 /// A deliberately narrow adapter seam. Provider-specific URL and identity
 /// rules stay behind this interface; acquisition, inventory, and lifecycle
 /// code consume the neutral package/artifact model.
@@ -236,7 +211,6 @@ protocol MapProviderAdapter: Sendable {
     /// provider's IMG header/managed filename. This lets the catalog loader
     /// reject metadata that a released client cannot validate safely.
     func expectedIMGIdentity(for package: MapPackage) -> MapIdentity?
-    func artifacts(for package: MapPackage) -> [MapArtifact]
 }
 
 extension MapProviderAdapter {
@@ -253,10 +227,6 @@ struct FreizeitkarteProviderAdapter: MapProviderAdapter, Sendable {
     func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
         MapIdentity(provider: id, region: package.providerRegionId)
     }
-
-    func artifacts(for package: MapPackage) -> [MapArtifact] {
-        package.artifacts
-    }
 }
 
 struct OpenTopoMapProviderAdapter: MapProviderAdapter, Sendable {
@@ -270,10 +240,6 @@ struct OpenTopoMapProviderAdapter: MapProviderAdapter, Sendable {
         let providerRegion = MapIdentity.normalizeRegion(package.providerRegionId)
         let parsedRegion = providerRegion == "LITHUANIA" ? "LTU" : providerRegion
         return MapIdentity(provider: id, region: parsedRegion)
-    }
-
-    func artifacts(for package: MapPackage) -> [MapArtifact] {
-        package.artifacts
     }
 }
 
@@ -299,8 +265,6 @@ struct MapRandoProviderAdapter: MapProviderAdapter, Sendable {
     func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
         MapIdentity(provider: id, region: package.providerRegionId)
     }
-
-    func artifacts(for package: MapPackage) -> [MapArtifact] { package.artifacts }
 }
 
 /// OpenTopoMap publishes country names in its Garmin page while the catalog
@@ -1249,5 +1213,4 @@ struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
               proof.generatedAt.hasPrefix(package.version.description + "T") else { return nil }
         return package.identity
     }
-    func artifacts(for package: MapPackage) -> [MapArtifact] { package.artifacts }
 }
