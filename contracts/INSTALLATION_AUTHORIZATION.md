@@ -47,6 +47,15 @@ target cleanup and rollback use the operation's established safety facts and
 do not require another policy request. All other live-device, ownership,
 no-overwrite, storage, and transfer checks remain in force.
 
+The connected-device policy result must be supplied to the map engine as it
+changes. The Install review action is available only after the current device
+identity matches an approved policy result and the map scan is ready. While
+authorization is pending or unavailable, the review screen explains the reason
+and keeps Install disabled. A policy failure at operation start must surface a
+failure instead of leaving an apparently successful button press with no action.
+This review/engine synchronization correction is staged in the beta.15 build
+36 candidate; it is not in the published beta.14 artifact.
+
 `installation-policy.schema.json` defines the response shape. The backend
 code serves a public-read, metadata-only `GET /devices/installation-policy.json`
 projection with `schemaVersion: 3`. The implementation requires a fresh

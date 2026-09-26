@@ -198,6 +198,9 @@ struct InstallReviewAvailabilityResolver: Sendable {
     func resolve(
         plan: InstallationPlan?,
         deviceConnected: Bool,
+        installationAuthorization: InstallationAuthorizationState,
+        deviceIdentity: DeviceIdentity?,
+        mapScanReady: Bool,
         supportedInstallFlow: Bool,
         installationPhase: InstallationProcessPhase,
         hasValidatedArtifact: Bool,
@@ -211,6 +214,17 @@ struct InstallReviewAvailabilityResolver: Sendable {
         }
         guard deviceConnected else {
             return .blocked("Reconnect your Garmin to continue.")
+        }
+        guard installationAuthorization.canInstall else {
+            return .blocked(installationAuthorization.userMessage
+                ?? "Checking whether this Garmin can install maps.")
+        }
+        guard let deviceIdentity,
+              installationAuthorization.matches(identity: deviceIdentity) else {
+            return .blocked("Terento could not reliably verify this Garmin for map installation.")
+        }
+        guard mapScanReady else {
+            return .blocked("Map checks are still in progress. Please try again shortly.")
         }
         guard supportedInstallFlow else {
             return .blocked("This map cannot be installed safely on this Garmin yet.")
