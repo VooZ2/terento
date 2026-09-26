@@ -12,7 +12,7 @@ import sys
 
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
-site_shell = (root / "site/site-shell.js").read_text(encoding="utf-8")
+site_shell = (root / "scripts/normalize-public-shell.py").read_text(encoding="utf-8")
 umami_version = "20260905-campaign-url-only-v1"
 
 assert '"download-click"' in privacy_script
@@ -124,17 +124,6 @@ for path in sorted((root / "site").rglob("*.html")):
         if path == root / "site/privacy/index.html":
             assert attributes.get("data-umami-event-location") == "privacy-contact", f"{path}: privacy email link must use privacy-contact"
 
-for path in [root / "site/localized-content.js"]:
-    source = path.read_text(encoding="utf-8").replace('\\"', '"')
-    for tag in re.findall(r"<a\b[^>]*>", source, flags=re.IGNORECASE):
-        attributes = dict(re.findall(r'([\w:-]+)="([^"]*)"', tag))
-        href = attributes.get("href", "")
-        if not (href.startswith("/") or href.startswith("#")):
-            continue
-        assert attributes.get("data-umami-event") in allowed_internal_events, f"{path}: runtime internal link {href!r} has no standard Umami event"
-        assert attributes.get("data-umami-event-location"), f"{path}: runtime internal link {href!r} has no Umami location"
-
-
 home_files = [
     root / "site/index.html",
     root / "site/de/index.html",
@@ -241,10 +230,10 @@ assert "const attribute = `umamiEvent" in privacy_script
 assert "key.charAt(0).toUpperCase()" in privacy_script
 
 assert 'href="https://buymeacoffee.com/vooz2"' in site_shell
-assert 'class="footer-support-link" data-support-link' in site_shell
+assert 'data-support-link' in site_shell
 assert 'Support Terento' in site_shell
 assert 'href="https://github.com/VooZ2/terento"' in site_shell
-assert 'class="footer-status footer-project-link" data-project-link' in site_shell
+assert 'data-project-link' in site_shell
 assert 'src="/assets/logo-white.svg"' in site_shell
 
 for path in [root / "site/index.html", *sorted(root.glob("site/*/index.html")), *sorted(root.glob("site/*/download/index.html")), root / "site/download/index.html"]:

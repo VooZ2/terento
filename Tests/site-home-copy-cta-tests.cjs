@@ -355,8 +355,7 @@ assert.match(styles, /\.provider-addon\s*\{[^}]*border-top:\s*1px solid var\(--b
 assert.match(styles, /\.provider-cards\s*\{[^}]*align-items:\s*stretch/s);
 assert.match(styles, /\.provider-card-badge\s*\{[^}]*text-transform:\s*uppercase/s);
 assert.match(styles, /\.provider-benefits\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
-const localizedContent = fs.readFileSync(path.join(root, "site", "localized-content.js"), "utf8");
-assert.doesNotMatch(localizedContent, /querySelector\("\.scope-copy"\)/s, "removed Home scope copy must not be updated by JavaScript");
+assert.ok(!fs.existsSync(path.join(root, "site/localized-content.js")), "Home copy is generated, not rewritten in the browser");
 
 console.log("Home copy, localized Hero, shared CTA, and CTA interaction-contract tests passed.");
 

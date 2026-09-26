@@ -147,7 +147,6 @@ for (const locale of locales) {
   assert.equal(fs.existsSync(guideIndex), false, locale + ": no artificial Guides index page");
 }
 
-assert.match(read(path.join(root, "site", "site-shell.js")), /pageType[^\n]*guide|pageType === "guide"/);
 assert.match(read(path.join(root, "site", "site-shell.js")), /guides\/install-garmin-maps-mac\//);
 for (const locale of locales) {
   const prefix = locale === "en" ? "" : locale + "/";
@@ -193,13 +192,7 @@ assert.match(styles, /\.guide-facts span,\s*\.download-badges li\s*\{[^}]*backgr
 assert.match(styles, /\.guide-substeps\s*\{/);
 assert.doesNotMatch(styles, /\.guide-progress\s*\{/);
 const shell = read(path.join(root, "site", "site-shell.js"));
-assert.match(shell, /mobileNav\?\.querySelectorAll\("a, \[data-language-switch\]"\)/, "Language buttons must close the mobile menu and release its scroll lock");
-for (const label of ["Guide", "Anleitung", "Guide", "Poradnik", "Průvodce", "Guida"]) assert.ok(shell.includes(`guide: "${label}"`), `shell Guide label: ${label}`);
-assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download", "download-action"\)/s);
-assert.match(shell, /<nav class="footer-nav"[\s\S]*navLink\("download"(?:, "", "footer-nav")?\)/s);
-const languageScript = read(path.join(root, "site", "language.js"));
-assert.match(languageScript, /shellLanguageMenu/);
-assert.match(languageScript, /shellLanguageMenu\?\.update\?\.\(language\)/);
+assert.doesNotMatch(shell, /replaceWith|createContextualFragment/, "Shared navigation uses generated HTML");
 const pageLanguageScript = read(path.join(root, "site", "page-language.js"));
 assert.match(pageLanguageScript, /document\.addEventListener\("click"/);
 for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
@@ -239,18 +232,58 @@ for (const pageName of ["legal", "privacy", "home", "guide"]) {
   const file = pageName === "home" ? "index.html" : pageName === "guide" ? `${slug}index.html` : `${pageName}/index.html`;
   const source = read(path.join(root, "site", file));
   checkLanguageControls(source, inPage);
-  let renderedHeader;
+
+}
+// Exercise generated translations against existing nodes; switching must preserve node identity.
+{
+  const source = read(path.join(root, "site/legal/index.html"));
+  const translations = JSON.parse(source.match(/id="shell-translations">([\s\S]*?)<\/script>/)[1]);
+  const nodes = new Map();
+  const makeNode = (dataset = {}) => ({dataset, attributes: {}, events: {},
+    setAttribute(name, value) { this.attributes[name] = value; },
+    getAttribute(name) { return this.attributes[name]; },
+    addEventListener(name, action) { this.events[name] = action; },
+    focus() { this.focused = true; },
+  });
+  const menu = makeNode({menuLabel: "Menu", closeLabel: "Close menu"});
+  const mobile = makeNode();
+  for (const key of ["guide", "download", "privacy"]) {
+    const node = makeNode({shellCopy: key, shellRoute: key});
+    nodes.set(key, node);
+  }
+  const aria = makeNode({shellAria: "primary"});
+  const home = makeNode();
+  const code = makeNode();
+  const name = makeNode();
+  const events = {};
+  const htmlRoot = {classList: {toggle(key, value) { this[key] = value; }}};
   const document = {
-    documentElement: {dataset: {page: pageName}, lang: "en"},
-    createRange: () => ({createContextualFragment: (markup) => markup}),
-    querySelector: (selector) => selector === "header.site-header" ? {replaceWith(markup) { renderedHeader = markup; }} : null,
-    querySelectorAll: () => [], addEventListener() {},
+    documentElement: htmlRoot,
+    querySelector(selector) { return {".menu-toggle": menu, ".mobile-nav": mobile, "#shell-translations": {textContent: JSON.stringify(translations)}}[selector]; },
+    querySelectorAll(selector) { return {"[data-shell-copy]": [...nodes.values()], "[data-shell-route]": [nodes.get("guide"), nodes.get("download")], "[data-shell-aria]": [aria], "[data-shell-root]": [home], ".language-code": [code], ".mobile-language-label": [name]}[selector] || []; },
+    addEventListener(name, action) { events[name] = action; },
   };
-  const window = {location: new URL(`https://terento.app/${file.replace("index.html", "")}`)};
+  const window = {location: new URL("https://terento.app/legal/")};
   vm.runInNewContext(shell, {document, window});
   for (const locale of locales) {
     window.TerentoLanguageMenu.update(locale);
-    checkLanguageControls(renderedHeader, inPage);
+    const prefix = locale === "en" ? "/" : `/${locale}/`;
+    assert.equal(nodes.get("guide").textContent, translations[locale].guide);
+    assert.equal(nodes.get("guide").href, prefix + "guides/install-garmin-maps-mac/");
+    assert.equal(nodes.get("download").href, prefix + "download/");
+    assert.equal(aria.attributes["aria-label"], translations[locale].primary);
+    assert.equal(home.href, prefix);
+    assert.equal(code.textContent, locale.toUpperCase());
+    assert.equal(name.textContent, translations[locale].name);
+    menu.events.click();
+    assert.equal(mobile.hidden, false);
+    events.keydown({key: "Escape"});
+    assert.equal(mobile.hidden, true);
+    assert.equal(menu.focused, true);
+    assert.equal(htmlRoot.classList["mobile-menu-open"], false);
+    menu.events.click();
+    mobile.events.click({target: {closest() { return nodes.get("guide"); }}});
+    assert.equal(mobile.hidden, true);
   }
 }
 const pageTitles = {

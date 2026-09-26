@@ -203,6 +203,10 @@ implemented. Never borrow a model from another user or nearby timestamp.
 Installations is all-time model evidence. The page label is `All time`. It is
 not the selected Dashboard period.
 
+Devices and Installations restore filters from the URL before session storage;
+unknown select values fall back to that page's default. The shared restoration
+code does not share their filtering populations or sorting rules.
+
 All/Failed/Open errors/Successful/Identity review filters have separate meanings.
 Failed history includes resolved failures; Open errors excludes resolved work.
 Known exact identities group consistently across list, card, detail and statistics.

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr" data-language="fr">
   <head>
-    <script defer src="/site-shell.js?v=20260909-post-audit-v1"></script>
+    <script defer src="/site-shell.js?v=20260926-static-shell-v1"></script>
     <link rel="stylesheet" href="/styles.css?v=20260913-maprando-language-v2">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -40,11 +40,10 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
-    <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
+    <script defer src="/language.js?v=20260926-static-shell-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
     <script defer src="/provider-list.js?v=20260912-bbbike-types-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
-    <script defer src="/localized-content.js?v=20260918-four-providers-v1"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -148,29 +147,29 @@
     <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Aller au contenu</a>
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="brand-lockup" href="/fr/" aria-label="Accueil Terento" data-umami-event="home-link-click" data-umami-event-location="header-brand">
+        <a class="brand-lockup" href="/fr/" data-shell-aria="home" data-shell-root aria-label="Accueil Terento" data-umami-event="home-link-click" data-umami-event-location="header-brand">
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
-        <nav class="primary-nav" aria-label="Navigation principale">
-          <a href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Guide</a><a href="/fr/about/" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">À propos</a><a class="download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Télécharger</a>
+        <nav class="primary-nav" data-shell-aria="primary" aria-label="Navigation principale">
+          <a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Guide</a><a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">À propos</a><a class="download-action" href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Télécharger</a>
           <span class="language-switcher"><details class="language-menu">
-          <summary class="language-trigger" aria-label="Choisir la langue"><span class="language-code" aria-hidden="true">FR</span></summary>
+          <summary class="language-trigger" data-shell-aria="language" aria-label="Choisir la langue"><span class="language-code" aria-hidden="true">FR</span></summary>
           <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
         </details></span>
         </nav>
-        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" data-menu-label="Menu" data-close-label="Fermer le menu" aria-label="Menu">
           <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="menu-toggle-text">Menu</span>
+          <span class="menu-toggle-text" data-shell-copy="menu">Menu</span>
         </button>
       </div>
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
-          <nav class="mobile-nav-links" aria-label="Navigation principale">
-            <a href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Guide</a><a href="/fr/about/" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">À propos</a><a href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Télécharger</a>
+          <nav class="mobile-nav-links" data-shell-aria="primary" aria-label="Navigation principale">
+            <a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Guide</a><a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">À propos</a><a href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Télécharger</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" aria-label="Choisir la langue"><span class="mobile-language-label">Français</span></summary>
+            <summary class="language-trigger" data-shell-aria="language" aria-label="Choisir la langue"><span class="mobile-language-label">Français</span></summary>
             <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
           </details></div>
         </div>
@@ -178,11 +177,55 @@
     </header>
 
     <main id="main-content">
-      <section class="hero" aria-labelledby="hero-title"><div class="shell hero-grid"><div class="hero-copy">
-        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Projet open source · Bêta</p><h1 id="hero-title">Installez simplement des cartes sur les montres Garmin</h1><p class="hero-lede">Installez, mettez à jour et gérez des cartes tierces depuis une application macOS native — sans transferts manuels de fichiers.</p><div class="hero-actions"><a class="download-action hero-download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Télécharger <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Vérifier la compatibilité <span aria-hidden="true">→</span></a></div>
-      </div><div class="hero-visual"><figure class="app-shot app-shot--hero"><picture><source type="image/avif" srcset="/assets/app/optimized/installing-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/installing-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/installing-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/installing-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><source type="image/webp" srcset="/assets/app/optimized/installing-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/installing-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/installing-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/installing-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><img src="/assets/app/optimized/installing-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento affiche la progression de l’installation de cartes communautaires sur macOS" fetchpriority="high" decoding="async"></picture></figure></div></div></section>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="shell hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Projet open source · Bêta</p>
+            <h1 id="hero-title">Installez simplement des cartes sur les montres Garmin</h1>
+            <p class="hero-lede">Installez, mettez à jour et gérez des cartes tierces depuis une application macOS native — sans transferts manuels de fichiers.</p>
+            <div class="hero-actions"><a class="download-action hero-download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Télécharger <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Vérifier la compatibilité <span aria-hidden="true">→</span></a></div>
+          </div>
 
-      <section class="experience section" id="how-it-works" aria-labelledby="experience-title"><div class="shell"><div class="section-heading"><p class="eyebrow" id="experience-label">Comment ça marche</p><h2 id="experience-title">Connecter <span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true">•</span> Installer <span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true">•</span> Terminé</h2></div><div class="problem-statement"><p>Installer des cartes tierces devrait être simple et rapide — sans logiciel supplémentaire, étapes de téléchargement séparées ni connaissances techniques.</p><p>Terento réunit tout le parcours en trois étapes simples.</p></div><ol class="steps"><li class="step"><p class="step-number" aria-hidden="true">01</p><h3>Connecter</h3><p>Terento reconnaît votre montre Garmin et indique quand elle est prête.</p></li><li class="step"><p class="step-number" aria-hidden="true">02</p><h3>Installer</h3><p>Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.</p></li><li class="step"><p class="step-number" aria-hidden="true">03</p><h3>Terminé</h3><p>Vos cartes sont installées et prêtes à être utilisées sur votre montre.</p></li></ol></div></section>
+          <div class="hero-visual">
+            <figure class="app-shot app-shot--hero">
+              <picture>
+                <source type="image/avif" srcset="/assets/app/optimized/installing-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/installing-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/installing-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/installing-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw">
+                <source type="image/webp" srcset="/assets/app/optimized/installing-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/installing-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/installing-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/installing-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw">
+                <img src="/assets/app/optimized/installing-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento affiche la progression de l’installation de cartes communautaires sur macOS" fetchpriority="high" decoding="async">
+              </picture>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="experience section" id="how-it-works" aria-labelledby="experience-title">
+        <div class="shell">
+          <div class="section-heading">
+            <p class="eyebrow" id="experience-label">Comment ça marche</p><h2 id="experience-title">Connecter <span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true">•</span> Installer <span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true">•</span> Terminé</h2>
+          </div>
+          <div class="problem-statement">
+            <p>Installer des cartes tierces devrait être simple et rapide — sans logiciel supplémentaire, étapes de téléchargement séparées ni connaissances techniques.</p>
+            <p>Terento réunit tout le parcours en trois étapes simples.</p>
+          </div>
+          <ol class="steps">
+            <li class="step">
+              <p class="step-number" aria-hidden="true">01</p>
+              <h3>Connecter</h3>
+              <p>Terento reconnaît votre montre Garmin et indique quand elle est prête.</p>
+            </li>
+            <li class="step">
+              <p class="step-number" aria-hidden="true">02</p>
+              <h3>Installer</h3>
+              <p>Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.</p>
+            </li>
+            <li class="step">
+              <p class="step-number" aria-hidden="true">03</p>
+              <h3>Terminé</h3>
+              <p>Vos cartes sont installées et prêtes à être utilisées sur votre montre.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
 
       <section class="map-feature-section" aria-label="Fonctions cartographiques">
         <div class="shell">
@@ -193,10 +236,42 @@
         </div>
         <div class="map-feature-panels">
           <div class="map-feature-panel" id="install-maps-panel" role="tabpanel" tabindex="0" aria-labelledby="install-maps-tab">
-<section class="product-showcase product-showcase--muted" aria-labelledby="install-maps-title"><div class="shell product-showcase-panel"><div class="product-showcase-grid"><div class="product-showcase-copy"><h2 id="install-maps-title">Installer les cartes</h2><p>Choisissez des cartes dans le catalogue par région ou ajoutez votre propre carte .img compatible.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/install-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/install-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/install-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/install-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/install-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/install-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/install-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento affiche les fournisseurs et les régions de cartes tierces sur macOS" loading="lazy" decoding="async"></picture></figure></div></div></div></section>
+<section class="product-showcase product-showcase--muted" aria-labelledby="install-maps-title">
+        <div class="shell product-showcase-panel"><div class="product-showcase-grid">
+          <div class="product-showcase-copy">
+            <h2 id="install-maps-title">Installer les cartes</h2>
+            <p>Choisissez des cartes dans le catalogue par région ou ajoutez votre propre carte .img compatible.</p>
+          </div>
+          <div class="product-showcase-media">
+            <figure class="app-shot app-shot--feature">
+              <picture>
+                <source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/install-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/install-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/install-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
+                <source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/install-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/install-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/install-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
+                <img src="/assets/app/optimized/install-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento affiche les fournisseurs et les régions de cartes tierces sur macOS" loading="lazy" decoding="async">
+              </picture>
+            </figure>
+          </div>
+        </div></div>
+      </section>
         </div>
           <div class="map-feature-panel" id="manage-maps-panel" role="tabpanel" tabindex="0" aria-labelledby="manage-maps-tab">
-<section class="product-showcase product-showcase--muted product-showcase--reverse" aria-labelledby="manage-maps-title"><div class="shell product-showcase-panel"><div class="product-showcase-grid"><div class="product-showcase-copy"><h2 id="manage-maps-title">Gérer les cartes</h2><p>Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/manage-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/manage-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/manage-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/manage-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/manage-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/manage-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/manage-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento affiche les cartes tierces installées, regroupées par fournisseur" loading="lazy" decoding="async"></picture></figure></div></div></div></section>
+<section class="product-showcase product-showcase--muted product-showcase--reverse" aria-labelledby="manage-maps-title">
+        <div class="shell product-showcase-panel"><div class="product-showcase-grid">
+          <div class="product-showcase-copy">
+            <h2 id="manage-maps-title">Gérer les cartes</h2>
+            <p>Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.</p>
+          </div>
+          <div class="product-showcase-media">
+            <figure class="app-shot app-shot--feature">
+              <picture>
+                <source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/manage-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/manage-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/manage-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
+                <source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/manage-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/manage-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/manage-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
+                <img src="/assets/app/optimized/manage-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento affiche les cartes tierces installées, regroupées par fournisseur" loading="lazy" decoding="async">
+              </picture>
+            </figure>
+          </div>
+        </div></div>
+      </section>
         </div>
         </div>
       </section>
@@ -257,34 +332,70 @@
           </div>
         </div>
       </section>
-      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Vous avez des questions ?</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list">
-            <details><summary>Quelles montres Garmin fonctionnent avec Terento ?</summary><p>Consultez la <a href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-faq-compatibility">page Compatibilité</a> pour voir les modèles et variantes Garmin exacts avec au moins une installation réussie partagée. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge.</p></details>
-            <details><summary>Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?</summary><p>Oui. Terento est conçu pour rendre la gestion des cartes tierces sur macOS simple et rapide — du choix de la carte à son installation, sa mise à jour et sa gestion sur votre montre Garmin. <a href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-faq-basecamp">Lisez le guide d’installation.</a></p></details>
-            <details><summary>Puis-je ajouter ma propre carte .img ?</summary><p>Oui. Ajoutez une carte .img compatible depuis votre Mac et installez-la sur votre montre Garmin connectée.</p></details>
-            <details><summary>Puis-je mettre les cartes à jour plus tard ?</summary><p>Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento.</p></details>
-            <details><summary>Que dois-je faire si l’installation échoue ?</summary><p>Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Ouvrir une issue <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Contacter le support <span aria-hidden="true">→</span></a></div></details>
-            </div></div></section>
+      <section class="faq section" id="faq" aria-labelledby="faq-title">
+        <div class="shell faq-grid">
+          <div class="section-heading">
+            <p class="eyebrow">Vous avez des questions ?</p>
+            <h2 id="faq-title">FAQ</h2>
+          </div>
+          <div class="faq-list">
+            <details>
+              <summary>Quelles montres Garmin fonctionnent avec Terento ?</summary>
+              <p>Consultez la <a href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-faq-compatibility">page Compatibilité</a> pour voir les modèles et variantes Garmin exacts avec au moins une installation réussie partagée. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge.</p>
+            </details>
+            <details>
+              <summary>Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?</summary>
+              <p>Oui. Terento est conçu pour rendre la gestion des cartes tierces sur macOS simple et rapide — du choix de la carte à son installation, sa mise à jour et sa gestion sur votre montre Garmin. <a href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-faq-basecamp">Lisez le guide d’installation.</a></p>
+            </details>
+            <details>
+              <summary>Puis-je ajouter ma propre carte .img ?</summary>
+              <p>Oui. Ajoutez une carte .img compatible depuis votre Mac et installez-la sur votre montre Garmin connectée.</p>
+            </details>
+            <details>
+              <summary>Puis-je mettre les cartes à jour plus tard ?</summary>
+              <p>Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento.</p>
+            </details>
+            <details>
+              <summary>Que dois-je faire si l’installation échoue ?</summary>
+              <p>Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.</p>
+              <div class="faq-support-actions">
+                <a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Ouvrir une issue <span aria-hidden="true">→</span></a>
+                <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Contacter le support <span aria-hidden="true">→</span></a>
+              </div>
+            </details>
+            </div>
+        </div>
+      </section>
 
-      <section class="final-cta" aria-labelledby="final-cta-title"><div class="shell final-cta-inner"><div class="final-cta-copy"><p class="eyebrow">Commencez aujourd’hui</p><h2 id="final-cta-title">Prêt pour une façon plus simple d’installer vos cartes ?</h2><p>Téléchargez Terento et gérez vos cartes tierces depuis votre Mac.</p></div><a class="download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-final-cta">Télécharger</a></div></section>
+      <section class="final-cta" aria-labelledby="final-cta-title">
+        <div class="shell final-cta-inner">
+          <div class="final-cta-copy">
+            <p class="eyebrow">Commencez aujourd’hui</p>
+            <h2 id="final-cta-title">Prêt pour une façon plus simple d’installer vos cartes ?</h2>
+            <p>Téléchargez Terento et gérez vos cartes tierces depuis votre Mac.</p>
+          </div>
+          <a class="download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-final-cta">Télécharger</a>
+        </div>
+      </section>
     </main>
 
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div class="footer-identity">
-          <a class="brand-lockup footer-brand" href="/fr/" aria-label="Accueil Terento" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
+          <a class="brand-lockup footer-brand" href="/fr/" data-shell-aria="home" data-shell-root aria-label="Accueil Terento" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
             <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Projet open source</a><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Projet open source</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
-        <nav class="footer-nav" aria-label="Navigation du pied de page">
-          <a href="/fr/about/" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">À propos</a><a href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide</a><a href="/fr/#faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Télécharger</a>
-          <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Mentions légales</a>
-          <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Confidentialité</a>
+        <nav class="footer-nav" data-shell-aria="footer" aria-label="Navigation du pied de page">
+          <a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">À propos</a><a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide</a><a href="/fr/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Télécharger</a>
+          <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Mentions légales</a>
+          <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Confidentialité</a>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
-      <div class="shell footer-note"><p>Les statistiques de visites (Umami) n’utilisent pas de cookies.</p></div>
+      <div class="shell footer-note"><p><span data-footer-copy data-shell-copy="stats">Les statistiques de visites (Umami) n’utilisent pas de cookies.</span></p></div>
     </footer>
   </body>
 </html>

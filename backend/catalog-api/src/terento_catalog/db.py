@@ -1760,24 +1760,20 @@ class Database:
                         WHERE e.event_type = 'MAP_UPDATE_FAILED'
                           AND e.outcome = 'FAILED'
                     ) AS all_time_map_update_failed_count
-                    ,count(DISTINCT CASE
-                        WHEN e.event_type = 'DOWNLOAD_SUCCEEDED'
-                             AND e.outcome = 'SUCCEEDED'
-                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                    ,count(DISTINCT COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
                                  || ':' || COALESCE(e.operation_id::text, '')
                                  || ':' || COALESCE(e.provider_id, '')
                                  || ':' || COALESCE(e.map_package_id::text, '')
-                                 || ':' || COALESCE(e.component_kind, '')
-                     END) AS all_time_completed_download_count
-                    ,count(DISTINCT CASE
-                        WHEN e.event_type = 'DOWNLOAD_FAILED'
-                             AND e.outcome = 'FAILED'
-                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                                 || ':' || COALESCE(e.component_kind, '')) FILTER (
+                        WHERE e.event_type = 'DOWNLOAD_SUCCEEDED' AND e.outcome = 'SUCCEEDED'
+                     ) AS all_time_completed_download_count
+                    ,count(DISTINCT COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
                                  || ':' || COALESCE(e.operation_id::text, '')
                                  || ':' || COALESCE(e.provider_id, '')
                                  || ':' || COALESCE(e.map_package_id::text, '')
-                                 || ':' || COALESCE(e.component_kind, '')
-                     END) AS all_time_failed_download_count
+                                 || ':' || COALESCE(e.component_kind, '')) FILTER (
+                        WHERE e.event_type = 'DOWNLOAD_FAILED' AND e.outcome = 'FAILED'
+                     ) AS all_time_failed_download_count
                 {event_scope}
                 """,
                 (all_time_since, all_time_since),

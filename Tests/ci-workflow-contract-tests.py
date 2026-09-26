@@ -358,6 +358,18 @@ def main() -> int:
     assert "inputs.target_062_separately_applied == true" in deploy_api
     assert "vars.TERENTO_FIXED_OPS_INSTALLED == 'true'" in deploy_api
 
+    cache_pattern = re.search(r"grep -Eiq '([^']+)' \"\$policy_headers_file\"", deploy_api).group(1)
+    for header, expected in [
+        ("cache-control: no-store\r\n", True),
+        ("Cache-Control: private, no-store\n", True),
+        ("cache-control: no-store, private\r\n", True),
+        ("cache-control: public\r\n", False),
+        ("cache-control: no-store-invalid\r\n", False),
+    ]:
+        result = subprocess.run(["grep", "-Ei", cache_pattern], input=header,
+                                text=True, capture_output=True)
+        assert (result.returncode == 0) == expected, repr(header)
+
     assert "needs: tests" in deploy_api, "catalog deploy must wait for backend tests"
     assert "Retain API deployment health" in deploy_api
     assert "https://api.terento.app/internal/operations/report-context" in deploy_api

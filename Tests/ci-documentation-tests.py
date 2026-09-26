@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 PUBLIC_COPY_SOURCES = (
     "README.md",
-    "site/localized-content.js",
+    "scripts/templates/home-copy.json",
+    "scripts/templates/home.html",
     "site/metadata.json",
     "scripts/add-guide-links.py",
     "scripts/build-about-pages.py",
