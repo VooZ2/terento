@@ -116,7 +116,7 @@ fresh map diagnostic coverage = reliably linked fresh map attempts /
                                 all selected fresh map attempts * 100
 ```
 
-Admin Overview also has a separate catalog-evidence coverage metric:
+Devices has a separate catalog-evidence coverage metric:
 
 ```text
 map-capable model evidence coverage =
@@ -129,7 +129,9 @@ The numerator is a distinct exact-model count, not a count of installations.
 Resolved diagnostics retain their historical verified result. Stored Maps=NULL
 or Maps=No, inactive rows, unresolved text identities and inferred capability
 are excluded from both sides. This metric is not support status, public
-compatibility, diagnostic linkage coverage, or native write authorization.
+compatibility, diagnostic linkage coverage, or native write authorization. It
+belongs to the device catalog evidence view and is not presented on Dashboard
+or Maps.
 
 The linkage object keeps its historical operation/session compatibility fields
 (`mapOperationCount`, `linkedOperationCount`, `mapInstallationCount`, and the
@@ -177,7 +179,7 @@ missing terminal outcomes do not enter the acquisition failure denominator.
 
 ## Charts, cards, and activity
 
-The Overview installation trend is an installation-outcome chart. It must never
+The Dashboard installation trend is an installation-outcome chart. It must never
 include download or pre-install acquisition events.
 
 Fresh-install outcomes and map-update outcomes are separate statistical
@@ -292,7 +294,7 @@ package or source problem. Retired/resolved historical rows are excluded from
 the current counts, and the full current catalog population is counted before
 any display pagination.
 
-The private Review queue counts active actionable tasks, not unique incidents.
+The private Needs attention read model counts active actionable tasks, not unique incidents.
 Failure-diagnostic review and GitHub handling for one operation are alternative
 states of one task; linking an issue moves that task between categories and
 does not add a second task. Identity review is an independent task, and
@@ -300,7 +302,7 @@ publication review is counted per exact model. Queue lists and badges use the
 same operation-level grouping and exclude resolved work; operation work is not
 labelled as a count of unique GitHub issues. A failed queue query is
 `unavailable`, never an empty zero queue.
-Queue actions use the operation-level diagnostic scope when a batch contains
+Needs attention actions use the operation-level diagnostic scope when a batch contains
 multiple map-result rows; this does not merge those rows in installation
 statistics or change their per-map historical outcomes.
 
@@ -309,7 +311,7 @@ separate review task for the exact immutable `map_download_event.event_id`.
 Its dismiss/reopen state is stored in the operator-only review tables and is
 audited with administrator, time, transition and exact target; it never edits
 map telemetry, install outcomes, coverage, or compatibility evidence. The
-Overview dismiss action is idempotent, requires no reason, and offers Undo.
+Dashboard dismiss action is idempotent, requires no reason, and offers Undo.
 Dismissed gaps are excluded from the active queue, while a later matching
 diagnostic independently removes the gap through normal reconciliation. A
 statistics link for a gap carries the exact `eventId` and opens Event detail;
@@ -355,23 +357,6 @@ The regression case for the Freizeitkarte `CZE+` package with
 device installation `NOT_STARTED` result. It contributes zero fresh attempts,
 zero fresh failures, and does not alter the compatibility model rate. The
 backend must not synthesize an `INSTALL_FAILED` map event from that evidence.
-
-## Average download time
-
-The private provider metric is measured only for a successful external main-map
-acquisition with exactly one correlated `DOWNLOAD_STARTED`,
-`DOWNLOAD_PROCESSING`, and `DOWNLOAD_SUCCEEDED` phase. Identity must agree on
-acquisition, operation, provider, package, and `main` component. Its duration
-is `PROCESSING.occurred_at - STARTED.occurred_at`, not Started → Succeeded.
-Failed, interrupted, cancelled, contours, custom imports, local tests,
-missing/conflicting phases, and legacy records without reliable identity are
-excluded. Successful terminal completion selects the population, while its
-earlier phases may be outside the selected period; UI pagination and recent
-activity limits never restrict the population. `populationCount` is the full
-selected eligible terminal-acquisition population; `sampleCount` is the subset
-with a complete measured phase sequence. The raw average is rounded only once
-for display. This is the only canonical definition of Average download time;
-Admin display formatting is owned by the Admin behavior contract.
 
 ## Privacy and limits
 

@@ -17,6 +17,8 @@ def serve(directory: Path, port: int = 8765) -> None:
                 self.path = "/overview.html"
             elif route == "/admin/map-statistics":
                 self.path = "/statistics.html"
+            elif route.startswith("/admin/") and not route.startswith("/admin/map-assets/"):
+                self.path = route.removeprefix("/admin")
             super().do_GET()
 
     ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()

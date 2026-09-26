@@ -75,7 +75,7 @@ neither creates an empty or inferred context. Non-null original context requires
 a terminal cleanup context object. Never reconstruct
 boundary, presence or reason from a code, neighboring report or issue text.
 
-Keep Overview concise. Diagnostic detail presents stage, exact boundary,
+Keep Dashboard concise. Diagnostic detail presents stage, exact boundary,
 protection reason, native category, retry count and classification source.
 Remaining bounded observations belong in Technical details. The generated
 GitHub issue report includes exact boundary, classification source, device
@@ -121,7 +121,7 @@ legacy fallback when the write fact is absent. A current `writeStarted=false`
 result is a pre-install result, not a failed installation attempt; its stage and
 reason remain visible in diagnostics, but it does not enter fresh-install
 attempts, failures or success rates. A current missing write fact is unknown and
-is not guessed. Overview's map-event fallback projects only a verified success
+is not guessed. Dashboard's map-event fallback projects only a verified success
 or a failure with writing started, so Recent map activity and the installations
 chart do not turn a download/preflight failure into a fresh-install failure.
 
@@ -142,351 +142,171 @@ while a measured zero is 0.
 
 ## Page and navigation behavior
 
-Primary Admin section links are grouped by Daily (`Dashboard`, `Health`,
-`Installations`), Catalog (`Devices`, `Providers`), and Analytics
-(`Maps`). Tools remain a utility menu. A single `Review` count links to Dashboard
-Needs attention. Grouping is visual only; destinations stay the same.
+The primary sequence is `Dashboard`, `Installations`, `Devices`, `Maps`,
+`Providers`, and `Health`, followed by Tools and account controls. Dashboard
+Needs attention is the entry point for actionable review work; there is no
+duplicate Review navigation item.
 
 ### Dashboard and Needs attention
 
-Dashboard headline KPIs describe all retained history and link to the same all-time
-Map statistics population. The two charts and unified activity list describe the
-selected period. Period chart totals keep that selected period when they open
-Map statistics. Needs attention covers unresolved work across all dates. Keep each
-scope explicit. Show failures, linked issue work, identity/publication review and
-provider/system problems as distinct work types.
-Counts and list links must lead to the corresponding work, even when the preview
-is truncated. Empty active work does not mean there have been no failures.
+Dashboard must answer whether anything is wrong, what happened in the selected
+period, whether activity is changing, and what to inspect next. On desktop its
+first row is `Map downloads | Map installs`. Below it, Needs attention and App
+downloads form the leading column while Activity spans the trailing column. The
+narrow order is Map downloads, Map installs, Needs attention, Activity, then App
+downloads.
 
-Needs attention is labelled and counted as `Pending review tasks`. A failed
-diagnostic and GitHub handling linked to the same operation are alternative
-states of one task; linking an issue moves the task between categories and
-does not increase the total. Identity review is an additional task and
-publication review is counted per exact model. The queue groups operation work,
-not unique GitHub incidents, and resolved work is excluded. If the query fails,
-the queue is unavailable rather than zero. Actions opened from an operation
-task retain that operation-level diagnostic scope; per-map installation history
-remains separate in the statistics read model.
+The Map downloads and Map installs charts are always visible. Their Successful,
+Failed, and Success rate badges are all-time values; the period selector changes
+the chart series, not those badges. Hover/title and accessible text may expose
+the all-time scope without permanent visible copy. App downloads means Terento
+application downloads and is omitted when no usable counter or trend data exists.
+Activity is internally scrollable and must not force page height. A generic
+activity row has no Maps link unless an exact useful destination exists.
 
-An install failure without a matching device diagnostic is an additional
-per-map review task keyed by the immutable map event ID. Overview exposes a
-visible, keyboard-accessible `×` action to dismiss that task without a reason,
-device selection, or diagnostic mutation. Dismiss/reopen is server-side,
-idempotent, CSRF/authenticated, and audited with the administrator, timestamp,
-transition, and exact event target; a failed mutation leaves the item visible.
-The post-action Overview offers Undo. Queue counts, list rows, revisions, and
-freshness use the same active task population. A later matching diagnostic
-removes the gap independently. The activity link includes exact `eventId` and
-opens the corresponding Map statistics Event detail without changing aggregate
-statistics or install/coverage/publication/GitHub data.
+Needs attention covers unresolved work across all dates. Counts and Inspect links
+must lead to the corresponding work even when the preview is truncated. Failures,
+linked issue work, identity/publication review, and provider/system problems remain
+distinct work types. Empty active work does not mean there have been no failures.
+A failed query is unavailable rather than zero.
 
-A received device failure must lead to its actionable diagnostic context with
-model/variant, available watch image, provider/map, time, result and known reason.
-It must not be redirected to aggregate Map statistics as a substitute.
+A failed diagnostic and GitHub handling linked to one operation are alternative
+states of one task; linking an issue moves the task between categories and does
+not increase the total. Identity review is a separate task and publication review
+is counted per exact model. Resolved work is excluded.
 
-Admin presentation follows the pre-install classification in
-[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md):
-show provider acquisition failure as activity/history, not as an installation
-failure, Review queue task, open error, or identity-review task. The original
-diagnostic and map-event records remain available, and an explicitly linked
-GitHub issue remains its own operator-created workflow.
+A map install failure without matching device diagnostic evidence is a per-map
+review task keyed by the immutable map event ID. Dismiss/reopen is authenticated,
+CSRF-protected, idempotent, and audited without changing telemetry, statistics,
+compatibility, publication, or GitHub state. Dashboard offers Undo after dismiss.
+A later matching diagnostic removes the gap independently. An exact event action
+may open the matching collapsed Maps Event detail; aggregate statistics remain
+unchanged. A received device failure instead opens its actionable diagnostic
+context and is not redirected to aggregate Maps as a substitute.
 
-When only a map failure exists, keep the gap visible and clearly say the device
-report is unavailable. A statistics link is supplementary, not diagnostic
-resolution. A complete unknown-device workflow must expose only supported,
-audited actions and reconcile later reports without duplicating history. Do not
-present that workflow, watch assignment or GitHub actions as available before
-implemented. Never borrow a model from another user or nearby timestamp.
+Provider acquisition failure remains activity/history, not an installation
+failure, open error, identity task, or publication task. Never borrow a model from
+another report or nearby timestamp.
 
-### Installations, device history and Diagnostic detail
+### Installations
 
-Installations is all-time model evidence. The page label is `All time`. It is
-not the selected Dashboard period.
+Installations is all-time model evidence and is visibly labelled `All time`. Its
+primary summary order is Attempts, Successful, Failed, Success rate, and Open
+errors. A positive Failed value uses the danger color.
 
-Devices and Installations restore filters from the URL before session storage;
-unknown select values fall back to that page's default. The shared restoration
-code does not share their filtering populations or sorting rules.
+All, Failed, Open errors, Successful, and Identity review filters retain their
+separate meanings. Failed includes resolved historical failures; Open errors does
+not. A true no-evidence state omits metrics, filters, table, and pagination. A
+filtered-empty state keeps the active filters and a clear action. Pagination
+appears only when multiple pages exist.
 
-All/Failed/Open errors/Successful/Identity review filters have separate meanings.
-Failed history includes resolved failures; Open errors excludes resolved work.
-Known exact identities group consistently across list, card, detail and statistics.
-Unknown identities remain discoverable rather than disappearing from the UI.
+Known exact identities group consistently across list, record, detail, and
+statistics views. Unknown identities remain discoverable. Identity text is
+leading aligned; numbers and dates are trailing aligned where practical.
 
-Detail must retain supported actions: inspect received technical evidence,
-review/correct identity with an audit trail, create or link a GitHub issue, inspect
-linked issue/workflow, and resolve/reopen under existing rules. Creating an issue
-requires the existing explicit operator action; do not publish issues as a test.
-Issue synchronization changes workflow status, not the historical install result.
-A source-mapping review is not an automatic historical installation reassignment.
+### Devices and device detail
 
-Use the canonical model name and a consistent variant order: case size, display,
-then features such as Solar/inReach when known. No specifications may be inferred
-merely to fill a visual gap. Cards and tables must use the same reviewed values.
+`Maps`, `Install policy`, and `Evidence` are separate concepts. Maps reports the
+stored nullable catalog fact. Install policy reports the derived native write
+decision; it is not public compatibility or support status. Evidence reports
+observed history. Administration starts collapsed. Technical identifiers and
+provenance remain secondary.
 
-Historical catalog provenance in device and installation tables uses a small
-Font Awesome Free solid `box-archive` icon beside the model. Its “Historical catalog entry” text stays
-in the accessible link name and appears on icon hover or model-link keyboard
-focus. This marker does not change support, specifications or installation
-authorization; the device detail retains the explicit provenance label.
+The policy values are Pending, Approved, and Blocked. Active stored Maps=Yes is
+Approved, Maps=No is Blocked, and unknown capability is Pending. The native
+resolver still evaluates every plausible active variant. Support metadata,
+observed capability, success counts, identity review, and public compatibility
+never grant write permission.
 
-The `Installation authorization` field reports the derived write decision,
-not a compatibility result. The per-row policy values come from that catalog
-row's `active` and `map_capable` fields: active Maps=Yes is Approved, Maps=No
-is Blocked, and unknown capability is Pending. The native resolver applies
-the exact normalized base-model match and evaluates Maps across every
-remaining plausible active variant; conflicting variant attributes broaden
-that candidate set rather than denying authorization. `support_status` remains
-a separate operator metadata field and is never translated into write
-permission. This decision is separate from
-`TESTING`/`TESTED`/`SUPPORTED`/`VERIFIED`, success counts, and public
-publication. A model with zero successful installations may still be
-Approved, while evidence or support metadata cannot authorize it.
-Admin payload `mapCapable` and the device list's `Catalog Maps` show only the
-stored nullable `device_model.map_capable` value. The separate
-`observedMapCapability` field holds classifier or successful-install evidence
-and is shown on device detail and in the list cell's secondary description.
-For example, stored NULL with observed Yes displays Catalog Maps Unknown and
-authorization Pending. Identity Review and public compatibility retain their
-own evidence semantics; neither derived value changes write permission.
+Empty installation history omits unusable filters, table, and pagination. At
+suitable desktop widths the summary and Installation history may be side by side;
+narrow layouts stack. Historical catalog provenance remains accessible and does
+not change Maps, Install policy, support, or public compatibility.
 
-Only an exact catalog row with inactive or stored Maps=No state may receive
-server-side `OUT_OF_SCOPE_PREWRITE` classification; neither `support_status`
-nor an Edge name is a classification shortcut. Events so classified remain visible in
-diagnostic history with their reason and audit row, but are excluded from
-ordinary open-error, identity-review, publication, overview, model-card,
-fresh-install, update, and public statistics. A reported write boundary or
-remote object is retained as a separate `OUT_OF_SCOPE_WRITE` security review
-issue. Provider acquisition events remain a separate population.
+### Maps and downloads
 
-### Map statistics and downloads
+Map acquisition, fresh installation, and update populations remain separate.
+Missing terminal activity is unknown, not success. Lifecycle phases must not
+multiply attempts. Provider, map, region, and date filters define the summary
+population; event type, outcome, exact event, and detail pagination scope only
+the collapsed Event detail. Initial HTML and asynchronous JSON use the same
+server summary.
 
-Distinguish download phases, download outcomes and installation outcomes. Missing
-a terminal download event is unknown, not succeeded. Lifecycle phases must not
-multiply completed-download or installation counts. A grouped statistics row is
-not an individual diagnostic and must not be offered as its replacement.
+The world map remains visible. Primary visible analytics are Top countries,
+Provider comparison, Maps by provider, Map downloads trend, Map installs trend,
+and Updates. They are not placed in disclosures. Diagnostic linkage coverage
+may remain in the private API contract but is not shown as an Admin block. Raw
+Event detail is secondary and collapsed.
 
-A chart, total, filter and table that claim the same period/population must agree;
-cumulative totals must be labelled separately. Apply the selected time zone
-consistently. History remains accessible with compact, aligned rows and explicit
-status text; icons/color supplement rather than replace meaning. Download history
-uses original Font Awesome solid hourglass-start (Started), spinner (Processing)
-and hourglass-end (Succeeded). These historical phase icons stay static, so past
-processing does not imply an operation is still running. The activity title itself
-expands the timeline; no separate Download history row is shown. The map/provider
-link remains visible below the title. Started and the terminal result show their
-recorded timestamps in the selected timezone; Processing shows total elapsed time
-from start to terminal result, or an em dash if either is missing or inconsistent.
-This duration includes the whole acquisition, not just unpacking/checking.
+Provider comparison keeps Downloads, Installs, and Updates independent, each
+with Successful, Failed, and Rate, plus Last install. A zero denominator displays
+`—`. Download failures include only terminal `DOWNLOAD_FAILED`. Last install is
+the latest successful fresh main-map install in scope. The interface does not
+synthesize one telemetry stream from another.
 
-Map-statistics population filters are provider, map, region, and date. Event
-type, outcome, and detail pagination affect only the Event detail disclosure;
-they do not recalculate KPI totals, success rates, coverage, or popularity.
-The initial HTML and asynchronous response must use the same server summary.
-Per-map diagnostic coverage is reliably linked fresh-map attempts divided by
-all selected fresh-map attempts. A linked message is not synonymous with a
-successful message, and an absent message is an observation gap, not a failed
-install. Session totals are separate.
+The App downloads chart shows observed public GitHub `.dmg` and `.zip` counter
+increases. Its baseline, zero, legacy, partial, gap, counter-reset, and population
+comparability semantics are owned by the statistics contract. It uses the
+available card width with only axis and clipping margins.
 
-The visible Map statistics KPI summary is one compact container. On wide
-layouts it has equal Downloads, Installs, and Updates groups, with
-Successful and Success rate on the first row and Failed below in each group.
-Diagnostic coverage is a secondary disclosure, not a primary KPI row, and
-still shows Fresh attempts, Linked reports, Report gaps, and Coverage rate. A positive
-Failed value uses the same semantic error token as Open errors; zero is neutral
-and an unavailable value is shown as an em dash. These are presentation rules
-only; the existing summary counts and formulas remain authoritative.
+History remains compact and explicit. Icons and color supplement status text.
+Download phase icons remain static. Timestamps use the selected time zone.
 
-Popular maps uses the population and grouping defined in
-[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-It is a secondary disclosure beside Installations by country. Admin provides
-Top 5, Regions, and All maps views; All maps searches the complete eligible
-set before pagination, and view navigation does not change the selected
-population. The canonical row geometry is defined once in the
-Admin visual consistency addendum below.
+### Diagnostics
 
-Dashboard has three KPI groups: `Downloads`, `Installs`, and `Model coverage`;
-it has no `Current status` group. Installs and Downloads show all-time successful,
-failed, and success-rate values. The Downloads group is map-acquisition telemetry, not
-the GitHub `.dmg`/`.zip` panel: it uses the canonical acquisition populations
-and formulas in [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-The model group shows active exact catalog rows with stored Maps=Yes that have at
-least one verified successful installation, divided by all active exact catalog
-rows with stored Maps=Yes. It is evidence coverage, not support, public
-compatibility, or installation authorization.
+Primary actions precede raw technical evidence. GitHub issue and Technical
+details use the same disclosure presentation, with no duplicate heading inside
+its own disclosure. Resolve and Assign model align naturally with content-driven
+heights and stack when space requires it.
 
-Activity by provider has a two-row header: `Provider`; `Downloads`, `Installs`,
-and `Updates`, each with `Successful`, `Failed`, and `Rate`; then `Last install`.
-Admin installation and statistics UI uses `Installs` for the fresh main-map
-installation population and must not render `Fresh install`, `Fresh installs`,
-or `Fresh install success` as visible labels or copy. This vocabulary rule does
-not rename internal identifiers (for example `freshMapAttemptCount`) or the
-canonical population terminology in `contracts/STATISTICS_CONTRACT.md`.
-Provider-health `Freshness` describes catalog recency and is unrelated to
-installation vocabulary.
-The visible `Installs` group is the canonical fresh main-map install population;
-updates remain separate. Each provider rate divides its successful terminal
-count by successful plus failed terminal counts in that same group. A zero
-denominator displays `—`. Download failures include only terminal
-`DOWNLOAD_FAILED`, not interrupted, cancelled, stale, or missing outcomes.
-`Last install` shows the latest successful fresh-install timestamp in the
-selected scope and timezone, or `—` when none exists; updates, downloads, and
-provider health checks do not advance it. Average download time remains a
-separate provider metric and is not a column in this table. Admin
-tables keep descriptive text and dates left-aligned, counters and percentages
-centered, and status badges centered, with column headers aligned to their
-values. Sort controls retain their keyboard, focus, and `aria-sort` behavior.
-The Providers table shows the health badge without an additional “Latest check
-state” helper when no error exists.
+Assign model is an operator-assisted exact-catalog selection. Reported facts and
+missing facts stay distinct; catalog facts may enrich only a consistent exact
+target. A conflicting normal assignment requires the separate explicit manual
+action and an audit record. Scope remains one exact result unless the operator
+explicitly submits an operation-level scope. Identity decisions never alter
+installation outcomes, device files, telemetry, statistics, or publication.
 
-Activity by provider keeps acquisition and installation populations independent:
-successful installs are not synthesized from downloads, downloads are not
-synthesized from installs, and `Installs > Downloads` is valid when the two
-telemetry streams are incomplete. Install success, update success, and download
-success use the canonical populations and formulas in
-[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-Overview keeps the same three-metric layout in its outcome groups and separates
-each Failed row with the shared Map statistics KPI divider.
+Diagnostic detail retains the result, time, map/provider, device identity,
+available image, reason, lifecycle actions, issue actions, and one collapsed
+Technical details section. A successful result with pending identity is not a
+failure.
 
-The GitHub chart says `Observed download increases between checks`. In the 24h
-view it is a discrete hourly chart: each canonical hour has one equal-width
-x-axis slot, the label is `HH:00`, and adjacent bar footprints have visible
-separation. The `.dmg` and `.zip` segments are stacked in the same hourly slot;
-observation minutes never affect x-position. The exact observation timestamp
-remains tooltip/accessibility and factual interval metadata. It starts
-with a baseline and preserves valid zero increases. Historical counter deltas
-whose observations lack the new population metadata remain visible as legacy
-or unverified deltas; missing metadata alone is not a discontinuity. A counter
-decrease or confirmed population change remains unknown/discontinuous. Missing
-check gaps and period-boundary intervals retain the previous and actual
-`observed_at` values, are marked uncertain, and are never filled with zero or
-used to spread a delta across the gap. Daily/monthly buckets with known values
-and unknown intervals are marked partial. Failed collection keeps the last
-successful observation and timestamp.
+### Model source review
 
-The GitHub downloads bar chart keeps zero-valued intervals in its data and time
-axis, but does not render `.dmg` or `.zip` zero values as extra circles or
-repeated zero symbols. Zero information remains available through the interval
-tooltip/accessibility label. Unknown, missing, partial, legacy, and
-discontinuity semantics remain unchanged. A trusted positive delta, including
-`+1` in the final slot, is rendered as a normal bar. A genuine unknown or
-discontinuity interval has a visible `Unknown` text marker and accessible
-description, not a color-only or dashed-zero interpretation.
-
-Admin scrollbars are visually hidden in existing scrollable regions while the
-regions remain scrollable with wheel, trackpad, touch, keyboard, and horizontal
-table interaction. Hiding the scrollbar must not clip content, disable focus,
-change overflow behavior, or add scrolling to a view that was not already
-scrollable.
-
-Average download time uses the canonical population and measurement definition
-in [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-Admin renders the available value as `mm:ss` and an unavailable value as `—`,
-never `0`; the selected population is not reduced by pagination or recent
-activity limits.
-
-- Overview has one `Activity` list for the selected period. It groups provider
-  acquisition phases and shows install outcomes in the same chronological list.
-  A device model appears only when operation plus provider and exact or
-  unambiguous package-region facts reliably link the map and compatibility
-  streams. Missing or ambiguous linkage is explicit and never filled from time,
-  nearby activity, or another result. Full diagnostics elsewhere in Admin remain
-  unaffected.
-
-## Identity Review operator-assisted assignment addendum (2026-09-17)
-
-Identity Review is an operator-assisted model-selection workflow, not a
-mandatory all-evidence form. Its 10–15 second outcome is: see the reported
-device, see the available facts, confirm the suggested exact catalog model, or
-choose another exact variant. Missing facts remain visible and do not by
-themselves block an explicit manual catalog selection.
-
-The compact review shows one `Reported device` value and six fact cards:
-`Model`, `Case size`, `Display`, `Solar`, `inReach`, and `Device codes`.
-Facts retain their provenance as `Reported`, `From mapping`, `From catalog`, or
-`Not confirmed`; `No`, `Not confirmed`, and an unavailable value must not be
-collapsed into one another. Catalog-derived facts are allowed only when the
-independently reported model/variant and the catalog specifications identify a
-consistent exact target. A selected catalog ID is never fed back as evidence
-for its own assessment. The legacy `displayType=Solar` value is Solar evidence
-only, not a screen technology; MIP/AMOLED/MicroLED are screen values and Solar
-and inReach are separate feature values.
-
-One non-conflicting candidate may be suggested and shown with the active
-`Confirm`/`Edit` path. Multiple candidates show `Select variant`. The picker is
-one exact-ID search/list mechanism that supports mouse, touch, arrow keys,
-Enter, and Escape; typing after a selection clears the hidden ID. The server
-must validate the selected Garmin catalog ID and preserve the previous result
-scope. The canonical UI key is
-`result:<operation UUID>:<mapResultIndex>` and index `0` is valid. It selects
-only that result, including for Review queue, Installations and device history.
-A raw operation UUID remains an explicit operation-level batch scope only when
-the operator submits that scope intentionally. Legacy event keys match only
-their exact legacy row. No scope may fall back from a missing result to the
-whole operation.
-
-An ordinary `Confirm` is blocked when selected and independently reported facts
-conflict. The separate explicit `Confirm manual assignment` action is the only
-way to override that conflict. It records an automatic audit containing the
-administrator, time, exact scope, previous/new identities, decision type, safe
-facts, missing facts and conflicts. Identity confirmation needs no reason or
-review note. A missing selection, unknown catalog ID, missing diagnostic and
-identity conflict are distinct errors; failures preserve the selection and do
-not claim that a successful database write was not saved. Repeating an
-identical decision is idempotent. Identity decisions never alter installation
-outcomes, device files, map statistics, telemetry fields or publication state.
-Late corrections update only the selected result(s) and retain the previous/new
-identity audit trail. Existing source-correction and mapping-review controls
-remain available in technical/admin workflows; they are not duplicated in the
-compact confirmation form.
-
-The `identity_conflict_manual_required` response keeps the stable error code and
-adds a bounded `details.conflicts` array. Each item identifies the diagnostic
-result, conflicting field, reported value, source, selected catalog model and
-selected field value; approved identifier conflicts also list the catalog models
-mapped to that exact code. All conflicting results in the selected operation are
-included. Missing or unconfirmed facts remain `MISSING`/unknown and do not
-create a conflict. The browser renders these fields as text and falls back to
-the generic message when details are absent; exception, SQL and stack-trace
-text are never exposed.
-
-The shared implementation is in `identity_assessment.py` (safe observations,
-catalog-derived facts and conflict checks), `db.py` (strict result scope,
-validated persistence and audit), `admin.py` (compact review and diagnostic
-detail dialog), and `http_api.py` (specific error responses and safe redirects).
-The Diagnostic detail dialog keeps the date, result, map/region, app version,
-failure or success state, issue/lifecycle actions and one collapsed Technical
-details section, with a single Identity Review section and one secondary
-technical disclosure. The daily review does not render a separate `Technical
-identity details` or candidate table; safe raw diagnostic fields remain only
-in that single diagnostic-level `Technical details` disclosure. A successful
-result with pending identity is not a failure. On desktop, the `Resolve
-diagnostic` lifecycle card and the selected/choose catalog-model card are
-siblings in the diagnostic action grid, each using one half of the row; the
-grid becomes one column at the mobile breakpoint.
+`/admin/device-identification` is visibly named `Model source review`. Its human
+workflow is `Source reported` → `Match to` → `Other models using this code` →
+`Confirm match` → `Technical details`. Raw codes, mapping/catalog IDs, source
+revision, policy internals, missing-source inventory, and decision history remain
+secondary in Technical details. Mapping review does not reassign historical
+installations automatically.
 
 ### Providers and collection history
 
-Separate provider health, collection outcome, available packages and broken
-artifacts. A successful metadata collection is not proof of device compatibility
-or a completed user download. Updates count newly discovered plus changed map
-packages for that run, with the components explained; do not count every artifact
-as a new map. Unknown historical counts remain unknown, not zero. Technical
-source/review controls remain accessible behind clearly labelled disclosures.
+Provider health, collection outcome, available packages, and broken artifacts
+remain separate. Updates count newly discovered plus changed packages for that
+run; they do not count every artifact. Unknown historical counts remain unknown.
+Technical source/review controls remain available behind disclosure.
 
-Provider `Problems` has separate counts: unique current affected packages and
-unique problematic source identities. Two broken artifacts in one package are
-one affected package; one source used by two packages is one problematic source
-and two packages. The latest provider health state/error is separate and does
-not become a package/source problem. Counts use the complete current catalog,
-not the first page or a preview, and retired/resolved historical entries are
-excluded.
+Provider Problems distinguishes unique current affected packages, unique
+problematic source identities, and the latest health state/error. Retired or
+resolved historical entries do not enter current counts. Measured zero,
+unknown/unavailable, stale, and partial remain distinct.
 
-All admin statistics preserve the distinction between a measured zero,
-unknown/unavailable, stale, and partial data. Do not use truthiness or
-cross-unit fallbacks to turn missing values into zero; `false` remains `No`.
-A successful empty map-statistics population is `0 recorded events` with
-zero terminal attempts and an unavailable (`—`) success rate, not an error or
-evidence that nobody used the app.
+### Health
+
+Health uses compact rows with the check name, status, and relative time.
+Healthy checks stay collapsed. Problems expose the cause and next action before
+Technical details. IndexNow submission state is one independent check and does
+not imply that a submitted URL was indexed.
+
+### Responsive and layout invariants
+
+Admin preserves consistent left edges and the existing spacing scale, with no
+block overlap or page-level horizontal overflow. It remains usable at effective
+200% zoom, uses one compact menu column, keeps charts visible rather than
+collapsed, trailing-aligns numbers and dates where practical, and uses
+content-driven heights instead of artificial equal-height whitespace. Controls
+retain keyboard focus, readable labels, and existing `aria-sort` semantics.
 
 ## Mandatory change and release gate
 
@@ -520,95 +340,9 @@ all already enforced automatically by CI. No new collection of production user
 logs, synthetic production reports or install/remove operations is authorized
 by this documentation.
 
-## Known gaps at adoption (2026-09-15)
-
-- PR212 surfaces unmatched failed map events and eligible compatibility failures in
-  Overview, but it does not provide the full unknown-device diagnostic/issue
-  workflow for a map-only failure.
-- Build31 source moves diagnostic creation from ConnectScreen to an operation
-  observer with native-to-API regressions. Record publication/live validation in
-  the release receipt. The historical France cause and watch remain unknown.
-- Safe correlated intake logging is included with this contract change; its
-  production deployment must be verified separately. It cannot reconstruct past
-  missing/rejected reports.
-- These are open implementation/acceptance gaps, not exceptions to the required
-  operator outcome. Fixes must not change installation/removal or device-file
-  behavior as a side effect of diagnostic work.
-
 App/API sequencing and revision/test receipts follow
 [the app–API release contract](../../../contracts/APP_API_RELEASE_CONTRACT.md).
 
-Recent map activity uses original Font Awesome solid icons and semantic title colors: started/processing blue, succeeded green, failed red, cancelled/unknown neutral, interrupted amber. Text remains visible. Plain and collapsed download rows share spacing, icon width and context alignment; the trailing disclosure chevron adds no leading indent. Expanding retains start/finish timestamps and total duration. Historical spinners remain static.
-
-## Admin visual consistency addendum (2026-09-17)
-
-These rules extend the existing Admin behavior contract and apply to the
-current visual unification work. They do not change API payloads, populations,
-formulas, sorting, filtering, pagination, or device actions.
-
-- Popularity uses one `mapRow` renderer and one compact `popular-map-row`
-  geometry in Top 5, Regions, and All maps. The primary row keeps the
-  country/region at left and the numeric count at right. Only the number is
-  bold; `install`/`installs` remains regular and stays with the number. The
-  secondary row is a timestamp for Top 5 and Regions, and `Provider ·
-  timestamp` for All maps; it is placed below the left primary content, never
-  beside the country or below the count. Each entry has a divider and compact
-  spacing analogous to Device/model activity. Long names wrap on the left,
-  the count remains top-right, the secondary line remains below the left
-  content, and the separator cannot become an orphan. Regions and All maps
-  retain their existing scroll/search/page behavior, and the map button keeps
-  its full focus/click target. The visible summary heading is `Top 5`; each
-  primary row and its optional secondary metadata line form one compact flow
-  without a reserved empty row. Missing dates omit only their text, not the
-  row or its divider.
-
-- Admin tables use semantic `column-number`, `column-status`, and
-  `column-date` classes on headers and cells. Text and dates are left aligned;
-  numeric values and status badges are centered. Sort controls inside those
-  headers inherit the same alignment, including both the Devices sticky header
-  and the horizontally scrolled main table. Future table rows must use these
-  classes instead of page-specific positional selectors.
-
-- Error and failed counters use the shared `admin-error-counter` helper/class:
-  a measured zero is graphite, a measured positive value is danger red, and an
-  unavailable value is `—` in neutral graphite. The class applies to the value
-  only; links and headings do not force a zero into an error state. Async
-  refreshes must use explicit numeric checks and preserve the same 0 → positive
-  → 0 → unknown semantics.
-
-- Dashboard, Installations, and device detail KPI summaries use the same
-  `map-statistics-kpi-panel`, `map-statistics-kpi-groups`,
-  `map-statistics-kpi-group`, and `map-statistics-kpi-value` hierarchy as Map
-  statistics. Dashboard retains eight all-time metrics in three groups:
-  Downloads, Installs, and Model coverage. Installations retains five
-  metrics in one panel.
-  Device detail groups Attempts, Successful,
-  Failed, and Open errors together, while Last activity remains in that panel
-  with smaller date typography and the Attempts explanation control.
-
-- System health uses compact rows: name, badge, and relative time. Healthy
-  checks stay collapsed with no description. Problems expand to Why, Next
-  action, and Technical details. There is no explanatory summary paragraph
-  about healthy checks staying collapsed.
-
-- System health includes exactly one **IndexNow submissions** card. It reuses
-  the common health badge, status sorting/filtering, disclosure behavior, and
-  authenticated workflow link. Its collapsed summary contains only the
-  disclosure affordance, the title, and the common health badge. The expanded
-  view shows the safe result, last real submission or `No submissions yet`,
-  pending URL count when the sender knows it, and distinguishes Last check, Last
-  submission, Last successful submission (HTTP 200), execution URL/HTTP
-  counts, pending/oldest-pending values, safe error/action text, and a maximum
-  ten-URL public preview. It includes the exact explanation `Submission status
-  only. This does not confirm search indexing.` and never offers submit/retry
-  or key/configuration controls.
-
-- IndexNow health is independent from API, database, site, and catalog health.
-  HTTP 200 with no pending URLs is `HEALTHY`; HTTP 202 is validation-pending
-  `WARNING`; temporary failures with retained pending URLs are `WARNING`; key,
-  domain, request, or live-verification errors are `FAILED`; bootstrap or
-  absent evidence is `UNKNOWN`. Unknown counts remain `—`, never zero. A
-  missing-report warning is evaluated only when the latest retained site
-  deployment has `indexnow_expected: true` and its 30-minute grace period has
-  elapsed. Old or superseded deployments, PR/fork/dry-run runs, and historical
-  deployments before this contract are not missing reports.
+Recent map activity uses semantic icons and color while retaining visible
+status text. Expanded download history retains its start, finish, and duration
+facts; historical in-progress icons remain static.

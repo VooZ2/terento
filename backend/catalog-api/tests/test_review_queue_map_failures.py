@@ -10,8 +10,6 @@ from terento_catalog.admin import (
     _is_preinstall_download_failure,
     _operation_result,
     _operation_is_problematic,
-    _overview_operation_href,
-    _overview_operation_label,
     dashboard_page,
     device_detail_page,
     diagnostics_page,
@@ -41,8 +39,6 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
         self.assertTrue(_is_preinstall_download_failure(operation))
         self.assertFalse(_operation_is_problematic([operation]))
         self.assertFalse(_identity_is_pending([operation]))
-        self.assertEqual(_overview_operation_label(operation), ('Download failed', 'failed'))
-        self.assertNotIn('state=', _overview_operation_href(operation))
 
         body = overview_page({
             'data': {'hasData': False},
@@ -178,8 +174,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
         self.assertIn('No device diagnostic report received', panel)
         self.assertNotIn('Missing diagnostics <strong>', panel)
         self.assertNotIn('attention-shortcuts', panel)
-        self.assertIn("aria-label='Review: 1'", body)
-        self.assertIn("/admin#overview-attention-title", body)
+        self.assertNotIn("admin-review-link", body)
         self.assertIn('eventId=a8098c1a-f86e-11da-bd1a-00112444be1e', panel)
         self.assertIn("aria-label='Dismiss review item'", panel)
         self.assertIn('France', panel)
@@ -206,8 +201,6 @@ class PreinstallDownloadFailureTests(unittest.TestCase):
         self.assertTrue(_is_preinstall_download_failure(operation))
         self.assertFalse(_operation_is_problematic([operation]))
         self.assertFalse(_identity_is_pending([operation]))
-        self.assertEqual(_overview_operation_label(operation), ("Download failed", "failed"))
-        self.assertNotIn("state=", _overview_operation_href(operation))
 
         body = overview_page(
             {

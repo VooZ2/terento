@@ -179,14 +179,15 @@ class IdentityAssessmentTests(unittest.TestCase):
         self.assertEqual([r['device_model_id'] for r in rows], [self.device['id']])
         self.assertEqual(rows[0]['source_names'], [name])
 
-    def test_admin_groups_repeated_sources_under_one_collapsed_code(self):
+    def test_admin_keeps_repeated_sources_actionable_with_one_technical_disclosure(self):
         from terento_catalog.admin import _identity_mapping_markup
         mapping = dict(self.mappings[0], id=1, history=[])
         rendered = _identity_mapping_markup(dict(id='test', identityMappings=[mapping, dict(mapping, id=2, source_version='2')]), 'csrf')
         self.assertIn("class='identity-mappings'", rendered)
-        self.assertEqual(rendered.count("class='identity-mapping-code'"), 1)
-        self.assertNotIn('<details open', rendered)
-        self.assertIn('2 sources', rendered)
+        self.assertEqual(rendered.count("class='identity-mapping-source'"), 2)
+        self.assertEqual(rendered.count('<summary>Technical details</summary>'), 1)
+        self.assertNotIn('identity-mapping-code', rendered)
+        self.assertNotIn('2 sources', rendered)
 
     def test_admin_shows_six_facts_without_redundant_identity_details(self):
         from terento_catalog.admin import _identity_checks_markup, _identity_mapping_markup
@@ -252,7 +253,9 @@ class IdentityAssessmentTests(unittest.TestCase):
         summary = markup.split("<dl class='diagnostic-detail-summary'>")[1].split('</dl>')[0]
         for label in ('Device', 'Variant', 'Date', 'Map / region', 'Result', 'App version', 'Review state'):
             self.assertIn('<dt>' + label + '</dt>', summary)
-        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index("class='identity-summary identity-outcome'"))
+        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index("class='diagnostic-identity-state'"))
+        self.assertIn("Identity incomplete", markup)
+        self.assertIn("<h4>Assign model</h4>", markup)
         self.assertIn("name='canonical_device_model_id'", markup)
         self.assertIn("value='fenix8pro-51-amoled'", markup)
         self.assertNotIn("name='identity_reason'", markup)

@@ -11,7 +11,7 @@ import unittest
 from terento_catalog.admin import (
     _admin_map_display_name, _admin_region_display_name, _admin_region_identity, _system_health_card,
     _overview_map_event_context, provider_detail_page, local_test_data_page,
-    _admin_disclosure_script,
+    _admin_disclosure_script, _map_statistics_script,
     map_statistics_page, _identity_parts, _dashboard_script,
 )
 from terento_catalog.admin_world_map import WORLD_MAP_COUNTRY_ALIASES
@@ -48,26 +48,17 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn(".overview-columns>.overview-panel{margin:0}", mobile)
         self.assertIn(".provider-dashboard-grid>.provider-card{margin-top:0}", mobile)
         self.assertIn(".device-filter-bar{margin-bottom:var(--admin-mobile-card-gap)}", mobile)
-        for group in (".system-health-list", ".model-information-columns", ".administration-grid", ".map-statistics-reliability", ".admin-kpi-grid"):
+        for group in (".system-health-list", ".model-information-columns", ".provider-metrics", ".admin-kpi-grid"):
             self.assertIn(group, mobile)
 
-    def test_overview_kpis_match_installation_card_density(self):
-        from terento_catalog.admin import ADMIN_STYLES
-
-        self.assertNotIn(
-            '.overview-kpi{display:flex;min-height:84px;flex-direction:column;justify-content:flex-start;padding:14px 16px;',
-            ADMIN_STYLES,
-        )
-        self.assertNotIn('.overview-kpi{min-height:80px;padding:12px}', ADMIN_STYLES)
-        self.assertIn('.admin-kpi-panel .overview-kpi-link{display:block;', ADMIN_STYLES)
-
-    def test_overview_model_activity_matches_chart_height_and_scrolls(self):
+    def test_overview_activity_uses_a_compact_internal_scroll_surface(self):
         from terento_catalog.admin import ADMIN_STYLES
 
         self.assertIn('.overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
         self.assertIn('.overview-primary-grid{align-items:start}', ADMIN_STYLES)
-        self.assertNotIn('max-height:320px', ADMIN_STYLES)
-        self.assertNotIn('.overview-secondary-grid', ADMIN_STYLES)
+        self.assertIn('.overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}', ADMIN_STYLES)
+        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'downloads activity';", ADMIN_STYLES)
+        self.assertNotIn('.overview-tertiary-grid', ADMIN_STYLES)
 
     def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):
         from terento_catalog.admin import ADMIN_STYLES, _layout
@@ -137,11 +128,10 @@ class AdminAuditTests(unittest.TestCase):
         ids = [node.attrib['id'] for chart in charts for node in chart.iter() if 'id' in node.attrib]
         self.assertEqual(len(ids), len(set(ids)))
         for chart in charts:
-            bars = [node for node in chart.iter('rect') if node.attrib.get('class') == 'overview-chart-custom']
-            self.assertEqual(len(bars), 1)
-            self.assertIn('23:00', bars[0].attrib['aria-label'])
-            width = float(chart.attrib['viewBox'].split()[2])
-            self.assertLess(float(bars[0].attrib['x']) + float(bars[0].attrib['width']), width)
+            points = [node for node in chart.iter('circle') if node.attrib.get('class') == 'overview-chart-success']
+            self.assertEqual(len(points), 24)
+            self.assertIn('Install succeeded: 1', points[-1].attrib['aria-label'])
+            self.assertIn('23:00', points[-1].attrib['aria-label'])
         self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
         self.assertIn('No map installations', _overview_trend_chart([], 'hour'))
 
@@ -177,17 +167,21 @@ class AdminAuditTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_post_audit_layout_copy_and_recovery_contract(self):
-        body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
-        for text in ("Downloads", "Successful", "Success rate", "Installs",
-                     "Updates", "Diagnostic coverage", "View all map activity",
-                     "No maps match your search", "flex-direction:column", "min-width:960px"):
+        rows = [{"provider_id": "p", "map_package_id": "m", "region": "LT", "region_country": "LT",
+                 "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1}]
+        body = map_statistics_page({"rows": rows}, [{"id": "p", "name": "Provider"}], {"username": "audit"}, "csrf").decode()
+        for text in ("Map downloads", "Successful", "Success rate", "Map installs",
+                     "Top countries", "Maps by provider",
+                     "min-width:880px"):
             self.assertIn(text, body)
+        self.assertNotIn("Diagnostic coverage", body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)
         self.assertNotIn("installSuccessFraction", body)
         self.assertNotIn("opted-in", body)
         self.assertNotIn("table-layout:fixed}", body.split("@media(min-width:701px){", 1)[1].split("}", 1)[0])
         self.assertIn("min-height:44px", body)
         self.assertIn(".popularity-search-label", body)
+        self.assertNotIn("Popular maps", body)
         self.assertIn("installation-empty", _dashboard_script())
 
     def test_display_cleanup_keeps_identity_and_functional_name(self):
@@ -203,9 +197,10 @@ class AdminAuditTests(unittest.TestCase):
                 body = map_statistics_page({"rows": rows}, [], {"username": "audit"}, "csrf").decode()
                 ids = Counter(attrs["id"] for _, attrs in Tags(body).tags if "id" in attrs)
                 self.assertEqual({key: count for key, count in ids.items() if count > 1}, {})
-                for target in ("map-statistics-metrics", "map-statistics-coverage",
-                               "provider-statistic-rows", "world-map-svg", "map-rows"):
-                    self.assertEqual(ids[target], 1, target)
+                targets = ("map-statistics-metrics", "map-statistics-coverage",
+                           "provider-statistic-rows", "world-map-svg", "map-rows")
+                for target in targets:
+                    self.assertEqual(ids[target], 1 if rows else 0, target)
                 self.assertEqual(body.count("Acquisition, fresh-install, optional-component, and update outcomes remain separate."), 0)
 
     def test_health_disclosure_defaults_and_escaped_evidence(self):
@@ -218,10 +213,10 @@ class AdminAuditTests(unittest.TestCase):
                 if str(state or '').upper() == 'HEALTHY':
                     self.assertNotIn('<details', card['html'])
                 else:
-                    attrs = next(attrs for tag,attrs in Tags(card['html']).tags if tag=='details')
-                    self.assertEqual('open' in attrs, False)
-                    self.assertIn('<dt>Why</dt>', card['html'])
-                    self.assertIn('<dt>Next action</dt>', card['html'])
+                    self.assertIn("class='system-health-cause'>failure", card['html'])
+                    self.assertIn("class='system-health-action'>inspect", card['html'])
+                    self.assertNotIn("<strong>Inspect:</strong>", card['html'])
+                    self.assertIn('Last checked', card['html'])
 
     def test_provider_explains_mixed_releases_without_relabelling_packages(self):
         body = provider_detail_page({'provider':{'id':'opentopomap','maps':[
@@ -332,11 +327,12 @@ class AdminAuditTests(unittest.TestCase):
                     self.assertEqual(is_local_release_label(label),configuration=='Debug')
 
     def test_clear_handlers_resolve_their_form_before_registering(self):
-        from terento_catalog.admin import _providers_list_script, _map_statistics_script, _diagnostics_script
-        for script, selector in [(_providers_list_script(), '#provider-filters'), (_map_statistics_script(), '#map-statistics-filters'), (_diagnostics_script(), '#diagnostic-filters')]:
-            self.assertIn("document.querySelector('" + selector + "')?.addEventListener('terento-admin-clear-filters'", script)
-            self.assertNotIn("form?.addEventListener('terento-admin-clear-filters'", script)
-            self.assertNotIn("filterForm?.addEventListener('terento-admin-clear-filters'", script)
+        from terento_catalog.admin import _map_statistics_script, _diagnostics_script
+        self.assertNotIn("terento-admin-clear-filters", _map_statistics_script())
+        self.assertNotIn("/admin/map-statistics.json", _map_statistics_script())
+        script = _diagnostics_script()
+        self.assertIn("document.querySelector('#diagnostic-filters')?.addEventListener('terento-admin-clear-filters'", script)
+        self.assertNotIn("filterForm?.addEventListener('terento-admin-clear-filters'", script)
 
     def test_chart_shows_integer_axis_and_exact_event_time(self):
         from terento_catalog.admin import _overview_trend_chart
@@ -345,7 +341,39 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn("text-anchor='end'>1</text>", markup)
         self.assertIn("text-anchor='end'>4</text>", markup)
         self.assertIn("text-anchor='end'>0</text>", markup)
-        self.assertRegex(markup, r"class='overview-chart-success'[^>]*height='51.50'")
+        self.assertRegex(markup, r"class='overview-chart-success'[^>]*cy='\d+\.\d'")
+
+    def test_chart_grid_uses_five_even_ticks_with_independent_ceilings(self):
+        import re
+        from terento_catalog.admin import _overview_trend_chart
+
+        cases = (
+            ({'download_success_count': 14}, 'downloads', ['0', '4', '8', '12', '16']),
+            ({'success_count': 10}, 'installs', ['0', '3', '6', '9', '12']),
+        )
+        for counts, metric, expected in cases:
+            with self.subTest(metric=metric):
+                markup = _overview_trend_chart([
+                    {'bucket': '2026-09-07T16:00:00Z', **counts}
+                ], 'hour', metric=metric)
+                desktop = markup.split("<svg class='overview-trend-chart overview-trend-mobile'", 1)[0]
+                labels = re.findall(
+                    r"class='overview-chart-axis-label'[^>]*text-anchor='end'>(\d+)</text>",
+                    desktop,
+                )
+                coordinates = [float(value) for value in re.findall(
+                    r"class='overview-chart-grid'[^>]*y1='([0-9.]+)'", desktop
+                )]
+                self.assertEqual(labels, expected)
+                self.assertEqual(len(coordinates), 5)
+                gaps = [round(coordinates[index] - coordinates[index + 1], 1)
+                        for index in range(4)]
+                self.assertEqual(len(set(gaps)), 1)
+
+    def test_top_countries_uses_country_coverage_instead_of_region_identity(self):
+        script = _map_statistics_script()
+        self.assertIn("countryCoverage().slice(0,5)", script)
+        self.assertNotIn("const byRegion", script)
 
     def test_collection_changes_have_readable_regions_and_escape_values(self):
         from terento_catalog.admin import _provider_audit_row
@@ -403,5 +431,27 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn("e.phase_outcome = 'NOT_STARTED'", complete)
         self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", complete)
         self.assertEqual(tuple(parameters), ('SVN+', 'SVN+'))
+
+    def test_map_statistics_trend_reuses_the_filtered_operation_population(self):
+        calls = []
+        class Result:
+            def fetchall(self): return []
+        class Connection:
+            def execute(self, query, parameters):
+                calls.append((query, parameters)); return Result()
+        class QueryDatabase(Database):
+            @contextmanager
+            def connection(self): yield Connection()
+        QueryDatabase('unused').map_statistics(
+            {'provider':'freizeitkarte'}, trend_bucket='day',
+            time_zone='Europe/Vilnius',
+        )
+        query, parameters = calls[0]
+        self.assertIn('FROM event_rows', query)
+        self.assertIn("date_trunc('day', local_occurred_at)", query)
+        self.assertIn("event_type = 'DOWNLOAD_SUCCEEDED'", query)
+        self.assertIn("event_type = 'INSTALL_FAILED'", query)
+        self.assertNotIn("array_agg", query)
+        self.assertEqual(parameters[-2:], ['Europe/Vilnius', 'Europe/Vilnius'])
 
 if __name__=='__main__': unittest.main()

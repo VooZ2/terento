@@ -686,45 +686,21 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     test_data_class = " class='active'" if active == "test-data" else ""
     tools_class = " class='active'" if active in {"test-data", "campaigns", "device-identification"} else ""
     account_class = " active" if active == "account" else ""
-    review = user.get("admin_review_summary") or {}
-    review_available = review.get("available", True) is not False
-    def review_value(key: str) -> int | None:
-        value = review.get(key)
-        try:
-            return int(value) if value is not None and int(value) >= 0 else None
-        except (TypeError, ValueError):
-            return None
-    installation_issues = review_value("installationIssues")
-    github_issues_in_progress = review_value("githubIssuesInProgress")
-    identity_pending = review_value("identityPending")
-    ready_to_publish = review_value("readyToPublish")
-    missing_diagnostics = review_value("missingDiagnostics")
-    review_total = review_value("pendingReviewTasks")
-    if review_total is None:
-        review_total = review_value("total")
-    if review_total is None and all(value is not None for value in (installation_issues, github_issues_in_progress, identity_pending, ready_to_publish, missing_diagnostics)):
-        review_total = sum(value for value in (installation_issues, github_issues_in_progress, identity_pending, ready_to_publish, missing_diagnostics) if value is not None)
-    review_count_markup = str(review_total) if review_total is not None else "—"
-    review_link = (
-        f"<a class='admin-review-link' href='/admin#overview-attention-title' "
-        f"aria-label='Review: {html.escape(review_count_markup)}'>Review "
-        f"<span class='needs-review-count'>{review_count_markup}</span></a>"
-        if (review_total or not review_available) else ""
-    )
     tools_menu = f"""<details class="admin-tools-menu">
         <summary{tools_class}>Tools</summary>
         <div class="admin-tools-popover" role="group" aria-label="Admin tools">
-          <a href="/admin/device-identification">Diagnostics</a>
+          <a href="/admin/device-identification">Model source review</a>
+          <a href="/admin/devices/identity-audit.json">Assignment audit</a>
           <a{test_data_class} href="/admin/test-data">Test data</a>
           <a{campaign_class} href="/admin/campaign-links">Campaign links</a>
         </div>
       </details>"""
-    return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
+    return f"""<a class="admin-skip-link" href="#main-content">Skip to content</a><header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website {_admin_icon('external')}</a></div>
       <button id="admin-menu-toggle" class="secondary-button" type="button" aria-controls="admin-menu-panel" aria-expanded="false" hidden>Menu</button>
-      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Daily"><a{overview_class} href="/admin">Dashboard</a><a{system_health_class} href="/admin/system-health">Health</a><a{evidence_class} href="/admin/installations">Installations</a></div><div class="admin-nav-group" role="group" aria-label="Catalog"><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a></div><div class="admin-nav-group" role="group" aria-label="Analytics"><a{map_statistics_class} href="/admin/map-statistics">Maps</a></div>{tools_menu}{review_link}</nav>
+      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</select></label><a class="admin-user{account_class}" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
-      <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form><a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website {_admin_icon('external')}</a></nav></div>
+      <a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website {_admin_icon('external')}</a><form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav></div>
     </div></header>"""
 
 
@@ -835,10 +811,6 @@ def login_page(*, error: str | None = None) -> bytes:
     )
 
 
-def _overview_failure_reason_label(value: Any) -> str:
-    return failure_reason_label(value)
-
-
 def _diagnostic_error_reason(results: list[dict[str, Any]], *, resolved: bool = False) -> str:
     """Return a concise primary reason while keeping raw codes in Details."""
     for result in results:
@@ -852,72 +824,6 @@ def _diagnostic_error_reason(results: list[dict[str, Any]], *, resolved: bool = 
     if resolved:
         return "No normalized reason"
     return "Installation error"
-
-
-def _overview_operation_label(operation: dict[str, Any]) -> tuple[str, str]:
-    if operation.get("has_github_issue") or operation.get("linked_github_issue"):
-        workflow = str(operation.get("diagnostic_workflow_status") or "IN_PROGRESS").strip().upper()
-        if workflow == "UNDER_REVIEW":
-            return "GitHub issue under review", "review"
-        return "GitHub issue in progress", "review"
-    if _is_preinstall_download_failure(operation):
-        return "Download failed", "failed"
-    if operation.get("has_not_started"):
-        return "Install not started", "not-started"
-    if operation.get("has_failed"):
-        return "Install failed", "failed"
-    if operation.get("operation_succeeded"):
-        return "Install succeeded", "succeeded"
-    return "Install operation", "unknown"
-
-
-def _compatibility_source_label(value: Any) -> str:
-    source = str(value or "").strip()
-    return {"custom": "Custom", "freizeitkarte": "Freizeitkarte", "opentopomap": "OpenTopoMap", "maprando": "MapRando", "bbbike": "BBBike"}.get(source.casefold(), source)
-
-
-def _overview_operation_context(operation: dict[str, Any]) -> str:
-    model, variant, _ = _identity_parts(operation)
-    provider = _compatibility_source_label(operation.get("provider"))
-    parts = [model]
-    if variant != "—" and variant not in model:
-        parts.append(variant)
-    if provider:
-        parts.append(provider)
-    return " · ".join(parts)
-
-
-def _overview_operation_href(operation: dict[str, Any]) -> str:
-    state = (
-        None if _is_preinstall_download_failure(operation)
-        else "failed" if operation.get("has_failed") and not operation.get("has_not_started")
-        else "open" if operation.get("open_error") or operation.get("has_not_started")
-        else None
-    )
-    device_id = str(operation.get("canonical_device_model_id") or "").strip()
-    if device_id:
-        return _device_detail_url(device_id, origin="installations", state=state, anchor="installations")
-    return _diagnostics_url(operation, state=state)
-
-
-def _overview_attention_item(operation: dict[str, Any]) -> str:
-    label, state = _overview_operation_label(operation)
-    href = _overview_operation_href(operation)
-    reason = _overview_failure_reason_label(operation.get("error_category"))
-    if operation.get("has_github_issue") or operation.get("linked_github_issue"):
-        issue = _normalise_github_issue_reference(operation.get("linked_github_issue"))
-        reason = f"Linked GitHub issue {issue}" if issue else "Linked GitHub issue"
-    if operation.get('identity_pending') and not operation.get('open_error'):
-        label, state, reason = 'Identity needs review', 'review', 'Confirm the exact device model'
-        href = _diagnostics_url(operation, state='identity-pending')
-    return (
-        f"<li class='overview-attention-item overview-attention-{state}'>"
-        f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
-        f"<div><strong>{html.escape(label)}</strong>"
-        f"<span>{html.escape(_overview_operation_context(operation))}</span>"
-        f"<small>{html.escape(reason)} · {_timestamp_markup(operation.get('last_occurred_at'))}</small></div>"
-        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;{_admin_icon('arrow-right')}</a></li>"
-    )
 
 
 def _overview_missing_diagnostic_item(
@@ -948,7 +854,7 @@ def _overview_missing_diagnostic_item(
         f"<span>{context}</span>"
         "<small>No device diagnostic report received · "
         f"{_timestamp_markup(event.get('occurred_at'))}</small></div>"
-        f"<div class='overview-attention-actions'><a class='overview-detail-link' href='{href}'>View activity&nbsp;{_admin_icon('arrow-right')}</a>{dismiss}</div></li>"
+        f"<div class='overview-attention-actions'><a class='overview-detail-link' href='{href}'>Inspect&nbsp;{_admin_icon('arrow-right')}</a>{dismiss}</div></li>"
     )
 
 
@@ -964,7 +870,7 @@ def _overview_provider_attention_item(provider: dict[str, Any]) -> str:
         f"<div><strong>{html.escape(name)} health {html.escape(health_label)}</strong>"
         f"<span>Provider health requires review</span>"
         f"<small>{_timestamp_markup(provider.get('lastHealthCheck'))}</small></div>"
-        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;{_admin_icon('arrow-right')}</a></li>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Inspect&nbsp;{_admin_icon('arrow-right')}</a></li>"
     )
 
 
@@ -980,28 +886,7 @@ def _overview_system_attention_item(card: dict[str, Any]) -> str:
         f"<span aria-hidden='true'>!</span>"
         f"<div><strong>{html.escape(str(card.get('title') or 'System check'))} · {html.escape(status_label)}</strong>"
         f"<span>Review system check</span><small>{html.escape(str(card.get('reason') or 'System evidence needs review.'))} · {_timestamp_markup(card.get('lastChecked'))}</small></div>"
-        f"<a class='overview-detail-link' href='/admin/system-health'>Review&nbsp;{_admin_icon('arrow-right')}</a></li>"
-    )
-
-
-def _overview_review_attention_item(item: dict[str, Any]) -> str:
-    model, variant, _ = _identity_parts(item)
-    context = " · ".join(
-        part for part in (model, variant if variant != "—" and variant not in model else "") if part
-    )
-    review_status = str(item.get("review_status") or "PENDING").upper()
-    public_enabled = bool(item.get("public_statistics_enabled"))
-    label = "Unpublished" if review_status == "APPROVED" and not public_enabled else "Review required"
-    device_id = str(item.get("canonical_device_model_id") or "").strip()
-    # Publication review belongs to the Devices review workspace.
-    href = "/admin/devices?review=publication" if device_id else _diagnostics_url(item)
-    return (
-        "<li class='overview-attention-item overview-attention-review'>"
-        "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
-        f"<div><strong>{html.escape(label)}</strong>"
-        f"<span>{html.escape(context)}</span>"
-        f"<small>{html.escape(review_status.title())} · {_timestamp_markup(item.get('last_evidence'))}</small></div>"
-        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Review&nbsp;{_admin_icon('arrow-right')}</a></li>"
+        f"<a class='overview-detail-link' href='/admin/system-health'>Inspect&nbsp;{_admin_icon('arrow-right')}</a></li>"
     )
 
 
@@ -1313,7 +1198,7 @@ def _overview_map_event_context(event: dict[str, Any]) -> str:
         if event.get("region") or event.get("map_package_name")
         else ""
     )
-    provider = str(event.get("provider_name") or event.get("provider_id") or "").strip()
+    provider = str(event.get("provider_name") or "").strip()
     parts = [region] if region and display_name.casefold() in region.casefold() else [display_name]
     if region and parts[0] != region and region.casefold() != display_name.casefold():
         parts.append(region)
@@ -1325,17 +1210,17 @@ def _overview_map_event_context(event: dict[str, Any]) -> str:
 def _overview_activity_device(event: dict[str, Any]) -> str:
     model = str(event.get("model") or event.get("compatibility_identity") or "").strip()
     if not model:
-        return "<span class='overview-activity-device'>Device report unavailable</span>"
-    variant = _normalise_variant(event.get("variant"))
+        return ""
+    variant = _normalise_variant(event.get("variant")) if event.get("variant") else ""
     label = model if not variant or variant in model else f"{model} · {variant}"
     device_id = str(event.get("canonical_device_model_id") or "").strip()
     if device_id:
         href = _device_detail_url(device_id, origin="overview")
         return (
             f"<a class='overview-activity-device' href='{html.escape(href, quote=True)}'>"
-            f"Device: {html.escape(label)}</a>"
+            f"{html.escape(label)}</a>"
         )
-    return f"<span class='overview-activity-device'>Reported device: {html.escape(label)}</span>"
+    return f"<span class='overview-activity-device'>{html.escape(label)}</span>"
 
 
 def _overview_map_event_href(event: dict[str, Any]) -> str:
@@ -1372,7 +1257,6 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
     if state == "stale":
         tone = "neutral"
     status_markup = _download_history_icon(event_type) + html.escape(label)
-    href = _overview_map_event_href(event)
     component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
     context = html.escape(_overview_map_event_context(event)) + (' · ' + component if component else '')
     device = _overview_activity_device(event)
@@ -1406,15 +1290,15 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
             "<details class='download-history'><summary>"
             f"<span class='overview-activity-label'>{status_markup}</span>"
             f"{_timestamp_markup(event.get('occurred_at'))}"
-            f"<a class='download-context' href='{html.escape(href, quote=True)}'>{context}</a>"
+            f"<span class='download-context'>{context}</span>"
             f"{device}"
             "</summary><ol class='download-timeline' aria-label='Download start, total duration and finish'>"
             + "".join(entries) + "</ol></details></li>"
         )
     return (
         f"<li class='overview-activity-item overview-activity-{state} map-activity-row map-activity-{tone}'>"
-        f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{status_markup}</span>"
-        f"<span>{context}</span></a>{device}"
+        f"<span class='map-activity-copy'><span class='overview-activity-label'>{status_markup}</span>"
+        f"<span>{context}</span></span>{device}"
         f"{_timestamp_markup(event.get('occurred_at'))}</li>"
     )
 
@@ -1451,87 +1335,84 @@ def _overview_chart_bucket_label(
 
 def _overview_trend_chart(
     trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
-    *, metric: str = "installs", _compact: bool = False,
+    *, metric: str = "installs", has_activity: bool = False,
+    _compact: bool = False,
 ) -> str:
     if not trend:
+        if has_activity:
+            return "<p class='overview-empty-state'>Trend data is unavailable for this period.</p>"
         empty_label = "downloads" if metric == "downloads" else "map installations"
         return f"<p class='overview-empty-state'>No {empty_label} in this period.</p>"
     if metric == "downloads":
-        fields = ("download_success_count", "download_failed_count")
-        series_names = ("download-success", "download-failed")
-        series_labels = ("Download succeeded", "Download failed")
-        chart_label = "Map downloads"
-    else:
-        fields = ("success_count", "failed_count", "custom_count", "map_update_count")
-        series_names = ("success", "failed", "custom", "update")
-        series_labels = (
-            "Install succeeded", "Install failed", "Custom install", "Map update",
+        series = (
+            ("download-success", "Download succeeded", "download_success_count"),
+            ("download-failed", "Download failed", "download_failed_count"),
         )
-        chart_label = "Map installations"
-    values = [tuple(max(0, int(item.get(key) or 0)) for key in fields) for item in trend]
-    maximum = max((sum(series) for series in values), default=1) or 1
-    # Keep low-volume periods readable. A single operation should remain a
-    # single operation visually, rather than filling the entire plot because
-    # it happens to be the local maximum. Larger volumes get a little headroom
-    # so bars do not touch the top gridline.
-    scale_maximum = max(4, math.ceil(maximum * 1.2))
+        chart_label = "Map download trend"
+    else:
+        series = (
+            ("success", "Install succeeded", "success_count"),
+            ("failed", "Install failed", "failed_count"),
+            ("update", "Map update", "map_update_count"),
+        )
+        chart_label = "Map installation trend"
+    values = []
+    for item in trend:
+        counts = []
+        for name, _, field in series:
+            value = max(0, int(item.get(field) or 0))
+            if name == "success":
+                value += max(0, int(item.get("custom_count") or 0))
+            counts.append(value)
+        values.append(tuple(counts))
+    maximum = max((max(counts, default=0) for counts in values), default=1) or 1
+    tick_step = max(1, math.ceil(maximum / 4))
+    scale_maximum = tick_step * 4
     chart_width, chart_height = (360, 220) if _compact else (720, 260)
     left, top, bottom = 38, 20, 34
     plot_height = chart_height - top - bottom
-    slot = (chart_width - left - 12) / max(len(values), 1)
-    tick_step = max(1, (scale_maximum + 3) // 4)
+    plot_width = chart_width - left - 12
     grid = []
-    for amount in sorted(set(range(0, scale_maximum + 1, tick_step)) | {scale_maximum}):
+    for amount in range(0, scale_maximum + 1, tick_step):
         tick_y = top + plot_height * (1 - amount / scale_maximum)
         grid.append(f"<line class='overview-chart-grid' x1='{left}' x2='{chart_width-12}' y1='{tick_y:.1f}' y2='{tick_y:.1f}'/><text class='overview-chart-axis-label' x='{left-8}' y='{tick_y+4:.1f}' text-anchor='end'>{amount}</text>")
-    bars: list[str] = []
+    lines: list[str] = []
     labels: list[str] = []
-    for index, (counts, item) in enumerate(zip(values, trend)):
-        center = left + (index + 0.5) * slot
-        active = [(name, label, count) for name, label, count in zip(
-            series_names, series_labels, counts,
-        ) if count > 0]
-        bar_width = min(44, slot * 0.58)
-        x = center - bar_width / 2
-        total_height = plot_height * sum(counts) / scale_maximum
-        y = top + plot_height
-        clip_id = f"overview-bar-clip-{'mobile-' if _compact else ''}{index}"
-        bars.append(
-            f"<defs><clipPath id='{clip_id}'><rect x='{x:.1f}' "
-            f"y='{y - total_height:.1f}' width='{bar_width:.1f}' "
-            f"height='{total_height:.1f}' rx='3'></rect></clipPath></defs>"
-            f"<g clip-path='url(#{clip_id})'>"
-        )
-        for name, label, count in active:
-            height = plot_height * count / scale_maximum
-            y -= height
-            title = f"{label}: {count} · {_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone)} · {time_zone} · {bucket} bucket"
-            timestamps = item.get(f'{name.replace("-", "_")}_times') or []
+    x_positions = [
+        left + (plot_width / 2 if len(values) == 1 else index * plot_width / (len(values) - 1))
+        for index in range(len(values))
+    ]
+    for series_index, (name, label, field) in enumerate(series):
+        points = []
+        dots = []
+        for index, (counts, item) in enumerate(zip(values, trend)):
+            count = counts[series_index]
+            x = x_positions[index]
+            y = top + plot_height * (1 - count / scale_maximum)
+            points.append(f"{x:.1f},{y:.1f}")
+            timestamps = list(item.get(f'{field.removesuffix("_count")}_times') or [])
+            if name == "success":
+                timestamps += list(item.get("custom_times") or [])
+            title = f"{label}: {count} · {_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone)} · {time_zone}"
             if timestamps:
-                title = f"{label}: {count} · " + ', '.join(str(value) for value in timestamps) + f" · {time_zone}" + (' · first 20 times' if len(timestamps) == 20 else '')
-            if name == "update":
-                succeeded = max(0, int(item.get("map_update_success_count") or 0))
-                failed = max(0, int(item.get("map_update_failed_count") or 0))
-                title = f"{label}: {count} · {succeeded} succeeded · {failed} failed"
-                if timestamps:
-                    title += " · " + ', '.join(str(value) for value in timestamps) + f" · {time_zone}" + (' · first 20 times' if len(timestamps) == 20 else '')
-            bars.append(
-                f"<rect class='overview-chart-{name}' x='{x:.1f}' y='{y:.2f}' "
-                f"width='{bar_width:.1f}' height='{height:.2f}' tabindex='0' "
-                f"role='img' aria-label='{html.escape(title, quote=True)}'>"
-                f"<title>{html.escape(title)}</title></rect>"
+                title = f"{label}: {count} · " + ", ".join(str(value) for value in timestamps) + f" · {time_zone}"
+            dots.append(
+                f"<circle class='overview-chart-{name}' cx='{x:.1f}' cy='{y:.1f}' r='4' tabindex='0' role='img' aria-label='{html.escape(title, quote=True)}'><title>{html.escape(title)}</title></circle>"
             )
-        bars.append("</g>")
+        lines.append(
+            f"<polyline class='overview-chart-line overview-chart-{name}' points='{' '.join(points)}'></polyline>{''.join(dots)}"
+        )
+    for index, item in enumerate(trend):
         label_step = max(1, round((len(values) - 1) / (11 if bucket == "hour" else 5)))
         show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
         if _compact:
             show_label = index in {0, (len(values) - 1) // 2, len(values) - 1}
         if show_label:
-            anchor = 'start' if _compact and index == 0 else 'end' if _compact and index == len(values) - 1 else 'middle'
-            labels.append(f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
+            anchor = 'start' if index == 0 else 'end' if index == len(values) - 1 else 'middle'
+            labels.append(f"<text x='{x_positions[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='{chart_label}'>"
-        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        f"{''.join(grid)}{''.join(lines)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
@@ -1539,12 +1420,13 @@ def _overview_trend_chart(
         "<div class='overview-chart-wrap'>"
         + svg
         + _overview_trend_chart(
-            trend, bucket, time_zone, metric=metric, _compact=True,
+            trend, bucket, time_zone, metric=metric,
+            has_activity=has_activity, _compact=True,
         )
         + (
             "<div class='overview-chart-legend'><span><i class='overview-chart-download-success'></i>Successful</span><span><i class='overview-chart-download-failed'></i>Failed</span></div></div>"
             if metric == "downloads"
-            else "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Successful</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom install</span><span><i class='overview-chart-update'></i>Map update</span></div></div>"
+            else "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Successful</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-update'></i>Map update</span></div></div>"
         )
     )
 
@@ -1803,11 +1685,6 @@ def overview_page(
 ) -> bytes:
     data = overview.get("data") if isinstance(overview.get("data"), dict) else {}
     compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
-    device_coverage = (
-        overview.get("deviceCoverage")
-        if isinstance(overview.get("deviceCoverage"), dict)
-        else {}
-    )
     downloads = overview.get("downloads") if isinstance(overview.get("downloads"), dict) else {}
     providers = list(overview.get("providers") or [])
     period = str(overview.get("period") or "24h")
@@ -1817,19 +1694,11 @@ def overview_page(
         f"<option value='{value}'{' selected' if value == period else ''}>{label}</option>"
         for value, label in period_labels.items()
     )
-    completed_installs = int(data.get("allTimeSuccessCount") or 0)
-    recent = list(data.get("recentActivity") or [])
-    all_time_install_available = (
-        "allTimeSuccessCount" in data and "allTimeFailedCount" in data
-    )
-    all_time_download_available = (
-        "allTimeCompletedDownloadCount" in data
-        and "allTimeFailedDownloadCount" in data
-    )
-    event_metric = lambda value, available: str(value) if available else "—"
-    failed_install_counter = _admin_error_counter(
-        data.get("allTimeFailedCount"), available=all_time_install_available,
-    )
+    recent = [
+        item for item in data.get("recentActivity") or []
+        if str(item.get("event_type") or "").upper()
+        not in {"DOWNLOAD_STARTED", "DOWNLOAD_PROCESSING"}
+    ]
     attention_providers = [
         provider for provider in providers
         if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
@@ -1837,17 +1706,29 @@ def overview_page(
     review = user.get("admin_review_summary") or {}
     if review.get("available") is False:
         review = {}
-    missing_diagnostics = list(data.get("missingDiagnosticFailures") or [])
-    attention_item_markup: list[str] = [
-        _overview_missing_diagnostic_item(item, csrf_token) for item in missing_diagnostics
-    ]
-    compatibility_attention = [
-        item for item in compatibility.get("attention", compatibility.get("recentActivity", []))
-        if item.get("open_error") or item.get("identity_pending")
-    ]
-    review_required = list(compatibility.get("reviewRequired") or [])
-    attention_item_markup.extend(_overview_attention_item(item) for item in compatibility_attention)
-    attention_item_markup.extend(_overview_review_attention_item(item) for item in review_required)
+    attention_item_markup: list[str] = []
+    category_rows = (
+        ("installationIssues", "Installation problems", "/admin/installations?state=open", compatibility.get("allTimeOpenErrorCount")),
+        ("githubIssuesInProgress", "GitHub issues", "/admin/review/github-issues", 0),
+        ("identityPending", "Device identity", "/admin/installations?state=identity-pending", compatibility.get("allTimeIdentityPendingCount")),
+        ("readyToPublish", "Publication review", "/admin/devices?review=publication", len(compatibility.get("reviewRequired") or [])),
+    )
+    for key, label, href, fallback in category_rows:
+        try:
+            count = max(0, int(review.get(key) if review.get(key) is not None else fallback or 0))
+        except (TypeError, ValueError):
+            count = 0
+        if count:
+            attention_item_markup.append(
+                "<li class='overview-attention-item overview-attention-review'>"
+                "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+                f"<div><strong>{html.escape(label)} · {count}</strong></div>"
+                f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Inspect&nbsp;{_admin_icon('arrow-right')}</a></li>"
+            )
+    attention_item_markup.extend(
+        _overview_missing_diagnostic_item(item, csrf_token)
+        for item in data.get("missingDiagnosticFailures") or []
+    )
     attention_item_markup.extend(_overview_provider_attention_item(provider) for provider in attention_providers)
     if isinstance(overview.get("system"), dict):
         health_cards, _, _ = _system_health_cards(overview["system"])
@@ -1856,7 +1737,7 @@ def overview_page(
             for card in health_cards
             if card["status"] != "HEALTHY"
         )
-    attention_items = "".join(attention_item_markup[:3])
+    attention_items = "".join(attention_item_markup)
     has_review_queue = bool(attention_item_markup)
     if not attention_items:
         attention_content = ""
@@ -1867,28 +1748,9 @@ def overview_page(
         if not recent else
         "<ul class='overview-activity-list'>" + "".join(_overview_map_activity_row(item) for item in recent) + "</ul>"
     )
-    success_rate = (
-        _format_rate(data.get("allTimeInstallSuccessRate"))
-        if all_time_install_available else "—"
-    )
-    download_successes = int(
-        data.get("allTimeCompletedDownloadCount") or 0
-    )
-    download_success_rate = (
-        _format_rate(data.get("allTimeDownloadSuccessRate"))
-        if all_time_download_available else "—"
-    )
-    failed_download_counter = _admin_error_counter(
-        data.get("allTimeFailedDownloadCount"), available=all_time_download_available,
-    )
     map_statistics_href = "/admin/map-statistics"
     map_statistics_href += "?" + urlencode({"period": period})
-    all_time_statistics_href = "/admin/map-statistics?period=all"
-    failure_href = all_time_statistics_href + "&" + urlencode({"eventType": "INSTALL_FAILED"})
-    download_success_href = all_time_statistics_href
-    completed_download_href = all_time_statistics_href + "&" + urlencode({"eventType": "DOWNLOAD_SUCCEEDED"})
-    failed_download_href = all_time_statistics_href + "&" + urlencode({"eventType": "DOWNLOAD_FAILED"})
-    download_has_data = bool(downloads.get("hasData"))
+    download_has_data = bool(downloads.get("hasData")) and (downloads.get("dmgTotal") is not None or downloads.get("zipTotal") is not None or bool(downloads.get("trend")))
     download_last_update = downloads.get("lastSuccessfulObservedAt", downloads.get("lastObservedAt"))
     download_update_note = (
         f"Last successful data update: {_timestamp_markup(download_last_update)}."
@@ -1897,7 +1759,7 @@ def overview_page(
     )
 
     def download_total(key: str) -> str:
-        if not download_has_data or downloads.get(key) is None:
+        if downloads.get(key) is None:
             return "—"
         try:
             return str(max(0, int(downloads[key])))
@@ -1913,50 +1775,33 @@ def overview_page(
             return "—"
 
     period_statistics_href = html.escape(f"/admin/map-statistics?period={period}", quote=True)
+    all_statistics_href = html.escape("/admin/map-statistics?period=all", quote=True)
     map_totals = (
-        "<div class='overview-map-totals' aria-label='Selected-period installation totals'>"
-        f"<a class='overview-map-total' href='{period_statistics_href}'><strong>{map_total('completedInstallCount')}</strong><small>Successful</small></a>"
-        f"<a class='overview-map-total' href='{period_statistics_href}'>{_admin_error_counter(data.get('failedInstallCount'), available='failedInstallCount' in data, aria_label='Selected-period failed installs')}<small>Failed</small></a>"
-        f"<a class='overview-map-total' href='{period_statistics_href}'><strong>{_format_rate(data.get('installSuccessRate'))}</strong><small>Success rate</small></a>"
-        f"<a class='overview-map-total overview-map-total-update' href='{period_statistics_href}'><strong>{map_total('mapUpdateCount')}</strong><small>Updates</small></a>"
+        "<div class='overview-map-totals' aria-label='All-time installation totals'>"
+        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Successful, all time: {map_total('allTimeSuccessCount')}'><strong>{map_total('allTimeSuccessCount')}</strong><small>Successful</small></a>"
+        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Failed, all time: {map_total('allTimeFailedCount')}'>{_admin_error_counter(data.get('allTimeFailedCount'), available='allTimeFailedCount')}<small>Failed</small></a>"
+        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Success rate, all time: {_format_rate(data.get('allTimeInstallSuccessRate'))}'><strong>{_format_rate(data.get('allTimeInstallSuccessRate'))}</strong><small>Success rate</small></a>"
         "</div>"
     )
-    download_period_totals = (
-        "<div class='overview-map-totals' aria-label='Selected-period download totals'>"
-        f"<a class='overview-map-total' href='{period_statistics_href}'><strong>{map_total('completedDownloadCount')}</strong><small>Successful</small></a>"
-        f"<a class='overview-map-total' href='{period_statistics_href}'>{_admin_error_counter(data.get('failedDownloadCount'), available='failedDownloadCount' in data, aria_label='Selected-period failed downloads')}<small>Failed</small></a>"
-        f"<a class='overview-map-total' href='{period_statistics_href}'><strong>{_format_rate(data.get('downloadSuccessRate'))}</strong><small>Success rate</small></a>"
+    download_totals = (
+        "<div class='overview-map-totals' aria-label='All-time download totals'>"
+        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Successful, all time: {map_total('allTimeCompletedDownloadCount')}'><strong>{map_total('allTimeCompletedDownloadCount')}</strong><small>Successful</small></a>"
+        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Failed, all time: {map_total('allTimeFailedDownloadCount')}'>{_admin_error_counter(data.get('allTimeFailedDownloadCount'), available='allTimeFailedDownloadCount')}<small>Failed</small></a>"
+        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Success rate, all time: {_format_rate(data.get('allTimeDownloadSuccessRate'))}'><strong>{_format_rate(data.get('allTimeDownloadSuccessRate'))}</strong><small>Success rate</small></a>"
         "</div>"
     )
-    coverage_successful = _optional_nonnegative_int(
-        device_coverage.get("successfulModelCount")
-    )
-    coverage_eligible = _optional_nonnegative_int(
-        device_coverage.get("eligibleModelCount")
-    )
-    coverage_counts = (
-        f"<bdi dir='ltr'>{coverage_successful} / {coverage_eligible}</bdi>"
-        if coverage_successful is not None and coverage_eligible is not None
-        else "—"
-    )
-    coverage_rate = (
-        _format_rate(device_coverage.get("coverageRate"))
-        if coverage_eligible is not None else "—"
-    )
-
     downloads_section = (
-        "<details class='overview-panel overview-download-panel admin-disclosure'>"
-        "<summary id='overview-downloads-title'>Terento app downloads</summary>"
-        "<div class='disclosure-body'><div class='section-heading overview-download-heading'><div>"
-        "<p class='table-help'>Observed GitHub .dmg and .zip counter increases.</p></div>"
+        "<section class='overview-panel overview-download-panel' aria-labelledby='overview-downloads-title'>"
+        "<div class='section-heading overview-download-heading'><div>"
+        "<h2 id='overview-downloads-title'>App downloads</h2></div>"
         "<div class='overview-download-totals' aria-label='Total GitHub downloads'>"
         f"<div class='overview-download-total' aria-label='.dmg downloads total: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
         f"<div class='overview-download-total' aria-label='.zip downloads total: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
         "</div></div>"
         f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
         f"<p class='overview-chart-note'>{download_update_note}</p>"
-        "</div></details>"
-    )
+        "</section>"
+    ) if download_has_data else ""
     notice_event_id = ""
     try:
         notice_event_id = str(UUID(str(review_event_id).strip()))
@@ -1984,28 +1829,8 @@ def overview_page(
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
-        {attention_section}
-        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel overview-kpi-panel' aria-label='All-time operational summary'>
-          <div class='map-statistics-kpi-groups overview-kpi-groups'>
-            <section class='map-statistics-kpi-group overview-kpi-group' aria-labelledby='overview-download-kpis-title'><h2 id='overview-download-kpis-title'>Downloads</h2><div class='map-statistics-kpi-values'>
-              <a class='map-statistics-kpi-value overview-kpi-link' href='{html.escape(completed_download_href, quote=True)}'><span>Successful</span><strong>{event_metric(download_successes, all_time_download_available)}</strong></a>
-              <a class='map-statistics-kpi-value overview-kpi-link error-counter-kpi failed' href='{html.escape(failed_download_href, quote=True)}'><span>Failed</span>{failed_download_counter}</a>
-              <a class='map-statistics-kpi-value overview-kpi-link' href='{html.escape(download_success_href, quote=True)}'><span>Success rate</span><strong>{download_success_rate}</strong></a>
-            </div></section>
-            <section class='map-statistics-kpi-group overview-kpi-group' aria-labelledby='overview-installs-kpis-title'><h2 id='overview-installs-kpis-title'>Installs</h2><div class='map-statistics-kpi-values'>
-              <a class='map-statistics-kpi-value overview-kpi-link' href='{all_time_statistics_href}'><span>Successful</span><strong>{event_metric(completed_installs, all_time_install_available)}</strong></a>
-              <a class='map-statistics-kpi-value overview-kpi-link error-counter-kpi failed' href='{html.escape(failure_href, quote=True)}'><span>Failed</span>{failed_install_counter}</a>
-              <a class='map-statistics-kpi-value overview-kpi-link' href='{all_time_statistics_href}'><span>Success rate</span><strong>{success_rate}</strong></a>
-            </div></section>
-            <section class='map-statistics-kpi-group overview-kpi-group overview-coverage-kpi-group' aria-labelledby='overview-coverage-kpis-title'><h2 id='overview-coverage-kpis-title'>Model coverage</h2><div class='map-statistics-kpi-values'>
-              <a class='map-statistics-kpi-value overview-kpi-link' href='/admin/devices'><span>Map-capable models</span><strong>{coverage_counts}</strong></a>
-              <a class='map-statistics-kpi-value overview-kpi-link' href='/admin/devices'><span>Coverage</span><strong>{coverage_rate}</strong></a>
-            </div></section>
-          </div>
-        </section>
-        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-download-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-download-trend-title'>Downloads</h2></div>{download_period_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, metric='downloads')}</section><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-trend-title'>Installs</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section></div>
-        <section class='overview-panel overview-activity-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><h2 id='overview-activity-title'>Activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>
-        {downloads_section}
+        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-download-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-download-trend-title'>Map downloads</h2></div>{download_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, metric='downloads', has_activity=bool((data.get('completedDownloadCount') or 0) + (data.get('failedDownloadCount') or 0)))}</section><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-trend-title'>Map installs</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, has_activity=bool((data.get('completedInstallCount') or 0) + (data.get('failedInstallCount') or 0) + (data.get('mapUpdateCount') or 0)))}</section></div>
+        <div class='overview-composition-grid'>{attention_section}<section class='overview-panel overview-activity-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><h2 id='overview-activity-title'>Activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{downloads_section}</div>
       </main>
       <script>{_overview_period_script()}</script>
     """
@@ -2035,18 +1860,6 @@ def _health_run_link(observation: dict[str, Any] | None, *, label: str = "GitHub
     ):
         return ""
     return f"<a class='section-link' href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>{html.escape(label)}&nbsp;{_admin_icon('external')}</a>"
-
-
-def _health_attention(status: Any, reason: str, action: str) -> str:
-    normalized = str(status or "UNKNOWN").upper()
-    if normalized not in {"WARNING", "FAILED", "UNKNOWN"}:
-        return ""
-    return (
-        f"<dl class='system-health-explanation'>"
-        f"<div><dt>Why</dt><dd>{html.escape(reason)}</dd></div>"
-        f"<div><dt>Next action</dt><dd>{html.escape(action)}</dd></div>"
-        f"</dl>"
-    )
 
 
 def _system_health_card(
@@ -2081,10 +1894,12 @@ def _system_health_card(
         )
     else:
         markup = (
-            f"<details class='system-health-row system-health-issue admin-disclosure' {attrs}>"
-            f"<summary>{heading}<span class='system-health-when'>{when}</span></summary>"
-            f"<div class='disclosure-body'>{_health_attention(normalized_status, reason, action)}"
-            f"{technical}</div></details>"
+            f"<article class='system-health-row system-health-issue' {attrs}>"
+            f"<div class='system-health-issue-heading'>{heading}</div>"
+            f"<p class='system-health-cause'>{html.escape(reason)}</p>"
+            f"<p class='system-health-action'>{html.escape(action)}</p>"
+            f"<span class='system-health-when'>Last checked {when}</span>"
+            f"{technical}</article>"
         )
     return {"title": title, "status": normalized_status, "html": markup, "reason": reason, "lastChecked": checked}
 
@@ -2234,14 +2049,14 @@ def _indexnow_card(
         f"{_health_run_link(report or site, label='View workflow')}</div></details>"
     )
     markup = (
-        "<details class='system-health-row system-health-issue admin-disclosure' "
+        "<article class='system-health-row system-health-issue' "
         f"data-health-status='{html.escape(status, quote=True)}' "
         f"data-health-name='indexnow submissions'>"
-        f"<summary><h2>IndexNow submissions</h2>{_health_status_badge(status)}</summary>"
-        "<div class='disclosure-body'>"
-        f"{_health_attention(status, reason, action)}"
-        f"{technical}"
-        "</div></details>"
+        f"<div class='system-health-issue-heading'><h2>IndexNow submissions</h2>{_health_status_badge(status)}</div>"
+        f"<p class='system-health-cause'>{html.escape(reason)}</p>"
+        f"<p class='system-health-action'>{html.escape(action)}</p>"
+        f"<span class='system-health-when'>Last checked {_timestamp_markup(checked)}</span>"
+        f"{technical}</article>"
     )
     return {
         "title": "IndexNow submissions",
@@ -2493,9 +2308,19 @@ def dashboard_page(
             and int(row.get("prewrite_failure_count") or 0) > 0
         )
     ]
+    latest_copy = "All time"
+    if not rows:
+        content = f"""
+          {_admin_header(user, csrf_token, active='installations')}
+          <main class="dashboard" id="main-content">
+            <div class="heading-row installation-heading"><div><h1>Installations</h1></div><p class="page-meta">{latest_copy}</p></div>
+            <p class='empty'>No installation evidence yet.</p>
+          </main>
+        """
+        return _layout("Installations", content, sections={"installations": []})
+
     catalog_by_id = {str(device.get("id") or device.get("device_id")): device
                      for device in identity_devices or []}
-    latest = _latest_data_timestamp(rows)
     status_values = [status.value for status in CANONICAL_STATUS_ORDER]
     status_options = "".join(
         f"<option value='{status.lower()}'>{status.title()}</option>"
@@ -2512,6 +2337,7 @@ def dashboard_page(
 
     attempts = sum(metric(row, "attempts", "attempted_install_count") for row in rows)
     successes = sum(metric(row, "successful", "successful_install_count") for row in rows)
+    failures = sum(metric(row, "failed", "failed_install_count") for row in rows)
     open_errors = sum(
         int(summary.get("open_errors") or 0) for summary in diagnostic_summary.values()
     )
@@ -2524,35 +2350,40 @@ def dashboard_page(
         )
         for row in rows
     )
-    empty = "<p class='empty'>No installation evidence yet.</p>" if not rows else ""
-    latest_copy = f"All time · Updated {_timestamp_markup(latest)}" if latest else "All time"
+    pagination = "" if len(rows) <= 25 else f"""
+          <div class='provider-pagination' id='installation-pagination' aria-live='polite'>
+            <label>Rows <select id='installation-page-size' aria-label='Rows per installation page'><option value='25' selected>25</option><option value='50'>50</option></select></label>
+            <button type='button' data-installation-page='previous' disabled>Previous</button>
+            <span>Showing 1–25 of {len(rows)} · page 1 of {(len(rows) + 24) // 25}</span>
+            <button type='button' data-installation-page='next'>Next</button>
+          </div>
+    """
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
         <div class="heading-row installation-heading"><div><h1>Installations</h1></div><p class="page-meta">{latest_copy}</p></div>
         <section class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis" aria-label="Installation summary">
           <div class="map-statistics-kpi-groups installation-kpi-groups"><section class="map-statistics-kpi-group" aria-labelledby="installation-kpis-title"><h2 id="installation-kpis-title" class="sr-only">Installation summary</h2><div class="map-statistics-kpi-values installation-kpi-values">
-            <div class="map-statistics-kpi-value"><span>Variants</span><strong>{len(rows)}</strong></div>
-            <div class="map-statistics-kpi-value"><span>Installation attempts</span><strong>{attempts}</strong></div>
+            <div class="map-statistics-kpi-value"><span>Attempts</span><strong>{attempts}</strong></div>
             <div class="map-statistics-kpi-value"><span>Successful</span><strong>{successes}</strong></div>
+            <div class="map-statistics-kpi-value"><span>Failed</span><strong class="installation-failed-value">{failures}</strong></div>
             <div class="map-statistics-kpi-value"><span>Success rate</span><strong>{_format_rate(success_rate)}</strong></div>
-            <div class="map-statistics-kpi-value error-counter-kpi failed"><span>Open errors</span>{_admin_error_counter(open_errors)}</div>
+            <div class="map-statistics-kpi-value error-counter-kpi"><span>Open errors</span>{_admin_error_counter(open_errors)}</div>
           </div></section></div>
         </section>
-        {empty}
         <section class="evidence-section" aria-label="Installation evidence table">
-          <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search">
-            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open errors</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button><button type="button" class="quick-filter" data-installation-filter="identity-pending" aria-pressed="false">Identity review</button></div>
+          <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search"{' hidden' if len(rows) <= 1 else ''}>
+            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open errors</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <details class="admin-disclosure filter-disclosure" id="installation-more-filters"><summary>More filters</summary><div class="disclosure-body">
               <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
-              <label><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="latest" selected>Latest activity</option><option value="model:ascending">Model ↑</option><option value="model:descending">Model ↓</option><option value="variant:ascending">Variant ↑</option><option value="variant:descending">Variant ↓</option><option value="status:ascending">Status ↑</option><option value="status:descending">Status ↓</option><option value="attempts:ascending">Attempts ↑</option><option value="attempts:descending">Attempts ↓</option><option value="successfulCount:ascending">Successful ↑</option><option value="successfulCount:descending">Successful ↓</option><option value="failedCount:ascending">Failed ↑</option><option value="failedCount:descending">Failed ↓</option><option value="errors:ascending">Open errors ↑</option><option value="errors:descending">Open errors ↓</option><option value="lastSuccess:ascending">Last success ↑</option><option value="lastSuccess:descending">Last success ↓</option></select></label>
-            </div></details>
+            </div></details><label class="device-mobile-sort"><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="latest" selected>Latest activity</option><option value="model:ascending">Model ↑</option><option value="model:descending">Model ↓</option><option value="variant:ascending">Variant ↑</option><option value="variant:descending">Variant ↓</option><option value="status:ascending">Status ↑</option><option value="status:descending">Status ↓</option><option value="attempts:ascending">Attempts ↑</option><option value="attempts:descending">Attempts ↓</option><option value="successfulCount:ascending">Successful ↑</option><option value="successfulCount:descending">Successful ↓</option><option value="failedCount:ascending">Failed ↑</option><option value="failedCount:descending">Failed ↓</option><option value="errors:ascending">Open errors ↑</option><option value="errors:descending">Open errors ↓</option><option value="lastSuccess:ascending">Last success ↑</option><option value="lastSuccess:descending">Last success ↓</option></select></label>
             <p class="results-count" id="results-count" aria-live="polite">{_count_label(len(rows), 'variant')}</p>
-            <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters">Clear</button>
+            <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters" hidden>Clear</button>
           </form>
-          <p id="installation-empty" class="table-help" role="status" hidden>No models match your filters. Use Clear to show all installations.</p>
-          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="model" aria-label="Model">Model <span aria-hidden="true">↕</span></button></th><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="status" aria-label="Status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="attempts" aria-label="Attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="successfulCount" aria-label="Successful">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="failedCount" aria-label="Failed">Failed <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="errors" aria-label="Open errors">Open errors <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="lastSuccess" aria-label="Last success">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <p id="installation-empty" class="table-help" role="status" hidden>No matching models.</p>
+          <div class="table-wrap evidence-table-wrap" id="installation-table" tabindex="0" role="region" aria-label="Installation evidence table"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="model" aria-label="Model">Model <span aria-hidden="true">↕</span></button></th><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="status" aria-label="Status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="attempts" aria-label="Attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="successfulCount" aria-label="Successful">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="failedCount" aria-label="Failed">Failed <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="errors" aria-label="Open errors">Open errors <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="lastSuccess" aria-label="Last success">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          {pagination}
         </section>
       </main>
       <script>{_dashboard_script()}</script>
@@ -2683,26 +2514,6 @@ def _provider_action_button(
     )
 
 
-def _download_time_markup(metric: dict[str, Any] | None, period: str) -> str:
-    metric = metric or {}
-    seconds = metric.get("averageSeconds")
-    sample = metric.get("sampleCount", 0)
-    population = metric.get("populationCount", 0)
-    label = "—"
-    if isinstance(seconds, (int, float)) and math.isfinite(seconds) and seconds >= 0:
-        rounded = math.floor(seconds + 0.5)
-        label = f"{rounded // 60:02d}:{rounded % 60:02d}"
-    explanation = (
-        f"Average of Processing minus Started for successful main-map acquisitions. {period}. "
-        f"{sample} measured of {population} successful main acquisitions. "
-        "Excludes incomplete, conflicting, failed, cancelled, interrupted and optional components. "
-        "Includes user connection and file-size effects; not server health."
-    )
-    return (f"<span class='download-time' tabindex='0' title='{html.escape(explanation, quote=True)}' "
-            f"aria-label='{html.escape(label + '. ' + explanation, quote=True)}'>{label}"
-            f"<small class='table-secondary'>{sample} {'download' if sample == 1 else 'downloads'}</small></span>")
-
-
 def _provider_summary_row(provider: dict[str, Any]) -> str:
     provider_id = str(provider.get("id") or "").strip()
     name = str(provider.get("name") or provider_id or "Unknown provider")
@@ -2721,16 +2532,24 @@ def _provider_summary_row(provider: dict[str, Any]) -> str:
             return "—"
     provider_href = html.escape(quote(provider_id, safe=""), quote=True)
     problem_label = f"{count_label(affected_packages, 'package', 'packages')} · {count_label(problematic_sources, 'source', 'sources')}"
-    issue_tone = ' is-positive' if any(isinstance(v, (int, float)) and v > 0 for v in (affected_packages, problematic_sources)) else ''
-    issue_markup = f"<span class='provider-issue-count{issue_tone}' title='Current catalog problems: {html.escape(problem_label, quote=True)}' aria-label='Current catalog problems: {html.escape(problem_label, quote=True)}'>{html.escape(problem_label)}</span>"
+    has_problems = any(isinstance(value, (int, float)) and value > 0 for value in (affected_packages, problematic_sources))
+    issue_markup = (
+        f"<span class='provider-issue-count is-positive' title='Current catalog problems: {html.escape(problem_label, quote=True)}' aria-label='Current catalog problems: {html.escape(problem_label, quote=True)}'>{html.escape(problem_label)}</span>"
+        if has_problems else "<span class='muted-value'>0</span>"
+    )
     package_value = count_label(provider.get("packageCount"), "package", "packages")
     health_error = str(provider.get("lastHealthError") or "").strip()
     health_title = (
         f" title='{html.escape(health_error, quote=True)}'" if health_error else ""
     )
+    latest_release = provider.get("latestRelease")
+    latest_markup = (
+        f"<small class='table-secondary'>Newest package: {html.escape(str(latest_release))}</small>"
+        if latest_release else ""
+    )
     return (
-        f"<tr data-provider-search='{html.escape(' '.join((provider_id, name, str(provider.get('adapterId') or ''), status, health)).casefold(), quote=True)}'>"
-        f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong></a><small class='table-secondary'>Newest package: {html.escape(str(provider.get('latestRelease') or 'Not recorded'))}</small></td>"
+        "<tr>"
+        f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong></a>{latest_markup}</td>"
         f"<td class='column-status'>{_provider_status_badge(status)}</td>"
         f"<td class='column-status'{health_title}>{_provider_status_badge(health, kind='health')}</td>"
         f"<td class='column-number numeric'>{html.escape(package_value)}</td>"
@@ -2749,29 +2568,34 @@ def providers_page(
     empty = "<p class='empty'>No known providers are registered.</p>" if not provider_rows else ""
     active = sum(1 for provider in provider_rows if str(provider.get("status")).upper() == "ACTIVE")
     healthy = sum(1 for provider in provider_rows if str(provider.get("health")).upper() == "HEALTHY")
-    package_values = [provider.get("packageCount") for provider in provider_rows]
-    packages = sum(int(value) for value in package_values) if all(value is not None for value in package_values) else None
     affected_packages = [provider.get("affectedPackageCount", provider.get("brokenPackageCount")) for provider in provider_rows]
     problematic_sources = [provider.get("problematicSourceCount", provider.get("brokenUrlCount")) for provider in provider_rows]
     affected_package_total = sum(int(value) for value in affected_packages) if all(value is not None for value in affected_packages) else None
     problematic_source_total = sum(int(value) for value in problematic_sources) if all(value is not None for value in problematic_sources) else None
-    problem_summary = (
-        f"{affected_package_total} affected packages · {problematic_source_total} problematic sources"
-        if affected_package_total is not None and problematic_source_total is not None
-        else "—"
+    exceptions = []
+    if active != len(provider_rows):
+        exceptions.append(f"{len(provider_rows) - active} inactive")
+    if healthy != len(provider_rows):
+        exceptions.append(f"{len(provider_rows) - healthy} health exceptions")
+    if affected_package_total:
+        exceptions.append(f"{affected_package_total} affected packages")
+    if problematic_source_total:
+        exceptions.append(f"{problematic_source_total} problematic sources")
+    provider_summary = (
+        "<section class='admin-summary-strip' aria-label='Provider problems'>"
+        f"<p class='admin-summary-metrics'><strong>Needs attention</strong><span> · {html.escape(' · '.join(exceptions))}</span></p></section>"
+        if exceptions else ""
     )
     content = f"""
       {_admin_header(user, csrf_token, active='providers')}
       <main class='dashboard providers-page' id='main-content'>
         <div class='heading-row'><div><h1>Providers</h1></div></div>
-        <section class='admin-summary-strip' aria-label='Provider summary'><p class='admin-summary-metrics'><strong>{_count_label(len(provider_rows), 'provider')}</strong><span> · {active} active · {healthy} healthy · {_count_label(packages, 'package')} · {html.escape(problem_summary)}</span></p></section>
+        {provider_summary}
         {empty}
         <section class='provider-section' aria-label='Provider list'>
-          <form class='filter-bar provider-filter-bar' id='provider-filters' role='search'><label class='filter-search'><span class='sr-only'>Search providers</span><input id='provider-search' type='search' placeholder='Search providers' autocomplete='off'></label><p class='results-count' id='provider-results-count' aria-live='polite'>{_count_label(len(provider_rows), 'provider')}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear provider filters'>Clear</button></form>
-          <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col' class='column-status'>Activity</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-number'>Packages</th><th scope='col' class='column-number'>Problems</th><th scope='col' class='column-date'>Catalog sync</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
+          <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-number'>Packages</th><th scope='col' class='column-number'>Problems</th><th scope='col' class='column-date'>Last sync</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
         </section>
       </main>
-      <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_providers_list_script()}</script>
     """
     return _layout("Providers", content, sections={"providers": provider_rows})
 
@@ -3175,20 +2999,24 @@ def map_statistics_page(
 ) -> bytes:
     rows = list(statistics.get("rows") or [])
     summary = statistics.get("summary") if isinstance(statistics.get("summary"), dict) else _map_statistics_summary(rows)
+    all_time_summary = (
+        statistics.get("allTimeSummary")
+        if isinstance(statistics.get("allTimeSummary"), dict)
+        else summary
+    )
     statistics = dict(statistics)
-    statistics['downloadTimeMarkup'] = {str(item.get('id')): _download_time_markup((statistics.get('downloadTimes') or {}).get(str(item.get('id'))), 'Selected statistics period') for item in providers}
     selected = selected_filters or {}
     event_detail_open = " open" if selected.get("eventId") else ""
-    has_population_data = bool(rows)
-    has_event_data = has_population_data
-    event_value = lambda key: "—" if summary.get(key) is None else str(summary[key])
+    has_event_data = bool(rows)
+    has_all_time_data = bool(all_time_summary.get("hasEventData", has_event_data))
+    def event_value(source: dict[str, Any], key: str) -> str:
+        return "—" if source.get(key) is None else str(source[key])
     event_status = "No matching event groups"
     provider_options = "".join(
         f"<option value='{html.escape(str(provider.get('id') or ''), quote=True)}'>{html.escape(str(provider.get('name') or provider.get('id') or ''))}</option>"
         for provider in providers
     )
     detail_rows = list(statistics.get("detailRows") or (rows[:25] if "detailRows" not in statistics else []))
-    has_detail_data = bool(detail_rows)
     detail_total = int(statistics.get("detailTotal") if statistics.get("detailTotal") is not None else len(detail_rows))
     detail_page = int(statistics.get("detailPage") or 1)
     detail_page_size = int(statistics.get("detailPageSize") or 25)
@@ -3214,41 +3042,32 @@ def map_statistics_page(
             f"{len(detail_rows)} event group{'s' if len(detail_rows) != 1 else ''} · "
             f"{detail_event_label}"
         )
-    linkage = statistics.get("linkage") if isinstance(statistics.get("linkage"), dict) else {}
-    linkage_value = lambda key: "—" if key not in linkage or linkage.get(key) is None else str(linkage[key])
-    def failed_metric_markup(key: str) -> str:
-        value = summary.get(key)
+    def failed_metric_markup(source: dict[str, Any], key: str) -> str:
+        value = source.get(key)
         return _admin_error_counter(value, data_stat=key)
 
-    linkage_section = (
-        "<section class='map-statistics-kpi-panel provider-card' id='map-statistics-metrics' aria-label='Map statistics summary'>"
-        "<div class='map-statistics-kpi-groups'>"
-        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-downloads-title'><h2 id='map-statistics-downloads-title'>Downloads</h2><div class='map-statistics-kpi-values'>"
-        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></div>"
-        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></div>"
-        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup('failedDownloads')}</div>"
-        "</div></section>"
-        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-installs-title'><h2 id='map-statistics-installs-title'>Installs</h2><div class='map-statistics-kpi-values'>"
-        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></div>"
-        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></div>"
-        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup('failedInstalls')}</div>"
-        "</div></section>"
-        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-updates-title'><h2 id='map-statistics-updates-title'>Updates</h2><div class='map-statistics-kpi-values'>"
-        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedMapUpdates'>{event_value('completedMapUpdates')}</strong></div>"
-        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(summary['mapUpdateSuccessRate'])}</strong></div>"
-        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup('failedMapUpdates')}</div>"
-        "</div></section>"
+    updates_section = (
+        "<section class='map-statistics-kpi-group' id='map-statistics-updates' aria-labelledby='map-statistics-updates-title'><h2 id='map-statistics-updates-title'>Updates <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
+        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedMapUpdates'>{event_value(all_time_summary, 'completedMapUpdates')}</strong></div>"
+        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(all_time_summary.get('mapUpdateSuccessRate'))}</strong></div>"
+        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedMapUpdates')}</div>"
         "</div></section>"
     )
-    diagnostic_coverage = (
-        "<details class='provider-card admin-disclosure' id='map-statistics-diagnostic-coverage'>"
-        "<summary>Diagnostic coverage</summary><div class='disclosure-body'>"
-        "<div class='map-statistics-diagnostic-coverage-row'>"
-        f"<div><span>Attempts</span><strong data-stat='freshMapAttemptCount'>{linkage_value('freshMapAttemptCount')}</strong></div>"
-        f"<div><span>Linked reports</span><strong data-stat='freshMapLinkedDiagnosticCount'>{linkage_value('freshMapLinkedDiagnosticCount')}</strong></div>"
-        f"<div><span>Report gaps</span><strong data-stat='freshMapMissingDiagnosticCount'>{linkage_value('freshMapMissingDiagnosticCount')}</strong></div>"
-        f"<div><span>Coverage rate</span><strong data-stat='freshMapDiagnosticCoverageRate'>{_format_rate(linkage.get('freshMapDiagnosticCoverageRate'))}</strong></div>"
-        "</div></div></details>"
+    metrics_section = (
+        "<section class='map-statistics-kpi-panel provider-card' id='map-statistics-metrics' aria-label='Map statistics summary'>"
+        "<div class='map-statistics-kpi-groups'>"
+        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-downloads-title'><h2 id='map-statistics-downloads-title'>Map downloads <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
+        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedDownloads'>{event_value(all_time_summary, 'completedDownloads')}</strong></div>"
+        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='downloadSuccessRate'>{_format_rate(all_time_summary.get('downloadSuccessRate'))}</strong></div>"
+        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedDownloads')}</div>"
+        "</div></section>"
+        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-installs-title'><h2 id='map-statistics-installs-title'>Map installs <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
+        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedInstalls'>{event_value(all_time_summary, 'completedInstalls')}</strong></div>"
+        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='installSuccessRate'>{_format_rate(all_time_summary.get('installSuccessRate'))}</strong></div>"
+        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedInstalls')}</div>"
+        "</div></section>"
+        f"{updates_section}"
+        "</div></section>"
     )
     selected_period = str(
         selected.get("period")
@@ -3266,54 +3085,62 @@ def map_statistics_page(
             ("all", "All time"),
         )
     )
-    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col' class='column-status'>Outcome</th><th scope='col' class='column-number'>Operations</th><th scope='col' class='column-date'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(detail_rows)}</tbody></table></div><div class='provider-pagination' id='map-statistics-event-pagination' aria-live='polite'><label>Rows <select id='map-statistics-event-page-size' aria-label='Rows per event page'><option value='25'{' selected' if detail_page_size == 25 else ''}>25</option><option value='50'{' selected' if detail_page_size == 50 else ''}>50</option></select></label><button type='button' data-event-page='previous' disabled>Previous</button><span>Showing {detail_start}–{detail_end} of {detail_total} · page {detail_page} of {detail_pages}</span><button type='button' data-event-page='next' {'disabled' if detail_page >= detail_pages else ''}>Next</button></div>"""
+    detail_query = {
+        key: value for key, value in selected.items()
+        if key not in {"detailPage", "detailPageSize"} and value
+    }
+    detail_query["detailPageSize"] = str(detail_page_size)
+    def detail_page_url(page: int) -> str:
+        return "/admin/map-statistics?" + urlencode({**detail_query, "detailPage": page})
+    event_pagination = ""
+    if detail_pages > 1:
+        previous = (
+            f"<a class='secondary-button' href='{html.escape(detail_page_url(detail_page - 1), quote=True)}'>Previous</a>"
+            if detail_page > 1 else ""
+        )
+        following = (
+            f"<a class='secondary-button' href='{html.escape(detail_page_url(detail_page + 1), quote=True)}'>Next</a>"
+            if detail_page < detail_pages else ""
+        )
+        event_pagination = (
+            "<div class='provider-pagination' aria-label='Event pages'>"
+            f"{previous}<span>Showing {detail_start}–{detail_end} of {detail_total}</span>{following}</div>"
+        )
+    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col' class='column-status'>Outcome</th><th scope='col' class='column-number'>Operations</th><th scope='col' class='column-date'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(detail_rows)}</tbody></table></div>{event_pagination}"""
+    has_active_filters = any(
+        selected.get(key) for key in ("provider", "map", "region", "eventType", "outcome", "eventId")
+    ) or selected_period != "all"
+    trend = list(statistics.get("trend") or [])
+    bucket = str(statistics.get("bucket") or "day")
+    chart_time_zone = str(statistics.get("timeZone") or "UTC")
+    trends = (
+        "<section class='overview-primary-grid map-statistics-trends' aria-label='Activity trends'>"
+        "<section class='overview-panel overview-chart-panel' aria-labelledby='map-download-trend-title'>"
+        "<div class='section-heading'><h2 id='map-download-trend-title'>Map downloads</h2></div>"
+        f"{_overview_trend_chart(trend, bucket, chart_time_zone, metric='downloads', has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0)))}"
+        "</section><section class='overview-panel overview-chart-panel' aria-labelledby='map-install-trend-title'>"
+        "<div class='section-heading'><h2 id='map-install-trend-title'>Map installs</h2></div>"
+        f"{_overview_trend_chart(trend, bucket, chart_time_zone, has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0)))}"
+        "</section></section>"
+    )
     content = f"""
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
-        <div class='heading-row'><div><h1>Map statistics</h1></div></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='MAP_UPDATE_SUCCEEDED'>Map update succeeded</option><option value='MAP_UPDATE_FAILED'>Map update failed</option><option value='DOWNLOAD_STARTED'>Download started</option><option value='DOWNLOAD_PROCESSING'>Checking / unpacking</option><option value='DOWNLOAD_CANCELLED'>Download cancelled</option><option value='DOWNLOAD_INTERRUPTED'>Download interrupted</option></select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear map statistics filters'>Clear</button></form>
-        {linkage_section}
-        {diagnostic_coverage}
-        <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>No map activity</h2><p>Try a wider time range or clear your filters. If all-time activity is empty, no map-operation reports have been received.</p><a href='/admin/map-statistics?period=all'>View all map activity</a></section>
-        <details class='provider-card admin-disclosure map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><summary>Activity by provider</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap' tabindex='0' role='region' aria-label='Activity by provider table'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><colgroup span='1'></colgroup><colgroup span='3'></colgroup><colgroup span='3'></colgroup><colgroup span='3'></colgroup><colgroup span='1'></colgroup><thead><tr><th scope='col' rowspan='2'>Provider</th><th scope='colgroup' colspan='3'>Downloads</th><th scope='colgroup' colspan='3'>Installs</th><th scope='colgroup' colspan='3'>Updates</th><th scope='col' rowspan='2' class='column-date'>Last install</th></tr><tr><th scope='col' class='column-number'>Successful</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-number'>Successful</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-number'>Successful</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></div></details>
-        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><details class='provider-card admin-disclosure map-statistics-popularity' id='map-statistics-popularity' tabindex='0' aria-label='Popular maps and regions'><summary>Popular maps</summary><div class='disclosure-body'><div class='map-statistics-popularity-views'><section class='popularity-view' data-popularity-view='top' id='top-maps-view' aria-labelledby='top-maps-title'><h3 id='top-maps-title'>Top 5</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top 5</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='regions' id='regions-view' aria-labelledby='regions-title' hidden><h3 id='regions-title'>Regions</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Popular regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='all' id='all-maps-view' aria-labelledby='all-maps-title' hidden><h3 id='all-maps-title'>All maps</h3><label class='popularity-search-label' for='all-maps-search'>Search maps</label><input type='search' id='all-maps-search' placeholder='Map, region or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>All maps by region and provider</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></section></div><nav class='popular-maps-nav' aria-label='Popular maps views'><button type='button' data-popularity-view-button='top'>Top 5</button><button type='button' data-popularity-view-button='regions'>Regions</button><button type='button' data-popularity-view-button='all'>All maps</button></nav></div></details></section>
-        <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'{event_detail_open}><summary id='map-statistics-event-summary'>Event detail <span class='disclosure-meta'>· {event_status}</span></summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
+        <div class='heading-row'><div><h1>Maps</h1></div></div>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><label><span class='sr-only'>Time range</span><select id='map-statistics-range' name='period'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider' name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' name='eventType'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='MAP_UPDATE_SUCCEEDED'>Map update succeeded</option><option value='MAP_UPDATE_FAILED'>Map update failed</option><option value='DOWNLOAD_STARTED'>Download started</option><option value='DOWNLOAD_PROCESSING'>Checking / unpacking</option><option value='DOWNLOAD_CANCELLED'>Download cancelled</option><option value='DOWNLOAD_INTERRUPTED'>Download interrupted</option></select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
+        {metrics_section if has_all_time_data else ""}
+        {"" if has_event_data else "<section class='map-statistics-empty' aria-live='polite'><h2>No map activity for this scope</h2></section>"}
+        {"" if not has_event_data else f"""
+        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' aria-labelledby='top-countries-title'><div class='section-heading'><h2 id='top-countries-title'>Top countries</h2></div><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div></section></section>
+        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' aria-labelledby='provider-statistics-title'><div class='section-heading'><div><h2 id='provider-statistics-title'>Provider comparison</h2></div></div><div class='table-wrap provider-table-wrap' tabindex='0' role='region' aria-label='Provider comparison table'><table class='admin-table mobile-record-table'><caption class='sr-only'>Provider comparison</caption><colgroup span='1'></colgroup><colgroup span='3'></colgroup><colgroup span='3'></colgroup><colgroup span='3'></colgroup><colgroup span='1'></colgroup><thead><tr><th scope='col' rowspan='2'>Provider</th><th scope='colgroup' colspan='3'>Downloads</th><th scope='colgroup' colspan='3'>Installs</th><th scope='colgroup' colspan='3'>Updates</th><th scope='col' rowspan='2' class='column-date'>Last install</th></tr><tr><th scope='col' class='column-number'>Success</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-number'>Success</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-number'>Success</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
+        <section class='provider-card map-statistics-ranking' aria-labelledby='maps-by-provider-title'><div class='section-heading'><h2 id='maps-by-provider-title'>Maps by provider</h2></div><label class='popularity-search-label' for='all-maps-search'>Search</label><input type='search' id='all-maps-search' placeholder='Map or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Maps by provider</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' id='all-maps-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></section>
+        <section class='provider-card map-events-card'><details class='admin-disclosure' id='map-statistics-event-detail'{event_detail_open}><summary id='map-statistics-event-summary'>Event detail <span class='disclosure-meta'>· {event_status}</span></summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
+        """}
+        {trends}
       </main>
       <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
-    return _layout("Map statistics", content, revisions={**statistics_revisions(statistics), **section_revisions({"providers": providers})})
-
-
-def _providers_list_script() -> str:
-    return r"""(() => {
-      const search = document.querySelector('#provider-search');
-      const rows = [...document.querySelectorAll('#provider-rows tr[data-provider-search]')];
-      const count = document.querySelector('#provider-results-count');
-      const csrf = window.terentoAdminCsrf;
-      const refresh = () => {
-        const query = (search?.value || '').trim().toLocaleLowerCase();
-        let visible = 0;
-        rows.forEach((row) => { const show = !query || row.dataset.providerSearch.includes(query); row.hidden = !show; if (show) visible += 1; });
-        if (count) count.textContent = `${visible} provider${visible === 1 ? '' : 's'}`;
-      };
-      search?.addEventListener('input', refresh);
-      document.querySelector('#provider-filters')?.addEventListener('terento-admin-clear-filters', () => {
-        if (search) search.value = '';
-        refresh();
-      });
-      document.querySelectorAll('[data-provider-action="check"]').forEach((button) => {
-        button.addEventListener('click', async () => {
-          const id = button.dataset.providerId;
-          button.disabled = true;
-          try {
-            const response = await fetch(`/admin/providers/${encodeURIComponent(id)}/check`, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: '{}'});
-            if (!response.ok) throw new Error(`Check failed (${response.status})`);
-            window.location.reload();
-          } catch (error) { button.disabled = false; window.alert(error.message || 'Provider check failed.'); }
-        });
-      });
-      refresh();
-    })();"""
+    return _layout("Maps", content, revisions={**statistics_revisions(statistics), **section_revisions({"providers": providers})})
 
 
 def _provider_detail_script() -> str:
@@ -3385,332 +3212,178 @@ def _provider_detail_script() -> str:
 
 def _map_statistics_script() -> str:
     return r"""(() => {
-      const csrf = window.terentoAdminCsrf;
-      const initial = window.terentoMapStatistics || {rows: []};
+      const payload = window.terentoMapStatistics || {rows: []};
+      const rows = Array.isArray(payload.rows) ? payload.rows : [];
       const providers = window.terentoAdminProviders || [];
       const filters = window.terentoMapStatisticsFilters || {};
+      const form = document.querySelector('#map-statistics-filters');
       const range = document.querySelector('#map-statistics-range');
       const provider = document.querySelector('#map-statistics-provider');
       const map = document.querySelector('#map-statistics-map');
       const region = document.querySelector('#map-statistics-region');
       const event = document.querySelector('#map-statistics-event');
       const outcome = document.querySelector('#map-statistics-outcome');
-      const status = document.querySelector('#map-statistics-status');
       const moreFilters = document.querySelector('#map-statistics-more-filters');
-      const emptyState = document.querySelector('#map-statistics-empty');
-      const coverage = document.querySelector('#map-statistics-coverage');
-      const popularity = document.querySelector('#map-statistics-popularity');
       const worldMap = document.querySelector('#map-statistics-world-map');
       const worldMapSvg = document.querySelector('#world-map-svg');
       const worldMapTooltip = document.querySelector('#world-map-tooltip');
       const worldMapStatus = document.querySelector('#map-statistics-world-map-status');
       const worldMapLegendMax = document.querySelector('#world-map-legend-max');
-      const providerTable = document.querySelector('#map-statistics-provider-table');
-      const mapRows = document.querySelector('#map-rows');
-      const popularityViews = [...document.querySelectorAll('[data-popularity-view]')];
-      const popularityViewButtons = [...document.querySelectorAll('[data-popularity-view-button]')];
-      let popularityView = 'top';
       const allMapsSearch = document.querySelector('#all-maps-search');
-      let allMapsPage = 1;
+      const allMapsPagination = document.querySelector('#all-maps-pagination');
       const eventDetail = document.querySelector('#map-statistics-event-detail');
-      const eventSummary = document.querySelector('#map-statistics-event-summary');
-      const eventPagination = document.querySelector('#map-statistics-event-pagination');
-      const eventPageSize = document.querySelector('#map-statistics-event-page-size');
-      let detailPage = 1;
-      let currentPayload = initial;
-      const formatRate = (value) => value === null || value === undefined ? '—' : `${Number(value).toFixed(Number(value) % 1 ? 1 : 0)}%`;
+      const providerName = Object.fromEntries(providers.map((item) => [item.id, item.name || item.id]));
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
+      const humanize = (value) => String(value || '—').replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
       const operations = (row) => {
-        if (!Object.prototype.hasOwnProperty.call(row, 'operation_count') || row.operation_count === null || row.operation_count === undefined) return null;
+        if (row.operation_count === null || row.operation_count === undefined) return null;
         const value = Number(row.operation_count);
         return Number.isFinite(value) && value >= 0 ? value : null;
       };
-      const addValue = (target, key, value) => {
-        target[key] = target[key] === null || value === null || value === undefined ? null : target[key] + value;
-      };
-      const addOperation = (target, key, row) => addValue(target, key, operations(row));
       const countValue = (value) => value === null || value === undefined ? '—' : String(value);
-      const healthByProvider = Object.fromEntries(providers.map((item) => [item.id, item.health || 'UNKNOWN']));
-      const providerName = Object.fromEntries(providers.map((item) => [item.id, item.name || item.id]));
-      const humanize = (value) => String(value || '—').replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
-      const outcomeLabel = (value) => String(value || '').toUpperCase() === 'UNKNOWN' ? '—' : humanize(value);
-      const countryAliases = window.terentoWorldMapCountryAliases || {};
-      const regionCountryAliases = {
-        CANADAEAST: 'ca', CANADAWEST: 'ca',
-        USMIDWEST: 'us', USNORTHEAST: 'us', USPACIFIC: 'us',
-        USSOUTH: 'us', USWEST: 'us'
+      const addValue = (target, key, value) => { target[key] = target[key] === null || value === null ? null : target[key] + value; };
+      const addOperation = (target, key, row) => addValue(target, key, operations(row));
+      const formatRate = (value) => value === null || value === undefined ? '—' : `${Number(value).toFixed(Number(value) % 1 ? 1 : 0)}%`;
+      const formatTimestamp = (value) => {
+        if (!value) return '—';
+        if (typeof window.TerentoAdminTime?.format === 'function') return window.TerentoAdminTime.format(value);
+        const normalized = typeof value === 'string' ? value.trim().replace(/^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2})/, '$1T$2') : value;
+        const date = new Date(normalized);
+        return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' ');
       };
+      const countryAliases = window.terentoWorldMapCountryAliases || {};
+      const regionCountryAliases = {CANADAEAST:'ca',CANADAWEST:'ca',USMIDWEST:'us',USNORTHEAST:'us',USPACIFIC:'us',USSOUTH:'us',USWEST:'us'};
       const countryNames = {};
-      Object.entries(countryAliases).forEach(([key, code]) => {
-        if (key.length > 3 && !countryNames[code]) countryNames[code] = humanize(key.toLowerCase());
-      });
+      Object.entries(countryAliases).forEach(([key, code]) => { if (key.length > 3 && !countryNames[code]) countryNames[code] = humanize(key.toLowerCase()); });
       if (typeof Intl.DisplayNames === 'function') {
-        const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
-        Object.values(countryAliases).forEach((code) => {
-          countryNames[code] = regionNames.of(code.toUpperCase()) || countryNames[code];
-        });
+        const displayNames = new Intl.DisplayNames(['en'], {type: 'region'});
+        Object.values(countryAliases).forEach((code) => { countryNames[code] = displayNames.of(code.toUpperCase()) || countryNames[code]; });
       }
-      const normalizeCountryToken = (value) => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase();
       const countryCode = (row) => {
-        const candidates = [row.region_country, row.canonical_region_id, row.region_identity, row.region, row.region_display_name];
-        for (const candidate of candidates) {
-          const token = normalizeCountryToken(candidate);
-          if (!token) continue;
+        for (const candidate of [row.region_country, row.canonical_region_id, row.region_identity, row.region, row.region_display_name]) {
+          const token = String(candidate || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase();
           const resolved = countryAliases[token] || regionCountryAliases[token] || (/^[A-Z]{2}$/.test(token) ? token.toLowerCase() : null);
           if (resolved) return resolved;
         }
         return null;
       };
-      const countryCoverage = (installRows) => {
+      const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED');
+      let coverageMap = null;
+      const countryCoverage = () => {
         const byCountry = {};
         installRows.forEach((row) => {
           const code = countryCode(row);
           if (!code) return;
           const providerId = row.provider_id || 'unknown';
-          byCountry[code] ||= {code, count: 0, last: row.last_occurred_at, providers: {}};
+          byCountry[code] ||= {code, name: countryNames[code], count: 0, providers: {}};
           addOperation(byCountry[code], 'count', row);
-          if (String(row.last_occurred_at || '') > String(byCountry[code].last || '')) byCountry[code].last = row.last_occurred_at;
           byCountry[code].providers[providerId] ||= {id: providerId, count: 0};
           addOperation(byCountry[code].providers[providerId], 'count', row);
         });
-        return Object.values(byCountry);
+        return Object.values(byCountry).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.name.localeCompare(b.name));
       };
       const showWorldMapTooltip = (item, code) => {
         if (!worldMapTooltip) return;
-        const label = item?.name || countryNames[code] || code.toUpperCase();
-        const providersMarkup = item?.providers
-          ? Object.values(item.providers).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.id.localeCompare(b.id)).map((providerItem) => `<div class="world-map-provider-line"><span>${escapeHtml(providerName[providerItem.id] || providerItem.id)}</span><strong>${countValue(providerItem.count)}</strong></div>`).join('')
-          : '';
-        const itemCount = item?.count === null || item?.count === undefined ? '—' : String(item.count);
-        worldMapTooltip.innerHTML = `<strong>${escapeHtml(label)}</strong><span class="world-map-tooltip-total">${itemCount} completed install${item?.count === 1 ? '' : 's'}</span>${providersMarkup || '<span class="world-map-tooltip-empty">No recorded installs</span>'}`;
+        const providerLines = item?.providers ? Object.values(item.providers).sort((a,b) => (b.count ?? -1) - (a.count ?? -1)).map((entry) => `<div class="world-map-provider-line"><span>${escapeHtml(providerName[entry.id] || entry.id)}</span><strong>${countValue(entry.count)}</strong></div>`).join('') : '';
+        worldMapTooltip.innerHTML = `<strong>${escapeHtml(item?.name || countryNames[code] || code.toUpperCase())}</strong><span class="world-map-tooltip-total">${countValue(item?.count)} completed installs</span>${providerLines}`;
         worldMapTooltip.hidden = false;
       };
-      let coverageMap = null;
-      const highlightCountry = (code, focus = false) => coverageMap?.highlight(code, focus);
-      document.querySelectorAll('[data-map-zoom]').forEach(button => button.addEventListener('click', () => coverageMap?.zoom(button.dataset.mapZoom)));
-      const renderWorldMap = (installRows) => {
-        if (!worldMapSvg) return;
-        if (!coverageMap) coverageMap = new window.TerentoCoverageMap(worldMapSvg, {
+      const renderWorldMap = () => {
+        if (!worldMapSvg || typeof window.TerentoCoverageMap !== 'function') return;
+        coverageMap ||= new window.TerentoCoverageMap(worldMapSvg, {
           svg: window.terentoWorldMapSvg, names: countryNames,
           onCountry: (item, code) => { if (code) showWorldMapTooltip(item, code); else if (worldMapTooltip) worldMapTooltip.hidden = true; },
-          onZoom: (zoom, initial) => { document.querySelector('#world-map-zoom-status').textContent = `${Math.round(Math.pow(2, zoom - initial) * 100)}%`; }
+          onZoom: (zoom, initial) => { const status = document.querySelector('#world-map-zoom-status'); if (status) status.textContent = `${Math.round(Math.pow(2, zoom - initial) * 100)}%`; }
         });
-        const drawableCodes = coverageMap.codes;
-        const items = countryCoverage(installRows).filter((item) => drawableCodes.has(item.code));
-        const countRows = rows => rows.some(row => operations(row) === null) ? null : rows.reduce((total, row) => total + operations(row), 0);
-        const custom = countRows(installRows.filter(row => row.provider_id === 'custom'));
-        const unmapped = countRows(installRows.filter(row => row.provider_id !== 'custom' && !drawableCodes.has(countryCode(row))));
-        const byCountry = Object.fromEntries(items.map((item) => [item.code, item]));
-        const maximum = Math.max(0, ...items.map((item) => item.count));
+        const items = countryCoverage().filter((item) => coverageMap.codes.has(item.code));
         coverageMap.update(items);
-        const mappedTotal = items.some((item) => item.count === null) ? null : items.reduce((total, item) => total + item.count, 0);
-        if (worldMapStatus) {
-          const parts = [];
-          if (mappedTotal !== null && mappedTotal > 0) parts.push(`${items.length} ${items.length === 1 ? 'country' : 'countries'} · ${mappedTotal} mapped install${mappedTotal === 1 ? '' : 's'}`);
-          if (custom !== null && custom > 0) parts.push(`${custom} Custom maps`);
-          if (unmapped !== null && unmapped > 0) parts.push(`${unmapped} installs without country coverage`);
-          if ([mappedTotal, custom, unmapped].includes(null)) parts.push('Country coverage is partially unavailable');
-          worldMapStatus.textContent = parts.join(' · ') || 'No completed installs in this period';
-        }
-        if (worldMapLegendMax) worldMapLegendMax.textContent = maximum ? String(maximum) : 'Most';
+        const total = items.some((item) => item.count === null) ? null : items.reduce((sum, item) => sum + item.count, 0);
+        if (worldMapStatus) worldMapStatus.textContent = total === null ? 'Country coverage is partially unavailable' : `${items.length} ${items.length === 1 ? 'country' : 'countries'} · ${total} installs`;
+        if (worldMapLegendMax) worldMapLegendMax.textContent = String(Math.max(0, ...items.map((item) => item.count || 0))) || 'Most';
         if (worldMap) worldMap.dataset.countryCount = String(items.length);
       };
-      const render = (payload) => {
-        currentPayload = payload;
-        const rows = Array.isArray(payload.rows) ? payload.rows : [];
-        const detailRows = Array.isArray(payload.detailRows) ? payload.detailRows : rows;
-        const summary = payload.summary && typeof payload.summary === 'object' ? payload.summary : {};
-        const hasEventData = summary.hasEventData === true || rows.length > 0;
-        const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED');
-        const selectedProvider = String((payload.filters && payload.filters.provider) || provider?.value || '').trim().toLowerCase();
-        const scopedProviders = selectedProvider ? providers.filter((item) => String(item.id || '').trim().toLowerCase() === selectedProvider) : providers;
-        const eventRecordValues = detailRows.map((row) => {
-          if (!Object.prototype.hasOwnProperty.call(row, 'event_count') || row.event_count === null || row.event_count === undefined) return null;
-          const value = Number(row.event_count);
-          return Number.isFinite(value) && value >= 0 ? value : null;
+      document.querySelectorAll('[data-map-zoom]').forEach((button) => button.addEventListener('click', () => coverageMap?.zoom(button.dataset.mapZoom)));
+      const renderProviders = () => {
+        const selected = String(filters.provider || '').toLowerCase();
+        const scoped = selected ? providers.filter((item) => String(item.id || '').toLowerCase() === selected) : providers;
+        const byProvider = Object.fromEntries(scoped.map((item) => [item.id, {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null}]));
+        rows.forEach((row) => {
+          const id = row.provider_id || 'unknown';
+          byProvider[id] ||= {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null};
+          if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'downloads', row);
+          if (row.event_type === 'DOWNLOAD_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedDownloads', row);
+          if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'installs', row); if (String(row.last_occurred_at || '') > String(byProvider[id].lastInstall || '')) byProvider[id].lastInstall = row.last_occurred_at; }
+          if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedInstalls', row);
+          if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'completedUpdates', row);
+          if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedUpdates', row);
         });
-        const eventRecords = eventRecordValues.every((value) => value !== null)
-          ? eventRecordValues.reduce((total, value) => total + value, 0)
-          : null;
-        const set = (key, value) => { const node = document.querySelector(`[data-stat="${key}"]`); if (node) node.textContent = value; };
-        const setFailed = (key, value) => {
-          const node = document.querySelector(`[data-stat="${key}"]`);
-          if (!node) return;
-          const numeric = typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
-          node.textContent = numeric === null ? '—' : String(numeric);
-          node.classList.toggle('is-positive', numeric !== null && numeric > 0);
-        };
-        const metric = (key) => Object.prototype.hasOwnProperty.call(summary, key) ? summary[key] : null;
-        set('completedDownloads', metric('completedDownloads') === null ? '—' : String(metric('completedDownloads')));
-        setFailed('failedDownloads', metric('failedDownloads'));
-        set('completedInstalls', metric('completedInstalls') === null ? '—' : String(metric('completedInstalls')));
-        setFailed('failedInstalls', metric('failedInstalls'));
-        set('completedMapUpdates', metric('completedMapUpdates') === null ? '—' : String(metric('completedMapUpdates')));
-        setFailed('failedMapUpdates', metric('failedMapUpdates'));
-        set('downloadSuccessRate', formatRate(metric('downloadSuccessRate')));
-        set('installSuccessRate', formatRate(metric('installSuccessRate')));
-        set('mapUpdateSuccessRate', formatRate(metric('mapUpdateSuccessRate')));
-        const linkage = payload.linkage && typeof payload.linkage === 'object' ? payload.linkage : {};
-        ['freshMapAttemptCount', 'freshMapLinkedDiagnosticCount', 'freshMapMissingDiagnosticCount'].forEach((key) => {
-          const value = Object.prototype.hasOwnProperty.call(linkage, key) ? linkage[key] : null;
-          set(key, value === null || value === undefined ? '—' : String(value));
-        });
-        set('freshMapDiagnosticCoverageRate', formatRate(linkage.freshMapDiagnosticCoverageRate));
-        if (emptyState) {
-          emptyState.hidden = hasEventData;
-          emptyState.querySelector('h2').textContent = 'No map activity';
-        }
-        if (coverage) coverage.hidden = !hasEventData;
-        if (popularity) popularity.hidden = !hasEventData;
-        if (providerTable) providerTable.hidden = !hasEventData;
-        if (eventDetail) eventDetail.closest('.map-events-card').hidden = !hasEventData;
-        const byProvider = Object.fromEntries(scopedProviders.map((item) => [item.id, {downloads: 0, failedDownloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0, lastInstall: null}]));
-        rows.forEach((row) => { const id = row.provider_id || 'unknown'; byProvider[id] ||= {downloads: 0, failedDownloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0, lastInstall: null}; if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'downloads', row); if (row.event_type === 'DOWNLOAD_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedDownloads', row); if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'installs', row); if ((!row.component_kind || row.component_kind === 'main') && String(row.last_occurred_at || '') > String(byProvider[id].lastInstall || '')) byProvider[id].lastInstall = row.last_occurred_at; } if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedInstalls', row); if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'updates', row); addOperation(byProvider[id], 'completedUpdates', row); } if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') { addOperation(byProvider[id], 'updates', row); addOperation(byProvider[id], 'failedUpdates', row); } });
-        const providerRows = Object.entries(byProvider).sort((a, b) => (b[1].downloads ?? -1) - (a[1].downloads ?? -1) || a[0].localeCompare(b[0])).map(([id, item]) => { const rate = (successful, failed) => successful !== null && failed !== null && successful + failed > 0 ? successful / (successful + failed) * 100 : null; const downloadRate = rate(item.downloads, item.failedDownloads); const installRate = rate(item.installs, item.failedInstalls); const updateRate = rate(item.completedUpdates, item.failedUpdates); return `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="column-number numeric">${countValue(item.downloads)}</td><td class="column-number numeric">${countValue(item.failedDownloads)}</td><td class="column-number numeric">${formatRate(downloadRate)}</td><td class="column-number numeric">${countValue(item.installs)}</td><td class="column-number numeric">${countValue(item.failedInstalls)}</td><td class="column-number numeric">${formatRate(installRate)}</td><td class="column-number numeric">${countValue(item.completedUpdates)}</td><td class="column-number numeric">${countValue(item.failedUpdates)}</td><td class="column-number numeric">${formatRate(updateRate)}</td><td class="column-date">${formatTimestamp(item.lastInstall)}</td></tr>`; }).join('');
-        document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(11);
-        renderWorldMap(installRows);
-        const knownProviderIds = new Set(providers.map((item) => String(item.id || '').trim()).filter(Boolean));
-        const isCatalogMainInstall = (row) => row.event_type === 'INSTALL_SUCCEEDED'
-          && row.outcome === 'SUCCEEDED'
-          && Boolean(row.map_package_id)
-          && knownProviderIds.has(String(row.provider_id || '').trim())
-          && (!row.component_kind || row.component_kind === 'main');
-        const catalogInstallRows = rows.filter(isCatalogMainInstall);
-        const byMap = {};
-        catalogInstallRows.forEach((row) => {
-          const providerId = String(row.provider_id || '').trim();
-          const regionIdentity = row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN';
-          const key = `${regionIdentity}\u0000${providerId}`;
-          byMap[key] ||= {regionIdentity, regionName: row.region_display_name || humanize(row.region), provider: providerId, country: countryCode(row), installs: 0, lastInstall: null};
-          addOperation(byMap[key], 'installs', row);
-          if (String(row.last_occurred_at || '') > String(byMap[key].lastInstall || '')) byMap[key].lastInstall = row.last_occurred_at;
-        });
-        const allMapItems = Object.values(byMap)
-          .filter((item) => item.installs !== null && item.installs > 0)
-          .sort((a, b) => b.installs - a.installs || a.regionName.localeCompare(b.regionName) || a.provider.localeCompare(b.provider));
-        const byRegion = {};
-        allMapItems.forEach((item) => {
-          const key = item.regionIdentity;
-          byRegion[key] ||= {regionIdentity: key, regionName: item.regionName, country: item.country, installs: 0, lastInstall: null};
-          addValue(byRegion[key], 'installs', item.installs);
-          if (!byRegion[key].country && item.country) byRegion[key].country = item.country;
-          if (String(item.lastInstall || '') > String(byRegion[key].lastInstall || '')) byRegion[key].lastInstall = item.lastInstall;
-        });
-        const regionItems = Object.values(byRegion)
-          .filter((item) => item.installs !== null && item.installs > 0)
-          .sort((a, b) => b.installs - a.installs || a.regionName.localeCompare(b.regionName));
-        const mapRow = (item, {includeProvider = false} = {}) => {
-          const label = item.regionName || '—';
-          const mapLink = item.country
-            ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(label)} on map">${escapeHtml(label)}</button>`
-            : escapeHtml(label);
-          const detail = includeProvider
-            ? `${providerName[item.provider] || item.provider || '—'} · ${formatTimestamp(item.lastInstall)}`
-            : formatTimestamp(item.lastInstall);
-          const installWord = item.installs === 1 ? 'install' : 'installs';
-          return `<tr class="popular-map-row"><td class="popular-map-name"><div class="popular-map-name-content">${mapLink}<small class="popular-map-detail">${escapeHtml(detail)}</small></div></td><td class="column-number numeric popular-map-count" aria-label="${escapeHtml(`${countValue(item.installs)} ${installWord}`)}"><span class="popular-map-count-label"><strong>${escapeHtml(countValue(item.installs))}</strong> <span>${installWord}</span></span></td></tr>`;
-        };
-        if (mapRows) mapRows.innerHTML = regionItems.slice(0, 5).map(mapRow).join('') || emptyPopularRow('No popular catalog maps in this period.');
-        const query = String(allMapsSearch?.value || '').toLocaleLowerCase().trim();
-        const matchedMaps = allMapItems.filter((item) => `${item.regionName} ${providerName[item.provider] || item.provider}`.toLocaleLowerCase().includes(query));
-        const pages = Math.max(1, Math.ceil(matchedMaps.length / 10));
-        allMapsPage = Math.max(1, Math.min(pages, allMapsPage));
-        document.querySelector('#all-map-rows').innerHTML = matchedMaps.slice((allMapsPage - 1) * 10, allMapsPage * 10).map((item) => mapRow(item, {includeProvider: true})).join('') || emptyPopularRow('No maps match your search. Clear the search to show all maps.');
-        document.querySelector('#all-maps-page').textContent = `${matchedMaps.length} ${matchedMaps.length === 1 ? 'map' : 'maps'} · Page ${allMapsPage} of ${pages}`;
-        document.querySelector('#all-maps-prev').disabled = allMapsPage <= 1;
-        document.querySelector('#all-maps-next').disabled = allMapsPage >= pages;
-        document.querySelector('#top-region-rows').innerHTML = regionItems.map(mapRow).join('') || emptyPopularRow('No catalog regions in this period.');
-        popularityViews.forEach((view) => { view.hidden = view.dataset.popularityView !== popularityView; });
-        popularityViewButtons.forEach((button) => { const active = button.dataset.popularityViewButton === popularityView; if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
-        document.querySelectorAll('[data-map-country]').forEach((button) => {
-          ['mouseenter', 'focus'].forEach((name) => button.addEventListener(name, () => highlightCountry(button.dataset.mapCountry)));
-          ['mouseleave', 'blur'].forEach((name) => button.addEventListener(name, () => highlightCountry(null)));
-          button.addEventListener('click', () => highlightCountry(button.dataset.mapCountry, true));
-        });
-        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td class="column-status">${escapeHtml(outcomeLabel(row.outcome))}</td><td class="column-number numeric">${countValue(operations(row))}</td><td class="column-date">${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
-        document.querySelector('#map-statistics-rows').innerHTML = detailMarkup || emptyRow(7);
-        const eventRecordLabel = eventRecords === null ? '— event records' : `${eventRecords} event record${eventRecords === 1 ? '' : 's'}`;
-        const eventStatus = detailRows.length ? `${detailRows.length} event group${detailRows.length === 1 ? '' : 's'} · ${eventRecordLabel}` : 'No matching event groups';
-        if (eventSummary) eventSummary.textContent = `Event detail · ${eventStatus}`;
-        if (status) status.textContent = eventStatus;
-        detailPage = Number(payload.detailPage || 1);
-        const total = payload.detailTotal === null || payload.detailTotal === undefined ? detailRows.length : Number(payload.detailTotal);
-        const size = payload.detailPageSize === null || payload.detailPageSize === undefined ? Number(eventPageSize?.value || 25) : Number(payload.detailPageSize);
-        if (eventPageSize && ['25', '50'].includes(String(size))) eventPageSize.value = String(size);
-        if (eventPagination) {
-          const pages = Math.max(1, Math.ceil(total / size));
-          const start = total ? Math.min(total, (detailPage - 1) * size + 1) : 0;
-          const end = Math.min(total, detailPage * size);
-          eventPagination.querySelector('span').textContent = `Showing ${start}–${end} of ${total} · page ${detailPage} of ${pages}`;
-          const previous = eventPagination.querySelector('[data-event-page="previous"]');
-          const next = eventPagination.querySelector('[data-event-page="next"]');
-          if (previous) previous.disabled = detailPage <= 1;
-          if (next) next.disabled = detailPage >= pages;
-        }
+        const rate = (success, failed) => success !== null && failed !== null && success + failed ? success / (success + failed) * 100 : null;
+        const labels = ['Provider','Downloads · Success','Downloads · Failed','Downloads · Rate','Installs · Success','Installs · Failed','Installs · Rate','Updates · Success','Updates · Failed','Updates · Rate','Last install'];
+        const body = document.querySelector('#provider-statistic-rows');
+        if (!body) return;
+        body.innerHTML = Object.entries(byProvider).map(([id, item]) => {
+          const values = [providerName[id] || id,item.downloads,item.failedDownloads,formatRate(rate(item.downloads,item.failedDownloads)),item.installs,item.failedInstalls,formatRate(rate(item.installs,item.failedInstalls)),item.completedUpdates,item.failedUpdates,formatRate(rate(item.completedUpdates,item.failedUpdates)),formatTimestamp(item.lastInstall)];
+          const emptyGroups = {
+            downloads: item.downloads === 0 && item.failedDownloads === 0,
+            installs: item.installs === 0 && item.failedInstalls === 0,
+            updates: item.completedUpdates === 0 && item.failedUpdates === 0,
+          };
+          return `<tr>${values.map((value, index) => index === 0
+            ? `<td>${escapeHtml(countValue(value))}</td>`
+            : `<td data-label="${labels[index]}"${index < 10 ? ` data-empty-group="${index <= 3 ? emptyGroups.downloads : index <= 6 ? emptyGroups.installs : emptyGroups.updates}"` : ''} class="${index === 10 ? 'column-date' : 'column-number numeric'}">${escapeHtml(countValue(value))}</td>`
+          ).join('')}</tr>`;
+        }).join('');
       };
-      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
-      const formatTimestamp = (value) => {
-        if (!value) return '—';
-        if (typeof window.TerentoAdminTime?.format === 'function') return window.TerentoAdminTime.format(value);
-        const normalizedValue = typeof value === 'string'
-          ? value.trim().replace(/^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$/, '$1T$2')
-          : value;
-        const date = new Date(normalizedValue);
-        return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' ');
-      };
-      const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'Unknown').toUpperCase() === 'SUCCEEDED' ? 'Successful' : String(value || 'Unknown').toLowerCase().replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()))}</span>`;
-      const emptyRow = (columns) => `<tr><td colspan="${columns}" class="muted-value">No events in this period.</td></tr>`;
-      const emptyPopularRow = (message) => `<tr><td colspan="2" class="muted-value">${escapeHtml(message)}</td></tr>`;
-      let statisticsRequest = 0;
-      const sync = async ({resetDetailPage = false} = {}) => {
-        const requestNumber = ++statisticsRequest;
-        if (resetDetailPage) detailPage = 1;
-        const parameters = new URLSearchParams();
-        if (provider.value) parameters.set('provider', provider.value);
-        if (map.value.trim()) parameters.set('map', map.value.trim());
-        if (region.value.trim()) parameters.set('region', region.value.trim());
-        if (event.value) parameters.set('eventType', event.value);
-        if (outcome?.value) parameters.set('outcome', outcome.value);
-        parameters.set('period', range.value || 'all');
-        if (filters.dateFrom && !filters.period && range.value === 'all') parameters.set('dateFrom', filters.dateFrom);
-        parameters.set('detailPage', String(detailPage));
-        parameters.set('detailPageSize', String(eventPageSize?.value || 25));
-        if (status) status.textContent = 'Loading…';
-        try { const response = await fetch(`/admin/map-statistics.json?${parameters}`, {credentials: 'same-origin', headers: {'Accept': 'application/json'}}); const payload = await response.json(); if (requestNumber !== statisticsRequest) return; if (!response.ok) throw new Error(payload.error || 'Statistics unavailable'); render(payload); history.replaceState(null, '', '/admin/map-statistics?' + parameters); window.dispatchEvent(new CustomEvent('terento-admin-sections-rendered', {detail: payload.revisions || {}})); } catch (error) { if (requestNumber === statisticsRequest && status) status.textContent = error.message || 'Statistics unavailable'; }
-      };
-      document.querySelector('#map-statistics-filters')?.addEventListener('terento-admin-clear-filters', () => {
-        range.value = 'all';
-        provider.value = '';
-        map.value = '';
-        region.value = '';
-        event.value = '';
-        if (outcome) outcome.value = '';
-        if (moreFilters) moreFilters.open = false;
-        sync({resetDetailPage: true});
+      const knownProviderIds = new Set(providers.map((item) => String(item.id || '')).filter(Boolean));
+      const byMap = {};
+      rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED' && row.map_package_id && knownProviderIds.has(String(row.provider_id || '')) && (!row.component_kind || row.component_kind === 'main')).forEach((row) => {
+        const providerId = String(row.provider_id || '');
+        const regionIdentity = row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN';
+        const key = `${regionIdentity}\u0000${providerId}`;
+        byMap[key] ||= {regionIdentity, regionName:row.region_display_name || humanize(row.region),provider:providerId,country:countryCode(row),installs:0,lastInstall:null};
+        addOperation(byMap[key], 'installs', row);
+        if (String(row.last_occurred_at || '') > String(byMap[key].lastInstall || '')) byMap[key].lastInstall = row.last_occurred_at;
       });
-      const setPopularityView = (view) => {
-        popularityView = ['top', 'regions', 'all'].includes(view) ? view : 'top';
-        popularityViews.forEach((section) => { section.hidden = section.dataset.popularityView !== popularityView; });
-        popularityViewButtons.forEach((button) => { const active = button.dataset.popularityViewButton === popularityView; if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
+      const allMapItems = Object.values(byMap).filter((item) => item.installs > 0).sort((a,b) => b.installs - a.installs || a.regionName.localeCompare(b.regionName) || a.provider.localeCompare(b.provider));
+      const mapRow = (item, providerDetail = false) => {
+        const label = item.regionName || '—';
+        const mapLink = item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}">${escapeHtml(label)}</button>` : escapeHtml(label);
+        const detail = providerDetail ? `${providerName[item.provider] || item.provider} · ${formatTimestamp(item.lastInstall)}` : formatTimestamp(item.lastInstall);
+        return `<tr class="popular-map-row"><td data-label="${providerDetail ? 'Map' : 'Country'}"><div class="popular-map-name-content">${mapLink}<small class="popular-map-detail">${escapeHtml(detail)}</small></div></td><td data-label="Installs" class="column-number numeric popular-map-count"><strong>${item.installs}</strong></td></tr>`;
       };
-      popularityViewButtons.forEach((button) => button.addEventListener('click', () => { setPopularityView(button.dataset.popularityViewButton); render(currentPayload); }));
-      allMapsSearch?.addEventListener('input', () => { allMapsPage = 1; render(currentPayload); });
-      document.querySelector('#all-maps-prev')?.addEventListener('click', () => { allMapsPage--; render(currentPayload); });
-      document.querySelector('#all-maps-next')?.addEventListener('click', () => { allMapsPage++; render(currentPayload); });
-      const initialRange = ['24h', '7d', '30d', 'all'].includes(String(filters.period || '')) ? String(filters.period) : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType; if (filters.outcome) outcome.value = filters.outcome;
+      const topBody = document.querySelector('#map-rows');
+      if (topBody) topBody.innerHTML = countryCoverage().slice(0,5).map((item) => `<tr class="popular-map-row"><td data-label="Country"><button type="button" class="region-map-link" data-map-country="${escapeHtml(item.code)}">${escapeHtml(item.name || item.code.toUpperCase())}</button></td><td data-label="Installs" class="column-number numeric popular-map-count"><strong>${countValue(item.count)}</strong></td></tr>`).join('') || '<tr><td colspan="2" class="muted-value">No country activity.</td></tr>';
+      let page = 1;
+      const renderRanking = () => {
+        const query = String(allMapsSearch?.value || '').toLowerCase().trim();
+        const matches = allMapItems.filter((item) => `${item.regionName} ${providerName[item.provider] || item.provider}`.toLowerCase().includes(query));
+        const pages = Math.max(1, Math.ceil(matches.length / 10)); page = Math.min(page, pages);
+        const body = document.querySelector('#all-map-rows'); if (body) body.innerHTML = matches.slice((page-1)*10,page*10).map((item) => mapRow(item,true)).join('') || '<tr><td colspan="2" class="muted-value">No maps match.</td></tr>';
+        const summary = document.querySelector('#all-maps-page'); if (summary) summary.textContent = `${matches.length} ${matches.length === 1 ? 'map' : 'maps'} · page ${page} of ${pages}`;
+        const previous = document.querySelector('#all-maps-prev'); const next = document.querySelector('#all-maps-next');
+        if (previous) previous.disabled = page <= 1; if (next) next.disabled = page >= pages;
+        if (allMapsPagination) allMapsPagination.hidden = matches.length <= 10;
+        document.querySelectorAll('[data-map-country]').forEach((button) => {
+          button.onmouseenter = button.onfocus = () => coverageMap?.highlight(button.dataset.mapCountry);
+          button.onmouseleave = button.onblur = () => coverageMap?.highlight(null);
+          button.onclick = () => coverageMap?.highlight(button.dataset.mapCountry, true);
+        });
+      };
+      allMapsSearch?.addEventListener('input', () => { page = 1; renderRanking(); });
+      document.querySelector('#all-maps-prev')?.addEventListener('click', () => { page--; renderRanking(); });
+      document.querySelector('#all-maps-next')?.addEventListener('click', () => { page++; renderRanking(); });
+      if (range) range.value = filters.period || 'all';
+      if (provider && filters.provider) provider.value = filters.provider;
+      if (map) map.value = filters.map || '';
+      if (region) region.value = filters.region || '';
+      if (event) event.value = filters.eventType || '';
+      if (outcome) outcome.value = filters.outcome || '';
       if (moreFilters && (filters.map || filters.region || filters.eventType || filters.outcome || filters.eventId)) moreFilters.open = true;
-      [range, provider, event, outcome].forEach((control) => control?.addEventListener('change', () => sync({resetDetailPage: true}))); [map, region].forEach((control) => { control?.addEventListener('change', () => sync({resetDetailPage: true})); control?.addEventListener('input', () => sync({resetDetailPage: true})); });
-      eventPageSize?.addEventListener('change', () => sync({resetDetailPage: true}));
-      eventPagination?.querySelector('[data-event-page="previous"]')?.addEventListener('click', () => { detailPage = Math.max(1, detailPage - 1); sync(); });
-      eventPagination?.querySelector('[data-event-page="next"]')?.addEventListener('click', () => { detailPage += 1; sync(); });
-      window.addEventListener('terento-admin-timezone-ready', () => render(currentPayload));
-      window.addEventListener('terento-admin-timezone-change', () => render(currentPayload));
-      setPopularityView(popularityView);
-      render(initial);
-      if (filters.eventId && eventDetail) {
-        eventDetail.open = true;
-        eventDetail.scrollIntoView?.({block: 'start'});
-        eventDetail.querySelector('summary')?.focus({preventScroll: true});
-      }
+      [range, provider].forEach((control) => control?.addEventListener('change', () => form?.requestSubmit()));
+      window.addEventListener('terento-admin-timezone-ready', () => { renderProviders(); renderRanking(); });
+      window.addEventListener('terento-admin-timezone-change', () => { renderProviders(); renderRanking(); });
+      renderProviders(); renderWorldMap(); renderRanking();
+      if (filters.eventId && eventDetail) { eventDetail.open = true; eventDetail.scrollIntoView?.({block:'start'}); eventDetail.querySelector('summary')?.focus({preventScroll:true}); }
     })();"""
 
 
@@ -3744,13 +3417,18 @@ def _identification_badge(state: str, label: str) -> str:
 
 
 def _identification_summary(mappings: list[dict]) -> str:
-    counts = {state: sum(m.get('status') == state for m in mappings) for state in ('PENDING', 'APPROVED', 'REJECTED')}
     if not mappings:
         return _identification_badge('missing', 'No code sources')
-    labels = [('PENDING', 'pending', f"{counts['PENDING']} source" + ("" if counts['PENDING'] == 1 else "s") + " to review"),
-              ('APPROVED', 'approved', f"{counts['APPROVED']} approved"),
-              ('REJECTED', 'rejected', f"{counts['REJECTED']} rejected")]
-    return "<span class='identification-badges'>" + ''.join(_identification_badge(style, label) for state, style, label in labels if counts[state]) + '</span>'
+    labels = (
+        ('PENDING', 'pending', 'Needs review'),
+        ('APPROVED', 'approved', 'Approved'),
+        ('REJECTED', 'rejected', 'Rejected'),
+    )
+    return "<span class='identification-badges'>" + ''.join(
+        _identification_badge(style, label)
+        for state, style, label in labels
+        if any(mapping.get('status') == state for mapping in mappings)
+    ) + '</span>'
 
 
 def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict | None = None) -> str:
@@ -3758,57 +3436,78 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
     for mapping in device.get("identityMappings", []):
         groups.setdefault((mapping['kind'], mapping['value']), []).append(mapping)
     if not groups:
-        return "<div class='identification-empty'><h3>No code sources</h3><p>There is nothing to approve. Import a Garmin or USB reference source for this model, then return here to review it.</p><p>A missing source does not mean this watch cannot use maps.</p></div>"
-    labels = {'RETAIL_SKU': 'Retail product code', 'XML_PART_NUMBER': 'Code reported by the watch', 'USB': 'USB connection code'}
-    explanations = {
-        'RETAIL_SKU': 'Identifies a retail product. It is different from the code reported by the watch.',
-        'XML_PART_NUMBER': 'Terento compares this code with the product code in the watch’s device information (XML).',
-        'USB': 'Terento compares this code when the watch connects by USB. Several models can share it.',
-    }
-    states = {'PENDING': ('pending', 'Needs your review'), 'APPROVED': ('approved', 'Approved link'), 'REJECTED': ('rejected', 'Rejected link')}
+        return "<div class='identification-empty'><h2>No source reported</h2><p>No imported source identity is available for this model.</p></div>"
+    labels = {'RETAIL_SKU': 'Retail product code', 'XML_PART_NUMBER': 'Watch product code', 'USB': 'USB connection code'}
+    decisions = {'PENDING': 'Needs review', 'APPROVED': 'Approved', 'REJECTED': 'Rejected'}
     label = html.escape(_identification_label(device))
-    items = []
+    map_label, _ = _admin_map_capability(device.get('mapCapable'))
+    map_fact = f"<span>Maps: {html.escape(map_label)}</span>" if device.get('mapCapable') is not None else ''
+    items: list[str] = []
+    technical_items: list[str] = []
+    technical_number = 0
     for (kind, value), group in sorted(groups.items(), key=lambda item: (not any(m['status'] == 'PENDING' for m in item[1]), ({'XML_PART_NUMBER': 0, 'USB': 1, 'RETAIL_SKU': 2}.get(item[0][0], 3), item[0][1]))):
         peers = (code_models or {}).get((kind, value), {})
         others = [(key, peer) for key, peer in peers.items() if str(key) != str(device['id'])]
-        shared = ''
+        other_models = ''
         if others:
-            links = ''.join(f"<li><a href='/admin/device-identification?{urlencode({'device': key})}'>{html.escape(peer['label'])}</a>{_identification_summary(peer['mappings'])}</li>" for key, peer in others)
-            shared = f"<div class='identification-shared'>{_identification_badge('shared', 'Also linked to other models')}<p>Other imported links exist for this code. Check their decisions before treating it as unique. Terento also checks the model, size and display.</p><details><summary>Compare {len(others)} other model{'s' if len(others) != 1 else ''}</summary><ul>{links}</ul></details></div>"
-        elif code_models is not None:
-            shared = "<p class='identification-context'>Only this model has an imported link for this code. This alone does not prove an exact match.</p>"
-        sources = []
-        for mapping in sorted(group, key=lambda m: m['status'] != 'PENDING'):
+            links = ''.join(
+                f"<li><a href='/admin/device-identification?{urlencode({'device': key})}'>{html.escape(peer['label'])}</a>"
+                f"<span>{html.escape(' / '.join(decisions.get(mapping.get('status'), str(mapping.get('status') or '').title()) for mapping in peer['mappings']))}</span></li>"
+                for key, peer in others
+            )
+            other_models = f"<section class='identification-step identification-other-models'><h3>Other models using this code</h3><ul>{links}</ul></section>"
+        for mapping_index, mapping in enumerate(sorted(group, key=lambda m: m['status'] != 'PENDING')):
             raw_source = str(mapping['source_url'])
-            source = html.escape(raw_source, quote=True)
-            source = f'<a class="section-link" href="{source}" target="_blank" rel="noopener noreferrer">Read source evidence ↗</a>' if raw_source.startswith('https://') else f'<p>Source link unavailable. Check the reference below before deciding.</p><code>{source}</code>'
-            names = html.escape('; '.join(mapping.get('source_names') or [])) or 'No model name supplied by this source. Open the evidence to check the link.'
-            reason = html.escape(str(mapping.get('review_reason') or 'No decision recorded yet.'))
-            history = ''.join('<li>' + html.escape(f"{entry['previous_status']} → {entry['new_status']} · {entry['reason']} · {'administrator ' + str(entry['reviewed_by']) if entry['reviewed_by'] is not None else 'reviewed catalog import'} · {entry['created_at']}") + '</li>' for entry in mapping.get('history') or [])
-            history = '<details><summary>Previous decisions</summary><ul>' + history + '</ul></details>' if history else ''
-            status = _identification_badge(*states[mapping['status']])
-            effect = {'PENDING': 'Not yet accepted as evidence. Check whether the source links this code to this exact model.',
-                      'APPROVED': 'This source is accepted as evidence for this model. Other checks still determine an exact match.',
-                      'REJECTED': 'This source link is excluded from positive identification evidence.'}[mapping['status']]
-            open_review = ' open' if mapping['status'] == 'PENDING' else ''
-            sources.append(f"""<article class='identity-mapping-source'>
-            <h4>{status}</h4><p>{effect}</p>
-            <dl class='identification-comparison'><div><dt>Model being reviewed</dt><dd>{label}</dd></div><div><dt>Model names in the source</dt><dd>{names}</dd></div></dl>
-            <p>{source}</p><p><strong>Last decision:</strong> {reason}</p>
-            <details class='identification-review'{open_review}><summary>{'Review source link' if mapping['status'] == 'PENDING' else 'Change decision'}</summary>
-            <p>Approve only if the source links <strong>{html.escape(value)}</strong> to <strong>{label}</strong>. Reject an incorrect link. If the evidence is unclear, leave it pending.</p>
+            source_host = (urlsplit(raw_source).hostname or '').removeprefix('www.')
+            source_link = (
+                f'<a class="section-link" href="{html.escape(raw_source, quote=True)}" target="_blank" rel="noopener noreferrer">Open {html.escape(source_host or "source")} ↗</a>'
+                if raw_source.startswith('https://') else '<span class="identification-source-unavailable">Source link unavailable</span>'
+            )
+            names = html.escape('; '.join(mapping.get('source_names') or [])) or 'No model name supplied'
+            current_decision = ''
+            if mapping['status'] != 'PENDING':
+                reviewed = f" · {_timestamp_markup(mapping.get('reviewed_at'))}" if mapping.get('reviewed_at') else ''
+                reason = html.escape(str(mapping.get('review_reason') or 'No reason recorded'))
+                current_decision = f"<p class='identification-existing-decision'><strong>Current decision:</strong> {decisions[mapping['status']]} · {reason}{reviewed}</p>"
+            items.append(f"""<article class='identity-mapping-source'>
+            <section class='identification-step'><h3>Source reported</h3><strong class='identification-reported-name'>{names}</strong><div class='identification-source-link'>{source_link}</div></section>
+            <section class='identification-step identification-match'><h3>Match to</h3><strong>{label}</strong>{map_fact}</section>
+            {other_models if mapping_index == 0 else ''}
+            <section class='identification-step identification-confirm'><h3>Confirm match</h3>{current_decision}
             <form method='post' action='/admin/devices/identity-mapping' class='admin-async-action identity-mapping-review'>
             <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
             <input type='hidden' name='mapping_id' value='{int(mapping['id'])}'>
             <input type='hidden' name='return_to' value='/admin/device-identification?device={quote(str(device['id']), safe='')}'>
-            <label>Does this source link the code to this model?<select name='status' required><option value=''>Choose a decision</option><option value='APPROVED'>Approve — the link is correct</option><option value='REJECTED'>Reject — the link is incorrect</option></select></label>
-            <label>What evidence supports your decision?<textarea name='reason' required maxlength='1000' rows='2' placeholder='Name the source and the model or variant it confirms.'></textarea></label>
-            <p class='identification-effect'>Saving updates this source link only. It does not change saved installations, allow installation or publish compatibility.</p>
-            <button type='submit'>Save source decision</button><p class='admin-action-status' role='status' aria-live='polite'></p></form></details>
-            <details><summary>Source history</summary><code>{html.escape(str(mapping.get('source_version') or 'Version unavailable'))}</code>{history}</details></article>""")
-        opened = ' open' if not items and any(m['status'] == 'PENDING' for m in group) else ''
-        items.append(f"<details class='identity-mapping-code'{opened}><summary><strong>{labels.get(kind, kind)} · <bdi>{html.escape(value)}</bdi></strong>{_identification_summary(group)}<span class='identification-source-count'>{len(group)} {'source' if len(group) == 1 else 'sources'}</span></summary><p>{explanations.get(kind, '')}</p>{shared}{''.join(sources)}</details>")
-    return "<div class='identity-mappings'>" + ''.join(items) + '</div>'
+            <label>Decision note<textarea name='reason' required maxlength='1000' rows='2' placeholder='Name the source evidence that supports this decision.'></textarea></label>
+            <div class='identification-decision-actions'><button type='submit' name='status' value='APPROVED'>Approve match</button><button class='secondary-button' type='submit' name='status' value='REJECTED'>Reject match</button></div>
+            <p class='admin-action-status' role='status' aria-live='polite'></p></form></section></article>""")
+
+            technical_number += 1
+            history = ''.join(
+                '<li>' + html.escape(f"{entry['previous_status']} → {entry['new_status']} · {entry['reason']} · {'administrator ' + str(entry['reviewed_by']) if entry['reviewed_by'] is not None else 'catalog import'} · {entry['created_at']}") + '</li>'
+                for entry in mapping.get('history') or []
+            ) or '<li>No previous decisions</li>'
+            technical_items.append(
+                f"<section><h4>Source {technical_number}</h4><dl class='model-information-list'>"
+                f"<div><dt>Code type</dt><dd>{html.escape(labels.get(kind, kind))}</dd></div>"
+                f"<div><dt>Raw code</dt><dd><code>{html.escape(value)}</code></dd></div>"
+                f"<div><dt>Catalog model ID</dt><dd><code>{html.escape(str(device['id']))}</code></dd></div>"
+                f"<div><dt>Mapping ID</dt><dd><code>{int(mapping['id'])}</code></dd></div>"
+                f"<div><dt>Source URL</dt><dd><code>{html.escape(raw_source)}</code></dd></div>"
+                f"<div><dt>Source revision</dt><dd>{html.escape(str(mapping.get('source_version') or 'Unavailable'))}</dd></div>"
+                f"</dl><h4>Decision history</h4><ul>{history}</ul></section>"
+            )
+    mappings = device.get('identityMappings') or []
+    missing = [name for kind, name in [('XML_PART_NUMBER', 'watch product code'), ('USB', 'USB connection code')] if not any(mapping['kind'] == kind for mapping in mappings)]
+    missing_note = f"<p><strong>Missing imported sources:</strong> {html.escape(' and '.join(missing))}.</p>" if missing else ''
+    technical = (
+        "<details class='admin-disclosure identification-technical'><summary>Technical details</summary><div class='disclosure-body'>"
+        + missing_note
+        + "<p>Each decision updates only its imported source link. It does not change installations, installation permission or public compatibility.</p>"
+        + ''.join(technical_items)
+        + "</div></details>"
+    )
+    return "<div class='identity-mappings'>" + ''.join(items) + technical + '</div>'
 
 
 def device_identification_page(devices: list[dict], user: dict, csrf_token: str, *, device_id: str = "", query: str = "") -> bytes:
@@ -3826,24 +3525,17 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
         searchable = ' '.join([label] + [str(m['value']) for m in mappings])
         if query and query.casefold() not in searchable.casefold():
             continue
-        choices.append(f"<a class='identification-choice' href='/admin/device-identification?{urlencode({'device': device['id']})}'><span class='identification-choice-title'><strong>{html.escape(label)}</strong><span>Review model sources →</span></span>{_identification_summary(mappings)}</a>")
+        choices.append(f"<a class='identification-choice' href='/admin/device-identification?{urlencode({'device': device['id']})}'><span class='identification-choice-title'><strong>{html.escape(label)}</strong><span>Review source match →</span></span>{_identification_summary(mappings)}</a>")
     pending_models = sum(any(m['status'] == 'PENDING' for m in d.get('identityMappings') or []) for d in devices)
     pending_label = '1 model needs source review.' if pending_models == 1 else f'{pending_models} models need source review.'
-    result_label = '1 model shown' if len(choices) == 1 else f'{len(choices)} models shown'
     if selected:
-        label = html.escape(_identification_label(selected))
-        mappings = selected.get('identityMappings') or []
-        missing = [name for kind, name in [('XML_PART_NUMBER', 'watch product code (XML)'), ('USB', 'USB connection code')] if not any(m['kind'] == kind for m in mappings)]
-        missing_note = ("<p><strong>Missing reference sources:</strong> " + html.escape(' and '.join(missing)) + ". These links have not been imported for this model. This does not tell us whether a watch has reported the codes.</p>") if missing else ''
-        pending = any(m['status'] == 'PENDING' for m in mappings)
-        next_step = 'Open the source evidence, compare the model names, then approve or reject each pending link below.' if pending else ('No pending decisions. Approved links can support identification; rejected links are excluded.' if mappings else 'Import reference sources before reviewing this model.')
-        content = f"<section class='overview-panel identification-workspace'><a class='section-link' href='/admin/device-identification'>← Back to model list</a><h2>{label}</h2>{_identification_summary(mappings)}<div class='identification-next'><h3>Review required</h3><p>{next_step}</p>{missing_note}</div><h3>Model codes</h3><p>These are reference links, not live results from a connected watch. A shared code can correctly belong to several variants.</p>{_identity_mapping_markup(selected, csrf_token, code_models=code_models)}<a class='section-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence →</a></section>"
+        content = f"<section class='overview-panel identification-workspace'><a class='section-link' href='/admin/device-identification'>← Back to model list</a>{_identity_mapping_markup(selected, csrf_token, code_models=code_models)}<a class='section-link identification-model-detail-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence →</a></section>"
     else:
         empty = f"<div class='identification-empty'><h3>No matching models.</h3><p>No model or code matches “{html.escape(query)}”. Try a shorter model name or clear the search.</p><a class='section-link' href='/admin/device-identification'>Clear search</a></div>" if query else "<div class='identification-empty'><h3>No models available</h3><p>Run the device catalog collection, then return here to review its sources.</p><a class='section-link' href='/admin/devices'>Open device catalog</a></div>"
         invalid = "<p class='identification-not-found' role='alert'>This model is unavailable. Search the catalog below and select an existing model.</p>" if device_id else ''
-        content = f"<section class='overview-panel identification-workspace'>{invalid}<h2>Select a model</h2><p><strong>{pending_label}</strong> Models with pending decisions appear first.</p><form method='get' class='identification-search'><label for='identification-search'>Find a model or code<input id='identification-search' name='q' placeholder='For example, fēnix 8 or 006-B…' value='{html.escape(query, quote=True)}'></label><button class='secondary-button' type='submit'>Search</button></form><p class='identification-result-count'>{result_label}</p><div class='identification-choices'>{''.join(choices) or empty}</div></section>"
-    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard identification-page'><h1>Device identification</h1><details class='identification-guide'><summary>Review guidance</summary><p>You approve a link between a code, a model and a source. Compare the source’s model name and variant before deciding. Similar names or a shared USB code do not prove an exact match.</p><p>Exact identification also checks model, size, display and the codes reported by the watch. Source reviews do not change saved installations or map compatibility approval.</p></details>" + content + '</main>'
-    return _layout('Device identification', body + '<script>' + _identification_review_script() + '</script>', sections={'identification': devices})
+        content = f"<section class='overview-panel identification-workspace'>{invalid}<h2>Select a model</h2><p><strong>{pending_label}</strong> Pending decisions appear first.</p><form method='get' class='identification-search'><label for='identification-search'>Find a model or code<input id='identification-search' name='q' placeholder='For example, fēnix 8 or 006-B…' value='{html.escape(query, quote=True)}'></label><button class='secondary-button' type='submit'>Search</button></form><div class='identification-choices'>{''.join(choices) or empty}</div></section>"
+    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard identification-page'><h1>Model source review</h1>" + content + '</main>'
+    return _layout('Model source review', body + '<script>' + _identification_review_script() + '</script>', sections={'identification': devices})
 
 
 
@@ -3853,7 +3545,7 @@ def _identification_review_script() -> str:
         form.addEventListener('submit', async event => {
           event.preventDefault();
           if (form.dataset.submitting === 'true') return;
-          const payload = new URLSearchParams(new FormData(form));
+          const payload = new URLSearchParams(new FormData(form, event.submitter));
           const controls = [...form.querySelectorAll('button,input,select,textarea')];
           const status = form.querySelector('.admin-action-status');
           const controller = new AbortController();
@@ -4642,13 +4334,13 @@ def _diagnostic_detail_dialog(
         <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
         <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
         <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
-        <div class='identity-picker-heading'><h4>{'Selected catalog model' if selection_id else 'Choose catalog model'}</h4><button type='button' class='secondary-button' data-identity-edit{'' if selection_id else ' hidden'}>Edit</button></div>
+        <div class='identity-picker-heading'><h4>Assign model</h4><button type='button' class='secondary-button' data-identity-edit{'' if selection_id else ' hidden'}>Edit</button></div>
         <div class='identity-picker' data-canonical-device-wrap{' hidden' if picker_hidden else ''}>
-          <label for='{search_id}'>Find a catalog model<input id='{search_id}' type='search' data-identity-search role='combobox' aria-expanded='{'false' if picker_hidden else 'true'}' aria-controls='{canonical_id}' placeholder='Search model, size or variant' autocomplete='off' value='{html.escape(current_label if selection_id else '', quote=True)}'></label>
+          <label for='{search_id}'>Find a catalog model<input id='{search_id}' type='search' data-identity-search role='combobox' aria-expanded='{'false' if picker_hidden else 'true'}' aria-controls='{canonical_id}-options' placeholder='Search model, size or variant' autocomplete='off' value='{html.escape(current_label if selection_id else '', quote=True)}'></label>
           <input type='hidden' name='canonical_device_model_id' id='{canonical_id}' value='{html.escape(selection_id, quote=True)}'>
           <div class='identity-search-results' id='{canonical_id}-options' data-identity-results role='listbox' aria-label='Matching Garmin catalog models'>{options}</div>
         </div>
-        <p class='identity-selection' data-identity-selection>{'Selected model: ' + html.escape(current_label) if selection_id else 'Select a specific catalog model.'}</p>
+        <p class='identity-selection' data-identity-selection>{'Selected model: ' + html.escape(current_label) if selection_id else 'Model not assigned.'}</p>
         {f"<p class='identity-conflict-warning' data-identity-conflict role='alert'>{html.escape(conflict_detail)} Use the explicit manual assignment action if this is the intended correction.</p>" if conflict_detail else ""}
         <div class='identity-review-actions'><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button><button type='submit' name='identity_action' value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm{' hidden' if not selection_conflict else ''}>Confirm manual assignment</button></div>
         <p class='admin-action-status' data-identity-status role='status' aria-live='polite'></p>
@@ -4670,15 +4362,15 @@ def _diagnostic_detail_dialog(
           <button type='submit' class='secondary-button'>{'Change linked issue' if issue else 'Link issue'}</button>
         </form>
         {f"<form method='post' action='/admin/diagnostics/issue' class='github-remove-form admin-async-action' data-confirm='Unlink this GitHub issue from the installation?'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Unlink issue</button></form>" if issue else ''}"""
-    issue_form = f"""
-      <section class='diagnostic-action-form github-review github-review-collapsed' aria-labelledby='github-review-{dialog_id}'>
-        <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
+    issue_content = f"""
         <p class='github-current'>{_github_issue_link(issue) if issue else '<span class="muted-value">No linked issue</span>'}</p>
         <p class='table-help'>Closed linked issues resolve this diagnostic after synchronization, normally within 15 minutes. Installation results stay in history.</p>
-        <details class='github-issue-disclosure'><summary>{'Manage linked issue' if issue else 'Report an anomaly or link issue'}</summary><div class='github-issue-controls'>{issue_controls}</div></details>
-      </section>"""
-    if not issue:
-        issue_form = "<details class='admin-disclosure github-empty'><summary>GitHub issue</summary><div class='disclosure-body'>" + issue_form + "</div></details>"
+        <details class='github-issue-disclosure'><summary>{'Manage linked issue' if issue else 'Report an anomaly or link issue'}</summary><div class='github-issue-controls'>{issue_controls}</div></details>"""
+    issue_form = (
+        "<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'>"
+        "<summary>GitHub issue</summary><div class='disclosure-body github-review'>"
+        + issue_content + "</div></details>"
+    )
     workflow_form = ""
     if not resolved and issue:
         workflow_value = {
@@ -4712,18 +4404,19 @@ def _diagnostic_detail_dialog(
         f"<p class='diagnostic-failure-summary'><strong>Failure reason:</strong> {html.escape(_diagnostic_error_reason(results, resolved=resolved))}{verification_note}</p>"
         if result_label == "FAILED" else ""
     )
-    technical_details = f"<details class='diagnostic-technical-details diagnostic-technical-all admin-disclosure'><summary>Technical details</summary><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</details>"
-    # Identity Review and the lifecycle controls already state the available
-    # next actions. A second imperative paragraph only repeats those controls.
-    next_action = ""
+    technical_details = f"<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'><summary>Technical details</summary><div class='disclosure-body'><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</div></details>"
+    identity_state = (
+        "<p class='diagnostic-identity-state'><strong>Identity incomplete.</strong> Assign the exact catalog model.</p>"
+        if identity_pending else ""
+    )
     secondary_lifecycle = (
         f"<details class='admin-disclosure diagnostic-secondary-action'><summary>Resolve diagnostic</summary><div class='disclosure-body'>{lifecycle_action}</div></details>"
         if identity_pending and lifecycle_action else ""
     )
     action_markup = (
-        f"{identity_form}{secondary_lifecycle}{workflow_form}{issue_form}"
+        f"{identity_form}{secondary_lifecycle}{workflow_form}"
         if identity_pending else
-        f"{lifecycle_action}{workflow_form}{identity_form}{issue_form}"
+        f"{lifecycle_action}{workflow_form}{identity_form}"
     )
     return f"""
       <dialog class='diagnostic-detail-dialog' id='{dialog_id}' aria-labelledby='{dialog_id}-title'>
@@ -4739,11 +4432,9 @@ def _diagnostic_detail_dialog(
             {review_state}
           </dl>
           {failure_summary}
-          {_failure_context_summary(results)}
-          {next_action}
-          {_identity_checks_markup(results, identity_devices)}
+          {identity_state}
           <div class='diagnostic-actions-grid'>{action_markup}</div>
-          {technical_details}
+          <div class='diagnostic-secondary-grid'>{issue_form}{technical_details}</div>
         </div>
       </dialog>"""
 
@@ -4864,12 +4555,13 @@ def device_detail_page(
         provenance = "<span class='admin-state'>Historical catalog entry</span>"
     else:
         provenance = ""
-    summary_badges = provenance + "".join((
-        _admin_status_badge(f"Maps: {map_label}", f"map-{map_kind}"),
-        _status_badge(status_value),
-        _admin_status_badge(authorization_label, f"authorization-{authorization_kind}"),
-        _admin_status_badge("Published", "publication-published") if publication.get("published") else "",
-    ))
+    status_line = (
+        f"<div class='model-status-line'>{provenance}"
+        f"<span><strong>Maps</strong> {_admin_status_badge(map_label, f'map-{map_kind}')}</span>"
+        f"<span><strong>Install policy</strong> {_admin_status_badge(authorization_label, f'authorization-{authorization_kind}')}</span>"
+        f"<span><strong>Evidence</strong> {_status_badge(status_value)}</span>"
+        "</div>"
+    )
     image_url = (device.get("image") or {}).get("url")
     image = (
         f"<img class='model-page-image' src='{html.escape(str(image_url), quote=True)}' alt='' loading='eager'>"
@@ -4923,13 +4615,13 @@ def device_detail_page(
         dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
         rows_markup.append(
             f"<tr data-diagnostic-state='{'resolved-error' if is_resolved_error else 'open' if is_open_error else 'history'}' data-review-open='{'true' if is_open_error else 'false'}' data-review-resolved='{'true' if is_resolved_error else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
-            f"<td class='column-date'>{_timestamp_markup(first.get('occurred_at'))}</td>"
-            f"<td class='history-map'>{map_copy}</td>"
-            f"<td class='column-status'>{_diagnostic_result(result)}</td>"
-            f"<td class='history-error'>{error_markup}</td>"
-            f"<td>{_github_issue_link(issue)}</td>"
-            f"<td>{release_markup}</td>"
-            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View installation details {index + 1}'>Details</button></td>"
+            f"<td class='column-date' data-label='Date'>{_timestamp_markup(first.get('occurred_at'))}</td>"
+            f"<td class='history-map' data-label='Map'>{map_copy}</td>"
+            f"<td class='column-status' data-label='Result'>{_diagnostic_result(result)}</td>"
+            f"<td class='history-error' data-label='Error'>{error_markup}</td>"
+            f"<td data-label='GitHub issue'>{_github_issue_link(issue)}</td>"
+            f"<td data-label='App version'>{release_markup}</td>"
+            f"<td class='column-status' data-label='Action'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Inspect installation {index + 1}'>Inspect</button></td>"
             "</tr>"
         )
         dialogs.append(_diagnostic_detail_dialog(
@@ -4938,11 +4630,14 @@ def device_detail_page(
             canonical_device_model_id=device_id, return_to=detail_url + "#installations",
         ))
     history_rows = "".join(rows_markup) or "<tr><td colspan='7' class='empty'>No installation history for this device.</td></tr>"
+    history_pagination = "" if len(history) <= 25 else f"""
+          <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing 1–25 of {len(history)} · page 1 of {(len(history) + 24) // 25}</span><button type='button' data-history-page='next'>Next</button></div>
+    """
 
     public_copy = (
-        f"Published on terento.app/compatibility/ as {html.escape(status.value.title() if status else 'Unavailable')}."
+        f"Shown as {html.escape(status.value.title() if status else 'Unavailable')}."
         if publication.get("published") else
-        "Not shown on the public compatibility page."
+        "Not shown."
     )
     public_form = ""
     if publication.get("eligible"):
@@ -4988,24 +4683,27 @@ def device_detail_page(
     if not technical_rows:
         technical_rows = "<p class='diagnostic-technical-empty'>Detailed technical data is not available for this record.</p>"
 
+    statistics_section = "" if not history and not attempts and not failed else f"""
+        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><div class='map-statistics-kpi-groups model-kpi-groups'><section class='map-statistics-kpi-group' aria-labelledby='model-installation-kpis-title'><h2 id='model-installation-kpis-title' class='sr-only'>Installation outcomes</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.'><span>Attempts</span><strong>{attempts}</strong></div><div class='map-statistics-kpi-value'><span>Successful</span><strong>{successful}</strong></div><div class='map-statistics-kpi-secondary'><div class='map-statistics-kpi-value error-counter-kpi'><span>Failed</span>{_admin_error_counter(failed)}</div><div class='map-statistics-kpi-value error-counter-kpi'><span>Open errors</span>{_admin_error_counter(open_errors)}</div></div></div></section><section class='map-statistics-kpi-group model-activity-kpi-group' aria-labelledby='model-activity-kpis-title'><h2 id='model-activity-kpis-title'>Activity</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></div></div></section></div></section>
+    """
+    history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not history else f"""
+        <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
+          <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
+          <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
+          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table mobile-record-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
+          {history_pagination}
+        </section>
+    """
     active_header = "evidence" if origin == "installations" else "devices"
     content = f"""
       {_admin_header(user, csrf_token, active=active_header)}
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
-        <header class='model-page-header'>{image}<div class='model-page-heading'><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
-        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><div class='map-statistics-kpi-groups model-kpi-groups'><section class='map-statistics-kpi-group' aria-labelledby='model-installation-kpis-title'><h2 id='model-installation-kpis-title' class='sr-only'>Installation outcomes</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.' title='Each map installation counts separately. Verified successful map installations determine compatibility status.'><span>Attempts</span><strong>{attempts}</strong></div><div class='map-statistics-kpi-value'><span>Successful</span><strong>{successful}</strong></div><div class='map-statistics-kpi-secondary'><div class='map-statistics-kpi-value error-counter-kpi'><span>Failed</span>{_admin_error_counter(failed)}</div><div class='map-statistics-kpi-value error-counter-kpi'><span>Open errors</span>{_admin_error_counter(open_errors)}</div></div></div></section><section class='map-statistics-kpi-group model-activity-kpi-group' aria-labelledby='model-activity-kpis-title'><h2 id='model-activity-kpis-title'>Activity</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></div></div></section></div></section>
-        {alert}
-        <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
-          <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
-          <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
-          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
-          <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing {1 if history else 0}–{min(len(history), 25)} of {len(history)} · page 1 of {max(1, (len(history) + 24) // 25)}</span><button type='button' data-history-page='next' {'disabled' if len(history) <= 25 else ''}>Next</button></div>
-        </section>
-        <details class='model-page-section model-administration admin-disclosure' {'open' if device.get('supportStatus') == 'NOT_EVALUATED' or not publication.get('published') else ''}><summary id='administration-title'>Administration</summary><div class='administration-grid'>
-          <article><h3>Installation authorization</h3><p class='table-help'>Catalog Maps is the stored catalog value used for write authorization. Observed map capability is separate evidence and cannot grant installation.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><h3>Support metadata</h3><p class='table-help'>This operator field is retained for review and evidence workflow only. Changing it cannot grant or revoke native map-write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
-          <article><h3>Public compatibility</h3><p>{public_copy}</p>{public_form}</article>
+        <header class='model-page-header'>{image}<div class='model-page-heading'><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1>{status_line}</div>{public_link}</header>
+        {f"<div class='model-evidence-grid'><div class='model-evidence-summary'>{statistics_section}{alert}</div><div class='model-evidence-history'>{history_section}</div></div>" if statistics_section else f"{alert}{history_section}"}
+        <details class='model-page-section model-administration admin-disclosure'><summary id='administration-title'>Administration</summary><div class='administration-grid'>
+          <article><h3>Install policy</h3><p class='table-help'>Catalog Maps is the stored value used for write authorization. Observed map capability is separate evidence and cannot grant installation.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>This operator field is retained for review and evidence workflow only. Changing it cannot grant or revoke native map-write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
         </div></details>
         <div class='model-information-columns device-overview-sections'>
         <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary>{device_info}</details>
@@ -5094,11 +4792,9 @@ def diagnostics_page(
             f"<td class='column-date'>{_timestamp_markup(first.get('occurred_at'))}</td>"
             f"<td>{html.escape(_operation_text(results, 'region'))}</td>"
             f"<td class='column-status'>{_diagnostic_result(result)}</td>"
-            f"<td>{html.escape(_operation_text(results, 'failure_stage'))}</td>"
-            f"<td>{html.escape(_operation_text(results, 'failure_code'))}</td>"
             f"<td>{_github_issue_link(issue)}</td>"
             f"<td class='column-status'>{review_badge}</td>"
-            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View installation details {index + 1}'>Details</button></td>"
+            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Inspect installation {index + 1}'>Inspect</button></td>"
             "</tr>"
         )
         dialogs.append(_diagnostic_detail_dialog(
@@ -5106,7 +4802,7 @@ def diagnostics_page(
             csrf_token=csrf_token, identity_devices=identity_devices,
             canonical_device_model_id=canonical_device_model_id,
         ))
-    rows_body = "".join(rows_markup) or "<tr><td colspan='8' class='empty'>No installation history for this model.</td></tr>"
+    rows_body = "".join(rows_markup) or "<tr><td colspan='6' class='empty'>No installation history for this model.</td></tr>"
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class='dashboard diagnostics-page' id='main-content'>
@@ -5114,10 +4810,10 @@ def diagnostics_page(
         <div class='heading-row'><div><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1></div></div>
         <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Errors</span>{_admin_error_counter(errors)}</article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
-          <div class='section-heading'><div><h2 id='diagnostic-list-title'>Installations</h2></div><p class='table-help'>Successful normal evidence remains historical evidence, not an open problem.</p></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'>{filters}</form>
+          <div class='section-heading'><div><h2 id='diagnostic-list-title'>Installations</h2></div></div>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'{' hidden' if len(diagnostic_groups) <= 1 else ''}>{filters}</form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(diagnostic_groups)} records</p>
-          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Region</th><th scope='col' class='column-status'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Issue</th><th scope='col' class='column-status'>Review</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
+          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Region</th><th scope='col' class='column-status'>Result</th><th scope='col'>Issue</th><th scope='col' class='column-status'>Review</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
         </section>
         {''.join(dialogs)}
       </main>
@@ -5165,7 +4861,7 @@ def github_issue_queue_page(
             f"<td class='column-status'>{_diagnostic_result(result)}</td>"
             f"<td class='column-status'>{_diagnostic_state_badge(state)}</td>"
             f"<td class='column-date'>{_timestamp_markup(max((result.get('occurred_at') for result in results), key=_timestamp_iso))}</td>"
-            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View GitHub issue details {index + 1}'>Details</button></td></tr>"
+            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Inspect GitHub issue {index + 1}'>Inspect</button></td></tr>"
         )
         dialogs.append(_diagnostic_detail_dialog(
             identity,
@@ -5371,7 +5067,9 @@ def _admin_device_payload(
             "id": sync.get("id") if sync else None,
             "status": sync.get("status") if sync else None,
             "startedAt": _timestamp_iso(sync.get("started_at")) or None if sync else None,
-            "completedAt": _timestamp_iso(sync.get("finished_at")) or None if sync else None,
+            "completedAt": _timestamp_iso(
+                sync.get("finished_at") or sync.get("completed_at")
+            ) or None if sync else None,
             "recordsTotalBefore": sync_count("records_total_before"),
             "recordsTotalAfter": sync_count("records_total_after"),
             "recordsAdded": sync_count("records_added"),
@@ -5448,45 +5146,45 @@ def devices_page(
         _admin_device_row(device, index)
         for index, device in enumerate(payload["devices"])
     )
-    empty = "<p class='empty'>No Garmin device records are available.</p>" if not rows_html else ""
     payload_json = _admin_json({**payload, "csrfToken": csrf_token})
     mobile_sort_options = "".join(
         f"<option value='{key}:{direction}'>{label} · {suffix}</option>"
-        for key, label in [("model", "Model"), ("variant", "Variant"), ("maps", "Map capability"),
-                           ("authorization", "Authorization"), ("status", "Compatibility"),
+        for key, label in [("model", "Model"), ("variant", "Variant"), ("maps", "Maps"),
+                           ("authorization", "Install policy"), ("status", "Evidence"),
                            ("attempts", "Attempts"), ("success", "Successful"), ("evidence", "Last success")]
         for direction, suffix in [("ascending", "ascending"), ("descending", "descending")]
     )
     table_header = _device_table_header()
     table_columns = _device_table_columns()
-    content = f"""
-      {_admin_header(user, csrf_token, active="devices")}
-      <main class="dashboard devices-page" id="main-content">
-        <div class="heading-row"><div><h1>Devices</h1></div><a class="section-link" href="/admin/devices/identity-audit.json">Review assignment audit&nbsp;{_admin_icon('arrow-right')}</a></div>
+    device_list = "<section class='compact-empty-state' aria-labelledby='device-list-title'><h2 id='device-list-title'>No devices</h2><p>No Garmin device records are available. Run or check the latest catalog sync.</p></section>" if not rows_html else f"""
         <section class="admin-summary-strip device-summary-strip" aria-label="Device catalog summary and sync">
-          <p class="device-summary-metrics"><strong>{summary['mapModelsWithSuccess']} of {summary['eligibleMapModels']}</strong><span> active map-capable models have a verified successful install · {_format_rate(summary['mapModelCoverageRate'])}</span></p>
+          <p class="device-summary-metrics"><strong>{summary['mapModelsWithSuccess']} of {summary['eligibleMapModels']}</strong><span> models covered · {_format_rate(summary['mapModelCoverageRate'])}</span></p>
           <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {sync_line}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
-        <section class="evidence-section" aria-labelledby="device-list-title">
-          <div class="section-heading"><div><h2 id="device-list-title">Known devices</h2></div></div>
+        <section class="evidence-section" aria-label="Device catalog">
           <p class="sr-only">Compatibility status and installation counts remain backend-derived.</p>
           <form class="filter-bar admin-filter-bar device-filter-bar" id="device-filters" role="search">
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
             <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
             <details class="admin-disclosure filter-disclosure" id="device-more-filters"><summary>More filters</summary><div class="disclosure-body">
               <label><span class="sr-only">Filter by family</span><select id="device-family"><option value="all">All families</option>{family_options}</select></label>
-              <label><span class="sr-only">Filter by installation authorization</span><select id="device-support"><option value="all">All authorizations</option><option value="APPROVED">Approved</option><option value="BLOCKED">Blocked</option><option value="PENDING">Pending</option></select></label>
-              <label><span class="sr-only">Filter by compatibility status</span><select id="device-status"><option value="all">All statuses</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
+              <label><span class="sr-only">Filter by install policy</span><select id="device-support"><option value="all">All policies</option><option value="APPROVED">Approved</option><option value="BLOCKED">Blocked</option><option value="PENDING">Pending</option></select></label>
+              <label><span class="sr-only">Filter by evidence</span><select id="device-status"><option value="all">All evidence</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
             </div></details>
             <label class="device-mobile-sort"><span class="sr-only">Sort devices</span><select id="device-mobile-sort">{mobile_sort_options}</select></label>
             <p class="results-count" id="device-results-count" aria-live="polite">{_count_label(summary['mapCapable'], 'result')}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear device filters">Clear</button>
           </form>
-          {empty}
           <div class="device-sticky-header" id="device-sticky-header"><div class="device-sticky-header-scroll"><table class="admin-table"><caption class="sr-only">Device catalog columns</caption>{table_columns}{table_header}</table></div></div>
           <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption>{table_columns}{table_header}<tbody id="device-rows">{rows_html}</tbody></table></div>
           <div class="device-pagination" id="device-pagination" hidden><button type="button" id="device-previous">Previous</button><span id="device-page-status"></span><button type="button" id="device-next">Next</button></div>
         </section>
+    """
+    content = f"""
+      {_admin_header(user, csrf_token, active="devices")}
+      <main class="dashboard devices-page" id="main-content">
+        <div class="heading-row"><div><h1>Devices</h1></div></div>
+        {device_list}
       </main>
       <script>const terentoAdminDevices = {payload_json};{_devices_script()}</script>
     """
@@ -5494,7 +5192,7 @@ def devices_page(
 
 
 def _device_table_header() -> str:
-    return """<thead><tr><th scope="col" class="column-text" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" class="column-text" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Catalog Maps" title="Stored catalog map capability">Catalog Maps <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
+    return """<thead><tr><th scope="col" class="column-text" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" class="column-text" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Maps" title="Stored catalog map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Install policy" title="Install policy">Install policy <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Evidence" title="Compatibility evidence">Evidence <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
 
 
 def _device_table_columns() -> str:
@@ -5645,12 +5343,12 @@ def _statistics_row(
         ("column-status", _status_badge(status)),
         ("column-number numeric", html.escape(str(attempted))),
         ("column-number numeric", html.escape(str(successful))),
-        ("column-number numeric historical-number", _admin_error_counter(failed)),
+        ("column-number numeric installation-failed-value", html.escape(str(failed))),
         ("column-number numeric", open_errors_markup),
         ("column-date", _timestamp_markup(row.get("last_success"))),
     )
     return (
-        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-model='{html.escape(model, quote=True)}' data-variant='{html.escape(variant if variant != '—' else '', quote=True)}' data-identity='{html.escape(_identity_group_key(row), quote=True)}' data-successful-count='{successful}' data-failed-count='{failed}' data-last-success='{_timestamp_iso(row.get('last_success'))}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-identity-pending='{int(summary.get('identity_pending') or 0)}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}'>"
+        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-model='{html.escape(model, quote=True)}' data-variant='{html.escape(variant if variant != '—' else '', quote=True)}' data-identity='{html.escape(_identity_group_key(row), quote=True)}' data-successful-count='{successful}' data-failed-count='{failed}' data-last-success='{_timestamp_iso(row.get('last_success'))}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}'>"
         + "".join(f"<td class='{css_class}'>{cell}</td>" if css_class else f"<td>{cell}</td>" for css_class, cell in cells)
         + f"</tr>"
     )
@@ -6067,8 +5765,17 @@ def _dashboard_script() -> str:
       const quickFilters = [...document.querySelectorAll('[data-installation-filter]')];
       const body = document.querySelector('#evidence-rows');
       const count = document.querySelector('#results-count');
+      const clear = document.querySelector('[data-filter-clear]');
+      const table = document.querySelector('#installation-table');
+      const empty = document.querySelector('#installation-empty');
+      const pagination = document.querySelector('#installation-pagination');
+      const pageSize = document.querySelector('#installation-page-size');
+      const previousPage = pagination?.querySelector('[data-installation-page="previous"]');
+      const nextPage = pagination?.querySelector('[data-installation-page="next"]');
+      const pageSummary = pagination?.querySelector('span');
       if (!form || !search || !status || !sort || !body || !count || !quickFilters.length) return;
       const rows = [...body.querySelectorAll('tr')];
+      let page = 1;
       const storageKey = 'terento.admin.installations.filters';
       const parameters = new URLSearchParams(window.location.search);
       __TABLE_FILTER_STATE__
@@ -6093,7 +5800,8 @@ def _dashboard_script() -> str:
         if (['attempts','successfulCount','failedCount','errors'].includes(key)) { const n = Number(raw); return Number.isFinite(n) ? n : null; }
         return raw;
       };
-      const refresh = () => {
+      const refresh = (resetPage = false) => {
+        if (resetPage) page = 1;
         const searchQuery = search.value.trim().toLocaleLowerCase();
         const selectedStatus = status.value;
         const visible = rows.filter((row) => {
@@ -6102,10 +5810,8 @@ def _dashboard_script() -> str:
           const matchesQuick = selectedQuickFilter === 'all'
             || (selectedQuickFilter === 'failed' && row.dataset.failed === 'true')
             || (selectedQuickFilter === 'open' && Number(row.dataset.errors || 0) > 0)
-            || (selectedQuickFilter === 'successful' && row.dataset.successful === 'true')
-            || (selectedQuickFilter === 'identity-pending' && Number(row.dataset.identityPending || 0) > 0);
-          row.hidden = !(matchesSearch && matchesStatus && matchesQuick);
-          return !row.hidden;
+            || (selectedQuickFilter === 'successful' && row.dataset.successful === 'true');
+          return matchesSearch && matchesStatus && matchesQuick;
         });
         const [key, direction] = sort.value === 'latest' ? ['activity','descending'] : sort.value.split(':');
         visible.sort((a, b) => {
@@ -6121,15 +5827,33 @@ def _dashboard_script() -> str:
           button.closest('th').setAttribute('aria-sort', active ? direction : 'none');
           button.querySelector('span').textContent = active ? (direction === 'ascending' ? '↑' : '↓') : '↕';
         });
-        visible.forEach((row) => body.appendChild(row));
+        const size = pageSize && Number(pageSize.value) === 50 ? 50 : 25;
+        const pages = Math.max(1, Math.ceil(visible.length / size));
+        page = Math.min(Math.max(page, 1), pages);
+        const startIndex = (page - 1) * size;
+        const pageRows = visible.slice(startIndex, startIndex + size);
+        rows.forEach((row) => { row.hidden = true; });
+        pageRows.forEach((row) => { row.hidden = false; body.appendChild(row); });
         count.textContent = `${visible.length} ${visible.length === 1 ? 'variant' : 'variants'}`;
-        const empty = document.querySelector('#installation-empty');
-        if (empty) empty.hidden = visible.length > 0;
+        empty.hidden = visible.length > 0;
+        table.hidden = visible.length === 0;
+        if (pagination) {
+          pagination.hidden = visible.length <= size;
+          const start = visible.length ? startIndex + 1 : 0;
+          const end = visible.length ? Math.min(visible.length, startIndex + size) : 0;
+          pageSummary.textContent = `Showing ${start}–${end} of ${visible.length} · page ${page} of ${pages}`;
+          previousPage.disabled = page <= 1;
+          nextPage.disabled = page >= pages;
+        }
         quickFilters.forEach((button) => {
           const active = button.dataset.installationFilter === selectedQuickFilter;
           button.classList.toggle('active', active);
           button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
+        const hasActiveFilters = Boolean(search.value.trim()) || status.value !== 'all'
+          || selectedQuickFilter !== 'all' || sort.value !== 'latest';
+        form.hidden = rows.length <= 1 && !hasActiveFilters;
+        clear.hidden = !hasActiveFilters;
         const state = {search: search.value, status: status.value, sort: sort.value, quick: selectedQuickFilter};
         try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) { /* optional */ }
         const stateQuery = new URLSearchParams();
@@ -6142,7 +5866,7 @@ def _dashboard_script() -> str:
       sortButtons.forEach(button => button.addEventListener('click', () => {
         const key = button.dataset.installationSort;
         sort.value = key + ':' + (sort.value === key + ':ascending' ? 'descending' : 'ascending');
-        refresh();
+        refresh(true);
       }));
       form.addEventListener('submit', (event) => event.preventDefault());
       form.addEventListener('terento-admin-clear-filters', () => {
@@ -6150,13 +5874,16 @@ def _dashboard_script() -> str:
         status.value = 'all';
         sort.value = 'latest';
         selectedQuickFilter = 'all';
-        refresh();
+        refresh(true);
       });
       quickFilters.forEach((button) => button.addEventListener('click', () => {
         selectedQuickFilter = button.dataset.installationFilter || 'all';
-        refresh();
+        refresh(true);
       }));
-      [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
+      search.addEventListener('input', () => refresh(true));
+      [status, sort, pageSize].filter(Boolean).forEach((control) => control.addEventListener('change', () => refresh(true)));
+      previousPage?.addEventListener('click', () => { page -= 1; refresh(); });
+      nextPage?.addEventListener('click', () => { page += 1; refresh(); });
       refresh();
     })();""".replace("__TABLE_FILTER_STATE__", _table_filter_state_script()).replace("__STATUS_ORDER__", _admin_json([status.value.lower() for status in CANONICAL_STATUS_ORDER]))
 
@@ -6458,7 +6185,7 @@ def _diagnostics_script() -> str:
             return;
           }
           if (event.key !== 'Tab') return;
-          const focusable = [...dialog.querySelectorAll('button,select,input,textarea,a')]
+          const focusable = [...dialog.querySelectorAll('button,select,input,textarea,a,summary')]
             .filter((element) => !element.disabled && element.offsetParent !== null);
           if (!focusable.length) return;
           const first = focusable[0];
@@ -6685,8 +6412,6 @@ button{cursor:pointer}
 .admin-section-nav a,.admin-nav a,.link-button{display:inline-flex;align-items:center;min-height:32px;padding:6px 8px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:none;text-decoration:none;color:var(--secondary);font-weight:650;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 .admin-section-nav a:hover,.admin-nav a:hover,.link-button:hover,.admin-section-nav a:active,.admin-nav a:active,.link-button:active{background:color-mix(in srgb,var(--sky) 12%,transparent);color:var(--interactive)}
 .admin-section-nav a.active{background:color-mix(in srgb,var(--sky) 13%,var(--off-white));border-color:color-mix(in srgb,var(--sky) 28%,var(--border));color:var(--interactive);box-shadow:none}
-.admin-review-link{gap:6px;font-weight:700}
-.needs-review-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--stone);color:var(--surface);font-size:10px;font-weight:800}
 .admin-nav{display:flex;align-items:center;justify-self:end;min-width:0;gap:8px;color:var(--secondary);font-size:13px;white-space:nowrap}
 .admin-nav form{display:flex;align-items:center;margin:0}
 .admin-user{padding:6px 0;color:var(--graphite);font-weight:650;white-space:nowrap}
@@ -6724,7 +6449,7 @@ td:first-child{font-weight:650}
 td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .muted-value{color:var(--secondary)}
 .error-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:700}
-.evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.evidence-model-row:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}.evidence-model-row td.column-number{font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.evidence-table-note{margin:10px 3px 0}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}.diagnostic-model-metrics .status-badge{margin-top:5px}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.diagnostic-state{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-state-open{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-state-resolved{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-state-identity_pending{background:var(--surface-muted);color:var(--secondary)}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}.diagnostic-detail-dialog::backdrop{background:rgba(34,42,43,.34)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:10px}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-summary{font-size:14px;line-height:1.5}.identity-summary h4{font:600 22px/1.3 var(--font-ui);margin:8px 0;text-wrap:balance}.identity-match-list{list-style:none;padding:0;display:grid;gap:6px}.identity-technical-evidence>summary{min-height:40px}.identity-review-form input,.identity-review-form select,.identity-review-form button{min-height:40px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{grid-column:1/-1;overflow-wrap:anywhere}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}.diagnostic-technical-all{margin-top:16px}.diagnostic-technical-all>summary{font-size:13px}
+.evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.evidence-model-row:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}.evidence-model-row td.column-number{font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.evidence-table-note{margin:10px 3px 0}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}.diagnostic-model-metrics .status-badge{margin-top:5px}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.diagnostic-state{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-state-open{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-state-resolved{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-state-identity_pending{background:var(--surface-muted);color:var(--secondary)}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}.diagnostic-detail-dialog::backdrop{background:rgba(34,42,43,.34)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:10px}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-summary{font-size:14px;line-height:1.5}.identity-summary h4{font:600 22px/1.3 var(--font-ui);margin:8px 0;text-wrap:balance}.identity-match-list{list-style:none;padding:0;display:grid;gap:6px}.identity-technical-evidence>summary{min-height:40px}.identity-review-form input,.identity-review-form select,.identity-review-form button{min-height:40px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{overflow-wrap:anywhere}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}
 .diagnostic-state-in_progress{background:color-mix(in srgb,var(--sky) 12%,var(--surface));border-color:color-mix(in srgb,var(--sky) 42%,var(--border));color:var(--interactive)}.diagnostic-state-under_review{background:color-mix(in srgb,var(--stone) 18%,var(--surface));border-color:color-mix(in srgb,var(--stone) 55%,var(--border));color:var(--graphite)}
 .diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
 .github-issue-disclosure{margin-top:8px}.github-issue-disclosure>summary{width:max-content;cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750;text-underline-offset:3px}.github-issue-disclosure>summary:hover{text-decoration:underline}.github-issue-controls{margin-top:12px}
@@ -6790,7 +6515,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .copy-status{min-width:54px;color:var(--interactive);font-size:12px;font-weight:700}
 .admin-action-status{margin:8px 0 0;color:var(--interactive);font-size:12px;font-weight:700}.admin-async-action [disabled]{cursor:wait;opacity:.68}
 .button-link,.provider-action-bar button{display:inline-flex;align-items:center;justify-content:center;min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700;text-decoration:none}.button-link:hover,.provider-action-bar button:hover{background:var(--interactive-hover)}.provider-action-bar button.secondary-button{border:1px solid var(--border);background:var(--surface);color:var(--graphite)}.provider-action-bar button.secondary-button:hover{border-color:var(--interactive);background:var(--surface-muted);color:var(--interactive)}
-.provider-table-wrap table{min-width:980px}.provider-name-link{display:flex;flex-direction:column;gap:2px;text-decoration:none}.provider-name-link:hover strong{text-decoration:underline}.provider-name-link small{color:var(--secondary);font:500 11px var(--font-mono)}.provider-table-wrap code{font:500 11px var(--font-mono);overflow-wrap:anywhere}.provider-status{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;text-transform:uppercase;white-space:nowrap}.provider-status-active,.provider-status-healthy,.provider-status-succeeded{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.provider-status-paused,.provider-status-unknown,.provider-status-running{background:var(--surface-muted);color:var(--secondary)}.provider-status-retired,.provider-status-down,.provider-status-failed{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.provider-status-degraded{background:var(--status-tested-surface);border-color:var(--status-tested-border);color:var(--status-tested-text)}.provider-broken-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:750}.provider-error{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--danger);font-size:12px}.provider-table-wrap .numeric{text-align:right;font-variant-numeric:tabular-nums}.provider-action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 20px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-action-bar .admin-action-status{flex:1 1 180px;margin:0}.provider-activation-note{flex:1 1 100%;margin:2px 0 0;padding:9px 11px;border:1px solid var(--status-tested-border);border-radius:8px;background:var(--status-tested-surface);color:var(--status-tested-text);font-size:12px;line-height:1.45}.provider-heading-status{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.provider-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 24px}.provider-metrics article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-metrics article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.provider-metrics article>strong{display:block;margin-top:6px;font-family:var(--font-brand);font-size:20px;line-height:1.15}.provider-metrics article>strong .admin-timestamp{font-size:15px}.provider-card{margin-top:24px;padding:22px 24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}.provider-card .section-heading{margin-bottom:16px}.provider-card .section-heading h2{font-size:20px}.provider-information-list{margin:0;border-top:1px solid var(--border)}.provider-information-list div{display:grid;grid-template-columns:minmax(150px,.45fr) minmax(0,1.55fr);gap:18px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.provider-information-list dt{color:var(--secondary);font-size:12px}.provider-information-list dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.provider-information-list a,.provider-url-cell a{color:var(--interactive);text-underline-offset:3px}.provider-package-broken{background:color-mix(in srgb,var(--error-surface) 35%,var(--surface))}.provider-package-broken small{display:block;margin-top:3px;color:var(--danger);font-size:10px}.provider-component-list{display:flex;gap:5px;flex-wrap:wrap}.provider-component{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.provider-component .provider-status{min-height:21px;padding:4px 6px;font-size:9px}.provider-history-wrap table{min-width:1240px}.provider-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.provider-dashboard-grid .provider-card{min-width:0}.map-statistics-filter-bar label{flex:0 1 auto}.map-statistics-filter-bar input,.map-statistics-filter-bar select{min-width:130px}.map-statistics-filter-bar .results-count{flex:1 1 120px}.map-statistics-metrics{grid-template-columns:repeat(6,minmax(0,1fr));margin-top:18px}.map-statistics-metrics article>strong{font-size:24px}.map-statistics-metrics article>strong .admin-timestamp{font-size:20px}
+.provider-table-wrap table{min-width:980px}.provider-name-link{display:flex;flex-direction:column;gap:2px;text-decoration:none}.provider-name-link:hover strong{text-decoration:underline}.provider-name-link small{color:var(--secondary);font:500 11px var(--font-mono)}.provider-table-wrap code{font:500 11px var(--font-mono);overflow-wrap:anywhere}.provider-status{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;text-transform:uppercase;white-space:nowrap}.provider-status-active,.provider-status-healthy,.provider-status-succeeded{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.provider-status-paused,.provider-status-unknown,.provider-status-running{background:var(--surface-muted);color:var(--secondary)}.provider-status-retired,.provider-status-down,.provider-status-failed{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.provider-status-degraded{background:var(--status-tested-surface);border-color:var(--status-tested-border);color:var(--status-tested-text)}.provider-broken-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:750}.provider-error{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--danger);font-size:12px}.provider-table-wrap .numeric{text-align:right;font-variant-numeric:tabular-nums}.provider-action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 20px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-action-bar .admin-action-status{flex:1 1 180px;margin:0}.provider-activation-note{flex:1 1 100%;margin:2px 0 0;padding:9px 11px;border:1px solid var(--status-tested-border);border-radius:8px;background:var(--status-tested-surface);color:var(--status-tested-text);font-size:12px;line-height:1.45}.provider-heading-status{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.provider-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 24px}.provider-metrics article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-metrics article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.provider-metrics article>strong{display:block;margin-top:6px;font-family:var(--font-brand);font-size:20px;line-height:1.15}.provider-metrics article>strong .admin-timestamp{font-size:15px}.provider-card{margin-top:24px;padding:22px 24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}.provider-card .section-heading{margin-bottom:16px}.provider-card .section-heading h2{font-size:20px}.provider-information-list{margin:0;border-top:1px solid var(--border)}.provider-information-list div{display:grid;grid-template-columns:minmax(150px,.45fr) minmax(0,1.55fr);gap:18px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.provider-information-list dt{color:var(--secondary);font-size:12px}.provider-information-list dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.provider-information-list a,.provider-url-cell a{color:var(--interactive);text-underline-offset:3px}.provider-package-broken{background:color-mix(in srgb,var(--error-surface) 35%,var(--surface))}.provider-package-broken small{display:block;margin-top:3px;color:var(--danger);font-size:10px}.provider-component-list{display:flex;gap:5px;flex-wrap:wrap}.provider-component{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.provider-component .provider-status{min-height:21px;padding:4px 6px;font-size:9px}.provider-history-wrap table{min-width:1240px}.provider-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.provider-dashboard-grid .provider-card{min-width:0}.map-statistics-filter-bar label{flex:0 1 auto}.map-statistics-filter-bar input,.map-statistics-filter-bar select{min-width:130px}.map-statistics-filter-bar .results-count{flex:1 1 120px}
 .attribution-preview{display:grid;grid-template-columns:minmax(220px,.65fr) minmax(0,1.35fr);gap:24px;margin-top:26px;padding-top:21px;border-top:1px solid var(--border)}
 .attribution-preview h2{font-size:20px}
 .attribution-preview .table-help{margin-top:8px;max-width:420px}
@@ -6859,11 +6584,8 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .identity-checks-table{width:100%;min-width:0;table-layout:fixed}
 .identity-checks-table th,.identity-checks-table td{white-space:normal!important;overflow-wrap:anywhere;text-align:left;vertical-align:top}
 .identity-checks-table th:nth-child(1){width:24%}.identity-checks-table th:nth-child(2){width:20%}.identity-checks-table th:nth-child(3){width:56%}
-.identity-mappings{padding:16px;overflow-wrap:anywhere}.identity-mappings summary{cursor:pointer;padding:8px 0}.identity-mappings summary span{display:block;margin:4px 0 0 18px;color:var(--secondary)}
-.identity-mapping-code,.identity-mapping-source{border-top:1px solid var(--border);padding:8px 0}.identity-mapping-source{padding:12px 16px}.identity-mapping-source p{margin:8px 0}.identity-mapping-source code{white-space:normal}
-.identity-mapping-review{display:grid;grid-template-columns:minmax(120px,1fr) minmax(180px,3fr);gap:12px;margin:12px 0}.identity-mapping-review label{display:grid;gap:6px}.identity-mapping-review :is(input,select){width:100%;min-width:0}.identity-mapping-review button{justify-self:start}
 .identity-checks-table caption{text-align:left;padding:12px;font-weight:650}
-@media(max-width:600px){.identity-checks-table{min-width:480px}.identity-mapping-review{grid-template-columns:1fr}}
+@media(max-width:600px){.identity-checks-table{min-width:480px}}
 .device-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .device-detail-grid section{min-width:0;padding-top:2px}
 .detail-kicker{margin:0 0 8px;color:var(--interactive);font-size:11px;font-weight:750;letter-spacing:.12em;text-transform:uppercase}
@@ -6891,7 +6613,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .device-support-review textarea,.device-public-review textarea{min-height:64px}
 .device-support-review .dialog-actions,.device-public-review .dialog-actions{grid-column:1/-1;margin-top:0}
 .review-help{margin:8px 0 0;color:var(--secondary);font-size:12px;line-height:1.45}
-.model-page-header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:20px;margin:0 0 24px}.model-page-image{width:96px;height:96px;object-fit:contain;border-radius:14px;background:var(--surface)}.model-page-heading h1 span{color:var(--secondary);font-size:.55em;font-weight:500;letter-spacing:-.01em}.model-page-badges{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px}.model-public-link{align-self:start;text-decoration:none}.model-statistics{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:20px}.model-review-alert{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 26px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--stone) 48%,var(--border));border-radius:10px;background:color-mix(in srgb,var(--stone) 9%,var(--surface));font-size:13px}.model-review-alert a{color:var(--interactive);font-weight:750;white-space:nowrap}.model-page-section{scroll-margin-top:calc(var(--admin-topbar-height) + 18px);margin-top:34px}.model-history-table{min-width:980px}.model-history-table th:nth-child(1){width:15%}.model-history-table th:nth-child(2){width:16%}.model-history-table th:nth-child(3){width:11%}.model-history-table th:nth-child(4){width:23%}.model-history-table th:nth-child(5){width:12%}.model-history-table th:nth-child(6){width:15%}.model-history-table th:nth-child(7){width:8%}.history-map small,.history-error small{display:block;margin-top:3px;color:var(--secondary);font-size:10px}.administration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.administration-grid article{padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.administration-grid h3{margin:0 0 12px;font:700 17px var(--font-brand)}.administration-grid p{color:var(--secondary);font-size:13px}.administration-grid form{display:grid;gap:10px}.administration-grid label{color:var(--secondary);font-size:12px;font-weight:650}.administration-grid label select,.administration-grid label textarea{display:block;width:100%;margin-top:5px}.model-information-list{margin:0;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.model-information-list div{display:grid;grid-template-columns:minmax(170px,.7fr) minmax(0,1.3fr);gap:18px;padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.model-information-list div:last-child{border-bottom:0}.model-information-list dt{color:var(--secondary);font-size:12px}.model-information-list dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.model-technical-details{margin-top:18px;padding:0;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.model-technical-details>summary{cursor:pointer;color:var(--interactive);font-weight:750}.model-technical-details .model-information-list{margin-top:12px}.github-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.github-issue-preview{margin:10px 0}.github-issue-preview>summary{cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750}.github-issue-preview input,.github-issue-preview textarea{font-family:var(--font-mono)!important}.technical-copy-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}.diagnostic-technical-empty{margin:10px 0;color:var(--secondary);font-size:12px}
+.model-page-header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:20px;margin:0 0 24px}.model-page-image{width:96px;height:96px;object-fit:contain;border-radius:14px;background:var(--surface)}.model-page-heading h1 span{color:var(--secondary);font-size:.55em;font-weight:500;letter-spacing:-.01em}.model-public-link{align-self:start;text-decoration:none}.model-statistics{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:20px}.model-review-alert{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 26px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--stone) 48%,var(--border));border-radius:10px;background:color-mix(in srgb,var(--stone) 9%,var(--surface));font-size:13px}.model-review-alert a{color:var(--interactive);font-weight:750;white-space:nowrap}.model-page-section{scroll-margin-top:calc(var(--admin-topbar-height) + 18px);margin-top:34px}.model-history-table{min-width:980px}.model-history-table th:nth-child(1){width:15%}.model-history-table th:nth-child(2){width:16%}.model-history-table th:nth-child(3){width:11%}.model-history-table th:nth-child(4){width:23%}.model-history-table th:nth-child(5){width:12%}.model-history-table th:nth-child(6){width:15%}.model-history-table th:nth-child(7){width:8%}.history-map small,.history-error small{display:block;margin-top:3px;color:var(--secondary);font-size:10px}.administration-grid article{padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.administration-grid h3{margin:0 0 12px;font:700 17px var(--font-brand)}.administration-grid p{color:var(--secondary);font-size:13px}.administration-grid form{display:grid;gap:10px}.administration-grid label{color:var(--secondary);font-size:12px;font-weight:650}.administration-grid label select,.administration-grid label textarea{display:block;width:100%;margin-top:5px}.model-information-list{margin:0;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.model-information-list div{display:grid;grid-template-columns:minmax(170px,.7fr) minmax(0,1.3fr);gap:18px;padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.model-information-list div:last-child{border-bottom:0}.model-information-list dt{color:var(--secondary);font-size:12px}.model-information-list dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.model-technical-details{margin-top:18px;padding:0;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.model-technical-details>summary{cursor:pointer;color:var(--interactive);font-weight:750}.model-technical-details .model-information-list{margin-top:12px}.github-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.github-issue-preview{margin:10px 0}.github-issue-preview>summary{cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750}.github-issue-preview input,.github-issue-preview textarea{font-family:var(--font-mono)!important}.technical-copy-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}.diagnostic-technical-empty{margin:10px 0;color:var(--secondary);font-size:12px}
 .secondary-button{min-height:32px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font-size:12px;font-weight:700}
 .secondary-button:hover{border-color:var(--interactive);background:var(--success-bg)}
 .admin-action-dialog{width:min(520px,calc(100% - 32px));padding:22px;border:0;border-radius:14px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}
@@ -6902,46 +6624,44 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .page-meta{margin:0;color:var(--secondary);font-size:12px;white-space:nowrap}.installation-heading{align-items:flex-end}
 .admin-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 12px}.admin-kpi-grid article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.admin-kpi-grid article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.admin-kpi-grid article>strong{display:block;margin-top:6px;color:var(--graphite);font-family:var(--font-brand);font-size:25px;line-height:1.15;font-variant-numeric:tabular-nums}.historical-failure-note{margin:0 0 24px;color:var(--secondary);font-size:12px}.historical-failure-note .info-control{margin-left:3px}
-.map-statistics-kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px}.map-statistics-kpis article>strong{font-size:25px}.map-statistics-empty{margin:0 0 18px;padding:28px 24px;border:1px dashed var(--border);border-radius:14px;background:var(--surface);text-align:center}.map-statistics-empty h2{font-size:20px}.map-statistics-empty p{margin:8px 0 0;color:var(--secondary);font-size:13px}.map-statistics-reliability{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 24px}.map-statistics-reliability div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.map-statistics-reliability span{color:var(--secondary);font-size:12px;font-weight:650}.map-statistics-reliability strong{font-family:var(--font-brand);font-size:19px;font-variant-numeric:tabular-nums}.map-statistics-provider-health{display:flex;align-items:center;gap:8px;margin:0 0 24px;color:var(--secondary);font-size:12px}.map-statistics-provider-health strong{color:var(--graphite);font-weight:750}.map-statistics-provider-health em{font-style:normal}.map-statistics-linkage{margin-top:0}.map-statistics-linkage .section-heading{align-items:flex-start}.map-statistics-linkage-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.map-statistics-linkage-grid div{min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.map-statistics-linkage-grid span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.map-statistics-linkage-grid strong{display:block;margin-top:5px;color:var(--graphite);font-family:var(--font-brand);font-size:19px;font-variant-numeric:tabular-nums}.map-statistics-linkage .map-statistics-scope-note{margin-bottom:0}.popularity-subsection+.popularity-subsection{margin-top:18px}.popularity-subsection h3{margin:0 0 9px;font:700 14px var(--font-brand);letter-spacing:-.01em}.map-events-card{margin-top:24px}
+.map-statistics-empty{margin:0 0 18px;padding:28px 24px;border:1px dashed var(--border);border-radius:14px;background:var(--surface);text-align:center}.map-statistics-empty h2{font-size:20px}.map-statistics-empty p{margin:8px 0 0;color:var(--secondary);font-size:13px}.map-events-card{margin-top:24px}
 .admin-disclosure{margin:0}.admin-disclosure>summary{cursor:pointer;color:var(--interactive);font-size:13px;font-weight:750;list-style-position:inside;text-underline-offset:3px}.admin-disclosure>summary:hover{text-decoration:underline}.admin-disclosure>summary:focus-visible{outline:3px solid var(--admin-focus-ring);outline-offset:3px}.disclosure-body{margin-top:14px}.filter-disclosure{align-self:stretch;min-width:130px;position:relative}.filter-disclosure>summary{display:flex;align-items:center;justify-content:center;height:var(--admin-control-height);padding:8px 10px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font-size:var(--admin-control-font-size);font-weight:650;list-style:none;text-decoration:none}.filter-disclosure>summary::-webkit-details-marker{display:none}.filter-disclosure .disclosure-body{display:flex;gap:8px;flex-wrap:wrap;position:absolute;z-index:5;margin-top:7px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.14)}.filter-disclosure .disclosure-body label{display:flex}.filter-disclosure .disclosure-body input,.filter-disclosure .disclosure-body select{min-width:140px}.inline-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}.inline-filter-row label{display:flex;flex:1 1 220px}.inline-filter-row select{flex:0 1 170px}.provider-pagination{display:flex;align-items:center;justify-content:center;gap:14px;min-height:34px;margin-top:12px;color:var(--secondary);font-size:12px;text-align:center}.provider-pagination button{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font:700 12px var(--font-ui)}.provider-pagination button:hover:not(:disabled){border-color:var(--interactive);background:var(--success-bg)}.provider-pagination button:disabled{cursor:not-allowed;opacity:.45}.provider-latest-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border-radius:10px;background:var(--surface-muted);color:var(--secondary);font-size:12px}.provider-latest-summary>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.provider-action-overflow{position:relative}.provider-action-overflow>summary{display:inline-flex;align-items:center;justify-content:center;min-height:var(--admin-control-height);padding:8px 12px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);cursor:pointer;font-size:13px;font-weight:700;list-style:none}.provider-action-overflow>summary::-webkit-details-marker{display:none}.provider-action-overflow>summary:hover{border-color:var(--interactive);color:var(--interactive)}.provider-action-overflow>div{position:absolute;z-index:4;right:0;top:calc(100% + 7px);min-width:180px;padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.14)}.provider-action-overflow button{width:100%}.provider-package-name{display:block;font-weight:700}.provider-package-id{display:block;margin-top:2px;color:var(--secondary)!important;font-size:10px!important}.provider-package-broken td:last-child{color:var(--danger)}.provider-issue-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-weight:750}.provider-issue-count.is-positive{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--border))}.audit-technical-details{margin-top:5px}.audit-technical-details summary{cursor:pointer;color:var(--interactive);font-size:11px;font-weight:700}.audit-technical-details code{display:block;margin-top:5px;max-width:300px;overflow:auto;white-space:pre-wrap;font:500 10px var(--font-mono);color:var(--secondary)}.provider-information-list dd{text-align:left}.provider-section .provider-table-wrap table{min-width:820px}.provider-detail .provider-table-wrap table{min-width:760px}.provider-detail .provider-history-wrap table{min-width:1240px}
-@media(max-width:1100px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.admin-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-reliability{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-linkage-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-detail .provider-history-wrap{overflow-x:auto}}
-@media(max-width:700px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-linkage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.installation-heading{align-items:flex-start}.page-meta{white-space:normal}.provider-latest-summary{align-items:flex-start;flex-direction:column;gap:6px}.filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}}
-@media(max-width:480px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability,.map-statistics-linkage-grid{grid-template-columns:1fr}.admin-kpi-grid article{min-height:70px;padding:12px}.inline-filter-row{align-items:stretch;flex-direction:column}.inline-filter-row label,.inline-filter-row select{width:100%;flex-basis:auto}.provider-pagination{gap:8px;font-size:11px}.provider-pagination span{max-width:130px}.provider-action-overflow>div{position:static;margin-top:7px}.provider-action-overflow>summary{width:100%}}
-@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto;min-width:0}}
+@media(max-width:1100px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.admin-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-detail .provider-history-wrap{overflow-x:auto}}
+@media(max-width:700px){.admin-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.installation-heading{align-items:flex-start}.page-meta{white-space:normal}.provider-latest-summary{align-items:flex-start;flex-direction:column;gap:6px}.filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}}
+@media(max-width:480px){.admin-kpi-grid{grid-template-columns:1fr}.admin-kpi-grid article{min-height:70px;padding:12px}.inline-filter-row{align-items:stretch;flex-direction:column}.inline-filter-row label,.inline-filter-row select{width:100%;flex-basis:auto}.provider-pagination{gap:8px;font-size:11px}.provider-pagination span{max-width:130px}.provider-action-overflow>div{position:static;margin-top:7px}.provider-action-overflow>summary{width:100%}}
+@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{min-width:0}}
 @media(max-width:980px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}}
 @media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
 @media(max-width:560px){.admin-section-nav{overflow:visible;flex-wrap:wrap}}
 @media(max-width:800px){.admin-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.admin-summary-context,.device-summary-sync{text-align:left;white-space:normal}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
 @media(max-width:1100px){.device-sticky-header{display:block;position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px));z-index:21;overflow:hidden;border:1px solid var(--border);border-bottom:0;background:var(--surface)}.device-sticky-header-scroll{overflow:hidden}.device-sticky-header table,.device-table-wrap table{min-width:1050px}.device-sticky-header th{position:static}.device-table-wrap{overflow-x:auto;overflow-y:hidden}.device-table-wrap thead{display:none}.model-statistics{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:800px){.model-page-header{grid-template-columns:auto minmax(0,1fr)}.model-public-link{grid-column:1/-1;width:max-content}.model-statistics{grid-template-columns:repeat(2,minmax(0,1fr))}.administration-grid{grid-template-columns:1fr}.model-review-alert{align-items:flex-start;flex-direction:column}.model-information-list div{grid-template-columns:1fr;gap:3px}.model-information-list dd{text-align:left}}
-@media(max-width:1100px){.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-dashboard-grid{grid-template-columns:1fr}}
+@media(max-width:800px){.model-page-header{grid-template-columns:auto minmax(0,1fr)}.model-public-link{grid-column:1/-1;width:max-content}.model-statistics{grid-template-columns:repeat(2,minmax(0,1fr))}.model-review-alert{align-items:flex-start;flex-direction:column}.model-information-list div{grid-template-columns:1fr;gap:3px}.model-information-list dd{text-align:left}}
+@media(max-width:1100px){.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-dashboard-grid{grid-template-columns:1fr}}
 @media(max-width:900px){.map-statistics-coverage-layout{grid-template-columns:1fr}.map-statistics-world-map{min-height:0}.map-statistics-world-map-card .section-heading .table-help{text-align:start}}
-@media(max-width:560px){.provider-card{padding:18px 16px}.provider-metrics,.map-statistics-metrics,.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.provider-metrics article{padding:12px}.provider-information-list div{grid-template-columns:1fr;gap:3px}.provider-information-list dd{text-align:left}.provider-action-bar{align-items:stretch;flex-direction:column}.provider-action-bar button,.button-link{width:100%}.provider-action-bar .admin-action-status{flex-basis:auto}.map-statistics-filter-bar label,.map-statistics-filter-bar input,.map-statistics-filter-bar select{width:100%;min-width:0}.map-statistics-filter-bar .results-count{width:100%;margin-left:4px}}
+@media(max-width:560px){.provider-card{padding:18px 16px}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.provider-metrics article{padding:12px}.provider-information-list div{grid-template-columns:1fr;gap:3px}.provider-information-list dd{text-align:left}.provider-action-bar{align-items:stretch;flex-direction:column}.provider-action-bar button,.button-link{width:100%}.provider-action-bar .admin-action-status{flex-basis:auto}.map-statistics-filter-bar label,.map-statistics-filter-bar input,.map-statistics-filter-bar select{width:100%;min-width:0}.map-statistics-filter-bar .results-count{width:100%;margin-left:4px}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
-.overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item>time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-activity-item a:hover .overview-activity-label{text-decoration:underline;text-underline-offset:3px}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item a span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item a small{color:var(--danger);font-size:11px}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
+.overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item>time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item .map-activity-copy{display:grid;min-width:0}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item .map-activity-copy>span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
 .quick-filter-group{display:flex;align-items:center;gap:4px;flex:0 0 auto;flex-wrap:wrap}.quick-filter{min-height:var(--admin-control-height);padding:8px 10px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:transparent;color:var(--secondary);font-weight:650}.quick-filter:hover{border-color:var(--border);color:var(--interactive)}.quick-filter.active{border-color:color-mix(in srgb,var(--sky) 45%,var(--border));background:var(--surface);color:var(--interactive);box-shadow:0 1px 1px rgba(34,42,43,.05)}
 .map-statistics-coverage-layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(280px,1fr);gap:16px;margin-top:16px}.map-statistics-coverage-layout>.provider-card{min-width:0;margin-top:0}.map-statistics-popularity{grid-template-columns:minmax(0,1fr)}.map-statistics-popularity .provider-card{margin-top:0}.table-secondary{display:block;margin-top:3px;color:var(--secondary);font-size:11px;font-weight:500}
 .map-statistics-world-map{position:relative;min-height:300px;padding:8px 0 0;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.world-map-svg{width:100%;padding:0 8px}.world-map-svg svg{display:block;width:100%;height:auto;overflow:visible}.world-map-country{stroke:color-mix(in srgb,var(--interactive) 42%,var(--border));stroke-width:.65;vector-effect:non-scaling-stroke;cursor:help;outline:none;transition:filter .12s ease,stroke-width .12s ease}.world-map-country:hover,.world-map-country:focus{filter:brightness(.86);stroke:var(--interactive);stroke-width:1.5}.world-map-tooltip{position:absolute;z-index:2;top:12px;right:12px;min-width:170px;max-width:240px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--interactive) 28%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 8px 24px rgba(34,42,43,.14);font-size:12px;pointer-events:none}.world-map-tooltip strong,.world-map-tooltip-total,.world-map-tooltip-empty{display:block}.world-map-tooltip-total{margin-top:2px;color:var(--secondary)}.world-map-tooltip-empty{margin-top:5px;color:var(--secondary);font-style:italic}.world-map-provider-line{display:flex;justify-content:space-between;gap:16px;margin-top:7px;padding-top:6px;border-top:1px solid var(--border)}.world-map-provider-line+ .world-map-provider-line{margin-top:5px;padding-top:5px}.world-map-provider-line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.world-map-provider-line strong{font-variant-numeric:tabular-nums}.world-map-legend{display:flex;align-items:center;gap:8px;margin:8px 2px 0;color:var(--secondary);font-size:11px;font-variant-numeric:tabular-nums}.world-map-legend-gradient{display:block;flex:1;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--surface),hsl(198 25% 49%));border:1px solid var(--border)}.world-map-note{margin:8px 2px 0}.map-statistics-world-map-card .section-heading{align-items:flex-start}.map-statistics-world-map-card .section-heading .table-help{padding-top:3px;text-align:right}
-.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-custom{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:7px;color:var(--secondary);font-size:11px}.overview-chart-note{font-size:12px;color:var(--secondary);margin:10px 0 0}.overview-chart-legend span{display:inline-flex;align-items:center;gap:5px}.overview-chart-legend i{display:inline-block;width:9px;height:9px;border-radius:2px}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.map-statistics-linkage>summary{padding:0;color:var(--interactive);font-size:13px;font-weight:750;list-style:none}.map-statistics-linkage>summary::-webkit-details-marker{display:none}.map-statistics-linkage>summary:before{content:'›';display:inline-block;width:16px;transition:transform .15s ease}.map-statistics-linkage[open]>summary:before{transform:rotate(90deg)}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}.map-statistics-popularity .popularity-all-maps-disclosure{margin-top:12px}.map-statistics-popularity .popularity-regions-disclosure{margin-top:12px}
-.overview-chart-update{fill:var(--stone);background:var(--stone)}@media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item>time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item a{grid-column:1;grid-row:2}}
+.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:7px;color:var(--secondary);font-size:11px}.overview-chart-note{font-size:12px;color:var(--secondary);margin:10px 0 0}.overview-chart-legend span{display:inline-flex;align-items:center;gap:5px}.overview-chart-legend i{display:inline-block;width:9px;height:9px;border-radius:2px}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}
+.overview-chart-update{fill:var(--stone);background:var(--stone)}@media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item>time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item .map-activity-copy{grid-column:1;grid-row:2}}
 @media(max-width:560px){.overview-panel{padding:16px}.overview-attention-item{grid-template-columns:auto minmax(0,1fr)}.overview-detail-link{grid-column:2}}
 @media(max-width:700px){.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}.overview-primary-grid .overview-panel{min-width:0}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item>time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item a span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
+.overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}.overview-primary-grid .overview-panel{min-width:0}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item>time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item .map-activity-copy>span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
 .system-health-page{padding-top:30px}
 .system-health-list{display:grid;gap:0}
-.system-health-row,.system-health-row>summary{display:grid;grid-template-columns:minmax(0,1.4fr) auto minmax(7rem,auto);align-items:center;gap:8px 16px;min-height:0;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}
-.system-health-row:first-child,.system-health-list>.system-health-row:first-child>summary{border-top:0;padding-top:4px}
-.system-health-row>summary{list-style:none;cursor:pointer}
-.system-health-row>summary::-webkit-details-marker{display:none}
+.system-health-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(8rem,auto);align-items:center;gap:8px 16px;min-height:0;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}
+.system-health-row:first-child{border-top:0;padding-top:4px}
 .system-health-row h2{margin:0;font-size:13px;line-height:20px;font-weight:650}
 .system-health-when{color:var(--secondary);font-size:12px;text-align:end}
-.system-health-row>.disclosure-body{grid-column:1/-1;padding:0 0 8px}
+.system-health-issue{grid-template-columns:minmax(12rem,1fr) minmax(14rem,2fr) minmax(9rem,1.2fr) minmax(8rem,auto);padding:12px 0}.system-health-issue-heading{display:flex;align-items:center;gap:8px}.system-health-cause,.system-health-action{margin:0;font-size:12px;line-height:1.45}.system-health-cause{color:var(--graphite)}.system-health-action{color:var(--secondary)}.system-health-technical{grid-column:1/-1;margin-top:2px}
 .system-health-technical{margin-top:8px}
 .system-health-description p{margin:0 0 10px;color:var(--secondary);font-size:12px;line-height:1.55}.system-health-explanation{margin:12px 0;font-size:11px}.system-health-explanation div{display:grid;grid-template-columns:48px 1fr;gap:7px;padding:5px 0;border-top:1px solid var(--border)}.system-health-explanation dt{font-weight:750;color:var(--graphite)}.system-health-explanation dd{margin:0;color:var(--secondary)}.indexnow-status-note,.indexnow-error{color:var(--secondary);font-size:11px;line-height:1.55}.indexnow-details{margin:14px 0;font-size:11px}.indexnow-details div{display:grid;grid-template-columns:minmax(150px,auto) minmax(0,1fr);gap:10px;padding:5px 0;border-top:1px solid var(--border)}.indexnow-details dt{font-weight:750;color:var(--graphite)}.indexnow-details dd{margin:0;color:var(--secondary);overflow-wrap:anywhere}.indexnow-url-preview{margin:0 0 10px;padding-left:18px;color:var(--secondary);font-size:11px}.indexnow-url-preview code{font:500 10px var(--font-mono);overflow-wrap:anywhere}.system-health-badge{display:inline-flex;padding:4px 8px;border:1px solid;border-radius:999px;font-size:11px;font-weight:750}.system-health-healthy{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}.system-health-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-tested-text)}.system-health-failed{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}.system-health-unknown{border-color:var(--status-neutral-border);background:var(--status-neutral-surface);color:var(--status-neutral-text)}
 .model-statistics .attempts-metric>span{display:inline-flex;align-items:center;gap:6px}
 @media(max-width:900px){.overview-primary-grid{grid-template-columns:1fr}}
-@media(max-width:760px){.overview-activity-item{grid-template-columns:1fr max-content}.overview-activity-item>time{grid-column:2;grid-row:1 / span 2}.overview-activity-item a{grid-column:1;grid-row:1 / span 2}.overview-activity-item a span:not(.overview-activity-label){white-space:normal}}
+@media(max-width:760px){.overview-activity-item{grid-template-columns:1fr max-content}.overview-activity-item>time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .map-activity-copy{grid-column:1;grid-row:1 / span 2}.overview-activity-item .map-activity-copy>span:not(.overview-activity-label){white-space:normal}}
 @media(max-width:480px){.inline-filter-row label,.inline-filter-row select{flex-basis:auto}}
 .overview-attention-review .overview-attention-dot{color:var(--warning,var(--stone))}
 .provider-action-bar{padding:0 0 4px;background:transparent;border:0;border-radius:0}
@@ -6980,8 +6700,8 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .filter-bar input,.filter-bar select,.filter-disclosure>summary,.quick-filter,.provider-action-overflow>summary,.secondary-button,.button-link,.copy-button,.provider-pagination button,.device-pagination button,.admin-action-dialog button:not(.link-button),.auth-card button:not(.link-button),.device-support-review button[type="submit"],.model-administration button[type="submit"]{font-size:var(--admin-type-button-size);line-height:var(--admin-type-button-line)}
 .admin-section-nav,.admin-nav,.admin-section-nav a,.admin-nav a,.link-button{font-size:var(--admin-type-control-size);line-height:var(--admin-type-control-line)}
 
-.admin-kpi-grid article>span,.provider-metrics article>span,.map-statistics-metrics article>span,.diagnostic-model-metrics article>span{font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
-.admin-kpi-grid article>strong,.provider-metrics article>strong,.map-statistics-metrics article>strong,.diagnostic-model-metrics article>strong,.model-statistics article>strong{font-size:var(--admin-type-kpi-value-size);line-height:var(--admin-type-kpi-value-line)}
+.admin-kpi-grid article>span,.provider-metrics article>span,.diagnostic-model-metrics article>span{font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
+.admin-kpi-grid article>strong,.provider-metrics article>strong,.diagnostic-model-metrics article>strong,.model-statistics article>strong{font-size:var(--admin-type-kpi-value-size);line-height:var(--admin-type-kpi-value-line)}
 .overview-period-form{margin:0;padding:6px}
 .overview-period-form label{display:flex}
 .overview-period-form select{height:var(--admin-control-height);min-height:var(--admin-control-height);min-width:154px;padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius);font:600 var(--admin-control-font-size)/1.2 var(--font-ui)}
@@ -7002,11 +6722,13 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-download-unknown line{stroke:var(--secondary);stroke-width:3;stroke-dasharray:4 3}.overview-chart-download-unknown text{fill:var(--secondary);stroke:none;font-size:10px;font-weight:700}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
-@media(max-width:700px){
+@media(min-width:901px) and (max-width:1100px),(max-width:700px){
   .overview-trend-desktop{display:none}
   .overview-trend-mobile{display:block;min-width:0;width:100%;height:auto;aspect-ratio:360/220}
   .overview-chart-wrap{width:100%;min-width:0;overflow:visible}
   .overview-trend-mobile text{font-size:13px}
+}
+@media(max-width:760px){
   .overview-map-totals,.overview-download-totals{justify-content:flex-start;margin-inline-start:0}
 }
 @media(max-width:560px){.overview-map-totals,.overview-download-totals{flex-basis:100%}.overview-attention-actions{grid-column:2;justify-content:flex-start;flex-wrap:wrap}}
@@ -7019,8 +6741,6 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .device-information-section .model-information-list dd{text-align:left}
 .diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px));max-height:min(82vh,760px)}
 .diagnostic-detail-inner{max-height:min(82vh,760px)}
-.github-review-collapsed{padding:12px 14px}
-.github-review-collapsed .github-current{margin-bottom:4px}
 .overview-compact-empty{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px}
 .overview-compact-empty .section-heading{margin:0}
 .overview-compact-empty .section-kicker{display:none}
@@ -7041,9 +6761,8 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
 .provider-information-list a,.provider-url-cell a{font-size:var(--admin-type-table-meta-size);line-height:var(--admin-type-table-meta-line)}
 
 .status-badge,.provider-status,.admin-state,.diagnostic-state,.diagnostic-result,.diagnostic-chip,.new-badge,.identity-pending-indicator,.provider-component .provider-status{min-height:24px;padding:4px 7px;font-size:var(--admin-type-badge-size);line-height:var(--admin-type-badge-line)}
-.needs-review-count{font-size:var(--admin-type-badge-size);line-height:var(--admin-type-badge-line)}
 .admin-disclosure>summary,.provider-action-overflow>summary{font-size:var(--admin-type-control-size);line-height:var(--admin-type-control-line)}
-.admin-action-dialog h4,.administration-grid h3,.popularity-subsection h3{font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}
+.admin-action-dialog h4,.administration-grid h3{font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}
 
 .filter-bar{padding:6px;gap:7px}
 .provider-card{margin-top:20px;padding:18px 20px}
@@ -7077,16 +6796,19 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
 }
 
 /* Admin audit: one UI type family, visible actions, responsive navigation. */
-h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-metrics article>strong,.map-statistics-metrics article>strong,.diagnostic-model-metrics article>strong{font-family:var(--font-ui);letter-spacing:-.015em}
+h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-metrics article>strong,.diagnostic-model-metrics article>strong{font-family:var(--font-ui);letter-spacing:-.015em}
 :root{--admin-type-page-title-size:clamp(28px,3vw,36px);--admin-type-page-title-line:1.2;--admin-type-section-title-size:20px;--admin-type-section-title-line:26px}
 .admin-topbar-inner{display:flex;flex-wrap:wrap;gap:8px 16px;padding:10px 0}
+.admin-skip-link{position:fixed;z-index:100;top:8px;left:8px;padding:9px 12px;border-radius:8px;background:var(--graphite);color:var(--surface);font-weight:700;transform:translateY(-150%)}
+.admin-skip-link:focus{transform:none;outline:var(--admin-focus-ring);outline-offset:2px}
 .admin-section-nav{flex:1 1 100%;order:3;min-width:0;justify-content:flex-start}
 .admin-nav{margin-inline-start:auto;flex:0 1 auto;min-width:0}
 .admin-header-left{flex:0 0 auto}
-.needs-review-count{background:var(--status-tested-surface);color:var(--status-tested-text);border:1px solid var(--status-tested-border)}
 .diagnostic-action-form button[type='submit']{min-height:var(--admin-control-height);padding:8px 12px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:600}
 .diagnostic-action-form button[type='submit']:hover{background:var(--interactive-hover)}
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
+.overview-chart-line{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.overview-chart-line.overview-chart-success,.overview-chart-line.overview-chart-download-success{stroke:var(--interactive)}.overview-chart-line.overview-chart-failed,.overview-chart-line.overview-chart-download-failed{stroke:var(--danger)}.overview-chart-line.overview-chart-update{stroke:var(--status-success-text)}.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}.overview-chart-update{fill:var(--status-success-text);background:var(--status-success-text)}
+.model-status-line{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-top:8px}.model-status-line>span{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.model-status-line strong{color:var(--graphite);font-size:12px}.compact-empty-state{margin-top:20px;padding:18px 20px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.compact-empty-state h2{margin:0 0 4px}.compact-empty-state p{margin:0;color:var(--secondary)}.diagnostic-identity-state{margin:12px 0;padding:10px 12px;border-left:3px solid var(--warning);background:var(--surface-muted);font-size:13px}
 .timestamp-metric strong{font-size:var(--admin-type-subsection-size)!important;line-height:var(--admin-type-subsection-line)!important}
 .overview-primary-grid{align-items:start}.overview-primary-grid>.overview-panel{min-height:0}
 .model-administration>summary,.device-information-section>summary{margin-bottom:12px}
@@ -7097,30 +6819,22 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
 @media(max-width:560px){.admin-header-left{width:auto}.admin-nav{width:100%;justify-content:space-between}.admin-section-nav{overflow:visible}}
 /* Phone layouts share the same controls and data as desktop. */
 #admin-menu-panel,.mobile-filter-options{display:contents}
-.admin-mobile-review,.admin-nav .admin-mobile-website,.filter-bar .device-mobile-sort{display:none}
-@media(max-width:700px){
+.admin-nav .admin-mobile-website,.filter-bar .device-mobile-sort{display:none}
+@media(max-width:760px){
   :root{--admin-control-height:44px;--admin-control-font-size:16px;--admin-topbar-height:64px}
   .admin-topbar-inner{min-height:64px;flex-direction:row;align-items:center;flex-wrap:nowrap;gap:8px;padding:8px 0}
   .admin-header-left{width:auto;min-width:0;flex:1 1 auto}
   .admin-header-left>.admin-badge,.admin-header-left>.admin-website-link{display:none}
   .admin-brand{gap:6px;font-size:19px}.admin-brand img{width:22px;height:26px}
-  .admin-mobile-review{display:flex;align-items:center;justify-content:center;gap:5px;min-height:44px;padding:6px;color:var(--interactive);text-decoration:none;font-size:13px;font-weight:650}
   #admin-menu-toggle{flex:0 0 auto;min-height:44px;padding:8px 12px}
   #admin-menu-panel{display:block;position:absolute;top:100%;left:0;right:0;max-height:calc(100dvh - 64px);overflow-y:auto;overscroll-behavior:contain;padding:12px 16px 20px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 8px 16px color-mix(in srgb,var(--graphite) 12%,transparent)}
   .admin-topbar:not(.admin-mobile-ready) .admin-topbar-inner{flex-wrap:wrap}
   .admin-topbar:not(.admin-mobile-ready) #admin-menu-panel{position:static;max-height:none;flex-basis:100%}
-  .admin-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:16px;width:100%}
-  .admin-nav-group{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}
-  .admin-section-nav a,.admin-nav>a{display:flex;align-items:center;min-height:44px;padding:10px;font-size:14px}
-  .admin-section-nav>.admin-tools-menu{width:100%}
-  .admin-nav{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 0;padding-top:12px;border-top:1px solid var(--border)}
-  .admin-nav .timezone-control{grid-column:1/-1;width:100%}.timezone-control select{width:100%;max-width:none;font-size:16px}
-  .admin-nav form{margin:0}.admin-nav button{min-height:44px;width:100%}.admin-nav .admin-mobile-website{display:flex}
   main.dashboard{width:100%;max-width:100%;margin:0;padding:20px 16px 32px}.heading-row{margin-bottom:16px}.eyebrow{margin-bottom:6px}
   .lede{font-size:14px;line-height:1.5}.overview-heading{gap:10px}.overview-period-form{padding:0;border:0;background:none}
   .overview-attention-panel{margin-top:0}.overview-attention-item{gap:6px 10px;padding:12px 0}.overview-detail-link{min-height:36px;display:inline-flex;align-items:center}
-  .overview-attention-item span,.overview-activity-item a span:not(.overview-activity-label){white-space:normal;overflow:visible;overflow-wrap:anywhere}
-  .installation-kpis,.model-statistics,.diagnostic-model-metrics,.provider-metrics,.map-statistics-metrics,.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .overview-attention-item span,.overview-activity-item .map-activity-copy>span:not(.overview-activity-label){white-space:normal;overflow:visible;overflow-wrap:anywhere}
+  .installation-kpis,.model-statistics,.diagnostic-model-metrics,.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .admin-kpi-grid article{min-width:0;padding:12px;min-height:80px}.installation-kpis article:last-child{grid-column:1/-1}
   .installation-kpis{margin-bottom:12px}.historical-failure-note{margin-bottom:16px}
   .admin-filter-bar,.filter-bar{min-width:0;max-width:100%;gap:8px}.admin-filter-bar{align-items:stretch}
@@ -7130,42 +6844,27 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
   .quick-filter-group{min-width:0;max-width:100%;display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;flex-basis:100%;gap:5px;padding-bottom:3px}
   .quick-filter{flex:0 0 auto;min-height:44px;font-size:13px}
   .mobile-filter-options{display:grid;grid-template-columns:1fr;gap:8px;width:100%}
-  .mobile-filter-toggle{width:100%;text-align:left}.filter-bar .device-mobile-sort{display:block}
-  .device-filter-bar{position:static}.device-sticky-header{display:none!important}
-  .table-wrap{min-width:0;max-width:100%}.diagnostic-list-wrap{max-height:none}
-  .table-wrap:has(.mobile-record-table){border:0;background:transparent;overflow:visible;border-radius:0}
-  table.mobile-record-table{display:block;min-width:0!important;width:100%;border:0;table-layout:auto}
-  .mobile-record-table colgroup{display:none}
-  .mobile-record-table thead{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-  .mobile-record-table tbody{display:grid;width:100%;gap:12px}
-  .mobile-record-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:0}
-  .mobile-record-table tbody td{display:block;width:auto!important;min-width:0;padding:0!important;border:0!important;text-align:left!important;white-space:normal!important;overflow-wrap:anywhere;font-size:13px}
-  .mobile-record-table td a{min-height:44px;display:inline-flex;align-items:center}
-  .mobile-record-table td .provider-name-link{align-items:flex-start}
-  .mobile-record-table td[data-label='']::before{display:none}
+  .mobile-filter-toggle{width:100%;text-align:left}
   #overview-attention-title{scroll-margin-top:80px}
-  .mobile-record-table tbody td::before{content:attr(data-label);display:block;margin-bottom:5px;font-size:11px;line-height:1.35;font-weight:600;color:var(--secondary)}
-  .mobile-record-table tbody td:first-child{grid-column:1/-1;font-weight:650}
-  .mobile-record-table tbody td:has(button){grid-column:1/-1}.mobile-record-table td button{min-height:44px;width:100%}
-  .device-model-button{min-height:44px}.device-thumb{width:40px;height:48px}.device-model-copy{min-width:0}.device-model-copy strong{white-space:normal}
   .model-page-header{gap:12px;grid-template-columns:auto minmax(0,1fr)}.model-page-image{width:64px;height:64px}.model-page-heading h1{font-size:24px}
   .model-review-alert{gap:8px;align-items:flex-start}.model-review-alert a{min-height:44px;display:flex;align-items:center}
   .provider-action-bar{display:grid;grid-template-columns:1fr 1fr}.provider-action-bar button{width:100%;min-height:44px}.provider-action-overflow{width:100%}.provider-action-bar>p{grid-column:1/-1}
-  .provider-pagination,.device-pagination{display:flex;flex-wrap:wrap;gap:8px}.provider-pagination button,.device-pagination button{min-height:44px}.provider-pagination>span{flex:1 1 100%;order:3}
   details>summary{min-height:44px;align-content:center;line-height:1.45}summary:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px}
   .diagnostic-detail-dialog{width:calc(100% - 32px);max-width:none;max-height:calc(100dvh - 16px);margin:auto;border-radius:12px}
   .diagnostic-detail-inner{padding:16px;max-height:calc(100dvh - 16px);overflow:auto;overscroll-behavior:contain}
   .diagnostic-detail-inner>.device-dialog-header{position:sticky;top:-16px;z-index:2;background:var(--surface);padding:12px 0;flex-direction:row;align-items:flex-start;gap:10px}
   .diagnostic-detail-inner .dialog-close{width:44px;min-width:44px;height:44px}
-  .diagnostic-detail-summary,.diagnostic-actions-grid,.administration-grid{grid-template-columns:1fr}.diagnostic-detail-summary div{grid-template-columns:minmax(80px,.7fr) minmax(0,1fr)}
+  .diagnostic-detail-summary,.diagnostic-actions-grid{grid-template-columns:1fr}.diagnostic-detail-summary div{grid-template-columns:minmax(80px,.7fr) minmax(0,1fr)}
   .diagnostic-action-form button{min-height:44px}.diagnostic-detail-summary dd{text-align:right}
   .auth-card{margin:24px 16px;max-width:calc(100% - 32px);padding:20px}.auth-card button{min-height:44px}
   .campaign-card{padding:16px}.campaign-grid{gap:16px}.campaign-field input,.campaign-field select{font-size:16px}
   .admin-live-update{top:64px;gap:8px;padding:10px 16px;font-size:13px}.admin-live-update button{min-height:44px}
 }
+@media(max-width:760px){.filter-bar .device-mobile-sort{display:block}.device-filter-bar{position:static}.device-sticky-header{display:none!important}.table-wrap{min-width:0;max-width:100%}.diagnostic-list-wrap{max-height:none}.table-wrap:has(.mobile-record-table){border:0;background:transparent;overflow:visible;border-radius:0}table.mobile-record-table{display:block;min-width:0!important;width:100%;border:0;table-layout:auto}.mobile-record-table colgroup,.mobile-record-table thead{display:none}.mobile-record-table tbody{display:grid;width:100%;gap:12px}.mobile-record-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:0}.mobile-record-table tbody td{display:block;width:auto!important;min-width:0;padding:0!important;border:0!important;text-align:left!important;white-space:normal!important;overflow-wrap:anywhere;font-size:13px}.mobile-record-table td a{min-height:44px;display:inline-flex;align-items:center}.mobile-record-table td .provider-name-link{align-items:flex-start}.mobile-record-table td[data-label='']::before{display:none}.mobile-record-table tbody td::before{content:attr(data-label);display:block;margin-bottom:5px;font-size:11px;line-height:1.35;font-weight:600;color:var(--secondary)}.mobile-record-table tbody td:first-child{grid-column:1/-1;font-weight:650}.mobile-record-table tbody td:has(button){grid-column:1/-1}.mobile-record-table td button{min-height:44px;width:100%}.device-model-button{min-height:44px}.device-thumb{width:40px;height:48px}.device-model-copy{min-width:0}.device-model-copy strong{white-space:normal}.provider-pagination,.device-pagination{display:flex;flex-wrap:wrap;gap:8px}.provider-pagination button,.device-pagination button{min-height:44px}.provider-pagination>span{flex:1 1 100%;order:3}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}.map-statistics-filter-bar .filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}}
+@media(max-width:760px){.map-statistics-provider-table .mobile-record-table td[data-empty-group='true']{display:none!important}}
 
 /* Full labels and values remain readable at every admin width. */
-.overview-attention-item span,.overview-activity-item a span:not(.overview-activity-label),.device-model-copy strong,.provider-error{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;max-width:none}
+.overview-attention-item span,.overview-activity-item .map-activity-copy>span:not(.overview-activity-label),.device-model-copy strong,.provider-error{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;max-width:none}
 .overview-panel,.system-health-row,.provider-card,.campaign-card,.admin-kpi-grid article,.provider-metrics article{min-width:0;overflow-wrap:anywhere}
 .overview-attention-item .overview-attention-actions{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px}.overview-review-dismiss-form{display:inline-flex;margin:0}.overview-dismiss-button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;padding:0;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);color:var(--graphite);font-size:20px;line-height:1;cursor:pointer}.overview-dismiss-button:hover{border-color:var(--interactive);color:var(--interactive)}.overview-dismiss-button:focus-visible{outline:3px solid var(--admin-focus-ring);outline-offset:2px}.overview-review-notice{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface-muted);color:var(--graphite);font-size:13px}.overview-review-notice form{display:inline-flex;margin:0}
 .section-heading>div,.heading-row>div,.provider-latest-summary>div,.device-model-copy{min-width:0}
@@ -7223,15 +6922,15 @@ main.dashboard>.heading-row .lede{margin:12px 0 0}
 .device-information-section{container-type:inline-size}.device-key-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:0}.device-key-facts>div{min-width:0}.device-key-facts dt{color:var(--secondary);font-size:13px;line-height:20px}.device-key-facts dd{margin:6px 0 0;font-size:16px;line-height:24px;font-weight:600;overflow-wrap:anywhere}@container(min-width:720px){.device-key-facts{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .device-information-note{margin:24px 0 0;color:var(--secondary);font-size:13px;line-height:20px;text-wrap:pretty}.device-information-more{display:flex;flex-wrap:wrap;align-items:start;gap:12px 24px;margin-top:16px}.device-extra-specifications{flex:1 1 320px;min-width:0}.device-specification-link{display:inline-flex;align-items:center;gap:6px;min-height:40px;max-width:100%;font-size:13px;line-height:20px;text-wrap:pretty}.device-specification-link svg{flex:none}
 .device-overview-sections .admin-disclosure:not([open])>summary:dir(rtl)::before{transform:translateY(-50%) rotate(135deg)}
-.device-technical-hint{display:block;color:var(--secondary);font-size:13px;font-weight:400;line-height:20px;margin-top:4px}.device-overview-sections .identity-mappings{padding-inline:0}.device-overview-sections .identity-mappings summary{min-height:40px}.device-overview-sections .identity-mapping-source{padding-inline:12px}
+.device-technical-hint{display:block;color:var(--secondary);font-size:13px;font-weight:400;line-height:20px;margin-top:4px}
 .device-overview-sections .device-extra-specifications .model-information-list{border:0;border-radius:0;background:transparent}.device-overview-sections .device-extra-specifications .model-information-list div{padding-inline:0;grid-template-columns:minmax(0,1fr) minmax(0,2fr);text-align:start}.device-overview-sections .device-extra-specifications :is(dt,dd){text-align:start}
-@media(max-width:700px){.device-overview-sections .admin-disclosure:not(.filter-disclosure)>summary,.device-specification-link,.device-overview-sections .identity-mappings summary{min-height:44px}}
+@media(max-width:700px){.device-overview-sections .admin-disclosure:not(.filter-disclosure)>summary,.device-specification-link{min-height:44px}}
 .world-map-controls{display:flex;align-items:center;gap:8px;padding:4px 10px 10px}
 .world-map-controls button{min-height:40px;min-width:40px;padding:6px 10px;border-radius:var(--admin-control-radius);background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 .world-map-controls span{font-size:12px;color:var(--secondary)}
 .world-map-svg{height:420px;min-height:300px;touch-action:none;cursor:grab;overflow:hidden;user-select:none;-webkit-user-select:none}.world-map-svg *{user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 .world-map-svg:active{cursor:grabbing}
-.world-map-svg:focus-visible{outline:2px solid var(--admin-focus-ring);outline-offset:-2px}
+.world-map-svg:focus-visible{outline:var(--admin-focus-ring);outline-offset:-2px}
 .world-map-svg svg{fill:var(--surface)}.world-map-svg.leaflet-container{padding:0;background:var(--surface-muted);font-family:var(--font-ui)}.world-map-svg .leaflet-control-attribution{font-size:10px;background:var(--surface);color:var(--secondary)}
 .world-map-svg svg path{vector-effect:non-scaling-stroke}
 .world-map-country.is-region-highlight{fill:var(--interactive)!important;stroke:var(--graphite);stroke-width:2}
@@ -7245,7 +6944,7 @@ main.dashboard>.heading-row .lede{margin:12px 0 0}
 [id]{scroll-margin-top:calc(var(--admin-topbar-height,100px) + 16px)}
 .world-map-tooltip{top:64px}
 @media(max-width:900px){.model-information-columns{grid-template-columns:1fr}.model-information-columns .device-information-section .model-information-list div{grid-template-columns:minmax(100px,1fr) minmax(0,3fr)}}
-@media(max-width:700px){main.dashboard{padding-top:20px}.system-health-row,.system-health-row>summary{grid-template-columns:minmax(0,1fr) auto;gap:6px 10px}.system-health-when{grid-column:1/-1;text-align:start}.model-information-columns .model-information-list div{grid-template-columns:1fr}}
+@media(max-width:760px){main.dashboard{padding-top:20px}.system-health-row,.system-health-issue{grid-template-columns:minmax(0,1fr) auto;gap:6px 10px}.system-health-cause,.system-health-action,.system-health-technical,.system-health-when{grid-column:1/-1}.system-health-when{text-align:start}.model-information-columns .model-information-list div{grid-template-columns:1fr}}
 /* Admin UI standard: one navigation hierarchy, one control rhythm, concentric surfaces. */
 body{font-family:var(--font-ui);text-wrap:pretty}
 h1,h2,h3,h4{font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
@@ -7281,9 +6980,6 @@ button,.button-link,.copy-button,.secondary-button{transition:background-color .
 button:active:not(:disabled),.button-link:active,.copy-button:active{transform:scale(.96)}
 .filter-bar button:active,.world-map-controls button:active{transform:none}
 .filter-bar label,.inline-filter-row label{display:flex;flex-direction:column;gap:6px}
-.popularity-all-maps-disclosure .disclosure-body>label{display:flex;flex-direction:column;gap:6px;margin:0 0 16px;font-size:12px;font-weight:650;color:var(--secondary)}
-.popularity-all-maps-disclosure input{width:100%;min-width:0;min-height:40px;margin:0}
-@media(max-width:700px){.popularity-all-maps-disclosure input{min-height:44px}}
 .inline-filter-row label>.sr-only{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;clip-path:none;white-space:normal;font-size:12px;font-weight:650;color:var(--secondary)}
 .filter-bar label>input,.filter-bar label>select,.inline-filter-row label>input,.inline-filter-row label>select{flex:none}
 .inline-filter-row{align-items:flex-end}
@@ -7299,9 +6995,6 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
   .filter-bar .device-mobile-sort select{width:100%;margin:0}
 }
 .provider-status{text-transform:capitalize}
-.map-statistics-kpis small{display:block;margin-top:8px;color:var(--secondary)}
-.map-statistics-popularity:focus-visible{outline:var(--admin-focus-ring);outline-offset:2px}
-.map-statistics-popularity .popularity-regions-disclosure{margin:0 0 12px}
 /* Compact coverage lists keep names, counts and activity readable in the sidebar. */
 .map-statistics-popularity .table-wrap{border:0;border-radius:0;overflow:visible}
 .map-statistics-popularity .table-wrap .admin-table{display:block;width:100%;min-width:0;table-layout:fixed}
@@ -7316,8 +7009,8 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap .admin-table td::before{display:none}
 .map-statistics-popularity .table-wrap .admin-table td.popular-map-count::after{content:none}
 .map-statistics-popularity .table-secondary,.map-statistics-popularity code{white-space:normal;overflow-wrap:anywhere;font-size:11px}
-.map-statistics-popularity .table-wrap .popular-map-name-content{display:grid;min-width:0;gap:2px}
-.map-statistics-popularity .table-wrap .popular-map-detail{display:block;min-width:0;color:var(--secondary);font-size:11px;font-weight:400;line-height:1.35;overflow-wrap:anywhere}
+.map-statistics-page .popular-map-name-content{display:grid;min-width:0;gap:2px}
+.map-statistics-page .popular-map-detail{display:block;min-width:0;color:var(--secondary);font-size:11px;font-weight:400;line-height:1.35;overflow-wrap:anywhere}
 .map-statistics-popularity .table-wrap .popular-map-count-label{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;font-weight:400}
 .map-statistics-popularity .table-wrap .popular-map-count-label>strong{font-weight:750}
 .map-statistics-popularity .table-wrap .region-map-link{position:relative;display:inline-flex;width:auto;max-width:100%;min-height:0;padding:0;align-items:flex-start;color:inherit;font-weight:400;line-height:1.35;text-align:left;text-decoration:none;white-space:normal;overflow-wrap:anywhere}
@@ -7332,15 +7025,7 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap th{white-space:normal;overflow-wrap:normal}
 @media(max-width:700px){.world-map-controls button{min-width:44px;min-height:44px}}
 @media(max-width:700px){
-  .admin-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:16px;overflow:visible}
-  .admin-nav-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%}
-  .admin-section-nav a,.admin-section-nav>details{min-width:0}
-  .admin-section-nav a{display:flex;align-items:center;min-height:44px;padding:8px 9px;white-space:normal}
-  .admin-section-nav details>summary{width:100%;min-height:44px;padding:8px 9px}
-  .admin-tools-popover{position:static;min-width:0;margin-top:4px}
-  .admin-section-nav>.admin-tools-menu{width:100%}
   .filter-clear{width:100%;min-height:44px}
-
   .system-health-row>.disclosure-body{padding:0 0 8px}
 }
 /* Mobile card spacing belongs to the containing layout, not both grid and card. */
@@ -7352,15 +7037,14 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
   .overview-primary-grid>.overview-panel{margin:0}
   .overview-primary-grid,
   .admin-kpi-grid,.installation-kpis,.model-statistics,.diagnostic-model-metrics,
-  .provider-metrics,.map-statistics-metrics,.map-statistics-kpis,.map-statistics-reliability,
-  .map-statistics-linkage-grid,.system-health-list,
-  .provider-dashboard-grid,.model-information-columns,.administration-grid{gap:var(--admin-mobile-card-gap)}
+  .provider-metrics,.system-health-list,
+  .provider-dashboard-grid,.model-information-columns{gap:var(--admin-mobile-card-gap)}
   .dashboard>.provider-card,.dashboard>.overview-panel,.dashboard>.model-page-section,
   .dashboard>.map-statistics-coverage-layout,.dashboard>.model-information-columns{margin-top:var(--admin-mobile-card-gap)}
   .overview-page>.overview-panel{margin-top:0}
   .provider-dashboard-grid>.provider-card{margin-top:0}
   .dashboard>.diagnostic-model-metrics,.dashboard>.provider-metrics,
-  .dashboard>.admin-summary-strip,.dashboard>.map-statistics-reliability{margin-bottom:var(--admin-mobile-card-gap)}
+  .dashboard>.admin-summary-strip{margin-bottom:var(--admin-mobile-card-gap)}
   .device-filter-bar{margin-bottom:var(--admin-mobile-card-gap)}
 }
 /* Information hierarchy: summaries first, complete evidence on demand. */
@@ -7369,22 +7053,18 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .identity-candidate{border-top:1px solid var(--border);padding:8px 0}.identity-candidate>summary{min-height:40px;display:list-item;font-weight:600}
 .identity-technical-evidence .identity-summary{font-size:13px}.identity-technical-evidence h4{font-size:14px;overflow-wrap:anywhere}
 .identity-checks-table{font-size:13px}.identity-checks-table td{overflow-wrap:anywhere}
-.identity-mapping-source code,.diagnostic-id code{overflow-wrap:anywhere}
+.diagnostic-id code{overflow-wrap:anywhere}
 .identity-source-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .identity-source-form label{display:flex;flex-direction:column;gap:6px}.identity-source-form button{justify-self:start;grid-column:1/-1}.identity-source-form output{padding:10px 0;overflow-wrap:anywhere}
 .overview-activity-item:has(>.download-history){display:block}
-.identification-page{max-width:1200px}.identification-page h1{text-wrap:balance}.identification-intro{max-width:70ch;font-size:16px;line-height:1.6}.identification-guide{max-width:75ch;margin-block:16px 28px}.identification-page summary{cursor:pointer;min-height:44px;align-content:center}.identification-guide p{line-height:1.6}.identification-workspace{max-width:1040px}.identification-workspace h2{margin-block:20px 12px;font-size:24px}.identification-workspace h3{font-size:18px;line-height:1.4;margin-block:24px 8px}.identification-workspace h4{font-size:15px;margin:0}.identification-workspace p{max-width:75ch;line-height:1.6}.identification-next{padding:4px 20px 12px;margin-block:24px;background:var(--surface-muted);border-radius:12px}.identification-next h3{margin-block-start:16px}.identification-workspace .identity-mappings{padding:0}.identification-search{display:flex;align-items:flex-end;gap:12px;margin-block:20px}.identification-search label{display:grid;gap:8px;flex:1;min-width:0;font-weight:600}.identification-search input{width:100%;min-width:0}.identification-page :is(input,textarea)::placeholder{color:var(--secondary);opacity:1}.identification-result-count{font-size:13px;color:var(--secondary)}.identification-choice{display:flex;justify-content:space-between;align-items:center;gap:20px;min-height:76px;padding:16px 4px;border-top:1px solid var(--border);text-decoration:none;color:inherit}.identification-choice-title{display:grid;gap:6px;min-width:0}.identification-choice-title>span{font-size:13px;color:var(--secondary)}.identification-choice:hover strong{text-decoration:underline}.identification-badges{display:flex;flex-wrap:wrap;gap:8px}.identification-page .identification-badge{display:inline-flex!important;align-items:center;gap:6px;max-width:100%;margin:0!important;padding:5px 10px;border:1px solid var(--border);border-radius:999px;font-size:13px;font-weight:600;line-height:1.4;font-variant-numeric:tabular-nums}.identification-page .identification-badge>span{display:inline;margin:0;color:inherit}.identification-page .identification-approved{color:var(--status-success-text);background:var(--status-success-surface);border-color:var(--status-success-border)}.identification-page .identification-rejected{color:var(--status-error-text);background:var(--status-error-surface);border-color:var(--status-error-border)}.identification-page :is(.identification-pending,.identification-missing){color:var(--status-tested-text);background:var(--status-tested-surface);border-color:var(--status-tested-border)}.identification-page .identification-shared>.identification-badge{color:var(--status-supported-text);background:var(--status-supported-surface);border-color:var(--status-supported-border)}.identification-workspace .identity-mapping-code{padding-block:8px 16px;margin-block:16px}.identification-workspace .identity-mapping-code>summary{display:list-item;padding-block:12px;min-height:44px}.identification-workspace .identity-mapping-code>summary strong{font-size:16px;line-height:1.5}.identification-workspace .identity-mapping-code>summary .identification-badges{display:flex;margin:12px 0 0}.identification-workspace .identification-source-count{margin:8px 0 0;font-size:13px}.identification-workspace .identity-mapping-source{padding:20px;background:var(--surface-muted);border:0;border-radius:16px;margin-block:16px}.identification-workspace .identity-mapping-source summary{padding-block:8px;min-height:44px}.identification-workspace .identity-mapping-source code{font-size:13px;overflow-wrap:anywhere}.identification-comparison{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-block:20px}.identification-comparison dt{font-size:13px;color:var(--graphite);margin-block-end:8px}.identification-comparison dd{margin:0;font-weight:600;line-height:1.5;overflow-wrap:anywhere}.identification-shared{margin-block:20px}.identification-shared ul{padding-inline-start:20px}.identification-shared li{padding-block:10px}.identification-shared li>.identification-badges{margin-block-start:8px}.identification-context,.identification-effect{font-size:14px}.identification-workspace .identity-mapping-review{grid-template-columns:1fr;gap:16px}.identification-workspace .identity-mapping-review :is(input,select,textarea){width:100%;min-width:0;font:inherit}.identification-workspace .identity-mapping-review select{white-space:normal;height:auto;min-height:44px}.identification-workspace .identity-mapping-review button{justify-self:start;min-height:44px}.identification-workspace .identity-mapping-review p{margin:0}.identification-workspace .admin-action-status:empty{display:none}.identification-workspace .admin-action-status{color:var(--graphite);font-size:14px}.identification-workspace .admin-action-status[data-error="true"]{color:var(--error-text)}.identification-empty{padding-block:20px}.identification-not-found{color:var(--error-text);background:var(--error-surface);padding:16px;border-radius:12px}.identification-page :is(a,button,input,textarea,select,summary):focus-visible{outline:2px solid var(--interactive);outline-offset:3px}.identification-page :is(a,p,strong,dd){overflow-wrap:anywhere}.identification-page .section-link{color:var(--graphite);text-decoration:underline;text-underline-offset:3px}
-@media(max-width:700px){.identification-choice{align-items:flex-start;flex-direction:column;gap:12px}.identification-comparison{grid-template-columns:1fr;gap:16px}.identification-workspace .identity-mapping-source{padding:16px}.identification-search{align-items:stretch;flex-direction:column}.identification-search button{align-self:flex-start}.identification-page :is(input,select,textarea){font-size:16px!important}.identification-workspace h2{font-size:22px}.identification-next{padding-inline:16px}}
+.identification-page{max-width:1200px}.identification-page h1{text-wrap:balance}.identification-page summary{cursor:pointer;min-height:44px;align-content:center}.identification-workspace{max-width:900px}.identification-workspace h2{margin-block:20px 12px;font-size:24px}.identification-workspace h3{margin:0 0 7px;font-size:16px;line-height:1.4}.identification-workspace h4{margin:0 0 8px;font-size:14px}.identification-workspace p{max-width:75ch;line-height:1.5}.identification-search{display:flex;align-items:flex-end;gap:12px;margin-block:20px}.identification-search label{display:grid;gap:8px;flex:1;min-width:0;font-weight:600}.identification-search input{width:100%;min-width:0}.identification-page :is(input,textarea)::placeholder{color:var(--secondary);opacity:1}.identification-choice{display:flex;justify-content:space-between;align-items:center;gap:20px;min-height:70px;padding:14px 4px;border-top:1px solid var(--border);text-decoration:none;color:inherit}.identification-choice-title{display:grid;gap:4px;min-width:0}.identification-choice-title>span{font-size:13px;color:var(--secondary)}.identification-choice:hover strong{text-decoration:underline}.identification-badges{display:flex;flex-wrap:wrap;gap:6px}.identification-page .identification-badge{display:inline-flex!important;align-items:center;gap:5px;max-width:100%;margin:0!important;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:600;line-height:1.4}.identification-page .identification-badge>span{display:inline;margin:0;color:inherit}.identification-page .identification-approved{color:var(--status-success-text);background:var(--status-success-surface);border-color:var(--status-success-border)}.identification-page .identification-rejected{color:var(--status-error-text);background:var(--status-error-surface);border-color:var(--status-error-border)}.identification-page :is(.identification-pending,.identification-missing){color:var(--status-tested-text);background:var(--status-tested-surface);border-color:var(--status-tested-border)}.identification-workspace .identity-mappings{display:grid;gap:18px;margin-top:18px;padding:0}.identification-workspace .identity-mapping-source{display:grid;gap:18px;padding:0 0 20px;border-bottom:1px solid var(--border)}.identification-step{min-width:0}.identification-reported-name{display:block;font-size:16px;line-height:1.45}.identification-source-link{margin-top:7px}.identification-source-unavailable{color:var(--secondary);font-size:13px}.identification-match{display:grid;gap:4px}.identification-match>span{color:var(--secondary);font-size:13px}.identification-other-models ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}.identification-other-models li{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--border)}.identification-other-models li>span{color:var(--secondary);font-size:12px}.identification-confirm{padding:16px;border-radius:12px;background:var(--surface-muted)}.identification-existing-decision{margin:0 0 12px;font-size:13px}.identification-workspace .identity-mapping-review{display:grid;grid-template-columns:1fr;gap:12px}.identification-workspace .identity-mapping-review label{display:grid;gap:6px;font-weight:600}.identification-workspace .identity-mapping-review textarea{width:100%;min-width:0;font:inherit}.identification-decision-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.identification-decision-actions button{min-height:44px}.identity-mapping-review .identification-decision-actions button.secondary-button{color:var(--interactive);background:var(--surface);border:1px solid var(--border)}.identity-mapping-review .identification-decision-actions button.secondary-button:hover{background:var(--surface-muted)}.identification-workspace .admin-action-status:empty{display:none}.identification-workspace .admin-action-status{margin:0;color:var(--graphite);font-size:13px}.identification-workspace .admin-action-status[data-error="true"]{color:var(--error-text)}.identification-technical{margin-top:0}.identification-technical .disclosure-body{display:grid;gap:16px}.identification-technical .disclosure-body>section{padding-top:16px;border-top:1px solid var(--border)}.identification-technical .model-information-list{margin:0}.identification-technical ul{margin:8px 0 0;padding-inline-start:20px}.identification-model-detail-link{margin-top:2px}.identification-empty{padding-block:20px}.identification-not-found{color:var(--error-text);background:var(--error-surface);padding:16px;border-radius:12px}.identification-page :is(a,button,input,textarea,select,summary):focus-visible{outline:2px solid var(--interactive);outline-offset:3px}.identification-page :is(a,p,strong,dd){overflow-wrap:anywhere}.identification-page .section-link{color:var(--graphite);text-decoration:underline;text-underline-offset:3px}
+@media(max-width:760px){.identification-choice{align-items:flex-start;flex-direction:column;gap:10px}.identification-workspace .identity-mappings{gap:16px}.identification-other-models li{align-items:flex-start;flex-direction:column;gap:3px}.identification-confirm{padding:14px}.identification-decision-actions{display:grid;grid-template-columns:1fr}.identification-decision-actions button{width:100%}.identification-search{align-items:stretch;flex-direction:column}.identification-search button{align-self:flex-start}.identification-page :is(input,textarea){font-size:16px!important}.identification-workspace h2{font-size:22px}}
 
-.download-history{margin:0;font-size:13px}.download-history>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;list-style:none;cursor:pointer;min-height:44px;align-content:center}.download-history>summary::-webkit-details-marker{display:none}.download-history>summary .overview-activity-label::before{content:'›';display:inline-block;width:14px;margin-right:4px;color:var(--interactive);transform-origin:5px center}.download-history[open]>summary .overview-activity-label::before{transform:rotate(90deg)}.download-history>summary>time{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item .download-history .download-context{grid-column:1;grid-row:2;display:block;margin-left:18px;color:var(--secondary);font-size:12px;font-weight:400;overflow-wrap:anywhere}.download-context:hover{text-decoration:underline}.download-history>summary:focus-visible{outline:2px solid var(--interactive);outline-offset:3px;border-radius:4px}.download-history[open]>.download-timeline{margin-top:6px;margin-left:18px}.download-elapsed{font-variant-numeric:tabular-nums}@media(max-width:500px){.download-history>summary{gap:3px 8px}.download-history>summary>time{font-size:11px}}
+.download-history{margin:0;font-size:13px}.download-history>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;list-style:none;cursor:pointer;min-height:44px;align-content:center}.download-history>summary::-webkit-details-marker{display:none}.download-history>summary .overview-activity-label::before{content:'›';display:inline-block;width:14px;margin-right:4px;color:var(--interactive);transform-origin:5px center}.download-history[open]>summary .overview-activity-label::before{transform:rotate(90deg)}.download-history>summary>time{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item .download-history .download-context{grid-column:1;grid-row:2;display:block;margin-left:18px;color:var(--secondary);font-size:12px;font-weight:400;overflow-wrap:anywhere}.download-history>summary:focus-visible{outline:2px solid var(--interactive);outline-offset:3px;border-radius:4px}.download-history[open]>.download-timeline{margin-top:6px;margin-left:18px}.download-elapsed{font-variant-numeric:tabular-nums}@media(max-width:500px){.download-history>summary{gap:3px 8px}.download-history>summary>time{font-size:11px}}
 
 .download-timeline{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:0 0 4px;font-size:13px}
 .download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'→';color:var(--secondary);margin-right:8px}
 .download-timeline .admin-icon,.download-timeline .download-phase-icon{width:14px;height:14px;flex:none}.download-timeline time{font-size:12px;font-variant-numeric:tabular-nums;position:static}
-.github-empty{margin:0;grid-column:1/-1}.github-empty .github-review{margin:0}
-
-.diagnostic-actions-grid:has(>.github-empty:only-child){margin-top:0;gap:0}
-
 @media(max-width:700px){.identity-source-form{grid-template-columns:1fr}.identity-candidate>summary,.download-history summary{min-height:44px}}
 
 @media(prefers-reduced-motion:reduce){
@@ -7392,16 +7072,16 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 }
 
 /* One compact geometry for plain and expandable map events. */
-.map-activity-row,.map-activity-row:first-child{padding:8px 0;min-width:0}.map-activity-row>a,.map-activity-row>time{grid-row:1}
-.map-activity-row>a,.map-activity-row .download-history>summary{min-height:44px;align-content:center;row-gap:3px;line-height:1.4}
-.map-activity-row>a{grid-template-columns:minmax(0,1fr)}
+.map-activity-row,.map-activity-row:first-child{padding:8px 0;min-width:0}.map-activity-row>.map-activity-copy,.map-activity-row>time{grid-row:1}
+.map-activity-row>.map-activity-copy,.map-activity-row .download-history>summary{min-height:44px;align-content:center;row-gap:3px;line-height:1.4}
+.map-activity-row>.map-activity-copy{grid-template-columns:minmax(0,1fr)}
 .map-activity-row .download-history>summary{padding:0;margin:0;column-gap:10px;font-weight:400}
 .map-activity-row .overview-activity-label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:750;line-height:1.4}
 .map-activity-row .overview-activity-label .download-phase-icon{width:14px;height:14px;flex:0 0 14px}
 .map-activity-row .download-history>summary .overview-activity-label::before{content:none}
 .map-activity-row .download-history>summary .overview-activity-label::after{content:'›';display:inline-block;color:var(--secondary);margin-left:2px;line-height:1;transform-origin:center}
 .map-activity-row .download-history[open]>summary .overview-activity-label::after{transform:rotate(90deg)}
-.map-activity-row>a>span:not(.overview-activity-label),.map-activity-row .download-history .download-context{margin:0 0 0 21px;font-size:12px;font-weight:400;line-height:1.4;color:var(--secondary)}
+.map-activity-row>.map-activity-copy>span:not(.overview-activity-label),.map-activity-row .download-history .download-context{margin:0 0 0 21px;font-size:12px;font-weight:400;line-height:1.4;color:var(--secondary)}
 .map-activity-row .download-history[open]>.download-timeline{margin:6px 0 0 21px}
 .map-activity-row>time,.map-activity-row .download-history>summary>time{font-size:12px;font-variant-numeric:tabular-nums}
 .map-activity-info .overview-activity-label{color:var(--interactive)}
@@ -7409,7 +7089,7 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-activity-error .overview-activity-label{color:var(--danger)}
 .map-activity-warning .overview-activity-label{color:var(--status-tested-text)}
 .map-activity-neutral .overview-activity-label{color:var(--secondary)}
-@media(max-width:500px){.map-activity-row{grid-template-columns:minmax(0,1fr)}.map-activity-row>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row .download-history>summary{grid-template-columns:minmax(0,1fr)}.map-activity-row .download-history>summary>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>a{grid-row:1}}
+@media(max-width:500px){.map-activity-row{grid-template-columns:minmax(0,1fr)}.map-activity-row>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row .download-history>summary{grid-template-columns:minmax(0,1fr)}.map-activity-row .download-history>summary>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>.map-activity-copy{grid-row:1}}
 
 /* Map statistics compact summary, popularity views, and table alignment. */
 .map-statistics-kpi-panel{margin-top:18px;padding:16px 18px}
@@ -7419,35 +7099,30 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-kpi-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
 .map-statistics-kpi-value{min-width:0;padding:0 4px}
 .map-statistics-kpi-value.failed{grid-column:1/-1;padding-top:8px;border-top:1px solid color-mix(in srgb,var(--border) 78%,transparent)}
-.map-statistics-kpi-value span,.map-statistics-diagnostic-coverage-row span{display:block;color:var(--secondary);font-size:12px;font-weight:650}
+.map-statistics-kpi-value span{display:block;color:var(--secondary);font-size:12px;font-weight:650}
 .map-statistics-kpi-value>strong{display:block;margin-top:4px;color:var(--graphite);font:700 24px/1.15 var(--font-brand);font-variant-numeric:tabular-nums}
 .map-statistics-kpi-value.failed>strong,.map-statistics-kpi-secondary .map-statistics-kpi-value>strong{font-size:19px}
 .map-statistics-kpi-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-column:1/-1;gap:8px 16px;padding-top:8px;border-top:1px solid color-mix(in srgb,var(--border) 78%,transparent)}
-.map-statistics-diagnostic-coverage-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.map-statistics-diagnostic-coverage-row>div{min-width:0;padding:0 4px}
-.map-statistics-diagnostic-coverage-row strong{display:block;margin-top:3px;color:var(--graphite);font:700 18px/1.2 var(--font-brand);font-variant-numeric:tabular-nums}
-.map-statistics-provider-table .column-number,.map-statistics-provider-table .numeric,.map-statistics-provider-table .column-status{text-align:center!important}
-.map-statistics-provider-table .column-date{text-align:left!important}
-.map-statistics-provider-table .column-status .provider-status{margin-inline:auto}
-.admin-table th.column-number,.admin-table td.column-number,.admin-table th.numeric,.admin-table td.numeric{ text-align:center }
-.admin-table th.column-status,.admin-table td.column-status{text-align:center}
-.admin-table th.column-date,.admin-table td.column-date{text-align:left}
-.admin-table .column-status .provider-status{margin-inline:auto}
-.map-statistics-popularity-views{min-width:0}
-.popularity-view h3{margin:0 0 9px;font:700 15px/1.3 var(--font-brand)}
-.popularity-view[hidden]{display:none}
-.popular-maps-nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
-.popular-maps-nav button{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font:700 12px/1.3 var(--font-ui)}
-.popular-maps-nav button[aria-current='page']{border-color:color-mix(in srgb,var(--sky) 45%,var(--border));background:var(--surface);color:var(--interactive);box-shadow:0 1px 1px rgba(34,42,43,.05)}
-.popular-maps-nav button:hover{border-color:var(--interactive);background:var(--success-bg)}
+.admin-table th.column-number,.admin-table td.column-number,.admin-table th.numeric,.admin-table td.numeric{text-align:right}
+.admin-table th.column-status,.admin-table td.column-status{text-align:left}
+.admin-table th.column-date,.admin-table td.column-date{text-align:right}
+.admin-table .column-status .provider-status{margin-inline:0}
 .popularity-search-label{display:block;margin:0 0 6px;color:var(--secondary);font-size:12px;font-weight:650}
-.popularity-view>input{width:100%;min-width:0;margin:0 0 12px}
-.popularity-view .popular-maps-table{min-width:0}
-.popularity-view .popular-maps-table td.popular-map-count{text-align:right!important}
-.popularity-view .popular-maps-table td.popular-map-count strong{font-weight:750;white-space:nowrap}
-@media(max-width:900px){.map-statistics-kpi-groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.map-statistics-diagnostic-coverage-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:700px){.map-statistics-kpi-panel{padding:16px}.map-statistics-kpi-groups{grid-template-columns:1fr;gap:16px}.map-statistics-diagnostic-coverage-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.popular-maps-nav button{min-height:44px}.popularity-view>input{min-height:44px}}
-@media(max-width:420px){.map-statistics-diagnostic-coverage-row{grid-template-columns:1fr}}
+.map-statistics-ranking>input{width:100%;min-width:0;margin:0 0 12px}
+.map-statistics-ranking .popular-maps-table{min-width:0}
+.map-statistics-ranking .popular-map-count{text-align:right!important}
+.map-statistics-page>.admin-disclosure,.map-statistics-page>.map-events-card{margin-top:16px}
+.map-statistics-trends{margin-top:16px}
+@media(max-width:900px){.map-statistics-kpi-groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}}
+@media(max-width:700px){.map-statistics-kpi-panel{padding:16px}.map-statistics-kpi-groups{grid-template-columns:1fr;gap:16px}.map-statistics-ranking>input{min-height:44px}}
+@media(min-width:761px){
+  .diagnostic-list-table :is(th,td).column-number,.diagnostic-list-table :is(th,td).column-date{text-align:right}
+  .diagnostic-list-table :is(th,td).column-status{text-align:left}
+}
+@media(max-width:800px){
+  .filter-bar>.results-count{width:auto;flex:1 1 180px;margin-left:0}
+  .filter-bar>.filter-clear{width:auto;flex:0 0 auto}
+}
 
 /* Admin scrollbars are visually hidden without changing the scroll surface. */
 .admin-shell :where(
@@ -7485,29 +7160,31 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .admin-kpi-panel{display:block;margin-top:0;margin-bottom:0}
 .overview-page>.admin-kpi-panel{margin-top:16px}
 .admin-kpi-panel .map-statistics-kpi-groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.admin-kpi-panel .overview-kpi-groups{grid-template-columns:repeat(3,minmax(0,1fr))}
 .admin-kpi-panel .map-statistics-kpi-values{gap:8px 16px}
 .admin-kpi-panel .map-statistics-kpi-value{display:block;min-width:0}
 .map-statistics-kpi-value.failed>.admin-error-counter{font-size:19px}
-.admin-kpi-panel .overview-kpi-link{display:block;color:inherit;text-decoration:none}
-.admin-kpi-panel .overview-kpi-link:hover>span{text-decoration:underline;text-underline-offset:3px}
-.admin-kpi-panel .overview-kpi-link:focus-visible{outline:var(--admin-focus-ring);outline-offset:4px;border-radius:6px}
 .overview-page>.heading-row+.overview-panel{margin-top:0}
 .overview-page>.overview-panel{margin-top:16px}
+.overview-attention-item{padding-block:6px}
 .overview-primary-grid{gap:16px;margin-top:16px}
 .overview-activity-panel{margin-top:16px}
 .overview-activity-device{display:block;min-width:0;overflow-wrap:anywhere;color:var(--secondary);font-size:11px;text-decoration:none;white-space:normal}
 .overview-activity-device:hover{text-decoration:underline;text-underline-offset:3px}
 .download-history>summary>.overview-activity-device{grid-column:1/-1;margin-top:2px}
+.map-activity-row>.overview-activity-device{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>time{grid-row:1/span 3}
+@media(max-width:500px){.map-activity-row:has(>.overview-activity-device)>time{grid-row:4}}
 .overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
-.overview-download-panel{margin-top:16px}
-.overview-download-panel>.disclosure-body{padding-top:12px}
+.overview-trend-chart polyline.overview-chart-line{fill:none}
 .admin-kpi-panel .installation-kpi-groups{grid-template-columns:minmax(0,1fr)}
 .admin-kpi-panel .provider-kpi-values{grid-template-columns:repeat(3,minmax(0,1fr))}
-.admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(4,minmax(0,1fr))}
+.admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(5,minmax(0,1fr))}
 .admin-kpi-panel.model-statistics .model-kpi-groups{grid-template-columns:minmax(0,1fr)}
 .admin-kpi-panel.model-statistics .model-activity-kpi-group{border-top:1px solid var(--border);padding-top:14px}
+.admin-kpi-panel.model-statistics+.model-review-alert{margin-top:16px}
+.diagnostic-actions-grid>form.diagnostic-action-form{display:flex;flex-direction:column}
+.diagnostic-actions-grid>form.diagnostic-action-form>button[type="submit"],.diagnostic-actions-grid>form.identity-review-form>.identity-review-actions{margin-top:auto}
+.diagnostic-actions-grid .admin-action-status:empty{display:none}
 
 .admin-kpi-panel.model-statistics .timestamp-metric>strong{font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}
 .dashboard>.heading-row{margin-bottom:20px}
@@ -7520,7 +7197,6 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .provider-detail .provider-action-bar{margin-bottom:12px}
 .provider-detail .provider-state-grid{margin-top:4px}
 .map-statistics-page>#map-statistics-metrics{margin-bottom:20px}
-.map-statistics-page>#map-statistics-provider-table{margin-top:0}
 .map-statistics-page>.map-statistics-coverage-layout{margin-top:16px}
 .installation-kpis+.evidence-section{margin-top:16px}
 .device-summary-sync{font-size:var(--admin-type-helper-size)}
@@ -7528,14 +7204,14 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .admin-error-counter.is-positive{color:var(--danger)!important}
 .error-count{display:inline-flex;align-items:center;justify-content:center;min-width:0;min-height:0;padding:0;border:0;border-radius:0;color:inherit;font-weight:inherit;text-decoration:none}
 .error-count:hover .admin-error-counter,.error-count:focus-visible .admin-error-counter{text-decoration:underline;text-underline-offset:3px}
-.admin-table th.column-number>button,.admin-table th.column-number>.device-sort-button{justify-content:center;text-align:center}
+.admin-table th.column-number>button,.admin-table th.column-number>.device-sort-button{justify-content:flex-end;text-align:end}
 .admin-table th.column-status>button,.admin-table th.column-status>.device-sort-button{justify-content:center;text-align:center}
-.admin-table th.column-date>button,.admin-table th.column-date>.device-sort-button{justify-content:flex-start;text-align:start}
+.admin-table th.column-date>button,.admin-table th.column-date>.device-sort-button{justify-content:flex-end;text-align:end}
 .admin-table td.column-number,.admin-table th.column-number{font-variant-numeric:tabular-nums}
+@media(min-width:761px){.evidence-table-wrap th.column-number,.evidence-table-wrap td.column-number,.evidence-table-wrap th.column-date,.evidence-table-wrap td.column-date{text-align:right!important}.evidence-table-wrap th.column-number>.device-sort-button,.evidence-table-wrap th.column-date>.device-sort-button{width:100%;justify-content:flex-end;text-align:end}.evidence-table-wrap th.column-status,.evidence-table-wrap td.column-status{text-align:left}.evidence-table-wrap th.column-status>.device-sort-button{justify-content:flex-start;text-align:start}.evidence-table-wrap .column-status .status-badge{margin-inline:0}.evidence-table-wrap td.column-date,.evidence-table-wrap td.column-date .admin-timestamp{white-space:nowrap}}
 .device-table-wrap th.column-number>.device-sort-button,.device-sticky-header th.column-number>.device-sort-button{width:100%}
 .device-table-wrap th.column-status>.device-sort-button,.device-sticky-header th.column-status>.device-sort-button{width:100%}
 .device-table-wrap th.column-date>.device-sort-button,.device-sticky-header th.column-date>.device-sort-button{width:100%}
-@media(max-width:1100px){.admin-kpi-panel .overview-kpi-groups{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-kpi-panel .overview-coverage-kpi-group{grid-column:1/-1}}
 @media(max-width:900px){.admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(3,minmax(0,1fr))}.admin-kpi-panel.model-statistics .model-kpi-groups{grid-template-columns:1fr}.admin-kpi-panel.model-statistics .model-activity-kpi-group{border-top:1px solid var(--border);border-left:0;padding:16px 0 0}}
 @media(max-width:700px){.admin-kpi-panel{padding:16px}.admin-kpi-panel .map-statistics-kpi-groups{grid-template-columns:1fr;gap:16px}.admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-kpi-panel.model-statistics .model-activity-kpi-group{padding-top:12px}}
 @media(max-width:420px){.admin-kpi-panel .installation-kpi-values{grid-template-columns:1fr}}
@@ -7577,7 +7253,6 @@ ADMIN_STYLES += """
 .table-wrap td[colspan]::before{display:none!important}
 .admin-disclosure:not(.filter-disclosure)>summary:hover{background:var(--surface-muted);text-decoration:none}
 .admin-disclosure:not(.filter-disclosure)>.disclosure-body{margin:0;padding:0 14px 14px}
-.github-empty.admin-disclosure:not(.filter-disclosure)>.disclosure-body{padding-inline:0}
 .model-information-columns>details{padding:0}
 .model-information-columns>details>*:not(summary){margin:0 14px 14px}
 .provider-card:has(>.admin-disclosure){padding:0}
@@ -7586,11 +7261,50 @@ details.provider-card.admin-disclosure{padding:0}
 details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .system-health-row[hidden]{display:none}
 .model-administration>.administration-grid{padding:0 14px 14px}
-.map-statistics-provider-table .admin-table{table-layout:fixed;width:100%;min-width:1240px}
+.map-statistics-provider-table .admin-table{table-layout:fixed;width:100%;min-width:880px}
 .map-statistics-provider-table .admin-table th{white-space:normal;overflow-wrap:normal}
-.map-statistics-provider-table .admin-table th:first-child{width:18%}
+.map-statistics-provider-table .admin-table th:first-child{width:15%}
+.map-statistics-provider-table .admin-table th,.map-statistics-provider-table .admin-table td{padding-inline:7px}
 .map-statistics-provider-table .admin-table td{white-space:normal;overflow-wrap:anywhere}
-.map-statistics-provider-table .admin-table .column-date{width:148px;overflow-wrap:normal}
+.map-statistics-provider-table .admin-table .column-date{width:142px;overflow-wrap:normal;white-space:nowrap}
+.overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'downloads activity';align-items:start;gap:16px;margin-top:16px}
+.overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-attention-panel{grid-area:attention}.overview-composition-grid>.overview-activity-panel{grid-area:activity}.overview-composition-grid>.overview-download-panel{grid-area:downloads}
+.overview-heading+.overview-primary-grid{margin-top:0}
+.metric-scope{color:var(--secondary);font-size:11px;font-weight:650;line-height:1.3;white-space:nowrap}
+.metric-scope{margin-left:5px}
+.installation-failed-value{color:var(--danger)!important}
+.overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}
+.map-activity-row>time{grid-row:1}
+.map-activity-row:has(>.overview-activity-device)>time{grid-row:1/span 3}
+@media(max-width:500px){.overview-activity-item{grid-template-columns:minmax(0,1fr)}.overview-activity-item>time,.map-activity-row:has(>.overview-activity-device)>time{grid-column:1;grid-row:auto;margin-left:21px}}
+.model-evidence-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px}
+.model-evidence-summary,.model-evidence-history{min-width:0}
+.model-evidence-history>.model-page-section{margin-top:0}
+.diagnostic-secondary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px;margin-top:16px}
+.diagnostic-secondary-grid>.diagnostic-secondary-disclosure{min-width:0;margin:0}
+@media(min-width:901px){
+  .model-evidence-history .table-wrap:has(.mobile-record-table){border:0;background:transparent;overflow:visible;border-radius:0}
+  .model-evidence-history table.mobile-record-table{display:block;min-width:0!important;width:100%;border:0;table-layout:auto}
+  .model-evidence-history .mobile-record-table colgroup,.model-evidence-history .mobile-record-table thead{display:none}
+  .model-evidence-history .mobile-record-table tbody{display:grid;width:100%;gap:12px}
+  .model-evidence-history .mobile-record-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:0}
+  .model-evidence-history .mobile-record-table tbody td{display:block;width:auto!important;min-width:0;padding:0!important;border:0!important;text-align:left!important;white-space:normal!important;overflow-wrap:anywhere;font-size:13px}
+  .model-evidence-history .mobile-record-table tbody td::before{content:attr(data-label);display:block;margin-bottom:5px;color:var(--secondary);font-size:11px;line-height:1.35;font-weight:600}
+  .model-evidence-history .mobile-record-table tbody td:first-child,.model-evidence-history .mobile-record-table tbody td:has(button){grid-column:1/-1}
+  .model-evidence-history .mobile-record-table td button{width:100%;min-height:44px}
+}
+@media(max-width:900px){.overview-composition-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:'attention' 'activity' 'downloads'}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:760px){
+  .admin-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
+  .admin-nav-group{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
+  .admin-section-nav a,.admin-nav>a,.admin-nav .link-button{display:flex;align-items:center;justify-content:flex-start;min-height:44px;width:100%;padding:10px;font-size:14px}
+  .admin-section-nav>.admin-tools-menu{width:100%}
+  .admin-section-nav details>summary{width:100%;min-height:44px;padding:8px 10px}
+  .admin-tools-popover{position:static;min-width:0;margin-top:4px}
+  .admin-nav{width:100%;display:flex;flex-direction:column;align-items:stretch;gap:4px;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--border)}
+  .admin-nav .timezone-control{width:100%}.timezone-control select{width:100%;max-width:none;font-size:16px}
+  .admin-nav form{width:100%;margin:0}.admin-nav button{min-height:44px;width:100%;text-align:left}.admin-nav .admin-mobile-website{display:flex}
+}
 .disclosure-meta{color:var(--secondary);font-weight:400}
 .provider-state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .provider-state-grid>.provider-card{min-width:0}
@@ -7645,7 +7359,7 @@ def _admin_disclosure_script() -> str:
 
 def _admin_mobile_script() -> str:
     return r"""(() => {
-      const narrow = matchMedia('(max-width: 700px)');
+      const narrow = matchMedia('(max-width: 760px)');
       const header = document.querySelector('.admin-topbar');
       const toggle = document.querySelector('#admin-menu-toggle');
       const panel = document.querySelector('#admin-menu-panel');
@@ -7690,7 +7404,7 @@ def _admin_mobile_script() -> str:
       });
       const labelTables = () => {
         document.querySelectorAll('main table').forEach(table => {
-          if (table.closest('.device-sticky-header, .map-statistics-provider-table')) return;
+          if (table.closest('.device-sticky-header')) return;
           const headers = [...table.querySelectorAll('thead th')];
           if (!headers.length) return;
           table.classList.add('mobile-record-table'); table.setAttribute('role', 'table');
@@ -7698,7 +7412,7 @@ def _admin_mobile_script() -> str:
           table.querySelectorAll('tbody tr').forEach(row => {
             if (!row.hasAttribute('role')) row.setAttribute('role', 'row');
             [...row.cells].forEach((cell, i) => {
-              cell.dataset.label = cell.colSpan > 1 ? '' : (headers[i]?.getAttribute('aria-label') || headers[i]?.textContent || '').replace(/[↕↑↓]/g, '').trim();
+              if (!cell.dataset.label) cell.dataset.label = cell.colSpan > 1 ? '' : (headers[i]?.getAttribute('aria-label') || headers[i]?.textContent || '').replace(/[↕↑↓]/g, '').trim();
               cell.setAttribute('role', 'cell');
             });
           });

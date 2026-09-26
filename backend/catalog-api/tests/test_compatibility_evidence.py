@@ -534,7 +534,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         rendered = body.decode()
         self.assertIn("fēnix 7 Pro", rendered)
         self.assertNotIn("custom-installation-indicator", rendered)
-        self.assertIn("Installation attempts", rendered)
+        self.assertIn(">Attempts<", rendered)
         self.assertNotIn("Map install operations", rendered)
 
     def test_database_binds_omitted_optional_fields_as_null(self):
@@ -586,9 +586,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installations", body)
-        self.assertIn("Installation attempts", body)
+        self.assertIn(">Attempts<", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
-        self.assertIn("<span>Installation attempts</span><strong>1</strong>", body)
+        self.assertIn("<span>Attempts</span><strong>1</strong>", body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)
         self.assertIn(">51 mm<", body)
         self.assertIn("Latest activity", body)
@@ -598,7 +598,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("ADMINISTRAVIMAS", body)
         self.assertNotIn("Georgia", body)
         self.assertNotIn("Logged in as", body)
-        self.assertIn(">Installation attempts<", body)
+        self.assertIn(">Attempts<", body)
         self.assertIn("logo-sky.svg", body)
         self.assertNotIn("Includes resolved historical failures. Open errors shows only unresolved problems.", body)
         self.assertIn("data-admin-timestamp", body)
@@ -861,8 +861,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)
         self.assertIn(b">Devices<", devices_body)
-        self.assertIn(b">Review <span", devices_body)
-        self.assertIn(b"aria-label='Review: 3'", devices_body)
+        self.assertNotIn(b"admin-review-link", devices_body)
         self.assertNotIn(b"needs-review-popover", devices_body)
         self.assertIn(b'data-device-sort="maps"', devices_body)
         self.assertIn(

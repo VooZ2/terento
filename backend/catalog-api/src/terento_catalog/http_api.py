@@ -39,7 +39,6 @@ from .admin import (
     _admin_region_display_name,
     _admin_region_identity,
     _map_statistics_summary,
-    _download_time_markup,
     _diagnostic_summary_by_identity,
     _normalise_github_issue_reference,
     hash_password,
@@ -211,7 +210,7 @@ class CatalogService:
         body = serialize_installation_policy(build_installation_policy(rows, updated_at))
         return body, installation_policy_etag(body), updated_at
 
-    def admin_providers(self, *, include_download_times: bool = False) -> dict[str, Any]:
+    def admin_providers(self) -> dict[str, Any]:
         rows = {str(row["provider_id"]): row for row in self.database.provider_rows()}
         providers: list[dict[str, Any]] = []
         for provider_id, definition in KNOWN_PROVIDER_DEFINITIONS.items():
@@ -220,10 +219,6 @@ class CatalogService:
         for provider_id, row in rows.items():
             if provider_id not in KNOWN_PROVIDER_DEFINITIONS:
                 providers.append(_provider_summary_payload(None, row))
-        timing_getter = getattr(self.database, "provider_download_times", None)
-        timings = timing_getter({"dateFrom": datetime.now(timezone.utc) - timedelta(days=30)}) if include_download_times and callable(timing_getter) else {}
-        for provider in providers:
-            provider["downloadTime"] = timings.get(provider["id"], {"averageSeconds": None, "sampleCount": 0, "populationCount": 0})
         providers.sort(key=lambda item: (str(item["name"]).casefold(), item["id"]))
         return {"schemaVersion": 1, "providers": providers}
 
@@ -418,7 +413,7 @@ class CatalogService:
             raise MapEventValidationError("invalid_period_filter")
         filter_query = {
             key: value for key, value in query.items()
-            if key not in {"detailPage", "detailPageSize", "period"}
+            if key not in {"detailPage", "detailPageSize", "period", "timeZone"}
         }
         if periods[period] is not None:
             filter_query["dateFrom"] = (
@@ -437,6 +432,15 @@ class CatalogService:
         if detail_page_size not in {25, 50}:
             raise MapEventValidationError("invalid_detail_page_size")
         rows = self.database.map_statistics(population_filters)
+        all_time_filters = {
+            key: value for key, value in population_filters.items()
+            if key not in {"dateFrom", "dateTo"}
+        }
+        all_time_rows = (
+            rows
+            if all_time_filters == population_filters
+            else self.database.map_statistics(all_time_filters)
+        )
         rows = [
             {
                 **row,
@@ -467,11 +471,9 @@ class CatalogService:
         detail_total = len(detail_source_rows)
         detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
         detail_page = min(detail_page, detail_pages)
-        detail_rows = self.database.map_statistics(
-            filters,
-            limit=detail_page_size,
-            offset=(detail_page - 1) * detail_page_size,
-        )
+        detail_rows = detail_source_rows[
+            (detail_page - 1) * detail_page_size:detail_page * detail_page_size
+        ]
         detail_rows = [
             {
                 **row,
@@ -495,16 +497,25 @@ class CatalogService:
             for row in detail_rows
         ]
         linkage = self.database.map_statistics_linkage(population_filters)
-        timings = self.database.provider_download_times(population_filters) if callable(getattr(self.database, "provider_download_times", None)) else {}
-        timing_ids = set(timings) | {str(r.get("provider_id")) for r in rows} | set(KNOWN_PROVIDER_DEFINITIONS)
+        time_zone = _admin_time_zone(query.get("timeZone"))
+        trend_reader = getattr(self.database, "map_statistics_trend", None)
+        trend, bucket = (
+            trend_reader(
+                population_filters, period=period, time_zone=time_zone,
+            )
+            if callable(trend_reader)
+            else ([], {"24h": "hour", "7d": "day", "30d": "day", "all": "month"}[period])
+        )
         payload = {
             "schemaVersion": 1,
             "filters": {**query, "period": period},
             "generatedAt": datetime.now(timezone.utc),
             "rows": rows,
             "summary": _map_statistics_summary(rows),
-            "downloadTimes": timings,
-            "downloadTimeMarkup": {provider: _download_time_markup(timings.get(provider), "Selected statistics period") for provider in timing_ids},
+            "allTimeSummary": _map_statistics_summary(all_time_rows),
+            "trend": trend,
+            "bucket": bucket,
+            "timeZone": time_zone,
             "detailRows": detail_rows,
             "detailTotal": detail_total,
             "detailPage": detail_page,
@@ -542,8 +553,6 @@ class CatalogService:
             "lastObservedAt": None,
             "trend": [],
         }
-        coverage_fn = getattr(self.database, "admin_overview_device_install_coverage", None)
-        device_coverage = coverage_fn() if callable(coverage_fn) else {}
         return {
             "schemaVersion": 1,
             "period": period,
@@ -556,7 +565,6 @@ class CatalogService:
                 since, period=period, time_zone=time_zone,
             ),
             "compatibility": self.database.admin_overview_snapshot(since),
-            "deviceCoverage": device_coverage,
             "downloads": downloads,
             "providers": self.admin_providers().get("providers", []),
             "system": self.operational_health(),
@@ -1290,7 +1298,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path in {"/admin/providers", "/admin/providers/"}:
                 try:
-                    body = providers_page(service.admin_providers(include_download_times=True), session, csrf_token)
+                    body = providers_page(service.admin_providers(), session, csrf_token)
                 except Exception:
                     LOGGER.exception("admin provider page failed")
                     self._send_json(

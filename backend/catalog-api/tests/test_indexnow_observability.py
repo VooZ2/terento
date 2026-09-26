@@ -132,7 +132,7 @@ class IndexNowObservationTests(unittest.TestCase):
         self.assertNotIn("keyLocation", serialized)
         self.assertNotIn("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", serialized)
 
-    def test_card_collapsed_summary_contains_only_title_and_health_badge(self) -> None:
+    def test_card_exposes_actionable_status_and_hides_technical_evidence(self) -> None:
         now = datetime.now(timezone.utc)
         for report, expected_status, expected_text in (
             (observation(), "HEALTHY", "Submitted"),
@@ -144,20 +144,22 @@ class IndexNowObservationTests(unittest.TestCase):
             card = next(item for item in cards if item["title"] == "IndexNow submissions")
             self.assertEqual(card["status"], expected_status)
             self.assertIn(expected_text, card["html"])
-            summary = card["html"].split("<summary>", 1)[1].split("</summary>", 1)[0]
-            self.assertIn("<h2>IndexNow submissions</h2>", summary)
-            self.assertEqual(summary.count("system-health-badge"), 1)
-            self.assertNotIn("health-issue", summary)
-            self.assertNotIn("Result:", summary)
-            self.assertNotIn("Last ", summary)
-            self.assertNotIn("Pending", summary)
+            visible = card["html"].split("<details class='admin-disclosure system-health-technical'>", 1)[0]
+            self.assertIn("<h2>IndexNow submissions</h2>", visible)
+            self.assertEqual(visible.count("system-health-badge"), 1)
+            self.assertIn("class='system-health-action'", visible)
+            self.assertIn("Last checked", visible)
+            self.assertNotIn("Result:", visible)
+            self.assertNotIn("Pending URLs", visible)
         cards, _, _ = _system_health_cards({"providers": [], "observations": [], "scheduler": None})
         card = next(item for item in cards if item["title"] == "IndexNow submissions")
         self.assertEqual(card["status"], "UNKNOWN")
-        summary = card["html"].split("<summary>", 1)[1].split("</summary>", 1)[0]
+        visible = card["html"].split("<details class='admin-disclosure system-health-technical'>", 1)[0]
         details = card["html"].split("<div class='disclosure-body'>", 1)[1].split("</div></details>", 1)[0]
-        self.assertIn("Not initialized", details)
-        self.assertNotIn("Not initialized", summary)
+        self.assertIn("No IndexNow production report has been retained.", visible)
+        self.assertNotIn("Pending URLs", visible)
+        self.assertIn("Result: Not initialized", details)
+        self.assertIn("Pending URLs", details)
         self.assertIn("Submission status only. This does not confirm search indexing.", card["html"])
 
     def test_pending_unknown_is_not_rendered_as_zero_and_missing_report_has_grace_period(self) -> None:

@@ -11,7 +11,7 @@ from typing import Any
 _OBSERVATION_FIELDS = {
     'generatedAt', 'checked_at', 'checkedAt', 'lastHealthCheck', 'lastDownloadTest',
     'heartbeat_at', 'heartbeatAt', 'last_heartbeat_at', 'csrf_token', 'csrfToken',
-    'requestId', 'nonce', 'downloadTimeMarkup', 'lastObservedAt', 'lastSuccessfulObservedAt',
+    'requestId', 'nonce', 'lastObservedAt', 'lastSuccessfulObservedAt',
 }
 _CHECK_CONTEXTS = {'healthHistory', 'health', 'observations', 'weekly', 'scheduler', 'issueSync', 'githubSync'}
 
@@ -64,6 +64,6 @@ def section_revisions(sections: dict[str, Any]) -> dict[str, str]:
 
 def statistics_revisions(payload: dict[str, Any]) -> dict[str, str]:
     return section_revisions({
-        'statistics': {key: payload.get(key) for key in ('rows', 'summary', 'linkage', 'downloadTimes')},
+        'statistics': {key: payload.get(key) for key in ('rows', 'summary', 'allTimeSummary', 'linkage')},
         'eventDetail': {key: payload.get(key) for key in ('detailRows', 'detailTotal', 'detailPage', 'detailPageSize')},
     })

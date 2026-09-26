@@ -1,14 +1,10 @@
-"""Approved Admin plan regressions: population, revision and duration boundaries."""
+"""Approved Admin plan regressions: population and revision boundaries."""
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from html.parser import HTMLParser
-import json
-import os
-from pathlib import Path
-import subprocess
 import unittest
 
-from terento_catalog.admin import (_download_time_markup, _overview_map_activity_row,
+from terento_catalog.admin import (_overview_map_activity_row,
     dashboard_page, overview_page, providers_page, provider_detail_page, system_health_page,
     map_statistics_page, devices_page, _diagnostic_summary_by_identity)
 from terento_catalog import admin
@@ -28,17 +24,6 @@ class CaptureDB(Database):
 
 
 class AdminPlanTests(unittest.TestCase):
-    def test_duration_format_and_missing(self):
-        for seconds, expected in [(277, '04:37'), (8, '00:08'), (3912, '65:12'), (0, '00:00'), (59.5, '01:00'), (None, '—'), (-1, '—')]:
-            with self.subTest(seconds=seconds):
-                markup = _download_time_markup({'averageSeconds': seconds, 'sampleCount': 3, 'populationCount': 8}, 'Last 30 days')
-                self.assertIn('>' + expected + '<small', markup)
-                self.assertIn('3 measured of 8', markup)
-                self.assertIn('3 downloads</small>', markup)
-                self.assertNotIn('n=3', markup)
-                self.assertIn("tabindex='0'", markup)
-                self.assertIn('Processing minus Started', markup)
-
     def test_revisions_ignore_observation_noise_and_order(self):
         a = {'rows': [{'operation_id':'op', 'map_result_index':0, 'event_id':'a', 'occurred_at':'2026-09-17', 'result':'FAILED'}], 'generatedAt':'a', 'health': {'checked_at':'a', 'status':'HEALTHY'}}
         b = {'rows': [dict(a['rows'][0], event_id='b'), a['rows'][0]], 'generatedAt':'b', 'health': {'checked_at':'b', 'status':'HEALTHY'}}
@@ -101,6 +86,19 @@ class AdminPlanTests(unittest.TestCase):
                 self.assertIn('map-activity-' + tone, markup)
                 self.assertIn('<svg', markup)
                 self.assertNotIn('animation:', markup)
+                self.assertNotIn('<a ', markup)
+
+    def test_activity_lifecycle_context_is_plain_text(self):
+        markup = _overview_map_activity_row({
+            'event_type': 'DOWNLOAD_SUCCEEDED',
+            'provider_id': 'freizeitkarte',
+            'lifecycle': [
+                {'type': 'DOWNLOAD_STARTED', 'at': '2026-09-25T10:00:00Z'},
+                {'type': 'DOWNLOAD_SUCCEEDED', 'at': '2026-09-25T10:01:00Z'},
+            ],
+        })
+        self.assertIn("<span class='download-context'>", markup)
+        self.assertNotIn("class='download-context' href=", markup)
 
     def test_more_than_500_diagnostics_are_summarized_without_browser_history(self):
         events = [{'operation_id':f'op-{i}', 'map_result_index':0, 'canonical_device_model_id':'garmin',
@@ -142,7 +140,7 @@ class AdminPlanTests(unittest.TestCase):
             text = page.decode().split('</style>',1)[-1]
             headings = Headings(); headings.feed(text)
             for title in headings.titles:
-                if title == 'Long Authentic Provider Name': continue
+                if title in {'Long Authentic Provider Name', 'No map activity for this scope'}: continue
                 self.assertLessEqual(len([word for word in title.split() if word != 'by']), 3, title)
             for klass in ('eyebrow','section-kicker','detail-kicker'):
                 self.assertNotRegex(text, r'class=[\'\"][^\'\"]*\b'+klass+r'\b')
@@ -150,28 +148,5 @@ class AdminPlanTests(unittest.TestCase):
         self.assertIn(b'Keep login warning', pages[-2])
         self.assertIn(b'Long Authentic Provider Name', pages[3])
         self.assertNotIn(b'Compatibility evidence \xc2\xb7 details and activity', pages[0])
-
-    def test_timing_query_uses_full_phase_population_and_completion_filters(self):
-        db = CaptureDB('unused')
-        db.provider_download_times({'dateFrom':'2026-09-01','provider':'test','eventType':'INSTALL_FAILED','outcome':'FAILED'})
-        self.assertEqual(db.values, ['test','2026-09-01'])
-        self.assertNotIn('LIMIT', db.query)
-        self.assertIn('SELECT DISTINCT', db.query)
-        self.assertIn('count(*) = 3', db.query)
-        self.assertIn("e.component_kind, e.event_type, e.outcome, e.occurred_at", db.query)
-
-    @unittest.skipUnless(os.environ.get('TERENTO_PGLITE_MODULE'), 'Set TERENTO_PGLITE_MODULE for isolated PostgreSQL query execution')
-    def test_download_time_sql_on_isolated_postgresql(self):
-        db = CaptureDB('unused'); db.provider_download_times({'dateFrom':'2026-09-01','eventType':'INSTALL_FAILED'})
-        script = Path(__file__).with_name('admin_download_time_postgres.cjs')
-        result = subprocess.run(['node', str(script), os.environ['TERENTO_PGLITE_MODULE']], input=json.dumps({'query':db.query.replace('%s','$1'), 'values':db.values}), text=True, capture_output=True, check=True)
-        data = json.loads(result.stdout)
-        self.assertNotIn('custom', [r['provider_id'] for r in data])
-        main = next(r for r in data if r['provider_id']=='test')
-        self.assertEqual(int(main['sample_count']), 5)
-        self.assertAlmostEqual(float(main['average_seconds']), (8+277+3912+0+20)/5)
-        self.assertEqual(int(main['population_count']), 14)
-        other = next(r for r in data if r['provider_id']=='other')
-        self.assertEqual(float(other['average_seconds']), 7)
 
 if __name__ == '__main__': unittest.main()

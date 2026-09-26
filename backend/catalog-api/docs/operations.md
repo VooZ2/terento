@@ -134,9 +134,9 @@ startup and then at every UTC hour. It follows all public release pages for
 `VooZ2/terento` and aggregates only the current `download_count` values of
 `.dmg` and `.zip` assets. It stores one cumulative snapshot per hour in
 `github_download_snapshot`; a failed read leaves the previous snapshot intact.
-The Overview chart derives observed `.dmg`/`.zip` deltas for the selected
-period while its two total fields use the newest cumulative values. Historical
-rows without the population metadata retain nonnegative deltas as
+The Dashboard App downloads chart derives observed `.dmg`/`.zip` deltas for
+the selected period. Historical rows without the population metadata retain
+nonnegative deltas as
 legacy/unverified observations; confirmed counter or population discontinuity
 intervals remain unknown, and long gaps remain uncertain. No GitHub token,
 release metadata, or binary is stored.

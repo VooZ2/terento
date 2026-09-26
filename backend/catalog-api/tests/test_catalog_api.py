@@ -226,10 +226,7 @@ class CatalogAPITests(unittest.TestCase):
             service.map_statistics({"period": period, "dateFrom": stale_date})
             self.assertEqual(len(database.map_statistic_filters), 2)
             self.assertNotEqual(database.map_statistic_filters[0]["dateFrom"], stale_date)
-            self.assertEqual(
-                database.map_statistic_filters[0]["dateFrom"],
-                database.map_statistic_filters[1]["dateFrom"],
-            )
+            self.assertNotIn("dateFrom", database.map_statistic_filters[1])
 
         database.map_statistic_filters.clear()
         service.map_statistics({"period": "all", "dateFrom": stale_date})
@@ -237,6 +234,41 @@ class CatalogAPITests(unittest.TestCase):
             database.map_statistic_filters[0]["dateFrom"].isoformat(),
             stale_date,
         )
+        self.assertNotIn("dateFrom", database.map_statistic_filters[1])
+
+    def test_map_statistics_period_changes_trend_but_not_scoped_all_time_summary(self):
+        class ScopedDatabase(FakeProviderDatabase):
+            def map_statistics(self, filters):
+                self.map_statistic_filters.append(dict(filters))
+                multiplier = 2 if filters.get("provider") == "b" else 1
+                count = (1 if filters.get("dateFrom") else 9) * multiplier
+                return [{
+                    "provider_id": filters.get("provider", "a"),
+                    "event_type": "INSTALL_SUCCEEDED",
+                    "outcome": "SUCCEEDED",
+                    "operation_count": count,
+                    "event_count": count,
+                }]
+
+            def map_statistics_trend(self, filters, *, period, time_zone):
+                count = {"24h": 1, "7d": 7, "30d": 30, "all": 90}[period]
+                if filters.get("provider") == "b":
+                    count *= 2
+                return ([{"bucket": period, "success_count": count}], "day")
+
+        database = ScopedDatabase()
+        service = CatalogService(database)
+        today = service.map_statistics({"period": "24h", "provider": "a"})
+        month = service.map_statistics({"period": "30d", "provider": "a"})
+        provider_b = service.map_statistics({"period": "24h", "provider": "b"})
+
+        self.assertNotEqual(today["trend"], month["trend"])
+        self.assertEqual(today["allTimeSummary"], month["allTimeSummary"])
+        self.assertEqual(today["allTimeSummary"]["completedInstalls"], 9)
+        self.assertEqual(provider_b["allTimeSummary"]["completedInstalls"], 18)
+        self.assertEqual(provider_b["trend"][0]["success_count"], 2)
+        for filters in database.map_statistic_filters:
+            self.assertIn(filters.get("provider"), {"a", "b"})
 
     def test_map_statistics_event_filters_only_change_detail_not_population_summary(self):
         class PopulationDatabase(FakeProviderDatabase):
@@ -249,14 +281,14 @@ class CatalogAPITests(unittest.TestCase):
                 {"event_type": "MAP_UPDATE_FAILED", "outcome": "FAILED", "event_count": 2, "operation_count": 2},
             ]
 
-            def map_statistics(self, filters, *, limit=None, offset=0):
+            def map_statistics(self, filters):
                 self.map_statistic_filters.append(dict(filters))
                 rows = list(self.rows)
                 if filters.get("eventType"):
                     rows = [row for row in rows if row["event_type"] == filters["eventType"]]
                 if filters.get("outcome"):
                     rows = [row for row in rows if row["outcome"] == filters["outcome"]]
-                return rows[offset: offset + limit] if limit is not None else rows
+                return rows
 
         database = PopulationDatabase()
         payload = CatalogService(database).map_statistics({
@@ -270,8 +302,31 @@ class CatalogAPITests(unittest.TestCase):
         self.assertEqual(payload["detailTotal"], 1)
         self.assertNotIn("eventType", database.map_statistic_filters[0])
         self.assertEqual(database.map_statistic_filters[1]["eventType"], "INSTALL_FAILED")
-        self.assertEqual(database.map_statistic_filters[2]["eventType"], "INSTALL_FAILED")
         self.assertEqual(database.map_statistic_filters[0]["provider"], "freizeitkarte")
+
+    def test_map_statistics_returns_the_filtered_trend_and_validated_time_zone(self):
+        class TrendDatabase(FakeProviderDatabase):
+            def __init__(self):
+                super().__init__()
+                self.trend_call = None
+
+            def map_statistics_trend(self, filters, *, period, time_zone):
+                self.trend_call = (dict(filters), period, time_zone)
+                return ([{"bucket": "2026-09-18T00:00:00Z", "success_count": 2}], "day")
+
+        database = TrendDatabase()
+        payload = CatalogService(database).map_statistics({
+            "period": "7d", "provider": "freizeitkarte",
+            "eventType": "INSTALL_FAILED", "timeZone": "Europe/Vilnius",
+        })
+        filters, period, time_zone = database.trend_call
+        self.assertEqual(period, "7d")
+        self.assertEqual(time_zone, "Europe/Vilnius")
+        self.assertEqual(filters["provider"], "freizeitkarte")
+        self.assertNotIn("eventType", filters)
+        self.assertNotIn("timeZone", filters)
+        self.assertEqual(payload["bucket"], "day")
+        self.assertEqual(payload["trend"][0]["success_count"], 2)
 
     def test_admin_pages_require_login_and_render_provider_statistics_views(self):
         database = FakeProviderDatabase()
@@ -310,9 +365,9 @@ class CatalogAPITests(unittest.TestCase):
 
             statistics, statistics_body = self._request(server, "GET", "/admin/map-statistics", headers={"Cookie": cookie})
             self.assertEqual(statistics.status, 200)
-            self.assertIn(b"Map statistics", statistics_body)
+            self.assertIn(b">Maps</h1>", statistics_body)
             self.assertIn(b"7 days", statistics_body)
-            self.assertIn(b"id='map-statistics-installs-title'>Installs", statistics_body)
+            self.assertIn(b"id='map-statistics-installs-title'>Map installs", statistics_body)
         finally:
             server.shutdown()
             server.server_close()

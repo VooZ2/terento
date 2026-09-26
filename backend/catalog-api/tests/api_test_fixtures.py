@@ -126,7 +126,7 @@ class FakeProviderDatabase:
             "health_history": [],
         }
 
-    def map_statistics(self, filters, *, limit=None, offset=0):
+    def map_statistics(self, filters):
         self.map_statistic_filters.append(dict(filters))
         return [{
             "provider_id": filters.get("provider", "freizeitkarte"),

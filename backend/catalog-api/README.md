@@ -300,8 +300,8 @@ downloads, stores, proxies, mirrors, or serves a provider map binary.
 The scheduler also reads the public `VooZ2/terento` GitHub Releases API at
 startup and once per UTC hour. It follows all release pages and aggregates only
 `.dmg` and `.zip` asset download counts. Migration 042 stores one cumulative
-hourly snapshot; the authenticated Overview renders the last 24 hourly deltas
-and all-time totals for each extension. GitHub failures leave the previous
+hourly snapshot; the authenticated Dashboard renders selected-period observed
+deltas and all-time totals for each extension. GitHub failures leave the previous
 snapshot intact, and no GitHub token, release metadata, or binary is stored.
 
 The reviewed OpenTopoMap adapter derives stable package identity from the
@@ -383,7 +383,7 @@ delay completion. System health reports errors and overdue checks. No GitHub tok
 or webhook is required. This is one-way closure synchronization; relink/remove a
 closed reference before investigating a manually reopened new problem. See [API operations](docs/api.md) for review actions and synchronization rules.
 
-Overview attention is independent of the statistics date filter. Visible admin
+Dashboard attention is independent of the statistics date filter. Visible admin
 pages check every minute and offer Refresh when data changes, protecting unsaved
 form edits.
 
@@ -408,13 +408,14 @@ and verify API health before enabling the site workflow's `INDEXNOW` report
 format. The observation contract rejects keys, key locations, authorization
 values, raw payloads/responses, exception text, and private paths.
 
-At phone widths (up to 700 px), admin navigation collapses into Menu with a review
-shortcut, Overview attention precedes statistics, and the existing tables become
-labelled records. Search remains visible; secondary device/installation filters
-and the full device sorter are under Filters and sorting. Primary controls and
-form typography are sized for touch. Diagnostic dialogs keep their close header
-visible during content scrolling. These presentation changes reuse existing
-endpoints and permissions.
+At narrow widths, Admin navigation collapses into one Menu column. Dashboard
+stacks Map downloads, Map installs, Needs attention, Activity, then App
+downloads. Existing tables reuse the labelled-record layout where needed;
+search remains visible and secondary device/installation filters and sorting
+stay under their existing disclosures. Primary controls remain touch sized,
+charts remain visible, and diagnostic dialogs keep their close header visible
+during content scrolling. These presentation changes reuse existing endpoints
+and permissions.
 
 Desktop admin tables fit their cards and wrap long values. Provider source
 details show complete URLs; campaign output wraps. Installation history uses
@@ -427,12 +428,12 @@ map results. Migration ordering and repeatability are tested against PostgreSQL.
 
 Admin attempts count retained map results, not batch/session IDs: a custom IMG
 plus OTM session contributes two attempts and two successes when both verify.
-The installation overview, identity table, watch counters and chart use this
+Installations, device evidence, watch counters and charts use this
 unit. Resolved failures stay in all-time attempt/failure totals; unstarted
 siblings do not become fabricated attempts. Immutable event IDs provide replay
 idempotency. Diagnostic review actions remain grouped by the original session.
 
-Overview keeps map events and compatibility results as separate streams and
+Dashboard keeps map events and compatibility results as separate streams and
 links them only at the independent map-result boundary: shared operation,
 provider and an exact/unambiguous package-region identity. One catalog event
 cannot suppress a custom result, a sibling map, or a different region. Provider
@@ -650,14 +651,15 @@ only unanimous reviewed specification facts for XML-matching variants.
 New acquisition phases are grouped in Recent activity with component/history;
 missing terminal receipt is explicit rather than treated as an active job.
 
-### Device identification review workspace
+### Model source review workspace
 
-`/admin/device-identification` lists models needing source decisions first and
-searches model names and imported codes. Separate text/icon badges show pending,
-approved, rejected and missing sources. A model detail explains missing XML/USB
-reference sources, compares the catalog model with source names, and links to
-other models with the same imported code, including each link's review state.
-Shared codes and approved sources are not presented as exact-match results.
+`/admin/device-identification` is visibly named `Model source review`. It lists
+models needing source decisions first and searches model names and imported
+codes. Each decision follows Source reported, Match to, Other models using this
+code when relevant, Confirm match, then Technical details. Raw identifiers,
+source revision, policy details, missing-source inventory, and decision history
+remain secondary. Shared codes and approved sources are not presented as exact
+matches.
 
 Reviews require an explicit decision and reason; no approval is preselected.
 The first pending code opens automatically, with watch/USB codes before retail
