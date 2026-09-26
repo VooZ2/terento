@@ -8,6 +8,27 @@ statistics populations and formulas are canonical in
 [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md).
 A build number is not an API schema version.
 
+## Beta.15 build 36 UI and update-metadata correction
+
+Compared with beta.14 build 35, beta.15 build 36 forwards the current connected
+device authorization into the map engine, keeps Install disabled with a visible
+reason until authorization and the map scan are ready, and surfaces an operation
+failure if authorization is unavailable. It also accepts the existing bounded
+plain-text release summary while keeping the public summary within the beta.14
+client's 240-character limit. There are no diagnostic payload, API schema,
+catalog route, or backend runtime changes in this release.
+
+Published tag `v1.0.0-beta.15-build36` points to packaged source
+`facaa07a8ca6a4fb687f3fefc889ff49ee4f730e`. The release pipeline passed all
+83 regression runners, live catalog validation, Developer ID signing, Apple
+notarization, stapling and ZIP/DMG Gatekeeper and launch checks. Tag CI
+[36237324252](https://github.com/VooZ2/terento/actions/runs/36237324252) passed
+the native-to-API, PostgreSQL, app/native, site and release contracts. Freshly
+downloaded published assets matched the approved checksums. The owner confirmed
+the corrected Install and Update behavior with the local candidate on a Garmin
+fēnix 8 47 mm; this remains owner-reported hardware evidence for that model and
+behavior.
+
 ## Beta.14 build 35 authorization delta
 
 Compared with beta.13 build 34, beta.14 build 35 refreshes schema-3

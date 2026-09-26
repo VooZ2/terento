@@ -105,12 +105,13 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.14 (build 35)**. The macOS app is notarized
+The latest public release is **beta.15 (build 36)**. The macOS app is notarized
 and does not require Homebrew.
 
-Beta.14 checks installation and Update authorization against the Garmin catalog,
-keeps unknown or ambiguous devices pending, and improves per-map diagnostics
-correlation without treating an authorization refusal as a failed installation.
+Beta.15 restores the Install action on the Ready to install screen, explains
+when authorization or the device map scan is still pending, and fixes About's
+Update check rejecting a valid release summary. The authorization and map-file
+safety boundaries introduced in beta.14 remain in force.
 Confirmed removal of valid external maps remains available after an app
 reinstall or on another Mac; automatic Update still requires durable local
 ownership. Uncertain failed-install cleanup keeps recovery information and

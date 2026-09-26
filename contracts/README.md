@@ -57,7 +57,7 @@ pending; Edge is not permanently blacklisted and a future catalogued Edge
 model with Maps=Yes can be authorized by the same matching rules. Public
 compatibility remains a separate evidence-gated claim. The endpoint returned
 HTTP 200 with schemaVersion 3 and policyVersion 3 in the 2026-09-24 read-only
-check. Native enforcement is now published in beta.14 build 35; backend
+check. Native enforcement remains published in beta.15 build 36; backend
 availability alone was not its release gate. The valid fixture uses a synthetic Maps=No model; it is not a
 live catalog snapshot.
 
@@ -74,7 +74,7 @@ or claim complete telemetry coverage.
 
 ## Responses and client compatibility
 
-The current beta.14 client requests `/maps/catalog-v4.json`. The legacy route
+The current beta.15 client requests `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
 Older clients can reject a complete snapshot containing an unknown installable
 provider, so these projections must remain separate. v4 additionally exposes

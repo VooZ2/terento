@@ -53,8 +53,10 @@ identity matches an approved policy result and the map scan is ready. While
 authorization is pending or unavailable, the review screen explains the reason
 and keeps Install disabled. A policy failure at operation start must surface a
 failure instead of leaving an apparently successful button press with no action.
-This review/engine synchronization correction is staged in the beta.15 build
-36 candidate; it is not in the published beta.14 artifact.
+This review/engine synchronization correction is published in beta.15 build 36.
+The owner confirmed the Install and Update behavior with the local release
+candidate on a Garmin fēnix 8 47 mm before publication; that is owner-reported
+hardware evidence for the tested model and behavior.
 
 `installation-policy.schema.json` defines the response shape. The backend
 code serves a public-read, metadata-only `GET /devices/installation-policy.json`
