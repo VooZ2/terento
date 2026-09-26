@@ -244,3 +244,6 @@ must stay excluded from indexing; robots.txt alone is not access control.
 
 The catalog deployment preflight accepts standard CRLF and LF HTTP header
 endings when checking the required `Cache-Control: no-store` policy directive.
+Live page comparisons restore Cloudflare's observed protected email links and
+visible email spans only when the decoded values occur in the expected source;
+the complete restored page must still match exactly.

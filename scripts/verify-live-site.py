@@ -17,7 +17,7 @@ SITEMAP_PATH = ROOT / "site" / "sitemap.xml"
 
 
 def page_matches(expected: bytes, live: bytes) -> bool:
-    """Compare exact HTML, undoing only the observed Cloudflare mailto rewrite.
+    """Compare exact HTML, undoing only observed Cloudflare email rewrites.
 
     Every decoded href must already occur in the expected source. Other edge
     injections, changed content and unexpected decoder shapes still fail closed.
@@ -43,13 +43,30 @@ def page_matches(expected: bytes, live: bytes) -> bool:
         rb'href="/cdn-cgi/l/email-protection#([0-9a-fA-F]+)"',
         restore_href, live,
     )
+    def restore_text(match: re.Match[bytes]) -> bytes:
+        nonlocal restored
+        try:
+            encoded = bytes.fromhex(match.group(1).decode("ascii"))
+            decoded = bytes(value ^ encoded[0] for value in encoded[1:])
+        except (ValueError, IndexError):
+            return match.group(0)
+        if not decoded or decoded not in expected:
+            return match.group(0)
+        restored += 1
+        return decoded
+
+    normalized = re.sub(
+        rb'<span class="__cf_email__" data-cfemail="([0-9a-fA-F]+)">'
+        rb'\[email&#160;protected\]</span>', restore_text, normalized,
+    )
     if not restored:
         return False
-    # Match the exact observed same-origin decoder immediately before </body>.
+    # Match the observed decoder before </body> or the shell translation data.
     # Do not discard arbitrary script tags or normalize other HTML differences.
     normalized, decoder_count = re.subn(
         rb'<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/'
-        rb'cloudflare-static/email-decode\.min\.js"></script>(?=</body>)',
+        rb'cloudflare-static/email-decode\.min\.js"></script>'
+        rb'(?=</body>|<script type="application/json" id="shell-translations">)',
         b'', normalized,
     )
     return decoder_count == 1 and normalized == expected
