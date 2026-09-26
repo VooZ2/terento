@@ -145,7 +145,7 @@ One cumulative observation of public GitHub release asset downloads for a UTC
 hour. The scheduler upserts the current hour so retries do not create duplicate
 rows. The table stores aggregate counters and a compact release/asset
 population identity; it does not retain release metadata, asset names,
-response bodies, or binaries. The Overview derives `.dmg` and `.zip` increases
+response bodies, or binaries. The Dashboard derives `.dmg` and `.zip` increases
 only between valid consecutive observations. The first observation is a
 baseline; unchanged counters are observed zero; nonnegative deltas from rows
 with missing population metadata remain legacy/unverified observations; counter

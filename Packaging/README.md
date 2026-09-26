@@ -131,7 +131,7 @@ Do not use a public-labelled Release artifact for local installation tests.
 Both privacy-minimised diagnostic streams carry this release label. The API
 derives and stores `is_local_test=true`; the caller cannot override the
 classification. Local events are shown only in authenticated `/admin/test-data`
-and are excluded from Overview, Installations, Maps statistics, compatibility
+and are excluded from Dashboard, Installations, Maps statistics, compatibility
 counts and public compatibility evidence. This is a logical partition in the
 existing API/database, not a separate telemetry host. Raw local diagnostic
 logs remain local and are not uploaded by this mechanism.

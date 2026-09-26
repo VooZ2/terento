@@ -48,7 +48,6 @@ from terento_catalog.admin import (
     _provider_package_row,
     _provider_detail_script,
     format_timestamp,
-    _providers_list_script,
     _status_badge,
     _table_filter_state_script,
     campaign_links_page,
@@ -274,7 +273,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "freshness": _admin_freshness_script(),
             "mobile": _admin_mobile_script(),
             "campaign-links": _campaign_links_script(),
-            "providers": _providers_list_script(),
             "provider-detail": _provider_detail_script(),
             "map-statistics": _map_statistics_script(),
             "overview-period": _overview_period_script(),
@@ -310,86 +308,24 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("<strong class='admin-error-counter'>0</strong>", zero_link)
 
     def test_map_statistics_async_error_counters_follow_zero_positive_unknown_sequence(self):
-        harness = r"""
-        const assert = require('node:assert/strict');
-        const nodes = {};
-        const makeNode = () => ({
-          value: '', textContent: '', innerHTML: '', hidden: false, disabled: false,
-          classList: {names: new Set(), toggle(name, force) {
-            if (force) this.names.add(name); else this.names.delete(name);
-          }},
-          addEventListener() {}, querySelector() { return null; }
-        });
-        const node = (selector) => {
-          const stat = selector.match(/^\[data-stat="([^"]+)"\]$/);
-          if (stat) return nodes[stat[1]] ||= makeNode();
-          if (selector === '#map-statistics-range') return nodes.range ||= makeNode();
-          if (selector === '#map-statistics-provider') return nodes.provider ||= makeNode();
-          if (selector === '#map-statistics-map') return nodes.map ||= makeNode();
-          if (selector === '#map-statistics-region') return nodes.region ||= makeNode();
-          if (selector === '#map-statistics-event') return nodes.event ||= makeNode();
-          if (selector === '#map-statistics-outcome') return nodes.outcome ||= makeNode();
-          if (selector === '#map-statistics-status') return nodes.status ||= makeNode();
-          if (['#map-rows', '#top-region-rows', '#all-map-rows', '#all-maps-page',
-               '#all-maps-prev', '#all-maps-next', '#map-statistics-rows',
-               '#provider-statistic-rows'].includes(selector)) {
-            return nodes[selector] ||= makeNode();
-          }
-          return null;
-        };
-        global.document = {querySelector: node, querySelectorAll: () => []};
-        global.window = {
-          terentoAdminProviders: [], terentoMapStatisticsFilters: {},
-          addEventListener() {}
-        };
-        const script = process.argv[1];
-        for (const value of [0, 1, 0, null]) {
-          window.terentoMapStatistics = {
-            rows: [],
-            summary: {
-              hasEventData: true,
-              failedDownloads: value, failedInstalls: value, failedMapUpdates: value,
-              completedDownloads: 0, completedInstalls: 0, completedMapUpdates: 0,
-              downloadSuccessRate: null, installSuccessRate: null, mapUpdateSuccessRate: null
-            }
-          };
-          eval(script);
-          for (const key of ['failedDownloads', 'failedInstalls', 'failedMapUpdates']) {
-            const expected = value === null ? '—' : String(value);
-            assert.equal(nodes[key].textContent, expected, key);
-            assert.equal(nodes[key].classList.names.has('is-positive'), value !== null && value > 0, key);
-          }
-        }
-        """
-        self._run_node(harness, _map_statistics_script())
+        rows = [{"provider_id": "p", "event_type": "INSTALL_FAILED", "outcome": "FAILED", "operation_count": 1}]
+        body = map_statistics_page({"rows": rows, "summary": _map_statistics_summary(rows)}, [{"id": "p", "name": "Provider"}], {"username": "operator"}, "csrf").decode()
+        self.assertIn("class='admin-error-counter is-positive' data-stat='failedInstalls'>1</strong>", body)
+        self.assertNotIn("/admin/map-statistics.json", _map_statistics_script())
+        self.assertNotIn("setFailed(", _map_statistics_script())
 
     def test_visual_consistency_uses_one_popularity_renderer_and_semantic_alignment(self):
         script = _map_statistics_script()
         self.assertEqual(script.count("const mapRow ="), 1)
         self.assertIn('return `<tr class="popular-map-row">', script)
-        self.assertIn("popular-map-name-content", script)
-        self.assertIn("popular-map-detail", script)
-        self.assertIn("popular-map-count-label", script)
-        self.assertIn("mapRow(item, {includeProvider: true})", script)
-        self.assertIn("matchedMaps.slice((allMapsPage - 1) * 10", script)
-        self.assertIn("${mapLink}<small class=\"popular-map-detail\">", script)
-        self.assertNotIn("<strong>${mapLink}</strong>", script)
-        self.assertIn(".popular-map-name-content{display:grid;", ADMIN_STYLES)
-        self.assertIn(".popular-map-detail{display:block;", ADMIN_STYLES)
-        self.assertNotIn("#top-region-rows", ADMIN_STYLES)
-        self.assertNotIn("popular-maps-table td:last-child{text-align", ADMIN_STYLES)
-        self.assertNotIn("diagnostic-list-table th:last-child", ADMIN_STYLES)
-        for selector in (
-            ".admin-table th.column-number,.admin-table td.column-number",
-            ".admin-table th.column-status,.admin-table td.column-status",
-            ".admin-table th.column-date,.admin-table td.column-date",
-            ".admin-table th.column-number>button",
-            ".admin-table th.column-status>button",
-            ".admin-table th.column-date>button",
-        ):
-            self.assertIn(selector, ADMIN_STYLES)
+        self.assertIn("map-statistics-ranking", inspect.getsource(map_statistics_page))
+        self.assertNotIn("popularityViews", script)
+        self.assertNotIn("top-region-rows", script)
+        self.assertIn(".admin-table th.column-number,.admin-table td.column-number", ADMIN_STYLES)
+        self.assertIn("text-align:right", ADMIN_STYLES)
+        self.assertIn(".admin-table th.column-status,.admin-table td.column-status{text-align:left}", ADMIN_STYLES)
 
-    def test_overview_installations_and_device_detail_share_kpi_hierarchy(self):
+    def test_overview_uses_selected_period_charts_and_installations_prioritize_errors(self):
         overview = overview_page(
             {
                 "period": "24h",
@@ -404,40 +340,21 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                     "allTimeDownloadSuccessRate": 75,
                     "recentActivity": [], "trend": [],
                 },
-                "deviceCoverage": {
-                    "successfulModelCount": 2, "eligibleModelCount": 5,
-                    "coverageRate": 40,
-                },
                 "compatibility": {"hasData": True, "allTimeOpenErrorCount": 0},
                 "providers": [{"id": "freizeitkarte", "health": "HEALTHY"}],
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        overview_panel = overview.split(
-            "class='map-statistics-kpi-panel provider-card admin-kpi-panel overview-kpi-panel'",
-            1,
-        )[1].split("\n        </section>", 1)[0]
-        self.assertEqual(overview_panel.count("class='map-statistics-kpi-value "), 8)
-        self.assertEqual(
-            overview_panel.count(
-                "<section class='map-statistics-kpi-group overview-kpi-group"
-            ),
-            3,
-        )
-        self.assertIn(">Installs</h2>", overview_panel)
-        self.assertIn(">Downloads</h2>", overview_panel)
-        self.assertIn(">Model coverage</h2>", overview_panel)
-        self.assertIn("admin-error-counter is-positive", overview_panel)
-        self.assertIn("<span>Successful</span><strong>3</strong>", overview_panel)
-        self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>1</strong>", overview_panel)
-        self.assertIn("<span>Map-capable models</span><strong><bdi dir='ltr'>2 / 5</bdi></strong>", overview_panel)
-        self.assertIn("<span>Coverage</span><strong>40%</strong>", overview_panel)
-        self.assertNotIn("support", overview_panel.casefold())
-        self.assertNotIn("<span>Open errors</span>", overview_panel)
-        self.assertLess(
-            overview.index("overview-attention-title"),
-            overview.index("overview-kpi-panel"),
-        )
+        self.assertNotIn("overview-kpi-panel", overview)
+        self.assertNotIn("Model coverage", overview)
+        self.assertIn("overview-download-trend-title", overview)
+        self.assertIn("overview-trend-title", overview)
+        self.assertEqual(overview.count("Trend data is unavailable for this period."), 1)
+        main = overview.split("id='main-content'", 1)[1]
+        self.assertLess(main.index("overview-primary-grid"), main.index("overview-attention-title"))
+        self.assertLess(main.index("overview-attention-title"), main.index("overview-activity-title"))
+        self.assertIn("overview-composition-grid", main)
+        self.assertNotIn("overview-tertiary-grid", main)
 
         installations = dashboard_page(
             [{
@@ -476,6 +393,54 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("<span>Open errors</span>", detail_panel)
         self.assertIn("<span>Last activity</span><strong>—</strong>", detail_panel)
         self.assertIn(".admin-kpi-panel.model-statistics .timestamp-metric>strong", detail)
+        self.assertIn("class='model-evidence-grid'", detail)
+        self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", detail)
+
+    def test_overview_period_changes_chart_without_changing_all_time_badges(self):
+        def render(period, period_count):
+            return overview_page(
+                {
+                    "period": period,
+                    "data": {
+                        "hasData": True,
+                        "completedInstallCount": period_count,
+                        "failedInstallCount": 0,
+                        "completedDownloadCount": period_count,
+                        "failedDownloadCount": 0,
+                        "allTimeSuccessCount": 90,
+                        "allTimeFailedCount": 10,
+                        "allTimeInstallSuccessRate": 90,
+                        "allTimeCompletedDownloadCount": 180,
+                        "allTimeFailedDownloadCount": 20,
+                        "allTimeDownloadSuccessRate": 90,
+                        "recentActivity": [],
+                        "trend": [{
+                            "bucket": "2026-09-01T00:00:00Z",
+                            "success_count": period_count,
+                            "failed_count": 0,
+                            "download_success_count": period_count,
+                            "download_failed_count": 0,
+                        }],
+                        "bucket": "day",
+                    },
+                    "compatibility": {}, "providers": [],
+                },
+                {"username": "operator"}, "csrf",
+            ).decode()
+
+        day = render("24h", 1)
+        month = render("30d", 30)
+        for body in (day, month):
+            self.assertIn("aria-label='All-time installation totals'", body)
+            self.assertEqual(body.count("title='All time'"), 6)
+            self.assertNotIn("overview-map-total-scope", body)
+            self.assertIn("<strong>90</strong><small>Successful</small>", body)
+            self.assertIn("<strong>180</strong><small>Successful</small>", body)
+            self.assertIn("href='/admin/map-statistics?period=all'", body)
+        self.assertNotEqual(
+            day.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0],
+            month.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0],
+        )
 
     def test_local_test_data_page_uses_shared_admin_layout(self):
         body = local_test_data_page(
@@ -601,7 +566,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 "attention": [{"model": "Old unresolved watch", "open_error": True,
                     "has_failed": True, "last_occurred_at": "2026-01-01T00:00:00Z"}]},
         }, {"username": "operator"}, "csrf").decode()
-        self.assertIn("Old unresolved watch", body)
+        self.assertIn("Installation problems", body)
+        self.assertIn("Installation problems · 12", body)
+        self.assertNotIn("12 pending", body)
         self.assertIn("Needs attention</h2>", body)
         self.assertNotIn("No issues need attention", body)
         self.assertNotIn("attention-shortcuts", body)
@@ -627,32 +594,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("('TESTED', 'SUPPORTED', 'VERIFIED')", review[0])
         activity = next(args for args in queries if "AS model_key" in args[0])
         self.assertEqual(activity[1], (since, 5))
-
-    def test_overview_device_coverage_uses_exact_active_stored_maps_rows(self):
-        from unittest.mock import MagicMock
-        connection = MagicMock()
-        connection.execute.return_value.fetchone.return_value = {
-            "eligible_model_count": 5,
-            "successful_model_count": 2,
-        }
-        database = Database("unused")
-        database.connection = MagicMock()
-        database.connection.return_value.__enter__.return_value = connection
-
-        coverage = database.admin_overview_device_install_coverage()
-
-        self.assertEqual(coverage, {
-            "successfulModelCount": 2,
-            "eligibleModelCount": 5,
-            "coverageRate": 40,
-        })
-        query = connection.execute.call_args.args[0]
-        self.assertIn("FROM device_model AS dm", query)
-        self.assertIn("active IS TRUE", query)
-        self.assertIn("map_capable IS TRUE", query)
-        self.assertIn("compatibility_model_statistics", query)
-        self.assertIn("successful_install_count", query)
-        self.assertNotIn("classified_results", query)
 
     def test_overview_model_activity_keeps_resolved_failures_in_historical_counts(self):
         source = inspect.getsource(Database.admin_overview_snapshot)
@@ -776,8 +717,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "csrf",
         ).decode()
         self.assertIn("<h1>Dashboard</h1>", body)
-        self.assertIn("<span>Successful</span><strong>—</strong>", body)
-        self.assertIn("<span>Failed</span><strong class='admin-error-counter'>—</strong>", body)
+        self.assertIn("<strong>—</strong><small>Successful</small>", body)
+        self.assertIn("<strong class='admin-error-counter'>—</strong><small>Failed</small>", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -845,22 +786,26 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Install failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
-        self.assertIn("<span>Successful</span><strong>3</strong>", body)
-        self.assertIn("<span>Success rate</span><strong>75%</strong>", body)
-        self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>1</strong>", body)
-        self.assertIn("<span>Successful</span><strong>2</strong>", body)
-        self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
-        self.assertIn("/admin/map-statistics?period=all", body)
+        self.assertIn("aria-label='All-time installation totals'", body)
+        self.assertNotIn("overview-map-total-scope", body)
+        self.assertEqual(body.count("title='All time'"), 6)
+        self.assertIn("aria-label='Successful, all time: 3'", body)
+        self.assertIn("aria-label='Failed, all time: 1'", body)
+        self.assertIn("aria-label='Success rate, all time: 75%'", body)
+        self.assertIn("<strong>3</strong><small>Successful</small>", body)
+        self.assertIn("<strong>75%</strong><small>Success rate</small>", body)
+        self.assertIn("<strong>2</strong><small>Successful</small>", body)
+        self.assertIn("<strong>66.7%</strong><small>Success rate</small>", body)
         self.assertIn("/admin/map-statistics?period=7d", body)
-        self.assertNotIn("/admin/installations", body.split("<section class='map-statistics-kpi-panel", 1)[1].split("</section>", 1)[0])
-        self.assertIn("eventType=DOWNLOAD_SUCCEEDED", body)
-        self.assertIn("eventType=DOWNLOAD_FAILED", body)
         self.assertIn("overview-chart-success", body)
+        self.assertIn("overview-chart-update", body)
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
         self.assertIn("<h2 id='overview-activity-title'>Activity</h2>", body)
-        self.assertIn("Downloads</h2>", body)
-        self.assertIn("overview-download-panel", body)
+        self.assertIn("Map downloads</h2>", body)
+        self.assertNotIn("<section class='overview-panel overview-download-panel'", body)
+        self.assertNotIn("<small>Updates</small>", body)
+        self.assertNotIn("Device report unavailable", body)
         self.assertNotIn("Failures by reason", body)
         self.assertNotIn("Pending metric definition", body)
         self.assertNotIn("<span>Evidence success</span>", body)
@@ -904,9 +849,34 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertNotIn("Recent compatibility activity", body)
         self.assertIn("Custom .img", body)
-        self.assertIn("Reported device: fēnix 7 Pro", body)
+        self.assertIn("overview-activity-device'>fēnix 7 Pro</span>", body)
+        self.assertNotIn("Reported device:", body)
         self.assertNotIn("No map telemetry in this period", body)
         self.assertNotIn("No map activity in this period", body)
+
+    def test_overview_activity_reuses_provider_display_name(self):
+        body = overview_page(
+            {
+                "period": "24h",
+                "data": {
+                    "hasData": True,
+                    "recentActivity": [{
+                        "provider_id": "opentopomap",
+                        "provider_name": "OpenTopoMap",
+                        "event_type": "INSTALL_SUCCEEDED",
+                        "outcome": "SUCCEEDED",
+                        "display_name": "Lithuania",
+                        "occurred_at": "2026-09-04T08:00:00+00:00",
+                    }],
+                    "attention": [], "trend": [], "bucket": "hour",
+                },
+                "compatibility": {"hasData": False, "recentActivity": []},
+                "providers": [],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn("<span>Lithuania · OpenTopoMap</span>", body)
+        self.assertNotIn("Device report unavailable", body)
 
     def test_overview_presents_model_activity_and_exact_period_vocabulary(self):
         body = overview_page(
@@ -933,7 +903,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("fēnix 8 · 47 mm, AMOLED", body)
         self.assertNotIn("New / review-required devices", body)
         self.assertIn("Needs attention", body)
-        self.assertIn("Review required", body)
+        self.assertIn("Publication review", body)
         self.assertIn("Last 24 hours", body)
         self.assertIn("<div class='overview-primary-grid'>", body)
         self.assertIn("overview-activity-panel", body)
@@ -1080,97 +1050,31 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
     def test_admin_map_labels_are_human_and_unknown_outcomes_are_neutral(self):
         self.assertEqual(_admin_map_display_name("PRINCIPALITY_OF_ANDORRA"), "Andorra")
-        self.assertEqual(_admin_map_display_name("SWITZERLAND"), "Switzerland")
-        self.assertEqual(_admin_map_display_name("Republic of Albania"), "Albania")
-        self.assertEqual(_admin_map_display_name("Kingdom of Belgium"), "Belgium")
-        self.assertEqual(_admin_map_display_name("Region Belgium - Netherlands - Luxembourg"), "Belgium – Netherlands – Luxembourg")
         self.assertEqual(_admin_event_outcome_label("UNKNOWN"), "—")
         self.assertEqual(_admin_event_outcome_label("SUCCEEDED"), "Successful")
-        self.assertEqual(
-            _admin_region_identity("AND", "Principality of Andorra", "AND"),
-            _admin_region_identity("ANDORRA", "Andorra", "ANDORRA"),
-        )
-        self.assertEqual(
-            _admin_region_identity("LTU", "Republic of Lithuania", "LTU"),
-            _admin_region_identity("LITHUANIA", "Lithuania", "LITHUANIA"),
-        )
-        self.assertNotEqual(
-            _admin_region_identity("BAVARIA", "Germany", "BAVARIA"),
-            _admin_region_identity("GERMANY", "Germany", "GERMANY"),
-        )
-        statistics_script = _map_statistics_script()
-        self.assertIn("row.region_identity || row.canonical_region_id", statistics_script)
-        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", statistics_script)
-        self.assertIn("Boolean(row.map_package_id)", statistics_script)
-        self.assertIn("row.component_kind === 'main'", statistics_script)
-        self.assertNotIn("const updateRows = rows.filter", statistics_script)
-        self.assertIn("const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED'", statistics_script)
-        self.assertIn("renderWorldMap(installRows)", statistics_script)
-        self.assertIn("const countryAliases = window.terentoWorldMapCountryAliases || {};", statistics_script)
-        self.assertIn("const popularityViews = [...document.querySelectorAll('[data-popularity-view]')];", statistics_script)
-        self.assertIn("const popularityViewButtons = [...document.querySelectorAll('[data-popularity-view-button]')];", statistics_script)
-        statistics_query = inspect.getsource(Database.map_statistics)
-        self.assertIn("mp.canonical_region_id", statistics_query)
-        self.assertIn("mp.country AS region_country", statistics_query)
-        self.assertIn("e.component_kind", statistics_query)
-        self.assertIn("e.acquisition_id::text", statistics_query)
+        script = _map_statistics_script()
+        self.assertIn("row.region_identity || row.canonical_region_id", script)
+        self.assertIn("row.map_package_id", script)
+        self.assertIn("row.component_kind === 'main'", script)
+        self.assertNotIn("popularityViewButtons", script)
+        query = inspect.getsource(Database.map_statistics)
+        for value in ("mp.canonical_region_id", "mp.country AS region_country", "e.component_kind", "e.acquisition_id::text"):
+            self.assertIn(value, query)
 
     def test_map_statistics_fallback_matches_provider_region_aliases_to_explicit_events(self):
-        map_statistics_source = inspect.getsource(Database.map_statistics)
-        overview_source = inspect.getsource(Database.admin_overview_map_snapshot)
-        for source in (map_statistics_source, overview_source):
-            with self.subTest(source=source.split("def ", 1)[0][-30:]):
-                self.assertIn("LEFT JOIN map_package AS installed_package", source)
-                self.assertIn("installed_package.provider_region_id", source)
-                self.assertIn("installed_package.canonical_region_id", source)
-                self.assertIn("installed_package.region", source)
-                self.assertIn("e.region IN (", source)
-                self.assertIn("installed.region IN (", source)
-        self.assertIn("'MAP_UPDATE_SUCCEEDED'", overview_source)
-        self.assertIn("'MAP_UPDATE_FAILED'", overview_source)
-
-        body = map_statistics_page(
-            {"rows": []}, [], {"username": "operator"}, "csrf",
-            selected_filters={"period": "24h"},
-        ).decode()
+        source = inspect.getsource(Database.map_statistics)
+        for value in ("LEFT JOIN map_package AS installed_package", "installed_package.provider_region_id", "installed_package.canonical_region_id", "installed_package.region"):
+            self.assertIn(value, source)
+        rows = [{"provider_id":"p","map_package_id":"m","region":"LT","region_country":"LT","event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":1}]
+        body = map_statistics_page({"rows":rows,"summary":_map_statistics_summary(rows),"trend":[]}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf", selected_filters={"period":"24h"}).decode()
         self.assertIn("Last 24 hours", body)
-        self.assertIn("Activity by provider", body)
-        self.assertIn("id='map-statistics-coverage'", body)
-        self.assertIn("id='world-map-svg'", body)
-        self.assertIn("coverage-map-v1.js?v=20260913-coverage-sidebar-3", body)
-        self.assertIn(".map-statistics-popularity .table-wrap .admin-table{display:block;width:100%;min-width:0;table-layout:fixed}", body)
-        self.assertIn(".map-statistics-coverage-layout{align-items:start;grid-template-columns:minmax(0,3fr) minmax(300px,1fr)}", body)
-        self.assertIn("height:auto;min-height:0;aspect-ratio:900 / 365", body)
-        self.assertIn(".map-statistics-world-map-card .world-map-controls{position:absolute;z-index:3;top:8px;left:8px;padding:0;gap:6px}", body)
-        self.assertIn("<summary>Popular maps</summary>", body)
-        self.assertIn("id='map-statistics-diagnostic-coverage'", body)
-        self.assertIn("<summary>Diagnostic coverage</summary>", body)
-        self.assertIn("window.terentoWorldMapSvg", body)
-        popular_maps = body.split("id='map-statistics-popularity'", 1)[1].split("map-events-card", 1)[0]
-        self.assertIn("id='top-maps-view'", popular_maps)
-        self.assertIn("id='regions-view'", popular_maps)
-        self.assertIn("id='all-maps-view'", popular_maps)
-        self.assertIn("<h3 id='top-maps-title'>Top 5</h3>", popular_maps)
-        self.assertNotIn("Top 5 maps", popular_maps)
-        self.assertIn(".map-statistics-popularity .table-wrap .region-map-link{position:relative;display:inline-flex;width:auto;max-width:100%;min-height:0;padding:0;", body)
-        self.assertNotIn(".map-statistics-popularity .table-wrap .region-map-link{min-height:44px}", body)
-        self.assertNotIn(">Provider</th>", popular_maps)
-        map_script = _map_statistics_script()
-        map_start = map_script.find("const mapRow =")
-        map_row = map_script[map_start:].split("return `<tr class=\"popular-map-row\">", 1)[1].split("</tr>`", 1)[0]
-        self.assertEqual(map_row.count("<td"), 2)
-        self.assertNotIn("Package identifier", map_row)
-        self.assertNotIn("escapeHtml(item.map)", map_row)
-        self.assertIn("regionItems.slice(0, 5).map(mapRow).join('')", map_script)
-        self.assertIn('colspan="2" class="muted-value">${escapeHtml(message)}', map_script)
-        self.assertIn("id='all-maps-search'", popular_maps)
-        self.assertIn("data-popularity-view-button='regions'", popular_maps)
-        self.assertIn("data-popularity-view-button='all'", popular_maps)
-        self.assertIn("Last install", body)
-        self.assertIn("Diagnostic coverage", body)
-        self.assertNotIn("<h2>Downloads per provider</h2>", body)
-        self.assertNotIn("<th scope='col'>Completed map-package installs</th>", popular_maps)
-        self.assertNotIn("90 days", body)
+        self.assertLess(body.index("id='map-statistics-coverage'"), body.index("id='map-statistics-provider-table'"))
+        self.assertIn("Top countries", body)
+        self.assertIn("Maps by provider", body)
+        self.assertIn("Map downloads", body)
+        self.assertIn("Map installs", body)
+        self.assertNotIn("Popular maps", body)
+        self.assertNotIn("id='regions-view'", body)
 
     def test_admin_timestamps_repair_legacy_missing_separator(self):
         self.assertEqual(format_timestamp("2026-08-2123:51"), "2026-08-21 23:51")
@@ -1200,9 +1104,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         body = _overview_trend_chart([{
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
-        self.assertIn("Custom install: 3", body)
-        self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='154.50'")
-        self.assertIn("</i>Custom install</span>", body)
+        self.assertIn("Install succeeded: 3", body)
+        self.assertIn("class='overview-chart-line overview-chart-success'", body)
+        self.assertNotIn("Custom install</span>", body)
         self.assertNotIn("Custom .img: successful manual installations.", body)
 
     def test_download_chart_has_two_hourly_series_and_accessible_values(self):
@@ -1443,7 +1347,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("Downloads</h2>", body)
+        self.assertIn("App downloads</h2>", body)
+        self.assertIn("<section class='overview-panel overview-download-panel'", body)
         self.assertNotIn("Observed download increases between checks.", body)
         self.assertNotIn("overview-info", body)
         self.assertNotIn("Observed GitHub counter increases between checks", body)
@@ -1453,9 +1358,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("overview-download-total' aria-label='.zip downloads total: 11'><strong>11</strong><small>.zip", body)
         self.assertIn("overview-download-totals", body)
         self.assertIn("overview-map-heading", body)
-        self.assertIn("<span>Successful</span><strong>16</strong>", body)
-        self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>4</strong>", body)
-        self.assertIn("<span>Failed</span><strong class='admin-error-counter is-positive'>3</strong>", body)
+        self.assertLess(body.index("overview-attention-title"), body.index("overview-activity-title"))
+        self.assertLess(body.index("overview-activity-title"), body.index("overview-downloads-title"))
+        self.assertNotIn("overview-kpi-panel", body)
         self.assertNotIn("Total downloads:</span>", body)
         heading_index = body.index("overview-download-heading")
         self.assertLess(
@@ -1493,7 +1398,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             body,
         )
 
-    def test_chart_segments_join_without_individual_rounding(self):
+    def test_time_chart_uses_lines_and_combines_custom_successes(self):
         import xml.etree.ElementTree as ET
         from terento_catalog.admin import _overview_trend_chart
         body = _overview_trend_chart([{
@@ -1501,15 +1406,13 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "failed_count": 1, "custom_count": 3,
         }], "hour")
         svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
-        bars = svg.findall("g/rect")
-        self.assertEqual(len(bars), 3)
-        for bar in bars:
-            self.assertNotIn("rx", bar.attrib)
-            self.assertIn(": ", bar.find("title").text)
-        self.assertEqual(len({bar.attrib["x"] for bar in bars}), 1)
-        for lower, upper in zip(bars, bars[1:]):
-            self.assertAlmostEqual(float(upper.attrib["y"]) + float(upper.attrib["height"]), float(lower.attrib["y"]), places=1)
-        self.assertEqual(svg.find("defs/clipPath/rect").attrib["rx"], "3")
+        lines = svg.findall("polyline")
+        circles = svg.findall("circle")
+        self.assertEqual(len(lines), 3)
+        self.assertEqual(len(circles), 3)
+        self.assertIn("Install succeeded: 5", body)
+        self.assertIn("Install failed: 1", body)
+        self.assertNotIn("<rect", body)
 
     def test_map_overview_uses_a_server_compatible_bucket_expression(self):
         database = RecordingDatabase()
@@ -1680,7 +1583,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("review_status = 'PENDING'", source)
         self.assertIn("review_status = 'APPROVED' AND public_statistics_enabled = false", source)
 
-    def test_shared_navigation_shows_actionable_review_breakdown(self):
+    def test_shared_navigation_does_not_link_a_partial_review_queue(self):
         body = devices_page([], None, {
             "username": "operator",
             "admin_review_summary": {
@@ -1692,15 +1595,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             },
         }, "csrf").decode()
         header = body[body.index("<header"):body.index("</header>")]
-        self.assertIn("aria-label='Review: 6'", header)
-        self.assertIn("class='needs-review-count'>6</span>", header)
         self.assertIn(">Dashboard</a>", header)
         self.assertIn(">Health</a>", header)
         self.assertIn(">Maps</a>", header)
-        self.assertIn(">Review <span", header)
-        self.assertNotIn("needs-review-popover", header)
-        self.assertNotIn("Failure diagnostics", header)
-        self.assertNotIn("Publication review", header)
+        self.assertNotIn("admin-review-link", header)
+        self.assertNotIn("#overview-attention-title", header)
 
         zero_body = devices_page([], None, {
             "username": "operator",
@@ -1972,16 +1871,18 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
     def test_admin_vocabulary_and_accessible_sticky_tables_are_canonical(self):
         admin_source = (ROOT / "src" / "terento_catalog" / "admin.py").read_text(encoding="utf-8")
-        body = devices_page([], None, {"username": "operator"}, "csrf").decode()
+        body = devices_page([{
+            "device_id": "device-1", "model": "fēnix 8", "variant": "47 mm",
+            "map_capable": True, "installation_authorization": "APPROVED",
+        }], None, {"username": "operator"}, "csrf").decode()
         for label in (
-            "Installation authorization", "Compatibility status", "Last success",
-            "aria-label=\"Catalog Maps\"", "aria-label=\"Installation authorization\"",
+            "Install policy", "Evidence", "Last success",
+            "aria-label=\"Maps\"", "aria-label=\"Install policy\"",
             "aria-label=\"Successful installations\"", "position:sticky", "z-index:3",
         ):
             self.assertIn(label, body if "aria-label" in label or "position:" in label or "z-index" in label else admin_source)
         self.assertIn("sticky", admin_source)
         self.assertNotIn("Support decision", body)
-        self.assertNotIn("Evidence status", body)
         self.assertNotIn("Last tested", body)
 
     def test_requested_secondary_admin_copy_is_not_rendered(self):
@@ -2037,9 +1938,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn('href="https://terento.app/" aria-label="Terento home"', body)
         self.assertIn('class="admin-header-zone admin-header-left"', body)
         self.assertIn('class="admin-section-nav" aria-label="Admin sections"', body)
-        self.assertIn('class="admin-nav-group" role="group" aria-label="Daily"', body)
-        self.assertIn('aria-label="Catalog"', body)
-        self.assertIn('aria-label="Analytics"', body)
+        self.assertIn('class="admin-nav-group" role="group" aria-label="Primary"', body)
+        self.assertNotIn('aria-label="Daily"', body)
+        self.assertNotIn('aria-label="Catalog"', body)
+        self.assertNotIn('aria-label="Analytics"', body)
+        primary = body.split('aria-label="Primary"', 1)[1].split('</div>', 1)[0]
+        positions = [primary.index(f'>{label}</a>') for label in (
+            'Dashboard', 'Installations', 'Devices', 'Maps', 'Providers', 'Health'
+        )]
+        self.assertEqual(positions, sorted(positions))
         self.assertIn('class="admin-nav" aria-label="Admin navigation"', body)
         self.assertIn(
             'class="admin-website-link" href="https://terento.app/"',
@@ -2051,6 +1958,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn('>Account</a>', body)
         self.assertIn("Auto · ${browserTimeZone}", body)
         self.assertIn("Automatic browser time zone: ${browserTimeZone}", body)
+        self.assertIn("matchMedia('(max-width: 760px)')", body)
         self.assertIn(
             "grid-template-columns:minmax(300px,1fr) max-content minmax(335px,1fr)",
             body,
@@ -2069,14 +1977,17 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             device, {"username": "operator"}, "csrf",
         ).decode()
         campaign_body = campaign_links_page({"username": "operator"}, "csrf").decode()
-        dashboard_body = dashboard_page([], {"username": "operator"}, "csrf").decode()
+        dashboard_body = dashboard_page([{
+            "model": "fēnix 8", "attempted_install_count": 1,
+            "successful_install_count": 1,
+        }], {"username": "operator"}, "csrf").decode()
         for label in ("Installation history", "Administration", "Device information", "Technical details"):
             self.assertIn(label, detail_body)
-        self.assertIn("id='diagnostic-history-pagination'", detail_body)
-        self.assertIn("data-history-page='previous'", detail_body)
-        self.assertIn("data-history-page='next'", detail_body)
-        self.assertIn("id='diagnostic-history-page-size'", detail_body)
-        self.assertIn("Installation authorization", detail_body)
+        self.assertNotIn("id='diagnostic-history-pagination'", detail_body)
+        self.assertNotIn("id='diagnostic-filters'", detail_body)
+        self.assertNotIn("diagnostic-model-metrics model-statistics'", detail_body)
+        self.assertIn("No installation history for this device.", detail_body)
+        self.assertIn("Install policy", detail_body)
         self.assertIn('textarea name=\'note\'', detail_body)
         self.assertIn("Save support metadata", detail_body)
         self.assertIn("Device information", detail_body)
@@ -2125,15 +2036,18 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             identity=result["compatibility_identity"], operations=[result],
         ).decode()
         table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
-        for label in ("Region", "Result", "Stage", "Code"):
+        for label in ("Region", "Result", "Issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
+        self.assertNotIn(">Stage<", table)
+        self.assertNotIn(">Code<", table)
         self.assertNotIn("Raw MTP model", table)
         dialog = body.split("<dialog class='diagnostic-detail-dialog'", 1)[1].split("</dialog>", 1)[0]
         for value in ("Technical details <span class='disclosure-meta'>· map result 1</span>", "Raw MTP model", "fenix 8 51mm",
                       "LIBMTP_ERROR_IO", "25-50%", "Cleanup attempted", "Failed",
                       "Diagnostic ID: <code>legacy:diagnostic-1</code>", "#32"):
             self.assertIn(value, dialog)
-        self.assertIn("SEND_OBJECT_FAILED", table)
+        self.assertNotIn("SEND_OBJECT_FAILED", table)
+        self.assertIn("SEND_OBJECT_FAILED", dialog)
         self.assertIn("action='/admin/diagnostics/resolve'", dialog)
         self.assertIn("diagnostic-state-in_progress", dialog)
         self.assertIn("GitHub issue workflow", dialog)
@@ -2183,8 +2097,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertNotIn("class='metric'", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
-        self.assertIn("<span>Installation attempts</span><strong>3</strong>", body)
+        self.assertIn("<span>Attempts</span><strong>3</strong>", body)
         self.assertIn("<span>Successful</span><strong>1</strong>", body)
+        self.assertIn("<span>Failed</span><strong class=\"installation-failed-value\">2</strong>", body)
         self.assertIn("<span>Success rate</span><strong>33.3%</strong>", body)
         self.assertNotIn("Historical failures: 1", body)
         self.assertNotIn('id="evidence-title"', body)
@@ -2256,7 +2171,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         evidence_row = body.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
         self.assertIn("Identity review", evidence_row)
         self.assertNotIn("class='error-count'", evidence_row)
-        self.assertIn("column-number numeric historical-number", evidence_row)
+        self.assertNotIn("historical-number", evidence_row)
+        self.assertIn("<td class='column-number numeric installation-failed-value'>0</td>", evidence_row)
         self.assertIn("class='admin-error-counter'>0</strong>", evidence_row)
 
     def test_pending_and_canonical_rows_with_the_same_text_keep_distinct_destinations(self):
@@ -2324,7 +2240,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("Diagnostic ID: <code>pending-operation</code>", diagnostics)
         self.assertNotIn("Diagnostic ID: <code>canonical-operation</code>", diagnostics)
-        self.assertIn("Choose catalog model", diagnostics)
+        self.assertIn("Assign model", diagnostics)
         self.assertIn("Confirm", diagnostics)
 
     def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
@@ -2431,14 +2347,16 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             }],
         ).decode()
         table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
-        for label in ("Date", "Region", "Result", "Stage", "Code", "Issue", "Review", "Action"):
+        for label in ("Date", "Region", "Result", "Issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
+        self.assertNotIn(">Stage<", table)
+        self.assertNotIn(">Code<", table)
         self.assertNotIn("Raw MTP model", table)
         self.assertIn("Open", body)
         self.assertIn("Identity review", body)
         self.assertIn("Resolved", body)
-        self.assertIn(">Details</button>", body)
-        self.assertIn("aria-label='View installation details", body)
+        self.assertIn(">Inspect</button>", body)
+        self.assertIn("aria-label='Inspect installation", body)
         self.assertNotIn("aria-label='Review diagnostic", body)
         self.assertIn("Resolve diagnostic", body)
         self.assertIn("Reopen diagnostic", body)
@@ -2448,13 +2366,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Prepare GitHub issue", body)
         self.assertIn("Copy issue report", body)
         self.assertIn("Link issue", body)
-        self.assertEqual(
-            body.count("<section class='diagnostic-action-form github-review github-review-collapsed'"),
-            body.count("<dialog class='diagnostic-detail-dialog'"),
-        )
+        self.assertEqual(body.count("<h4 id='github-review-"), 0)
+        self.assertEqual(body.count("<summary>GitHub issue</summary>"), 4)
+        self.assertIn('<span class="muted-value">No linked issue</span>', body)
+        self.assertIn("class='diagnostic-secondary-grid'", body)
+        self.assertEqual(body.count("<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'>"), 8)
         self.assertIn(".diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px))", body)
         self.assertNotIn("width:min(860px,calc(100% - 32px))", body)
-        self.assertIn(".github-review{grid-column:1/-1;overflow-wrap:anywhere}", body)
+        self.assertIn(".github-review{overflow-wrap:anywhere}", body)
         self.assertIn(".diagnostic-technical-details{margin:10px 0 0;padding:9px 11px", body)
         self.assertNotIn(".diagnostic-technical-details{margin:10px 0 0;padding:0", body)
         self.assertIn(".diagnostic-id code{overflow-wrap:anywhere", body)
@@ -2468,6 +2387,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
         self.assertIn(".diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))", body)
+        self.assertIn(".diagnostic-actions-grid>form.diagnostic-action-form{display:flex;flex-direction:column}", body)
         self.assertIn(".identity-review-form{grid-column:auto}", body)
         self.assertNotIn(".identity-review-form{grid-column:1/-1}", body)
         self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option>", body)
@@ -2492,7 +2412,37 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("Historical failures: 0", body)
         self.assertNotIn("Errors are unresolved diagnostic operations", body)
 
-    def test_beta8_installations_summary_uses_five_kpis_without_historical_failure_note(self):
+    def test_installations_empty_short_and_paginated_states_use_existing_controls(self):
+        empty = dashboard_page([], {"username": "operator"}, "csrf").decode()
+        self.assertIn("No installation evidence yet.", empty)
+        empty_main = empty.split('<main data-admin-revisions=', 1)[1].split("</main>", 1)[0]
+        for markup in ("installation-kpis", "evidence-filters", "installation-empty", "installation-table", "installation-pagination"):
+            self.assertNotIn(markup, empty_main)
+
+        row = {
+            "model": "fēnix 8", "variant": "47 mm, AMOLED",
+            "compatibility_identity": "fēnix 8 · 47 mm, AMOLED",
+            "attempted_install_count": 3, "successful_install_count": 2,
+            "failed_install_count": 1, "recognized_map_capable_evidence": True,
+        }
+        one = dashboard_page([row], {"username": "operator"}, "csrf").decode()
+        one_main = one.split('<main data-admin-revisions=', 1)[1].split("</main>", 1)[0]
+        self.assertIn('id="evidence-filters" role="search" hidden', one_main)
+        self.assertNotIn("installation-pagination", one_main)
+        self.assertNotIn('data-installation-filter="identity-pending"', one_main)
+        evidence_row = one_main.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
+        self.assertIn("<td class='column-number numeric installation-failed-value'>1</td>", evidence_row)
+        self.assertNotIn("historical-number", evidence_row)
+
+        rows = [dict(row, model=f"Model {index}", compatibility_identity=f"model-{index}") for index in range(26)]
+        many = dashboard_page(rows, {"username": "operator"}, "csrf").decode()
+        self.assertIn("id='installation-pagination'", many)
+        self.assertIn("id='installation-page-size'", many)
+        self.assertIn("Showing 1–25 of 26 · page 1 of 2", many)
+        self.assertIn("No matching models.", many)
+        self.assertNotIn("Use Clear to show all installations", many)
+
+    def test_installations_summary_uses_complete_operational_sequence(self):
         body = dashboard_page(
             [{
                 "model": "fēnix 8",
@@ -2508,71 +2458,53 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("<h1>Installations</h1>", body)
         self.assertIn("All time", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
-        for label in ("Variants", "Installation attempts", "Successful", "Success rate", "Open errors"):
+        labels = ("Attempts", "Successful", "Failed", "Success rate", "Open errors")
+        for label in labels:
             self.assertIn(f"<span>{label}</span>", body)
+        self.assertNotIn("<span>Variants</span>", body)
         self.assertIn("<span>Successful</span><strong>2</strong>", body)
+        self.assertIn("<span>Failed</span><strong class=\"installation-failed-value\">2</strong>", body)
         self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
+        positions = [body.index(f"<span>{label}</span>") for label in labels]
+        self.assertEqual(positions, sorted(positions))
         self.assertNotIn("Historical failures: 2", body)
         self.assertIn('data-installation-sort="attempts"', body)
         self.assertNotIn("installation-summary-strip", body)
 
     def test_map_statistics_distinguishes_empty_population_from_unavailable_data(self):
-        self.assertEqual(
-            _map_statistics_summary([]),
-            {
-                "hasEventData": False,
-                "eventGroupCount": 0,
-                "eventCount": 0,
-                "completedDownloads": 0,
-                "failedDownloads": 0,
-                "downloadAttempts": 0,
-                "downloadSuccessRate": None,
-                "completedInstalls": 0,
-                "failedInstalls": 0,
-                "installAttempts": 0,
-                "installSuccessRate": None,
-                "completedMapUpdates": 0,
-                "failedMapUpdates": 0,
-                "mapUpdates": 0,
-                "mapUpdateSuccessRate": None,
-            },
-        )
+        body = map_statistics_page({"rows": [], "summary": _map_statistics_summary([])}, [], {"username":"operator"}, "csrf").decode()
+        self.assertIn("No map activity for this scope", body)
+        self.assertNotIn("id='map-statistics-metrics'", body)
+        self.assertNotIn("id='map-statistics-provider-table'", body)
+        self.assertNotIn("Diagnostic coverage", body)
+        self.assertIn("id='map-download-trend-title'", body)
+
+    def test_map_statistics_keeps_all_time_badges_when_period_has_no_rows(self):
+        historical = _map_statistics_summary([
+            {"event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 4},
+            {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3},
+        ])
         body = map_statistics_page(
-            {"rows": []},
-            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
-            {"username": "operator"},
-            "csrf",
+            {
+                "rows": [],
+                "summary": _map_statistics_summary([]),
+                "allTimeSummary": historical,
+                "trend": [],
+            },
+            [], {"username": "operator"}, "csrf",
+            selected_filters={"period": "24h"},
         ).decode()
-        self.assertIn("No map activity", body)
-        self.assertIn("<strong data-stat='completedDownloads'>0</strong>", body)
-        self.assertIn("class='admin-error-counter' data-stat='failedDownloads'>0</strong>", body)
-        self.assertIn("<strong data-stat='completedInstalls'>0</strong>", body)
-        self.assertIn("class='admin-error-counter' data-stat='failedInstalls'>0</strong>", body)
-        self.assertIn("<section class='provider-card map-events-card' hidden>", body)
-        self.assertIn("id='map-statistics-more-filters'", body)
+        self.assertIn("id='map-statistics-metrics'", body)
+        self.assertIn("data-stat='completedDownloads'>4</strong>", body)
+        self.assertIn("data-stat='completedInstalls'>3</strong>", body)
+        self.assertIn("No map activity for this scope", body)
+        self.assertIn("id='map-download-trend-title'", body)
 
     def test_map_statistics_opens_exact_event_detail_from_review_link(self):
-        event_id = "a8098c1a-f86e-11da-bd1a-00112444be1e"
-        body = map_statistics_page(
-            {
-                "rows": [{
-                    "provider_id": "freizeitkarte", "map_package_id": "fzk-fr",
-                    "region": "FR", "event_type": "INSTALL_FAILED", "outcome": "FAILED",
-                    "event_count": 1, "operation_count": 1,
-                }],
-                "detailRows": [{
-                    "provider_id": "freizeitkarte", "map_package_id": "fzk-fr",
-                    "region": "FR", "event_type": "INSTALL_FAILED", "outcome": "FAILED",
-                    "event_count": 1, "operation_count": 1,
-                }],
-                "detailTotal": 1,
-            },
-            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
-            {"username": "operator"}, "csrf", selected_filters={"eventId": event_id},
-        ).decode()
+        row = {"provider_id":"p","event_type":"INSTALL_FAILED","outcome":"FAILED","operation_count":1,"event_count":1}
+        body = map_statistics_page({"rows":[row],"detailRows":[row]}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf", selected_filters={"eventId":"00000000-0000-0000-0000-000000000001"}).decode()
         self.assertIn("id='map-statistics-event-detail' open", body)
-        self.assertIn("filters.eventId", _map_statistics_script())
-        self.assertIn("eventDetail.scrollIntoView?.({block: 'start'})", _map_statistics_script())
+        self.assertIn("filters.eventId && eventDetail", _map_statistics_script())
 
     def test_map_statistics_keeps_zero_operation_count_separate_from_event_count(self):
         summary = _map_statistics_summary([{
@@ -2587,21 +2519,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIsNone(summary["downloadSuccessRate"])
 
     def test_map_statistics_shows_zero_counts_only_when_event_data_exists(self):
-        body = map_statistics_page(
-            {"rows": [{
-                "provider_id": "freizeitkarte",
-                "event_type": "DOWNLOAD_STARTED",
-                "outcome": "STARTED",
-                "operation_count": 1,
-            }]},
-            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
-            {"username": "operator"},
-            "csrf",
-        ).decode()
-        self.assertIn("<strong data-stat='completedDownloads'>0</strong>", body)
-        self.assertIn("class='admin-error-counter' data-stat='failedDownloads'>0</strong>", body)
-        self.assertIn("map-statistics-empty' id='map-statistics-empty' hidden", body)
-        self.assertNotIn("map-events-card' hidden", body)
+        row = {"provider_id":"p","event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":0}
+        body = map_statistics_page({"rows":[row],"summary":_map_statistics_summary([row])}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
+        self.assertIn("data-stat='completedDownloads'>0</strong>", body)
+        empty = map_statistics_page({"rows":[]}, [], {"username":"operator"}, "csrf").decode()
+        self.assertNotIn("data-stat='completedDownloads'", empty)
 
     def test_empty_event_detail_keeps_population_summary_and_marks_detail_empty(self):
         body = map_statistics_page(
@@ -2638,222 +2560,32 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("<strong data-stat='completedInstalls'>9</strong>", body)
         self.assertIn("<strong data-stat='installSuccessRate'>90%</strong>", body)
-        self.assertIn("<strong data-stat='freshMapDiagnosticCoverageRate'>50%</strong>", body)
+        self.assertNotIn("Diagnostic coverage", body)
         self.assertIn("No matching event groups", body)
         self.assertNotIn("map-events-card' hidden", body)
 
     def test_map_statistics_counts_failed_installations_and_scopes_provider_health(self):
-        rows = [
-            {
-                "provider_id": "opentopomap",
-                "event_type": "DOWNLOAD_SUCCEEDED",
-                "outcome": "SUCCEEDED",
-                "event_count": 6,
-                "operation_count": 6,
-            },
-            {
-                "provider_id": "opentopomap",
-                "event_type": "DOWNLOAD_FAILED",
-                "outcome": "FAILED",
-                "event_count": 2,
-                "operation_count": 2,
-            },
-            {
-                "provider_id": "opentopomap",
-                "event_type": "INSTALL_SUCCEEDED",
-                "outcome": "SUCCEEDED",
-                "event_count": 4,
-                "operation_count": 4,
-            },
-            {
-                "provider_id": "opentopomap",
-                "event_type": "INSTALL_FAILED",
-                "outcome": "FAILED",
-                "event_count": 2,
-                "operation_count": 2,
-            },
-            {
-                "provider_id": "opentopomap",
-                "event_type": "DOWNLOAD_STARTED",
-                "outcome": "UNKNOWN",
-                "event_count": 6,
-                "operation_count": 6,
-            },
-        ]
-        self.assertEqual(
-            _map_statistics_summary(rows),
-            {
-                "hasEventData": True,
-                "eventGroupCount": 5,
-                "eventCount": 20,
-                "completedDownloads": 6,
-                "failedDownloads": 2,
-                "downloadAttempts": 8,
-                "downloadSuccessRate": 75.0,
-                "completedInstalls": 4,
-                "failedInstalls": 2,
-                "installAttempts": 6,
-                "installSuccessRate": 4 / 6 * 100,
-                "completedMapUpdates": 0,
-                "failedMapUpdates": 0,
-                "mapUpdates": 0,
-                "mapUpdateSuccessRate": None,
-            },
-        )
-        body = map_statistics_page(
-            {"rows": rows},
-            [
-                {"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"},
-                {"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"},
-            ],
-            {"username": "operator"},
-            "csrf",
-            selected_filters={"provider": "opentopomap"},
-        ).decode()
-        self.assertIn("5 event groups · 20 event records", body)
-        self.assertIn("<strong data-stat='completedDownloads'>6</strong>", body)
-        self.assertIn("class='admin-error-counter is-positive' data-stat='failedInstalls'>2</strong>", body)
-        self.assertIn("<strong data-stat='installSuccessRate'>66.7%</strong>", body)
-        self.assertNotIn("id='map-statistics-provider-health'", body)
-        self.assertNotIn("providerHealth", body)
-
-        script = _map_statistics_script()
-        self.assertIn("setFailed('failedInstalls', metric('failedInstalls'))", script)
-        self.assertIn("const summary = payload.summary", script)
-        self.assertIn("const scopedProviders = selectedProvider ? providers.filter", script)
-        self.assertIn("const eventRecordValues = detailRows.map", script)
-        self.assertIn("countValue(operations(row))", script)
+        rows = [{"provider_id":"p","event_type":"INSTALL_FAILED","outcome":"FAILED","operation_count":2}]
+        summary = _map_statistics_summary(rows)
+        self.assertEqual(summary["failedInstalls"], 2)
+        body = map_statistics_page({"rows":rows,"summary":summary}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
+        self.assertIn("data-stat='failedInstalls'>2</strong>", body)
+        self.assertIn("Provider comparison", body)
 
     def test_download_only_failure_has_no_install_statistics(self):
-        rows = [{
-            "provider_id": "maprando",
-            "event_type": "DOWNLOAD_FAILED",
-            "outcome": "FAILED",
-            "event_count": 1,
-            "operation_count": 1,
-        }]
-
-        self.assertEqual(
-            _map_statistics_summary(rows),
-            {
-                "hasEventData": True,
-                "eventGroupCount": 1,
-                "eventCount": 1,
-                "completedDownloads": 0,
-                "failedDownloads": 1,
-                "downloadAttempts": 1,
-                "downloadSuccessRate": 0.0,
-                "completedInstalls": 0,
-                "failedInstalls": 0,
-                "installAttempts": 0,
-                "installSuccessRate": None,
-                "completedMapUpdates": 0,
-                "failedMapUpdates": 0,
-                "mapUpdates": 0,
-                "mapUpdateSuccessRate": None,
-            },
-        )
-        body = map_statistics_page(
-            {"rows": rows},
-            [{"id": "maprando", "name": "MapRando", "health": "HEALTHY"}],
-            {"username": "operator"},
-            "csrf",
-        ).decode()
-        self.assertIn("<td>DOWNLOAD_FAILED</td>", body)
-        self.assertNotIn("<td>INSTALL_FAILED</td>", body)
-        self.assertIn("class='admin-error-counter' data-stat='failedInstalls'>0</strong>", body)
-        self.assertIn("<strong data-stat='installSuccessRate'>—</strong>", body)
-        self.assertIn("setFailed('failedInstalls', metric('failedInstalls'))", _map_statistics_script())
+        rows = [{"provider_id":"p","event_type":"DOWNLOAD_FAILED","outcome":"FAILED","operation_count":1}]
+        summary = _map_statistics_summary(rows)
+        self.assertEqual(summary["failedDownloads"], 1)
+        self.assertEqual(summary["failedInstalls"], 0)
+        body = map_statistics_page({"rows":rows,"summary":summary}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
+        self.assertIn("data-stat='failedDownloads'>1</strong>", body)
+        self.assertIn("data-stat='failedInstalls'>0</strong>", body)
 
     def test_activity_by_provider_separates_failed_downloads_from_interruptions(self):
-        rows = [
-            *[
-                {
-                    "provider_id": "opentopomap",
-                    "event_type": "DOWNLOAD_SUCCEEDED",
-                    "outcome": "SUCCEEDED",
-                    "operation_count": 1,
-                    "event_count": 1,
-                }
-                for _ in range(19)
-            ],
-            *[
-                {
-                    "provider_id": "opentopomap",
-                    "event_type": "DOWNLOAD_FAILED",
-                    "outcome": "FAILED",
-                    "operation_count": 1,
-                    "event_count": 1,
-                }
-                for _ in range(2)
-            ],
-            {
-                "provider_id": "opentopomap",
-                "event_type": "DOWNLOAD_INTERRUPTED",
-                "outcome": "UNKNOWN",
-                "operation_count": 1,
-                "event_count": 1,
-            },
-        ]
-        body = map_statistics_page(
-            {"rows": rows},
-            [{"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"}],
-            {"username": "operator"},
-            "csrf",
-        ).decode()
-        self.assertIn("<th scope='colgroup' colspan='3'>Downloads</th><th scope='colgroup' colspan='3'>Installs</th><th scope='colgroup' colspan='3'>Updates</th>", body)
-        self.assertEqual(body.split("id='map-statistics-provider-table'", 1)[1].split("</thead>", 1)[0].count("<th scope='col' class='column-number'>"), 9)
         script = _map_statistics_script()
         self.assertIn("row.event_type === 'DOWNLOAD_FAILED' && row.outcome === 'FAILED'", script)
-        self.assertIn("emptyRow(11)", script)
-        self.assertIn("table.closest('.device-sticky-header, .map-statistics-provider-table')", body)
-
-        harness = r"""
-        const assert = require('node:assert/strict');
-        const nodes = {};
-        const makeNode = () => ({
-          value: '', textContent: '', innerHTML: '', hidden: false, disabled: false,
-          open: false, dataset: {},
-          classList: {toggle() {}},
-          addEventListener() {},
-          querySelector() { return null; }
-        });
-        const node = (selector) => {
-          const selectors = new Set([
-            '#map-statistics-range', '#map-statistics-provider', '#map-statistics-map',
-            '#map-statistics-region', '#map-statistics-event', '#map-statistics-outcome',
-            '#map-statistics-status', '#map-rows', '#top-region-rows', '#all-map-rows',
-            '#all-maps-page', '#all-maps-prev', '#all-maps-next', '#map-statistics-rows',
-            '#provider-statistic-rows'
-          ]);
-          return selectors.has(selector) ? (nodes[selector] ||= makeNode()) : null;
-        };
-        global.document = {querySelector: node, querySelectorAll: () => []};
-        global.window = {
-          terentoAdminProviders: [{id: 'opentopomap', name: 'OpenTopoMap'}],
-          terentoMapStatisticsFilters: {},
-          terentoWorldMapCountryAliases: {},
-          addEventListener() {}
-        };
-        window.terentoMapStatistics = {
-          rows: [
-            ...Array.from({length: 19}, () => ({provider_id: 'opentopomap', event_type: 'DOWNLOAD_SUCCEEDED', outcome: 'SUCCEEDED', operation_count: 1, event_count: 1})),
-            ...Array.from({length: 2}, () => ({provider_id: 'opentopomap', event_type: 'DOWNLOAD_FAILED', outcome: 'FAILED', operation_count: 1, event_count: 1})),
-            {provider_id: 'opentopomap', event_type: 'DOWNLOAD_INTERRUPTED', outcome: 'UNKNOWN', operation_count: 1, event_count: 1},
-            {provider_id: 'opentopomap', map_package_id: 'otm-fr', region: 'france', region_identity: 'FRANCE', region_display_name: 'French Republic', region_country: 'FR', event_type: 'INSTALL_SUCCEEDED', outcome: 'SUCCEEDED', component_kind: 'main', operation_count: 1, event_count: 1, last_occurred_at: '2026-09-18T09:39:00Z'}
-          ],
-          summary: {hasEventData: true, completedDownloads: 19, failedDownloads: 2}
-        };
-        eval(process.argv[1]);
-        const html = nodes['#provider-statistic-rows'].innerHTML;
-        assert.match(html, /<td>OpenTopoMap<\/td><td class="column-number numeric">19<\/td><td class="column-number numeric">2<\/td>/);
-        assert.equal((html.match(/<td/g) || []).length, 11);
-        assert.ok(!html.includes('>3<'));
-        const popular = nodes['#all-map-rows'].innerHTML;
-        assert.match(popular, /<div class="popular-map-name-content"><button[^>]*>French Republic<\/button><small class="popular-map-detail">OpenTopoMap ·/);
-        assert.ok(!popular.includes('<strong><button'));
-        """
-        self._run_node(harness, script)
+        self.assertNotIn("DOWNLOAD_INTERRUPTED' && row.outcome === 'FAILED", script)
+        self.assertIn("Downloads · Failed", script)
 
     def test_activity_by_provider_renders_three_independent_rate_groups(self):
         fixture = {
@@ -2923,100 +2655,58 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             self.fail(error.stderr)
 
     def test_map_statistics_keeps_update_success_and_failure_counts_separate(self):
-        summary = _map_statistics_summary([
-            {"event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 2},
-            {"event_type": "MAP_UPDATE_FAILED", "outcome": "FAILED", "operation_count": 3},
-        ])
+        rows = [{"event_type":"MAP_UPDATE_SUCCEEDED","outcome":"SUCCEEDED","operation_count":2},{"event_type":"MAP_UPDATE_FAILED","outcome":"FAILED","operation_count":3}]
+        summary = _map_statistics_summary(rows)
         self.assertEqual(summary["completedMapUpdates"], 2)
         self.assertEqual(summary["failedMapUpdates"], 3)
-        self.assertEqual(summary["mapUpdates"], 5)
         self.assertEqual(summary["mapUpdateSuccessRate"], 40.0)
-        script = _map_statistics_script()
-        self.assertNotIn("addMapActivity", script)
-        self.assertNotIn("const updateRows = rows.filter", script)
-        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", script)
-        self.assertIn("const regionItems = Object.values(byRegion)", script)
+        self.assertIn("completedUpdates", _map_statistics_script())
+        self.assertIn("failedUpdates", _map_statistics_script())
+
+        install_rows = [{"event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":1}]
+        body = map_statistics_page(
+            {"rows": install_rows, "summary": _map_statistics_summary(install_rows)},
+            [], {"username":"operator"}, "csrf",
+        ).decode()
+        self.assertIn("id='map-statistics-updates'", body)
+        self.assertNotIn("id='map-statistics-updates' hidden", body)
+        self.assertIn("data-stat='completedMapUpdates'>0</strong>", body)
+
+        unavailable_summary = _map_statistics_summary(install_rows)
+        unavailable_summary.pop("mapUpdateSuccessRate")
+        unavailable = map_statistics_page(
+            {"rows": install_rows, "summary": unavailable_summary},
+            [], {"username":"operator"}, "csrf",
+        ).decode()
+        self.assertIn("data-stat='mapUpdateSuccessRate'>—</strong>", unavailable)
 
     def test_map_statistics_admin_presentation_keeps_semantics_compact_and_separate(self):
-        rows = [
-            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3, "last_occurred_at": "2026-09-16T10:00:00Z"},
-            {"provider_id": "opentopomap", "map_package_id": "otm-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 2, "last_occurred_at": "2026-09-15T10:00:00Z"},
-            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl-contours", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "contours", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 13, "last_occurred_at": "2026-09-17T10:00:00Z"},
-            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 20, "last_occurred_at": "2026-09-17T11:00:00Z"},
-        ]
-        statistics = {"rows": rows, "summary": _map_statistics_summary(rows), "linkage": {
-            "freshMapAttemptCount": 5, "freshMapLinkedDiagnosticCount": 4,
-            "freshMapMissingDiagnosticCount": 1, "freshMapDiagnosticCoverageRate": 80.0,
-        }}
-        body = map_statistics_page(
-            statistics,
-            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}, {"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"}],
-            {"username": "operator"}, "csrf",
-        ).decode()
-        main = body.split("<main", 1)[1]
-        for text in (
-            "Acquisition, fresh-install, optional-component, and update outcomes remain separate.",
-            "Coverage is linked diagnostic observation, not diagnostic success.",
-            "Observed download increases between checks. Missing observations and counter resets are not treated as zero.",
-        ):
-            self.assertNotIn(text, body)
-        self.assertEqual(main.count("class='map-statistics-kpi-group'"), 3)
-        self.assertEqual(main.count("id='map-statistics-metrics'"), 1)
-        for text in ("Downloads", "Installs", "Updates", "Diagnostic coverage", "Attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
+        rows = [{"provider_id":"p","map_package_id":"m","region":"LT","region_country":"LT","event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":3}]
+        body = map_statistics_page({"rows":rows,"summary":_map_statistics_summary(rows),"trend":[]}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
+        main = body.split("<main",1)[1]
+        for text in ("Map downloads", "Map installs", "Updates", "Provider comparison", "Top countries", "Maps by provider", "Event detail"):
             self.assertIn(text, main)
-        provider_head = main.split("id='map-statistics-provider-table'", 1)[1].split("</thead>", 1)[0]
-        self.assertNotIn("Fresh installs", provider_head)
-        self.assertNotIn("Fresh install success", provider_head)
-        self.assertIn("class='admin-error-counter' data-stat='failedMapUpdates'>0</strong>", main)
-        self.assertNotIn("map-statistics-reliability", main)
+        event_detail = main.split("id='map-statistics-event-detail'", 1)[1].split("</details>", 1)[0]
+        for primary_id in (
+            "id='map-statistics-world-map'",
+            "id='map-statistics-provider-table'",
+            "id='map-download-trend-title'",
+            "id='map-install-trend-title'",
+        ):
+            self.assertIn(primary_id, main)
+            self.assertNotIn(primary_id, event_detail)
+        self.assertNotIn("Diagnostic coverage", main)
+        self.assertEqual(main.count("id='map-statistics-metrics'"), 1)
+        self.assertNotIn("Popular maps", main)
+        self.assertNotIn("Regions</button>", main)
 
-        script = _map_statistics_script()
-        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", script)
-        self.assertIn("knownProviderIds.has", script)
-        self.assertIn("row.component_kind === 'main'", script)
-        self.assertIn("const matchedMaps = allMapItems.filter", script)
-        self.assertIn("matchedMaps.slice((allMapsPage - 1) * 10", script)
-        self.assertNotIn("const updateRows = rows.filter", script)
-
-    def test_map_statistics_exposes_operation_id_watch_linkage(self):
-        linkage = {
-            "mapOperationCount": 6,
-            "mapInstallationCount": 4,
-            "linkedOperationCount": 4,
-            "linkedInstallationCount": 3,
-            "mapOnlyInstallationCount": 1,
-            "linkedWriteStartedInstallCount": 3,
-            "linkedSuccessfulInstallCount": 2,
-            "linkedFailedInstallCount": 1,
-            "linkedPrewriteFailureCount": 0,
-            "linkageRate": 75.0,
-        }
-        body = map_statistics_page(
-            {
-                "rows": [{
-                    "provider_id": "opentopomap",
-                    "event_type": "INSTALL_SUCCEEDED",
-                    "outcome": "SUCCEEDED",
-                    "event_count": 4,
-                    "operation_count": 4,
-                }],
-                "linkage": linkage,
-            },
-            [{"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"}],
-            {"username": "operator"},
-            "csrf",
-        ).decode()
-        self.assertNotIn("Watch event linkage", body)
-        self.assertNotIn("Telemetry diagnostics · event matching", body)
-        self.assertNotIn("id='map-statistics-linkage'", body)
-        self.assertIn("id='map-rows'", body)
-        self.assertIn("All maps", body)
-        self.assertIn("id='top-maps-view'", body)
-        self.assertIn("data-popularity-view-button='regions'", body)
-
-        script = _map_statistics_script()
-        self.assertNotIn("const linkage = payload.linkage || {};", script)
-        self.assertNotIn("linkedSuccessfulInstallCount", script)
+    def test_map_statistics_keeps_operation_linkage_out_of_admin_presentation(self):
+        row = {"provider_id":"p","event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":1}
+        linkage = {"freshMapAttemptCount":2,"freshMapLinkedDiagnosticCount":1,"freshMapMissingDiagnosticCount":1,"freshMapDiagnosticCoverageRate":50.0}
+        body = map_statistics_page({"rows":[row],"linkage":linkage}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
+        for text in ("Linked reports", "Report gaps", "Coverage rate"):
+            self.assertNotIn(text, body)
+        self.assertNotIn("data-stat='freshMapDiagnosticCoverageRate'", body)
 
     def test_map_statistics_linkage_query_joins_only_shared_operation_ids(self):
         source = inspect.getsource(Database.map_statistics_linkage)
@@ -3037,28 +2727,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("freshMapMissingDiagnosticCount", source)
 
     def test_provider_list_uses_compact_columns_and_summary(self):
-        body = providers_page(
-            [{
-                "id": "opentopomap",
-                "name": "OpenTopoMap",
-                "adapterId": "opentopomap",
-                "status": "PAUSED",
-                "health": "HEALTHY",
-                "packageCount": 177,
-                "affectedPackageCount": 0,
-                "problematicSourceCount": 0,
-                "lastCatalogSync": "2026-08-31T12:00:00+00:00",
-                "lastHealthCheck": "2026-08-31T12:05:00+00:00",
-            }],
-            {"username": "operator"},
-            "csrf",
-        ).decode()
-        self.assertIn("1 provider", body)
-        self.assertIn("0 active · 1 healthy · 177 packages · 0 affected packages · 0 problematic sources", body)
-        self.assertIn("<th scope='col'>Provider</th><th scope='col' class='column-status'>Activity</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-number'>Packages</th>", body)
-        self.assertIn("<th scope='col' class='column-number'>Problems</th><th scope='col' class='column-date'>Catalog sync</th>", body)
-        self.assertNotIn(">Last check</th>", body)
-        self.assertNotIn(">Average download time</th>", body)
+        healthy = [{"id":"p","name":"Provider","status":"ACTIVE","health":"HEALTHY","packageCount":2,"affectedPackageCount":0,"problematicSourceCount":0}]
+        body = providers_page(healthy, {"username":"operator"}, "csrf").decode()
+        self.assertNotIn("admin-summary-strip", body.split("<main",1)[1].split("<section class='provider-section'",1)[0])
+        self.assertIn("Packages", body)
+        problem = [{**healthy[0],"health":"DEGRADED","affectedPackageCount":1}]
+        problem_body = providers_page(problem, {"username":"operator"}, "csrf").decode()
+        self.assertIn("Needs attention", problem_body)
+        self.assertIn("1 health exceptions", problem_body)
 
     def test_provider_problems_keep_packages_sources_and_health_separate(self):
         body = providers_page(
@@ -3249,7 +2925,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("SEND_OBJECT_FAILED", body)
         self.assertIn("Failure reason:", body)
         self.assertIn("data-history-filter='failed'", body)
-        self.assertIn("Each map installation counts separately", body)
+        self.assertNotIn("Each map installation counts separately", body)
         self.assertIn("maxlength='500'", body)
         self.assertIn("link.closest('.github-issue-controls, .github-review')", body)
         self.assertNotIn("\x08", body)
@@ -3738,8 +3414,10 @@ class SystemHealthPageTests(unittest.TestCase):
         self.assertIn("Freizeitkarte</h2>", body)
         self.assertIn("No weekly test report received yet", body)
         self.assertIn("system-health-unknown", body)
-        self.assertIn("<dt>Why</dt>", body)
-        self.assertIn("<dt>Next action</dt>", body)
+        self.assertIn("class='system-health-cause'", body)
+        self.assertIn("class='system-health-action'>", body)
+        self.assertNotIn("<strong>Inspect:</strong>", body)
+        self.assertIn("Last checked", body)
         self.assertIn("href=\"/admin/system-health\"", body)
 
     def test_page_reports_release_manifest_drift_and_weekly_suite_results(self):

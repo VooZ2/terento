@@ -369,9 +369,11 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         overview = overview_page({'data': {'hasData': False}, 'compatibility': {
             'hasData': True, 'allTimeOpenErrorCount': 1, 'attention': [attention]}}, user, 'test-csrf').decode()
         panel = overview.split("aria-labelledby='overview-attention-title'>", 1)[1].split('</section>', 1)[0]
-        self.assertIn('test-fenix8-47', panel)
+        self.assertIn('Installation problems', panel)
+        self.assertIn('Installation problems · 1', panel)
+        self.assertIn('/admin/installations?state=open', panel)
         self.assertNotIn('No device diagnostic report received', panel)
-        self.assertIn('Details', panel)
+        self.assertIn('Inspect', panel)
         # Rendering is read-only: no assignment or GitHub action was submitted.
         self.assertEqual(self.db.identity_reviews, [])
 

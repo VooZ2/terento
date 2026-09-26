@@ -67,7 +67,7 @@ class DeviceInformationLayoutTests(unittest.TestCase):
             self.assertIn(value, tool)
         listing = device_identification_page([device], {'username': 'operator'}, 'csrf').decode()
         self.assertIn('Select a model', listing)
-        self.assertIn('1 source to review', listing)
+        self.assertIn('1 model needs source review', listing)
         self.assertNotIn("name='mapping_id'", listing)
         empty = device_identification_page([device], {'username': 'operator'}, 'csrf', query='<missing>').decode()
         self.assertIn('No matching models.', empty)
@@ -445,6 +445,30 @@ class AdminDevicesTests(unittest.TestCase):
         ).decode()
         self.assertIn("Counts unavailable for this historical run", body)
 
+    def test_sync_summary_distinguishes_completed_success_from_no_success(self):
+        completed = devices_page(
+            [device_row()],
+            {
+                "id": 42,
+                "status": "SUCCEEDED",
+                "completed_at": "2026-09-25T12:00:00Z",
+                "records_added": 1,
+                "records_updated": 4,
+            },
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("data-admin-timestamp='2026-09-25T12:00:00+00:00'", completed)
+        self.assertIn("1 new", completed)
+        self.assertIn("4 updated", completed)
+        self.assertIn("Succeeded", completed)
+        self.assertNotIn("No successful sync recorded", completed)
+
+        no_success = devices_page(
+            [device_row()], None, {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn("No successful sync recorded", no_success)
+
     def test_page_has_required_filters_shared_detail_link_and_neutral_image_fallback(self):
         body = devices_page(
             [device_row()],
@@ -481,10 +505,10 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertNotIn(">Auth.<", body)
         self.assertNotIn("src='None'", body)
         self.assertIn("generic-garmin-watch.png", body)
-        self.assertIn("Compatibility status", body)
+        self.assertIn("Evidence", body)
         self.assertIn('<span class="sr-only">Filter by family</span>', body)
         self.assertNotIn(".filter-bar label>.sr-only{position:static", body)
-        self.assertIn("title=\"Installation authorization\"", body)
+        self.assertIn("title=\"Install policy\"", body)
         self.assertNotIn("Support decision", body)
         self.assertNotIn("Evidence status", body)
         self.assertNotIn("id=\"device-sort\"", body)
@@ -553,7 +577,7 @@ class AdminDevicesTests(unittest.TestCase):
         ).decode()
         for value in (
             "Installation history", "Administration", "Device information",
-            "Technical details", "Installation authorization", "Public compatibility",
+            "Technical details", "Install policy", "Public compatibility",
             "Failed results remain historical", "Open errors", "Prepare GitHub issue",
             "Copy issue report", "Copy diagnostic ID", "Copy technical report",
             "/admin/devices/authorization", "/admin/devices/public-compatibility",
@@ -562,7 +586,43 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertNotIn("Change history", detail)
         self.assertNotIn("Catalog Maps:", detail)
         self.assertNotIn("Observed map capability:", detail)
-        self.assertIn("Maps: Yes", detail)
+        self.assertIn("<strong>Maps</strong>", detail)
+        self.assertIn(">Yes</span>", detail)
+        self.assertNotIn("id='diagnostic-history-pagination'", detail)
+        administration = detail.split(
+            "<details class='model-page-section model-administration admin-disclosure'>", 1,
+        )[1].split("</details>", 1)[0]
+        self.assertNotIn(" open", administration.split(">", 1)[0])
+        self.assertEqual(administration.count("<article>"), 1)
+        self.assertIn(
+            "<strong>Public compatibility</strong><span>Not shown.</span>",
+            administration,
+        )
+
+    def test_device_history_renders_pagination_only_for_multiple_pages(self):
+        device = _admin_device_payload([device_row()], None)["devices"][0]
+        operations = [
+            {
+                "operation_key": f"install-{index}",
+                "canonical_device_model_id": device["id"],
+                "occurred_at": f"2026-08-{index + 1:02d}T16:04:00+00:00",
+                "phase_outcome": "SUCCEEDED",
+                "region": "DEU+",
+            }
+            for index in range(26)
+        ]
+
+        one_page = device_detail_page(
+            device, {"username": "operator"}, "csrf", operations=operations[:25],
+        ).decode()
+        multiple_pages = device_detail_page(
+            device, {"username": "operator"}, "csrf", operations=operations,
+        ).decode()
+
+        self.assertNotIn("id='diagnostic-history-pagination'", one_page)
+        self.assertIn("id='diagnostic-history-pagination'", multiple_pages)
+        self.assertIn("Showing 1–25 of 26 · page 1 of 2", multiple_pages)
+        self.assertIn("data-history-page='next'>Next", multiple_pages)
 
     def test_narrow_sticky_header_and_body_share_canonical_column_geometry(self):
         body = devices_page(
@@ -580,6 +640,10 @@ class AdminDevicesTests(unittest.TestCase):
         )
         self.assertEqual(body.count(columns), 2)
         self.assertIn("table-layout:fixed", body)
+        self.assertIn(
+            "@media(max-width:760px){.filter-bar .device-mobile-sort{display:block}",
+            body,
+        )
         self.assertIn("stickyHeaderTable.style.transform = `translateX(${-tableScroll.scrollLeft}px)`", body)
         self.assertIn("tableScroll?.addEventListener('scroll', syncStickyHeader", body)
         self.assertIn("white-space:nowrap;text-transform:uppercase", body)

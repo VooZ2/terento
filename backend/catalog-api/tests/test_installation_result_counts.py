@@ -24,8 +24,9 @@ class InstallationResultCountsTests(unittest.TestCase):
                                  'attempted_install_count': 601, 'successful_install_count': 601,
                                  'failed_install_count': 0}], {'username': 'test'}, 'csrf',
                                 operations=self.events()).decode()
-        self.assertIn('<span>Installation attempts</span><strong>601</strong>', markup)
+        self.assertIn('<span>Attempts</span><strong>601</strong>', markup)
         self.assertIn('<span>Successful</span><strong>601</strong>', markup)
+        self.assertIn('<span>Failed</span><strong class="installation-failed-value">0</strong>', markup)
 
     def events(self):
         return [dict(event_id=f'result-{index}', operation_id='mixed-session',

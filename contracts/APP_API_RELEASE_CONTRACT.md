@@ -64,8 +64,8 @@ List each stream separately:
 
 | Stream | Producer and context | Delivery | Consumers |
 | --- | --- | --- | --- |
-| Compatibility diagnostics | Operation-owned observer; initial device/map context and observed per-map result | InstallationEvidenceController durable queue, independent sharing choice | /compatibility/events, exact-model evidence, Review queue and diagnostic actions |
-| Map activity | MapEngine and existing acquisition journal; provider/map/component phases | MapStatisticsEventController queue, independent sharing choice | /map-events, Map statistics and Overview reconciliation |
+| Compatibility diagnostics | Operation-owned observer; initial device/map context and observed per-map result | InstallationEvidenceController durable queue, independent sharing choice | /compatibility/events, exact-model evidence, Needs attention and diagnostic actions |
+| Map activity | MapEngine and existing acquisition journal; provider/map/component phases | MapStatisticsEventController queue, independent sharing choice | /map-events, Maps and Dashboard reconciliation |
 
 Use the same random operationId for an operation in both streams. Correlate each
 map result by `operationId + mapResultIndex` when available, together with

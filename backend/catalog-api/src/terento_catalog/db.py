@@ -1947,7 +1947,12 @@ class Database:
                 f"""
                 {compatibility_fallback_cte}, localized_events AS (
                     SELECT
-                        e.event_id::text AS operation_key,
+                        COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                            || ':' || COALESCE(e.operation_id::text, '')
+                            || ':' || COALESCE(e.provider_id, '')
+                            || ':' || COALESCE(e.map_package_id::text, '')
+                            || ':' || COALESCE(e.component_kind, '')
+                            AS operation_key,
                         e.event_type,
                         e.outcome,
                         timezone(%s, e.occurred_at) AS local_occurred_at
@@ -2073,35 +2078,6 @@ class Database:
             ) if missing_diagnostics else 0,
             "trend": trend_rows,
             "bucket": bucket,
-        }
-
-    def admin_overview_device_install_coverage(self) -> dict[str, Any]:
-        """Count active Maps=Yes catalog models that already have a successful install."""
-        query = """
-            SELECT
-                count(*) FILTER (
-                    WHERE dm.active IS TRUE AND dm.map_capable IS TRUE
-                ) AS eligible_model_count,
-                count(*) FILTER (
-                    WHERE dm.active IS TRUE
-                      AND dm.map_capable IS TRUE
-                      AND EXISTS (
-                          SELECT 1
-                          FROM compatibility_model_statistics AS stats
-                          WHERE stats.canonical_device_model_id = dm.id
-                            AND COALESCE(stats.successful_install_count, 0) > 0
-                      )
-                ) AS successful_model_count
-            FROM device_model AS dm
-        """
-        with self.connection() as connection:
-            row = connection.execute(query).fetchone() or {}
-        eligible = int(row.get("eligible_model_count") or 0)
-        successful = int(row.get("successful_model_count") or 0)
-        return {
-            "successfulModelCount": successful,
-            "eligibleModelCount": eligible,
-            "coverageRate": successful / eligible * 100 if eligible else None,
         }
 
     def admin_user_count(self) -> int:
@@ -4094,72 +4070,12 @@ class Database:
                 values.append(filters[key])
         return clauses, values
 
-    def provider_download_times(self, filters: dict[str, Any]) -> dict[str, dict[str, Any]]:
-        """Successful main acquisitions scoped by completion; phases may precede the window.
-
-        DISTINCT removes re-delivery, never resolves conflicting phases with min/max.
-        Acquisition identity is checked against every phase before an interval is eligible.
-        """
-        scope = {k: v for k, v in filters.items() if k not in {"eventType", "outcome"}}
-        clauses, values = self._map_statistics_filter(scope)
-        query = f"""
-            WITH successes AS (
-                SELECT DISTINCT COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text) AS key,
-                       e.acquisition_id, e.operation_id, e.provider_id, e.map_package_id,
-                       e.component_kind, e.occurred_at
-                FROM map_download_event e
-                WHERE {" AND ".join(clauses)}
-                  AND e.event_type = 'DOWNLOAD_SUCCEEDED' AND e.outcome = 'SUCCEEDED'
-                  AND e.provider_id <> 'custom'
-                  AND COALESCE(e.component_kind, 'main') = 'main'
-            ), phases AS (
-                SELECT DISTINCT e.acquisition_id, e.operation_id, e.provider_id,
-                       e.map_package_id, e.component_kind, e.event_type, e.outcome, e.occurred_at
-                FROM map_download_event e
-                WHERE e.is_local_test IS NOT TRUE AND e.acquisition_id IN
-                    (SELECT acquisition_id FROM successes WHERE acquisition_id IS NOT NULL)
-            ), measured AS (
-                SELECT s.key, s.provider_id,
-                       CASE WHEN s.acquisition_id IS NOT NULL
-                         AND s.operation_id IS NOT NULL AND s.map_package_id IS NOT NULL
-                         AND s.component_kind = 'main'
-                         AND count(*) = 3
-                         AND count(*) FILTER (WHERE p.event_type = 'DOWNLOAD_STARTED' AND p.outcome = 'UNKNOWN') = 1
-                         AND count(*) FILTER (WHERE p.event_type = 'DOWNLOAD_PROCESSING' AND p.outcome = 'UNKNOWN') = 1
-                         AND count(*) FILTER (WHERE p.event_type = 'DOWNLOAD_SUCCEEDED' AND p.outcome = 'SUCCEEDED') = 1
-                         AND bool_and(p.operation_id IS NOT DISTINCT FROM s.operation_id
-                             AND p.provider_id IS NOT DISTINCT FROM s.provider_id
-                             AND p.map_package_id IS NOT DISTINCT FROM s.map_package_id
-                             AND p.component_kind IS NOT DISTINCT FROM s.component_kind)
-                         AND max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_PROCESSING')
-                             >= max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_STARTED')
-                         AND s.occurred_at >= max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_PROCESSING')
-                       THEN extract(epoch FROM (
-                           max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_PROCESSING') -
-                           max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_STARTED')))
-                       END AS seconds
-                FROM successes s LEFT JOIN phases p ON p.acquisition_id = s.acquisition_id
-                GROUP BY s.key, s.acquisition_id, s.operation_id, s.provider_id,
-                         s.map_package_id, s.component_kind, s.occurred_at
-            )
-            SELECT provider_id, avg(seconds) AS average_seconds,
-                   count(seconds) AS sample_count, count(DISTINCT key) AS population_count
-            FROM measured GROUP BY provider_id
-        """
-        with self.connection() as connection:
-            rows = connection.execute(query, values).fetchall()
-        return {str(row["provider_id"]): {
-            "averageSeconds": float(row["average_seconds"]) if row["average_seconds"] is not None else None,
-            "sampleCount": int(row["sample_count"]),
-            "populationCount": int(row["population_count"]),
-        } for row in rows}
-
     def map_statistics(
         self,
         filters: dict[str, Any],
         *,
-        limit: int | None = None,
-        offset: int = 0,
+        trend_bucket: str | None = None,
+        time_zone: str = "UTC",
     ) -> list[dict[str, Any]]:
         clauses, values = self._map_statistics_filter(filters)
         compatibility_clauses, compatibility_values = self._compatibility_map_statistics_filter(filters)
@@ -4336,6 +4252,53 @@ class Database:
                     HAVING count(DISTINCT package.geographic_region_id) = 1
                 ) AS geography ON TRUE
             )
+        """
+        if trend_bucket is not None:
+            bucket_expression = {
+                "hour": "date_trunc('hour', local_occurred_at)",
+                "day": "date_trunc('day', local_occurred_at)",
+                "month": "date_trunc('month', local_occurred_at)",
+            }.get(trend_bucket)
+            if bucket_expression is None:
+                raise ValueError("invalid map statistics trend bucket")
+            query += f"""
+            , localized_events AS (
+                SELECT event_rows.*, timezone(%s, occurred_at) AS local_occurred_at
+                FROM event_rows
+            )
+            SELECT
+                ({bucket_expression} AT TIME ZONE %s) AS bucket,
+                count(DISTINCT operation_key) FILTER (
+                    WHERE event_type = 'INSTALL_SUCCEEDED'
+                      AND outcome = 'SUCCEEDED'
+                      AND provider_id <> 'custom'
+                ) AS success_count,
+                count(DISTINCT operation_key) FILTER (
+                    WHERE event_type = 'INSTALL_FAILED' AND outcome = 'FAILED'
+                ) AS failed_count,
+                count(DISTINCT operation_key) FILTER (
+                    WHERE event_type = 'INSTALL_SUCCEEDED'
+                      AND outcome = 'SUCCEEDED'
+                      AND provider_id = 'custom'
+                ) AS custom_count,
+                count(DISTINCT operation_key) FILTER (
+                    WHERE event_type = 'DOWNLOAD_SUCCEEDED' AND outcome = 'SUCCEEDED'
+                ) AS download_success_count,
+                count(DISTINCT operation_key) FILTER (
+                    WHERE event_type = 'DOWNLOAD_FAILED' AND outcome = 'FAILED'
+                ) AS download_failed_count,
+                count(DISTINCT operation_key) FILTER (
+                    WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
+                ) AS map_update_count
+            FROM localized_events
+            GROUP BY {bucket_expression}
+            ORDER BY bucket
+            """
+            values = compatibility_values + values + [time_zone, time_zone]
+            with self.connection() as connection:
+                return list(connection.execute(query, values).fetchall())
+
+        query += """
             SELECT
                 provider_id,
                 provider_name,
@@ -4359,11 +4322,41 @@ class Database:
                      map_package_id NULLS LAST, event_type, outcome
         """
         values = compatibility_values + values
-        if limit is not None:
-            query += " LIMIT %s OFFSET %s"
-            values.extend([limit, max(0, offset)])
         with self.connection() as connection:
             return list(connection.execute(query, values).fetchall())
+
+    def map_statistics_trend(
+        self,
+        filters: dict[str, Any],
+        *,
+        period: str,
+        time_zone: str = "UTC",
+    ) -> tuple[list[dict[str, Any]], str]:
+        bucket = {
+            "24h": "hour",
+            "7d": "day",
+            "30d": "day",
+            "all": "month",
+        }.get(period, "hour")
+        rows = self.map_statistics(
+            filters, trend_bucket=bucket, time_zone=time_zone,
+        )
+        if not rows:
+            return [], bucket
+        since = filters.get("dateFrom")
+        if not isinstance(since, datetime):
+            since = min(
+                (row.get("bucket") for row in rows if isinstance(row.get("bucket"), datetime)),
+                default=datetime.now(timezone.utc),
+            )
+        return _fill_overview_trend_buckets(
+            [dict(row) for row in rows],
+            bucket=bucket,
+            since=since,
+            until=datetime.now(timezone.utc),
+            all_time=period == "all",
+            time_zone=time_zone,
+        ), bucket
 
     def map_statistics_linkage(self, filters: dict[str, Any]) -> dict[str, Any]:
         """Match independent map results to watch evidence without changing aggregates.

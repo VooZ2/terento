@@ -68,7 +68,8 @@ class IdentityVariantTests(unittest.TestCase):
         self.assertIn("name='canonical_device_model_id'", markup)
         self.assertIn("value='fenix9-47'", markup)
         self.assertIn("data-canonical-device-wrap hidden", markup)
-        self.assertIn("Suggested model", markup)
+        self.assertIn("<h4>Assign model</h4>", markup)
+        self.assertIn("Selected model:", markup)
         self.assertNotIn("<option", markup)
         self.assertIn("data-identity-device-id='wrong-size'", markup)  # Edit can search the full catalog.
         self.assertIn('wrong-size', markup)  # technical evidence remains available
@@ -87,7 +88,8 @@ class IdentityVariantTests(unittest.TestCase):
         self.assertIsNone(_identity_recommendation([result]))
         markup = _diagnostic_detail_dialog('fenix 9 Pro', 'preview', [result], resolved=False,
                     csrf_token='test', identity_devices=devices)
-        self.assertIn('Select catalog variant', markup)
+        self.assertIn('Identity incomplete', markup)
+        self.assertIn('<h4>Assign model</h4>', markup)
         self.assertIn("data-identity-device-id='inreach'", markup)
         self.assertIn('AMOLED', markup)
         self.assertIn('inReach: Yes', markup)

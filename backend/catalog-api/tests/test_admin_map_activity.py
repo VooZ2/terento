@@ -4,7 +4,7 @@ from terento_catalog.admin import _overview_map_activity_row
 
 
 class AdminMapActivityTests(unittest.TestCase):
-    def test_download_title_expands_start_duration_finish_and_preserves_map_link(self):
+    def test_download_title_expands_start_duration_finish_without_generic_map_link(self):
         row = dict(event_type='DOWNLOAD_SUCCEEDED', provider_id='freizeitkarte', region='FRA',
                    lifecycle=[dict(type='DOWNLOAD_STARTED', at='2026-09-15T23:59:00Z'),
                               dict(type='DOWNLOAD_PROCESSING', at='2026-09-16T00:01:00Z'),
@@ -13,7 +13,7 @@ class AdminMapActivityTests(unittest.TestCase):
         summary = markup.split('<summary>')[1].split('</summary>')[0]
         self.assertIn('Download completed', summary)
         self.assertIn('download-context', summary)
-        self.assertIn('/admin/map-statistics?', summary)
+        self.assertNotIn('<a ', summary)
         self.assertNotIn('Download history', markup)
         self.assertNotIn("class='download-history' open", markup)
         self.assertIn('>2m 30s</span>', markup)
