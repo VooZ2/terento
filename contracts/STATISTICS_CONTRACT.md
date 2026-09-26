@@ -109,6 +109,11 @@ region as a session identity. A success for map A and a failure or missing
 diagnostic for map B remain independent. A reliably linked diagnostic message
 counts as linked whether its outcome is success, failure, incomplete, or
 unknown; an absent message is an observation gap, not a failed installation.
+A current map-side terminal failure without reliable write-boundary evidence
+remains a raw diagnostic/activity fact and is excluded from fresh attempts. A
+linked failure before the device write boundary is excluded for the same
+reason. The legacy allowance applies only to unambiguous records from before
+the write fact existed; it is never inferred for current missing evidence.
 The private coverage metric is:
 
 ```text
@@ -195,21 +200,26 @@ The map-statistics read model keeps fresh-install outcomes, acquisition
 outcomes, and update outcomes separate. Period views use the selected period;
 all-time views say so explicitly. Period boundaries use the server/read-model
 timezone supplied by the request, and timestamps remain immutable source facts.
+The 24-hour trend is hourly, seven-day trends are daily, and 30-day trends are
+weekly. All-time trends use the observed span: up to 14 days is daily, 15–60
+days is weekly, and longer spans are monthly. Missing display buckets keep the
+existing zero-fill rule; bucketing never interpolates or invents events.
 Admin labels and grouping are owned by
 [`admin-behavior-contract.md`](../backend/catalog-api/docs/admin-behavior-contract.md).
 
 Popular maps uses only known provider-catalog packages and successful fresh
 main-map installs. Custom `.img` rows, optional components, updates, and
-downloads are excluded from this population before grouping, sorting, Top 5,
+downloads are excluded from this population before grouping, sorting, Top countries,
 search, or pagination; they remain available to the common statistics and
-other views where their existing formulas require them. Top 5 and Regions
+other views where their existing formulas require them. Top countries and Regions
 group by canonical country/region across providers. All maps groups by
 canonical country/region plus provider. A popularity timestamp is the last
 successful fresh install eligible for that grouped row, not arbitrary activity
-or an update. The Admin presentation labels the summary view `Top 5`; Top 5,
-Regions, and All maps rows use compact primary/secondary geometry, so an absent
-optional date does not reserve an empty line. These are presentation rules only
-and do not change the popularity population, grouping, ordering, or pagination.
+or an update. The Admin presentation labels the summary view `Top countries`
+and shows up to 10 ranked countries. Top countries, Regions, and All maps rows
+use compact primary/secondary geometry, so an absent optional date does not
+reserve an empty line. These are presentation rules only and do not change the
+popularity population, grouping, ordering, or pagination.
 
 Map-statistics `provider`, `map`, `region`, and date filters define the KPI,
 coverage, and popularity population. `eventType`, `outcome`, and pagination

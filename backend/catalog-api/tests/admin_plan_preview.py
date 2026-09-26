@@ -10,7 +10,7 @@ def build(root):
     root=Path(root); user={'username':'Preview', 'admin_review_summary':{'available':True,'installationIssues':20,'githubIssuesInProgress':5,'identityPending':12,'readyToPublish':3,'total':40}}
     rows=[{'model':f'fēnix {i+1} Very Long Authentic Model Name', 'compatibility_identity':f'model-{i}', 'canonical_device_model_id':f'model-{i}',
        'variant': '51 mm, AMOLED, Solar, inReach' if i%2 else '', 'calculated_status':'VERIFIED',
-       'attempted_install_count':i+10,'successful_install_count':i+9,'failed_install_count':1,
+       'attempted_install_count':i+10,'successful_install_count':i+10-(1 if i<10 else 0),'failed_install_count':1 if i<10 else 0,
        'last_success':None if i%7==0 else '2026-09-17T10:20:00Z','last_evidence':'2026-09-17T10:30:00Z'} for i in range(120)]
     events=[{'event_id':f'fixture-{i}', 'operation_id':f'op-{i}', 'map_result_index':0,'model':rows[i%120]['model'],
         'compatibility_identity':f'model-{i%120}','canonical_device_model_id':f'model-{i%120}', 'phase_outcome':'FAILED' if i%10==0 else 'SUCCEEDED',
@@ -61,7 +61,9 @@ def build(root):
     with patch('terento_catalog.admin._system_health_cards',return_value=(cards,None,{})):
         pages['health']=system_health_page({},user,'fixture')
     for name,body in pages.items():
-        (root/(name+'.html')).write_bytes(body)
+        (root/(name+'.html')).write_bytes(body.replace(
+            b'https://terento.app/assets/fonts/', b'/admin/fonts/',
+        ))
     return pages
 
 if __name__=='__main__':

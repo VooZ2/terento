@@ -13,10 +13,21 @@ def serve(directory: Path, port: int = 8765) -> None:
 
         def do_GET(self):
             route = urlsplit(self.path).path
-            if route == "/admin":
-                self.path = "/overview.html"
-            elif route == "/admin/map-statistics":
-                self.path = "/statistics.html"
+            fixture_routes = {
+                "/admin": "/overview.html",
+                "/admin/devices": "/devices.html",
+                "/admin/installations": "/installations.html",
+                "/admin/map-statistics": "/statistics.html",
+                "/admin/providers": "/providers.html",
+                "/admin/system-health": "/health.html",
+                "/admin/diagnostics": "/diagnostics.html",
+            }
+            if route in fixture_routes:
+                self.path = fixture_routes[route]
+            elif route.startswith("/admin/devices/"):
+                self.path = "/device.html"
+            elif route.startswith("/admin/providers/"):
+                self.path = "/provider.html"
             elif route.startswith("/admin/") and not route.startswith("/admin/map-assets/"):
                 self.path = route.removeprefix("/admin")
             super().do_GET()

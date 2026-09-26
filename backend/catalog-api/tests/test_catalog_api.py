@@ -328,6 +328,26 @@ class CatalogAPITests(unittest.TestCase):
         self.assertEqual(payload["bucket"], "day")
         self.assertEqual(payload["trend"][0]["success_count"], 2)
 
+    def test_all_time_map_trend_reuses_the_observed_population_start(self):
+        class TrendDatabase(FakeProviderDatabase):
+            def __init__(self):
+                super().__init__()
+                self.trend_filters = None
+
+            def map_statistics_trend(self, filters, *, period, time_zone):
+                self.trend_filters = dict(filters)
+                return ([], "week")
+
+        database = TrendDatabase()
+        payload = CatalogService(database).map_statistics({"period": "all"})
+
+        self.assertEqual(
+            database.trend_filters["dateFrom"],
+            datetime(2026, 8, 31, tzinfo=UTC),
+        )
+        self.assertNotIn("dateFrom", payload["filters"])
+        self.assertEqual(payload["bucket"], "week")
+
     def test_admin_pages_require_login_and_render_provider_statistics_views(self):
         database = FakeProviderDatabase()
         service = CatalogService(database)

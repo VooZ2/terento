@@ -1,5 +1,5 @@
 """Regression cases from the authenticated September 7 admin audit."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from collections import Counter
 from html.parser import HTMLParser
 from contextlib import contextmanager
@@ -7,16 +7,17 @@ from pathlib import Path
 import os
 import subprocess
 import unittest
+from zoneinfo import ZoneInfo
 
 from terento_catalog.admin import (
     _admin_map_display_name, _admin_region_display_name, _admin_region_identity, _system_health_card,
     _overview_map_event_context, provider_detail_page, local_test_data_page,
-    _admin_disclosure_script, _map_statistics_script,
+    _admin_disclosure_script, _map_statistics_script, _map_statistics_summary,
     map_statistics_page, _identity_parts, _dashboard_script,
 )
 from terento_catalog.admin_world_map import WORLD_MAP_COUNTRY_ALIASES
 from terento_catalog.telemetry import is_local_release_label
-from terento_catalog.db import Database
+from terento_catalog.db import Database, _overview_bucket_floor
 
 
 class Tags(HTMLParser):
@@ -372,7 +373,8 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_top_countries_uses_country_coverage_instead_of_region_identity(self):
         script = _map_statistics_script()
-        self.assertIn("countryCoverage().slice(0,5)", script)
+        self.assertIn("countryCoverage().slice(0,10)", script)
+        self.assertNotIn("countryCoverage().slice(0,5)", script)
         self.assertNotIn("const byRegion", script)
 
     def test_collection_changes_have_readable_regions_and_escape_values(self):
@@ -452,6 +454,125 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn("event_type = 'DOWNLOAD_SUCCEEDED'", query)
         self.assertIn("event_type = 'INSTALL_FAILED'", query)
         self.assertNotIn("array_agg", query)
+        self.assertEqual(parameters[-2:], ['Europe/Vilnius', 'Europe/Vilnius'])
+
+    def test_map_statistics_requires_canonical_fresh_install_evidence(self):
+        calls = []
+
+        class Result:
+            def fetchall(self): return []
+
+        class Connection:
+            def execute(self, query, parameters):
+                calls.append((query, parameters)); return Result()
+
+        class QueryDatabase(Database):
+            @contextmanager
+            def connection(self): yield Connection()
+
+        QueryDatabase('unused').map_statistics({})
+        query, _ = calls[0]
+        self.assertIn("e.write_started IS TRUE", query)
+        self.assertIn("e.write_started IS FALSE", query)
+        self.assertIn("e.app_build IS NULL", query)
+        self.assertIn("e.release_label IS NULL", query)
+        self.assertIn("evidence.diagnostic_result_count = 1", query)
+        self.assertIn("evidence.has_confirmed_failure IS TRUE", query)
+        self.assertIn("e.component_kind = 'contours'", query)
+        self.assertIn("maprando-france-courbes-ign", query)
+        self.assertIn("FRANCECOURBESIGN", query)
+        self.assertIn("count(*) AS event_count", query)
+        self.assertIn(
+            "count(DISTINCT operation_key) FILTER (WHERE canonical_result)", query,
+        )
+        # A shared terminal map event suppresses the compatibility fallback;
+        # the direct row is then counted once through canonical_result.
+        self.assertIn("AND NOT EXISTS (", query)
+        self.assertIn("installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", query)
+
+    def test_map_statistics_summary_keeps_raw_exclusions_out_of_fresh_totals(self):
+        rows = [
+            {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED",
+             "operation_count": 95, "event_count": 95},
+            {"event_type": "INSTALL_FAILED", "outcome": "FAILED",
+             "operation_count": 10, "event_count": 10},
+            # Four writeStarted=false results remain raw Event detail facts.
+            {"event_type": "INSTALL_FAILED", "outcome": "FAILED",
+             "operation_count": 0, "event_count": 4},
+            # One current result has no reliable write boundary.
+            {"event_type": "INSTALL_FAILED", "outcome": "FAILED",
+             "operation_count": 0, "event_count": 1},
+            # MapRando France IGN contours is an optional sibling component.
+            {"event_type": "INSTALL_FAILED", "outcome": "FAILED",
+             "operation_count": 0, "event_count": 1},
+            {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED",
+             "operation_count": 0, "event_count": 3},
+        ]
+        summary = _map_statistics_summary(rows)
+        self.assertEqual(summary["completedInstalls"], 95)
+        self.assertEqual(summary["failedInstalls"], 10)
+        self.assertEqual(summary["installAttempts"], 105)
+        self.assertAlmostEqual(summary["installSuccessRate"], 95 / 105 * 100)
+        self.assertEqual(summary["eventCount"], 114)
+
+    def test_map_statistics_trend_uses_daily_weekly_and_monthly_density(self):
+        class TrendDatabase(Database):
+            def __init__(self):
+                super().__init__('unused')
+                self.buckets = []
+
+            def map_statistics(self, filters, *, trend_bucket=None, time_zone='UTC'):
+                self.buckets.append(trend_bucket)
+                return [{
+                    'bucket': _overview_bucket_floor(
+                        filters['dateFrom'], trend_bucket, time_zone=time_zone,
+                    ),
+                    'success_count': 1,
+                    'failed_count': 0,
+                }]
+
+        database = TrendDatabase()
+        now = datetime.now(timezone.utc)
+        cases = (
+            (7, 'day', range(7, 10)),
+            (35, 'week', range(5, 7)),
+            (180, 'month', range(6, 8)),
+        )
+        for days, expected_bucket, expected_counts in cases:
+            with self.subTest(days=days):
+                trend, bucket = database.map_statistics_trend(
+                    {'dateFrom': now - timedelta(days=days) + timedelta(hours=2)},
+                    period='all', time_zone='Europe/Vilnius',
+                )
+                self.assertEqual(bucket, expected_bucket)
+                self.assertIn(len(trend), expected_counts)
+                first_local = trend[0]['bucket'].astimezone(ZoneInfo('Europe/Vilnius'))
+                self.assertEqual(first_local.hour, 0)
+                if bucket == 'week':
+                    self.assertEqual(first_local.weekday(), 0)
+
+        _, bucket = database.map_statistics_trend(
+            {'dateFrom': now - timedelta(days=30)},
+            period='30d', time_zone='Europe/Vilnius',
+        )
+        self.assertEqual(bucket, 'week')
+
+    def test_map_statistics_week_bucket_uses_the_selected_timezone(self):
+        calls = []
+        class Result:
+            def fetchall(self): return []
+        class Connection:
+            def execute(self, query, parameters):
+                calls.append((query, parameters)); return Result()
+        class QueryDatabase(Database):
+            @contextmanager
+            def connection(self): yield Connection()
+        QueryDatabase('unused').map_statistics(
+            {'provider':'freizeitkarte'}, trend_bucket='week',
+            time_zone='Europe/Vilnius',
+        )
+        query, parameters = calls[0]
+        self.assertIn("date_trunc('week', local_occurred_at)", query)
         self.assertEqual(parameters[-2:], ['Europe/Vilnius', 'Europe/Vilnius'])
 
 if __name__=='__main__': unittest.main()
