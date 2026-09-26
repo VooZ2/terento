@@ -275,7 +275,13 @@ struct ConnectScreen: View {
             customMapImportExpanded = true
             selectedMapIDs.insert(candidateID)
         }
-        .onAppear { refreshMapSelectionPresentation() }
+        .onAppear {
+            refreshMapSelectionPresentation()
+            mapEngine.setInstallationAuthorization(deviceEngine.installationAuthorization)
+        }
+        .onChange(of: deviceEngine.installationAuthorization) { authorization in
+            mapEngine.setInstallationAuthorization(authorization)
+        }
         .onChange(of: mapEngine.result) { _ in refreshMapSelectionPresentation() }
         .onChange(of: selectedMapProviderID) { _ in refreshProviderPresentation() }
         .onChange(of: mapSearchText) { _ in refreshSearchPresentation() }
@@ -1711,6 +1717,9 @@ struct ConnectScreen: View {
         let installAvailability = InstallReviewAvailabilityResolver().resolve(
             plan: plan,
             deviceConnected: deviceEngine.hasConnectedDevice,
+            installationAuthorization: deviceEngine.installationAuthorization,
+            deviceIdentity: identity,
+            mapScanReady: mapEngine.state == .scanned,
             supportedInstallFlow: supportedInstallFlow,
             installationPhase: mapEngine.installationPhase,
             hasValidatedArtifact: mapEngine.validatedArtifact != nil,
@@ -1736,8 +1745,8 @@ struct ConnectScreen: View {
                 ReadyToInstallSelectedMapsList(plan: plan)
                     .padding(.top, 4)
 
-                if !plan.canContinue, let reason = installAvailability.userReason {
-                    Text(reason)
+                if let reason = installAvailability.userReason {
+                    Label(reason, systemImage: "info.circle")
                         .font(.terentoUI(size: 15, weight: .semibold))
                         .foregroundStyle(TerentoColors.error)
                         .fixedSize(horizontal: false, vertical: true)

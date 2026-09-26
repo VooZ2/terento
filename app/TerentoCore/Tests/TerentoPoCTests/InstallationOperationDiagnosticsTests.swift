@@ -64,6 +64,9 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
         engine.beginInstallation(plan: plan(), operationId: operationID)
         check(engine.mapStatisticsEvents.isEmpty && store.events().isEmpty,
               "unavailable authorization blocks before installation diagnostics")
+        check(engine.installationPhase == .failed
+                && engine.installationErrorMessage?.contains("try again") == true,
+              "authorization rejection surfaces a visible failure instead of a silent return")
         let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
         let policy = try JSONDecoder().decode(InstallationAuthorizationDocument.self,
@@ -71,6 +74,8 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
         let authorization = InstallationAuthorizationState.approved(
             record: policy.devices[0], policyVersion: policy.policyVersion)
         check(authorization.matches(identity: unstable), "catalog fixture matches diagnostic test identity")
+        engine.resetForDisconnectedDevice()
+        engine.setDiagnosticTestIdentity(unstable)
         engine.setInstallationAuthorization(authorization)
         engine.beginInstallation(plan: plan(), operationId: operationID)
         check(engine.mapStatisticsEvents.contains { $0.eventType == .installFailed && $0.operationId == operationID },

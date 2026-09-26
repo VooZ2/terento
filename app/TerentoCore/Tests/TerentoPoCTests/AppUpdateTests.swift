@@ -44,6 +44,8 @@ struct AppUpdateTests {
         try testOlderReleaseIsUpToDate()
         try testIncompatibleMinimumMacOS()
         try testManifestDecodesOptionalFields()
+        try testPublishedManifestPassesAppValidation()
+        try testLongPlainTextSummaryCompatibility()
         try testInvalidManifestValuesAreRejected()
         try await testAutomaticCheckRunsOncePerLaunch()
         try await testManualCheckRunsAfterAutomaticCheck()
@@ -52,7 +54,7 @@ struct AppUpdateTests {
         try await testDeferredUpdateCanOfferNewerBuild()
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
-        print("PASS: 16 app update tests")
+        print("PASS: 18 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -181,6 +183,34 @@ struct AppUpdateTests {
         expect(legacyDecoded.summary == nil, "missing summary remains optional")
         expect(legacyDecoded.releaseNotesURL == nil, "missing release notes remains optional")
         expect(legacyDecoded.channel == .beta, "missing channel safely defaults to beta")
+    }
+
+    private static func testPublishedManifestPassesAppValidation() throws {
+        let manifestURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("../../../../site/updates/macos-arm64.json")
+            .standardizedFileURL
+        let published = try JSONDecoder().decode(TerentoAppUpdateManifest.self,
+            from: Data(contentsOf: manifestURL))
+        try TerentoAppUpdateService.validate(manifest: published)
+        expect(published.build > 0, "committed public update manifest passes the shipped app validator")
+    }
+
+    private static func testLongPlainTextSummaryCompatibility() throws {
+        let legacySummary = String(repeating: "A", count: 333)
+        try TerentoAppUpdateService.validate(manifest: manifest(
+            version: "1.0.0", build: 35, summary: legacySummary
+        ))
+        do {
+            try TerentoAppUpdateService.validate(manifest: manifest(
+                version: "1.0.0", build: 35,
+                summary: String(repeating: "A", count: 513)
+            ))
+            fail("oversized release summary is rejected")
+        } catch TerentoAppUpdateError.invalidManifest {
+            // Expected.
+        }
+        expect(true, "current client accepts the published-length plain-text summary with a finite bound")
     }
 
     private static func testInvalidManifestValuesAreRejected() throws {

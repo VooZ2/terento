@@ -197,7 +197,12 @@ Before distributing a public build:
 - set the intended `TERENTO_RELEASE_CHANNEL` (`beta` or `stable`);
 - update `site/updates/macos-arm64.json` with the matching version, build,
   minimum macOS, channel, release tag, and canonical DMG `downloadURL`;
-- provide a concise plain-text `summary` and the canonical `releaseNotesURL`;
+- provide a plain-text `summary` of at most 240 characters and the canonical
+  `releaseNotesURL`; validate the committed manifest with the app update test
+  before publishing, including metadata-only corrections to an existing build.
+  The local client accepts up to 512 characters so it can read the already
+  published beta.14 manifest; keep public summaries within 240 characters for
+  the distributed beta.14 client;
 - run `Tests/run-all-tests.sh` and retain its per-suite summary in CI output;
 - synchronize all six visible Download pages with
   `python3 scripts/normalize-release-pages.py --write`, then require

@@ -10,7 +10,7 @@
   "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.14-build35/Terento-1.0.0-beta.14-macOS-arm64.dmg",
   "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.14-build35",
   "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.14-build35",
-  "summary": "• Checks Garmin catalog authorization before acquiring a map and again before writing.\n• Allows incomplete variant identity when every plausible catalog variant supports maps; unknown or ambiguous devices remain pending.\n• Keeps authorization refusals out of failed-installation evidence and improves per-map diagnostics correlation.",
+  "summary": "• Checks Garmin catalog authorization before map downloads and writes.\n• Accepts missing variant details when all plausible variants support maps.\n• Keeps authorization refusals out of failed-install reports.",
   "channel": "beta",
   "minimumMacOS": "13.0",
   "publishedAt": "2026-09-24",

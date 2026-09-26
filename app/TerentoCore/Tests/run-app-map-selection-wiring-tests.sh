@@ -45,7 +45,7 @@ if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$project
     exit 1
 fi
 
-if ! grep -Fq 'if !plan.canContinue, let reason = installAvailability.userReason' "$connect_screen" \
+if ! grep -Fq 'if let reason = installAvailability.userReason' "$connect_screen" \
     || grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$connect_screen"; then
     print -u2 "FAIL: Review warning does not show the applicable disabled-install reason"
     exit 1
@@ -102,6 +102,8 @@ if grep -Fq 'This map cannot be installed safely from this flow yet.' "$connect_
 fi
 
 if ! grep -Fq 'mapEngine.beginInstallation(plan: plan, operationId: operationID)' "$connect_screen" \
+    || ! grep -Fq 'mapEngine.setInstallationAuthorization(deviceEngine.installationAuthorization)' "$connect_screen" \
+    || ! grep -Fq 'mapEngine.setInstallationAuthorization(authorization)' "$connect_screen" \
     || ! grep -Fq 'func beginInstallation(plan: InstallationPlan, operationId: UUID = UUID())' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
     || ! grep -Fq 'func installSelectedMaps()' \
@@ -193,4 +195,3 @@ if grep -Eq 'Text\("Select([^e]|$)|title: "Select' \
     print -u2 "FAIL: Select pill/action remains in map-selection UI"
     exit 1
 fi
-

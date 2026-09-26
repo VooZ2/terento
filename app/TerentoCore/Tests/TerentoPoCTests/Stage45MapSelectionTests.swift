@@ -714,10 +714,30 @@ struct Stage45MapSelectionTests {
             selectedIDs: [comparison.id],
             currentFreeSpace: 15 * gigabyte
         )
+        let deviceIdentity = DeviceIdentity(
+            manufacturer: "Garmin", model: "fenix 8 - 47mm AMOLED", family: "fēnix",
+            variant: nil, usbVendorId: 0x091e, usbProductId: 0x51b8,
+            firmware: "test", storageCapacity: 31_000_000_000,
+            freeSpace: 15_000_000_000, deviceDescription: "fenix 8 - 47mm AMOLED",
+            garminModelDescription: nil
+        )
+        let approved = InstallationAuthorizationState.approved(
+            record: InstallationAuthorizationRecord(
+                id: "fenix-8-47", manufacturer: "Garmin", model: "fenix 8",
+                baseModel: "fenix 8", canonicalModel: "fenix 8 - 47mm AMOLED",
+                variant: "", caseSizeMm: 47, displayType: "AMOLED",
+                screenTechnology: "AMOLED", solar: false, inReach: false,
+                active: true, mapCapable: true, scope: "IN_SCOPE",
+                installationAuthorization: "APPROVED"
+            ), policyVersion: 3
+        )
         let resolver = InstallReviewAvailabilityResolver()
         let readyToPrepare = resolver.resolve(
             plan: plan,
             deviceConnected: true,
+            installationAuthorization: approved,
+            deviceIdentity: deviceIdentity,
+            mapScanReady: true,
             supportedInstallFlow: true,
             installationPhase: .idle,
             hasValidatedArtifact: false,
@@ -726,6 +746,9 @@ struct Stage45MapSelectionTests {
         let readyToInstall = resolver.resolve(
             plan: plan,
             deviceConnected: true,
+            installationAuthorization: approved,
+            deviceIdentity: deviceIdentity,
+            mapScanReady: true,
             supportedInstallFlow: true,
             installationPhase: .awaitingConfirmation,
             hasValidatedArtifact: true,
@@ -734,6 +757,9 @@ struct Stage45MapSelectionTests {
         let blockedByDevice = resolver.resolve(
             plan: plan,
             deviceConnected: false,
+            installationAuthorization: approved,
+            deviceIdentity: deviceIdentity,
+            mapScanReady: true,
             supportedInstallFlow: true,
             installationPhase: .idle,
             hasValidatedArtifact: false,
@@ -742,6 +768,9 @@ struct Stage45MapSelectionTests {
         let blockedByOperation = resolver.resolve(
             plan: plan,
             deviceConnected: true,
+            installationAuthorization: approved,
+            deviceIdentity: deviceIdentity,
+            mapScanReady: true,
             supportedInstallFlow: true,
             installationPhase: .idle,
             hasValidatedArtifact: false,
@@ -750,6 +779,9 @@ struct Stage45MapSelectionTests {
         let blockedByUnsupportedFlow = resolver.resolve(
             plan: plan,
             deviceConnected: true,
+            installationAuthorization: approved,
+            deviceIdentity: deviceIdentity,
+            mapScanReady: true,
             supportedInstallFlow: false,
             installationPhase: .idle,
             hasValidatedArtifact: false,
@@ -763,6 +795,30 @@ struct Stage45MapSelectionTests {
                 && blockedByOperation.userReason == "Another device operation is in progress."
                 && blockedByUnsupportedFlow.userReason == "This map cannot be installed safely on this Garmin yet.",
             "Install maps is enabled only for an executable ready state and explains real blockers"
+        )
+        let unresolved = resolver.resolve(
+            plan: plan, deviceConnected: true,
+            installationAuthorization: .resolving, deviceIdentity: deviceIdentity,
+            mapScanReady: true, supportedInstallFlow: true,
+            installationPhase: .idle, hasValidatedArtifact: false, operationBusy: false
+        )
+        let unavailable = resolver.resolve(
+            plan: plan, deviceConnected: true,
+            installationAuthorization: .blocked(.catalogUnavailable), deviceIdentity: deviceIdentity,
+            mapScanReady: true, supportedInstallFlow: true,
+            installationPhase: .idle, hasValidatedArtifact: false, operationBusy: false
+        )
+        let scanning = resolver.resolve(
+            plan: plan, deviceConnected: true,
+            installationAuthorization: approved, deviceIdentity: deviceIdentity,
+            mapScanReady: false, supportedInstallFlow: true,
+            installationPhase: .idle, hasValidatedArtifact: false, operationBusy: false
+        )
+        expect(
+            !unresolved.isEnabled && unresolved.userReason?.contains("Checking") == true
+                && !unavailable.isEnabled && unavailable.userReason?.contains("try again") == true
+                && !scanning.isEnabled && scanning.userReason?.contains("Map checks") == true,
+            "review does not offer a silent Install action before authorization and scan are ready"
         )
     }
 

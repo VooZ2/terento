@@ -216,6 +216,9 @@ evidence broadens the candidate set rather than denying authorization; the
 Maps capability of all remaining candidates determines the result. Unknown
 base models, mixed or unknown candidate capability, and unavailable policy
 remain pending/fail closed. See the [tracked authorization contract](../../contracts/INSTALLATION_AUTHORIZATION.md).
+The beta.15 build 36 candidate passes the connected-device authorization state
+into the map engine and shows pending or blocked authorization on the Install
+review screen. It is staged for release and is not yet the public beta.
 
 ### Map acquisition reporting
 

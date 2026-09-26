@@ -328,7 +328,7 @@ struct TerentoAppUpdateService: Sendable {
 
         if let summary = manifest.summary,
            !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-           !isPlainText(summary, maximumLength: 240) {
+           !isPlainText(summary, maximumLength: 512) {
             throw TerentoAppUpdateError.invalidManifest("The release summary is invalid.")
         }
 

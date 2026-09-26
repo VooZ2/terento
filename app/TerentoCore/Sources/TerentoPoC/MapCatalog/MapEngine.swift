@@ -1171,6 +1171,7 @@ final class MapEngine: ObservableObject {
               currentIdentity.map({ deviceInstallationAuthorization.matches(identity: $0) }) == true else {
             installationErrorMessage = deviceInstallationAuthorization.userMessage
                 ?? "Map installation is not available for this device in Terento."
+            installationPhase = .failed
             return
         }
         guard state == .scanned,
