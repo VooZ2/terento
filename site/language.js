@@ -1,8 +1,5 @@
 (() => {
   const supportedLanguages = new Set(["en", "de", "fr", "pl", "cs", "it"]);
-  const languageNames = {
-    en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano",
-  };
   const preferenceKey = "terento-language";
 
   const languagePath = (language) => language === "en" ? "/" : `/${language}/`;
@@ -14,23 +11,6 @@
     } catch {
       // Local preference is optional; the switcher remains usable without it.
     }
-  };
-
-  const updateLanguageMenu = (language) => {
-    document.querySelectorAll(".language-code").forEach((element) => {
-      element.textContent = language.toUpperCase();
-    });
-    document.querySelectorAll(".mobile-language-label").forEach((element) => {
-      element.textContent = languageNames[language] || language.toUpperCase();
-    });
-  };
-
-  const shellLanguageMenu = window.TerentoLanguageMenu;
-  window.TerentoLanguageMenu = {
-    update(language) {
-      shellLanguageMenu?.update?.(language);
-      updateLanguageMenu(language);
-    },
   };
 
   const languageFromTag = (tag) => {

@@ -1,218 +1,45 @@
 (() => {
-  const languages = [
-    { code: "en", flag: "🇬🇧", name: "English" },
-    { code: "de", flag: "🇩🇪", name: "Deutsch" },
-    { code: "fr", flag: "🇫🇷", name: "Français" },
-    { code: "pl", flag: "🇵🇱", name: "Polski" },
-    { code: "cs", flag: "🇨🇿", name: "Čeština" },
-    { code: "it", flag: "🇮🇹", name: "Italiano" },
-  ];
-
-  const translations = {
-    en: {
-      home: "Terento home", primary: "Primary navigation", menu: "Menu",
-      close: "Close menu", about: "About", compatibility: "Compatibility",
-      guide: "Guide", faq: "FAQ", download: "Download", language: "Choose language",
-      footer: "Footer navigation", status: "Open-source project", legal: "Legal",
-      privacy: "Privacy", support: "Support Terento",
-      stats: "Visit statistics (Umami) do not use cookies.",
-    },
-    de: {
-      home: "Terento Startseite", primary: "Hauptnavigation", menu: "Menü",
-      close: "Menü schließen", about: "Über uns", compatibility: "Kompatibilität",
-      guide: "Anleitung", faq: "FAQ", download: "Download", language: "Sprache wählen",
-      footer: "Footer-Navigation", status: "Open-Source-Projekt", legal: "Rechtliches",
-      privacy: "Datenschutz", support: "Support Terento",
-      stats: "Besuchsstatistik (Umami) verwendet keine Cookies.",
-    },
-    fr: {
-      home: "Accueil Terento", primary: "Navigation principale", menu: "Menu",
-      close: "Fermer le menu", about: "À propos", compatibility: "Compatibilité",
-      guide: "Guide", faq: "FAQ", download: "Télécharger", language: "Choisir la langue",
-      footer: "Navigation du pied de page", status: "Projet open source", legal: "Mentions légales",
-      privacy: "Confidentialité", support: "Support Terento",
-      stats: "Les statistiques de visites (Umami) n’utilisent pas de cookies.",
-    },
-    pl: {
-      home: "Strona główna Terento", primary: "Główna nawigacja", menu: "Menu",
-      close: "Zamknij menu", about: "O projekcie", compatibility: "Kompatybilność",
-      guide: "Poradnik", faq: "FAQ", download: "Pobierz", language: "Wybierz język",
-      footer: "Nawigacja w stopce", status: "Projekt open source", legal: "Informacje prawne",
-      privacy: "Prywatność", support: "Support Terento",
-      stats: "Statystyki odwiedzin (Umami) nie używają plików cookie.",
-    },
-    cs: {
-      home: "Domů Terento", primary: "Hlavní navigace", menu: "Menu",
-      close: "Zavřít menu", about: "O projektu", compatibility: "Kompatibilita",
-      guide: "Průvodce", faq: "FAQ", download: "Stáhnout", language: "Vybrat jazyk",
-      footer: "Navigace v zápatí", status: "Open-source projekt", legal: "Právní informace",
-      privacy: "Soukromí", support: "Support Terento",
-      stats: "Statistiky návštěvnosti (Umami) nepoužívají cookies.",
-    },
-    it: {
-      home: "Home Terento", primary: "Navigazione principale", menu: "Menu",
-      close: "Chiudi il menu", about: "Informazioni", compatibility: "Compatibilità",
-      guide: "Guida", faq: "FAQ", download: "Scarica", language: "Scegli la lingua",
-      footer: "Navigazione del piè di pagina", status: "Progetto open source", legal: "Note legali",
-      privacy: "Privacy", support: "Support Terento",
-      stats: "Le statistiche delle visite (Umami) non usano cookie.",
-    },
+  const menuButton = document.querySelector(".menu-toggle");
+  const mobileNav = document.querySelector(".mobile-nav");
+  const setMenu = (open) => {
+    if (!menuButton || !mobileNav) return;
+    menuButton.setAttribute("aria-expanded", String(open));
+    menuButton.setAttribute("aria-label", open ? menuButton.dataset.closeLabel : menuButton.dataset.menuLabel);
+    mobileNav.hidden = !open;
+    document.documentElement.classList.toggle("mobile-menu-open", open);
   };
-
-  const path = window.location.pathname.replace(/\/+$/, "") || "/";
-  const declaredPage = document.documentElement.dataset.page || "";
-  const pageType = ["home", "about", "compatibility", "guide", "download", "legal", "privacy"].includes(declaredPage)
-    ? declaredPage
-    : path === "/compatibility" || /\/compatibility$/.test(path)
-      ? "compatibility"
-      : path === "/download" || /\/download$/.test(path)
-        ? "download"
-        : path === "/about" || /\/about$/.test(path)
-          ? "about"
-          : /\/guides\/install-garmin-maps-mac$/.test(path)
-            ? "guide"
-            : path === "/legal"
-              ? "legal"
-              : path === "/privacy"
-                ? "privacy"
-                : "home";
-  const pageRoute = {
-    about: "about/",
-    compatibility: "compatibility/",
-    download: "download/",
-    guide: "guides/install-garmin-maps-mac/",
-  }[pageType] || "";
-  let currentLanguage = (document.documentElement.lang || "en").toLowerCase().split("-")[0];
-  if (!translations[currentLanguage]) currentLanguage = "en";
-
-  const localizedRoot = (language) => language === "en" ? "/" : `/${language}/`;
-  const link = (language, key) => ({
-    about: `${localizedRoot(language)}about/`,
-    compatibility: `${localizedRoot(language)}compatibility/`,
-    guide: `${localizedRoot(language)}guides/install-garmin-maps-mac/`,
-    faq: `${localizedRoot(language)}#faq`,
-    download: `${localizedRoot(language)}download/`,
-  }[key]);
-  const eventForNavKey = {
-    about: "navigation-link-click",
-    compatibility: "compatibility-link-click",
-    guide: "guide-link-click",
-    faq: "faq-link-click",
-    download: "download-cta-click",
-  };
-  const umamiAttributes = (event, location) => ` data-umami-event="${event}" data-umami-event-location="${location}"`;
-
-  const renderShell = (language) => {
-    const copy = translations[language] || translations.en;
-    const root = localizedRoot(language);
-    const currentLanguageName = languages.find((item) => item.code === language)?.name || language;
-    const active = (key) => (key === "about" && pageType === "about")
-      || (key === "compatibility" && pageType === "compatibility")
-      || (key === "download" && pageType === "download")
-      || (key === "guide" && pageType === "guide");
-    const homeHash = pageType === "home" && window.location.hash === "#faq" ? "#faq" : "";
-    const languageOptions = (location) => languages.map((item) => {
-      const href = item.code === "en" ? `/${pageRoute}` : `/${item.code}/${pageRoute}`;
-      const current = item.code === language ? ' aria-current="page"' : "";
-      // In-page actions must not look like navigation to the analytics tracker.
-      const tag = pageType === "legal" || pageType === "privacy" ? "button" : "a";
-      const destination = tag === "button" ? 'type="button"' : `href="${href}${homeHash}"`;
-      return `<${tag} class="language-option" ${destination} data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}${umamiAttributes("language-switch-click", location)}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></${tag}>`;
-    }).join("");
-    const languageMenu = (mobile = false) => `<details class="language-menu${mobile ? " mobile-language-menu" : ""}">
-    <summary class="language-trigger" aria-label="${copy.language}">${mobile ? `<span class="mobile-language-label">${currentLanguageName}</span>` : `<span class="language-code" aria-hidden="true">${language.toUpperCase()}</span>`}</summary>
-    <div class="language-options">${languageOptions(mobile ? "mobile-language" : "header-language")}</div>
-  </details>`;
-    const navLink = (key, variant = "", location = "header-nav") => {
-      const classAttribute = variant ? ` class="${variant}"` : "";
-      return `<a${classAttribute} href="${link(language, key)}"${active(key) ? ' aria-current="page"' : ""}${umamiAttributes(eventForNavKey[key], location)}>${copy[key]}</a>`;
-    };
-    const header = `<header class="site-header">
-    <div class="shell header-inner">
-      <a class="brand-lockup" href="${root}" aria-label="${copy.home}"${umamiAttributes("home-link-click", "header-brand")}>
-        <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
-        <span>Terento</span>
-      </a>
-      <nav class="primary-nav" aria-label="${copy.primary}">
-        ${navLink("compatibility")}${navLink("guide")}${navLink("about")}${navLink("download", "download-action")}
-        <span class="language-switcher">${languageMenu()}</span>
-      </nav>
-      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="${copy.menu}">
-        <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-        <span class="menu-toggle-text">${copy.menu}</span>
-      </button>
-    </div>
-    <div class="mobile-nav" id="mobile-nav" hidden>
-      <div class="shell mobile-nav-inner">
-        <nav class="mobile-nav-links" aria-label="${copy.primary}">
-          ${navLink("compatibility", "", "mobile-nav")}${navLink("guide", "", "mobile-nav")}${navLink("about", "", "mobile-nav")}${navLink("download", "", "mobile-nav")}
-        </nav>
-        <div class="mobile-nav-language">${languageMenu(true)}</div>
-      </div>
-    </div>
-  </header>`;
-
-    const footer = `<footer class="site-footer">
-    <div class="shell footer-grid">
-      <div class="footer-identity">
-        <a class="brand-lockup footer-brand" href="${root}" aria-label="${copy.home}"${umamiAttributes("home-link-click", "footer-brand")}>
-          <img src="/assets/logo-white.svg" alt="" width="32" height="32">
-          <span>Terento</span>
-        </a>
-        <div class="footer-meta">
-          <a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">${copy.status}</a>
-          <a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">${copy.support}</a>
-        </div>
-      </div>
-      <nav class="footer-nav" aria-label="${copy.footer}">
-        ${navLink("about", "", "footer-nav")}${navLink("compatibility", "", "footer-nav")}${navLink("guide", "", "footer-nav")}${navLink("faq", "", "footer-nav")}${navLink("download", "", "footer-nav")}
-        <a href="/legal/"${umamiAttributes("legal-link-click", "footer-nav")}>${copy.legal}</a>
-        <a href="/privacy/"${umamiAttributes("privacy-link-click", "footer-nav")}>${copy.privacy}</a>
-      </nav>
-    </div>
-    <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
-    <div class="shell footer-note"><p><span data-footer-copy>${copy.stats}</span></p></div>
-  </footer>`;
-
-    document.querySelector("header.site-header")?.replaceWith(document.createRange().createContextualFragment(header));
-    document.querySelector("footer.site-footer")?.replaceWith(document.createRange().createContextualFragment(footer));
-
-    const menuButton = document.querySelector(".menu-toggle");
-    const mobileNav = document.querySelector(".mobile-nav");
-    const setMenu = (open) => {
-      if (!menuButton || !mobileNav) return;
-      menuButton.setAttribute("aria-expanded", String(open));
-      menuButton.setAttribute("aria-label", open ? copy.close : copy.menu);
-      mobileNav.hidden = !open;
-      document.documentElement.classList.toggle("mobile-menu-open", open);
-    };
-    menuButton?.addEventListener("click", () => setMenu(menuButton.getAttribute("aria-expanded") !== "true"));
-    mobileNav?.querySelectorAll("a, [data-language-switch]").forEach((item) => item.addEventListener("click", () => setMenu(false)));
-    document.querySelectorAll("[data-language-switch]").forEach((item) => {
-      item.addEventListener("click", () => {
-        try { window.localStorage.setItem("terento-language", item.dataset.languageSwitch); } catch { /* optional */ }
-      });
-    });
-  };
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
-    const menuButton = document.querySelector(".menu-toggle");
-    const mobileNav = document.querySelector(".mobile-nav");
-    if (menuButton?.getAttribute("aria-expanded") === "true") {
-      menuButton.setAttribute("aria-expanded", "false");
-      if (mobileNav) mobileNav.hidden = true;
-      document.documentElement.classList.remove("mobile-menu-open");
+  menuButton?.addEventListener("click", () => setMenu(menuButton.getAttribute("aria-expanded") !== "true"));
+  mobileNav?.addEventListener("click", event => {
+    if (event.target.closest("a, [data-language-switch]")) setMenu(false);
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && menuButton?.getAttribute("aria-expanded") === "true") {
+      setMenu(false);
       menuButton.focus();
     }
   });
-
+  // Keep the FAQ destination when switching between localized Home pages.
+  if (window.location.hash === "#faq") {
+    document.querySelectorAll("a[data-language-switch]").forEach(link => { link.hash = "faq"; });
+  }
+  const translations = JSON.parse(document.querySelector("#shell-translations")?.textContent || "{}");
   window.TerentoLanguageMenu = {
     update(language) {
-      if (!translations[language]) return;
-      currentLanguage = language;
-      renderShell(currentLanguage);
+      const copy = translations[language];
+      if (!copy) return;
+      const root = language === "en" ? "/" : `/${language}/`;
+      const routes = {about: "about/", compatibility: "compatibility/", guide: "guides/install-garmin-maps-mac/", faq: "#faq", download: "download/"};
+      document.querySelectorAll("[data-shell-copy]").forEach(node => { node.textContent = copy[node.dataset.shellCopy]; });
+      document.querySelectorAll("[data-shell-aria]").forEach(node => { node.setAttribute("aria-label", copy[node.dataset.shellAria]); });
+      document.querySelectorAll("[data-shell-root]").forEach(node => { node.href = root; });
+      document.querySelectorAll("[data-shell-route]").forEach(node => { node.href = root + routes[node.dataset.shellRoute]; });
+      document.querySelectorAll(".language-code").forEach(node => { node.textContent = language.toUpperCase(); });
+      document.querySelectorAll(".mobile-language-label").forEach(node => { node.textContent = copy.name; });
+      if (menuButton) {
+        menuButton.dataset.menuLabel = copy.menu;
+        menuButton.dataset.closeLabel = copy.close;
+      }
+      setMenu(false);
     },
   };
-  renderShell(currentLanguage);
 })();

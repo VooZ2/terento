@@ -37,7 +37,6 @@ from terento_catalog.admin import (
     _github_issue_report,
     _github_issue_url,
     _sanitised_issue_value,
-    _identity_comparison_key,
     _identity_checks_markup,
     _map_statistics_summary,
     _normalise_variant,
@@ -51,6 +50,7 @@ from terento_catalog.admin import (
     format_timestamp,
     _providers_list_script,
     _status_badge,
+    _table_filter_state_script,
     campaign_links_page,
     dashboard_page,
     device_detail_page,
@@ -246,6 +246,24 @@ class AdminSemanticsTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
+
+    def test_table_filters_restore_url_before_storage_and_validate_options(self):
+        self._run_node("""
+const assert = require('node:assert/strict');
+const restore = new Function('parameters', 'sessionStorage', `
+  const storageKey = 'filters';
+  ${process.argv[1]}
+  const control = {options: [{value: 'all'}, {value: 'yes'}, {value: 'no'}]};
+  restoreSelect(control, 'maps', 'all');
+  return control.value;
+`);
+const saved = {getItem: () => '{"maps":"yes"}'};
+assert.equal(restore(new URLSearchParams('maps=no'), saved), 'no');
+assert.equal(restore(new URLSearchParams(), saved), 'yes');
+assert.equal(restore(new URLSearchParams('maps=invalid'), saved), 'all');
+assert.equal(restore(new URLSearchParams(), {getItem: () => '{broken'}), 'all');
+assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocked');}}), 'all');
+""", _table_filter_state_script())
 
     def test_every_generated_admin_script_passes_node_syntax_check(self):
         scripts = {
@@ -534,9 +552,6 @@ class AdminSemanticsTests(unittest.TestCase):
             "47 mm, Solar, inReach",
         )
 
-    def test_canonical_model_display_ignores_diacritic_only_difference(self):
-        self.assertEqual(_identity_comparison_key("fēnix 8"), _identity_comparison_key("fenix 8"))
-        self.assertNotEqual(_identity_comparison_key("fēnix 8"), _identity_comparison_key("fēnix 8 Pro"))
 
     def test_one_common_classifier_has_canonical_order_and_unknown_is_unavailable(self):
         self.assertEqual(

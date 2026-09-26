@@ -8,7 +8,6 @@ const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
 const styleVersion = "20260913-maprando-language-v2";
-const localizedContentVersion = "20260918-four-providers-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -151,9 +150,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   }
   assert.match(anchors[1][2], /data-umami-event="compatibility-link-click"/);
   assert.match(anchors[1][2], /data-umami-event-location="download-page"/);
-  if (locale !== "en") {
-    assert.match(html, new RegExp(`/localized-content\\.js\\?v=${localizedContentVersion}`));
-  }
+  assert.doesNotMatch(html, /localized-content\.js/);
 }
 
 for (const locale of Object.keys(locales)) {
@@ -170,8 +167,6 @@ for (const locale of Object.keys(locales)) {
   assert.match(html, /not Garmin certification|keine Garmin-Zertifizierung|certification Garmin|certyfikatem firmy Garmin|certyfikacją Garmin|certifikaci Garmin|certificazione Garmin/i);
 }
 
-assert.doesNotMatch(read("site/localized-content.js"), /download-compatibility-link/);
-assert.doesNotMatch(read("site/localized-content.js"), /download-requirement|download-item|copy\.included/);
 assert.doesNotMatch(styles, /\.download-trust\s*\{/);
 
 for (const [locale, contract] of Object.entries(locales)) {
@@ -212,9 +207,8 @@ assert.match(cssBlock(".mobile-language-menu .language-options"), /border:\s*1px
 assert.match(cssBlock(".mobile-language-menu .language-options"), /background:\s*var\(--surface\)/);
 assert.doesNotMatch(styles, /\.mobile-language-menu \.language-options\s*\{[^}]*grid-template-columns:\s*repeat/);
 assert.doesNotMatch(shellSource, /navLink\("download", "download-action", "mobile-nav"\)/);
-assert.match(shellSource, /currentLanguageName/);
-assert.match(languageSource, /mobile-language-label/);
-assert.match(languageSource, /languageNames/);
+assert.match(shellSource, /mobile-language-label/);
+assert.doesNotMatch(shellSource, /replaceWith|createContextualFragment/);
 
 for (const locale of Object.keys(locales)) {
   const prefix = locale === "en" ? "" : `${locale}/`;

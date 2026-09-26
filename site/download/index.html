@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en" data-language="en">
   <head>
-    <script defer src="/site-shell.js?v=20260909-post-audit-v1"></script>
+    <script defer src="/site-shell.js?v=20260926-static-shell-v1"></script>
     <link rel="stylesheet" href="/styles.css?v=20260913-maprando-language-v2">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -39,7 +39,7 @@
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="manifest" href="/manifest.webmanifest">
-    <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
+    <script defer src="/language.js?v=20260926-static-shell-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
     <script type="application/ld+json">
       {
@@ -71,29 +71,29 @@
     <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Skip to content</a>
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="brand-lockup" href="/" aria-label="Terento home" data-umami-event="home-link-click" data-umami-event-location="header-brand">
+        <a class="brand-lockup" href="/" data-shell-aria="home" data-shell-root aria-label="Terento home" data-umami-event="home-link-click" data-umami-event-location="header-brand">
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
-        <nav class="primary-nav" aria-label="Primary navigation">
-          <a href="/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Compatibility</a><a href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Guide</a><a href="/about/" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">About</a><a class="download-action" href="/download/" aria-current="page" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Download</a>
+        <nav class="primary-nav" data-shell-aria="primary" aria-label="Primary navigation">
+          <a href="/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Compatibility</a><a href="/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Guide</a><a href="/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">About</a><a class="download-action" href="/download/" data-shell-copy="download" data-shell-route="download" aria-current="page" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Download</a>
           <span class="language-switcher"><details class="language-menu">
-          <summary class="language-trigger" aria-label="Choose language"><span class="language-code" aria-hidden="true">EN</span></summary>
+          <summary class="language-trigger" data-shell-aria="language" aria-label="Choose language"><span class="language-code" aria-hidden="true">EN</span></summary>
           <div class="language-options"><a class="language-option" href="/download/" data-language-switch="en" lang="en" aria-label="English" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/download/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/download/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/download/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/download/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/download/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
         </details></span>
         </nav>
-        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" data-menu-label="Menu" data-close-label="Close menu" aria-label="Menu">
           <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="menu-toggle-text">Menu</span>
+          <span class="menu-toggle-text" data-shell-copy="menu">Menu</span>
         </button>
       </div>
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
-          <nav class="mobile-nav-links" aria-label="Primary navigation">
-            <a href="/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Compatibility</a><a href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Guide</a><a href="/about/" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">About</a><a href="/download/" aria-current="page" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Download</a>
+          <nav class="mobile-nav-links" data-shell-aria="primary" aria-label="Primary navigation">
+            <a href="/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Compatibility</a><a href="/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Guide</a><a href="/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">About</a><a href="/download/" data-shell-copy="download" data-shell-route="download" aria-current="page" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Download</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" aria-label="Choose language"><span class="mobile-language-label">English</span></summary>
+            <summary class="language-trigger" data-shell-aria="language" aria-label="Choose language"><span class="mobile-language-label">English</span></summary>
             <div class="language-options"><a class="language-option" href="/download/" data-language-switch="en" lang="en" aria-label="English" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/download/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/download/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/download/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/download/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/download/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
           </details></div>
         </div>
@@ -110,20 +110,20 @@
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div class="footer-identity">
-          <a class="brand-lockup footer-brand" href="/" aria-label="Terento home" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
+          <a class="brand-lockup footer-brand" href="/" data-shell-aria="home" data-shell-root aria-label="Terento home" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
             <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Open-source project</a><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Open-source project</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
-        <nav class="footer-nav" aria-label="Footer navigation">
-          <a href="/about/" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">About</a><a href="/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibility</a><a href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide</a><a href="/#faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/download/" aria-current="page" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Download</a>
-          <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Legal</a>
-          <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a>
+        <nav class="footer-nav" data-shell-aria="footer" aria-label="Footer navigation">
+          <a href="/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">About</a><a href="/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibility</a><a href="/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide</a><a href="/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/download/" data-shell-copy="download" data-shell-route="download" aria-current="page" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Download</a>
+          <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Legal</a>
+          <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
-      <div class="shell footer-note"><p>Visit statistics (Umami) do not use cookies.</p></div>
+      <div class="shell footer-note"><p><span data-footer-copy data-shell-copy="stats">Visit statistics (Umami) do not use cookies.</span></p></div>
     </footer>
   </body>
 </html>

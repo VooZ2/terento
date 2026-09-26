@@ -161,7 +161,7 @@ jobs:
               printf '%s\n' "devices catalogVersion missing" >&2
               return 1
             }
-            grep -Eiq '^cache-control:[[:space:]]*([^,]*,[[:space:]]*)*no-store([[:space:]]*,|$)' "$policy_headers_file" || {
+            grep -Eiq '^cache-control:[[:space:]]*([^,]*,[[:space:]]*)*no-store[[:space:]]*(,|$)' "$policy_headers_file" || {
               printf '%s\n' "installation-policy cache-control must include no-store" >&2
               grep -Ei 'cache-control:' "$policy_headers_file" >&2 || true
               return 1

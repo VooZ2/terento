@@ -532,7 +532,7 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("opacity:.2", body)
         self.assertNotIn("<dialog id='device-dialog'", body)
         self.assertIn("parameters.has(key) ? parameters.get(key) : saved[key]", body)
-        self.assertIn("setSelect(map, 'maps', 'yes')", body)
+        self.assertIn("restoreSelect(map, 'maps', 'yes')", body)
         self.assertIn("if (showNew) return device.catalog?.newInLatestSync === true", body)
         self.assertIn("map.value = 'all'", body)
 

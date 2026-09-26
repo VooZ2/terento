@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Synchronize static fallback headers and footers with site-shell.js."""
+"""Generate the shared public headers, footers and in-page language copy."""
 
 from __future__ import annotations
 
 import html
+import json
 import re
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20260909-post-audit-v1"
+SHELL_VERSION = "20260926-static-shell-v1"
 PROVIDER_SCRIPT_VERSION = "20260912-bbbike-types-v1"
 STYLE_VERSION = "20260913-maprando-language-v2"
 IMAGE_VERSION = "20260912-app-screens-v2"
-LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
-LOCALIZED_CONTENT_VERSION = "20260918-four-providers-v1"
+LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20260918-compatibility-successful-snapshot-v1"
 COMPATIBILITY_VERSION = "20260918-compatibility-successful-snapshot-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
@@ -72,33 +72,33 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     def nav_link(key: str, variant: str = "", location: str = "header-nav") -> str:
         current = ' aria-current="page"' if active.get(key) else ""
         class_attribute = f' class="{variant}"' if variant else ""
-        return f'<a{class_attribute} href="{nav[key]}"{current}{umami_attributes(nav_events[key], location)}>{copy[key]}</a>'
+        return f'<a{class_attribute} href="{nav[key]}" data-shell-copy="{key}" data-shell-route="{key}"{current}{umami_attributes(nav_events[key], location)}>{copy[key]}</a>'
     language_menu = f'''<details class="language-menu">
-          <summary class="language-trigger" aria-label="{copy["language"]}"><span class="language-code" aria-hidden="true">{locale.upper()}</span></summary>
+          <summary class="language-trigger" data-shell-aria="language" aria-label="{copy["language"]}"><span class="language-code" aria-hidden="true">{locale.upper()}</span></summary>
           <div class="language-options">{language_links(locale, route_for_language, "header-language", page in {"legal", "privacy"})}</div>
         </details>'''
     header = f'''<header class="site-header">
       <div class="shell header-inner">
-        <a class="brand-lockup" href="{root}" aria-label="{copy["home"]}"{umami_attributes("home-link-click", "header-brand")}>
+        <a class="brand-lockup" href="{root}" data-shell-aria="home" data-shell-root aria-label="{copy["home"]}"{umami_attributes("home-link-click", "header-brand")}>
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
-        <nav class="primary-nav" aria-label="{copy["primary"]}">
+        <nav class="primary-nav" data-shell-aria="primary" aria-label="{copy["primary"]}">
           {nav_link("compatibility")}{nav_link("guide")}{nav_link("about")}{nav_link("download", "download-action")}
           <span class="language-switcher">{language_menu}</span>
         </nav>
-        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="{copy["menu"]}">
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" data-menu-label="{copy["menu"]}" data-close-label="{copy["close"]}" aria-label="{copy["menu"]}">
           <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="menu-toggle-text">{copy["menu"]}</span>
+          <span class="menu-toggle-text" data-shell-copy="menu">{copy["menu"]}</span>
         </button>
       </div>
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
-          <nav class="mobile-nav-links" aria-label="{copy["primary"]}">
+          <nav class="mobile-nav-links" data-shell-aria="primary" aria-label="{copy["primary"]}">
             {nav_link("compatibility", location="mobile-nav")}{nav_link("guide", location="mobile-nav")}{nav_link("about", location="mobile-nav")}{nav_link("download", location="mobile-nav")}
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" aria-label="{copy["language"]}"><span class="mobile-language-label">{copy["name"]}</span></summary>
+            <summary class="language-trigger" data-shell-aria="language" aria-label="{copy["language"]}"><span class="mobile-language-label">{copy["name"]}</span></summary>
             <div class="language-options">{language_links(locale, route_for_language, "mobile-language", page in {"legal", "privacy"})}</div>
           </details></div>
         </div>
@@ -107,21 +107,24 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     footer = f'''<footer class="site-footer">
       <div class="shell footer-grid">
         <div class="footer-identity">
-          <a class="brand-lockup footer-brand" href="{root}" aria-label="{copy["home"]}"{umami_attributes("home-link-click", "footer-brand")}>
+          <a class="brand-lockup footer-brand" href="{root}" data-shell-aria="home" data-shell-root aria-label="{copy["home"]}"{umami_attributes("home-link-click", "footer-brand")}>
             <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">{copy["status"]}</a><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">{copy["support"]}</a></div>
+          <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">{copy["status"]}</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">{copy["support"]}</a></div>
         </div>
-        <nav class="footer-nav" aria-label="{copy["footer"]}">
+        <nav class="footer-nav" data-shell-aria="footer" aria-label="{copy["footer"]}">
           {nav_link("about", location="footer-nav")}{nav_link("compatibility", location="footer-nav")}{nav_link("guide", location="footer-nav")}{nav_link("faq", location="footer-nav")}{nav_link("download", location="footer-nav")}
-          <a href="/legal/"{umami_attributes("legal-link-click", "footer-nav")}>{copy["legal"]}</a>
-          <a href="/privacy/"{umami_attributes("privacy-link-click", "footer-nav")}>{copy["privacy"]}</a>
+          <a data-shell-copy="legal" href="/legal/"{umami_attributes("legal-link-click", "footer-nav")}>{copy["legal"]}</a>
+          <a data-shell-copy="privacy" href="/privacy/"{umami_attributes("privacy-link-click", "footer-nav")}>{copy["privacy"]}</a>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
-      <div class="shell footer-note"><p>{copy["stats"]}</p></div>
+      <div class="shell footer-note"><p><span data-footer-copy data-shell-copy="stats">{copy["stats"]}</span></p></div>
     </footer>'''
+    if page in {"legal", "privacy"}:
+        translations = json.dumps(LOCALES, ensure_ascii=False).replace("<", "\\u003c")
+        footer += f'<script type="application/json" id="shell-translations">{translations}</script>'
     return header, footer
 
 
@@ -268,7 +271,7 @@ def main() -> None:
         source, header_count = re.subn(r'<header class="site-header">[\s\S]*?</header>', header, source, count=1)
         if not header_count:
             raise SystemExit(f"missing header in {relative}")
-        source, footer_count = re.subn(r'<footer class="site-footer">[\s\S]*?</footer>', footer, source, count=1)
+        source, footer_count = re.subn(r'<footer class="site-footer">[\s\S]*?</footer>(?:<script type="application/json" id="shell-translations">[\s\S]*?</script>)?', footer, source, count=1)
         if not footer_count:
             raise SystemExit(f"missing footer in {relative}")
         source = re.sub(r'(/site-shell\.js\?v=)[^"\s]+', rf'\g<1>{SHELL_VERSION}', source)
@@ -315,11 +318,7 @@ def main() -> None:
         )
         source = source.replace('width="2205" height="1348"', 'width="2198" height="1335"')
         source = source.replace('width="2200" height="1346"', 'width="2198" height="1335"')
-        source = re.sub(
-            r'(/localized-content\.js\?v=)[^"\s]+',
-            rf'\g<1>{LOCALIZED_CONTENT_VERSION}',
-            source,
-        )
+        source = re.sub(r'\s*<script defer src="/localized-content\.js[^"\s]*"></script>', "", source)
         source = re.sub(
             r'(?:<script defer src="/page-language\.js\?v=[^"\s]+"></script>\s*)?'
             r'<script defer src="/(privacy|legal)-language\.js\?v=[^"\s]+"></script>',

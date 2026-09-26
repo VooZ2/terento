@@ -208,7 +208,7 @@ for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
 }
 const publicHelp = [
   read("README.md"),
-  read("site/localized-content.js"),
+  read("scripts/templates/home-copy.json"),
   ...["", "de/", "fr/", "pl/", "cs/", "it/"].map(
     (prefix) => read(`site/${prefix}guides/install-garmin-maps-mac/index.html`),
   ),
@@ -219,9 +219,9 @@ assert.doesNotMatch(
   "public help must not retain retired UI copy",
 );
 assert.doesNotMatch(
-  read("site/localized-content.js"),
+  read("scripts/templates/home-copy.json"),
   /b(?:eta|êta)[ .]\d+/gi,
-  "Runtime-localized Home and FAQ copy must remain release-neutral",
+  "Generated Home and FAQ copy must remain release-neutral",
 );
 
 assert.doesNotMatch(

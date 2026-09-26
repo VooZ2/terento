@@ -10,7 +10,6 @@ from .admin_revisions import section_revisions, statistics_revisions
 import math
 import re
 import secrets
-import unicodedata
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import quote, urlencode, urlsplit
@@ -269,14 +268,6 @@ def _historical_catalog_indicator() -> str:
 
 def _normalise_variant(value: Any) -> str:
     return variant_label({"variant": str(value or "")[:256]}) or "—"
-
-
-def _identity_comparison_key(value: Any) -> str:
-    normalized = unicodedata.normalize("NFKD", str(value or "")).casefold()
-    normalized = "".join(
-        character for character in normalized if not unicodedata.combining(character)
-    )
-    return " ".join(re.sub(r"[^a-z0-9]+", " ", normalized).split())
 
 
 def _identity_parts(row: dict[str, Any]) -> tuple[str, str, str]:
@@ -542,17 +533,6 @@ def _diagnostic_state_badge(value: str) -> str:
     else:
         state, label = "OPEN", "Open"
     return f"<span class='diagnostic-state diagnostic-state-{state.lower()}'>{label}</span>"
-
-
-def _github_issue_chip(value: Any) -> str:
-    raw = str(value or "").strip()
-    if not raw:
-        return ""
-    match = re.fullmatch(r"#?(\d+)", raw)
-    if match:
-        issue_number = match.group(1)
-        return f"<a class='diagnostic-chip github-issue' href='https://github.com/VooZ2/terento/issues/{issue_number}' target='_blank' rel='noreferrer'>Issue #{issue_number}</a>"
-    return f"<span class='diagnostic-chip'>GitHub {html.escape(raw)}</span>"
 
 
 def _diagnostic_value(value: Any) -> str:
@@ -1477,31 +1457,18 @@ def _overview_trend_chart(
         empty_label = "downloads" if metric == "downloads" else "map installations"
         return f"<p class='overview-empty-state'>No {empty_label} in this period.</p>"
     if metric == "downloads":
-        values = [
-            (
-                max(0, int(item.get("download_success_count") or 0)),
-                max(0, int(item.get("download_failed_count") or 0)),
-            )
-            for item in trend
-        ]
+        fields = ("download_success_count", "download_failed_count")
         series_names = ("download-success", "download-failed")
         series_labels = ("Download succeeded", "Download failed")
         chart_label = "Map downloads"
     else:
-        values = [
-            (
-                max(0, int(item.get("success_count") or 0)),
-                max(0, int(item.get("failed_count") or 0)),
-                max(0, int(item.get("custom_count") or 0)),
-                max(0, int(item.get("map_update_count") or 0)),
-            )
-            for item in trend
-        ]
+        fields = ("success_count", "failed_count", "custom_count", "map_update_count")
         series_names = ("success", "failed", "custom", "update")
         series_labels = (
             "Install succeeded", "Install failed", "Custom install", "Map update",
         )
         chart_label = "Map installations"
+    values = [tuple(max(0, int(item.get(key) or 0)) for key in fields) for item in trend]
     maximum = max((sum(series) for series in values), default=1) or 1
     # Keep low-volume periods readable. A single operation should remain a
     # single operation visually, rather than filling the entire plot because
@@ -1850,7 +1817,6 @@ def overview_page(
         f"<option value='{value}'{' selected' if value == period else ''}>{label}</option>"
         for value, label in period_labels.items()
     )
-    failed_installs = int(data.get("allTimeFailedCount") or 0)
     completed_installs = int(data.get("allTimeSuccessCount") or 0)
     recent = list(data.get("recentActivity") or [])
     all_time_install_available = (
@@ -1861,14 +1827,8 @@ def overview_page(
         and "allTimeFailedDownloadCount" in data
     )
     event_metric = lambda value, available: str(value) if available else "—"
-    failed_install_value = data.get("allTimeFailedCount")
-    failed_install_number = _optional_nonnegative_int(failed_install_value)
-    failed_install_available = (
-        failed_install_number is not None
-        and all_time_install_available
-    )
     failed_install_counter = _admin_error_counter(
-        failed_installs, available=failed_install_available,
+        data.get("allTimeFailedCount"), available=all_time_install_available,
     )
     attention_providers = [
         provider for provider in providers
@@ -1914,21 +1874,12 @@ def overview_page(
     download_successes = int(
         data.get("allTimeCompletedDownloadCount") or 0
     )
-    failed_downloads = int(
-        data.get("allTimeFailedDownloadCount") or 0
-    )
     download_success_rate = (
         _format_rate(data.get("allTimeDownloadSuccessRate"))
         if all_time_download_available else "—"
     )
-    failed_download_value = data.get("allTimeFailedDownloadCount")
-    failed_download_number = _optional_nonnegative_int(failed_download_value)
-    failed_download_available = (
-        failed_download_number is not None
-        and all_time_download_available
-    )
     failed_download_counter = _admin_error_counter(
-        failed_downloads, available=failed_download_available,
+        data.get("allTimeFailedDownloadCount"), available=all_time_download_available,
     )
     map_statistics_href = "/admin/map-statistics"
     map_statistics_href += "?" + urlencode({"period": period})
@@ -3937,18 +3888,6 @@ def _identification_review_script() -> str:
     })();"""
 
 
-def _identity_evidence_markup(evidence: list[dict]) -> str:
-    labels = {"rawMTPModel": "MTP model", "garminModelDescription": "XML description", "model": "Client model",
-              "caseSizeMm": "Client size", "displayType": "Client display", "variant": "Client variant"}
-    items = []
-    for item in evidence:
-        source = str(item.get("source", ""))
-        version = f" · revision {item['version']}" if item.get("version") else ""
-        value = str(item.get("value", ""))
-        items.append(html.escape(value) + " <small>— " + html.escape(labels.get(source, source) + version) + "</small>")
-    return "<br>".join(items) or "No observation"
-
-
 def _identity_presentation_candidates(assessment: dict) -> list[dict]:
     """Prefer explicitly observed features over less-specific catalog rows.
 
@@ -4242,31 +4181,6 @@ def _identity_checks_markup(
     return ("<section class='identity-summary identity-outcome'><h3>" + title + "</h3><p>" + action + "</p>"
             + _identity_observations_markup(results, identity_devices)
             + "</section>")
-
-
-def _identity_source_markup(results: list[dict], csrf_token: str, return_to: str) -> str:
-    forms = []
-    fields = {"model": "Client model", "rawMTPModel": "MTP model", "garminModelDescription": "XML description",
-              "garminModelPartNumber": "XML part number", "variant": "Client variant", "caseSizeMm": "Case size (mm)",
-              "displayType": "Display type", "usbVendorID": "USB vendor (decimal)", "usbProductID": "USB product (decimal)"}
-    source_columns = {"model": "model", "rawMTPModel": "raw_mtp_model", "garminModelDescription": "garmin_model_description", "garminModelPartNumber": "garmin_model_part_number", "variant": "variant", "caseSizeMm": "case_size_mm", "displayType": "display_type", "usbVendorID": "usb_vendor_id", "usbProductID": "usb_product_id"}
-    for result in results:
-        options = "".join(f"<option value='{key}' data-original-value='{html.escape(str(result.get(source_columns[key]) if result.get(source_columns[key]) is not None else 'Not reported'), quote=True)}'>{label}</option>" for key, label in fields.items())
-        event_id = str(result.get("event_id") or "")
-        if not event_id:
-            continue
-        history = "".join("<li>" + html.escape(f"{c['field']}: {c.get('previous_value')} → {c.get('corrected_value')} · {c['reason']} · administrator {c['corrected_by']} · {c['created_at']}") + "</li>"
-                          for c in result.get("identity_source_corrections", []))
-        forms.append(f"""<details class='admin-disclosure'><summary>Correction history</summary><p>Report <code>{html.escape(event_id)}</code></p><ul>{history}</ul></details>
-          <form method='post' action='/admin/diagnostics/identity-source' class='admin-async-action diagnostic-action-form identity-source-form'>
-          <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
-          <input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>
-          <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
-          <label>Source field<select name='field' data-source-field>{options}</select></label><label>Reported value<output data-source-original>{html.escape(str(result.get('model') or 'Not reported'))}</output></label>
-          <label>Correct value (empty means unknown)<input name='value' maxlength='160'></label>
-          <label>Evidence and reason<input name='reason' required maxlength='1000'></label>
-          <button type='submit'>Record source correction</button></form>""")
-    return "<details class='admin-disclosure'><summary>Correct identity source</summary><div class='disclosure-body'><p>Original reports remain unchanged. This records a separate correction and does not reassign any installation.</p>" + "".join(forms) + "</div></details>" if forms else ""
 
 
 def _identity_device_label(device: dict[str, Any] | None) -> str:
@@ -5768,6 +5682,15 @@ def _device_last_success_comparator_script() -> str:
       }"""
 
 
+def _table_filter_state_script() -> str:
+    return r"""let saved = {};
+      try { saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}'); } catch (_) { saved = {}; }
+      const restoreSelect = (control, key, fallback) => {
+        const value = parameters.has(key) ? parameters.get(key) : saved[key];
+        control.value = [...control.options].some(option => option.value === value) ? value : fallback;
+      };"""
+
+
 def _devices_script() -> str:
     script = r"""(() => {
       const devices = terentoAdminDevices.devices || [];
@@ -5798,17 +5721,12 @@ def _devices_script() -> str:
       let publicationReview = false;
       const storageKey = 'terento.admin.devices.filters';
       const parameters = new URLSearchParams(window.location.search);
-      let saved = {};
-      try { saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}'); } catch (_) { saved = {}; }
-      const setSelect = (control, key, fallback) => {
-        const requested = parameters.has(key) ? parameters.get(key) : saved[key];
-        control.value = [...control.options].some((option) => option.value === requested) ? requested : fallback;
-      };
+      __TABLE_FILTER_STATE__
       search.value = parameters.has('search') ? parameters.get('search') : (saved.search || '');
-      setSelect(family, 'family', 'all');
-      setSelect(map, 'maps', 'yes');
-      setSelect(support, 'authorization', 'all');
-      setSelect(status, 'status', 'all');
+      restoreSelect(family, 'family', 'all');
+      restoreSelect(map, 'maps', 'yes');
+      restoreSelect(support, 'authorization', 'all');
+      restoreSelect(status, 'status', 'all');
       sortKey = parameters.get('sort') || saved.sort || 'model';
       sortDirection = parameters.get('direction') || saved.direction || 'ascending';
       publicationReview = parameters.get('review') === 'publication';
@@ -5967,7 +5885,7 @@ def _devices_script() -> str:
       refresh();
       syncStickyHeader();
     })();"""
-    return script.replace(
+    return script.replace("__TABLE_FILTER_STATE__", _table_filter_state_script()).replace(
         "__TERENTO_LAST_SUCCESS_COMPARATOR__",
         _device_last_success_comparator_script(),
     )
@@ -6153,16 +6071,11 @@ def _dashboard_script() -> str:
       const rows = [...body.querySelectorAll('tr')];
       const storageKey = 'terento.admin.installations.filters';
       const parameters = new URLSearchParams(window.location.search);
-      let saved = {};
-      try { saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}'); } catch (_) { saved = {}; }
+      __TABLE_FILTER_STATE__
       search.value = parameters.has('search') ? parameters.get('search') : (saved.search || '');
       const quickFilterValues = quickFilters.map((button) => button.dataset.installationFilter);
       let selectedQuickFilter = parameters.get('state') || saved.quick || 'all';
       if (!quickFilterValues.includes(selectedQuickFilter)) selectedQuickFilter = 'all';
-      const restoreSelect = (control, key, fallback) => {
-        const value = parameters.has(key) ? parameters.get(key) : saved[key];
-        control.value = [...control.options].some((option) => option.value === value) ? value : fallback;
-      };
       restoreSelect(status, 'status', 'all');
       const legacySort = {attempts:'attempts:descending', errors:'errors:descending', model:'model:ascending'};
       const requestedSort = parameters.get('sort') || saved.sort;
@@ -6245,7 +6158,7 @@ def _dashboard_script() -> str:
       }));
       [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
       refresh();
-    })();""".replace("__STATUS_ORDER__", _admin_json([status.value.lower() for status in CANONICAL_STATUS_ORDER]))
+    })();""".replace("__TABLE_FILTER_STATE__", _table_filter_state_script()).replace("__STATUS_ORDER__", _admin_json([status.value.lower() for status in CANONICAL_STATUS_ORDER]))
 
 
 def _client_issue_note_sanitizer_script() -> str:

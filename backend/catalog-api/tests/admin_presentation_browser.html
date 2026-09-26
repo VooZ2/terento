@@ -65,10 +65,13 @@
       doc = await load('overview', width);
       noFreshInstallCopy(doc, `Overview ${width}`);
       const groups = [...doc.querySelectorAll('.overview-kpi-group')];
-      check(groups.length === 2, `Overview ${width}: two groups (found ${groups.length}; ${doc.URL})`);
-      check(groups.every(group => group.querySelectorAll('.map-statistics-kpi-value').length === 3),
+      check(groups.length === 3, `Overview ${width}: three groups (found ${groups.length}; ${doc.URL})`);
+      const outcomes = groups.filter(group => !group.classList.contains('overview-coverage-kpi-group'));
+      check(groups.find(group => group.classList.contains('overview-coverage-kpi-group'))?.querySelectorAll('.map-statistics-kpi-value').length === 2,
+        `Overview ${width}: two model coverage metrics`);
+      check(outcomes.length === 2 && outcomes.every(group => group.querySelectorAll('.map-statistics-kpi-value').length === 3),
         `Overview ${width}: six metrics`);
-      check(groups.every(group => doc.defaultView.getComputedStyle(group.querySelector('.failed')).borderTopWidth === '1px'),
+      check(outcomes.every(group => doc.defaultView.getComputedStyle(group.querySelector('.failed')).borderTopWidth === '1px'),
         `Overview ${width}: both Failed dividers`);
       noPageOverflow(doc, `Overview ${width}`);
       doc = await load('installations', width);
