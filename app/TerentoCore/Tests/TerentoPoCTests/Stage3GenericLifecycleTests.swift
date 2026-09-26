@@ -233,7 +233,9 @@ struct Stage3GenericLifecycleTests {
         expect(
             inventory.providerGroups.map(\.title) == ["Freizeitkarte", "OpenTopoMap"]
                 && inventory.allEntries.count == 2
-                && inventory.freizeitkarte.count == 1,
+                && inventory.providerGroups.first {
+                    MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+                }?.entries.count == 1,
             "provider inventory groups are source-neutral and alphabetically ordered"
         )
     }

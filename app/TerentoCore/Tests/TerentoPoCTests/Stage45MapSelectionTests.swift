@@ -626,16 +626,19 @@ struct Stage45MapSelectionTests {
             recommendedRegionID: nil
         )
         let inventory = UnifiedMapInventory(
-            freizeitkarte: [managed, external, unknown].map {
-                MapInventoryEntry(
-                    key: $0.id,
-                    title: $0.regionName,
-                    catalogPackage: $0.catalogMap,
-                    comparison: $0,
-                    installedMaps: [$0.installedMap!],
-                    isSelectedCatalogMap: false
-                )
-            },
+            providerGroups: [MapInventoryProviderGroup(
+                id: "freizeitkarte", providerId: "freizeitkarte", title: "Freizeitkarte",
+                entries: [managed, external, unknown].map {
+                    MapInventoryEntry(
+                        key: $0.id,
+                        title: $0.regionName,
+                        catalogPackage: $0.catalogMap,
+                        comparison: $0,
+                        installedMaps: [$0.installedMap!],
+                        isSelectedCatalogMap: false
+                    )
+                }
+            )],
             otherMaps: [
                 MapInventoryEntry(
                     key: "garmin-system",

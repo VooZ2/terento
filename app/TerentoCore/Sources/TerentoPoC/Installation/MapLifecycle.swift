@@ -211,31 +211,6 @@ struct MapLifecycleInventory: Equatable, Sendable {
         self.otherMaps = otherMaps
     }
 
-    /// Compatibility initializer for the historical Freizeitkarte section.
-    /// New lifecycle consumers use the provider-neutral groups.
-    init(
-        freizeitkarte: [MapLifecycleItem],
-        otherMaps: [MapLifecycleItem]
-    ) {
-        self.init(
-            providerGroups: freizeitkarte.isEmpty
-                ? []
-                : [MapLifecycleProviderGroup(
-                    id: "freizeitkarte",
-                    providerId: "freizeitkarte",
-                    title: "Freizeitkarte",
-                    items: freizeitkarte
-                )],
-            otherMaps: otherMaps
-        )
-    }
-
-    var freizeitkarte: [MapLifecycleItem] {
-        providerGroups.first {
-            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
-        }?.items ?? []
-    }
-
     var allItems: [MapLifecycleItem] {
         providerGroups.flatMap(\.items) + otherMaps
     }

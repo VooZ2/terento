@@ -132,7 +132,9 @@ private func lifecycleItem(
 
 private func inventory(_ item: MapLifecycleItem) -> MapLifecycleInventory {
     MapLifecycleInventory(
-        freizeitkarte: item.provider == "freizeitkarte" ? [item] : [],
+        providerGroups: item.provider == "freizeitkarte" ? [MapLifecycleProviderGroup(
+            id: "freizeitkarte", providerId: "freizeitkarte", title: "Freizeitkarte", items: [item]
+        )] : [],
         otherMaps: item.provider == "freizeitkarte" ? [] : [item]
     )
 }
@@ -148,12 +150,17 @@ private func testInventoryBuilderUsesRealEntries() throws {
         isSelectedCatalogMap: false
     )
     let result = MapLifecycleInventoryBuilder().build(
-        from: UnifiedMapInventory(freizeitkarte: [entry], otherMaps: [])
+        from: UnifiedMapInventory(providerGroups: [MapInventoryProviderGroup(
+            id: "freizeitkarte", providerId: "freizeitkarte", title: "Freizeitkarte", entries: [entry]
+        )], otherMaps: [])
     )
 
-    try require(result.freizeitkarte.count == 1, "inventory should contain one Freizeitkarte item")
-    try require(result.freizeitkarte[0].hasExactObjectIdentity, "live inventory must retain the MTP object handle")
-    try require(result.freizeitkarte[0].classification == .externalRecognized, "unmanaged parsed map should be external-recognized")
+    let items = result.providerGroups.first {
+        MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+    }?.items ?? []
+    try require(items.count == 1, "inventory should contain one Freizeitkarte item")
+    try require(items[0].hasExactObjectIdentity, "live inventory must retain the MTP object handle")
+    try require(items[0].classification == .externalRecognized, "unmanaged parsed map should be external-recognized")
 }
 
 private func testInventoryBuilderUsesCanonicalPackageIdentity() throws {
@@ -199,11 +206,16 @@ private func testInventoryBuilderUsesCanonicalPackageIdentity() throws {
     )
 
     let result = MapLifecycleInventoryBuilder().build(
-        from: UnifiedMapInventory(freizeitkarte: [entry], otherMaps: [])
+        from: UnifiedMapInventory(providerGroups: [MapInventoryProviderGroup(
+            id: "freizeitkarte", providerId: "freizeitkarte", title: "Freizeitkarte", entries: [entry]
+        )], otherMaps: [])
     )
 
+    let items = result.providerGroups.first {
+        MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+    }?.items ?? []
     try require(
-        result.freizeitkarte.first?.region == "BALEARICS",
+        items.first?.region == "BALEARICS",
         "lifecycle identity must use the concrete package identifier, not the shared catalog region"
     )
 }
