@@ -298,9 +298,10 @@ final class MapEngine: ObservableObject {
     func waitForDiagnosticDeliveryForTesting() async {
         await operationDiagnostics?.waitForDeliveryForTesting()
     }
-    func setDiagnosticTestIdentity(_ identity: DeviceIdentity) {
+    func setDiagnosticTestIdentity(_ identity: DeviceIdentity, phase: InstallationProcessPhase? = nil) {
         currentIdentity = identity
         state = .scanned
+        if let phase { installationPhase = phase }
     }
 
     func setOperationDiagnosticsForTesting(_ diagnostics: InstallationOperationDiagnostics) {

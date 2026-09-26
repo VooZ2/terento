@@ -746,7 +746,7 @@ struct Stage45MapSelectionTests {
             hasValidatedArtifact: false,
             operationBusy: false
         )
-        let readyToInstall = resolver.resolve(
+        let automaticContinuation = resolver.resolve(
             plan: plan,
             deviceConnected: true,
             installationAuthorization: approved,
@@ -793,7 +793,8 @@ struct Stage45MapSelectionTests {
 
         expect(
             readyToPrepare == .ready(.prepare)
-                && readyToInstall == .ready(.install)
+                && !automaticContinuation.isEnabled
+                && automaticContinuation.userReason == "Installation checks are still in progress."
                 && blockedByDevice.userReason == "Reconnect your Garmin to continue."
                 && blockedByOperation.userReason == "Another device operation is in progress."
                 && blockedByUnsupportedFlow.userReason == "This map cannot be installed safely on this Garmin yet.",

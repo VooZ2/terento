@@ -239,9 +239,8 @@ struct InstallReviewAvailabilityResolver: Sendable {
         switch installationPhase {
         case .idle:
             return .ready(.prepare)
-        case .awaitingConfirmation where hasValidatedArtifact:
-            return .ready(.install)
         case .awaitingConfirmation:
+            // Preflight queues the continuation; the review action starts only from idle.
             return .blocked("Installation checks are still in progress.")
         case .downloading, .preparing, .installing, .finishing:
             return .blocked("Installation is already in progress.")

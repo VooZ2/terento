@@ -40,6 +40,7 @@ private actor DelayedAuthorizationResponse {
     @MainActor static var emittedFixtures: [InstallationEvidenceEvent] = []
     @MainActor static func main() async throws {
         try await testDelayedAuthorizationThroughConnectScreen()
+        try testAwaitingConfirmationActionParity()
         try await testEngineWithoutScreen()
         try await testReadBoundaryAndPresence()
         try await testObservedReadSurvivesCancellation()
@@ -151,6 +152,33 @@ private actor DelayedAuthorizationResponse {
         // Cancel synchronously before the acquisition task gets a turn: this
         // regression stops at preparation and never downloads or touches USB.
         engine.resetForDisconnectedDevice()
+    }
+
+    @MainActor static func testAwaitingConfirmationActionParity() throws {
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        let policy = try JSONDecoder().decode(InstallationAuthorizationDocument.self,
+            from: Data(contentsOf: policyURL))
+        let authorization = InstallationAuthorizationState.approved(
+            record: policy.devices[0], policyVersion: policy.policyVersion)
+        let engine = MapEngine()
+        engine.setDiagnosticTestIdentity(identity, phase: .awaitingConfirmation)
+        engine.setInstallationAuthorization(authorization)
+        let selection = plan()
+        check(authorization.matches(identity: identity) && !engine.isBusy && selection.canContinue,
+            "action-parity fixture has approved matching identity, ready scan and no busy operation")
+        let availability = InstallReviewAvailabilityResolver().resolve(plan: selection,
+            deviceConnected: true, installationAuthorization: authorization, deviceIdentity: identity,
+            mapScanReady: engine.state == .scanned, supportedInstallFlow: true,
+            installationPhase: engine.installationPhase, hasValidatedArtifact: true, operationBusy: engine.isBusy)
+        // ConnectScreen routes both ready actions through beginInstallationAfterConsent
+        // to this same engine entry point. Its idle guard must remain intact.
+        engine.beginInstallation(plan: selection)
+        check(engine.installationPhase == .awaitingConfirmation && engine.state == .scanned
+            && engine.installationErrorMessage == nil && engine.mapStatisticsEvents.isEmpty,
+            "review's beginInstallation route silently rejects the already-started phase without mutation or statistics")
+        check(!availability.isEnabled && availability.userReason?.isEmpty == false,
+            "REGRESSION: awaitingConfirmation cannot expose an executable CTA to the silently rejecting beginInstallation route")
     }
 
     @MainActor static func testEngineWithoutScreen() async throws {
