@@ -85,6 +85,8 @@ const {chromium}=require(process.argv[2]);
     assert.deepEqual(await page.locator('.installation-kpis .map-statistics-kpi-value').evaluateAll(es=>[...new Set(es.map(e=>getComputedStyle(e).borderTopWidth))]),['0px']);
     const danger=await page.locator('.installation-failed-value').evaluateAll(es=>es.map(e=>getComputedStyle(e).color));
     assert.equal(new Set(danger).size,1,'Failed summary and record numbers share danger color');
+    assert.match(await page.locator('.page-meta').innerText(),/All time · Model evidence/);
+    assert.equal(await page.locator('.installation-failed-value').first().innerText(),'10','Model evidence keeps ten failed results');
    }
    if(name==='device'){
     assert.equal(await page.locator('.attempts-metric>span').evaluate(e=>getComputedStyle(e,'::after').content),'none');
@@ -92,8 +94,10 @@ const {chromium}=require(process.argv[2]);
     const metrics=await page.locator('.model-statistics').boundingBox(), alert=await page.locator('.model-review-alert').boundingBox();
     if(metrics&&alert) assert(alert.y-(metrics.y+metrics.height)>=16,'Device summary and alert keep a section gap');
     const columns=await page.locator('.model-evidence-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns);
+    assert.equal(await page.locator('.model-evidence-summary>.model-administration').count(),1,'Administration stays in the left evidence column');
+    assert.equal(await page.locator('.model-evidence-summary>.device-overview-sections').count(),1,'Device and technical information stay in the left evidence column');
     if(width>900){assert.equal(columns.split(' ').length,2,'Device summary and history share a desktop row');assert.equal(await page.locator('.model-evidence-history .model-history-table').evaluate(e=>getComputedStyle(e).display),'block','Device history reuses record layout');}
-    else assert.equal(columns.split(' ').length,1,'Device evidence stacks narrow');
+    else {assert.equal(columns.split(' ').length,1,'Device evidence stacks narrow');const left=await page.locator('.model-evidence-summary').boundingBox(),history=await page.locator('.model-evidence-history').boundingBox();assert(history.y>=left.y+left.height,'Device history follows left-column content when stacked');}
    }
    if(name==='statistics'){
     assert.match(await page.locator('#map-statistics-world-map-status').innerText(),/\d+ countries? · \d+ installs/,'World map reports mapped successful installs');
@@ -108,6 +112,9 @@ const {chromium}=require(process.argv[2]);
     const coverage=await page.locator('.map-statistics-coverage-layout').boundingBox(), providers=await page.locator('#map-statistics-provider-table').boundingBox();
     if(coverage&&providers) assert(providers.y>=coverage.y+coverage.height,'Provider comparison does not overlap coverage');
     assert.equal(await page.getByText('Diagnostic coverage',{exact:true}).count(),0,'Non-actionable diagnostic coverage is removed');
+    assert.equal(await page.locator('#map-rows tr').count(),10,'Top countries shows up to ten ranked countries');
+    assert.equal(await page.locator("[data-stat='failedInstalls']").innerText(),'10','Maps excludes non-canonical fresh failures');
+    assert.match(await page.locator('.map-statistics-trends').innerText(),/Week of/,'Current one-month fixture uses weekly buckets');
     if(width>760){const date=page.locator('#provider-statistic-rows td.column-date').first();assert.equal(await date.evaluate(e=>getComputedStyle(e).whiteSpace),'nowrap','Last install stays one line');}
    }
    if(name.startsWith('identification')){

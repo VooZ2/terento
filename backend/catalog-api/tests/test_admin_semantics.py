@@ -395,6 +395,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn(".admin-kpi-panel.model-statistics .timestamp-metric>strong", detail)
         self.assertIn("class='model-evidence-grid'", detail)
         self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", detail)
+        detail_grid = detail.split("class='model-evidence-grid'", 1)[1].split("{''.join", 1)[0]
+        positions = [detail_grid.index(label) for label in (
+            "Installation outcomes", "Administration", "Device information",
+            "Technical details", "Installation history",
+        )]
+        self.assertEqual(positions, sorted(positions))
 
     def test_overview_period_changes_chart_without_changing_all_time_badges(self):
         def render(period, period_count):
@@ -2456,7 +2462,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "csrf",
         ).decode()
         self.assertIn("<h1>Installations</h1>", body)
-        self.assertIn("All time", body)
+        self.assertIn("All time · Model evidence", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
         labels = ("Attempts", "Successful", "Failed", "Success rate", "Open errors")
         for label in labels:
@@ -2470,6 +2476,35 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("Historical failures: 2", body)
         self.assertIn('data-installation-sort="attempts"', body)
         self.assertNotIn("installation-summary-strip", body)
+
+    def test_map_and_model_evidence_keep_their_distinct_attributable_populations(self):
+        map_summary = _map_statistics_summary([
+            {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED",
+             "operation_count": 95, "event_count": 98},
+            {"event_type": "INSTALL_FAILED", "outcome": "FAILED",
+             "operation_count": 10, "event_count": 16},
+        ])
+        maps = map_statistics_page(
+            {"rows": [], "summary": map_summary, "allTimeSummary": map_summary},
+            [], {"username": "operator"}, "csrf",
+        ).decode()
+        installations = dashboard_page([{
+            "model": "Fixture model", "compatibility_identity": "fixture-model",
+            "attempted_install_count": 108, "successful_install_count": 98,
+            "failed_install_count": 10, "recognized_map_capable_evidence": True,
+        }], {"username": "operator"}, "csrf").decode()
+
+        self.assertIn("data-stat='completedInstalls'>95</strong>", maps)
+        self.assertIn("data-stat='failedInstalls'>10</strong>", maps)
+        self.assertIn(
+            '<span>Failed</span><strong class="installation-failed-value">10</strong>',
+            installations,
+        )
+        self.assertIn("<span>Successful</span><strong>98</strong>", installations)
+        self.assertIn("All time · Model evidence", installations)
+        # Three valid device-side successes have model attribution but no
+        # eligible map-stream result, so the population label remains needed.
+        self.assertEqual(98 - map_summary["completedInstalls"], 3)
 
     def test_map_statistics_distinguishes_empty_population_from_unavailable_data(self):
         body = map_statistics_page({"rows": [], "summary": _map_statistics_summary([])}, [], {"username":"operator"}, "csrf").decode()

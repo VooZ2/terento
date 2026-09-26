@@ -498,13 +498,21 @@ class CatalogService:
         ]
         linkage = self.database.map_statistics_linkage(population_filters)
         time_zone = _admin_time_zone(query.get("timeZone"))
+        trend_filters = dict(population_filters)
+        if period == "all" and "dateFrom" not in trend_filters:
+            observed_starts = [
+                row.get("first_occurred_at") for row in rows
+                if isinstance(row.get("first_occurred_at"), datetime)
+            ]
+            if observed_starts:
+                trend_filters["dateFrom"] = min(observed_starts)
         trend_reader = getattr(self.database, "map_statistics_trend", None)
         trend, bucket = (
             trend_reader(
-                population_filters, period=period, time_zone=time_zone,
+                trend_filters, period=period, time_zone=time_zone,
             )
             if callable(trend_reader)
-            else ([], {"24h": "hour", "7d": "day", "30d": "day", "all": "month"}[period])
+            else ([], {"24h": "hour", "7d": "day", "30d": "week", "all": "month"}[period])
         )
         payload = {
             "schemaVersion": 1,

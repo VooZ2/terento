@@ -113,6 +113,14 @@ class StatisticsSemanticsTests(unittest.TestCase):
         event = fresh("unknown", 0, outcome="FAILED", finishing="NOT_REACHED", write_started=None)
         self.assertEqual(summarize_fresh_installs([event]).results[0].classification, "unknown")
 
+    def test_started_main_map_failure_counts_exactly_once(self):
+        event = fresh(
+            "failed", 0, outcome="FAILED", finishing="FAILED", write_started=True,
+        )
+        summary = summarize_fresh_installs([event, dict(event)])
+        self.assertEqual((summary.successes, summary.failures, summary.completed), (0, 1, 1))
+        self.assertEqual(summary.results[0].classification, FAILURE)
+
     def test_conflicting_success_and_not_started_facts_are_unknown(self):
         success = fresh("conflict", 0)
         not_started = fresh(

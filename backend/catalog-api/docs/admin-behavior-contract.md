@@ -190,9 +190,15 @@ another report or nearby timestamp.
 
 ### Installations
 
-Installations is all-time model evidence and is visibly labelled `All time`. Its
-primary summary order is Attempts, Successful, Failed, Success rate, and Open
-errors. A positive Failed value uses the danger color.
+Installations is all-time model evidence and is visibly labelled `All time ·
+Model evidence`. Its primary summary order is Attempts, Successful, Failed,
+Success rate, and Open errors. A positive Failed value uses the danger color.
+Maps applies the same fresh main-map write-boundary contract. A current
+map-side failure with no reliable write evidence, a pre-write failure, and an
+optional-component result stay in raw Event detail but do not enter the Maps
+install denominator. Maps and Installations can still differ because their
+independently delivered telemetry populations are attributed differently;
+neither view invents the missing stream or a model identity.
 
 All, Failed, Open errors, Successful, and Identity review filters retain their
 separate meanings. Failed includes resolved historical failures; Open errors does
@@ -218,10 +224,12 @@ resolver still evaluates every plausible active variant. Support metadata,
 observed capability, success counts, identity review, and public compatibility
 never grant write permission.
 
-Empty installation history omits unusable filters, table, and pagination. At
-suitable desktop widths the summary and Installation history may be side by side;
-narrow layouts stack. Historical catalog provenance remains accessible and does
-not change Maps, Install policy, support, or public compatibility.
+Empty installation history omits unusable filters, table, and pagination. Above
+900px, installation summary, Administration, Device information, and Technical
+details form the left column while Installation history uses the right column.
+Narrow layouts stack that same reading order. Historical catalog provenance
+remains accessible and does not change Maps, Install policy, support, or public
+compatibility.
 
 ### Maps and downloads
 
@@ -232,11 +240,17 @@ population; event type, outcome, exact event, and detail pagination scope only
 the collapsed Event detail. Initial HTML and asynchronous JSON use the same
 server summary.
 
-The world map remains visible. Primary visible analytics are Top countries,
+The world map remains visible. Top countries shows up to 10 rows from the
+existing country ranking. Primary visible analytics are Top countries,
 Provider comparison, Maps by provider, Map downloads trend, Map installs trend,
 and Updates. They are not placed in disclosures. Diagnostic linkage coverage
 may remain in the private API contract but is not shown as an Admin block. Raw
 Event detail is secondary and collapsed.
+
+Maps trends use hourly buckets for 24 hours, daily buckets for seven days,
+weekly buckets for 30 days, and adaptive all-time buckets: daily through 14
+observed days, weekly through 60, then monthly. Missing buckets keep the
+statistics contract's existing zero-fill and timezone rules.
 
 Provider comparison keeps Downloads, Installs, and Updates independent, each
 with Successful, Failed, and Rate, plus Last install. A zero denominator displays

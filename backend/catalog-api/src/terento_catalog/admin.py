@@ -2308,7 +2308,7 @@ def dashboard_page(
             and int(row.get("prewrite_failure_count") or 0) > 0
         )
     ]
-    latest_copy = "All time"
+    latest_copy = "All time · Model evidence"
     if not rows:
         content = f"""
           {_admin_header(user, csrf_token, active='installations')}
@@ -3352,7 +3352,7 @@ def _map_statistics_script() -> str:
         return `<tr class="popular-map-row"><td data-label="${providerDetail ? 'Map' : 'Country'}"><div class="popular-map-name-content">${mapLink}<small class="popular-map-detail">${escapeHtml(detail)}</small></div></td><td data-label="Installs" class="column-number numeric popular-map-count"><strong>${item.installs}</strong></td></tr>`;
       };
       const topBody = document.querySelector('#map-rows');
-      if (topBody) topBody.innerHTML = countryCoverage().slice(0,5).map((item) => `<tr class="popular-map-row"><td data-label="Country"><button type="button" class="region-map-link" data-map-country="${escapeHtml(item.code)}">${escapeHtml(item.name || item.code.toUpperCase())}</button></td><td data-label="Installs" class="column-number numeric popular-map-count"><strong>${countValue(item.count)}</strong></td></tr>`).join('') || '<tr><td colspan="2" class="muted-value">No country activity.</td></tr>';
+      if (topBody) topBody.innerHTML = countryCoverage().slice(0,10).map((item) => `<tr class="popular-map-row"><td data-label="Country"><button type="button" class="region-map-link" data-map-country="${escapeHtml(item.code)}">${escapeHtml(item.name || item.code.toUpperCase())}</button></td><td data-label="Installs" class="column-number numeric popular-map-count"><strong>${countValue(item.count)}</strong></td></tr>`).join('') || '<tr><td colspan="2" class="muted-value">No country activity.</td></tr>';
       let page = 1;
       const renderRanking = () => {
         const query = String(allMapsSearch?.value || '').toLowerCase().trim();
@@ -4695,20 +4695,24 @@ def device_detail_page(
           {history_pagination}
         </section>
     """
+    administration_section = f"""
+        <details class='model-page-section model-administration admin-disclosure'><summary id='administration-title'>Administration</summary><div class='administration-grid'>
+          <article><h3>Install policy</h3><p class='table-help'>Catalog Maps is the stored value used for write authorization. Observed map capability is separate evidence and cannot grant installation.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>This operator field is retained for review and evidence workflow only. Changing it cannot grant or revoke native map-write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
+        </div></details>
+    """
+    information_sections = f"""
+        <div class='model-information-columns device-overview-sections'>
+        <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary>{device_info}</details>
+        <details class='model-technical-details admin-disclosure'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
+        </div>
+    """
     active_header = "evidence" if origin == "installations" else "devices"
     content = f"""
       {_admin_header(user, csrf_token, active=active_header)}
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1>{status_line}</div>{public_link}</header>
-        {f"<div class='model-evidence-grid'><div class='model-evidence-summary'>{statistics_section}{alert}</div><div class='model-evidence-history'>{history_section}</div></div>" if statistics_section else f"{alert}{history_section}"}
-        <details class='model-page-section model-administration admin-disclosure'><summary id='administration-title'>Administration</summary><div class='administration-grid'>
-          <article><h3>Install policy</h3><p class='table-help'>Catalog Maps is the stored value used for write authorization. Observed map capability is separate evidence and cannot grant installation.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>This operator field is retained for review and evidence workflow only. Changing it cannot grant or revoke native map-write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
-        </div></details>
-        <div class='model-information-columns device-overview-sections'>
-        <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary>{device_info}</details>
-        <details class='model-technical-details admin-disclosure'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
-        </div>
+        <div class='model-evidence-grid'><div class='model-evidence-summary'>{statistics_section}{alert}{administration_section}{information_sections}</div><div class='model-evidence-history'>{history_section}</div></div>
         {''.join(dialogs)}
       </main>
       <script>{_diagnostics_script()}</script>
@@ -7279,6 +7283,8 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 @media(max-width:500px){.overview-activity-item{grid-template-columns:minmax(0,1fr)}.overview-activity-item>time,.map-activity-row:has(>.overview-activity-device)>time{grid-column:1;grid-row:auto;margin-left:21px}}
 .model-evidence-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px}
 .model-evidence-summary,.model-evidence-history{min-width:0}
+.model-evidence-summary{display:grid;align-content:start;gap:16px}
+.model-evidence-summary>.model-statistics,.model-evidence-summary>.model-review-alert,.model-evidence-summary>.model-page-section,.model-evidence-summary>.model-information-columns{margin:0}
 .model-evidence-history>.model-page-section{margin-top:0}
 .diagnostic-secondary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px;margin-top:16px}
 .diagnostic-secondary-grid>.diagnostic-secondary-disclosure{min-width:0;margin:0}

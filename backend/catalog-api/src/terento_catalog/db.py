@@ -4039,6 +4039,11 @@ class Database:
         clauses = [
             f"{alias}.is_local_test IS NOT TRUE",
             f"{alias}.statistics_exclusion_code IS NULL",
+            # MapRando exposes France IGN contours as a standalone catalog
+            # package, but it is an optional component of the France map and
+            # never an independent fresh-install result.
+            f"({alias}.provider <> 'maprando' "
+            f"OR {alias}.region IS DISTINCT FROM 'FRANCECOURBESIGN')",
         ]
         values: list[Any] = []
         if filters.get("provider"):
@@ -4111,6 +4116,7 @@ class Database:
                     END AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
             ), result_flags AS (
                 SELECT
                     result_key,
@@ -4131,6 +4137,49 @@ class Database:
                 FROM classified_compatibility AS c
                 JOIN result_flags AS f USING (result_key)
                 ORDER BY c.result_key, c.occurred_at DESC NULLS LAST, c.event_id DESC
+            ), map_event_evidence AS (
+                -- A direct failed map event enters the fresh denominator only
+                -- when exactly one compatible diagnostic proves a started
+                -- failure. Raw map events remain in Event detail regardless.
+                SELECT
+                    installed.event_id,
+                    count(DISTINCT evidence.result_key) FILTER (
+                        WHERE evidence.result_key IS NOT NULL
+                    ) AS diagnostic_result_count,
+                    bool_or(
+                        evidence.result_classification_effective = 'FAILURE'
+                    ) AS has_confirmed_failure
+                FROM map_download_event AS installed
+                LEFT JOIN map_package AS installed_package
+                  ON installed_package.id = installed.map_package_id
+                LEFT JOIN deduplicated_compatibility AS evidence
+                  ON evidence.operation_id = installed.operation_id
+                 AND evidence.provider = installed.provider_id
+                 AND evidence.statistics_exclusion_code IS NULL
+                 AND (
+                     installed.map_result_index IS NULL
+                     OR evidence.map_result_index = installed.map_result_index
+                 )
+                 AND (
+                     installed.region IS NOT DISTINCT FROM evidence.region
+                     OR (
+                         installed_package.provider_id = installed.provider_id
+                         AND evidence.region IN (
+                             installed_package.provider_region_id,
+                             installed_package.canonical_region_id,
+                             installed_package.region
+                         )
+                         AND installed.region IN (
+                             installed_package.provider_region_id,
+                             installed_package.canonical_region_id,
+                             installed_package.region
+                         )
+                     )
+                 )
+                WHERE installed.is_local_test IS NOT TRUE
+                  AND installed.statistics_exclusion_code IS NULL
+                  AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                GROUP BY installed.event_id
             ), complete_compatibility_operations AS (
                 SELECT
                     e.operation_key,
@@ -4199,10 +4248,33 @@ class Database:
                     e.component_kind,
                     e.event_type,
                     e.outcome,
-                    e.occurred_at
+                    e.occurred_at,
+                    CASE
+                        WHEN e.event_type NOT IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                            THEN TRUE
+                        WHEN e.component_kind = 'contours' THEN FALSE
+                        WHEN (
+                            e.provider_id = 'maprando'
+                            AND (
+                                e.map_package_id = 'maprando-france-courbes-ign'
+                                OR e.region = 'FRANCECOURBESIGN'
+                                OR mp.provider_region_id = 'france-courbes-ign'
+                            )
+                        ) THEN FALSE
+                        WHEN e.event_type = 'INSTALL_SUCCEEDED'
+                             AND e.outcome = 'SUCCEEDED'
+                            THEN TRUE
+                        WHEN e.event_type = 'INSTALL_FAILED'
+                             AND e.outcome = 'FAILED'
+                             AND evidence.diagnostic_result_count = 1
+                             AND evidence.has_confirmed_failure IS TRUE
+                            THEN TRUE
+                        ELSE FALSE
+                    END AS canonical_result
                 FROM map_download_event AS e
                 LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
                 LEFT JOIN map_provider AS p ON p.id = e.provider_id
+                LEFT JOIN map_event_evidence AS evidence ON evidence.event_id = e.event_id
                 WHERE {' AND '.join(clauses)}
                 UNION ALL
                 SELECT
@@ -4219,7 +4291,8 @@ class Database:
                     CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
                          ELSE 'INSTALL_SUCCEEDED' END AS event_type,
                     c.outcome,
-                    c.last_occurred_at AS occurred_at
+                    c.last_occurred_at AS occurred_at,
+                    TRUE AS canonical_result
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
                 LEFT JOIN LATERAL (
@@ -4257,6 +4330,7 @@ class Database:
             bucket_expression = {
                 "hour": "date_trunc('hour', local_occurred_at)",
                 "day": "date_trunc('day', local_occurred_at)",
+                "week": "date_trunc('week', local_occurred_at)",
                 "month": "date_trunc('month', local_occurred_at)",
             }.get(trend_bucket)
             if bucket_expression is None:
@@ -4271,14 +4345,17 @@ class Database:
                 count(DISTINCT operation_key) FILTER (
                     WHERE event_type = 'INSTALL_SUCCEEDED'
                       AND outcome = 'SUCCEEDED'
+                      AND canonical_result
                       AND provider_id <> 'custom'
                 ) AS success_count,
                 count(DISTINCT operation_key) FILTER (
                     WHERE event_type = 'INSTALL_FAILED' AND outcome = 'FAILED'
+                      AND canonical_result
                 ) AS failed_count,
                 count(DISTINCT operation_key) FILTER (
                     WHERE event_type = 'INSTALL_SUCCEEDED'
                       AND outcome = 'SUCCEEDED'
+                      AND canonical_result
                       AND provider_id = 'custom'
                 ) AS custom_count,
                 count(DISTINCT operation_key) FILTER (
@@ -4312,7 +4389,8 @@ class Database:
                 event_type,
                 outcome,
                 count(*) AS event_count,
-                count(DISTINCT operation_key) AS operation_count,
+                count(DISTINCT operation_key) FILTER (WHERE canonical_result)
+                    AS operation_count,
                 min(occurred_at) AS first_occurred_at,
                 max(occurred_at) AS last_occurred_at
             FROM event_rows
@@ -4332,28 +4410,39 @@ class Database:
         period: str,
         time_zone: str = "UTC",
     ) -> tuple[list[dict[str, Any]], str]:
-        bucket = {
-            "24h": "hour",
-            "7d": "day",
-            "30d": "day",
-            "all": "month",
-        }.get(period, "hour")
+        now = datetime.now(timezone.utc)
+        since = filters.get("dateFrom")
+        if isinstance(since, datetime) and since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)
+        if period == "all" and isinstance(since, datetime):
+            span = now - since.astimezone(timezone.utc)
+            bucket = (
+                "day" if span <= timedelta(days=14)
+                else "week" if span <= timedelta(days=60)
+                else "month"
+            )
+        else:
+            bucket = {
+                "24h": "hour",
+                "7d": "day",
+                "30d": "week",
+                "all": "month",
+            }.get(period, "hour")
         rows = self.map_statistics(
             filters, trend_bucket=bucket, time_zone=time_zone,
         )
         if not rows:
             return [], bucket
-        since = filters.get("dateFrom")
         if not isinstance(since, datetime):
             since = min(
                 (row.get("bucket") for row in rows if isinstance(row.get("bucket"), datetime)),
-                default=datetime.now(timezone.utc),
+                default=now,
             )
         return _fill_overview_trend_buckets(
             [dict(row) for row in rows],
             bucket=bucket,
             since=since,
-            until=datetime.now(timezone.utc),
+            until=now,
             all_time=period == "all",
             time_zone=time_zone,
         ), bucket

@@ -906,7 +906,7 @@ normalized alias tokens, preserving spaces and accented country names.
 ### Coverage interaction
 
 Map dragging suppresses native browser selection, including WebKit selection;
-Reset clears stale selection and region emphasis. Top 5 remains a stable summary;
+Reset clears stale selection and region emphasis. Top countries shows up to 10 rows;
 All maps has search and ten-row pagination, while Regions remains the full
 canonical-region grouping. Download sources use
 artifact metadata to show Main map / Contours labels and separate source counts

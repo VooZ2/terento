@@ -18,7 +18,7 @@ from terento_catalog.admin import (
 )
 
 
-def _trend() -> list[dict[str, object]]:
+def _daily_trend() -> list[dict[str, object]]:
     return [
         {
             "bucket": f"2026-09-{day:02d}T00:00:00Z",
@@ -33,21 +33,57 @@ def _trend() -> list[dict[str, object]]:
     ]
 
 
+def _weekly_trend() -> list[dict[str, object]]:
+    return [
+        {
+            "bucket": bucket,
+            "download_success_count": 42 + index * 3,
+            "download_failed_count": 1 if index in {1, 4} else 0,
+            "success_count": 31 + index * 2,
+            "failed_count": 1 if index in {2, 5} else 0,
+            "custom_count": 1 if index == 3 else 0,
+            "map_update_count": 1 if index == 5 else 0,
+        }
+        for index, bucket in enumerate((
+            "2026-08-17T00:00:00Z", "2026-08-24T00:00:00Z",
+            "2026-08-31T00:00:00Z", "2026-09-07T00:00:00Z",
+            "2026-09-14T00:00:00Z", "2026-09-21T00:00:00Z",
+        ))
+    ]
+
+
+def _monthly_trend() -> list[dict[str, object]]:
+    return [
+        {
+            "bucket": f"2026-{month:02d}-01T00:00:00Z",
+            "download_success_count": 120 + month * 4,
+            "download_failed_count": month % 3,
+            "success_count": 90 + month * 3,
+            "failed_count": month % 2,
+            "custom_count": 1,
+            "map_update_count": month % 2,
+        }
+        for month in range(3, 10)
+    ]
+
+
 def _statistics(
     rows: list[dict[str, object]], *, trend: list[dict[str, object]] | None = None,
+    bucket: str = "week",
 ) -> dict[str, object]:
     return {
         "rows": rows,
         "summary": _map_statistics_summary(rows),
         "allTimeSummary": _map_statistics_summary(rows),
-        "trend": _trend() if trend is None else trend,
-        "bucket": "day",
+        "trend": _weekly_trend() if trend is None else trend,
+        "bucket": bucket,
         "timeZone": "UTC",
         "linkage": {
             "freshMapAttemptCount": 34,
-            "freshMapLinkedDiagnosticCount": 31,
-            "freshMapMissingDiagnosticCount": 3,
-            "freshMapDiagnosticCoverageRate": 91.2,
+            "freshMapLinkedDiagnosticCount": 32,
+            "freshMapMissingDiagnosticCount": 2,
+            "linkedPrewriteFailureCount": 4,
+            "freshMapDiagnosticCoverageRate": 94.1,
         },
     }
 
@@ -68,8 +104,8 @@ def create(root: Path) -> None:
     ]
     rows = []
     for provider, successful, failed in (
-        ("opentopomap", 14, 6), ("maprando", 23, 2),
-        ("freizeitkarte", 19, 6), ("bbbike", 8, 1), ("custom", 20, 3),
+        ("opentopomap", 4, 3), ("maprando", 4, 1),
+        ("freizeitkarte", 4, 2), ("bbbike", 3, 2), ("custom", 4, 2),
     ):
         for event_type, outcome, count in (
             ("INSTALL_SUCCEEDED", "SUCCEEDED", successful),
@@ -109,9 +145,31 @@ def create(root: Path) -> None:
             "last_occurred_at": "2026-09-20T09:39:00Z",
         },
     ])
+    for index, (country, code) in enumerate((
+        ("United Kingdom", "GB"), ("Poland", "PL"), ("Spain", "ES"),
+        ("Italy", "IT"), ("Switzerland", "CH"), ("Austria", "AT"),
+        ("Czechia", "CZ"),
+    ), start=1):
+        rows.append({
+            "provider_id": "opentopomap", "map_package_id": f"country-{code.lower()}",
+            "region": code, "region_identity": country.upper().replace(" ", ""),
+            "region_display_name": country, "region_country": code,
+            "component_kind": "main", "event_type": "INSTALL_SUCCEEDED",
+            "outcome": "SUCCEEDED", "operation_count": 12 - index,
+            "event_count": 12 - index,
+            "last_occurred_at": "2026-09-20T09:39:00Z",
+        })
     statistics = _statistics(rows)
     (root / "statistics.html").write_bytes(map_statistics_page(
         statistics, providers, user, "fixture",
+    ))
+    (root / "statistics-short.html").write_bytes(map_statistics_page(
+        _statistics(rows, trend=_daily_trend(), bucket="day"),
+        providers, user, "fixture", selected_filters={"period": "7d"},
+    ))
+    (root / "statistics-monthly.html").write_bytes(map_statistics_page(
+        _statistics(rows, trend=_monthly_trend(), bucket="month"),
+        providers, user, "fixture",
     ))
     sparse_rows = [row for row in rows if row.get("region_country") == "LT"]
     sparse_trend = [
@@ -126,7 +184,7 @@ def create(root: Path) -> None:
         for index, day in enumerate(range(18, 25))
     ]
     (root / "statistics-sparse.html").write_bytes(map_statistics_page(
-        _statistics(sparse_rows, trend=sparse_trend), providers, user, "fixture",
+        _statistics(sparse_rows, trend=sparse_trend, bucket="day"), providers, user, "fixture",
     ))
     (root / "statistics-empty.html").write_bytes(map_statistics_page(
         {"rows": [], "summary": _map_statistics_summary([])}, providers, user,
@@ -145,6 +203,35 @@ def create(root: Path) -> None:
         "successful_install_count": 11, "failed_install_count": 1,
         "last_success": "2026-09-18T09:39:00Z", "usb_identities": [],
     }
+    installation_rows = [
+        ("fēnix 8", "47 mm, AMOLED", 17, 17, 0),
+        ("Forerunner 970", "AMOLED", 9, 6, 3),
+        ("Forerunner 965", "—", 8, 6, 2),
+        ("fēnix 8 Pro", "51 mm, AMOLED, inReach", 8, 6, 2),
+        ("fēnix 9 Pro", "51 mm, AMOLED", 9, 8, 1),
+        ("fēnix 7X", "51 mm", 6, 5, 1),
+        ("epix Pro (Gen 2)", "47 mm, AMOLED", 10, 10, 0),
+        ("fēnix 9", "47 mm, AMOLED", 12, 12, 0),
+        ("Forerunner 955", "Standard", 9, 9, 0),
+        ("fēnix 9 Pro", "47 mm, AMOLED, inReach", 20, 19, 1),
+    ]
+    (root / "installations.html").write_bytes(dashboard_page([
+        {
+            "model": model,
+            "variant": variant,
+            "compatibility_identity": f"fixture-model-{index}",
+            "canonical_device_model_id": f"fixture-model-{index}",
+            "attempted_install_count": attempts,
+            "successful_install_count": successful,
+            "failed_install_count": failed,
+            "recognized_map_capable_evidence": True,
+            "calculated_status": "VERIFIED" if successful >= 5 else "TESTED",
+            "last_success": "2026-09-24T18:20:00Z",
+            "last_evidence": "2026-09-24T18:30:00Z",
+        }
+        for index, (model, variant, attempts, successful, failed)
+        in enumerate(installation_rows)
+    ], user, "fixture", diagnostic_summary={}))
     operation = {
         "event_id": "fixture-diagnostic", "operation_id": "fixture-operation",
         "operation_key": "fixture-operation", "map_result_index": 0,
@@ -156,11 +243,24 @@ def create(root: Path) -> None:
         "error_category": "TRANSFER_FAILED", "write_started": True,
         "occurred_at": "2026-09-18T09:39:00Z",
     }
+    device_history = [
+        {
+            **operation,
+            "event_id": f"fixture-diagnostic-{index}",
+            "operation_id": f"fixture-operation-{index}",
+            "operation_key": f"fixture-operation-{index}",
+            "phase_outcome": "FAILED" if index in {0, 4} else "SUCCEEDED",
+            "automatic_finishing_result": None if index in {0, 4} else "VERIFIED",
+            "diagnostic_status": "ACTIVE",
+            "occurred_at": f"2026-09-{18 - index:02d}T09:39:00Z",
+        }
+        for index in range(8)
+    ]
     device = _admin_device_payload([device_row], None)["devices"][0]
     (root / "devices.html").write_bytes(devices_page([device_row], None, user, "fixture"))
     (root / "devices-empty.html").write_bytes(devices_page([], None, user, "fixture"))
     (root / "device.html").write_bytes(device_detail_page(
-        device, user, "fixture", operations=[operation], identity_devices=[device_row],
+        device, user, "fixture", operations=device_history, identity_devices=[device_row],
     ))
     (root / "device-empty.html").write_bytes(device_detail_page(
         device, user, "fixture", operations=[], identity_devices=[device_row],
@@ -226,5 +326,14 @@ def create(root: Path) -> None:
         [], user, "fixture", identity="fēnix 8 · 51 mm, AMOLED",
         operations=[operation], identity_devices=[device_row],
     ))
+    site_assets = Path(__file__).parents[3] / "site"
+    shutil.copytree(site_assets / "assets" / "fonts", root / "fonts", dirs_exist_ok=True)
+    shutil.copy2(site_assets / "favicon.ico", root / "favicon.ico")
+    for page in root.glob("*.html"):
+        page.write_text(
+            page.read_text().replace(
+                "https://terento.app/assets/fonts/", "/admin/fonts/",
+            )
+        )
 if __name__ == "__main__":
     create(Path(sys.argv[1]))
