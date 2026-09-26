@@ -3,11 +3,17 @@ import json
 from pathlib import Path
 import unittest
 
-from terento_catalog.device_labels import model_label, variant_label
+from terento_catalog.device_labels import _size, model_label, variant_label
 from terento_catalog.admin import _identity_parts, _known_variant_description
 
 
 class DeviceLabelTests(unittest.TestCase):
+    def test_size_formatting_is_linear_for_untrusted_display_input(self):
+        self.assertEqual(_size('51mm'), '51 mm')
+        self.assertEqual(_size('51 X 47 MM'), '51 × 47 mm')
+        whitespace = ' ' * 100_000
+        self.assertEqual(_size(f'51{whitespace}x{whitespace}47{whitespace}mm'), '51 × 47 mm')
+
     def test_shared_display_contract_does_not_mutate_facts(self):
         fixtures = Path(__file__).resolve().parents[3] / 'contracts/fixtures/device-display-labels.json'
         for case in json.loads(fixtures.read_text()):

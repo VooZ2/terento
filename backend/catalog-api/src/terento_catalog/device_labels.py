@@ -11,7 +11,11 @@ def _clean(value):
 
 
 def _size(value):
-    return re.sub(r'\s*[x×]\s*', ' × ', re.sub(r'\s*mm$', ' mm', value, flags=re.I))
+    text = str(value)
+    if text.casefold().endswith('mm'):
+        text = text[:-2].rstrip()
+    parts = text.replace('×', 'x').replace('X', 'x').split('x')
+    return ' × '.join(part.strip() for part in parts) + ' mm'
 
 
 def model_label(value):
