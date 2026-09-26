@@ -3552,36 +3552,6 @@ struct PrimaryButton: View {
     }
 }
 
-struct ConnectionStatusRow: View {
-    let title: String
-    let description: String
-    let systemImage: String
-
-    var body: some View {
-        HStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .fill(TerentoColors.lichen.opacity(0.22))
-
-                Image(systemName: systemImage)
-                    .font(.system(size: 27, weight: .medium))
-                    .foregroundStyle(TerentoColors.lichenDark)
-            }
-            .frame(width: 70, height: 70)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title)
-                    .font(.terentoUI(size: 17, weight: .semibold))
-                    .foregroundStyle(TerentoColors.graphite)
-
-                Text(description)
-                    .font(.terentoUI(size: 15, weight: .regular))
-                    .foregroundStyle(TerentoColors.secondaryText)
-            }
-        }
-    }
-}
-
 struct DeviceCard: View {
     let presentation: DevicePresentation
     let canEject: Bool
@@ -4166,25 +4136,6 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
             )
         )
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-struct CompatibilityBadge: View {
-    let title: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(TerentoColors.lichenDark)
-                .frame(width: 8, height: 8)
-
-            Text(title)
-                .font(.terentoUI(size: 14, weight: .semibold))
-                .foregroundStyle(TerentoColors.lichenDark)
-        }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 9)
-        .background(TerentoColors.lichen.opacity(0.22), in: Capsule())
     }
 }
 
@@ -4819,26 +4770,6 @@ struct MapSelectionRow: View {
     }
 }
 
-struct OtherMapSelectionRow: View {
-    let entry: MapInventoryEntry
-
-    var body: some View {
-        TerentoMapRow(title: entry.title, detail: entry.installedRawVersion.map { "Installed · \($0)" } ?? "Installed") {
-            Image(systemName: "map")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(TerentoColors.secondaryText)
-                .frame(width: 24)
-        } trailing: {
-            Text("Other")
-                .font(.terentoUI(size: 12, weight: .semibold))
-                .foregroundStyle(TerentoColors.secondaryText)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(TerentoColors.border.opacity(0.45), in: Capsule())
-        }
-    }
-}
-
 private struct MapRowSurface: ViewModifier {
     let verticalPadding: CGFloat
     let showsDivider: Bool
@@ -5059,23 +4990,6 @@ struct MapSelectionStorageSummary: View {
     }
 }
 
-private struct DeviceValue: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.terentoUI(size: 12, weight: .medium))
-                .foregroundStyle(TerentoColors.secondaryText)
-
-            Text(value)
-                .font(.terentoUI(size: 14, weight: .semibold))
-                .foregroundStyle(TerentoColors.graphite)
-        }
-    }
-}
-
 private struct SecondaryButton: View {
     let title: String
     let action: () -> Void
@@ -5102,20 +5016,6 @@ private struct SecondaryButton: View {
         }
         .buttonStyle(.plain)
         .opacity(isEnabled ? 1 : 0.78)
-    }
-}
-
-private struct RefreshControl: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Label("Refresh", systemImage: "arrow.clockwise")
-                .font(.terentoUI(size: 13, weight: .medium))
-                .foregroundStyle(TerentoColors.secondaryText)
-        }
-        .buttonStyle(.plain)
-        .help("Refresh device information")
     }
 }
 
