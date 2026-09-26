@@ -533,11 +533,16 @@ def main() -> int:
     ):
         assert contract in deploy_site, f"deploy-site.yml is missing {contract!r}"
     assert "keyLocation" not in deploy_site, "the IndexNow key location must not be printed by the workflow"
+    assert "actions: write" in deploy_site
     assert "pull-requests: write" in deploy_site
-    assert 'state_branch="terento/indexnow-state-' in deploy_site
+    assert 'state_branch="terento/indexnow-state"' in deploy_site
+    assert 'gh pr list --repo "$GITHUB_REPOSITORY" --base beta' in deploy_site
+    assert 'gh workflow run swift-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$state_branch"' in deploy_site
+    assert 'select(.name == "build-and-test")' in deploy_site
     assert 'gh pr create --repo "$GITHUB_REPOSITORY" --base beta --head "$state_branch"' in deploy_site
     assert 'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch' in deploy_site
-    assert 'gh pr merge "$pr_number" --repo "$GITHUB_REPOSITORY" --merge --delete-branch' in deploy_site
+    assert '--match-head-commit "$state_sha"' in deploy_site
+    assert 'state_branch="terento/indexnow-state-${GITHUB_RUN_ID}' not in deploy_site
     assert "git push origin HEAD:beta" not in deploy_site
     assert "GitHub contents API" not in deploy_site
     assert "site-state.json" not in (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
