@@ -49,6 +49,7 @@ jobs:
     timeout-minutes: 20
     environment: rukas-site
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     env:
@@ -253,18 +254,46 @@ jobs:
           git add -- .github/indexnow/site-state.json
           test "$(git diff --cached --name-only)" = ".github/indexnow/site-state.json"
           git commit -m "chore: retain IndexNow publication state"
-          state_branch="terento/indexnow-state-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          git push origin "HEAD:${state_branch}"
-          pr_url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base beta --head "$state_branch" \
-            --title "chore: retain IndexNow publication state" \
-            --body "Automated publication-state update from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}.\n\nOnly .github/indexnow/site-state.json is changed. The site deployment has already completed and no IndexNow request is made by this state update.")"
-          pr_number="${pr_url##*/}"
+          state_branch="terento/indexnow-state"
+          remote_state="$(git ls-remote origin "refs/heads/${state_branch}" | cut -f1)"
+          git push --force-with-lease="refs/heads/${state_branch}:${remote_state}" \
+            origin "HEAD:refs/heads/${state_branch}"
+          state_sha="$(git rev-parse HEAD)"
+          mapfile -t open_prs < <(gh pr list --repo "$GITHUB_REPOSITORY" --base beta \
+            --head "$state_branch" --state open --json number --jq '.[].number')
+          test "${#open_prs[@]}" -le 1
+          if [ "${#open_prs[@]}" -eq 1 ]; then
+            pr_number="${open_prs[0]}"
+            pr_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/${pr_number}"
+          else
+            pr_url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base beta --head "$state_branch" \
+              --title "chore: retain IndexNow publication state" \
+              --body "Automated publication-state update from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}.\n\nOnly .github/indexnow/site-state.json is changed. The site deployment has already completed and no IndexNow request is made by this state update.")"
+            pr_number="${pr_url##*/}"
+          fi
           echo "IndexNow publication state PR: ${pr_url}"
+          gh workflow run swift-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$state_branch"
+          run_id=''
+          for _ in {1..60}; do
+            run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow swift-ci.yml \
+              --branch "$state_branch" --event workflow_dispatch --limit 20 \
+              --json databaseId,headSha --jq ".[] | select(.headSha == \"${state_sha}\") | .databaseId" | head -1)"
+            [ -n "$run_id" ] && break
+            sleep 5
+          done
+          test -n "$run_id"
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 30 --exit-status
+          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json headSha --jq .headSha)" = "$state_sha"
+          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json jobs \
+            --jq '.jobs[] | select(.name == "build-and-test") | .conclusion')" = success
           if ! gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch --fail-fast --interval 10; then
             echo "IndexNow state PR checks did not pass; see the fallback artifact." >&2
             exit 1
           fi
-          gh pr merge "$pr_number" --repo "$GITHUB_REPOSITORY" --merge --delete-branch
+          test "$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$state_sha"
+          gh pr merge "$pr_number" --repo "$GITHUB_REPOSITORY" --merge --delete-branch \
+            --match-head-commit "$state_sha"
           echo "IndexNow publication state persisted through ${pr_url}."
 
       - name: Preserve IndexNow state fallback
