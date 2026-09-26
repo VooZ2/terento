@@ -24,7 +24,7 @@ assert len(item['artifacts']) == 2 and item['artifacts'][1]['sourceProof'] == co
 assert database.admin_overview_map_snapshot(now, time_zone='Europe/Vilnius') is not None
 assert database.provider_detail('opentopomap') is not None
 assert [row['source_url'] for row in database.provider_download_urls('opentopomap')] == [main.source_url]
-print('PASS: PostgreSQL snapshot update, source proof, main compatibility fields and Overview SQL')
+print('PASS: PostgreSQL snapshot update, source proof, main compatibility fields and Dashboard SQL')
 
 # Synthetic results only in the explicitly guarded disposable CI database.
 # Reproduce the retained mixed custom + catalog session without production data.

@@ -105,7 +105,7 @@ def check_identity_database(database):
     database.device_catalog_snapshot()
     rows, sync = database.admin_device_snapshot()
     from terento_catalog.admin import devices_page
-    assert b"Review assignment audit" in devices_page(rows, sync, {"username": "CI owner"}, "csrf")
+    assert b"Model source review" in devices_page(rows, sync, {"username": "CI owner"}, "csrf")
     audit = database.identity_assignment_audit()
     assert audit['readOnly'] and audit['approvalRequiredBeforeReassignment']
     assert audit['counterImpact']
