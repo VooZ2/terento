@@ -43,6 +43,20 @@ def test_live_page_cloudflare_email_equivalence() -> None:
         live = expected.replace(b'mailto:' + email, b'/cdn-cgi/l/email-protection#' + encoded)
         live = live.replace(b'</body>', decoder + b'</body>')
         assert live_site.page_matches(expected, live)
+        visible_email = b'hello@terento.app'
+        text_encoded = bytes([key] + [value ^ key for value in visible_email]).hex().encode()
+        protected_text = b'<span class="__cf_email__" data-cfemail="' + text_encoded + b'">[email&#160;protected]</span>'
+        email_expected = expected.replace(b'Support', visible_email)
+        email_live = live.replace(b'Support', protected_text)
+        assert live_site.page_matches(email_expected, email_live)
+        translations = b'<script type="application/json" id="shell-translations">{}</script>'
+        assert live_site.page_matches(
+            email_expected.replace(b'</body>', translations + b'</body>'),
+            email_live.replace(decoder, decoder + translations),
+        )
+        assert not live_site.page_matches(email_expected, email_live.replace(text_encoded, b'0'))
+        assert not live_site.page_matches(email_expected, email_live.replace(b'__cf_email__', b'unknown'))
+        assert not live_site.page_matches(email_expected, email_live.replace(b'</body>', b'wrong</body>'))
         assert not live_site.page_matches(expected, live.replace(b'Support', b'Wrong release'))
         assert not live_site.page_matches(expected, live.replace(decoder, b''))
         assert not live_site.page_matches(expected, live.replace(decoder, decoder + decoder))
