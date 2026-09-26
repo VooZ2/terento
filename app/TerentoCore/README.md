@@ -17,6 +17,11 @@ The app connects a map-capable Garmin smartwatch, resolves provider metadata,
 downloads to the Mac, validates the source package and Garmin image, checks
 storage, installs, verifies the transfer, and records local ownership.
 
+The review Install action starts from idle. After successful preflight, the
+engine continues automatically; its transient `awaitingConfirmation` phase is
+processing, not a second executable Install action. Authorization, device
+identity and pre-write safety checks still apply to the continuation.
+
 Freizeitkarte, OpenTopoMap, MapRando and BBBike use the shared lifecycle.
 BBBike and BBBike (Ontrail) are separate map types from one provider; opposite
 same-region types conflict and cannot be installed together. OpenTopoMap

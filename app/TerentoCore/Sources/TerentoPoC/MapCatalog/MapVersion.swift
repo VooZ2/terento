@@ -84,11 +84,7 @@ struct MapVersion: Codable, Comparable, Equatable, Hashable, Sendable, CustomStr
 
 }
 
-protocol MapVersionParser: Sendable {
-    func parse(_ value: String) -> MapVersion?
-}
-
-struct FreizeitkarteVersionParser: MapVersionParser, Sendable {
+struct FreizeitkarteVersionParser: Sendable {
     func parse(_ value: String) -> MapVersion? {
         let pattern = #"(?i)\brelease\s+(\d{2})[./-](0?[1-9]|1[0-2])\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
@@ -107,7 +103,7 @@ struct FreizeitkarteVersionParser: MapVersionParser, Sendable {
     }
 }
 
-struct OpenTopoMapVersionParser: MapVersionParser, Sendable {
+struct OpenTopoMapVersionParser: Sendable {
     func parse(_ value: String) -> MapVersion? {
         let fullPattern = #"\b(20\d{2})[-/.](0?[1-9]|1[0-2])(?:[-/.](?:0?[1-9]|[12]\d|3[01]))?\b"#
         if let version = parse(

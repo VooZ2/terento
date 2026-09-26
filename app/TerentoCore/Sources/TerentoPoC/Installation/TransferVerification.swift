@@ -53,33 +53,3 @@ struct TransferVerification: Equatable, Sendable {
         )
     }
 }
-
-struct TransferVerifier: Sendable {
-    func verify(
-        sourceSizeBytes: UInt64,
-        sourceSHA256: String,
-        remoteSizeBytes: UInt64,
-        remoteSHA256: String
-    ) -> TransferVerification {
-        let status: TransferVerificationStatus
-        if sourceSizeBytes != remoteSizeBytes {
-            status = .sizeMismatch
-        } else if sourceSHA256.caseInsensitiveCompare(remoteSHA256) != .orderedSame {
-            status = .hashMismatch
-        } else {
-            status = .verifiedFullSHA256
-        }
-
-        return TransferVerification(
-            status: status,
-            sourceSizeBytes: sourceSizeBytes,
-            sourceSHA256: sourceSHA256,
-            remoteSizeBytes: remoteSizeBytes,
-            remoteSHA256: remoteSHA256,
-            mode: .fullHash,
-            sampledBytes: remoteSizeBytes,
-            sampleCount: 0,
-            matchedSampleCount: 0
-        )
-    }
-}

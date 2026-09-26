@@ -499,6 +499,13 @@ private func testInstallFailureRemovesAcquisitionWorkspace() async throws {
     harness.transport.mode = .writeFailure
     let result = await run(harness)
     try require(result.status == .failedWrite, "install failure should be reported")
+    try require(result.oldMapPreserved && harness.transport.objects.count == 1
+        && harness.transport.objects[0].file == harness.request.currentObject.file,
+        "write failure preserves the exact original map")
+    try require(!harness.transport.events.contains("deleteExactObject")
+        && !harness.transport.events.contains("cleanupTransactionObject")
+        && !harness.reconciler.called,
+        "write failure without a new object cannot delete, clean up, or reconcile ownership")
     try require(harness.artifact.workspaceRootURL.map { !FileManager.default.fileExists(atPath: $0.path) } == true, "install failure should remove its acquisition workspace")
 }
 

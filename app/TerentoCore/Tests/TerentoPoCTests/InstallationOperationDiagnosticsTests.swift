@@ -1,4 +1,6 @@
 import Foundation
+import AppKit
+import SwiftUI
 import LibMTPBridge
 
 extension Bundle { static var module: Bundle { .main } }
@@ -19,9 +21,26 @@ private actor DiagnosticUploadRecorder: InstallationEvidenceUploading {
 private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
     func upload(_ event: MapStatisticsEvent) async throws {}
 }
+private struct AuthorizationSnapshotReader: DeviceSnapshotReader {
+    func readSnapshot() throws -> DeviceSnapshot {
+        DeviceSnapshot(manufacturer: "Garmin", model: "fenix 8 - 47mm", deviceVersion: "fixture",
+            vendorID: 0x091e, productID: 0x51b8, storages: [], serialNumber: "1234567890")
+    }
+}
+
+private actor DelayedAuthorizationResponse {
+    private var released = false
+    func release() { released = true }
+    func wait() async throws {
+        while !released { try await Task.sleep(for: .milliseconds(10)) }
+    }
+}
+
 @main struct InstallationOperationDiagnosticsTests {
     @MainActor static var emittedFixtures: [InstallationEvidenceEvent] = []
     @MainActor static func main() async throws {
+        try await testDelayedAuthorizationThroughConnectScreen()
+        try testAwaitingConfirmationActionParity()
         try await testEngineWithoutScreen()
         try await testReadBoundaryAndPresence()
         try await testObservedReadSurvivesCancellation()
@@ -46,6 +65,122 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
     static let identity = DeviceIdentity(manufacturer: "Garmin", model: "fenix 8 - 47mm", family: "fenix", variant: "47mm",
         usbVendorId: 0x091e, usbProductId: 0x51b8, firmware: "2244", storageCapacity: 32_000_000_000, freeSpace: 20_000_000_000,
         localHardwareIdentifier: "PRIVATE-UNIT-SERIAL", garminModelDescription: "fenix 8 - 47mm", garminModelPartNumber: "006-B4536-00")
+    @MainActor static func testDelayedAuthorizationThroughConnectScreen() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        let policyData = try Data(contentsOf: policyURL)
+        let delayed = DelayedAuthorizationResponse()
+        let gate = MTPOperationGate()
+        let device = DeviceEngine(transport: AuthorizationSnapshotReader(), operationGate: gate,
+            compatibilityStatusClient: CompatibilityStatusClient(
+                cache: CompatibilityStatusCache(fileURL: root.appendingPathComponent("compatibility.json")),
+                dataLoader: { _ in throw URLError(.notConnectedToInternet) }),
+            installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { request in
+                try await delayed.wait()
+                return (policyData, HTTPURLResponse(url: request.url!, statusCode: 200,
+                    httpVersion: nil, headerFields: ["Content-Type": "application/json"])!)
+            }))
+        device.setPresenceMonitoringEnabled(false)
+        device.readDevice()
+        for _ in 0..<200 where !device.hasConnectedDevice {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        guard let identity = device.currentInstallationIdentity else {
+            fatalError("fixture device must become connected before mounting ConnectScreen")
+        }
+        check(device.hasConnectedDevice && !device.installationAuthorization.canInstall,
+            "delayed policy leaves the connected Garmin initially unauthorized")
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        let evidence = InstallationEvidenceController(store: store, uploader: DiagnosticUploadRecorder(), automaticRetryDelays: [0])
+        let stats = MapStatisticsEventController(store: LocalMapStatisticsEventStore(rootURL: root),
+            uploader: NoNetworkStatisticsUploader(), retryDelays: [0])
+        let engine = MapEngine(operationGate: gate, statisticsController: stats, evidenceController: evidence,
+            installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { _ in
+                throw URLError(.cancelled)
+            }))
+        let lifecycle = MapLifecycleViewModel(deviceEngine: device, mapEngine: engine, operationGate: gate)
+        // Mount the actual view after connection: its state observer must not
+        // initiate a real MTP scan. Only the existing read-only inventory seam is used.
+        _ = NSApplication.shared
+        let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 1100, height: 800),
+            styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: ConnectScreen(deviceEngine: device, mapEngine: engine,
+            lifecycleViewModel: lifecycle, evidenceController: evidence, mapStatisticsController: stats,
+            appUpdateController: AppUpdateController()))
+        window.orderFront(nil)
+        defer {
+            window.orderOut(nil)
+            window.contentView = nil
+            window.close()
+            engine.resetForDisconnectedDevice()
+            device.setPresenceMonitoringEnabled(false)
+        }
+        try await Task.sleep(for: .milliseconds(100))
+        engine.setDiagnosticTestIdentity(identity)
+        let selection = plan()
+        func availability() -> InstallReviewAvailability {
+            InstallReviewAvailabilityResolver().resolve(plan: selection,
+                deviceConnected: device.hasConnectedDevice,
+                installationAuthorization: device.installationAuthorization,
+                deviceIdentity: device.currentInstallationIdentity,
+                mapScanReady: engine.state == .scanned, supportedInstallFlow: !selection.installItems.isEmpty,
+                installationPhase: engine.installationPhase,
+                hasValidatedArtifact: engine.validatedArtifact != nil, operationBusy: engine.isBusy || lifecycle.isBusy)
+        }
+        check(!availability().isEnabled && availability().userReason?.isEmpty == false,
+            "ready scan with delayed authorization keeps Install blocked with a visible reason")
+        await delayed.release()
+        for _ in 0..<200 where !device.installationAuthorization.canInstall {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        // Give SwiftUI its update pass; never call MapEngine's authorization
+        // setter here. Removing ConnectScreen's onChange must break this test.
+        try await Task.sleep(for: .milliseconds(100))
+        check(device.currentInstallationIdentity == identity
+            && device.installationAuthorization.matches(identity: identity),
+            "delayed approval belongs to the same connected identity")
+        check(availability() == .ready(.prepare), "delayed approval makes the real review resolver ready")
+        engine.beginInstallation(plan: selection)
+        check(engine.installationPhase == .preparing && engine.state == .acquiringArtifact
+            && engine.installationErrorMessage == nil,
+            "REGRESSION: production ConnectScreen propagation clears stale engine authorization and Install starts preparation")
+        check(engine.mapStatisticsEvents.isEmpty && store.events().isEmpty,
+            "authorization waiting and preparation start add no fresh-install failure evidence")
+        // Cancel synchronously before the acquisition task gets a turn: this
+        // regression stops at preparation and never downloads or touches USB.
+        engine.resetForDisconnectedDevice()
+    }
+
+    @MainActor static func testAwaitingConfirmationActionParity() throws {
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        let policy = try JSONDecoder().decode(InstallationAuthorizationDocument.self,
+            from: Data(contentsOf: policyURL))
+        let authorization = InstallationAuthorizationState.approved(
+            record: policy.devices[0], policyVersion: policy.policyVersion)
+        let engine = MapEngine()
+        engine.setDiagnosticTestIdentity(identity, phase: .awaitingConfirmation)
+        engine.setInstallationAuthorization(authorization)
+        let selection = plan()
+        check(authorization.matches(identity: identity) && !engine.isBusy && selection.canContinue,
+            "action-parity fixture has approved matching identity, ready scan and no busy operation")
+        let availability = InstallReviewAvailabilityResolver().resolve(plan: selection,
+            deviceConnected: true, installationAuthorization: authorization, deviceIdentity: identity,
+            mapScanReady: engine.state == .scanned, supportedInstallFlow: true,
+            installationPhase: engine.installationPhase, hasValidatedArtifact: true, operationBusy: engine.isBusy)
+        // ConnectScreen routes both ready actions through beginInstallationAfterConsent
+        // to this same engine entry point. Its idle guard must remain intact.
+        engine.beginInstallation(plan: selection)
+        check(engine.installationPhase == .awaitingConfirmation && engine.state == .scanned
+            && engine.installationErrorMessage == nil && engine.mapStatisticsEvents.isEmpty,
+            "review's beginInstallation route silently rejects the already-started phase without mutation or statistics")
+        check(!availability.isEnabled && availability.userReason?.isEmpty == false,
+            "REGRESSION: awaitingConfirmation cannot expose an executable CTA to the silently rejecting beginInstallation route")
+    }
+
     @MainActor static func testEngineWithoutScreen() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

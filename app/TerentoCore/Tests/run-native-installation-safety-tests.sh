@@ -23,7 +23,6 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/MapConflictResolver.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapSourceValidator.swift" \
     "$project_root/Sources/TerentoPoC/Installation/TransferVerification.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/InstallationFailureRecovery.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationTransaction.swift" \
     "$project_root/Tests/TerentoPoCTests/InstallationSafetyTests.swift" \
     -o "$binary_path"

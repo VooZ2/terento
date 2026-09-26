@@ -30,12 +30,11 @@ while IFS= read -r source_file; do
 done < <(
   find "$project_root/Sources/TerentoPoC" -name '*.swift' \
     ! -name 'TerentoPoCApp.swift' \
-    ! -name 'ConnectScreen.swift' \
     ! -name 'ContentView.swift' \
     -print | sort
 )
 
-swiftc -D TERENTO_TESTING \
+swiftc -D TERENTO_TESTING -target "${swiftpm_arch}-apple-macosx13.0" \
   -parse-as-library \
   -module-name TerentoInstallationOperationDiagnosticsTests \
   -I "$bridge_module_dir" \

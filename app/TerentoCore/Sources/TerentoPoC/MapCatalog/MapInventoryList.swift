@@ -114,31 +114,6 @@ struct UnifiedMapInventory: Equatable, Sendable {
         self.otherMaps = otherMaps
     }
 
-    /// Compatibility initializer for the existing Freizeitkarte lifecycle
-    /// callers. New code should use `providerGroups` directly.
-    init(
-        freizeitkarte: [MapInventoryEntry],
-        otherMaps: [MapInventoryEntry]
-    ) {
-        self.init(
-            providerGroups: freizeitkarte.isEmpty
-                ? []
-                : [MapInventoryProviderGroup(
-                    id: "freizeitkarte",
-                    providerId: "freizeitkarte",
-                    title: "Freizeitkarte",
-                    entries: freizeitkarte
-                )],
-            otherMaps: otherMaps
-        )
-    }
-
-    var freizeitkarte: [MapInventoryEntry] {
-        providerGroups.first {
-            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
-        }?.entries ?? []
-    }
-
     var allEntries: [MapInventoryEntry] {
         providerGroups.flatMap(\.entries) + otherMaps
     }

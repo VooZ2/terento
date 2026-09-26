@@ -626,16 +626,19 @@ struct Stage45MapSelectionTests {
             recommendedRegionID: nil
         )
         let inventory = UnifiedMapInventory(
-            freizeitkarte: [managed, external, unknown].map {
-                MapInventoryEntry(
-                    key: $0.id,
-                    title: $0.regionName,
-                    catalogPackage: $0.catalogMap,
-                    comparison: $0,
-                    installedMaps: [$0.installedMap!],
-                    isSelectedCatalogMap: false
-                )
-            },
+            providerGroups: [MapInventoryProviderGroup(
+                id: "freizeitkarte", providerId: "freizeitkarte", title: "Freizeitkarte",
+                entries: [managed, external, unknown].map {
+                    MapInventoryEntry(
+                        key: $0.id,
+                        title: $0.regionName,
+                        catalogPackage: $0.catalogMap,
+                        comparison: $0,
+                        installedMaps: [$0.installedMap!],
+                        isSelectedCatalogMap: false
+                    )
+                }
+            )],
             otherMaps: [
                 MapInventoryEntry(
                     key: "garmin-system",
@@ -743,7 +746,7 @@ struct Stage45MapSelectionTests {
             hasValidatedArtifact: false,
             operationBusy: false
         )
-        let readyToInstall = resolver.resolve(
+        let automaticContinuation = resolver.resolve(
             plan: plan,
             deviceConnected: true,
             installationAuthorization: approved,
@@ -790,7 +793,8 @@ struct Stage45MapSelectionTests {
 
         expect(
             readyToPrepare == .ready(.prepare)
-                && readyToInstall == .ready(.install)
+                && !automaticContinuation.isEnabled
+                && automaticContinuation.userReason == "Installation checks are still in progress."
                 && blockedByDevice.userReason == "Reconnect your Garmin to continue."
                 && blockedByOperation.userReason == "Another device operation is in progress."
                 && blockedByUnsupportedFlow.userReason == "This map cannot be installed safely on this Garmin yet.",

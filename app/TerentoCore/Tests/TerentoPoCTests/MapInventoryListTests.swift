@@ -118,10 +118,13 @@ struct MapInventoryListTests {
             comparisons: comparisons,
             selectedCatalogPackageID: "freizeitkarte-fra"
         )
-        let titles = list.freizeitkarte.map(\.title)
+        let entries = list.providerGroups.first {
+            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+        }?.entries ?? []
+        let titles = entries.map(\.title)
 
         expect(
-            list.freizeitkarte.count == 2
+            entries.count == 2
                 && titles.contains("France")
                 && titles.contains("Germany")
                 && list.otherMaps.isEmpty,
@@ -131,8 +134,11 @@ struct MapInventoryListTests {
         let offlineList = MapInventoryListBuilder().build(
             scan: scan, comparisons: [], selectedCatalogPackageID: nil
         )
+        let offlineEntries = offlineList.providerGroups.first {
+            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+        }?.entries ?? []
         expect(
-            offlineList.freizeitkarte.map(\.title).contains("France")
+            offlineEntries.map(\.title).contains("France")
                 && MapDisplayNameNormalizer.normalize("Freizeitkarte LTU", providerID: "freizeitkarte") == "Lithuania"
                 && MapDisplayNameNormalizer.normalize("Freizeitkarte DEU+NORTH", providerID: "freizeitkarte") == "DEU+NORTH"
                 && MapDisplayNameNormalizer.normalize("MapRando Lithuania", providerID: "maprando") == "Lithuania"
@@ -157,10 +163,13 @@ struct MapInventoryListTests {
             selectedCatalogPackageID: "freizeitkarte-fra"
         )
 
+        let entries = list.providerGroups.first {
+            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+        }?.entries ?? []
         expect(
-            list.freizeitkarte.count == 1
-                && list.freizeitkarte.first?.isSelectedCatalogMap == true
-                && list.freizeitkarte.first?.installedFileCount == 1,
+            entries.count == 1
+                && entries.first?.isSelectedCatalogMap == true
+                && entries.first?.installedFileCount == 1,
             "an installed selected map is represented by one card"
         )
     }
@@ -209,7 +218,10 @@ struct MapInventoryListTests {
         let list = MapInventoryListBuilder().build(scan: makeScan(installedMaps: [first, second]),
             comparisons: [makeComparison(region: "FRA", name: "France", installedMap: first)],
             selectedCatalogPackageID: "freizeitkarte-fra")
-        expect(list.freizeitkarte.count == 2 && list.freizeitkarte.allSatisfy { $0.installedFileCount == 1 },
+        let entries = list.providerGroups.first {
+            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+        }?.entries ?? []
+        expect(entries.count == 2 && entries.allSatisfy { $0.installedFileCount == 1 },
             "same provider/region files remain individual targets without duplicate catalog rows")
     }
 
@@ -303,8 +315,11 @@ struct MapInventoryListTests {
             selectedCatalogPackageID: nil
         )
 
+        let entries = list.providerGroups.first {
+            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+        }?.entries ?? []
         expect(
-            list.freizeitkarte.isEmpty && list.otherMaps.isEmpty,
+            entries.isEmpty && list.otherMaps.isEmpty,
             "a map absent from a fresh device scan is absent from Manage maps"
         )
     }

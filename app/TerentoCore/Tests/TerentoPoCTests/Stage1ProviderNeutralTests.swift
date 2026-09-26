@@ -322,14 +322,15 @@ struct Stage1ProviderNeutralTests {
     }
 
     private static func testSourceKindsKeepProviderAndCustomInputsExplicit() {
-        let providerSource = MapSource.provider(package: makePackage())
-        let customSource = MapSource.custom(
-            fileURL: URL(fileURLWithPath: "/tmp/imported.img"),
-            displayName: "Imported map"
+        let providerPackage = makePackage()
+        let customPackage = MapPackage(
+            id: "custom-import", providerId: "custom", regionId: "custom-import",
+            name: "Imported map", version: version(2026, 8), sizeBytes: 300,
+            sourceURL: nil, releaseDate: nil, identifier: nil, sourceKind: .custom
         )
 
         expect(
-            providerSource.kind == .provider && customSource.kind == .custom,
+            providerPackage.sourceKind == .provider && customPackage.sourceKind == .custom,
             "provider downloads and local custom files have explicit source kinds"
         )
     }
