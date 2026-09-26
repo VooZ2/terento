@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// The lifecycle layer deliberately uses user-facing concepts instead of
@@ -25,20 +24,6 @@ enum MapLifecycleClassification: String, Codable, Equatable, Sendable {
             return "Read-only"
         }
     }
-}
-
-enum MapLifecycleError: Error, Equatable, Sendable {
-    case mapNotInstalled
-    case unsafeClassification
-    case exactObjectIdentityRequired
-    case confirmationRequired
-    case staleInventory
-    case deleteVerificationFailed
-    case replacementNotReady
-    case insufficientSpace
-    case updateNotRequired
-    case transportFailure(String)
-    case postActionVerificationFailed
 }
 
 struct MapLifecycleItem: Identifiable, Equatable, Sendable {
@@ -92,11 +77,6 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
             && installedMaps.allSatisfy {
                 !$0.sourceFile.path.isEmpty && !$0.sourceFile.filename.isEmpty
             }
-    }
-
-    var fileIdentities: [MapLifecycleFileIdentity] {
-        installedMaps.compactMap { MapLifecycleFileIdentity(file: $0.sourceFile) }
-            .sorted()
     }
 
     var detailLabel: String {
@@ -218,10 +198,6 @@ struct MapLifecycleInventory: Equatable, Sendable {
     func item(id: String) -> MapLifecycleItem? {
         allItems.first { $0.id == id }
     }
-
-    var fingerprint: MapLifecycleInventoryFingerprint {
-        MapLifecycleInventoryFingerprint(items: allItems)
-    }
 }
 
 struct MapLifecycleInventoryBuilder: Sendable {
@@ -303,214 +279,8 @@ struct MapLifecycleInventoryBuilder: Sendable {
     }
 }
 
-struct MapLifecycleFileIdentity: Comparable, Equatable, Hashable, Sendable {
-    let itemID: UInt32
-    let path: String
-    let filename: String
-    let sizeBytes: UInt64
-
-    init?(file: InstalledMapFile) {
-        guard let itemID = file.itemID else {
-            return nil
-        }
-
-        self.itemID = itemID
-        self.path = file.path
-        self.filename = file.filename
-        self.sizeBytes = file.sizeBytes
-    }
-
-    static func < (lhs: Self, rhs: Self) -> Bool {
-        if lhs.itemID != rhs.itemID {
-            return lhs.itemID < rhs.itemID
-        }
-        return lhs.path < rhs.path
-    }
-}
-
-struct MapLifecycleInventoryFingerprint: Equatable, Sendable {
-    let files: [MapLifecycleFileIdentity]
-
-    init(items: [MapLifecycleItem]) {
-        files = items
-            .flatMap(\.fileIdentities)
-            .sorted()
-    }
-
-    func removing(_ deleted: Set<MapLifecycleFileIdentity>) -> Self {
-        Self(files: files.filter { !deleted.contains($0) })
-    }
-
-    private init(files: [MapLifecycleFileIdentity]) {
-        self.files = files
-    }
-}
-
 struct MapLifecycleReadTransfer: Equatable, Sendable {
     let itemID: UInt32
     let sourcePath: String
     let reportedSizeBytes: UInt64
-}
-
-enum MapUpdatePlanStatus: String, Equatable, Sendable {
-    case ready
-    case noUpdateRequired
-    case newerVersionAlreadyInstalled
-    case blockedAmbiguousMapIdentity
-    case blockedInsufficientSpace
-    case blockedUnknownVersion
-}
-
-struct MapUpdatePlan: Equatable, Sendable {
-    let status: MapUpdatePlanStatus
-    let mapID: String
-    let installedVersion: MapVersion?
-    let targetVersion: MapVersion
-    let targetFilename: String
-    let storagePlan: StoragePlan
-
-    var isReady: Bool {
-        status == .ready
-    }
-}
-
-struct MapUpdatePlanner: Sendable {
-    func plan(
-        item: MapLifecycleItem,
-        installedVersion: MapVersion?,
-        targetVersion: MapVersion,
-        targetFilename: String,
-        newMapSizeBytes: UInt64,
-        currentFreeSpace: UInt64,
-        safetyReserve: UInt64 = StoragePlanner.defaultSafetyReserve
-    ) -> MapUpdatePlan {
-        let storagePlan = StoragePlanner(safetyReserve: safetyReserve).plan(
-            currentFreeSpace: currentFreeSpace,
-            selectedMapSizes: [newMapSizeBytes]
-        )
-
-        let status: MapUpdatePlanStatus
-        if !item.isInstalled || !item.hasExactObjectIdentity || !item.classification.canBeManaged {
-            status = .blockedAmbiguousMapIdentity
-        } else if installedVersion == nil {
-            status = .blockedUnknownVersion
-        } else if let installedVersion, installedVersion == targetVersion {
-            status = .noUpdateRequired
-        } else if let installedVersion, installedVersion > targetVersion {
-            status = .newerVersionAlreadyInstalled
-        } else if !storagePlan.isAllowed {
-            status = .blockedInsufficientSpace
-        } else {
-            status = .ready
-        }
-
-        return MapUpdatePlan(
-            status: status,
-            mapID: item.id,
-            installedVersion: installedVersion,
-            targetVersion: targetVersion,
-            targetFilename: targetFilename,
-            storagePlan: storagePlan
-        )
-    }
-}
-
-struct MapUpdateArtifact: Equatable, Sendable {
-    let localURL: URL
-    let sizeBytes: UInt64
-    let sha256: String
-}
-
-struct MapReplacementObject: Equatable, Sendable {
-    let itemID: UInt32
-    let path: String
-    let sizeBytes: UInt64
-    let sha256: String
-}
-
-protocol MapReplacementTransport: Sendable {
-    func writeReplacement(
-        sourceURL: URL,
-        targetFilename: String,
-        onProgress: (@Sendable (TransferProgress) -> Void)?
-    ) throws -> MapReplacementObject
-
-    func verifyReplacement(
-        _ object: MapReplacementObject,
-        expected: MapUpdateArtifact
-    ) throws
-
-    func delete(file: InstalledMapFile) throws
-}
-
-struct MapReplacementResult: Equatable, Sendable {
-    let plan: MapUpdatePlan
-    let replacement: MapReplacementObject
-    let finalInventory: MapLifecycleInventoryFingerprint
-}
-
-/// Executes update operations in the only safe order: write to a new Terento
-/// target, verify the new object, then delete the old exact object. Any
-/// failure before that final step preserves the old map.
-struct MapReplacementEngine: Sendable {
-    func replace(
-        plan: MapUpdatePlan,
-        item: MapLifecycleItem,
-        artifact: MapUpdateArtifact,
-        confirmed: Bool,
-        rescan: @escaping @Sendable () throws -> MapLifecycleInventory,
-        transport: any MapReplacementTransport,
-        onProgress: (@Sendable (TransferProgress) -> Void)? = nil
-    ) throws -> MapReplacementResult {
-        guard plan.isReady else {
-            throw MapLifecycleError.replacementNotReady
-        }
-        guard confirmed else {
-            throw MapLifecycleError.confirmationRequired
-        }
-        guard item.id == plan.mapID else {
-            throw MapLifecycleError.staleInventory
-        }
-
-        let before = try rescan()
-        guard before.item(id: item.id)?.fileIdentities == item.fileIdentities else {
-            throw MapLifecycleError.staleInventory
-        }
-
-        let replacement: MapReplacementObject
-        do {
-            replacement = try transport.writeReplacement(
-                sourceURL: artifact.localURL,
-                targetFilename: plan.targetFilename,
-                onProgress: onProgress
-            )
-            try transport.verifyReplacement(replacement, expected: artifact)
-        } catch let error as MapLifecycleError {
-            throw error
-        } catch {
-            throw MapLifecycleError.transportFailure(error.localizedDescription)
-        }
-
-        // This is intentionally the first point at which deletion is legal.
-        for installedMap in item.installedMaps {
-            try transport.delete(file: installedMap.sourceFile)
-        }
-
-        let after = try rescan()
-        let deleted = Set(item.fileIdentities)
-        guard after.fingerprint.files.allSatisfy({ !deleted.contains($0) }),
-              after.fingerprint.removing(deleted).files.contains(where: {
-                  $0.itemID == replacement.itemID
-                      && $0.path == replacement.path
-                      && $0.sizeBytes == replacement.sizeBytes
-              }) else {
-            throw MapLifecycleError.postActionVerificationFailed
-        }
-
-        return MapReplacementResult(
-            plan: plan,
-            replacement: replacement,
-            finalInventory: after.fingerprint
-        )
-    }
 }
