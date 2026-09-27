@@ -9,9 +9,12 @@ REPO = "VooZ2/terento"
 BRANCH = "terento/compatibility-snapshot-refresh"
 MARKER = "<!-- terento-compatibility-snapshot-refresh -->"
 TITLE = "chore: refresh compatibility snapshot"
-FILES = ["site/compatibility/public-models.snapshot.json", "site/compatibility/index.html"] + [
+SITEMAP_TITLE = "chore: refresh compatibility sitemap metadata"
+FACT_FILES = ["site/compatibility/public-models.snapshot.json", "site/compatibility/index.html"] + [
     f"site/{locale}/compatibility/index.html" for locale in ("de", "fr", "pl", "cs", "it")
 ]
+GENERATED_METADATA_FILES = ["site/sitemap.xml"]
+OWNED_FILES = FACT_FILES + GENERATED_METADATA_FILES
 
 
 def run(*args, timeout=120):
@@ -22,8 +25,8 @@ def gh(*args):
     return json.loads(run("gh", *args))
 
 
-def allowed(paths):
-    if not set(paths).issubset(FILES):
+def allowed(paths, expected=OWNED_FILES):
+    if not set(paths).issubset(expected):
         raise RuntimeError("Unexpected files in automation branch or worktree")
 
 
@@ -92,11 +95,31 @@ def dispatch_and_wait(workflow, branch, sha, reuse=False):
     return selected["databaseId"]
 
 
+def commit_files(files, title):
+    run("git", "add", "--", *files)
+    allowed(run("git", "diff", "--cached", "--name-only").splitlines(), files)
+    run("git", "diff", "--cached", "--check")
+    run("git", "commit", "-m", title, "-m", MARKER)
+
+
+def prepare_refresh_commits():
+    commit_files(FACT_FILES, TITLE)
+    # Generate metadata only after the factual content has a Git commit date.
+    run("python3", "scripts/generate-sitemap.py", "--write")
+    run("python3", "scripts/generate-sitemap.py", "--check")
+    generated_paths = run("git", "diff", "--name-only", "HEAD").splitlines()
+    allowed(generated_paths, GENERATED_METADATA_FILES)
+    if generated_paths:
+        run("git", "diff", "--", *GENERATED_METADATA_FILES)
+        commit_files(GENERATED_METADATA_FILES, SITEMAP_TITLE)
+    return run("git", "rev-parse", "HEAD")
+
+
 def main():
     if os.environ.get("GITHUB_REPOSITORY") != REPO:
         raise RuntimeError("Unexpected repository")
     paths = run("git", "diff", "--name-only", "HEAD").splitlines()
-    allowed(paths)
+    allowed(paths, FACT_FILES)
     if run("git", "ls-files", "--others", "--exclude-standard"):
         raise RuntimeError("Unexpected untracked content")
     if not paths:
@@ -119,11 +142,7 @@ def main():
         allowed(run("git", "diff", "--name-only", f"HEAD...{old}").splitlines())
     run("git", "config", "user.name", "github-actions[bot]")
     run("git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
-    run("git", "add", "--", *FILES)
-    allowed(run("git", "diff", "--cached", "--name-only").splitlines())
-    run("git", "diff", "--cached", "--check")
-    run("git", "commit", "-m", TITLE, "-m", MARKER)
-    sha = run("git", "rev-parse", "HEAD")
+    sha = prepare_refresh_commits()
     # Explicit lease also protects first creation against a racing human branch.
     run("git", "push", f"--force-with-lease=refs/heads/{BRANCH}:{old}",
         "origin", f"HEAD:refs/heads/{BRANCH}")

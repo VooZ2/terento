@@ -22,7 +22,8 @@ def verify_refresh_flow():
     spec = importlib.util.spec_from_file_location("refresh_flow", REPO_ROOT / "scripts/integrate-compatibility-refresh.py")
     flow = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(flow)
-    flow.allowed(flow.FILES)
+    flow.allowed(flow.FACT_FILES)
+    flow.allowed(flow.GENERATED_METADATA_FILES)
     try:
         flow.allowed(["site/index.html"])
     except RuntimeError:
@@ -33,6 +34,49 @@ def verify_refresh_flow():
     with patch.dict(os.environ, GITHUB_REPOSITORY=flow.REPO), patch.object(flow, "run", side_effect=lambda *a, **k: calls.append(a) or ""):
         flow.main()
     assert all(c[0] == "git" for c in calls), "no diff must not touch GitHub"
+
+    def exercise_prepare(generated_paths):
+        events = []
+        final_sha = "f" * 40
+
+        def fake_run(*args, **kwargs):
+            events.append(("run", args))
+            if args == ("git", "diff", "--name-only", "HEAD"):
+                return "\n".join(generated_paths)
+            if args == ("git", "rev-parse", "HEAD"):
+                return final_sha
+            return ""
+
+        with patch.object(flow, "commit_files",
+                          side_effect=lambda files, title: events.append(("commit", files, title))), \
+             patch.object(flow, "run", side_effect=fake_run):
+            assert flow.prepare_refresh_commits() == final_sha
+        return events
+
+    changed_events = exercise_prepare(flow.GENERATED_METADATA_FILES)
+    changed_labels = [event[2] for event in changed_events if event[0] == "commit"]
+    assert changed_labels == [flow.TITLE, flow.SITEMAP_TITLE]
+    assert changed_events.index(("commit", flow.FACT_FILES, flow.TITLE)) < changed_events.index(
+        ("run", ("python3", "scripts/generate-sitemap.py", "--write")))
+    assert ("run", ("python3", "scripts/generate-sitemap.py", "--check")) in changed_events
+    assert ("run", ("git", "diff", "--", *flow.GENERATED_METADATA_FILES)) in changed_events
+
+    unchanged_events = exercise_prepare([])
+    unchanged_labels = [event[2] for event in unchanged_events if event[0] == "commit"]
+    assert unchanged_labels == [flow.TITLE], "unchanged sitemap must not create an empty commit"
+    assert not any(event[0] == "run" and event[1][:3] == ("git", "diff", "--")
+                   for event in unchanged_events)
+
+    staged_calls = []
+    with patch.object(flow, "run", side_effect=lambda *a, **k: staged_calls.append(a) or
+                      ("\n".join(flow.FACT_FILES) if a == ("git", "diff", "--cached", "--name-only") else "")):
+        flow.commit_files(flow.FACT_FILES, flow.TITLE)
+    assert staged_calls == [
+        ("git", "add", "--", *flow.FACT_FILES),
+        ("git", "diff", "--cached", "--name-only"),
+        ("git", "diff", "--cached", "--check"),
+        ("git", "commit", "-m", flow.TITLE, "-m", flow.MARKER),
+    ]
 
     sha = "a" * 40
     with patch.object(flow, "run", return_value="") as command:
@@ -68,10 +112,16 @@ def verify_refresh_flow():
             else:
                 raise AssertionError("wrong SHA or failed required job accepted")
     source = (REPO_ROOT / "scripts/integrate-compatibility-refresh.py").read_text()
-    for guard in ('len(prs) > 1', 'MARKER not in', '--force-with-lease=refs/heads/{BRANCH}:{old}',
+    for guard in ('len(prs) > 1', 'MARKER not in', 'if not prs', 'gh("pr", "view", BRANCH',
+                  'FACT_FILES', 'GENERATED_METADATA_FILES', 'SITEMAP_TITLE',
+                  '--force-with-lease=refs/heads/{BRANCH}:{old}',
                   '"--required", "--watch"', '"CLEAN"', '"--match-head-commit", sha',
                   'merged["state"] != "MERGED"', 'merged["mergeCommit"]["oid"]', 'reuse=True'):
         assert guard in source, guard
+    assert source.index('commit_files(FACT_FILES, TITLE)') < source.index(
+        'scripts/generate-sitemap.py", "--write"')
+    assert source.index('scripts/generate-sitemap.py", "--check"') < source.index(
+        'sha = prepare_refresh_commits()')
     assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
     assert "HEAD:beta" not in source and "--admin" not in source
 
