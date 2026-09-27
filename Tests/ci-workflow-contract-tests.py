@@ -16,6 +16,68 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 PINNED_ACTION = re.compile(r"^\s*uses:\s*[^\s@]+@[0-9a-f]{40}\s*$")
 
 
+def required_check_visibility_decision(observations, expected_head, max_attempts=18):
+    """Model the bounded workflow gate without sleeps, GitHub or network access."""
+    for observation in observations[:max_attempts]:
+        if observation["head"] != expected_head:
+            return "head-changed"
+        checks = observation["checks"]
+        if any(
+            check.get("bucket") in {"fail", "cancel"}
+            or check.get("state") in {"FAILURE", "ERROR", "CANCELLED", "TIMED_OUT"}
+            for check in checks
+        ):
+            return "failed"
+        if checks:
+            return "visible"
+    return "timeout"
+
+
+def verify_indexnow_visibility_race_contract(deploy_site):
+    expected_head = "a" * 40
+    passed = [{"name": "build-and-test", "state": "SUCCESS", "bucket": "pass"}]
+    failed = [{"name": "build-and-test", "state": "FAILURE", "bucket": "fail"}]
+    empty = {"head": expected_head, "checks": []}
+
+    assert required_check_visibility_decision(
+        [empty, empty, {"head": expected_head, "checks": passed}], expected_head
+    ) == "visible", "checks must become visible after bounded retries"
+    assert required_check_visibility_decision(
+        [{"head": expected_head, "checks": failed}], expected_head
+    ) == "failed", "visible required failures must stop immediately"
+    assert required_check_visibility_decision([empty] * 18, expected_head) == "timeout"
+    assert required_check_visibility_decision(
+        [empty, {"head": "b" * 40, "checks": passed}], expected_head
+    ) == "head-changed", "a changed PR head must never proceed to merge"
+    assert required_check_visibility_decision(
+        [{"head": expected_head, "checks": passed}], expected_head
+    ) == "visible"
+
+    for contract in (
+        "visibility_attempts=18",
+        "visibility_interval=5",
+        'required_checks_file="$RUNNER_TEMP/indexnow-required-checks.json"',
+        'visible_head="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY"',
+        'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required \\\n              --json name,state,bucket',
+        "type == \"array\" and length > 0",
+        '.bucket == "fail" or .bucket == "cancel"',
+        'sleep "$visibility_interval"',
+        'test "$checks_visible" = true',
+        'exit 1',
+        '--match-head-commit "$state_sha"',
+        "--delete-branch",
+    ):
+        assert contract in deploy_site, f"deploy-site.yml is missing visibility contract {contract!r}"
+    visibility_gate = deploy_site.index("visibility_attempts=18")
+    required_watch = deploy_site.index(
+        'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch'
+    )
+    merge = deploy_site.index('gh pr merge "$pr_number"')
+    assert visibility_gate < required_watch < merge
+    assert deploy_site.index("IndexNow state PR has an explicit failed required check") < merge
+    assert deploy_site.index("Timed out waiting for required IndexNow state PR checks") < merge
+
+
 def verify_refresh_flow():
     import importlib.util
     from unittest.mock import patch
@@ -529,6 +591,7 @@ def main() -> int:
         "continue-on-error: true", "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
     ):
         assert contract in deploy_site, f"deploy-site.yml is missing {contract!r}"
+    verify_indexnow_visibility_race_contract(deploy_site)
     assert "keyLocation" not in deploy_site, "the IndexNow key location must not be printed by the workflow"
     assert "actions: write" in deploy_site
     assert "pull-requests: write" in deploy_site
