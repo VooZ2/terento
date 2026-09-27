@@ -109,6 +109,18 @@ def verify_refresh_flow():
         assert flow.dispatch_and_wait("swift-ci.yml", flow.BRANCH, sha) == 3
     assert any(c[:4] == ("gh", "workflow", "run", "swift-ci.yml") for c in calls)
     assert any(c[:4] == ("gh", "run", "watch", "3") for c in calls)
+    pending_pr = dict(databaseId=4, headSha=sha, event="pull_request", status="completed", conclusion="action_required")
+    calls = []
+    with patch.object(flow, "runs", return_value=[pending_pr]), \
+         patch.object(flow, "run", side_effect=lambda *a, **k: calls.append(a) or ""), \
+         patch.object(flow, "gh", return_value={
+             "headSha": sha,
+             "conclusion": "success",
+             "jobs": [{"name": "build-and-test", "conclusion": "success"}],
+         }):
+        flow.ensure_pull_request_checks(flow.BRANCH, sha)
+    assert any(c[:4] == ("gh", "run", "rerun", "4") for c in calls)
+    assert any(c[:4] == ("gh", "run", "watch", "4") for c in calls)
     with patch.object(flow, "runs", return_value=[old]), patch.object(flow, "run") as command:
         assert flow.dispatch_and_wait("deploy-site.yml", "beta", sha, reuse=True) == 1
         command.assert_not_called()
@@ -123,6 +135,7 @@ def verify_refresh_flow():
                 raise AssertionError("wrong SHA or failed required job accepted")
     source = (REPO_ROOT / "scripts/integrate-compatibility-refresh.py").read_text()
     for guard in ('len(prs) > 1', 'MARKER not in', 'if not prs', 'wait_for_pr_head',
+                  'ensure_pull_request_checks', '"event"] == "pull_request"',
                   'FACT_FILES', 'GENERATED_METADATA_FILES', 'SITEMAP_TITLE',
                   '--force-with-lease=refs/heads/{BRANCH}:{old}',
                   '"--required", "--watch"', '"CLEAN"', '"--match-head-commit", sha',
@@ -132,6 +145,8 @@ def verify_refresh_flow():
         'scripts/generate-sitemap.py", "--write"')
     assert source.index('scripts/generate-sitemap.py", "--check"') < source.index(
         'sha = prepare_refresh_commits()')
+    assert source.index('ensure_pull_request_checks(BRANCH, sha)') < source.index(
+        '"gh", "pr", "checks"')
     assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
     assert "HEAD:beta" not in source and "--admin" not in source
 

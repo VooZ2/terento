@@ -105,6 +105,36 @@ def wait_for_pr_head(branch, sha):
     raise RuntimeError("PR head changed unexpectedly")
 
 
+def ensure_pull_request_checks(branch, sha):
+    matching = []
+    for attempt in range(12):
+        matching = exact_runs(
+            [r for r in runs("swift-ci.yml", branch) if r["event"] == "pull_request"],
+            sha,
+        )
+        if matching:
+            break
+        if attempt < 11:
+            time.sleep(5)
+    if not matching:
+        raise RuntimeError("No pull_request workflow run for exact refresh SHA")
+    selected = max(matching, key=lambda result: result["databaseId"])
+    if selected["conclusion"] == "action_required":
+        run("gh", "run", "rerun", str(selected["databaseId"]), "--repo", REPO)
+    elif selected["status"] == "completed" and selected["conclusion"] != "success":
+        raise RuntimeError("Exact pull_request workflow failed")
+    if selected["conclusion"] != "success":
+        run("gh", "run", "watch", str(selected["databaseId"]), "--repo", REPO,
+            "--interval", "30", "--exit-status", timeout=7200)
+    result = gh("run", "view", str(selected["databaseId"]), "--repo", REPO,
+                "--json", "headSha,conclusion,jobs")
+    if result["headSha"] != sha or result["conclusion"] != "success":
+        raise RuntimeError("Exact pull_request workflow did not pass")
+    if not any(j["name"] == "build-and-test" and j["conclusion"] == "success"
+               for j in result["jobs"]):
+        raise RuntimeError("build-and-test did not pass for exact pull_request SHA")
+
+
 def commit_files(files, title):
     run("git", "add", "--", *files)
     allowed(run("git", "diff", "--cached", "--name-only").splitlines(), files)
@@ -163,6 +193,7 @@ def main():
     number = str(pr["number"])
     # GITHUB_TOKEN suppresses pull_request events: explicitly test this exact head.
     dispatch_and_wait("swift-ci.yml", BRANCH, sha)
+    ensure_pull_request_checks(BRANCH, sha)
     run("gh", "pr", "checks", number, "--repo", REPO, "--required", "--watch",
         "--fail-fast", timeout=7200)
     pr = gh("pr", "view", number, "--repo", REPO,
