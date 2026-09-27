@@ -92,7 +92,10 @@ The retained module names do not change runtime behavior or release identity.
 regression tests, PostgreSQL migration/idempotency/health checks and the Docker
 build. Both the selected backend job and `deploy-catalog-api.yml` call that same
 workflow. The deployment-time rerun is intentional; it needs no deployment
-secrets. Deployment credentials and subsequent rollout steps remain unchanged.
+secrets. Catalog deployment publishes one immutable image and sends only the
+deploy digest/revision request; the root helper performs generic forward
+migrations and service replacement under one lock. GitHub does not select a
+migration target or call a separate migration operation.
 
 `build-and-test` remains the required aggregate. Documentation-only changes use
 shared/CI checks plus specific release/legal checks when relevant. Schema and

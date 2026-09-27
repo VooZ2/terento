@@ -9,60 +9,30 @@ from .db import Database, migration_directory
 
 
 def apply_migrations(
-    database: Database, directory: Path | None = None, *, target: str | None = None
+    database: Database, directory: Path | None = None
 ) -> list[str]:
-    if target not in (None, "063"):
-        raise RuntimeError("only the exact --target 063 is supported")
-
     migration_path = directory or migration_directory()
-    files = [
-        file
-        for file in sorted(migration_path.glob("*.sql"))
-        if not file.name.startswith("._")
-    ]
-    if not files:
-        raise RuntimeError(f"no SQL migrations found in {migration_path}")
-
-    validate_migration_versions(files)
-    if target == "063":
-        expected_files = [f"{version:03d}" for version in range(1, 64)]
-        actual_files = [_migration_version(file) for file in files]
-        if actual_files != expected_files:
-            raise RuntimeError(
-                "--target 063 requires exactly one canonical migration file "
-                "for every version 001 through 063, with no later files"
-            )
+    files = migration_files(migration_path)
+    expected_versions = [_migration_version(file) for file in files]
 
     with database.connection() as connection:
-        if target == "063":
-            # Serialize competing migrators without locking application tables.
-            # The target path must never create a missing history ledger.
-            connection.execute("LOCK TABLE schema_migrations IN SHARE ROW EXCLUSIVE MODE")
-        else:
-            connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS schema_migrations (
-                    version TEXT PRIMARY KEY,
-                    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )
-                """
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version TEXT PRIMARY KEY,
+                applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
             )
-        applied = {
+            """
+        )
+        connection.execute("LOCK TABLE schema_migrations IN SHARE ROW EXCLUSIVE MODE")
+        applied = [
             row["version"]
             for row in connection.execute(
-                "SELECT version FROM schema_migrations"
+                "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        }
-        if target == "063":
-            expected_applied = set(expected_files[:-1])
-            if applied == expected_applied | {"063"}:
-                return []
-            if applied != expected_applied:
-                raise RuntimeError(
-                    "--target 063 requires the exact applied ledger 001 through "
-                    "062; 060-only, aliases, holes, and later versions are rejected"
-                )
-            files = [files[-1]]
+        ]
+        _validate_applied_prefix(applied, expected_versions)
+        files = files[len(applied):]
 
         installed: list[str] = []
         for file in files:
@@ -80,18 +50,48 @@ def apply_migrations(
 
 
 def validate_migration_versions(files: list[Path]) -> None:
+    migration_files_from_paths(files)
+
+
+def migration_files(directory: Path) -> list[Path]:
+    return migration_files_from_paths(sorted(directory.glob("*.sql")))
+
+
+def migration_files_from_paths(files: list[Path]) -> list[Path]:
+    if not files:
+        raise RuntimeError("no SQL migrations found")
     seen: dict[str, Path] = {}
     for file in files:
+        if not re.fullmatch(r"\d{3}_[A-Za-z0-9_.-]+\.sql", file.name):
+            raise RuntimeError(
+                f"migration filename must use a three-digit canonical version: {file.name}"
+            )
         version = _migration_version(file)
-        # Numeric aliases such as 044 and 44 are also ambiguous.
-        key = str(int(version))
-        if key in seen:
-            raise RuntimeError(f"duplicate migration version {version}: {seen[key].name}, {file.name}")
-        seen[key] = file
+        if version in seen:
+            raise RuntimeError(
+                f"duplicate migration version {version}: {seen[version].name}, {file.name}"
+            )
+        seen[version] = file
+    ordered = sorted(files, key=_migration_version)
+    actual = [_migration_version(file) for file in ordered]
+    expected = [f"{version:03d}" for version in range(1, len(actual) + 1)]
+    if actual != expected:
+        raise RuntimeError(
+            "migration versions must be one contiguous canonical sequence starting at 001"
+        )
+    return ordered
+
+
+def _validate_applied_prefix(applied: list[str], available: list[str]) -> None:
+    expected = available[: len(applied)]
+    if applied != expected:
+        raise RuntimeError(
+            "applied migration ledger must be an exact canonical prefix of the image inventory"
+        )
 
 
 def _migration_version(path: Path) -> str:
-    match = re.match(r"^(\d+)_.*\.sql$", path.name)
+    match = re.match(r"^(\d{3})_.*\.sql$", path.name)
     if not match:
         raise RuntimeError(f"migration filename must start with a number: {path.name}")
     return match.group(1)
@@ -192,14 +192,13 @@ def _statements(sql: str) -> list[str]:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Apply Terento catalog SQL migrations")
-    parser.add_argument("--target", choices=("063",), help="apply only migration 063")
     args = parser.parse_args(argv)
     settings = Settings.from_env()
     database = Database(
         settings.database_url,
         connect_timeout_seconds=settings.database_connect_timeout_seconds,
     )
-    installed = apply_migrations(database, target=args.target)
+    installed = apply_migrations(database)
     print("Applied migrations: " + (", ".join(installed) if installed else "none"))
 
 

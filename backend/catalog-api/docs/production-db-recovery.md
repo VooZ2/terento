@@ -7,14 +7,14 @@ check. No dump, restore, Hostinger snapshot, database write, migration, or
 deployment was performed for this preparation. The Mac is not a backup or
 restore target. A successful logical restore check is not off-host disaster
 recovery; a fresh Hostinger VPS recovery point is also required before the
-separately approved 062 operation.
+next separately approved forward schema operation.
 
 Read-only observations available for this candidate:
 
 | Check | Observation | Limit |
 | --- | --- | --- |
 | Hostinger VPS | `rukas.terento.app`, VPS `1958677`, running; Ubuntu 26.04 LTS, 100 GiB disk plan | Provider metadata does not prove container state or filesystem headroom. |
-| Hostinger recovery points, refreshed 2026-09-24 | Weekly backups `52757820` (2026-09-19 11:10:29 UTC) and `51894425` (2026-09-12 14:15:16 UTC) | Neither is accepted as the fresh pre-062 recovery point. |
+| Hostinger recovery points, refreshed 2026-09-24 | Weekly backups `52757820` (2026-09-19 11:10:29 UTC) and `51894425` (2026-09-12 14:15:16 UTC) | Neither is accepted as a fresh pre-operation recovery point. |
 | Current Hostinger snapshot | API returned ID `0` with no usable timestamp | No current snapshot is available. |
 | Hostinger Docker Manager API | Unsupported by the VPS operating system | Use the authenticated VPS shell for narrowly scoped, read-only Docker checks. |
 | Production DB client, last shell observation 2026-09-23 | `pg_dump (PostgreSQL) 16.15` inside the existing DB container; host `pg_dump` unavailable | This was a version check, not a dump. `pg_restore --version`, current container/image identity, credential path, and restore image digest still need confirmation in the VPS shell. |
@@ -36,7 +36,7 @@ was created here. See [Hostinger VPS backup and restore guidance](https://www.ho
 
 ## Recovery gate
 
-Before live 062, both conditions must be evidenced:
+Before a live forward schema operation, both conditions must be evidenced:
 
 1. **HOSTINGER RECOVERY POINT READY** — a fresh provider backup/snapshot has
    completed, its exact ID and timestamp are recorded, and the owner has
@@ -44,11 +44,11 @@ Before live 062, both conditions must be evidenced:
 2. **POSTGRESQL RESTORE VALIDATED** — a fresh custom-format logical dump is
    stored root-only on the VPS and has restored successfully into a separate,
    temporary PostgreSQL 16 instance on that VPS. The archive remains available
-   until 062 and the separately approved backend deployment are complete.
+   until the separately approved backend deployment is complete.
 
 Normal schema problems use forward recovery; a logical DB failure uses the
 validated `pg_dump`; loss/corruption of the VPS or its filesystem uses the
-Hostinger recovery point. Do not attempt an automatic 062 downgrade.
+Hostinger recovery point. Do not attempt an automatic schema downgrade.
 
 Creating the Hostinger point, producing a production dump, and creating or
 removing the temporary restore resources are external production operations.
@@ -262,7 +262,7 @@ absence of published ports with narrow `docker inspect` fields:
 5. Only after all checks pass report **POSTGRESQL RESTORE VALIDATED** for this
    database-only scope. Then, under the separately approved cleanup step,
    remove only the exact temporary container and volume after verifying their
-   recorded IDs/names. Keep the production dump and receipt until 062 and
+   recorded IDs/names. Keep the production dump and receipt until the
    backend deployment have both been separately approved and verified.
 
 For the separately approved cleanup, confirm the exact recorded temporary
@@ -273,11 +273,11 @@ temporary credential files. Do not delete the archive, checksum, or receipt.
 `pg_restore` executes SQL from the archive. The network/mount/volume isolation
 is mandatory, not optional. Any restore, count, schema, ledger, extension,
 ownership, or checksum mismatch is a hard FAIL. Do not retry against
-production, downgrade 062, or delete the known-good logical archive.
+production, downgrade the schema, or delete the known-good logical archive.
 
 ## Hostinger whole-VPS recovery point
 
-The Hostinger points listed above are stale for a pre-062 gate. Obtain separate
+The Hostinger points listed above are stale for a pre-operation gate. Obtain separate
 owner approval before creating a fresh provider recovery point. Check the
 current hPanel summary immediately before confirming: exact VPS, selected
 backup/snapshot type, expected duration, retention/overwrite behavior, and

@@ -16,7 +16,7 @@ class MigrationPreflightTests(unittest.TestCase):
             with self.subTest(names=names), tempfile.TemporaryDirectory() as directory:
                 for name in names:
                     (Path(directory) / name).write_text("SELECT 1;")
-                with self.assertRaisesRegex(RuntimeError, "duplicate migration version"):
+                with self.assertRaisesRegex(RuntimeError, "duplicate migration version|canonical"):
                     apply_migrations(ForbiddenDatabase(), Path(directory))
 
     def test_bad_filename_fails_preflight(self):
