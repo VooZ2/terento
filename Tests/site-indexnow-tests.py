@@ -128,7 +128,13 @@ def test_sitemap_contract() -> None:
     compatibility = (ROOT / "site/compatibility/index.html").read_text(encoding="utf-8")
     technical_timestamp = re.sub(r'"generatedAt":"[^"]+"', '"generatedAt":"2099-01-01T00:00:00Z"', compatibility, count=1)
     assert sitemap.content_fingerprint(technical_timestamp)[0] == sitemap.content_fingerprint(compatibility)[0]
-    changed_snapshot = compatibility.replace('"successfulInstallations":11', '"successfulInstallations":12', 1)
+    changed_snapshot, replacements = re.subn(
+        r'("successfulInstallations":)(\d+)',
+        lambda match: f'{match.group(1)}{int(match.group(2)) + 1}',
+        compatibility,
+        count=1,
+    )
+    assert replacements == 1
     assert sitemap.content_fingerprint(changed_snapshot)[0] != sitemap.content_fingerprint(compatibility)[0]
 
 
@@ -202,8 +208,14 @@ def test_sitemap_reproducibility_from_clean_git_history() -> None:
             compatibility_dates = {page["path"]: page.get("lastmod") for page in timestamp_change["pages"]}
             assert compatibility_dates["/compatibility/"] == baseline_dates["/compatibility/"]
 
-            compatibility_path.write_text(compatibility_path.read_text(encoding="utf-8").replace(
-                '"successfulInstallations":11', '"successfulInstallations":12', 1), encoding="utf-8")
+            changed_compatibility, replacements = re.subn(
+                r'("successfulInstallations":)(\d+)',
+                lambda match: f'{match.group(1)}{int(match.group(2)) + 1}',
+                compatibility_path.read_text(encoding="utf-8"),
+                count=1,
+            )
+            assert replacements == 1
+            compatibility_path.write_text(changed_compatibility, encoding="utf-8")
             git("add", "site/compatibility/index.html")
             git("commit", "-qm", "meaningful snapshot change", date="2026-01-05")
             snapshot_change = render_and_write()
