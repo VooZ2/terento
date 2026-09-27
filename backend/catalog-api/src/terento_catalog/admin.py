@@ -1333,6 +1333,23 @@ def _overview_chart_bucket_label(
     return parsed.strftime("%d %b")
 
 
+def _overview_stacked_segments(
+    counts: tuple[int | None, ...], center: float, bar_width: float,
+    baseline: float, plot_height: float, scale_maximum: float,
+) -> dict[int, tuple[float, float, float, float]]:
+    """Return one shared x/width and cumulative y geometry for each segment."""
+    x = center - bar_width / 2
+    y = baseline
+    segments: dict[int, tuple[float, float, float, float]] = {}
+    for index, count in enumerate(counts):
+        if count is None or count <= 0:
+            continue
+        height = max(3.0, plot_height * count / scale_maximum)
+        y -= height
+        segments[index] = (x, bar_width, y, height)
+    return segments
+
+
 def _overview_trend_chart(
     trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
     *, metric: str = "installs", has_activity: bool = False,
@@ -1394,8 +1411,11 @@ def _overview_trend_chart(
         bucket_label = _overview_chart_bucket_label(item.get("bucket"), bucket, time_zone)
         series_titles: list[str] = []
         group_bars: list[str] = []
-        y = top + plot_height
-        for count, (name, label, field) in zip(counts, series):
+        stack_total = sum(counts)
+        segments = _overview_stacked_segments(
+            counts, center, bar_width, top + plot_height, plot_height, scale_maximum,
+        )
+        for series_index, (count, (name, label, field)) in enumerate(zip(counts, series)):
             timestamps = list(item.get(f"{field.removesuffix('_count')}_times") or [])
             if name == "success":
                 timestamps += list(item.get("custom_times") or [])
@@ -1403,16 +1423,19 @@ def _overview_trend_chart(
             if timestamps:
                 title = f"{label}: {count} · " + ", ".join(str(value) for value in timestamps) + f" · {time_zone}"
             series_titles.append(title)
-            if count <= 0:
+            geometry = segments.get(series_index)
+            if geometry is None:
                 continue
-            height = max(3.0, plot_height * count / scale_maximum)
-            y -= height
+            segment_x, segment_width, y, height = geometry
             group_bars.append(
-                f"<rect class='overview-chart-{name}' x='{center - bar_width / 2:.1f}' y='{y:.2f}' "
-                f"width='{bar_width:.1f}' height='{height:.2f}' tabindex='0' role='img' "
+                f"<rect class='overview-chart-{name}' data-stack-index='{series_index}' "
+                f"data-stack-total='{stack_total}' x='{segment_x:.1f}' y='{y:.2f}' "
+                f"width='{segment_width:.1f}' height='{height:.2f}' tabindex='0' role='img' "
                 f"aria-label='{html.escape(title, quote=True)}'><title>{html.escape(title)}</title></rect>"
             )
-        group_title = " · ".join(series_titles)
+        group_title = f"{bucket_label} · Total operations: {stack_total}"
+        if series_titles:
+            group_title += " · " + " · ".join(series_titles)
         bars.append(
             f"<g class='overview-chart-group' role='group' aria-label='{html.escape(group_title, quote=True)}'>"
             f"<title>{html.escape(group_title)}</title>{''.join(group_bars)}</g>"
@@ -1602,6 +1625,7 @@ def _overview_downloads_chart(
             else ""
         )
         partial_note = " · partial known total" if item.get("partial") else ""
+        stack_total = sum(count for count in counts if count is not None)
         zero_titles = []
         for (label, _), count in zip(series, counts):
             if count != 0:
@@ -1613,28 +1637,34 @@ def _overview_downloads_chart(
             )
             zero_title = f"{label}: 0 · {zero_description} {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
             zero_titles.append(zero_title + legacy_note + partial_note)
-        group_accessibility = ""
-        group_title = ""
+        group_title = (
+            f"{_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone)}"
+            f" · Total operations: {stack_total}"
+        )
         if zero_titles:
             interval_title = "Download interval: " + " · ".join(zero_titles)
-            group_accessibility = (
-                " role='group' aria-label='"
-                + html.escape(interval_title, quote=True)
-                + "'"
-            )
-            group_title = f"<title>{html.escape(interval_title)}</title>"
+            group_title += " · " + interval_title
+        group_accessibility = (
+            " role='group' aria-label='"
+            + html.escape(group_title, quote=True)
+            + "'"
+        )
+        group_title_markup = f"<title>{html.escape(group_title)}</title>"
         bars.append(
             f"<defs><clipPath id='{clip_id}'><rect x='{x:.1f}' "
             f"y='{top:.1f}' width='{bar_width:.1f}' height='{plot_height:.1f}' rx='3'></rect></clipPath></defs>"
-            f"<g clip-path='url(#{clip_id})'{group_accessibility}>{group_title}"
+            f"<g clip-path='url(#{clip_id})'{group_accessibility}>{group_title_markup}"
         )
-        for (label, css_class), count in zip(series, counts):
+        segments = _overview_stacked_segments(
+            tuple(counts), center, bar_width, top + plot_height, plot_height, scale_maximum,
+        )
+        for series_index, ((label, css_class), count) in enumerate(zip(series, counts)):
             if count is None:
                 continue
-            if count == 0:
+            geometry = segments.get(series_index)
+            if geometry is None:
                 continue
-            height = plot_height * count / scale_maximum
-            y -= height
+            segment_x, segment_width, y, height = geometry
             previous_observed_at = item.get("previous_observed_at")
             if item.get("state") in {"gap", "period_boundary", "partial"} and previous_observed_at is not None:
                 interval_start = _overview_chart_bucket_label(previous_observed_at, chart_bucket, time_zone)
@@ -1644,8 +1674,9 @@ def _overview_downloads_chart(
                 title = f"{label}: {count} · observed increase ending {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
             title += legacy_note + partial_note
             bars.append(
-                f"<rect class='{css_class}' x='{x:.1f}' y='{y:.2f}' width='{bar_width:.1f}' "
-                f"height='{height:.2f}' tabindex='0' role='img' "
+                f"<rect class='{css_class}' data-stack-index='{series_index}' "
+                f"data-stack-total='{stack_total}' x='{segment_x:.1f}' y='{y:.2f}' "
+                f"width='{segment_width:.1f}' height='{height:.2f}' tabindex='0' role='img' "
                 f"aria-label='{html.escape(title, quote=True)}'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
