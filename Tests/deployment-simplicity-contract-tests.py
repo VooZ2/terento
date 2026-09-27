@@ -27,6 +27,22 @@ FORBIDDEN = (
     re.compile(r"migrate-vps-image\.sh"),
     re.compile(r"migrate\s+--target\s+\d{3}"),
     re.compile(r"terento/\d{3}-production-candidate"),
+    re.compile(r"CANDIDATE_SOURCE_SHA"),
+    re.compile(r"CANDIDATE_SOURCE_REF"),
+    re.compile(r"candidate_source_sha"),
+    re.compile(r"candidate_source_ref"),
+    re.compile(r"candidate-\$GITHUB_SHA"),
+)
+MIGRATION_SAFETY_FILES = (
+    ROOT / "AGENTS.md",
+    ROOT / "backend/catalog-api/AGENTS.md",
+    ROOT / "backend/catalog-api/docs/production-operations-protocol.md",
+    ROOT / "backend/catalog-api/docs/operations.md",
+)
+MIGRATION_SAFETY_MARKERS = (
+    "backward-compatible",
+    "expand/contract",
+    "rollback",
 )
 
 
@@ -37,6 +53,11 @@ def main():
         for pattern in FORBIDDEN:
             if pattern.search(source):
                 errors.append(f"{path.relative_to(ROOT)} reintroduced {pattern.pattern}")
+    for path in MIGRATION_SAFETY_FILES:
+        source = path.read_text(encoding="utf-8") if path.exists() else ""
+        for marker in MIGRATION_SAFETY_MARKERS:
+            if marker not in source:
+                errors.append(f"{path.relative_to(ROOT)} is missing migration safety marker: {marker}")
     for path in (ROOT / "AGENTS.md", ROOT / "backend/catalog-api/AGENTS.md"):
         source = path.read_text(encoding="utf-8")
         if "one immutable-image" not in source or "deploy-only" not in source:

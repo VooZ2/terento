@@ -427,9 +427,9 @@ def main() -> int:
     assert publisher_validation < publisher_build
     assert publisher.index('git status --porcelain=v1 --untracked-files=all', publisher_validation) < publisher.index('docker build --platform linux/amd64', publisher_build)
     assert publisher.index('git show --check --oneline "$GITHUB_SHA"', publisher_validation) < publisher.index('docker push "$image:$image_tag"', publisher_build)
-    assert 'image_tag="sha-$GITHUB_SHA"' in publisher
-    assert "state=active" in publisher and "state=deleted" not in publisher
-    assert 'grep -Fqx -- "$image_tag"' in publisher
+    assert publisher.count('image_tag="sha-$GITHUB_SHA"') == 1
+    assert "CANDIDATE_SOURCE_" not in publisher
+    assert "candidate-" not in publisher
     assert 'local_image_id="$(docker image inspect --format \'{{.Id}}\' "$image:$image_tag")"' in publisher
     assert '[[ "$pulled_image_id" == "$local_image_id" ]]' in publisher
     assert 'docker push "$image:latest"' not in publisher

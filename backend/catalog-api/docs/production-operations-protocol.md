@@ -46,6 +46,15 @@ ledger-ahead states fail closed before SQL. Pending migrations execute in
 numeric order in one transaction, and the ledger is checked again after the
 runner reports success. Equal inventory is a verified no-op.
 
+Because the old API/scheduler remain live during migration and may be restored
+after a failed rollout, every ordinary migration must be backward-compatible
+with that previous revision. Prefer expand/contract changes: additive tables,
+nullable or default-safe columns, and additive indexes. Drops or renames,
+incompatible data semantics, destructive transforms, new-code-first changes,
+non-transactional or downtime-required work, and large external backfills stop
+for exceptional review. Remove old schema only in a later safe cleanup
+migration after old usage is retired.
+
 The ordinary path has no migration target input, per-version image labels,
 target-specific helper behavior, migration-only SSH account, migration branch,
 manual SQL, or Web Console bootstrap. Migration 063 is therefore handled like
@@ -59,10 +68,12 @@ The workflow's `confirm_production_deploy` boolean is the single explicit
 owner confirmation gate. The fixed-ops installation variable remains an
 activation guard. Neither is a migration-version selector.
 
-If a migration is destructive, non-transactional, requires downtime, or needs
-an external backfill, stop the normal deployment, report the exact reason, and
-request a separately reviewed architecture decision. Do not add a second
-routine deployment protocol.
+If a migration drops or renames schema, changes data semantics incompatibly,
+performs a destructive transform, requires new code first, is
+non-transactional, requires downtime, or needs a large external backfill, stop
+the normal deployment, report the exact reason, and request a separately
+reviewed architecture decision. Do not add a second routine deployment
+protocol.
 
 ## Recovery and rollback
 

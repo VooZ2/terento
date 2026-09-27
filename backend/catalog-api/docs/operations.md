@@ -49,6 +49,16 @@ before SQL execution. Pending files run in numeric order in one transactional
 runner invocation; SQL and its ledger entries commit together or roll back
 together. Equal inventories are a verified no-op.
 
+The previous API/scheduler stay running while this stage executes, and a failed
+rollout may restore that service revision without downgrading schema. Therefore
+ordinary migrations must be backward-compatible with both the running revision
+and that rollback. Prefer expand/contract changes such as additive tables,
+nullable or default-safe columns, and additive indexes. Drops or renames,
+incompatible data semantics, destructive transforms, new-code-first changes,
+non-transactional or downtime-required work, and large external backfills stop
+for exceptional review; defer removal to a later cleanup migration after old
+usage is retired.
+
 The image digest binds the migration contents. Per-version image labels,
 target-specific hashes, migration branches, manual SQL, and separate ordinary
 migration/deploy protocols are not part of the design.

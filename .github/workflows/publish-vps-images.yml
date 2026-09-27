@@ -62,7 +62,6 @@ jobs:
         id: image
         env:
           ROLE: ${{ inputs.role }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_CONFIG: ${{ runner.temp }}/terento-docker
         shell: bash
@@ -74,20 +73,6 @@ jobs:
             *) exit 64 ;;
           esac
           image_tag="sha-$GITHUB_SHA"
-          if [[ -n "${CANDIDATE_SOURCE_SHA:-}" ]]; then
-            # A unique run-scoped SHA tag prevents a rerun from retargeting an
-            # already-published candidate tag. Refuse if the active tag exists;
-            # the receipt binds the result by immutable digest.
-            image_tag="candidate-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-            existing_tags="$(gh api --paginate \
-              -H 'Accept: application/vnd.github+json' \
-              '/users/VooZ2/packages/container/terento-catalog/versions?per_page=100&state=active' \
-              --jq '.[].metadata.container.tags[]?')"
-            if printf '%s\n' "$existing_tags" | grep -Fqx -- "$image_tag"; then
-              printf 'Refusing to reuse previously published candidate tag: %s\n' "$image_tag" >&2
-              exit 1
-            fi
-          fi
           build_timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           image_labels=(
             --label "org.opencontainers.image.source=https://github.com/VooZ2/terento"
@@ -122,4 +107,4 @@ jobs:
           [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
           printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
           printf 'build_timestamp=%s\n' "$build_timestamp" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "### $image" "Commit: $GITHUB_SHA" "Candidate tag: $image_tag" "Digest: $reference" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "### $image" "Commit: $GITHUB_SHA" "Image tag: $image_tag" "Digest: $reference" >> "$GITHUB_STEP_SUMMARY"
