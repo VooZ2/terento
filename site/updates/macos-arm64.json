@@ -4,15 +4,15 @@
   "platform": "macOS",
   "architecture": "arm64",
   "version": "1.0.0",
-  "build": 36,
+  "build": 37,
   "releaseLabel": "1.0.0-beta.15",
-  "releaseTag": "v1.0.0-beta.15-build36",
-  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.15-build36/Terento-1.0.0-beta.15-macOS-arm64.dmg",
-  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.15-build36",
-  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.15-build36",
-  "summary": "• Fixes Install on Ready to install by syncing current device authorization.\n• Shows why Install is unavailable while authorization or map scan is pending.\n• Fixes About → Update rejecting valid release summaries.",
+  "releaseTag": "v1.0.0-beta.15-build37",
+  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.15-build37/Terento-1.0.0-beta.15-macOS-arm64.dmg",
+  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.15-build37",
+  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.15-build37",
+  "summary": "Further hardens Install reliability and simplifies obsolete internal map-operation code. Owner-tested on fēnix 8 with BBBike lifecycle and MapRando multi-map installation.",
   "channel": "beta",
   "minimumMacOS": "13.0",
-  "publishedAt": "2026-09-26",
-  "sha256": "fb8fd9e992386f97c708995d7ac3e58e072ea25159649e821e94c3f856565320"
+  "publishedAt": "2026-09-27",
+  "sha256": "35fe79dab413843300e1cac4d0bfa07af1641ded5083e580318697566ea75ec3"
 }

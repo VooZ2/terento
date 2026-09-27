@@ -1,18 +1,19 @@
-# Terento v1.0.0-beta.15 (build 36)
+# Terento v1.0.0-beta.15 (build 37)
 
 Terento offers Freizeitkarte, OpenTopoMap, MapRando, BBBike and BBBike (Ontrail) community maps for map-capable Garmin smartwatches on Apple Silicon Macs running macOS 13 or later.
 
-## Fixes
+## Improvements
 
-- Fixed the **Install** action on the **Ready to install** screen. The current device authorization now reaches the installation engine, and the action explains when authorization or the device map scan is still pending.
-- Fixed **About → Update** rejecting the beta.14 update metadata with “The release summary is invalid.” The client now accepts the existing bounded plain-text summary format, and the public summary remains concise.
+- Further hardened the **Install** flow so transient preparation states cannot expose an action the engine cannot accept.
+- Simplified obsolete internal installation and update code while preserving current authorization, ownership, verification, rollback, and cleanup safeguards.
+- Owner-tested on a Garmin fēnix 8 AMOLED 47 mm with BBBike install, update, and remove; MapRando multi-map installation; and disconnect/reconnect inventory verification.
 
-The fixes were owner-tested with a Garmin fēnix 8 47 mm before release. Existing protected-map, ownership, safe Update and explicit Remove safeguards remain in place.
+Existing protected-map, ownership, safe Update and explicit Remove safeguards remain in place.
 
 ## Known issues
 
-Garmin Edge installation is not supported yet by the current catalog; support is planned for a future release. Some devices may need reconnecting if detection or map listing stalls.
+Update and remove operations can remain at a high displayed percentage for a noticeable period before completion; remove was observed around 87% before finishing. Intermittent USB/MTP stalls are not claimed fixed; reconnect and try again if the connection does not become ready. Garmin Edge devices are outside the current supported scope.
 
-The reported OpenTopoMap India download failure (#278) remains under investigation: no reproducible application defect has been established.
+OpenTopoMap India remains under investigation in issue #278.
 
-<!-- DMG SHA-256: fb8fd9e992386f97c708995d7ac3e58e072ea25159649e821e94c3f856565320 -->
+<!-- DMG SHA-256: 35fe79dab413843300e1cac4d0bfa07af1641ded5083e580318697566ea75ec3 -->

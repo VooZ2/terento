@@ -8,6 +8,33 @@ statistics populations and formulas are canonical in
 [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md).
 A build number is not an API schema version.
 
+## Beta.15 build 37 cleanup and Install action parity
+
+Beta.15 build 37 keeps the beta.15 API and telemetry contract unchanged. It
+further hardens the Install action handoff so transient preparation states do
+not expose an action the operation engine cannot accept, and removes obsolete
+internal installation/update code. Current authorization, ownership, transfer
+verification, rollback and cleanup safeguards remain in force. There are no
+backend, API schema, catalog route or telemetry semantic changes.
+
+Published tag `v1.0.0-beta.15-build37` points to packaged source
+`6a1c9823f7b6308d50d0d74d23540d310bee6125`. The release pipeline passed the
+full regression suite, live catalog validation, Developer ID signing, Apple
+notarization, stapling, and ZIP/DMG Gatekeeper and launch checks. PR CI run
+[36277139019](https://github.com/VooZ2/terento/actions/runs/36277139019) passed
+all applicable checks. The published DMG is 6,837,465 bytes with SHA-256
+`35fe79dab413843300e1cac4d0bfa07af1641ded5083e580318697566ea75ec3`; the ZIP
+is 6,165,106 bytes with SHA-256
+`44118c6b303a3bd5d0cf90cc65cbbad85d4b30b45fd025ecb4fbc0362046464f`.
+
+Owner-reported hardware evidence on a Garmin fēnix 8 AMOLED 47 mm covers BBBike
+fresh install, update and remove, MapRando three-map installation, and
+disconnect/reconnect inventory verification. Update/remove duration, including
+remove pausing around 87% before completion, and intermittent USB/MTP stalls
+remain known follow-ups; OpenTopoMap India issue
+#278 remains under investigation. This release does not claim broader model
+compatibility or an Edge path.
+
 ## Beta.15 build 36 UI and update-metadata correction
 
 Compared with beta.14 build 35, beta.15 build 36 forwards the current connected
