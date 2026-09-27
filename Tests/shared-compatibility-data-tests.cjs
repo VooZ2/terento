@@ -5,9 +5,38 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const read = relative => fs.readFileSync(path.join(root, relative), "utf8");
-const data = require("../site/compatibility/compatibility-data.js");
-const locales = require("../site/compatibility/compatibility-locales.js");
+const testRoot = path.resolve(process.env.TERENTO_COMPATIBILITY_TEST_ROOT || root);
+const read = relative => fs.readFileSync(path.join(testRoot, relative), "utf8");
+const data = require(path.join(testRoot, "site/compatibility/compatibility-data.js"));
+const locales = require(path.join(testRoot, "site/compatibility/compatibility-locales.js"));
+
+const languages = ["en", "de", "fr", "pl", "cs", "it"];
+
+function embeddedSnapshot(page, language) {
+  const snapshotMatch = page.match(/<script type="application\/json" id="compatibility-snapshot">([\s\S]*?)<\/script>/);
+  assert.ok(snapshotMatch, `${language}: embedded snapshot`);
+  return JSON.parse(snapshotMatch[1]);
+}
+
+function summaryValue(page, summary, language) {
+  const match = page.match(new RegExp(`data-summary="${summary}">(\\d+)<\\/strong>`));
+  assert.ok(match, `${language}: server-rendered ${summary} summary`);
+  return Number(match[1]);
+}
+
+function snapshotFacts(snapshot) {
+  return {
+    models: snapshot.models.length,
+    successes: snapshot.models.reduce((total, model) => total + model.successfulInstallations, 0),
+  };
+}
+
+function assertSnapshotFacts(page, snapshot, language) {
+  const facts = snapshotFacts(snapshot);
+  assert.equal(summaryValue(page, "models", language), facts.models, `${language}: model summary matches snapshot`);
+  assert.equal(summaryValue(page, "successes", language), facts.successes, `${language}: successful-install summary matches snapshot`);
+  return facts;
+}
 
 assert.equal(data.publicModelName("fēnix 8 · 47 mm AMOLED"), "fēnix 8");
 assert.equal(data.publicModelName("Forerunner 955 · Standard"), "Forerunner 955");
@@ -15,7 +44,8 @@ assert.equal(data.exactVariantLabel({ model: "fēnix 8 · 51 mm, AMOLED", varian
 assert.equal(data.successfulInstallLabel(1), "1 successful install");
 assert.equal(data.successfulInstallLabel(5), "5 successful installs");
 
-for (const language of ["en", "de", "fr", "pl", "cs", "it"]) {
+const localeFacts = [];
+for (const language of languages) {
   const copy = locales.getLocale(language);
   assert.ok(copy.metaTitle && copy.metaDescription && copy.hero, `${language}: localized SEO copy`);
   assert.match(copy.missing, /model|Modell|modèle|modelu|model|modello/i, `${language}: missing-model guidance`);
@@ -25,15 +55,14 @@ for (const language of ["en", "de", "fr", "pl", "cs", "it"]) {
 
   const prefix = language === "en" ? "" : `${language}/`;
   const page = read(`site/${prefix}compatibility/index.html`);
-  const snapshotMatch = page.match(/<script type="application\/json" id="compatibility-snapshot">([\s\S]*?)<\/script>/);
-  assert.ok(snapshotMatch, `${language}: embedded snapshot`);
-  const snapshot = JSON.parse(snapshotMatch[1]);
-  assert.equal(snapshot.models.length, 17, `${language}: public successful model count`);
+  const snapshot = embeddedSnapshot(page, language);
+  assert.ok(Array.isArray(snapshot.models), `${language}: snapshot models`);
   assert.ok(snapshot.models.every(model => model.successfulInstallations >= 1), `${language}: no zero-success rows`);
   assert.ok(snapshot.models.some(model => model.model === "fēnix 8 · 47 mm, AMOLED"), `${language}: current model row`);
   assert.match(page, /class="watch-card"/, `${language}: server-rendered cards`);
-  assert.match(page, /data-summary="models">17<\/strong>/, `${language}: server-rendered summary`);
-  assert.match(page, /data-summary="successes">63<\/strong>\s+(?:successful installs|erfolgreiche Installationen|installations réussies|udane instalacje|úspěšných instalací|installazioni riuscite)/, `${language}: server-rendered total`);
+  const facts = assertSnapshotFacts(page, snapshot, language);
+  localeFacts.push({ language, ...facts });
+  assert.match(page, new RegExp(`data-summary="successes">${facts.successes}<\\/strong>\\s+(?:successful installs|erfolgreiche Installationen|installations réussies|udane instalacje|úspěšných instalací|installazioni riuscite)`), `${language}: localized server-rendered total`);
   assert.match(page, /Not seeing your model|Wenn dein Modell|L’absence de votre modèle|Brak Twojego modelu|Pokud zde svůj model|Se il tuo modello/, `${language}: visible missing-model guidance`);
   assert.doesNotMatch(page, /<option value="VERIFIED"|<option value="SUPPORTED"|<option value="TESTED"|<option value="TESTING"/, `${language}: no public status filter`);
   assert.doesNotMatch(page, /class="compatibility-status|status badge|models tested|modelle getestet/i, `${language}: no public status presentation`);
@@ -41,6 +70,11 @@ for (const language of ["en", "de", "fr", "pl", "cs", "it"]) {
   assert.match(page, /1–2/, `${language}: range filters`);
   assert.match(page, /5\+/, `${language}: 5+ range filter`);
   assert.match(page, /data-umami-event-location="compatibility-community-testing"/, `${language}: CTA analytics`);
+}
+
+const expectedLocaleFacts = { models: localeFacts[0].models, successes: localeFacts[0].successes };
+for (const facts of localeFacts.slice(1)) {
+  assert.deepEqual({ models: facts.models, successes: facts.successes }, expectedLocaleFacts, `${facts.language}: factual values match en`);
 }
 
 const compatibilitySource = read("site/compatibility/compatibility.js");

@@ -491,6 +491,7 @@ def main() -> int:
     assert "pull-requests: write" in refresh
     assert "scripts/ci_http.py compatibility-snapshot --fail" in refresh
     assert '--input "$RUNNER_TEMP/compatibility-live.json"' in refresh
+    assert "Tests/compatibility-snapshot-growth-tests.cjs" in refresh
     assert "if: steps.diff.outputs.changed == 'true'" in refresh
     assert "scripts/integrate-compatibility-refresh.py" in refresh
     verify_refresh_flow()
