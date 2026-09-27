@@ -287,6 +287,36 @@ jobs:
           test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
           test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json jobs \
             --jq '.jobs[] | select(.name == "build-and-test") | .conclusion')" = success
+          visibility_attempts=18
+          visibility_interval=5
+          required_checks_file="$RUNNER_TEMP/indexnow-required-checks.json"
+          checks_visible=false
+          for attempt in $(seq 1 "$visibility_attempts"); do
+            visible_head="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
+              --json headRefOid --jq .headRefOid)"
+            test "$visible_head" = "$state_sha"
+            checks_status=0
+            : > "$required_checks_file"
+            gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required \
+              --json name,state,bucket > "$required_checks_file" 2>/dev/null || checks_status=$?
+            if jq -e 'type == "array" and length > 0' "$required_checks_file" >/dev/null 2>&1; then
+              if jq -e 'any(.[]; .bucket == "fail" or .bucket == "cancel" or .state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT")' \
+                "$required_checks_file" >/dev/null; then
+                echo "IndexNow state PR has an explicit failed required check; see the fallback artifact." >&2
+                jq -c '.' "$required_checks_file" >&2
+                exit 1
+              fi
+              checks_visible=true
+              break
+            fi
+            if [ "$attempt" -eq "$visibility_attempts" ]; then
+              echo "Timed out waiting for required IndexNow state PR checks to become visible (last gh status: $checks_status); see the fallback artifact." >&2
+              exit 1
+            fi
+            echo "Required IndexNow state PR checks are not visible yet; retrying in ${visibility_interval}s (attempt ${attempt}/${visibility_attempts})."
+            sleep "$visibility_interval"
+          done
+          test "$checks_visible" = true
           if ! gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch --fail-fast --interval 10; then
             echo "IndexNow state PR checks did not pass; see the fallback artifact." >&2
             exit 1
