@@ -1515,6 +1515,106 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Install succeeded: 5", body)
         self.assertIn("Install failed: 1", body)
 
+    def test_install_chart_stacks_all_segments_at_one_x_position(self):
+        import re
+        import xml.etree.ElementTree as ET
+        from terento_catalog.admin import _overview_trend_chart
+
+        body = _overview_trend_chart([{
+            "bucket": "2026-09-24T00:00:00Z", "success_count": 5,
+            "failed_count": 2, "map_update_count": 1,
+        }], "day")
+        charts = [ET.fromstring(markup) for markup in re.findall(r"<svg.*?</svg>", body)]
+        self.assertEqual([chart.attrib["viewBox"] for chart in charts], ["0 0 720 260", "0 0 360 220"])
+        svg = charts[0]
+        bars = svg.findall("g/rect")
+
+        self.assertEqual(
+            [bar.attrib["class"] for bar in bars],
+            ["overview-chart-success", "overview-chart-failed", "overview-chart-update"],
+        )
+        self.assertEqual({bar.attrib["x"] for bar in bars}, {bars[0].attrib["x"]})
+        self.assertEqual({bar.attrib["width"] for bar in bars}, {bars[0].attrib["width"]})
+        self.assertEqual({bar.attrib["data-stack-total"] for bar in bars}, {"8"})
+        self.assertAlmostEqual(
+            float(bars[1].attrib["y"]) + float(bars[1].attrib["height"]),
+            float(bars[0].attrib["y"]),
+            places=1,
+        )
+        self.assertAlmostEqual(
+            float(bars[2].attrib["y"]) + float(bars[2].attrib["height"]),
+            float(bars[1].attrib["y"]),
+            places=1,
+        )
+        self.assertAlmostEqual(
+            sum(float(bar.attrib["height"]) for bar in bars),
+            202,
+            places=1,
+        )
+        self.assertIn("Total operations: 8", body)
+        self.assertNotIn("<polyline", body)
+        for chart in charts:
+            mobile_bars = chart.findall("g/rect")
+            self.assertEqual({bar.attrib["x"] for bar in mobile_bars}, {mobile_bars[0].attrib["x"]})
+            self.assertEqual({bar.attrib["width"] for bar in mobile_bars}, {mobile_bars[0].attrib["width"]})
+
+    def test_download_chart_stacks_success_and_failure_into_one_total_bar(self):
+        import xml.etree.ElementTree as ET
+        from terento_catalog.admin import _overview_trend_chart
+
+        body = _overview_trend_chart([{
+            "bucket": "2026-09-24T00:00:00Z", "download_success_count": 7,
+            "download_failed_count": 2,
+        }], "day", metric="downloads")
+        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        bars = svg.findall("g/rect")
+
+        self.assertEqual(
+            [bar.attrib["class"] for bar in bars],
+            ["overview-chart-download-success", "overview-chart-download-failed"],
+        )
+        self.assertEqual({bar.attrib["x"] for bar in bars}, {bars[0].attrib["x"]})
+        self.assertEqual({bar.attrib["width"] for bar in bars}, {bars[0].attrib["width"]})
+        self.assertEqual({bar.attrib["data-stack-total"] for bar in bars}, {"9"})
+        self.assertAlmostEqual(
+            float(bars[1].attrib["y"]) + float(bars[1].attrib["height"]),
+            float(bars[0].attrib["y"]),
+            places=1,
+        )
+        self.assertAlmostEqual(
+            sum(float(bar.attrib["height"]) for bar in bars),
+            202 * 9 / 12,
+            places=1,
+        )
+        self.assertIn("Total operations: 9", body)
+
+    def test_stacked_chart_zero_cases_do_not_create_placeholder_bars(self):
+        import xml.etree.ElementTree as ET
+        from terento_catalog.admin import _overview_trend_chart
+
+        failed_only = _overview_trend_chart([{
+            "bucket": "2026-09-24T00:00:00Z", "success_count": 0,
+            "failed_count": 1, "map_update_count": 0,
+        }], "day")
+        failed_svg = ET.fromstring(
+            failed_only[failed_only.index("<svg"):failed_only.index("</svg>") + 6]
+        )
+        failed_bars = failed_svg.findall("g/rect")
+        self.assertEqual(len(failed_bars), 1)
+        self.assertEqual(failed_bars[0].attrib["class"], "overview-chart-failed")
+        self.assertAlmostEqual(
+            float(failed_bars[0].attrib["y"]) + float(failed_bars[0].attrib["height"]),
+            222,
+            places=1,
+        )
+
+        empty = _overview_trend_chart([{
+            "bucket": "2026-09-24T00:00:00Z", "success_count": 0,
+            "failed_count": 0, "map_update_count": 0,
+        }], "day")
+        empty_svg = ET.fromstring(empty[empty.index("<svg"):empty.index("</svg>") + 6])
+        self.assertEqual(empty_svg.findall("g/rect"), [])
+
     def test_map_overview_delegates_metrics_and_trend_to_canonical_read_model(self):
         class CanonicalDatabase(RecordingDatabase):
             def __init__(self):
