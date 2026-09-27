@@ -17,13 +17,13 @@ DEPLOY = re.fullmatch(
 STATUS = re.fullmatch(
     r'status(?: --candidate-digest (sha256:[0-9a-f]{64})'
     r' --candidate-revision ([0-9a-f]{40})'
-    r'(?: --expected-migration-062-sha256 ([0-9a-f]{64}))?)?',
+    r'(?: --expected-migration-063-sha256 ([0-9a-f]{64}))?)?',
     os.environ.get('SSH_ORIGINAL_COMMAND', ''),
 )
 MIGRATE = re.fullmatch(
-    r'migrate --target (062) --image (sha256:[0-9a-f]{64})'
+    r'migrate --target (063) --image (sha256:[0-9a-f]{64})'
     r' --revision ([0-9a-f]{40})'
-    r' --expected-migration-062-sha256 ([0-9a-f]{64})'
+    r' --expected-migration-063-sha256 ([0-9a-f]{64})'
     r' --expected-migrate-py-sha256 ([0-9a-f]{64})',
     os.environ.get('SSH_ORIGINAL_COMMAND', ''),
 )
@@ -44,7 +44,7 @@ elif PROJECT == 'api' and STATUS:
         command += ['--candidate-digest', candidate_digest,
                     '--candidate-revision', candidate_revision]
         if expected_sql_sha:
-            command += ['--expected-migration-062-sha256', expected_sql_sha]
+            command += ['--expected-migration-063-sha256', expected_sql_sha]
 elif PROJECT == 'api' and MIGRATE:
     target, image, revision, expected_sql_sha, expected_runner_sha = MIGRATE.groups()
     command = [
@@ -52,7 +52,7 @@ elif PROJECT == 'api' and MIGRATE:
         '--target', target,
         '--image', image,
         '--revision', revision,
-        '--expected-migration-062-sha256', expected_sql_sha,
+        '--expected-migration-063-sha256', expected_sql_sha,
         '--expected-migrate-py-sha256', expected_runner_sha,
     ]
 else:

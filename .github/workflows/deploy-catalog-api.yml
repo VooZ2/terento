@@ -13,11 +13,12 @@ on:
       - "Tests/admin-access-boundary-tests.py"
       - ".github/workflows/publish-vps-images.yml"
       - "scripts/infra/deploy-vps-image.sh"
+      - "scripts/infra/migrate-vps-image.sh"
       - "scripts/ci_http.py"
   workflow_dispatch:
     inputs:
-      target_062_separately_applied:
-        description: Confirm the separately approved target-062 migration passed its SELECT-only postcheck
+      target_063_separately_applied:
+        description: Confirm the approved target-063 migration may run through the fixed migration-only operation
         required: true
         type: boolean
         default: false
@@ -95,9 +96,28 @@ jobs:
     with:
       role: api
 
-  deploy:
+  migrate:
     needs: [publish, migration-source-impact]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta' && github.event_name == 'workflow_dispatch' && inputs.target_062_separately_applied == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true' && needs.migration-source-impact.outputs.migration_source_changed != 'true'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta' && github.event_name == 'workflow_dispatch' && inputs.target_063_separately_applied == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: rukas-api
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Apply target 063 through its scoped migration operation
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+          VPS_MIGRATION_063_SHA256: ${{ needs.publish.outputs.migration_063_sha256 }}
+          VPS_MIGRATE_PY_SHA256: ${{ needs.publish.outputs.migrate_py_sha256 }}
+        run: bash scripts/infra/migrate-vps-image.sh api
+
+  deploy:
+    needs: [publish, migrate]
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta' && github.event_name == 'workflow_dispatch' && inputs.target_063_separately_applied == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true' && needs.migrate.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: rukas-api

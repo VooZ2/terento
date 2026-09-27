@@ -1,4 +1,4 @@
-"""Focused, offline transaction and precondition tests for --target 062."""
+"""Focused, offline transaction and precondition tests for --target 063."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from terento_catalog.migrate import apply_migrations, main
 from terento_catalog.db import migration_directory
 
 
-BASE_LEDGER = {f"{version:03d}" for version in range(1, 62)}
+BASE_LEDGER = {f"{version:03d}" for version in range(1, 63)}
 
 
 class Rows:
@@ -75,24 +75,24 @@ class TransactionalDatabase:
             self.outcome = "COMMIT"
 
 
-class Target062MigrationTests(unittest.TestCase):
+class Target063MigrationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
-        for version in range(1, 63):
-            sql = "SELECT 'older migration';" if version < 62 else (
+        for version in range(1, 64):
+            sql = "SELECT 'older migration';" if version < 63 else (
                 "CREATE TABLE target_marker (id integer); CREATE INDEX target_marker_idx "
                 "ON target_marker(id);"
             )
             (self.directory / f"{version:03d}_migration.sql").write_text(sql, encoding="utf-8")
 
-    def test_exact_061_to_062_executes_only_062_in_one_transaction(self) -> None:
+    def test_exact_061_to_063_executes_only_063_in_one_transaction(self) -> None:
         database = TransactionalDatabase(BASE_LEDGER)
 
-        self.assertEqual(apply_migrations(database, self.directory, target="062"), ["062"])
+        self.assertEqual(apply_migrations(database, self.directory, target="063"), ["063"])
 
-        self.assertEqual(database.ledger, BASE_LEDGER | {"062"})
+        self.assertEqual(database.ledger, BASE_LEDGER | {"063"})
         self.assertEqual(database.connection_count, 1)
         self.assertEqual(database.outcome, "COMMIT")
         self.assertEqual(len(database.applied_ddl), 2)
@@ -104,15 +104,23 @@ class Target062MigrationTests(unittest.TestCase):
                              for sql in database.statements))
         self.assertFalse(any("systemctl" in sql or "docker" in sql for sql in database.statements))
 
-    def test_repository_source_runs_only_062(self) -> None:
+    def test_repository_source_accepts_canonical_063_for_a_063_target(self) -> None:
         database = TransactionalDatabase(BASE_LEDGER)
-        self.assertEqual(apply_migrations(database, migration_directory(), target="062"), ["062"])
-        self.assertEqual(len(database.applied_ddl), 7)
-        self.assertFalse(any("older migration" in sql for sql in database.statements))
+        self.assertEqual(apply_migrations(database, migration_directory(), target="063"), ["063"])
+        self.assertEqual(database.ledger, BASE_LEDGER | {"063"})
 
-    def test_already_062_is_no_op(self) -> None:
-        database = TransactionalDatabase(BASE_LEDGER | {"062"})
-        self.assertEqual(apply_migrations(database, self.directory, target="062"), [])
+    def test_local_063_candidate_is_additive_and_array_checked(self) -> None:
+        candidate = migration_directory() / "063_github_download_release_metadata.sql"
+        source = candidate.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS github_release_marker", source)
+        self.assertIn("release_id TEXT PRIMARY KEY", source)
+        self.assertIn("published_at TIMESTAMPTZ NOT NULL", source)
+        self.assertNotIn("github_download_snapshot", source)
+        self.assertNotRegex(source, r"\b(?:DROP|DELETE|UPDATE)\b")
+
+    def test_already_063_is_no_op(self) -> None:
+        database = TransactionalDatabase(BASE_LEDGER | {"063"})
+        self.assertEqual(apply_migrations(database, self.directory, target="063"), [])
         self.assertEqual(database.outcome, "COMMIT")
         self.assertEqual(database.applied_ddl, [])
         self.assertEqual(len(database.statements), 2)  # ledger lock and read only
@@ -121,15 +129,14 @@ class Target062MigrationTests(unittest.TestCase):
         bad_ledgers = (
             BASE_LEDGER - {"061"},  # only through 060
             BASE_LEDGER - {"034"},  # history hole
-            BASE_LEDGER | {"063"},  # unexpected later version
+            BASE_LEDGER | {"064"},  # unexpected later version
             (BASE_LEDGER - {"001"}) | {"1"},  # numeric alias
-            BASE_LEDGER | {"062", "063"},
         )
         for ledger in bad_ledgers:
             with self.subTest(ledger=ledger):
                 database = TransactionalDatabase(ledger)
                 with self.assertRaisesRegex(RuntimeError, "exact applied ledger"):
-                    apply_migrations(database, self.directory, target="062")
+                    apply_migrations(database, self.directory, target="063")
                 self.assertEqual(database.ledger, ledger)
                 self.assertEqual(database.applied_ddl, [])
                 self.assertEqual(database.outcome, "ROLLBACK")
@@ -137,16 +144,16 @@ class Target062MigrationTests(unittest.TestCase):
     def test_missing_ledger_is_not_created(self) -> None:
         database = TransactionalDatabase(None)
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
-            apply_migrations(database, self.directory, target="062")
+            apply_migrations(database, self.directory, target="063")
         self.assertIsNone(database.ledger)
         self.assertFalse(any("CREATE TABLE" in sql for sql in database.statements))
 
-    def test_rejects_source_holes_aliases_and_063_before_db_access(self) -> None:
+    def test_rejects_source_holes_aliases_and_064_before_db_access(self) -> None:
         cases = (
             ("hole", lambda: (self.directory / "061_migration.sql").unlink()),
-            ("alias", lambda: (self.directory / "062_migration.sql").rename(
+            ("alias", lambda: (self.directory / "063_migration.sql").rename(
                 self.directory / "62_migration.sql")),
-            ("later", lambda: (self.directory / "063_migration.sql").write_text("SELECT 1;")),
+            ("later", lambda: (self.directory / "064_migration.sql").write_text("SELECT 1;")),
         )
         for name, change in cases:
             with self.subTest(name=name):
@@ -154,8 +161,8 @@ class Target062MigrationTests(unittest.TestCase):
                 try:
                     change()
                     database = TransactionalDatabase(BASE_LEDGER)
-                    with self.assertRaisesRegex(RuntimeError, "canonical migration file"):
-                        apply_migrations(database, self.directory, target="062")
+                    with self.assertRaisesRegex(RuntimeError, "duplicate migration version|canonical migration file"):
+                        apply_migrations(database, self.directory, target="063")
                     self.assertEqual(database.connection_count, 0)
                 finally:
                     for path in self.directory.glob("*.sql"):
@@ -165,8 +172,8 @@ class Target062MigrationTests(unittest.TestCase):
 
     def test_rejects_unsupported_target_before_db_access(self) -> None:
         database = TransactionalDatabase(BASE_LEDGER)
-        for target in ("060", "62", "063", "062 "):
-            with self.subTest(target=target), self.assertRaisesRegex(RuntimeError, "exact --target 062"):
+        for target in ("060", "62", "063 "):
+            with self.subTest(target=target), self.assertRaisesRegex(RuntimeError, "exact --target"):
                 apply_migrations(database, self.directory, target=target)
         self.assertEqual(database.connection_count, 0)
 
@@ -180,9 +187,9 @@ class Target062MigrationTests(unittest.TestCase):
         database = TransactionalDatabase(set())
         self.assertEqual(
             apply_migrations(database, self.directory),
-            [f"{version:03d}" for version in range(1, 63)],
+            [f"{version:03d}" for version in range(1, 64)],
         )
-        self.assertEqual(database.ledger, BASE_LEDGER | {"062"})
+        self.assertEqual(database.ledger, BASE_LEDGER | {"063"})
         self.assertEqual(database.connection_count, 1)
 
     def test_sql_or_ledger_failure_rolls_back_ddl_and_version_together(self) -> None:
@@ -190,7 +197,7 @@ class Target062MigrationTests(unittest.TestCase):
             with self.subTest(failure=failure):
                 database = TransactionalDatabase(BASE_LEDGER, fail_on=failure)
                 with self.assertRaisesRegex(RuntimeError, "injected statement failure"):
-                    apply_migrations(database, self.directory, target="062")
+                    apply_migrations(database, self.directory, target="063")
                 self.assertEqual(database.ledger, BASE_LEDGER)
                 self.assertEqual(database.applied_ddl, [])
                 self.assertEqual(database.connection_count, 1)

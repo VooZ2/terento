@@ -1,8 +1,9 @@
 # Production operations protocol
 
-This document describes the canonical local source prepared for a future
-production operations update. It does not assert that this source is committed,
-installed, or available on the VPS. It grants no approval to change production.
+This document describes the canonical source and operator gates for the target
+063 production operations. Installation and live state must be established by
+the deployment workflow and read-only status evidence; this document itself
+does not grant approval to change production.
 
 ## Three separate operations
 
@@ -20,7 +21,7 @@ An optional candidate receipt can be checked without pulling or running it:
 terento-deploy api status \
   --candidate-digest sha256:<64-lowercase-hex> \
   --candidate-revision <40-lowercase-hex> \
-  --expected-migration-062-sha256 <64-lowercase-hex>
+  --expected-migration-063-sha256 <64-lowercase-hex>
 ```
 
 Status reads Docker's existing API, scheduler, and database containers; reports
@@ -34,16 +35,16 @@ An uncached candidate is informational (`not_cached`), not evidence of its
 contents. Re-run after it is present in the local registry cache if artifact
 inspection is required.
 
-### MIGRATE — exactly target 062, no service deployment
+### MIGRATE — exactly target 063, no service deployment
 
 The fixed root helper accepts only:
 
 ```sh
 terento-deploy api migrate \
-  --target 062 \
+  --target 063 \
   --image sha256:<64-lowercase-hex> \
   --revision <40-lowercase-hex> \
-  --expected-migration-062-sha256 <64-lowercase-hex> \
+  --expected-migration-063-sha256 <64-lowercase-hex> \
   --expected-migrate-py-sha256 <64-lowercase-hex>
 ```
 
@@ -54,29 +55,29 @@ OCI source/revision labels, SQL and runner labels, then starts a disposable
 `--network none`, read-only audit container with no added capabilities. That
 audit hashes the actual image files and statically verifies the runner's sole
 target choice, inventory branch, ledger branch, and call site. Before execution
-the helper prints the image digest, revision, 062 SQL hash, runner hash, target
+the helper prints the image digest, revision, 063 SQL hash, runner hash, target
 guard result, and inventory. It then checks that the existing, correctly
 identified DB container is already running and reads its migration ledger in a
 read-only transaction.
 
 For this reviewed implementation, the artifact must contain exactly one
-canonical SQL migration for each version 001–062. A later file such as
-`063_example.sql` is named to the operator and causes a fail-closed refusal
+canonical SQL migration for each version 001–063. A later file such as
+`064_example.sql` is named to the operator and causes a fail-closed refusal
 before the ledger query or migration container runs. This is stricter than
 necessary if a future runner can prove target isolation with later files, but
 must not be relaxed without adding artifact-level proof and regression tests.
 The root CLI preserves this validated refusal detail for the operator; it does
 not hide the later filename only in server logs.
-The live ledger must be exactly 001–061; exactly 001–062 yields an explicit
+The live ledger must be exactly 001–062; exactly 001–063 yields an explicit
 `ALREADY APPLIED` no-op; any gap, alias, earlier version, or later entry is an
 abort. After a successful runner result the helper re-identifies the same DB
-container and verifies the exact 001–062 ledger in a fresh read-only
+container and verifies the exact 001–063 ledger in a fresh read-only
 transaction before reporting `MIGRATION_PASS`. A failed postcondition is a
 nonzero refusal, even if the runner printed success.
 
 Only the Compose `catalog-migrate` one-shot is invoked with the explicit
-command `terento-catalog-migrate --target 062`; its argv is therefore
-`... run ... catalog-migrate terento-catalog-migrate --target 062`. Compose's
+command `terento-catalog-migrate --target 063`; its argv is therefore
+`... run ... catalog-migrate terento-catalog-migrate --target 063`. Compose's
 positional command replaces the service command, so the helper passes the
 reviewed executable explicitly. No API or scheduler container is started,
 stopped, recreated, or health-checked by this path. SQL statements and the
@@ -95,17 +96,17 @@ terento-deploy api sha256:<64-lowercase-hex> <40-lowercase-hex>
 It is not the migration-only command. Deployment uses the same non-blocking
 operations lock and retains its own pre-existing Compose/service behavior. The
 API deploy workflow excludes pushes that change migration files or
-`migrate.py`; unknown push ancestry is fail-closed. More broadly, API deploy is
-manual-only: dispatch requires an explicit `target_062_separately_applied`
+`migrate.py`; unknown push ancestry is fail-closed. API deploy is
+manual-only: dispatch requires an explicit `target_063_separately_applied`
 boolean (default false) and the owner-controlled repository variable
-`TERENTO_FIXED_OPS_INSTALLED=true`. This variable is not set by this task and
-must only be enabled after the new helper is installed and verified. The
-helper requires valid migration SQL/runner labels, verifies the exact
-immutable image's migration set and target-062 runner, and refuses deployment
-unless a read-only ledger check confirms exactly 001–062 are already applied.
+`TERENTO_FIXED_OPS_INSTALLED=true`. The workflow runs the fixed migration-only
+operation first. The helper then requires valid migration SQL/runner labels,
+verifies the exact immutable image's migration set and target-063 runner, and
+refuses deployment unless a read-only ledger check confirms exactly 001–063
+are already applied.
 DEPLOY does not start the database or run a migrator; it only replaces
 application/scheduler services after the schema gate passes. Images with
-migration 063+ or ledgers with any pending/later version fail closed until a
+migration 064+ or ledgers with any pending/later version fail closed until a
 separate reviewed migration gate is implemented. Future deployments remain
 separately gated by release checks and operator authorization.
 
@@ -128,19 +129,17 @@ Canonical local sources are:
   preflight by default; a separate explicit apply installs only those two
   helper files from a clean, committed checkout;
 - `scripts/infra/terento-deploy-ssh-entry.py.in` — fixed SSH command template
-  for API status/migrate and existing deploy dispatch; not installed by the
-  current helper installer;
+  for API status/migrate and existing deploy dispatch; installation is a
+  separately authorized VPS configuration step;
 - `scripts/infra/test-terento-deploy.py`,
   `scripts/infra/test-terento-deploy-migration.py`,
   `scripts/infra/test-terento-deploy-ssh-entry.py`, and
   `scripts/infra/test-install-terento-production-ops.py` — offline regressions.
 
-The forced-SSH template is source/test coverage only. The existing SSH entry
-point remains unchanged until a separately reviewed/authorized configuration
-update installs it and the corresponding sudo allowlist. Do not claim remote
-status or migration access until that independent step is complete. The direct
-root command above likewise does not exist on the VPS until the helper pair is
-installed.
+The forced-SSH template and the root helper are independently installed
+production configuration. Do not claim remote status or migration access
+until read-only status evidence confirms the corresponding installation. The
+direct root command likewise depends on the owner-managed helper pair.
 
 The owner installer verifies clean Git state, both tracked canonical paths,
 the full commit id, AST parseability, root-owned safe destinations, and the
@@ -159,7 +158,8 @@ remains usable for explicit recovery. A crash or power loss can still interrupt
 between renames, so inspect the target hashes and use the recorded rollback
 procedure rather than assuming either complete state. The installer never
 calls Docker, Compose, systemd, SQL, or deployment commands. Apply changes
-production helper files and has not been run. Because the old helper may not
+production helper files; installation status is established separately.
+Because the old helper may not
 share the new lock, the owner must separately authorize and schedule a
 quiescent install.
 
@@ -177,16 +177,16 @@ either target. It restores prior bytes/owner/mode atomically, or removes the
 migration helper if its recorded pre-install state was `ABSENT`. Unexpected
 post-install file changes fail closed. The rollback record is retained for
 operator review; cleanup needs a separate decision. Do not change the existing
-`/usr/local/bin/terento-ops-entry` forced-command entrypoint. After a future
+`/usr/local/bin/terento-ops-entry` forced-command entrypoint. After an
 authorized install, run only `terento-deploy api status`; do not run MIGRATE or
 DEPLOY as part of install validation.
 
-## Required future gate order for target 062
+## Required gate order for target 063
 
 1. Track, commit, and test every normative source path listed in the
    [candidate receipt](production-candidate-receipt.md). Build only from a
    clean exact commit using the `build-catalog-migration-candidate` workflow,
-   whose push trigger is restricted to `terento/062-production-candidate`.
+   whose push trigger is restricted to `terento/063-production-candidate`.
    Its manual-dispatch form is available only after the workflow also exists
    on the repository's default branch. The receipt is evidence, not approval.
 2. Separately authorize installation of the helper pair; if remote SSH
@@ -201,14 +201,14 @@ DEPLOY as part of install validation.
 4. Run read-only STATUS; independently confirm the correct DB, API/scheduler
    image identity, ledger, and target environment. Do not use `/health` as the
    status command.
-5. Run the SELECT-only live 062 precheck and require `READY FOR 062`.
+5. Run the SELECT-only live 063 precheck and require `READY FOR 063`.
 6. Obtain a separate explicit approval for the exact immutable digest,
-   revision, SQL SHA, runner SHA, target 062, and selected recovery point.
+   revision, SQL SHA, runner SHA, target 063, and selected recovery point.
 7. Invoke MIGRATE only. Require the helper's postcondition-verified
-   `Applied migrations: 062` or a confirmed `ALREADY APPLIED` no-op. Any
+   `Applied migrations: 063` or a confirmed `ALREADY APPLIED` no-op. Any
    mismatch, nonzero result, lost session, unexpected target or ledger is STOP;
    resolve with read-only checks, never manual SQL replay.
-8. Run the SELECT-only postcheck and require `POSTCHECK PASS 062`. Confirm
+8. Run the SELECT-only postcheck and require `POSTCHECK PASS 063`. Confirm
    STATUS shows API and scheduler unchanged and only the DB schema/ledger
    advanced.
 9. A backend DEPLOY is a later, separate operation and requires its own

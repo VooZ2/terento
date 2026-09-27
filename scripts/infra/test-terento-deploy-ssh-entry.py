@@ -39,7 +39,7 @@ class SSHEntryTests(unittest.TestCase):
         self.assertEqual(call.call_args.kwargs['stdin'], subprocess.DEVNULL)
 
     def test_site_principal_remains_deploy_only(self):
-        for command in ('status', 'migrate --target 062', f'deploy {DIGEST} {REVISION}; id'):
+        for command in ('status', 'migrate --target 063', f'deploy {DIGEST} {REVISION}; id'):
             with self.subTest(command=command):
                 result, call = invoke('site', command)
                 self.assertEqual(result, 64)
@@ -55,7 +55,7 @@ class SSHEntryTests(unittest.TestCase):
     def test_api_status_can_pin_a_candidate_receipt(self):
         command = (
             f'status --candidate-digest {DIGEST} --candidate-revision {REVISION}'
-            f' --expected-migration-062-sha256 {SQL_SHA}'
+            f' --expected-migration-063-sha256 {SQL_SHA}'
         )
         result, call = invoke('api', command)
         self.assertEqual(result, 0)
@@ -63,21 +63,21 @@ class SSHEntryTests(unittest.TestCase):
             '/usr/bin/sudo', '-n', '/usr/local/sbin/terento-deploy', 'api', 'status',
             '--candidate-digest', DIGEST,
             '--candidate-revision', REVISION,
-            '--expected-migration-062-sha256', SQL_SHA,
+            '--expected-migration-063-sha256', SQL_SHA,
         ])
 
-    def test_api_migration_forwards_only_explicit_receipt_bound_062(self):
+    def test_api_migration_forwards_only_explicit_receipt_bound_063(self):
         command = (
-            f'migrate --target 062 --image {DIGEST} --revision {REVISION}'
-            f' --expected-migration-062-sha256 {SQL_SHA}'
+            f'migrate --target 063 --image {DIGEST} --revision {REVISION}'
+            f' --expected-migration-063-sha256 {SQL_SHA}'
             f' --expected-migrate-py-sha256 {RUNNER_SHA}'
         )
         result, call = invoke('api', command)
         self.assertEqual(result, 0)
         self.assertEqual(call.call_args.args[0], [
             '/usr/bin/sudo', '-n', '/usr/local/sbin/terento-deploy', 'api', 'migrate',
-            '--target', '062', '--image', DIGEST, '--revision', REVISION,
-            '--expected-migration-062-sha256', SQL_SHA,
+            '--target', '063', '--image', DIGEST, '--revision', REVISION,
+            '--expected-migration-063-sha256', SQL_SHA,
             '--expected-migrate-py-sha256', RUNNER_SHA,
         ])
         self.assertEqual(call.call_args.kwargs['stdin'], subprocess.DEVNULL)
@@ -88,13 +88,13 @@ class SSHEntryTests(unittest.TestCase):
             'status --candidate-digest ' + DIGEST,
             'status; id',
             f'migrate --target 061 --image {DIGEST} --revision {REVISION}'
-            f' --expected-migration-062-sha256 {SQL_SHA}'
+            f' --expected-migration-063-sha256 {SQL_SHA}'
             f' --expected-migrate-py-sha256 {RUNNER_SHA}',
-            f'migrate --target 062 --image latest --revision {REVISION}'
-            f' --expected-migration-062-sha256 {SQL_SHA}'
+            f'migrate --target 063 --image latest --revision {REVISION}'
+            f' --expected-migration-063-sha256 {SQL_SHA}'
             f' --expected-migrate-py-sha256 {RUNNER_SHA}',
-            f'migrate --target 062 --image {DIGEST} --revision {REVISION}'
-            f' --expected-migration-062-sha256 {SQL_SHA} --expected-migrate-py-sha256 {RUNNER_SHA}; id',
+            f'migrate --target 063 --image {DIGEST} --revision {REVISION}'
+            f' --expected-migration-063-sha256 {SQL_SHA} --expected-migrate-py-sha256 {RUNNER_SHA}; id',
         )
         for command in commands:
             with self.subTest(command=command):

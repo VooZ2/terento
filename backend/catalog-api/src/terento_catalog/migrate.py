@@ -11,8 +11,8 @@ from .db import Database, migration_directory
 def apply_migrations(
     database: Database, directory: Path | None = None, *, target: str | None = None
 ) -> list[str]:
-    if target not in (None, "062"):
-        raise RuntimeError("only the exact --target 062 is supported")
+    if target not in (None, "063"):
+        raise RuntimeError("only the exact --target 063 is supported")
 
     migration_path = directory or migration_directory()
     files = [
@@ -24,17 +24,17 @@ def apply_migrations(
         raise RuntimeError(f"no SQL migrations found in {migration_path}")
 
     validate_migration_versions(files)
-    if target == "062":
-        expected_files = [f"{version:03d}" for version in range(1, 63)]
+    if target == "063":
+        expected_files = [f"{version:03d}" for version in range(1, 64)]
         actual_files = [_migration_version(file) for file in files]
         if actual_files != expected_files:
             raise RuntimeError(
-                "--target 062 requires exactly one canonical migration file "
-                "for every version 001 through 062, with no later files"
+                "--target 063 requires exactly one canonical migration file "
+                "for every version 001 through 063, with no later files"
             )
 
     with database.connection() as connection:
-        if target == "062":
+        if target == "063":
             # Serialize competing migrators without locking application tables.
             # The target path must never create a missing history ledger.
             connection.execute("LOCK TABLE schema_migrations IN SHARE ROW EXCLUSIVE MODE")
@@ -53,14 +53,14 @@ def apply_migrations(
                 "SELECT version FROM schema_migrations"
             ).fetchall()
         }
-        if target == "062":
+        if target == "063":
             expected_applied = set(expected_files[:-1])
-            if applied == expected_applied | {"062"}:
+            if applied == expected_applied | {"063"}:
                 return []
             if applied != expected_applied:
                 raise RuntimeError(
-                    "--target 062 requires the exact applied ledger 001 through "
-                    "061; 060-only, aliases, holes, and later versions are rejected"
+                    "--target 063 requires the exact applied ledger 001 through "
+                    "062; 060-only, aliases, holes, and later versions are rejected"
                 )
             files = [files[-1]]
 
@@ -192,7 +192,7 @@ def _statements(sql: str) -> list[str]:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Apply Terento catalog SQL migrations")
-    parser.add_argument("--target", choices=("062",), help="apply only migration 062")
+    parser.add_argument("--target", choices=("063",), help="apply only migration 063")
     args = parser.parse_args(argv)
     settings = Settings.from_env()
     database = Database(

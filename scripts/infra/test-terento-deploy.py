@@ -74,8 +74,8 @@ class DeploymentTests(unittest.TestCase):
     def test_migrate_cannot_enter_while_deploy_holds_the_shared_lock(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(deploy, 'STATE', Path(tmp)):
             args = [
-                '--target', '062', '--image', DIGEST, '--revision', REVISION,
-                '--expected-migration-062-sha256', 'c'*64,
+                '--target', '063', '--image', DIGEST, '--revision', REVISION,
+                '--expected-migration-063-sha256', 'c'*64,
                 '--expected-migrate-py-sha256', 'e'*64,
             ]
             with deploy.operations_lock():
@@ -94,7 +94,7 @@ class DeploymentTests(unittest.TestCase):
                         deploy.deploy('site', DIGEST, REVISION)
                 docker.assert_not_called()
 
-    def test_api_deploy_refuses_candidate_062_until_migration_only_operation_applies_it(self):
+    def test_api_deploy_refuses_candidate_063_until_migration_only_operation_applies_it(self):
         with tempfile.TemporaryDirectory() as tmp:
             base, state = Path(tmp)/'config', Path(tmp)/'state'
             (base/'api').mkdir(parents=True)
@@ -104,11 +104,11 @@ class DeploymentTests(unittest.TestCase):
                     patch.object(deploy, 'docker', return_value=json.dumps([{'Config': {'Labels': {
                         'org.opencontainers.image.revision': REVISION,
                         'org.opencontainers.image.source': 'https://github.com/VooZ2/terento',
-                        'io.terento.migration.062.sha256': 'f'*64,
+                        'io.terento.migration.063.sha256': 'f'*64,
                         'io.terento.migrate.py.sha256': 'e'*64,
                     }}}])), \
                     patch.object(deploy, 'compose') as compose, \
-                    patch.object(deploy, 'require_062_already_applied',
+                    patch.object(deploy, 'require_063_already_applied',
                                  side_effect=deploy.DeploymentError('DEPLOY refused: run a separately approved migration-only operation first.')) as schema_gate:
                 with self.assertRaisesRegex(deploy.DeploymentError, 'separately approved migration-only'):
                     deploy.deploy('api', DIGEST, REVISION)
@@ -129,11 +129,11 @@ class DeploymentTests(unittest.TestCase):
                     patch.object(deploy, 'docker', return_value=json.dumps([{'Config': {'Labels': {
                         'org.opencontainers.image.revision': REVISION,
                         'org.opencontainers.image.source': 'https://github.com/VooZ2/terento',
-                        'io.terento.migration.062.sha256': 'f'*64,
+                        'io.terento.migration.063.sha256': 'f'*64,
                         'io.terento.migrate.py.sha256': 'e'*64,
                     }}}])), \
                     patch.object(deploy, 'compose') as compose, \
-                    patch.object(deploy, 'require_062_already_applied') as schema_gate, \
+                    patch.object(deploy, 'require_063_already_applied') as schema_gate, \
                     patch.object(deploy, 'healthy_ids', return_value={
                         'api': {'id': 'a'*64}, 'scheduler': {'id': 'b'*64},
                     }), patch.object(deploy, 'run', return_value=''), \
@@ -159,7 +159,7 @@ class DeploymentTests(unittest.TestCase):
                         'org.opencontainers.image.revision': REVISION,
                         'org.opencontainers.image.source': 'https://github.com/VooZ2/terento',
                     }}}])):
-                with self.assertRaisesRegex(deploy.DeploymentError, 'migration 062 identity'):
+                with self.assertRaisesRegex(deploy.DeploymentError, 'migration 063 identity'):
                     deploy.deploy('api', DIGEST, REVISION)
             self.assertEqual(compose.call_args.args[2:], ('config', '--quiet'))
             self.assertFalse(any(call.args[2] == 'up' for call in compose.call_args_list))
@@ -168,14 +168,14 @@ class DeploymentTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, \
                 patch.object(deploy, 'STATE', Path(tmp)), patch.object(deploy, 'docker') as docker, \
                 patch.object(deploy, 'compose') as compose:
-            with self.assertRaisesRegex(deploy.DeploymentError, 'explicit --target 062'):
+            with self.assertRaisesRegex(deploy.DeploymentError, 'explicit --target 063'):
                 deploy.dispatch(['migrate'])
             self.assertEqual(list(Path(tmp).iterdir()), [])
             docker.assert_not_called()
             compose.assert_not_called()
 
     def test_safe_migration_refusal_detail_is_preserved_for_operator(self):
-        message = "Candidate image includes migration(s) after target 062: 063_extra.sql. No migration was run."
+        message = "Candidate image includes migration(s) after target 063: 063_extra.sql. No migration was run."
 
         class FakeMigrationTool:
             class MigrationError(RuntimeError):
@@ -303,7 +303,7 @@ class StatusTests(unittest.TestCase):
         }
         database_result = {
             'database': 'terento', 'schema': 'public', 'postgresql_version': '16.10',
-            'highest_migration': '061', 'migration_062_applied': False,
+            'highest_migration': '061', 'migration_063_applied': False,
             'server_time': '2026-09-23 11:09:10+03', 'timezone': 'Europe/Vilnius',
         }
         image_ref = deploy.PROJECTS['api']['image']+'@'+DIGEST
@@ -312,7 +312,7 @@ class StatusTests(unittest.TestCase):
             'Config': {'Labels': {
                 'org.opencontainers.image.source': 'https://github.com/VooZ2/terento',
                 'org.opencontainers.image.revision': revision,
-                'io.terento.migration.062.sha256': 'f'*64,
+                'io.terento.migration.063.sha256': 'f'*64,
             }},
         }]
         docker_calls = []
@@ -348,7 +348,7 @@ class StatusTests(unittest.TestCase):
             state_entries_before = {path.name for path in state.iterdir()}
             candidate = {
                 'digest': DIGEST, 'revision': revision,
-                'expected_migration_062_sha256': 'f'*64,
+                'expected_migration_063_sha256': 'f'*64,
             }
             with patch.object(deploy, 'STATE', state), patch.object(deploy, 'REGISTRY', registry), \
                     patch.object(deploy, 'compose') as compose, \
@@ -396,7 +396,7 @@ class StatusTests(unittest.TestCase):
             )
             self.assertEqual(result['services']['catalog-db']['image_digest'], 'sha256:'+'e'*64)
             self.assertEqual(result['database']['highest_migration'], '061')
-            self.assertFalse(result['database']['migration_062_applied'])
+            self.assertFalse(result['database']['migration_063_applied'])
             self.assertEqual(result['database']['server_time'], database_result['server_time'])
             self.assertEqual(result['database']['timezone'], 'Europe/Vilnius')
             self.assertEqual(result['candidate_artifact']['status'], 'verified')
@@ -404,25 +404,25 @@ class StatusTests(unittest.TestCase):
                 'image': image_ref,
                 'source': 'https://github.com/VooZ2/terento',
                 'revision': revision,
-                'migration_062_sha256': 'f'*64,
+                'migration_063_sha256': 'f'*64,
             })
             self.assertNotIn(secret, json.dumps(result))
 
     def test_status_candidate_arguments_are_validated(self):
         expected = {
             'digest': DIGEST, 'revision': REVISION,
-            'expected_migration_062_sha256': 'f'*64,
+            'expected_migration_063_sha256': 'f'*64,
         }
         self.assertEqual(deploy.validate_status([
             '--candidate-digest', DIGEST, '--candidate-revision', REVISION,
-            '--expected-migration-062-sha256', 'f'*64,
+            '--expected-migration-063-sha256', 'f'*64,
         ]), expected)
         self.assertIsNone(deploy.validate_status([]))
         for args in (
             ['--candidate-digest', DIGEST], ['--candidate-revision', REVISION],
             ['--candidate-digest', DIGEST, '--candidate-revision', REVISION,
-             '--expected-migration-062-sha256', 'bad'],
-            ['--expected-migration-062-sha256', 'f'*64],
+             '--expected-migration-063-sha256', 'bad'],
+            ['--expected-migration-063-sha256', 'f'*64],
             ['--candidate-digest', DIGEST, '--candidate-revision', REVISION,
              '--candidate-revision', REVISION],
         ):
@@ -437,17 +437,17 @@ class StatusTests(unittest.TestCase):
             'Config': {'Labels': {
                 'org.opencontainers.image.source': 'https://github.com/VooZ2/terento',
                 'org.opencontainers.image.revision': REVISION,
-                'io.terento.migration.062.sha256': expected_sha,
+                'io.terento.migration.063.sha256': expected_sha,
             }},
         }])
         with patch.object(deploy, 'docker', return_value=image_json) as docker:
             result = deploy.inspect_candidate({
                 'digest': DIGEST, 'revision': REVISION,
-                'expected_migration_062_sha256': expected_sha,
+                'expected_migration_063_sha256': expected_sha,
             })
         docker.assert_called_once_with('image', 'inspect', image, timeout=30)
         self.assertEqual(result['status'], 'verified')
-        self.assertEqual(result['verified_artifact']['migration_062_sha256'], expected_sha)
+        self.assertEqual(result['verified_artifact']['migration_063_sha256'], expected_sha)
         for args, _kwargs in docker.call_args_list:
             self.assertEqual(args[:2], ('image', 'inspect'))
             self.assertNotIn('pull', args)
@@ -460,17 +460,17 @@ class StatusTests(unittest.TestCase):
             'Config': {'Labels': {
                 'org.opencontainers.image.source': 'https://github.com/VooZ2/terento',
                 'org.opencontainers.image.revision': REVISION,
-                'io.terento.migration.062.sha256': 'e'*64,
+                'io.terento.migration.063.sha256': 'e'*64,
             }},
         }])
         with patch.object(deploy, 'docker', return_value=image_json):
             result = deploy.inspect_candidate({
                 'digest': DIGEST, 'revision': REVISION,
-                'expected_migration_062_sha256': 'f'*64,
+                'expected_migration_063_sha256': 'f'*64,
             })
         self.assertEqual(result['status'], 'expected_sha_mismatch')
         self.assertNotIn('verified_artifact', result)
-        self.assertEqual(result['observed_migration_062_sha256'], 'e'*64)
+        self.assertEqual(result['observed_migration_063_sha256'], 'e'*64)
         self.assertEqual(deploy.status_exit_code({'candidate_artifact': result}), 1)
 
     def test_source_and_revision_labels_must_match(self):
@@ -482,7 +482,7 @@ class StatusTests(unittest.TestCase):
             labels = {
                 'org.opencontainers.image.source': 'https://github.com/VooZ2/terento',
                 'org.opencontainers.image.revision': REVISION,
-                'io.terento.migration.062.sha256': 'f'*64,
+                'io.terento.migration.063.sha256': 'f'*64,
             }
             labels[key] = value
             image_json = json.dumps([{'RepoDigests': [image], 'Config': {'Labels': labels}}])
@@ -503,7 +503,7 @@ class StatusTests(unittest.TestCase):
         }])
         with patch.object(deploy, 'docker', return_value=image_json):
             result = deploy.inspect_candidate({'digest': DIGEST, 'revision': REVISION})
-        self.assertEqual(result['status'], 'missing_migration_062_label')
+        self.assertEqual(result['status'], 'missing_migration_063_label')
         self.assertNotIn('verified_artifact', result)
         self.assertEqual(deploy.status_exit_code({'candidate_artifact': result}), 1)
 

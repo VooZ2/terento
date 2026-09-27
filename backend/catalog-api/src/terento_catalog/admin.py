@@ -1365,54 +1365,75 @@ def _overview_trend_chart(
                 value += max(0, int(item.get("custom_count") or 0))
             counts.append(value)
         values.append(tuple(counts))
-    maximum = max((max(counts, default=0) for counts in values), default=1) or 1
+    # Each bucket is one stacked bar.  Scale against the bucket total so the
+    # full bar represents every event, while the segments retain their
+    # canonical outcome composition.
+    maximum = max((sum(counts) for counts in values), default=1) or 1
     tick_step = max(1, math.ceil(maximum / 4))
     scale_maximum = tick_step * 4
     chart_width, chart_height = (360, 220) if _compact else (720, 260)
-    left, top, bottom = 38, 20, 34
+    left, right, top, bottom = 42, 12, 20, 38
     plot_height = chart_height - top - bottom
-    plot_width = chart_width - left - 12
+    plot_width = chart_width - left - right
+    slot = plot_width / max(len(values), 1)
+    bar_width = min(slot * 0.72, 86 if not _compact else 64)
     grid = []
     for amount in range(0, scale_maximum + 1, tick_step):
         tick_y = top + plot_height * (1 - amount / scale_maximum)
-        grid.append(f"<line class='overview-chart-grid' x1='{left}' x2='{chart_width-12}' y1='{tick_y:.1f}' y2='{tick_y:.1f}'/><text class='overview-chart-axis-label' x='{left-8}' y='{tick_y+4:.1f}' text-anchor='end'>{amount}</text>")
-    lines: list[str] = []
+        grid.append(
+            f"<line class='overview-chart-grid' x1='{left}' x2='{chart_width-right}' "
+            f"y1='{tick_y:.1f}' y2='{tick_y:.1f}'/>"
+            f"<text class='overview-chart-axis-label' x='{left-8}' y='{tick_y+4:.1f}' "
+            f"text-anchor='end'>{amount}</text>"
+        )
+    bars: list[str] = []
     labels: list[str] = []
-    x_positions = [
-        left + (plot_width / 2 if len(values) == 1 else index * plot_width / (len(values) - 1))
-        for index in range(len(values))
-    ]
-    for series_index, (name, label, field) in enumerate(series):
-        points = []
-        dots = []
-        for index, (counts, item) in enumerate(zip(values, trend)):
-            count = counts[series_index]
-            x = x_positions[index]
-            y = top + plot_height * (1 - count / scale_maximum)
-            points.append(f"{x:.1f},{y:.1f}")
-            timestamps = list(item.get(f'{field.removesuffix("_count")}_times') or [])
+    x_positions = [left + (index + 0.5) * slot for index in range(len(values))]
+    for index, (counts, item) in enumerate(zip(values, trend)):
+        center = x_positions[index]
+        bucket_label = _overview_chart_bucket_label(item.get("bucket"), bucket, time_zone)
+        series_titles: list[str] = []
+        group_bars: list[str] = []
+        y = top + plot_height
+        for count, (name, label, field) in zip(counts, series):
+            timestamps = list(item.get(f"{field.removesuffix('_count')}_times") or [])
             if name == "success":
                 timestamps += list(item.get("custom_times") or [])
-            title = f"{label}: {count} · {_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone)} · {time_zone}"
+            title = f"{label}: {count} · {bucket_label} · {time_zone}"
             if timestamps:
                 title = f"{label}: {count} · " + ", ".join(str(value) for value in timestamps) + f" · {time_zone}"
-            dots.append(
-                f"<circle class='overview-chart-{name}' cx='{x:.1f}' cy='{y:.1f}' r='4' tabindex='0' role='img' aria-label='{html.escape(title, quote=True)}'><title>{html.escape(title)}</title></circle>"
+            series_titles.append(title)
+            if count <= 0:
+                continue
+            height = max(3.0, plot_height * count / scale_maximum)
+            y -= height
+            group_bars.append(
+                f"<rect class='overview-chart-{name}' x='{center - bar_width / 2:.1f}' y='{y:.2f}' "
+                f"width='{bar_width:.1f}' height='{height:.2f}' tabindex='0' role='img' "
+                f"aria-label='{html.escape(title, quote=True)}'><title>{html.escape(title)}</title></rect>"
             )
-        lines.append(
-            f"<polyline class='overview-chart-line overview-chart-{name}' points='{' '.join(points)}'></polyline>{''.join(dots)}"
+        group_title = " · ".join(series_titles)
+        bars.append(
+            f"<g class='overview-chart-group' role='group' aria-label='{html.escape(group_title, quote=True)}'>"
+            f"<title>{html.escape(group_title)}</title>{''.join(group_bars)}</g>"
         )
-    for index, item in enumerate(trend):
-        label_step = max(1, round((len(values) - 1) / (11 if bucket == "hour" else 5)))
-        show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
-        if _compact:
-            show_label = index in {0, (len(values) - 1) // 2, len(values) - 1}
-        if show_label:
-            anchor = 'start' if index == 0 else 'end' if index == len(values) - 1 else 'middle'
-            labels.append(f"<text x='{x_positions[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
+    if _compact:
+        label_indexes = {0, (len(values) - 1) // 2, len(values) - 1}
+    else:
+        label_count = 8 if bucket == "hour" else 6
+        label_step = max(1, math.ceil((len(values) - 1) / max(label_count - 1, 1)))
+        label_indexes = {index for index in range(len(values)) if index % label_step == 0}
+        label_indexes.update({0, len(values) - 1})
+    for index in sorted(label_indexes):
+        item = trend[index]
+        anchor = 'start' if index == 0 else 'end' if index == len(values) - 1 else 'middle'
+        labels.append(
+            f"<text x='{x_positions[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>"
+            f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>"
+        )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='{chart_label}'>"
-        f"{''.join(grid)}{''.join(lines)}{''.join(labels)}</svg>"
+        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
@@ -1428,6 +1449,63 @@ def _overview_trend_chart(
             if metric == "downloads"
             else "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Successful</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-update'></i>Map update</span></div></div>"
         )
+    )
+
+
+def _overview_download_marker(
+    item: dict[str, Any], center: float, top: float, plot_height: float,
+    chart_bucket: str, time_zone: str, *, _compact: bool = False,
+) -> str:
+    markers = [marker for marker in item.get("release_markers") or [] if isinstance(marker, dict)]
+    observed_label = _overview_chart_bucket_label(
+        item.get("observed_at") or item.get("bucket"), chart_bucket, time_zone,
+    )
+    parts: list[str] = []
+    labels: list[str] = []
+    if markers:
+        if len(markers) == 1:
+            marker = markers[0]
+            label = str(marker.get("label") or marker.get("tag") or "release")
+            visible = "New release" if _compact else f"New release · {label}"
+            detail = f"New release: {label}"
+        else:
+            visible = f"New releases · {len(markers)}"
+            detail = "New releases: " + ", ".join(
+                str(marker.get("label") or marker.get("tag") or "release")
+                for marker in markers
+            )
+        labels.append(detail)
+        title = f"{detail} · observed {observed_label} · {time_zone}"
+        parts.append(
+            f"<g class='overview-chart-download-release' role='img' aria-label='{html.escape(title, quote=True)}'>"
+            f"<line x1='{center + 1.5:.1f}' x2='{center + 1.5:.1f}' y1='{top:.1f}' y2='{top + plot_height:.1f}'/>"
+            f"<text x='{center:.1f}' y='{top - (24 if item.get('contains_discontinuity') or item.get('state') == 'discontinuity' else 8):.1f}' text-anchor='middle'>{html.escape(visible)}</text>"
+            f"<title>{html.escape(title)}</title></g>"
+        )
+    if item.get("contains_discontinuity") or item.get("state") == "discontinuity":
+        reason = {
+            "counter_decrease": "download counter decreased",
+            "population_change": "asset or release population changed",
+        }.get(str(item.get("discontinuity_reason") or ""), "the interval cannot be compared")
+        visible = "Data boundary"
+        retained = int(item.get("discontinuity_count") or 0)
+        retained_note = f" · {retained} data boundary retained" if retained == 1 else (
+            f" · {retained} data boundaries retained" if retained > 1 else ""
+        )
+        title = f"Data boundary: {reason} · observed {observed_label} · interval unknown{retained_note} · {time_zone}"
+        labels.append(title.split(" · observed", 1)[0])
+        parts.append(
+            f"<g class='overview-chart-download-boundary' role='img' aria-label='{html.escape(title, quote=True)}'>"
+            f"<line x1='{center - 1.5:.1f}' x2='{center - 1.5:.1f}' y1='{top:.1f}' y2='{top + plot_height:.1f}'/>"
+            f"<text x='{center:.1f}' y='{top - 8:.1f}' text-anchor='middle'>{html.escape(visible)}</text>"
+            f"<title>{html.escape(title)}</title></g>"
+        )
+    if not parts:
+        return ""
+    return (
+        f"<g class='overview-chart-download-marker' tabindex='0' role='group' "
+        f"aria-label='{html.escape(' · '.join(labels), quote=True)}'>"
+        f"<title>{html.escape(' · '.join(labels))}</title>{''.join(parts)}</g>"
     )
 
 
@@ -1462,7 +1540,7 @@ def _overview_downloads_chart(
     maximum = max((sum(value for value in series if value is not None) for series in values), default=1) or 1
     scale_maximum = max(4, math.ceil(maximum * 1.2))
     chart_width, chart_height = (360, 220) if _compact else (720, 260)
-    left, top, bottom = 38, 20, 34
+    left, top, bottom = 38, 42, 34
     plot_height = chart_height - top - bottom
     slot = (chart_width - left - 12) / max(len(values), 1)
     tick_step = max(1, (scale_maximum + 3) // 4)
@@ -1572,16 +1650,12 @@ def _overview_downloads_chart(
                 f"<title>{html.escape(title)}</title></rect>"
             )
         bars.append("</g>")
-        if item.get("contains_discontinuity") or (
-            not any(count is not None for count in counts)
-            and item.get("state") == "discontinuity"
-        ):
-            discontinuity_title = f"Download counters discontinuity ending {_overview_chart_bucket_label(item.get('observed_at') or item.get('bucket'), chart_bucket, time_zone)} · interval unknown"
-            if item.get("discontinuity_count"):
-                discontinuity_title += f" · {item['discontinuity_count']} unknown interval retained"
-            bars.append(
-                f"<g class='overview-chart-download-unknown' tabindex='0' role='img' aria-label='{html.escape(discontinuity_title, quote=True)}'><line x1='{center:.1f}' x2='{center:.1f}' y1='{top + 14:.1f}' y2='{top + plot_height - 4:.1f}'></line><text x='{center:.1f}' y='{top + 12:.1f}' text-anchor='middle'>Unknown</text><title>{html.escape(discontinuity_title)}</title></g>"
-            )
+        marker = _overview_download_marker(
+            item, center, top, plot_height, chart_bucket, time_zone,
+            _compact=_compact,
+        )
+        if marker:
+            bars.append(marker)
         label_step = max(1, round((len(values) - 1) / 11))
         show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
         if _compact:
@@ -3056,12 +3130,12 @@ def map_statistics_page(
     metrics_section = (
         "<section class='map-statistics-kpi-panel provider-card' id='map-statistics-metrics' aria-label='Map statistics summary'>"
         "<div class='map-statistics-kpi-groups'>"
-        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-downloads-title'><h2 id='map-statistics-downloads-title'>Map downloads <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
+        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-downloads-title'><h2 id='map-statistics-downloads-title'>Downloads <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
         f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedDownloads'>{event_value(all_time_summary, 'completedDownloads')}</strong></div>"
         f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='downloadSuccessRate'>{_format_rate(all_time_summary.get('downloadSuccessRate'))}</strong></div>"
         f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedDownloads')}</div>"
         "</div></section>"
-        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-installs-title'><h2 id='map-statistics-installs-title'>Map installs <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
+        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-installs-title'><h2 id='map-statistics-installs-title'>Installs <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
         f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedInstalls'>{event_value(all_time_summary, 'completedInstalls')}</strong></div>"
         f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='installSuccessRate'>{_format_rate(all_time_summary.get('installSuccessRate'))}</strong></div>"
         f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedInstalls')}</div>"
@@ -3116,10 +3190,10 @@ def map_statistics_page(
     trends = (
         "<section class='overview-primary-grid map-statistics-trends' aria-label='Activity trends'>"
         "<section class='overview-panel overview-chart-panel' aria-labelledby='map-download-trend-title'>"
-        "<div class='section-heading'><h2 id='map-download-trend-title'>Map downloads</h2></div>"
+        "<div class='section-heading'><h2 id='map-download-trend-title'>Downloads</h2></div>"
         f"{_overview_trend_chart(trend, bucket, chart_time_zone, metric='downloads', has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0)))}"
         "</section><section class='overview-panel overview-chart-panel' aria-labelledby='map-install-trend-title'>"
-        "<div class='section-heading'><h2 id='map-install-trend-title'>Map installs</h2></div>"
+        "<div class='section-heading'><h2 id='map-install-trend-title'>Installs</h2></div>"
         f"{_overview_trend_chart(trend, bucket, chart_time_zone, has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0)))}"
         "</section></section>"
     )
@@ -6723,7 +6797,7 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-map-total:hover{border-color:color-mix(in srgb,var(--sky) 52%,var(--border))}
 .overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
-.overview-chart-download-unknown line{stroke:var(--secondary);stroke-width:3;stroke-dasharray:4 3}.overview-chart-download-unknown text{fill:var(--secondary);stroke:none;font-size:10px;font-weight:700}
+.overview-chart-download-marker line{stroke-width:2;stroke-dasharray:4 3}.overview-chart-download-marker text{stroke:none;font-size:10px;font-weight:700}.overview-chart-download-release line{stroke:var(--interactive)}.overview-chart-download-release text{fill:var(--interactive)}.overview-chart-download-boundary line{stroke:var(--secondary)}.overview-chart-download-boundary text{fill:var(--secondary)}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
 @media(min-width:901px) and (max-width:1100px),(max-width:700px){
@@ -6811,7 +6885,7 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
 .diagnostic-action-form button[type='submit']{min-height:var(--admin-control-height);padding:8px 12px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:600}
 .diagnostic-action-form button[type='submit']:hover{background:var(--interactive-hover)}
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
-.overview-chart-line{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.overview-chart-line.overview-chart-success,.overview-chart-line.overview-chart-download-success{stroke:var(--interactive)}.overview-chart-line.overview-chart-failed,.overview-chart-line.overview-chart-download-failed{stroke:var(--danger)}.overview-chart-line.overview-chart-update{stroke:var(--status-success-text)}.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}.overview-chart-update{fill:var(--status-success-text);background:var(--status-success-text)}
+.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-update{fill:var(--status-success-text);background:var(--status-success-text)}
 .model-status-line{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-top:8px}.model-status-line>span{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.model-status-line strong{color:var(--graphite);font-size:12px}.compact-empty-state{margin-top:20px;padding:18px 20px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.compact-empty-state h2{margin:0 0 4px}.compact-empty-state p{margin:0;color:var(--secondary)}.diagnostic-identity-state{margin:12px 0;padding:10px 12px;border-left:3px solid var(--warning);background:var(--surface-muted);font-size:13px}
 .timestamp-metric strong{font-size:var(--admin-type-subsection-size)!important;line-height:var(--admin-type-subsection-line)!important}
 .overview-primary-grid{align-items:start}.overview-primary-grid>.overview-panel{min-height:0}
@@ -7179,7 +7253,6 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 @media(max-width:500px){.map-activity-row:has(>.overview-activity-device)>time{grid-row:4}}
 .overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
-.overview-trend-chart polyline.overview-chart-line{fill:none}
 .admin-kpi-panel .installation-kpi-groups{grid-template-columns:minmax(0,1fr)}
 .admin-kpi-panel .provider-kpi-values{grid-template-columns:repeat(3,minmax(0,1fr))}
 .admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(5,minmax(0,1fr))}

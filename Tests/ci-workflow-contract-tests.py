@@ -80,6 +80,8 @@ def verify_scoped_transport() -> None:
     """Exercise the real request script with a local SSH spy; no network or secrets."""
     script = REPO_ROOT / "scripts/infra/deploy-vps-image.sh"
     subprocess.run(["bash", "-n", str(script)], check=True)
+    migration_script = REPO_ROOT / "scripts/infra/migrate-vps-image.sh"
+    subprocess.run(["bash", "-n", str(migration_script)], check=True)
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         spy = root / "ssh"
@@ -105,6 +107,25 @@ def verify_scoped_transport() -> None:
             key = Path(args[args.index("-i")+1])
             assert not key.parent.exists(), "temporary credentials must be removed"
             record.unlink()
+        migration_env = dict(
+            env,
+            VPS_MIGRATION_063_SHA256="c" * 64,
+            VPS_MIGRATE_PY_SHA256="d" * 64,
+        )
+        result = subprocess.run(["bash", str(migration_script), "api"], env=migration_env, capture_output=True)
+        assert result.returncode == 0, result.stderr.decode()
+        args = json.loads(record.read_text())
+        assert args[-2:] == [
+            "terento-ci-api@179.198.204.47",
+            "migrate --target 063 --image sha256:" + "b" * 64 +
+            " --revision " + "a" * 40 +
+            " --expected-migration-063-sha256 " + "c" * 64 +
+            " --expected-migrate-py-sha256 " + "d" * 64,
+        ]
+        assert "StrictHostKeyChecking=yes" in args and "IdentitiesOnly=yes" in args
+        key = Path(args[args.index("-i") + 1])
+        assert not key.parent.exists(), "temporary migration credentials must be removed"
+        record.unlink()
         # Exercise the real retry boundary with a local spy; no connection or delay.
         spy.write_text(spy.read_text() +
             "scenario=os.environ.get('SSH_SCENARIO', '')\n" +
@@ -138,6 +159,10 @@ def verify_scoped_transport() -> None:
             assert result.returncode == 64, (args, changes, result.returncode)
             assert not record.exists(), "invalid input reached SSH"
         assert not list(root.glob("rukas-ssh.*"))
+        for args, changes in [(["site"], {}), (["api"], {"VPS_MIGRATION_063_SHA256": "bad"})]:
+            result = subprocess.run(["bash", str(migration_script), *args], env=dict(migration_env, **changes), capture_output=True)
+            assert result.returncode == 64, (args, changes, result.returncode)
+            assert not record.exists(), "invalid migration input reached SSH"
 
 
 
@@ -351,12 +376,16 @@ def main() -> int:
     assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in deploy_api
     assert "migration-source-impact:" in deploy_api
     assert "backend/catalog-api/src/terento_catalog/(migrations/|migrate\\.py$)" in deploy_api
-    assert "migration_source_changed != 'true'" in deploy_api
-    assert "target_062_separately_applied:" in deploy_api
+    assert "target_063_separately_applied:" in deploy_api
     assert "default: false" in deploy_api
     assert "github.event_name == 'workflow_dispatch'" in deploy_api
-    assert "inputs.target_062_separately_applied == true" in deploy_api
+    assert "inputs.target_063_separately_applied == true" in deploy_api
     assert "vars.TERENTO_FIXED_OPS_INSTALLED == 'true'" in deploy_api
+    assert "  migrate:" in deploy_api
+    assert "bash scripts/infra/migrate-vps-image.sh api" in deploy_api
+    assert "needs.publish.outputs.migration_063_sha256" in deploy_api
+    assert "needs.publish.outputs.migrate_py_sha256" in deploy_api
+    assert "needs.migrate.result == 'success'" in deploy_api
 
     cache_pattern = re.search(r"grep -Eiq '([^']+)' \"\$policy_headers_file\"", deploy_api).group(1)
     for header, expected in [
@@ -396,12 +425,12 @@ def main() -> int:
     assert 'sleep $((attempt * 2))' in publisher
     assert "VPS_SSH_KEY" not in publisher and "environment:" not in publisher
     assert "secrets." not in publisher.replace("secrets.GITHUB_TOKEN", "TOKEN")
-    assert "io.terento.migration.062.sha256" in publisher
+    assert "io.terento.migration.063.sha256" in publisher
     assert "io.terento.migrate.py.sha256" in publisher
-    assert "062_reconcile_installation_statistics_schema.sql" in publisher
-    assert 'sha256sum "$migration_062"' in publisher
+    assert "063_github_download_release_metadata.sql" in publisher
+    assert 'sha256sum "$migration_063"' in publisher
     assert 'sha256sum "$migrate_py"' in publisher
-    assert "value: ${{ jobs.publish.outputs.migration_062_sha256 }}" in publisher
+    assert "value: ${{ jobs.publish.outputs.migration_063_sha256 }}" in publisher
     assert "value: ${{ jobs.publish.outputs.migrate_py_sha256 }}" in publisher
     assert "value: ${{ jobs.publish.outputs.build_timestamp }}" in publisher
     for gate in ("Tests/run-site-tests.sh", "Tests/run-release-documentation-tests.sh",
@@ -409,7 +438,8 @@ def main() -> int:
         assert gate in publisher
     for role, source in (("api", deploy_api), ("site", deploy_site)):
         if role == "api":
-            assert "needs: [publish, migration-source-impact]" in source
+            assert "  migrate:\n    needs: [publish, migration-source-impact]" in source
+            assert "  deploy:\n    needs: [publish, migrate]" in source
         else:
             assert "needs: publish" in source
         assert f"environment: rukas-{role}" in source
@@ -424,13 +454,13 @@ def main() -> int:
     candidate = (WORKFLOWS / "build-catalog-migration-candidate.yml").read_text(encoding="utf-8")
     publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
     assert "push:" in candidate
-    assert "- terento/062-production-candidate" in candidate
+    assert "- terento/063-production-candidate" in candidate
     assert "workflow_dispatch:" in candidate
     assert "source_ref:" in candidate and "source_sha:" in candidate
-    assert "default: refs/heads/terento/062-production-candidate" in candidate
+    assert "default: refs/heads/terento/063-production-candidate" in candidate
     assert "candidate-source-gate:" in candidate
     assert candidate.index("Validate candidate source identity before checkout") < candidate.index("uses: actions/checkout@", candidate.index("candidate-source-gate:"))
-    assert '[[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]' in candidate
+    assert '[[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/063-production-candidate" ]]' in candidate
     assert '[[ "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]' in candidate
     assert '[[ "$GITHUB_REF" == "$REQUESTED_SOURCE_REF" ]]' in candidate
     assert '[[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
@@ -446,7 +476,7 @@ def main() -> int:
     assert "uses: ./.github/workflows/publish-vps-images.yml" in candidate
     assert "candidate_source_ref: ${{ inputs.source_ref || github.ref }}" in candidate
     assert "candidate_source_sha: ${{ inputs.source_sha || github.sha }}" in candidate
-    assert "github.ref == 'refs/heads/terento/062-production-candidate'" in candidate
+    assert "github.ref == 'refs/heads/terento/063-production-candidate'" in candidate
     assert "refs/heads/beta" not in candidate
     assert "candidate-contract-tests:" in candidate
     assert "Tests/run-ci-workflow-contract-tests.sh" in candidate
@@ -458,7 +488,7 @@ def main() -> int:
     assert "docker pull \"$image_ref\"" in candidate
     assert "--network none --read-only --cap-drop ALL" in candidate
     assert "migration_root.glob(\"*.sql\")" in candidate
-    assert "list(range(1, 63))" in candidate
+    assert "list(range(1, 64))" in candidate
     assert "image_migration_sha" in candidate and "image_runner_sha" in candidate
     assert "migration inventory" in candidate
     assert "actions/upload-artifact@" in candidate
@@ -466,10 +496,10 @@ def main() -> int:
     assert "VPS_SSH_KEY" not in candidate and "environment:" not in candidate
     assert "TERENTO_FIXED_OPS_INSTALLED" not in candidate
     assert "scripts/infra/deploy-vps-image.sh" not in candidate
-    assert "inputs.candidate_source_ref == 'refs/heads/terento/062-production-candidate'" in publisher
+    assert "inputs.candidate_source_ref == 'refs/heads/terento/063-production-candidate'" in publisher
     assert "inputs.candidate_source_sha == github.sha" in publisher
-    assert "github.workflow_ref == 'VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate'" in publisher
-    assert '[[ "$GITHUB_WORKFLOW_REF" == "VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate" ]]' in publisher
+    assert "github.workflow_ref == 'VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/063-production-candidate'" in publisher
+    assert '[[ "$GITHUB_WORKFLOW_REF" == "VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/063-production-candidate" ]]' in publisher
     assert '[[ "$GITHUB_REF" == "refs/heads/beta" ]]' in publisher
     assert '[[ "$remote_source_sha" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
     publisher_validation = publisher.index("name: Validate release source and target")
@@ -499,9 +529,9 @@ def main() -> int:
     assert '[[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]' in receipt
     assert 'image_ref="ghcr.io/vooz2/terento-catalog@$IMAGE_DIGEST"' in receipt
     assert '[[ "$embedded_revision" == "$SOURCE_SHA" ]]' in receipt
-    assert '[[ "$image_migration_sha" == "$PUBLISHED_062_SHA" ]]' in receipt
+    assert '[[ "$image_migration_sha" == "$PUBLISHED_063_SHA" ]]' in receipt
     assert '[[ "$image_runner_sha" == "$PUBLISHED_RUNNER_SHA" ]]' in receipt
-    assert '"$migration_sha" == "$PUBLISHED_062_SHA"' in receipt
+    assert '"$migration_sha" == "$PUBLISHED_063_SHA"' in receipt
     assert '"$runner_sha" == "$PUBLISHED_RUNNER_SHA"' in receipt
     assert '"- Source commit: $SOURCE_SHA"' in receipt
     assert '"- Image digest: $IMAGE_DIGEST"' in receipt

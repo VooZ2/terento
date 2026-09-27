@@ -15,7 +15,8 @@ class ReadinessDatabase(Database):
             def fetchall(self):
                 return [] if owner.missing else [
                     {"version": p.name.split("_", 1)[0]}
-                    for p in migration_directory().glob("[0-9]*.sql")]
+                    for p in migration_directory().glob("[0-9]*.sql")
+                ]
             def fetchone(self):
                 return {"is_nullable": owner.nullable}
         class Connection:

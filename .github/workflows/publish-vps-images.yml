@@ -18,9 +18,9 @@ on:
       digest:
         description: Immutable digest of the tested image at the caller commit
         value: ${{ jobs.publish.outputs.digest }}
-      migration_062_sha256:
-        description: SHA-256 label value for migration 062 (API images only)
-        value: ${{ jobs.publish.outputs.migration_062_sha256 }}
+      migration_063_sha256:
+        description: SHA-256 label value for migration 063 (API images only)
+        value: ${{ jobs.publish.outputs.migration_063_sha256 }}
       migrate_py_sha256:
         description: SHA-256 label value for the migration runner (API images only)
         value: ${{ jobs.publish.outputs.migrate_py_sha256 }}
@@ -38,10 +38,10 @@ jobs:
       (
         (inputs.candidate_source_ref == '' && inputs.candidate_source_sha == '' && github.ref == 'refs/heads/beta') ||
         (
-          inputs.candidate_source_ref == 'refs/heads/terento/062-production-candidate' &&
+          inputs.candidate_source_ref == 'refs/heads/terento/063-production-candidate' &&
           inputs.candidate_source_sha == github.sha &&
           github.ref == inputs.candidate_source_ref &&
-          github.workflow_ref == 'VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate'
+          github.workflow_ref == 'VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/063-production-candidate'
         )
       )
     runs-on: ubuntu-latest
@@ -51,7 +51,7 @@ jobs:
       packages: write
     outputs:
       digest: ${{ steps.image.outputs.digest }}
-      migration_062_sha256: ${{ steps.image.outputs.migration_062_sha256 }}
+      migration_063_sha256: ${{ steps.image.outputs.migration_063_sha256 }}
       migrate_py_sha256: ${{ steps.image.outputs.migrate_py_sha256 }}
       build_timestamp: ${{ steps.image.outputs.build_timestamp }}
     steps:
@@ -74,11 +74,11 @@ jobs:
           git show --check --oneline "$GITHUB_SHA"
           if [[ -n "$CANDIDATE_SOURCE_REF" || -n "$CANDIDATE_SOURCE_SHA" ]]; then
             [[ "$ROLE" == api ]]
-            [[ "$CANDIDATE_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]
+            [[ "$CANDIDATE_SOURCE_REF" == "refs/heads/terento/063-production-candidate" ]]
             [[ "$CANDIDATE_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
             [[ "$GITHUB_REF" == "$CANDIDATE_SOURCE_REF" ]]
             [[ "$GITHUB_SHA" == "$CANDIDATE_SOURCE_SHA" ]]
-            [[ "$GITHUB_WORKFLOW_REF" == "VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate" ]]
+            [[ "$GITHUB_WORKFLOW_REF" == "VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/063-production-candidate" ]]
             remote_source_sha="$(git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$CANDIDATE_SOURCE_REF" | cut -f1)"
             [[ "$remote_source_sha" == "$CANDIDATE_SOURCE_SHA" ]]
           else
@@ -129,7 +129,7 @@ jobs:
             fi
           fi
           build_timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          migration_062_sha=""
+          migration_063_sha=""
           migrate_py_sha=""
           image_labels=(
             --label "org.opencontainers.image.source=https://github.com/VooZ2/terento"
@@ -137,14 +137,14 @@ jobs:
             --label "org.opencontainers.image.licenses=GPL-3.0-or-later"
           )
           if [[ "$ROLE" == api ]]; then
-            migration_062="backend/catalog-api/src/terento_catalog/migrations/062_reconcile_installation_statistics_schema.sql"
+            migration_063="backend/catalog-api/src/terento_catalog/migrations/063_github_download_release_metadata.sql"
             migrate_py="backend/catalog-api/src/terento_catalog/migrate.py"
-            [[ -f "$migration_062" && -f "$migrate_py" ]]
-            migration_062_sha="$(sha256sum "$migration_062" | cut -d ' ' -f 1)"
+            [[ -f "$migration_063" && -f "$migrate_py" ]]
+            migration_063_sha="$(sha256sum "$migration_063" | cut -d ' ' -f 1)"
             migrate_py_sha="$(sha256sum "$migrate_py" | cut -d ' ' -f 1)"
-            [[ "$migration_062_sha" =~ ^[0-9a-f]{64}$ && "$migrate_py_sha" =~ ^[0-9a-f]{64}$ ]]
+            [[ "$migration_063_sha" =~ ^[0-9a-f]{64}$ && "$migrate_py_sha" =~ ^[0-9a-f]{64}$ ]]
             image_labels+=(
-              --label "io.terento.migration.062.sha256=$migration_062_sha"
+              --label "io.terento.migration.063.sha256=$migration_063_sha"
               --label "io.terento.migrate.py.sha256=$migrate_py_sha"
             )
           fi
@@ -175,7 +175,7 @@ jobs:
           digest="${reference#*@}"
           [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
           printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
-          printf 'migration_062_sha256=%s\n' "$migration_062_sha" >> "$GITHUB_OUTPUT"
+          printf 'migration_063_sha256=%s\n' "$migration_063_sha" >> "$GITHUB_OUTPUT"
           printf 'migrate_py_sha256=%s\n' "$migrate_py_sha" >> "$GITHUB_OUTPUT"
           printf 'build_timestamp=%s\n' "$build_timestamp" >> "$GITHUB_OUTPUT"
           printf '%s\n' "### $image" "Commit: $GITHUB_SHA" "Candidate tag: $image_tag" "Digest: $reference" >> "$GITHUB_STEP_SUMMARY"

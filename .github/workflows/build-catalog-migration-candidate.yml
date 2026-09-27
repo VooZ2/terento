@@ -3,14 +3,14 @@ name: Build catalog migration candidate
 on:
   push:
     branches:
-      - terento/062-production-candidate
+      - terento/063-production-candidate
   workflow_dispatch:
     inputs:
       source_ref:
         description: Exact same-repository candidate branch ref
         required: true
         type: string
-        default: refs/heads/terento/062-production-candidate
+        default: refs/heads/terento/063-production-candidate
       source_sha:
         description: Exact 40-character commit SHA at source_ref
         required: true
@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$GITHUB_REPOSITORY" == "VooZ2/terento" ]]
-          [[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]
+          [[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/063-production-candidate" ]]
           [[ "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$GITHUB_REF" == "$REQUESTED_SOURCE_REF" ]]
           [[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]
@@ -106,7 +106,7 @@ jobs:
 
   publish:
     needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && (inputs.source_sha == '' || github.sha == inputs.source_sha)
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/063-production-candidate' && (inputs.source_sha == '' || github.sha == inputs.source_sha)
     permissions:
       contents: read
       packages: write
@@ -118,7 +118,7 @@ jobs:
 
   receipt:
     needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests, publish]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/062-production-candidate' && (inputs.source_sha == '' || github.sha == inputs.source_sha)
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/063-production-candidate' && (inputs.source_sha == '' || github.sha == inputs.source_sha)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -137,7 +137,7 @@ jobs:
           SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
           SOURCE_REF: ${{ inputs.source_ref || github.ref }}
           IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
-          PUBLISHED_062_SHA: ${{ needs.publish.outputs.migration_062_sha256 }}
+          PUBLISHED_063_SHA: ${{ needs.publish.outputs.migration_063_sha256 }}
           PUBLISHED_RUNNER_SHA: ${{ needs.publish.outputs.migrate_py_sha256 }}
           BUILD_TIMESTAMP: ${{ needs.publish.outputs.build_timestamp }}
           RUN_ID: ${{ github.run_id }}
@@ -149,7 +149,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$REPOSITORY" == "VooZ2/terento" ]]
-          [[ "$SOURCE_REF" == refs/heads/terento/062-production-candidate ]]
+          [[ "$SOURCE_REF" == refs/heads/terento/063-production-candidate ]]
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$GITHUB_REF" == "$SOURCE_REF" ]]
           [[ "$GITHUB_SHA" == "$SOURCE_SHA" ]]
@@ -178,13 +178,13 @@ jobs:
               if not match:
                   raise SystemExit("noncanonical SQL migration filename")
               versions.append(int(match.group(1)))
-          if versions != list(range(1, 63)):
-              raise SystemExit("image must contain exactly canonical migrations 001-062")
-          migration_062 = migration_root / "062_reconcile_installation_statistics_schema.sql"
+          if versions != list(range(1, 64)):
+              raise SystemExit("image must contain exactly canonical migrations 001-063")
+          migration_063 = migration_root / "063_github_download_release_metadata.sql"
           runner = Path("/app/src/terento_catalog/migrate.py")
           digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
           print(json.dumps({"files": [path.name for path in migration_files],
-                            "migration_062_sha256": digest(migration_062),
+                            "migration_063_sha256": digest(migration_063),
                             "migrate_py_sha256": digest(runner)}))
           ' )"
           mapfile -t image_values < <(printf '%s\n' "$image_report" | python3 -c '
@@ -192,7 +192,7 @@ jobs:
           report = json.load(sys.stdin)
           print(len(report["files"]))
           print(",".join(report["files"]))
-          print(report["migration_062_sha256"])
+          print(report["migration_063_sha256"])
           print(report["migrate_py_sha256"])
           ')
           [[ "${#image_values[@]}" == 4 ]]
@@ -200,14 +200,14 @@ jobs:
           migration_inventory="${image_values[1]}"
           image_migration_sha="${image_values[2]}"
           image_runner_sha="${image_values[3]}"
-          [[ "$migration_count" == 62 ]]
-          [[ "$image_migration_sha" == "$PUBLISHED_062_SHA" ]]
+          [[ "$migration_count" == 63 ]]
+          [[ "$image_migration_sha" == "$PUBLISHED_063_SHA" ]]
           [[ "$image_runner_sha" == "$PUBLISHED_RUNNER_SHA" ]]
-          migration_062="backend/catalog-api/src/terento_catalog/migrations/062_reconcile_installation_statistics_schema.sql"
+          migration_063="backend/catalog-api/src/terento_catalog/migrations/063_github_download_release_metadata.sql"
           migrate_py="backend/catalog-api/src/terento_catalog/migrate.py"
-          migration_sha="$(sha256sum "$migration_062" | cut -d ' ' -f 1)"
+          migration_sha="$(sha256sum "$migration_063" | cut -d ' ' -f 1)"
           runner_sha="$(sha256sum "$migrate_py" | cut -d ' ' -f 1)"
-          [[ "$migration_sha" == "$PUBLISHED_062_SHA" ]]
+          [[ "$migration_sha" == "$PUBLISHED_063_SHA" ]]
           [[ "$runner_sha" == "$PUBLISHED_RUNNER_SHA" ]]
           statistics_contract_sha="$(sha256sum contracts/STATISTICS_CONTRACT.md | cut -d ' ' -f 1)"
           installation_contract_sha="$(sha256sum contracts/INSTALLATION_AUTHORIZATION.md | cut -d ' ' -f 1)"
@@ -224,7 +224,7 @@ jobs:
           receipt="$RUNNER_TEMP/terento-catalog-migration-candidate.md"
           {
             printf '# Catalog migration candidate receipt\n\n'
-            printf '%s\n' '- Purpose: immutable API candidate for a separately authorized target-062 operation.'
+            printf '%s\n' '- Purpose: immutable API candidate for a separately authorized target-063 operation.'
             printf '%s\n' '- Production migration, deployment, and service changes: not performed by this workflow.'
             printf '%s\n' '- Repository: VooZ2/terento' "- Source ref: $SOURCE_REF" "- Source commit: $SOURCE_SHA"
             printf '%s\n' "- OCI image: ghcr.io/vooz2/terento-catalog@$IMAGE_DIGEST" "- Image digest: $IMAGE_DIGEST"
@@ -232,14 +232,14 @@ jobs:
             printf '%s\n' "- Image build timestamp (UTC): $BUILD_TIMESTAMP"
             printf '%s\n' "- Migration runner package version: $runner_version (source revision $SOURCE_SHA)"
             printf '%s\n' "- Migration runner in-image source path: /app/src/terento_catalog/migrate.py"
-            printf '%s\n' '- Validated runner invocation: explicit --target 062 (backend/operations test evidence below)'
+            printf '%s\n' '- Validated runner invocation: explicit --target 063 (backend/operations test evidence below)'
             printf '%s\n' "- Installation-policy schemaVersion: $policy_schema_version"
             printf '%s\n' "- Authorization contract revision: $SOURCE_SHA (contracts/INSTALLATION_AUTHORIZATION.md)"
-            printf '%s\n' "- Canonical migration inventory inside image ($migration_count files; no 063+):"
+            printf '%s\n' "- Canonical migration inventory inside image ($migration_count files; no 064+):"
             for migration_name in $(printf '%s' "$migration_inventory" | tr ',' ' '); do
               printf -- '- %s\n' "$migration_name"
             done
-            printf '%s\n' "- 062 SQL SHA-256 (image): $image_migration_sha" "- migrate.py SHA-256 (image): $image_runner_sha"
+            printf '%s\n' "- 063 SQL SHA-256 (image): $image_migration_sha" "- migrate.py SHA-256 (image): $image_runner_sha"
             printf '%s\n' "- Statistics contract SHA-256: $statistics_contract_sha" \
               "- Installation authorization contract SHA-256: $installation_contract_sha" \
               "- Installation policy schema SHA-256: $contract_schema_sha"

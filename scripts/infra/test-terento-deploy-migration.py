@@ -1,4 +1,4 @@
-"""Focused, offline tests for the standalone 062 migration operation."""
+"""Focused, offline tests for the standalone 063 migration operation."""
 
 import importlib.util
 import json
@@ -25,8 +25,8 @@ DB_ID = "d" * 64
 DB_SHORT_ID = DB_ID[:12]
 
 
-def canonical_inventory(include_063=False):
-    last = 64 if include_063 else 63
+def canonical_inventory(include_064=False):
+    last = 65 if include_064 else 64
     return [
         {"name": f"{version:03d}_migration.sql", "version": f"{version:03d}"}
         for version in range(1, last)
@@ -39,7 +39,7 @@ def ledger_through(version):
 
 class FakeHost:
     def __init__(self, *, ledger=None):
-        self.ledger = ledger if ledger is not None else ledger_through(61)
+        self.ledger = ledger if ledger is not None else ledger_through(62)
         self.inventory = canonical_inventory()
         self.actual_sha = RECEIPT_SHA
         self.label_sha = RECEIPT_SHA
@@ -53,7 +53,7 @@ class FakeHost:
         self.db_identity_ok = True
         self.db_inspected_id = DB_ID
         self.migration_error = None
-        self.migration_output = "Applied migrations: 062\n"
+        self.migration_output = "Applied migrations: 063\n"
         self.ledger_after_migration = None
         self.docker_calls = []
         self.compose_calls = []
@@ -70,14 +70,14 @@ class FakeHost:
                 "Config": {"Labels": {
                     "org.opencontainers.image.source": self.source,
                     "org.opencontainers.image.revision": self.revision,
-                    "io.terento.migration.062.sha256": self.label_sha,
+                    "io.terento.migration.063.sha256": self.label_sha,
                     "io.terento.migrate.py.sha256": self.label_runner_sha,
                 }},
             }])
         if args[0:1] == ("run",):
             return json.dumps({
                 "inventory": self.inventory,
-                "migration_062_sha256": self.actual_sha,
+                "migration_063_sha256": self.actual_sha,
                 "migrate_py_sha256": self.actual_runner_sha,
                 "target_enforcement": self.target_enforcement,
             })
@@ -115,18 +115,18 @@ class FakeHost:
                 raise subprocess.CalledProcessError(self.migration_error, "docker compose run")
             if self.ledger_after_migration is not None:
                 self.ledger = self.ledger_after_migration
-            elif self.migration_output.strip() == "Applied migrations: 062":
-                self.ledger = ledger_through(62)
+            elif self.migration_output.strip() == "Applied migrations: 063":
+                self.ledger = ledger_through(63)
             return self.migration_output
         raise AssertionError(f"Unexpected Compose command: {(project, image, args)!r}")
 
 
 def request_args(**overrides):
     values = {
-        "--target": "062",
+        "--target": "063",
         "--image": DIGEST,
         "--revision": REVISION,
-        "--expected-migration-062-sha256": RECEIPT_SHA,
+        "--expected-migration-063-sha256": RECEIPT_SHA,
         "--expected-migrate-py-sha256": RUNNER_SHA,
     }
     values.update(overrides)
@@ -160,7 +160,7 @@ def verify_deploy_schema(host, output=None):
 
 class MigrationArgumentsTests(unittest.TestCase):
     def test_requires_explicit_target_and_all_immutable_receipt_fields(self):
-        expected = migration.MigrationRequest("062", DIGEST, REVISION, RECEIPT_SHA, RUNNER_SHA)
+        expected = migration.MigrationRequest("063", DIGEST, REVISION, RECEIPT_SHA, RUNNER_SHA)
         self.assertEqual(migration.parse_arguments(request_args()), expected)
         invalid_requests = (
             request_args(**{"--target": "061"}),
@@ -171,12 +171,12 @@ class MigrationArgumentsTests(unittest.TestCase):
             request_args(**{"--revision": "working-tree"}),
             request_args(**{"--revision": "b" * 39}),
             request_args(**{"--revision": "B" * 40}),
-            request_args(**{"--expected-migration-062-sha256": "c" * 63}),
+            request_args(**{"--expected-migration-063-sha256": "c" * 63}),
             request_args(**{"--expected-migrate-py-sha256": "e" * 63}),
             request_args()[:-2],
             request_args() + ["--image", DIGEST],
             request_args(**{"--target": 62}),
-            ["--target", "062", "--image", DIGEST, "--revision", REVISION,
+            ["--target", "063", "--image", DIGEST, "--revision", REVISION,
              "--expected-sha256", RECEIPT_SHA],
         )
         for args in invalid_requests:
@@ -192,7 +192,7 @@ class MigrationArgumentsTests(unittest.TestCase):
 
 
 class EmbeddedArtifactAuditTests(unittest.TestCase):
-    def test_read_only_audit_accepts_current_062_runner_contract(self):
+    def test_read_only_audit_accepts_current_063_runner_contract(self):
         repository = ROOT.parents[1]
         script = migration.IMAGE_AUDIT_PYTHON.replace(
             "/app/src/terento_catalog/migrations",
@@ -209,29 +209,28 @@ class EmbeddedArtifactAuditTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         audit = json.loads(result.stdout)
-        self.assertEqual(
-            [entry["version"] for entry in audit["inventory"]],
-            list(migration.EXPECTED_MIGRATION_VERSIONS),
-        )
-        self.assertRegex(audit["migration_062_sha256"], r"^[0-9a-f]{64}$")
+        inventory_versions = [entry["version"] for entry in audit["inventory"]]
+        current_versions = list(migration.EXPECTED_MIGRATION_VERSIONS)
+        self.assertEqual(inventory_versions, current_versions)
+        self.assertRegex(audit["migration_063_sha256"], r"^[0-9a-f]{64}$")
         self.assertRegex(audit["migrate_py_sha256"], r"^[0-9a-f]{64}$")
         self.assertEqual(audit["target_enforcement"], "verified")
 
 
 class MigrationOperationTests(unittest.TestCase):
-    def test_pulls_and_verifies_only_fixed_api_digest_then_applies_062(self):
+    def test_pulls_and_verifies_only_fixed_api_digest_then_applies_063(self):
         host = FakeHost()
         output = []
         result = run(host, output=output)
 
         self.assertEqual(result["status"], "applied")
-        self.assertEqual(result["target"], "062")
+        self.assertEqual(result["target"], "063")
         self.assertEqual(result["image"], IMAGE)
         self.assertEqual(result["revision"], REVISION)
-        self.assertEqual(result["migration_062_sha256"], RECEIPT_SHA)
+        self.assertEqual(result["migration_063_sha256"], RECEIPT_SHA)
         self.assertEqual(result["migrate_py_sha256"], RUNNER_SHA)
         self.assertEqual(result["migration_inventory"], canonical_inventory())
-        self.assertIn("Applied migrations: 062", output)
+        self.assertIn("Applied migrations: 063", output)
         self.assertEqual(host.docker_calls[0][0], ("pull", IMAGE))
         self.assertEqual(host.docker_calls[1][0], ("image", "inspect", IMAGE))
         audit_args = host.docker_calls[2][0]
@@ -252,7 +251,7 @@ class MigrationOperationTests(unittest.TestCase):
                  if migration.MIGRATION_SERVICE in call[2]),
             ("api", IMAGE, (
                 "--profile", "manual", "run", "--rm", "--no-deps", "-T",
-                "catalog-migrate", "terento-catalog-migrate", "--target", "062",
+                "catalog-migrate", "terento-catalog-migrate", "--target", "063",
             )),
         )
         self.assertEqual(
@@ -284,8 +283,8 @@ class MigrationOperationTests(unittest.TestCase):
         host.label_sha = host.actual_sha
         output = []
         with self.assertRaisesRegex(migration.MigrationError, "receipt"):
-            run(host, request_args(**{"--expected-migration-062-sha256": RECEIPT_SHA}), output)
-        self.assertTrue(any("migration_062_sha256=" + host.actual_sha in line for line in output))
+            run(host, request_args(**{"--expected-migration-063-sha256": RECEIPT_SHA}), output)
+        self.assertTrue(any("migration_063_sha256=" + host.actual_sha in line for line in output))
         self.assertEqual(host.compose_calls, [])
         self.assertFalse(any(call[0][0] == "exec" for call in host.docker_calls))
 
@@ -351,9 +350,9 @@ class MigrationOperationTests(unittest.TestCase):
 
     def test_noncanonical_or_later_candidate_migration_inventory_is_rejected(self):
         cases = (
-            canonical_inventory(include_063=True),
+            canonical_inventory(include_064=True),
             canonical_inventory()[:-1],
-            canonical_inventory() + [{"name": "062_duplicate.sql", "version": "062"}],
+            canonical_inventory() + [{"name": "063_duplicate.sql", "version": "063"}],
         )
         for inventory in cases:
             with self.subTest(count=len(inventory)), self.assertRaises(migration.MigrationError):
@@ -364,9 +363,9 @@ class MigrationOperationTests(unittest.TestCase):
 
     def test_later_migration_is_named_for_operator_and_never_executed(self):
         host = FakeHost()
-        host.inventory = canonical_inventory(include_063=True)
+        host.inventory = canonical_inventory(include_064=True)
         output = []
-        with self.assertRaisesRegex(migration.MigrationError, r"after target 062: 063_migration\.sql"):
+        with self.assertRaisesRegex(migration.MigrationError, r"after target 063: 064_migration\.sql"):
             run(host, output=output)
         self.assertEqual(host.compose_calls, [])
         self.assertFalse(any(call[0][0] == "exec" for call in host.docker_calls))
@@ -386,14 +385,14 @@ class MigrationOperationTests(unittest.TestCase):
                 )
                 self.assertFalse(any(call[0][0] == "exec" for call in host.docker_calls))
 
-    def test_exact_001_through_061_ledger_runs_only_catalog_migrate(self):
-        host = FakeHost(ledger=ledger_through(61))
+    def test_exact_001_through_062_ledger_runs_only_catalog_migrate(self):
+        host = FakeHost(ledger=ledger_through(62))
         run(host)
         migration_call = next(call for call in reversed(host.compose_calls)
                               if migration.MIGRATION_SERVICE in call[2])
         self.assertEqual(
             migration_call[2][-4:],
-            ("catalog-migrate", "terento-catalog-migrate", "--target", "062"),
+            ("catalog-migrate", "terento-catalog-migrate", "--target", "063"),
         )
         self.assertTrue(any(
             call[0][0:1] == ("exec",) and "BEGIN TRANSACTION READ ONLY" in call[0][-1]
@@ -402,7 +401,7 @@ class MigrationOperationTests(unittest.TestCase):
 
     def test_compose_run_receives_explicit_migration_executable(self):
         """Compose run SERVICE COMMAND replaces the service command."""
-        host = FakeHost(ledger=ledger_through(61))
+        host = FakeHost(ledger=ledger_through(62))
         run(host)
         migration_call = next(call for call in reversed(host.compose_calls)
                               if migration.MIGRATION_SERVICE in call[2])
@@ -410,30 +409,30 @@ class MigrationOperationTests(unittest.TestCase):
         service_index = args.index(migration.MIGRATION_SERVICE)
         self.assertEqual(
             args[service_index + 1:service_index + 4],
-            ("terento-catalog-migrate", "--target", "062"),
+            ("terento-catalog-migrate", "--target", "063"),
         )
 
-    def test_exact_001_through_062_is_explicit_noop(self):
-        host = FakeHost(ledger=ledger_through(62))
+    def test_exact_001_through_063_is_explicit_noop(self):
+        host = FakeHost(ledger=ledger_through(63))
         output = []
         result = run(host, output=output)
         self.assertEqual(result["status"], "already_applied")
-        self.assertIn("ALREADY APPLIED 062; no migration container was run.", output)
+        self.assertIn("ALREADY APPLIED 063; no migration container was run.", output)
         self.assertFalse(any(migration.MIGRATION_SERVICE in call[2] for call in host.compose_calls))
 
     def test_concurrent_apply_returning_noop_is_confirmed_as_already_applied(self):
         host = FakeHost()
         host.migration_output = "Applied migrations: none\n"
-        host.ledger_after_migration = ledger_through(62)
+        host.ledger_after_migration = ledger_through(63)
         output = []
         result = run(host, output=output)
         self.assertEqual(result["status"], "already_applied")
         self.assertIn(
-            "ALREADY APPLIED 062; no migration change was made by this invocation.",
+            "ALREADY APPLIED 063; no migration change was made by this invocation.",
             output,
         )
 
-    def test_runner_noop_without_confirmed_062_ledger_is_not_pass(self):
+    def test_runner_noop_without_confirmed_063_ledger_is_not_pass(self):
         host = FakeHost()
         host.migration_output = "Applied migrations: none\n"
         with self.assertRaisesRegex(migration.MigrationError, "no-op"):
@@ -444,7 +443,7 @@ class MigrationOperationTests(unittest.TestCase):
     def test_success_output_requires_exact_read_only_ledger_postcondition(self):
         host = FakeHost()
         host.ledger_after_migration = ledger_through(61)
-        with self.assertRaisesRegex(migration.MigrationError, "exact 001-062 ledger"):
+        with self.assertRaisesRegex(migration.MigrationError, "migration ledger"):
             run(host)
         self.assertFalse(any("MIGRATION_PASS" in event[1]
                              for event in host.events if event[0] == "emit"))
@@ -455,7 +454,7 @@ class MigrationOperationTests(unittest.TestCase):
         invalid_ledgers = (
             ledger_through(60),
             [version for version in ledger_through(61) if version != "017"],
-            ledger_through(62) + ["063"],
+            ledger_through(63) + ["064"],
             ["001", "1", *ledger_through(2)[1:]],
         )
         for ledger in invalid_ledgers:
@@ -477,7 +476,7 @@ class MigrationOperationTests(unittest.TestCase):
         self.assertEqual(len(migration_calls), 1)
         self.assertEqual(
             migration_calls[0][1][-4:],
-            ("catalog-migrate", "terento-catalog-migrate", "--target", "062"),
+            ("catalog-migrate", "terento-catalog-migrate", "--target", "063"),
         )
         self.assertEqual(host.events[-1], migration_calls[0])
         self.assertFalse(any("catalog-api" in repr(event) or "catalog-scheduler" in repr(event)
@@ -485,21 +484,21 @@ class MigrationOperationTests(unittest.TestCase):
 
 
 class DeploymentSchemaGateTests(unittest.TestCase):
-    def test_deploy_requires_exact_candidate_and_live_001_through_062(self):
-        host = FakeHost(ledger=ledger_through(62))
+    def test_deploy_requires_exact_candidate_and_live_001_through_063(self):
+        host = FakeHost(ledger=ledger_through(63))
         output = []
         result = verify_deploy_schema(host, output)
-        self.assertEqual(result["ledger"], "001-062")
+        self.assertEqual(result["ledger"], "001-063")
         self.assertEqual(result["migration_inventory"], canonical_inventory())
-        self.assertIn("DEPLOY_SCHEMA_PASS applied=001-062", output)
+        self.assertIn("DEPLOY_SCHEMA_PASS applied=001-063", output)
         self.assertEqual(host.compose_calls, [
             ("api", IMAGE, ("ps", "-q", "catalog-db")),
         ])
         self.assertFalse(any(migration.MIGRATION_SERVICE in call[2]
                              for call in host.compose_calls))
 
-    def test_deploy_refuses_pending_062_without_running_any_migration(self):
-        host = FakeHost(ledger=ledger_through(61))
+    def test_deploy_refuses_pending_063_without_running_any_migration(self):
+        host = FakeHost(ledger=ledger_through(62))
         with self.assertRaisesRegex(migration.MigrationError, "separately approved migration-only"):
             verify_deploy_schema(host)
         self.assertEqual(host.compose_calls, [
@@ -509,9 +508,9 @@ class DeploymentSchemaGateTests(unittest.TestCase):
                              for call in host.compose_calls))
 
     def test_deploy_refuses_063_candidate_before_query_or_service_mutation(self):
-        host = FakeHost(ledger=ledger_through(62))
-        host.inventory = canonical_inventory(include_063=True)
-        with self.assertRaisesRegex(migration.MigrationError, r"after target 062: 063_migration\.sql"):
+        host = FakeHost(ledger=ledger_through(63))
+        host.inventory = canonical_inventory(include_064=True)
+        with self.assertRaisesRegex(migration.MigrationError, r"after target 063: 064_migration\.sql"):
             verify_deploy_schema(host)
         self.assertEqual(host.compose_calls, [])
         self.assertFalse(any(call[0][0] == "exec" for call in host.docker_calls))

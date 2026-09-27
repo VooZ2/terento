@@ -17,8 +17,8 @@ root access or a live VPS:
   started, stopped, recreated, or otherwise operated on.
 
 The CLI-facing arguments are exactly equivalent to:
-``migrate --target 062 --image sha256:<digest> --revision <40hex>
---expected-migration-062-sha256 <64hex>``.
+``migrate --target 063 --image sha256:<digest> --revision <40hex>
+--expected-migration-063-sha256 <64hex>``.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ EXPECTED_SOURCE = "https://github.com/VooZ2/terento"
 COMPOSE_PROJECT = "terento-catalog"
 DB_SERVICE = "catalog-db"
 MIGRATION_SERVICE = "catalog-migrate"
-EXPECTED_MIGRATION_VERSIONS = tuple(f"{version:03d}" for version in range(1, 63))
+EXPECTED_MIGRATION_VERSIONS = tuple(f"{version:03d}" for version in range(1, 64))
 
 LEDGER_SQL = """BEGIN TRANSACTION READ ONLY;
 SELECT COALESCE(json_agg(version ORDER BY version), '[]'::json)::text
@@ -43,7 +43,7 @@ FROM schema_migrations;
 ROLLBACK;"""
 
 # This runs only in a fresh, network-disabled container of the pinned candidate
-# image. It reads the migration directory, hashes migration 062 and migrate.py,
+# image. It reads the migration directory, hashes migration 063 and migrate.py,
 # and statically checks the artifact's target/ledger enforcement. It never
 # imports or executes the migration runner.
 IMAGE_AUDIT_PYTHON = r'''import glob, hashlib, json, os, re
@@ -57,7 +57,7 @@ for path in paths:
     match = re.match(r"^(\d+)_.*\.sql$", name)
     inventory.append({"name": name, "version": match.group(1) if match else None})
 targets = [path for path in paths
-           if re.match(r"^062_.+\.sql$", os.path.basename(path))]
+           if re.match(r"^063_.+\.sql$", os.path.basename(path))]
 digest = None
 if len(targets) == 1:
     with open(targets[0], "rb") as migration:
@@ -78,25 +78,25 @@ main_fn = functions.get("main")
 if apply_fn is None or main_fn is None or not apply_fn.body:
     raise SystemExit("migration runner enforcement is not recognizable")
 expected_guard = "\n".join((
-    'if target not in (None, "062"):',
-    '    raise RuntimeError("only the exact --target 062 is supported")',
+    'if target not in (None, "063"):',
+    '    raise RuntimeError("only the exact --target 063 is supported")',
 ))
 if dump(ast.unparse(apply_fn.body[0])) != dump(expected_guard):
     raise SystemExit("migration runner target guard differs from reviewed contract")
 expected_target_branch = "\n".join((
-    'if target == "062":',
-    '    expected_files = [f"{version:03d}" for version in range(1, 63)]',
+    'if target == "063":',
+    '    expected_files = [f"{version:03d}" for version in range(1, 64)]',
     '    actual_files = [_migration_version(file) for file in files]',
     '    if actual_files != expected_files:',
-    '        raise RuntimeError("--target 062 requires exactly one canonical migration file for every version 001 through 062, with no later files")',
+    '        raise RuntimeError("--target 063 requires exactly one canonical migration file for every version 001 through 063, with no later files")',
 ))
 expected_ledger_branch = "\n".join((
-    'if target == "062":',
+    'if target == "063":',
     '    expected_applied = set(expected_files[:-1])',
-    '    if applied == expected_applied | {"062"}:',
+    '    if applied == expected_applied | {"063"}:',
     '        return []',
     '    if applied != expected_applied:',
-    '        raise RuntimeError("--target 062 requires the exact applied ledger 001 through 061; 060-only, aliases, holes, and later versions are rejected")',
+    '        raise RuntimeError("--target 063 requires the exact applied ledger 001 through 062; 060-only, aliases, holes, and later versions are rejected")',
     '    files = [files[-1]]',
 ))
 branches = [node for node in ast.walk(apply_fn)
@@ -105,7 +105,7 @@ branches = [node for node in ast.walk(apply_fn)
                 {dump(expected_target_branch), dump(expected_ledger_branch)}]
 if len(branches) != 2 or {dump(ast.unparse(node)) for node in branches} != {
         dump(expected_target_branch), dump(expected_ledger_branch)}:
-    raise SystemExit("migration runner 062 inventory or ledger enforcement differs from reviewed contract")
+    raise SystemExit("migration runner 063 inventory or ledger enforcement differs from reviewed contract")
 target_args = [node for node in ast.walk(main_fn)
                if isinstance(node, ast.Call)
                and isinstance(node.func, ast.Attribute)
@@ -118,8 +118,8 @@ choices = next((keyword.value for keyword in target_args[0].keywords
                 if keyword.arg == "choices"), None)
 if (not isinstance(choices, ast.Tuple) or len(choices.elts) != 1
         or not isinstance(choices.elts[0], ast.Constant)
-        or choices.elts[0].value != "062"):
-    raise SystemExit("migration runner target choices are not restricted to 062")
+        or choices.elts[0].value != "063"):
+    raise SystemExit("migration runner target choices are not restricted to 063")
 target_calls = [node for node in ast.walk(main_fn)
                 if isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Name)
@@ -130,7 +130,7 @@ if len(target_calls) != 1 or not any(
         and keyword.value.value.id == "args" and keyword.value.attr == "target"
         for keyword in target_calls[0].keywords):
     raise SystemExit("migration runner does not pass the explicit target to its executor")
-print(json.dumps({"inventory": inventory, "migration_062_sha256": digest,
+print(json.dumps({"inventory": inventory, "migration_063_sha256": digest,
                   "migrate_py_sha256": runner_sha,
                   "target_enforcement": "verified"}, sort_keys=True))
 '''
@@ -153,7 +153,7 @@ class MigrationRequest:
     target: str
     digest: str
     revision: str
-    expected_migration_062_sha256: str
+    expected_migration_063_sha256: str
     expected_migrate_py_sha256: str
 
     @property
@@ -167,12 +167,12 @@ def parse_arguments(arguments: Sequence[str]) -> MigrationRequest:
             not isinstance(argument, str) for argument in arguments):
         raise MigrationError("Migration arguments must be a list of strings.")
     if "--target" not in arguments:
-        raise MigrationError("Migration requires an explicit --target 062.")
+        raise MigrationError("Migration requires an explicit --target 063.")
     expected_options = {
         "--target",
         "--image",
         "--revision",
-        "--expected-migration-062-sha256",
+        "--expected-migration-063-sha256",
         "--expected-migrate-py-sha256",
     }
     if len(arguments) != len(expected_options) * 2:
@@ -186,21 +186,21 @@ def parse_arguments(arguments: Sequence[str]) -> MigrationRequest:
         values[option] = value
     if set(values) != expected_options:
         raise MigrationError("Migration requires target, image digest, revision, SQL SHA-256, and runner SHA-256.")
-    if values["--target"] != "062":
-        raise MigrationError("Only explicit migration target 062 is permitted.")
+    if values["--target"] != "063":
+        raise MigrationError("Only explicit migration target 063 is permitted.")
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", values["--image"]):
         raise MigrationError("Image must be an immutable sha256 digest, not a tag or working-tree reference.")
     if not re.fullmatch(r"[0-9a-f]{40}", values["--revision"]):
         raise MigrationError("Revision must be a full 40-character lowercase commit hash.")
-    if not re.fullmatch(r"[0-9a-f]{64}", values["--expected-migration-062-sha256"]):
+    if not re.fullmatch(r"[0-9a-f]{64}", values["--expected-migration-063-sha256"]):
         raise MigrationError("Expected migration receipt must be a full lowercase SHA-256 hash.")
     if not re.fullmatch(r"[0-9a-f]{64}", values["--expected-migrate-py-sha256"]):
         raise MigrationError("Expected migrate.py receipt must be a full lowercase SHA-256 hash.")
     return MigrationRequest(
-        target="062",
+        target="063",
         digest=values["--image"],
         revision=values["--revision"],
-        expected_migration_062_sha256=values["--expected-migration-062-sha256"],
+        expected_migration_063_sha256=values["--expected-migration-063-sha256"],
         expected_migrate_py_sha256=values["--expected-migrate-py-sha256"],
     )
 
@@ -261,9 +261,9 @@ def _verify_pulled_image(
         raise MigrationError("Candidate image source label is not the Terento repository.")
     if labels.get("org.opencontainers.image.revision") != request.revision:
         raise MigrationError("Candidate image revision label does not match the requested revision.")
-    label_sha = labels.get("io.terento.migration.062.sha256")
+    label_sha = labels.get("io.terento.migration.063.sha256")
     if not isinstance(label_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", label_sha):
-        raise MigrationError("Candidate image is missing a valid migration 062 SHA-256 label.")
+        raise MigrationError("Candidate image is missing a valid migration 063 SHA-256 label.")
     label_runner_sha = labels.get("io.terento.migrate.py.sha256")
     if not isinstance(label_runner_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", label_runner_sha):
         raise MigrationError("Candidate image is missing a valid migrate.py SHA-256 label.")
@@ -292,7 +292,7 @@ def _verify_pulled_image(
     )
     audit = _json_object(audit_raw, "candidate migration inventory")
     inventory = audit.get("inventory")
-    actual_sha = audit.get("migration_062_sha256")
+    actual_sha = audit.get("migration_063_sha256")
     actual_runner_sha = audit.get("migrate_py_sha256")
     if (not isinstance(inventory, list)
             or not isinstance(actual_sha, str)
@@ -319,16 +319,16 @@ def _verify_pulled_image(
     versions = [entry.get("version") for entry in inventory]
     names = [entry.get("name") for entry in inventory]
     if versions != list(EXPECTED_MIGRATION_VERSIONS):
-        later = [name for version, name in zip(versions, names) if version > "062"]
+        later = [name for version, name in zip(versions, names) if version > "063"]
         if later:
             raise MigrationError(
-                "Candidate image includes migration(s) after target 062: "
+                "Candidate image includes migration(s) after target 063: "
                 + ", ".join(later)
-                + ". This reviewed target-062 runner requires exactly migrations 001 through 062; no migration was run."
+                + ". This reviewed target-063 runner requires exactly migrations 001 through 063; no migration was run."
             )
-        raise MigrationError("Candidate image must contain exactly canonical migrations 001 through 062, with no later migrations.")
+        raise MigrationError("Candidate image must contain exactly canonical migrations 001 through 063, with no later migrations.")
     if label_sha != actual_sha:
-        raise MigrationError("Candidate migration 062 SHA-256 does not match its image label.")
+        raise MigrationError("Candidate migration 063 SHA-256 does not match its image label.")
     if label_runner_sha != actual_runner_sha:
         raise MigrationError("Candidate migrate.py SHA-256 does not match its image label.")
     return actual_sha, actual_runner_sha, inventory
@@ -391,7 +391,7 @@ def _classify_ledger(ledger: list[str]) -> str:
         return "pending"
     if ledger == list(EXPECTED_MIGRATION_VERSIONS):
         return "already_applied"
-    raise MigrationError("Database migration ledger is not exactly 001 through 061 or 001 through 062.")
+    raise MigrationError("Database migration ledger is not exactly 001 through 062 or 001 through 063.")
 
 
 def verify_deploy_schema(
@@ -404,20 +404,20 @@ def verify_deploy_schema(
     """Prove the API candidate has no pending schema change before DEPLOY.
 
     DEPLOY must never run the generic migrator. This currently supports only
-    the reviewed 001-062 image/ledger pair; future migration versions require
+    the reviewed 001-063 image/ledger pair; future migration versions require
     a separately reviewed extension to this gate.
     """
     request = parse_arguments(arguments)
     actual_sha, actual_runner_sha, inventory = _verify_pulled_image(request, docker)
-    if actual_sha != request.expected_migration_062_sha256:
-        raise MigrationError("Deployment candidate migration 062 hash does not match its image label.")
+    if actual_sha != request.expected_migration_063_sha256:
+        raise MigrationError("Deployment candidate migration 063 hash does not match its image label.")
     if actual_runner_sha != request.expected_migrate_py_sha256:
         raise MigrationError("Deployment candidate migration runner hash does not match its image label.")
     emit(
         "DEPLOY_SCHEMA_CANDIDATE "
         f"image={request.image} revision={request.revision} "
-        f"migration_062_sha256={actual_sha} migrate_py_sha256={actual_runner_sha} "
-        "inventory=001-062"
+        f"migration_063_sha256={actual_sha} migrate_py_sha256={actual_runner_sha} "
+        "inventory=001-063"
     )
     database_id = _running_database_container(compose, docker, request.image)
     ledger_state = _classify_ledger(_read_ledger(database_id, docker))
@@ -426,14 +426,14 @@ def verify_deploy_schema(
             "DEPLOY refused: the candidate schema is not fully applied; "
             "run a separately approved migration-only operation first."
         )
-    emit("DEPLOY_SCHEMA_PASS applied=001-062")
+    emit("DEPLOY_SCHEMA_PASS applied=001-063")
     return {
         "image": request.image,
         "revision": request.revision,
-        "migration_062_sha256": actual_sha,
+        "migration_063_sha256": actual_sha,
         "migrate_py_sha256": actual_runner_sha,
         "migration_inventory": inventory,
-        "ledger": "001-062",
+        "ledger": "001-063",
     }
 
 
@@ -444,7 +444,7 @@ def run_migration(
     compose: ComposeCall,
     emit: Callable[[str], None] = print,
 ) -> dict:
-    """Verify a pinned candidate and run only its 062 migration one-shot.
+    """Verify a pinned candidate and run only its 063 migration one-shot.
 
     The caller must hold the deployment helper's global exclusive operations
     lock before invoking this function. No lock is created here.
@@ -459,26 +459,26 @@ def run_migration(
     emit(
         "MIGRATION_CANDIDATE "
         f"image={request.image} revision={request.revision} "
-        f"migration_062_sha256={actual_sha} migrate_py_sha256={actual_runner_sha} "
-        "target_enforcement=verified inventory=001-062"
+        f"migration_063_sha256={actual_sha} migrate_py_sha256={actual_runner_sha} "
+        "target_enforcement=verified inventory=001-063"
     )
-    if actual_sha != request.expected_migration_062_sha256:
-        raise MigrationError("Actual migration 062 SHA-256 does not match the production candidate receipt.")
+    if actual_sha != request.expected_migration_063_sha256:
+        raise MigrationError("Actual migration 063 SHA-256 does not match the production candidate receipt.")
     if actual_runner_sha != request.expected_migrate_py_sha256:
         raise MigrationError("Actual migrate.py SHA-256 does not match the production candidate receipt.")
-    emit("MIGRATION_RECEIPT_PASS expected_sha256=" + request.expected_migration_062_sha256)
+    emit("MIGRATION_RECEIPT_PASS expected_sha256=" + request.expected_migration_063_sha256)
 
     database_id = _running_database_container(compose, docker, request.image)
     ledger_state = _classify_ledger(_read_ledger(database_id, docker))
     if ledger_state == "already_applied":
-        emit("ALREADY APPLIED 062; no migration container was run.")
+        emit("ALREADY APPLIED 063; no migration container was run.")
         return {
             "operation": "migrate",
-            "target": "062",
+            "target": "063",
             "status": "already_applied",
             "image": request.image,
             "revision": request.revision,
-            "migration_062_sha256": actual_sha,
+            "migration_063_sha256": actual_sha,
             "migrate_py_sha256": actual_runner_sha,
             "migration_inventory": inventory,
         }
@@ -487,7 +487,7 @@ def run_migration(
     # `start`, or `restart`; Compose's `run --no-deps` must not start services.
     if _running_database_container(compose, docker, request.image) != database_id:
         raise MigrationError("Catalog database container changed after the ledger precheck; migration refused.")
-    emit("LEDGER_PRECHECK_PASS applied=001-061 target=062")
+    emit("LEDGER_PRECHECK_PASS applied=001-062 target=063")
     result_output = _compose(
         compose,
         "api",
@@ -501,44 +501,44 @@ def run_migration(
         MIGRATION_SERVICE,
         "terento-catalog-migrate",
         "--target",
-        "062",
+        "063",
     )
     output_lines = [line.strip() for line in result_output.splitlines() if line.strip()]
     if output_lines == ["Applied migrations: none"]:
-        # A legacy/non-cooperating operator may have applied 062 after our
+        # A legacy/non-cooperating operator may have applied 063 after our
         # precheck. Treat only the exact resulting ledger as an explicit
         # successful no-op; never misreport it as this command applying SQL.
         if _running_database_container(compose, docker, request.image) != database_id:
             raise MigrationError("Catalog database container changed during the migration attempt.")
         if _classify_ledger(_read_ledger(database_id, docker)) != "already_applied":
-            raise MigrationError("Migration runner returned no-op but the exact 062 ledger was not confirmed.")
-        emit("ALREADY APPLIED 062; no migration change was made by this invocation.")
+            raise MigrationError("Migration runner returned no-op but the exact 063 ledger was not confirmed.")
+        emit("ALREADY APPLIED 063; no migration change was made by this invocation.")
         return {
             "operation": "migrate",
-            "target": "062",
+            "target": "063",
             "status": "already_applied",
             "image": request.image,
             "revision": request.revision,
-            "migration_062_sha256": actual_sha,
+            "migration_063_sha256": actual_sha,
             "migrate_py_sha256": actual_runner_sha,
             "migration_inventory": inventory,
         }
-    if output_lines != ["Applied migrations: 062"]:
-        raise MigrationError("Migration runner did not report exactly 'Applied migrations: 062'.")
+    if output_lines != ["Applied migrations: 063"]:
+        raise MigrationError("Migration runner did not report exactly 'Applied migrations: 063'.")
     if _running_database_container(compose, docker, request.image) != database_id:
         raise MigrationError("Catalog database container changed before the migration postcondition check.")
     if _classify_ledger(_read_ledger(database_id, docker)) != "already_applied":
-        raise MigrationError("Migration runner reported success but the exact 001-062 ledger was not confirmed.")
-    emit("MIGRATION_POSTCONDITION_PASS applied=001-062")
-    emit("Applied migrations: 062")
-    emit("MIGRATION_PASS target=062 revision=" + request.revision)
+        raise MigrationError("Migration runner reported success but the exact 001-063 ledger was not confirmed.")
+    emit("MIGRATION_POSTCONDITION_PASS applied=001-063")
+    emit("Applied migrations: 063")
+    emit("MIGRATION_PASS target=063 revision=" + request.revision)
     return {
         "operation": "migrate",
-        "target": "062",
+        "target": "063",
         "status": "applied",
         "image": request.image,
         "revision": request.revision,
-        "migration_062_sha256": actual_sha,
+        "migration_063_sha256": actual_sha,
         "migrate_py_sha256": actual_runner_sha,
         "migration_inventory": inventory,
     }
