@@ -387,7 +387,7 @@ class CatalogAPITests(unittest.TestCase):
             self.assertEqual(statistics.status, 200)
             self.assertIn(b">Maps</h1>", statistics_body)
             self.assertIn(b"7 days", statistics_body)
-            self.assertIn(b"id='map-statistics-installs-title'>Map installs", statistics_body)
+            self.assertIn(b"id='map-statistics-installs-title'>Installs", statistics_body)
         finally:
             server.shutdown()
             server.server_close()

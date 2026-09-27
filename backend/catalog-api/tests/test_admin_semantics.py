@@ -1077,8 +1077,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertLess(body.index("id='map-statistics-coverage'"), body.index("id='map-statistics-provider-table'"))
         self.assertIn("Top countries", body)
         self.assertIn("Maps by provider", body)
-        self.assertIn("Map downloads", body)
-        self.assertIn("Map installs", body)
+        self.assertIn(">Downloads</h2>", body)
+        self.assertIn(">Installs</h2>", body)
         self.assertNotIn("Popular maps", body)
         self.assertNotIn("id='regions-view'", body)
 
@@ -1111,7 +1111,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
         self.assertIn("Install succeeded: 3", body)
-        self.assertIn("class='overview-chart-line overview-chart-success'", body)
+        self.assertIn("class='overview-chart-success'", body)
+        self.assertIn("<rect", body)
+        self.assertNotIn("<polyline", body)
+        self.assertNotIn("<circle", body)
         self.assertNotIn("Custom install</span>", body)
         self.assertNotIn("Custom .img: successful manual installations.", body)
 
@@ -1134,6 +1137,94 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("overview-chart-download-zero", body)
         self.assertIn("observed zero increase between checks", body)
 
+    def test_download_chart_labels_release_markers_and_multiple_releases(self):
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {
+                    "bucket": "2026-09-11T19:00:00Z",
+                    "observed_at": "2026-09-11T19:00:00Z",
+                    "state": "discontinuity",
+                    "discontinuity_reason": "population_change",
+                    "dmg_count": None,
+                    "zip_count": None,
+                    "release_markers": [{
+                        "id": "release-37",
+                        "label": "beta.15 · build 37",
+                    }],
+                },
+                {
+                    "bucket": "2026-09-11T20:00:00Z",
+                    "observed_at": "2026-09-11T20:00:00Z",
+                    "state": "discontinuity",
+                    "dmg_count": None,
+                    "zip_count": None,
+                    "release_markers": [
+                        {"id": "release-38", "label": "beta.16 · build 38"},
+                        {"id": "release-39", "label": "beta.17 · build 39"},
+                    ],
+                },
+            ],
+        })
+        self.assertIn("New release · beta.15 · build 37", body)
+        self.assertIn("New releases · 2", body)
+        self.assertIn("beta.16 · build 38", body)
+        self.assertIn("Data boundary", body)
+        self.assertIn("asset or release population changed", body)
+        self.assertNotIn(">Unknown<", body)
+
+    def test_download_chart_sparse_zero_heavy_and_marker_geometry_stays_separate(self):
+        import xml.etree.ElementTree as ET
+
+        trend = [
+            {
+                "bucket": f"2026-09-11T{hour:02d}:00:00Z",
+                "observed_at": f"2026-09-11T{hour:02d}:00:00Z",
+                "dmg_count": 1 if hour == 12 else 0,
+                "zip_count": 0,
+                "state": "observed_increase" if hour == 12 else "observed_zero",
+                "contains_discontinuity": hour == 12,
+                "discontinuity_reason": "counter_decrease" if hour == 12 else None,
+                "release_markers": (
+                    [
+                        {"id": "release-36", "label": "beta.15 · build 36"},
+                        {"id": "release-37", "label": "beta.15 · build 37"},
+                    ]
+                    if hour == 12 else []
+                ),
+            }
+            for hour in range(24)
+        ]
+        body = _overview_downloads_chart({"hasData": True, "trend": trend}, "Europe/Vilnius")
+        desktop = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        dmg_bars = [node for node in desktop.findall(".//rect") if node.get("class") == "overview-chart-download-dmg"]
+        marker_texts = [
+            node for node in desktop.findall(".//text")
+            if node.text in {"New releases · 2", "Data boundary"}
+        ]
+        axis_labels = [
+            node for node in desktop.findall(".//text")
+            if node.get("y") == "252" and node.text
+        ]
+
+        self.assertEqual(len(dmg_bars), 1)
+        self.assertGreaterEqual(float(dmg_bars[0].get("height")), 3)
+        self.assertIn("Download interval: .dmg downloads: 0", body)
+        self.assertIn("New releases · 2", body)
+        self.assertIn("Data boundary", body)
+        self.assertTrue(marker_texts)
+        self.assertTrue(all(float(node.get("y")) < 42 for node in marker_texts))
+        self.assertTrue(axis_labels)
+        self.assertLessEqual(float(axis_labels[-1].get("x")), 708)
+        mobile = ET.fromstring(body[body.rindex("<svg"):body.rindex("</svg>") + 6])
+        mobile_axis_labels = [
+            node for node in mobile.findall(".//text")
+            if node.get("y") == "212" and node.text
+        ]
+        self.assertTrue(mobile_axis_labels)
+        self.assertEqual(mobile_axis_labels[-1].get("text-anchor"), "end")
+        self.assertIn("viewBox='0 0 360 220'", body)
+
     def test_download_chart_stacks_file_types_in_one_installation_style_bar(self):
         import xml.etree.ElementTree as ET
 
@@ -1154,11 +1245,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             float(bars[0].attrib["y"]),
             places=1,
         )
-        self.assertAlmostEqual(
-            sum(float(bar.attrib["height"]) for bar in bars),
-            206 * 4 / 5,
-            places=1,
-        )
+        self.assertAlmostEqual(sum(float(bar.attrib["height"]) for bar in bars), 184 * 4 / 5, places=1)
         self.assertIn("<clipPath id='overview-download-bar-clip-0'>", body)
 
     def test_download_chart_uses_selected_period_bucket_and_label(self):
@@ -1195,8 +1282,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         })
         self.assertNotIn("overview-chart-download-zero", body)
         self.assertIn("observed zero increase between checks", body)
-        self.assertIn("overview-chart-download-unknown", body)
-        self.assertIn("interval unknown", body)
+        self.assertIn("overview-chart-download-boundary", body)
+        self.assertIn("Data boundary", body)
+        self.assertIn("interval cannot be compared", body)
 
     def test_download_chart_omits_zero_markers_in_desktop_and_compact_svgs(self):
         import re
@@ -1251,7 +1339,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
         bars = svg.findall("g/rect")
         self.assertEqual(len(bars), 2)
-        self.assertNotIn("overview-chart-download-unknown", body)
+        self.assertNotIn("overview-chart-download-boundary", body)
         self.assertIn("legacy observed counter delta", body)
         self.assertIn("population comparability unconfirmed", body)
 
@@ -1269,7 +1357,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         bars = svg.findall("g/rect")
         self.assertEqual(len(bars), 1)
         self.assertIn(".dmg downloads: 1", body)
-        self.assertNotIn("overview-chart-download-unknown", body)
+        self.assertNotIn("overview-chart-download-boundary", body)
 
     def test_download_chart_marks_partial_known_total_and_preserves_unknown_interval(self):
         body = _overview_downloads_chart({
@@ -1290,8 +1378,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("overview-chart-download-zero", body)
         self.assertIn("partial known total", body)
         self.assertIn("observed increase across 10 Sep–10 Sep", body)
-        self.assertIn("overview-chart-download-unknown", body)
-        self.assertIn("1 unknown interval retained", body)
+        self.assertIn("overview-chart-download-boundary", body)
+        self.assertIn("Data boundary", body)
+        self.assertIn("1 data boundary retained", body)
 
     def test_download_chart_uses_discrete_hourly_slots_not_observation_minutes(self):
         import xml.etree.ElementTree as ET
@@ -1404,7 +1493,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             body,
         )
 
-    def test_time_chart_uses_lines_and_combines_custom_successes(self):
+    def test_time_chart_uses_stacked_bars_and_combines_custom_successes(self):
         import xml.etree.ElementTree as ET
         from terento_catalog.admin import _overview_trend_chart
         body = _overview_trend_chart([{
@@ -1412,42 +1501,164 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "failed_count": 1, "custom_count": 3,
         }], "hour")
         svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
-        lines = svg.findall("polyline")
-        circles = svg.findall("circle")
-        self.assertEqual(len(lines), 3)
-        self.assertEqual(len(circles), 3)
+        bars = svg.findall("g/rect")
+        self.assertEqual(len(bars), 2)
+        self.assertEqual(bars[0].attrib["x"], bars[1].attrib["x"])
+        self.assertAlmostEqual(
+            float(bars[1].attrib["y"]) + float(bars[1].attrib["height"]),
+            float(bars[0].attrib["y"]),
+            places=1,
+        )
+        self.assertAlmostEqual(sum(float(bar.attrib["height"]) for bar in bars), 202 * 6 / 8, places=1)
+        self.assertNotIn("<polyline", body)
+        self.assertNotIn("<circle", body)
         self.assertIn("Install succeeded: 5", body)
         self.assertIn("Install failed: 1", body)
-        self.assertNotIn("<rect", body)
 
-    def test_map_overview_uses_a_server_compatible_bucket_expression(self):
-        database = RecordingDatabase()
+    def test_map_overview_delegates_metrics_and_trend_to_canonical_read_model(self):
+        class CanonicalDatabase(RecordingDatabase):
+            def __init__(self):
+                super().__init__()
+                self.metric_filters = []
+                self.trend_filters = []
+
+            def map_statistics(self, filters=None, **_kwargs):
+                self.metric_filters.append(filters)
+                return [{
+                    "event_type": "INSTALL_SUCCEEDED",
+                    "outcome": "SUCCEEDED",
+                    "provider_id": "freizeitkarte",
+                    "event_count": 4,
+                    "operation_count": 2,
+                    "first_occurred_at": datetime(2026, 9, 1, tzinfo=timezone.utc),
+                }]
+
+            def map_statistics_trend(self, filters, *, period, time_zone="UTC"):
+                self.trend_filters.append((filters, period, time_zone))
+                return ([{
+                    "bucket": "2026-09-01T00:00:00Z",
+                    "success_count": 2,
+                    "failed_count": 0,
+                    "custom_count": 0,
+                }], "day")
+
+        database = CanonicalDatabase()
         since = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
         snapshot = database.admin_overview_map_snapshot(since, period="7d")
 
         self.assertEqual(snapshot["bucket"], "day")
-        trend_query, trend_parameters = next(
-            (query, parameters)
-            for query, parameters in database.calls
-            if parameters == (since, "UTC", since, "UTC", "UTC")
+        self.assertEqual(database.metric_filters, [{"dateFrom": since}, {}])
+        self.assertEqual(database.trend_filters, [({"dateFrom": since}, "7d", "UTC")])
+        self.assertEqual(snapshot["completedInstallCount"], 2)
+        self.assertEqual(snapshot["failedInstallCount"], 0)
+        self.assertEqual(snapshot["eventCount"], 4)
+        self.assertIn("self.map_statistics_trend(", inspect.getsource(Database.admin_overview_map_snapshot))
+        self.assertIn("period_metrics = _canonical_map_statistics_summary(canonical_rows)", inspect.getsource(Database.admin_overview_map_snapshot))
+
+    def test_dashboard_and_maps_reconcile_on_one_all_time_canonical_dataset(self):
+        canonical_rows = [
+            {
+                "event_type": "INSTALL_SUCCEEDED",
+                "outcome": "SUCCEEDED",
+                "provider_id": "freizeitkarte",
+                "event_count": 96,
+                "operation_count": 96,
+                "first_occurred_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            },
+            {
+                "event_type": "INSTALL_FAILED",
+                "outcome": "FAILED",
+                "provider_id": "freizeitkarte",
+                "event_count": 10,
+                "operation_count": 10,
+                "first_occurred_at": datetime(2026, 1, 2, tzinfo=timezone.utc),
+            },
+        ]
+        trend = [{
+            "bucket": "2026-01-01T00:00:00Z",
+            "success_count": 96,
+            "failed_count": 10,
+            "custom_count": 0,
+        }]
+
+        class CanonicalDatabase(RecordingDatabase):
+            def __init__(self):
+                super().__init__()
+                self.trend_filters = []
+
+            def map_statistics(self, filters=None, **_kwargs):
+                return list(canonical_rows)
+
+            def map_statistics_trend(self, filters, *, period, time_zone="UTC"):
+                self.trend_filters.append((filters, period, time_zone))
+                return (list(trend), "day")
+
+        database = CanonicalDatabase()
+        dashboard = database.admin_overview_map_snapshot(
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            period="all",
+            time_zone="Europe/Vilnius",
         )
-        self.assertIn("timezone(%s, e.occurred_at)", trend_query)
-        self.assertIn("date_trunc('day', local_occurred_at)", trend_query)
-        self.assertIn("AT TIME ZONE %s", trend_query)
-        self.assertNotIn("date_trunc(%s", trend_query)
-        self.assertEqual(trend_parameters, (since, "UTC", since, "UTC", "UTC"))
-        self.assertIn("WHEN c.provider_id = 'custom'", trend_query)
-        self.assertIn("NOT EXISTS", trend_query)
-        self.assertIn("AS custom_count", trend_query)
-        self.assertNotIn("selected_map_count", trend_query)
-        self.assertIn("installed.provider_id = e.provider", trend_query)
-        self.assertIn("e.phase_outcome = 'FAILED'", trend_query)
-        self.assertNotIn("e.write_started IS NOT FALSE", trend_query)
-        self.assertIn(
-            "event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')",
-            trend_query,
+        maps_summary = _map_statistics_summary(canonical_rows)
+        model_evidence = {
+            "attempts": 109,
+            "successful": 99,
+            "failed": 10,
+            "rate": 99 / 109 * 100,
+        }
+
+        self.assertEqual(
+            (dashboard["allTimeSuccessCount"], dashboard["allTimeFailedCount"]),
+            (maps_summary["completedInstalls"], maps_summary["failedInstalls"]),
         )
+        self.assertEqual((dashboard["allTimeSuccessCount"], dashboard["allTimeFailedCount"]), (96, 10))
+        self.assertAlmostEqual(dashboard["allTimeInstallSuccessRate"], 96 / 106 * 100)
+        self.assertAlmostEqual(maps_summary["installSuccessRate"], 96 / 106 * 100)
+        self.assertEqual(model_evidence, {
+            "attempts": 109,
+            "successful": 99,
+            "failed": 10,
+            "rate": 99 / 109 * 100,
+        })
+        self.assertNotEqual(dashboard["allTimeSuccessCount"], model_evidence["successful"])
+        self.assertEqual(
+            database.trend_filters,
+            [({"dateFrom": datetime(2026, 1, 1, tzinfo=timezone.utc)}, "all", "Europe/Vilnius")],
+        )
+
+        dashboard_body = overview_page(
+            {
+                "period": "all",
+                "timeZone": "Europe/Vilnius",
+                "data": dashboard,
+                "compatibility": {"hasData": False},
+                "downloads": {},
+                "providers": [],
+            },
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        maps_body = map_statistics_page(
+            {
+                "rows": canonical_rows,
+                "summary": maps_summary,
+                "allTimeSummary": maps_summary,
+                "trend": trend,
+            },
+            [{"id": "freizeitkarte", "name": "Freizeitkarte"}],
+            {"username": "operator"},
+            "csrf",
+            selected_filters={"period": "all"},
+        ).decode()
+        self.assertIn("aria-label='Successful, all time: 96'", dashboard_body)
+        self.assertIn("aria-label='Failed, all time: 10'", dashboard_body)
+        self.assertIn("aria-label='Success rate, all time: 90.6%'", dashboard_body)
+        self.assertIn("data-stat='completedInstalls'>96</strong>", maps_body)
+        self.assertIn("data-stat='failedInstalls'", maps_body)
+        self.assertIn("data-stat='installSuccessRate'>90.6%</strong>", maps_body)
+        self.assertIn("Install succeeded: 96", dashboard_body)
+        self.assertIn("Install failed: 10", dashboard_body)
 
     def test_map_overview_fallback_excludes_final_prewrite_failures(self):
         database = RecordingDatabase()
@@ -1455,13 +1666,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
         database.admin_overview_map_snapshot(since, period="24h")
 
-        trend_query, _ = next(
-            (query, parameters)
-            for query, parameters in database.calls
-            if parameters == (since, "UTC", since, "UTC", "UTC")
-        )
-        self.assertIn("e.phase_outcome = 'FAILED'", trend_query)
-        self.assertNotIn("e.write_started IS NOT FALSE", trend_query)
+        raw_queries = "\n".join(query for query, _ in database.calls)
+        self.assertIn("e.phase_outcome = 'FAILED'", raw_queries)
+        self.assertNotIn("e.write_started IS NOT FALSE", raw_queries)
         self.assertIn("A final compatibility failure is an installation", inspect.getsource(Database.admin_overview_map_snapshot))
 
         body = overview_page({
@@ -2719,8 +2926,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         rows = [{"provider_id":"p","map_package_id":"m","region":"LT","region_country":"LT","event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":3}]
         body = map_statistics_page({"rows":rows,"summary":_map_statistics_summary(rows),"trend":[]}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
         main = body.split("<main",1)[1]
-        for text in ("Map downloads", "Map installs", "Updates", "Provider comparison", "Top countries", "Maps by provider", "Event detail"):
+        for text in ("Downloads", "Installs", "Updates", "Provider comparison", "Top countries", "Maps by provider", "Event detail"):
             self.assertIn(text, main)
+        self.assertNotIn("Map downloads", main)
+        self.assertNotIn("Map installs", main)
         event_detail = main.split("id='map-statistics-event-detail'", 1)[1].split("</details>", 1)[0]
         for primary_id in (
             "id='map-statistics-world-map'",

@@ -236,6 +236,16 @@ observed zero; an absent check is unknown and is not filled with zero. Counter
 decreases and confirmed release/asset-population changes are discontinuities.
 Missing newly introduced metadata must not automatically invalidate historical counter observations. Observed counter deltas and population-comparability confidence are separate dimensions.
 
+The collector retains a separate small `github_release_marker` population from
+the authoritative GitHub release collection. A marker is attributable to a
+chart interval only when its stable GitHub release identity is retained and its
+published time falls strictly after the previous observation and at or before
+the current observation. This permits historical release backfill and multiple
+releases in one chart bucket without binding release identity to one snapshot.
+Release names and dates are never inferred from a counter jump. Legacy rows
+without a retained marker, asset-only changes, and counter decreases remain
+unattributed boundaries.
+
 The GitHub read model uses these meanings:
 
 For the 24-hour trend read model, `hour_start` is the canonical hourly floor of
@@ -254,9 +264,11 @@ The trend `state` carries interval continuity and rendering semantics;
 - `baseline`: the first observation in the retained history; it has no delta.
 Every trusted non-negative interval is rendered as a normal bar, including a
 trusted `+1` in the final slot. A counter decrease or confirmed population
-change remains an unknown interval and is rendered with a visible `Unknown`
-label and accessible description; it is never represented as a dashed
-zero-only value.
+change remains an unattributed data boundary and is rendered with a visible
+`Data boundary` label and accessible reason; it is never represented as a
+dashed zero-only value. Independently retained release markers in the same
+interval add `New release` or `New releases · N`; both labels may coexist and
+the exact release labels remain available in accessible text.
 
 - `legacy`: a nonnegative counter delta retained from an interval where one or
   both observations lack the post-057 asset count or population fingerprint.

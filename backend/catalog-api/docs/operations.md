@@ -37,54 +37,52 @@ For a read-only provider check:
 terento-catalog-backfill-sizes --dry-run
 ```
 
-## Live installation-statistics migration 062
+## GitHub release-marker migration 063
 
-The 2026-09-23 live audit and confirmed schema drift are recorded in the
-[062 runbook](installation-statistics-062-live-runbook.md). Three production
-operations are distinct:
+Migration 063 is the additive production schema change for authoritative
+GitHub release markers. It is independent of historical snapshot rows and is
+applied through the fixed migration-only operation before the API image is
+deployed. Three production operations remain distinct:
 
 - **STATUS** — `terento-deploy api status` reads existing container/image
   metadata and the migration ledger in an explicit read-only transaction. It
   does not call HTTP health, pull an image, run maintenance, or mutate services.
-- **MIGRATE** — `terento-deploy api migrate --target 062 ...` is a root-owned,
+- **MIGRATE** — `terento-deploy api migrate --target 063 ...` is a root-owned,
   migration-only source path pinned to a registry digest, revision, migration
   SQL hash, and runner hash. It runs only the one-shot migration service; the
   API and scheduler are not restarted or replaced.
 - **DEPLOY** — the existing `terento-deploy api <digest> <revision>` remains a
   separate service deployment operation. Its combined deploy behavior is not
-  a substitute for target-062 migration. The API workflow no longer deploys on
-  pushes; a manual dispatch requires a positive target-062 completion input
+  a substitute for target-063 migration. The API workflow no longer deploys on
+  pushes; a manual dispatch requires a positive target-063 confirmation input
   and the owner-controlled `TERENTO_FIXED_OPS_INSTALLED=true` repository
-  variable. Migration-source pushes are excluded as an additional guard, and
-  the new helper requires a valid candidate identity and rejects deployment
-  unless candidate inventory and live ledger both match exactly 001–062. DEPLOY
+  variable. The workflow runs MIGRATE first, and the helper requires a valid
+  candidate identity and rejects deployment unless candidate inventory and
+  live ledger both match exactly 001–063. DEPLOY
   does not run a migrator; a pending/later schema blocks service replacement.
-  Images with 063+ are refused until a separately reviewed migration gate is
-  implemented. The variable is not set by this task.
+  Images with 064+ are refused until a separately reviewed migration gate is
+  implemented.
 
 The candidate source includes the canonical helper, migration module,
-first-install-aware installer, tests, and the tracked SSH template. None is
-installed on the VPS. The existing forced-SSH entrypoint remains unchanged;
-the template is not installed by this helper installer, so those remote
-command forms are not available. The owner-run installer requires a clean
-committed checkout and a separate authorized apply step. No production
-migration or deployment is authorized by this code.
+first-install-aware installer, tests, the tracked SSH template, and the
+scoped CI migration request script. The owner-run installer requires a clean
+committed checkout and a separate authorized apply step; no ad-hoc Docker or
+shell command is a substitute for the fixed workflow path.
 
 The operations share one non-blocking host lock for deploy and migration;
 read-only status does not take the lock. The migration runner verifies an
-immutable candidate and the exact 001–062 image inventory, requires a live
-ledger exactly at 001–061 (or reports safe `ALREADY APPLIED` for exactly
-001–062), and rejects gaps or later entries. Its 062 SQL statements and ledger
+immutable candidate and the exact 001–063 image inventory, requires a live
+ledger exactly at 001–062 (or reports safe `ALREADY APPLIED` for exactly
+001–063), and rejects gaps or later entries. Its 063 SQL statements and ledger
 insert execute in one database transaction. For the current reviewed runner,
-any 063+ migration file is reported by name and rejected before DB execution.
+any 064+ migration file is reported by name and rejected before DB execution.
 
 `GET /health` is read-only in this candidate source: it checks DB readiness
 but does not run retention. The existing scheduler performs retention once
 per configured collector cycle. The local default is daily at 03:00 UTC, and
 the production scheduler configuration was read as
 `COLLECTOR_SCHEDULE_UTC=03:00` on 2026-09-23. The 24-month cutoff is unchanged;
-daily cleanup may lag by up to 24 hours, which is accepted behavior. This
-candidate implementation has not been deployed. See the
+daily cleanup may lag by up to 24 hours, which is accepted behavior. See the
 [production operations protocol](production-operations-protocol.md) and
 [VPS-only recovery procedure](production-db-recovery.md) for exact gates. The
 last read-only shell observation (2026-09-23) confirmed `pg_dump` 16.15 inside
@@ -93,15 +91,14 @@ path, and the selected root-only destination still need read-only verification.
 No PostgreSQL archive or isolated restore validation exists. Hostinger's
 refreshed 2026-09-24 listing contains only the older whole-VPS points
 `52757820` and `51894425`, and no usable current snapshot. Neither is accepted
-as the fresh pre-062 recovery point.
+as the fresh pre-063 recovery point.
 
-062 remains **NOT READY** for live approval or execution until the candidate
-source is committed, reviewed, pushed and built into a verified immutable
-image; both recovery gates pass (fresh Hostinger recovery point and validated
-VPS-local PostgreSQL 16 restore); and the helper is separately installed and
-validated with STATUS. Each operation requires its own explicit owner
-authorization. Do not call Docker/migrator directly, create a backup, install
-a helper, deploy, or run the migration without the applicable authorization.
+Before any live 063 execution, the candidate must be committed, reviewed,
+pushed and built into a verified immutable image; the recovery gates must pass;
+and the owner-managed helper installation must be validated with STATUS. Each
+operation requires its own explicit owner authorization. Do not call Docker/migrator directly,
+create a backup, install a helper, deploy, or run the migration without the
+applicable authorization.
 If execution status is uncertain, use the SELECT-only postcheck; never replay
 SQL or downgrade.
 

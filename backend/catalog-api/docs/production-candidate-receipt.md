@@ -33,11 +33,11 @@ deletion/admin permissions that the candidate workflow intentionally lacks;
 the full-SHA/run-ID/attempt tag is unique to one workflow attempt.
 
 Before building, verify at minimum that the commit tracks the complete
-canonical migration set through 062, the target-limited migration runner, its
-tests, the 062 precheck and postcheck, and the reviewed schema/operations
+canonical migration set through 063, the target-limited migration runner, its
+tests, the target-063 read-only checks, and the reviewed schema/operations
 contracts. Audit the actual image build context and workflow for additional
 normative inputs. The candidate must not contain an unreviewed migration after
-062. If a required input is missing, ignored, untracked, or differs from the
+063. If a required input is missing, ignored, untracked, or differs from the
 reviewed content, stop; do not build.
 
 ### Migration 060/061 source provenance
@@ -77,7 +77,7 @@ value.
 ### Artifact identity
 
 - Repository: `VooZ2/terento`
-- Candidate purpose / scope: `[e.g. migration-only candidate for target 062]`
+- Candidate purpose / scope: `[e.g. migration-only candidate for target 063]`
 - Source commit (full immutable Git SHA): `[40-character SHA]`
 - Source ref: `[ref]`
 - Clean source checkout verified: `[yes/no; CI run or evidence]`
@@ -90,15 +90,15 @@ value.
 
 ### Migration and contract identity
 
-- Canonical migration set present in image: `[001–062; verification evidence]`
+- Canonical migration set present in image: `[001–063; verification evidence]`
 - Later/unreviewed migration files present: `[none, or list — any item is STOP]`
 - 060/061 source SHA-256 and provenance limitation: `[values plus explicit no-live-byte-parity statement]`
-- `062_reconcile_installation_statistics_schema.sql` SHA-256: `[64 lowercase hex characters]`
+- `063_github_download_release_metadata.sql` SHA-256: `[64 lowercase hex characters]`
 - `terento_catalog/migrate.py` source path in image: `[path]`
 - `migrate.py` SHA-256: `[64 lowercase hex characters]`
 - Production operations source hashes: `[terento-deploy.py, terento-deploy-migration.py, install-terento-production-ops.py, and terento-deploy-ssh-entry.py.in; exact clean-source SHA-256 values, with the template marked not installed]`
 - Migration runner version/revision: `[package version plus source commit; do not infer from tag]`
-- Runner invocation validated for this artifact: `[exact --target 062 evidence]`
+- Runner invocation validated for this artifact: `[exact --target 063 evidence]`
 - Installation-policy schema version: [integer from the tracked schema source]
 - Authorization contract revision: [source commit and tracked contract path/hash]
 - Schema/contract revision: `[commit SHA and relevant tracked paths/versions]`
@@ -113,8 +113,8 @@ source-tree hash alone does not prove what the image contains.
 | Required evidence | Result | Run / log reference |
 | --- | --- | --- |
 | Backend migration target and ledger validation tests | `[PASS/FAIL]` | `[CI URL, job, log]` |
-| 061/062 migration reconciliation and rollback tests | `[PASS/FAIL]` | `[CI URL, job, log]` |
-| PostgreSQL-backed 062 migration regression (when required by the workflow) | `[PASS/FAIL/N/A with reason]` | `[CI URL, job, log]` |
+| 061/062 reconciliation plus 063 migration target and rollback tests | `[PASS/FAIL]` | `[CI URL, job, log]` |
+| PostgreSQL-backed 063 migration regression (when required by the workflow) | `[PASS/FAIL/N/A with reason]` | `[CI URL, job, log]` |
 | Backend regression suite for the candidate commit | `[PASS/FAIL]` | `[CI URL, job, log]` |
 | Image build and image-content verification | `[PASS/FAIL]` | `[CI URL, job, log]` |
 | Production operations, target, lock, and SSH boundary contracts | `[PASS/FAIL]` | `[CI URL, job, log]` |
@@ -131,8 +131,8 @@ dirty tree, or a mutable image tag is not a valid receipt.
 - Verification timestamp (UTC, RFC 3339): `[timestamp]`
 - Exact target/environment confirmed independently: `[yes/no; non-secret evidence]`
 - Candidate digest and embedded revision re-verified: `[yes/no; evidence]`
-- 062 SQL and `migrate.py` hashes re-verified inside the candidate image: `[yes/no; evidence]`
-- Root-owned fixed operation accepts only the approved immutable digest, expected revision, and explicit target `062`: `[yes/no; installed version/source hash]`
+- 063 SQL and `migrate.py` hashes re-verified inside the candidate image: `[yes/no; evidence]`
+- Root-owned fixed operation accepts only the approved immutable digest, expected revision, and explicit target `063`: `[yes/no; installed version/source hash]`
 - Migration-only path is serialized against deployment and does not restart/replace API or scheduler: `[yes/no; test/evidence]`
 - Read-only precheck and recovery gates satisfied: `[yes/no; references]`
 - Operator decision: `[STOP / eligible for a separate explicit approval]`
@@ -147,16 +147,16 @@ At minimum, audit and track the applicable files below at the source commit.
 This is a gate list, not an assertion that every path is currently tracked or
 that the list exhausts the image build context.
 
-- Migration SQL: the beta's canonical `060_missing_diagnostic_review_tasks.sql` and `061_indexnow_operational_observations.sql`, plus `062_reconcile_installation_statistics_schema.sql`. The alternate 060/061 source files are tracked only as non-executable `.sql.txt` provenance records under `backend/catalog-api/docs/migration-source-provenance/`.
+- Migration SQL: the beta's canonical `060_missing_diagnostic_review_tasks.sql`, `061_indexnow_operational_observations.sql`, `062_reconcile_installation_statistics_schema.sql`, and `063_github_download_release_metadata.sql`. The alternate 060/061 source files are tracked only as non-executable `.sql.txt` provenance records under `backend/catalog-api/docs/migration-source-provenance/`.
 - Exact-target runner and packaging: `backend/catalog-api/src/terento_catalog/migrate.py`, `backend/catalog-api/pyproject.toml`, and `backend/catalog-api/Dockerfile`.
-- 062 verification SQL: `backend/catalog-api/tools/installation-statistics-schema-preflight.sql`, `installation-statistics-062-live-precheck.sql`, and `installation-statistics-062-live-postcheck.sql`.
-- Migration regressions: `backend/catalog-api/tests/test_migration_061_reconciliation.py` (version uniqueness and archived-source integrity), `test_migration_target_062.py`, `test_migration_062_reconciliation.py`, and `migration_062_postgres.cjs`, plus any shared migration tests exercised by the workflow.
+- Target-063 verification: the fixed migration runner's read-only ledger and image-identity checks, plus the authoritative release-marker tests.
+- Migration regressions: `backend/catalog-api/tests/test_migration_061_reconciliation.py` (version uniqueness and archived-source integrity), `test_migration_target_062.py`, `test_migration_062_reconciliation.py`, and the 063 release-marker tests, plus any shared migration tests exercised by the workflow.
 - Reviewed contracts and operator procedure: `backend/catalog-api/docs/schema.md`, `backend/catalog-api/docs/operations.md`, `backend/catalog-api/docs/installation-statistics-062-live-runbook.md`, and `contracts/STATISTICS_CONTRACT.md` when affected by the candidate.
 - Build/deploy definition: `.github/workflows/publish-vps-images.yml` and `.github/workflows/deploy-catalog-api.yml`, plus any scripts they invoke that affect the artifact or its production authorization.
-- Production operation boundary for a 062 candidate: `scripts/infra/terento-deploy.py`, `terento-deploy-migration.py`, `install-terento-production-ops.py`, `terento-deploy-ssh-entry.py.in` if remote status/migrate is required, and all corresponding tests (`test-terento-deploy.py`, `test-terento-deploy-migration.py`, `test-install-terento-production-ops.py`, `test-terento-deploy-ssh-entry.py`). The SSH template is not installed by the helper installer; include its separately reviewed install/configuration source if it is needed.
+- Production operation boundary for a 063 candidate: `scripts/infra/terento-deploy.py`, `terento-deploy-migration.py`, `install-terento-production-ops.py`, `terento-deploy-ssh-entry.py.in`, `migrate-vps-image.sh`, and all corresponding tests. The SSH template is installed only through the separately reviewed owner-managed configuration.
 - Operation test integration: `Tests/run-ci-production-operations-contract-tests.sh`, `Tests/test-suites.json`, `Tests/README.md`, `Tests/ci-workflow-contract-tests.py`, and `Tests/run-ci-workflow-contract-tests.sh` where affected.
-- Candidate/deployment definitions: `.github/workflows/build-catalog-migration-candidate.yml`, `publish-vps-images.yml`, and `deploy-catalog-api.yml`; candidate builds trigger only on pushes to `terento/062-production-candidate`, and the workflow must not acquire production SSH credentials or deploy. Manual dispatch requires the workflow file on the default branch.
-- Current operator truth: `backend/catalog-api/docs/production-operations-protocol.md`, `production-db-recovery.md`, `operations.md`, and `installation-statistics-062-live-runbook.md`.
+- Candidate/deployment definitions: `.github/workflows/build-catalog-migration-candidate.yml`, `publish-vps-images.yml`, and `deploy-catalog-api.yml`; candidate builds trigger only on pushes to `terento/063-production-candidate`, and the candidate workflow must not acquire production SSH credentials or deploy. The beta deployment workflow runs the fixed migration-only operation before DEPLOY.
+- Current operator truth: `backend/catalog-api/docs/production-operations-protocol.md`, `production-db-recovery.md`, `operations.md`, and the historical 062 runbook where applicable.
 - Health/retention behavior and regression sources for this candidate: `backend/catalog-api/src/terento_catalog/http_api.py`, `scheduler.py`, and `db.py`; tests `backend/catalog-api/tests/test_http_api.py` and `test_scheduler.py`; plus `backend/catalog-api/README.md` and `Tests/run-backend-api-unit-tests.sh`.
 - The source tree/build context and all tested backend migration files remain normative. Ignored files under `internal/` or `deploy/` are insufficient; record the exact tracked paths and installed source revision/hash in the receipt.
 

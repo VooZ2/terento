@@ -164,6 +164,13 @@ application downloads and is omitted when no usable counter or trend data exists
 Activity is internally scrollable and must not force page height. A generic
 activity row has no Maps link unless an exact useful destination exists.
 
+Dashboard chart series use one stacked bar for each bucket: downloads are
+successful/failed, and installs are successful/failed/map update. A custom
+fresh success is combined into Successful; optional components and pre-write
+failures remain excluded by the statistics contract. The Maps page uses the
+short headings `Downloads` and `Installs`; Dashboard retains the outcome-first
+`Map downloads` and `Map installs` headings.
+
 Needs attention covers unresolved work across all dates. Counts and Inspect links
 must lead to the corresponding work even when the preview is truncated. Failures,
 linked issue work, identity/publication review, and provider/system problems remain
@@ -260,8 +267,11 @@ synthesize one telemetry stream from another.
 
 The App downloads chart shows observed public GitHub `.dmg` and `.zip` counter
 increases. Its baseline, zero, legacy, partial, gap, counter-reset, and population
-comparability semantics are owned by the statistics contract. It uses the
-available card width with only axis and clipping margins.
+comparability semantics are owned by the statistics contract. A counter reset or
+confirmed population change is labelled `Data boundary`, with the reason in
+accessible text; independently retained authoritative release markers may add
+`New release` or `New releases · N` in the same bucket. It uses the available
+card width with only axis and clipping margins.
 
 History remains compact and explicit. Icons and color supplement status text.
 Download phase icons remain static. Timestamps use the selected time zone.

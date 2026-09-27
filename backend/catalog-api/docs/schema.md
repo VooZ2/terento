@@ -143,9 +143,10 @@ type/package key prevents accidental duplicates.
 
 One cumulative observation of public GitHub release asset downloads for a UTC
 hour. The scheduler upserts the current hour so retries do not create duplicate
-rows. The table stores aggregate counters and a compact release/asset
-population identity; it does not retain release metadata, asset names,
-response bodies, or binaries. The Dashboard derives `.dmg` and `.zip` increases
+rows. Production schema through migration 063 stores aggregate counters, a
+compact release/asset population identity, and the separate release-marker
+population; it does not retain asset names, response bodies, or binaries. The
+Dashboard derives `.dmg` and `.zip` increases
 only between valid consecutive observations. The first observation is a
 baseline; unchanged counters are observed zero; nonnegative deltas from rows
 with missing population metadata remain legacy/unverified observations; counter
@@ -165,6 +166,22 @@ population changed.
 | `release_count` | `integer` | Number of public releases observed in the paginated read |
 | `asset_count` | `integer` | Number of counted `.dmg` and `.zip` assets in the observation; nullable for legacy rows |
 | `population_fingerprint` | `text` | Stable hash of counted release/asset identities; nullable for legacy rows |
+
+## `github_release_marker` (migration 063)
+
+The collector upserts the minimum immutable facts returned by GitHub's
+authoritative release list. This population is intentionally separate from
+hourly download snapshots so historical releases can be backfilled and several
+releases can share one chart bucket. Runtime readiness requires the complete
+target migration inventory; release markers are never inferred from snapshot
+dates or counter discontinuities.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `release_id` | `text` | Stable GitHub release ID, or tag fallback, and primary key |
+| `release_tag` | `text` | GitHub tag when available |
+| `release_label` | `text` | Reliable display label/version/build |
+| `published_at` | `timestamptz` | GitHub authoritative publication time |
 
 ## `admin_audit_log`
 
@@ -423,7 +440,7 @@ Only explicit `write_started=false` plus no remote object can receive
 general exclusion mechanism preserves historical evidence and does not infer
 missing write facts.
 
-The complete `2026-09-23` live schema preflight ran from
+The complete `2026-09-23` pre-063 live schema preflight ran from
 `tools/installation-statistics-schema-preflight.sql` as one audit inside a
 `READ ONLY` transaction (`transaction_read_only = on`) and ended with
 `ROLLBACK`. Of 25 expected objects, 24 matched. The live `schema_migrations`
@@ -436,11 +453,11 @@ indexes are absent; and the live `compatibility_model_statistics` view does
 not apply the exclusion filter. The exact missing-object matrix is recorded in
 the full preflight result and final task report. The original SQL executed for
 the live migration records is unknown because the history stores no content
-checksum. The new `062_reconcile_installation_statistics_schema.sql` is a local
-additive draft derived from the full preflight; isolated migration tests cover
-clean, live-like, and already-reconciled schemas, and confirm existing map
-events keep `map_result_index = NULL`. The draft has **not** been approved or
-applied. Do not treat the version marks or local SQL as proof of schema parity.
+checksum. The earlier `062_reconcile_installation_statistics_schema.sql`
+reconciliation is historical provenance for that pre-063 audit; the current
+063 release-marker migration is additive and does not alter those historical
+rows. Do not treat old version marks or local SQL as proof of current schema
+parity; use the exact 001–063 runtime gate and read-only postcheck.
 Historical map-download rows without a recorded result index remain `NULL`; the
 reconciliation does not invent or backfill historical `map_result_index`
 values.

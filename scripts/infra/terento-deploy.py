@@ -113,25 +113,25 @@ SELECT json_build_object(
   'schema', current_schema(),
   'postgresql_version', current_setting('server_version'),
   'highest_migration', (SELECT max(version)::text FROM schema_migrations),
-  'migration_062_applied', EXISTS (SELECT 1 FROM schema_migrations WHERE version = '062'),
+  'migration_063_applied', EXISTS (SELECT 1 FROM schema_migrations WHERE version = '063'),
   'server_time', clock_timestamp()::text,
   'timezone', current_setting('TimeZone')
 )::text;
 ROLLBACK;
 """
 
-def require_062_already_applied(image, digest, revision, labels):
+def require_063_already_applied(image, digest, revision, labels):
     """Prove the pinned API image and DB schema match; never migrate in deploy."""
-    migration_sha = labels.get('io.terento.migration.062.sha256')
+    migration_sha = labels.get('io.terento.migration.063.sha256')
     runner_sha = labels.get('io.terento.migrate.py.sha256')
     if not isinstance(migration_sha, str) or not re.fullmatch(r'[0-9a-f]{64}', migration_sha):
-        raise DeploymentError('API candidate must carry a valid migration 062 identity; deployment is refused.')
+        raise DeploymentError('API candidate must carry a valid migration 063 identity; deployment is refused.')
     if not isinstance(runner_sha, str) or not re.fullmatch(r'[0-9a-f]{64}', runner_sha):
         raise DeploymentError('API candidate must carry a valid migration runner identity; deployment is refused.')
     tool = migration_tool()
     arguments = [
-        '--target', '062', '--image', digest, '--revision', revision,
-        '--expected-migration-062-sha256', migration_sha,
+        '--target', '063', '--image', digest, '--revision', revision,
+        '--expected-migration-063-sha256', migration_sha,
         '--expected-migrate-py-sha256', runner_sha,
     ]
     try:
@@ -145,7 +145,7 @@ def validate_status(args):
     patterns = {
         '--candidate-digest': r'sha256:[0-9a-f]{64}',
         '--candidate-revision': r'[0-9a-f]{40}',
-        '--expected-migration-062-sha256': r'[0-9a-f]{64}',
+        '--expected-migration-063-sha256': r'[0-9a-f]{64}',
     }
     index = 0
     while index < len(args):
@@ -159,21 +159,21 @@ def validate_status(args):
         index += 2
     if ('--candidate-digest' in values) != ('--candidate-revision' in values):
         raise DeploymentError('Candidate digest and revision must be supplied together.')
-    if '--expected-migration-062-sha256' in values and '--candidate-digest' not in values:
+    if '--expected-migration-063-sha256' in values and '--candidate-digest' not in values:
         raise DeploymentError('Migration checksum requires a candidate digest and revision.')
     if not values:
         return None
     return {
         'digest': values.get('--candidate-digest'),
         'revision': values.get('--candidate-revision'),
-        'expected_migration_062_sha256': values.get('--expected-migration-062-sha256'),
+        'expected_migration_063_sha256': values.get('--expected-migration-063-sha256'),
     }
 
 def inspect_candidate(candidate):
     """Validate a locally cached immutable API image without pulling or running it."""
     digest = candidate.get('digest', '')
     revision = candidate.get('revision', '')
-    expected_sha = candidate.get('expected_migration_062_sha256')
+    expected_sha = candidate.get('expected_migration_063_sha256')
     if (not re.fullmatch(r'sha256:[0-9a-f]{64}', digest)
             or not re.fullmatch(r'[0-9a-f]{40}', revision)
             or (expected_sha is not None and not re.fullmatch(r'[0-9a-f]{64}', expected_sha))):
@@ -181,7 +181,7 @@ def inspect_candidate(candidate):
     image = PROJECTS['api']['image'] + '@' + digest
     request = {'digest': digest, 'expected_revision': revision}
     if expected_sha is not None:
-        request['expected_migration_062_sha256'] = expected_sha
+        request['expected_migration_063_sha256'] = expected_sha
     try:
         raw = docker('image', 'inspect', image, timeout=30)
     except subprocess.CalledProcessError as error:
@@ -204,14 +204,14 @@ def inspect_candidate(candidate):
         image_revision = labels.get('org.opencontainers.image.revision')
         if not isinstance(image_revision, str) or image_revision != revision:
             return {'status': 'revision_mismatch', 'request': request}
-        image_sha = labels.get('io.terento.migration.062.sha256')
+        image_sha = labels.get('io.terento.migration.063.sha256')
         if not isinstance(image_sha, str) or not re.fullmatch(r'[0-9a-f]{64}', image_sha):
-            return {'status': 'missing_migration_062_label', 'request': request}
+            return {'status': 'missing_migration_063_label', 'request': request}
         if expected_sha is not None and image_sha != expected_sha:
             return {
                 'status': 'expected_sha_mismatch',
                 'request': request,
-                'observed_migration_062_sha256': image_sha,
+                'observed_migration_063_sha256': image_sha,
             }
         return {
             'status': 'verified',
@@ -220,7 +220,7 @@ def inspect_candidate(candidate):
                 'image': image,
                 'source': source,
                 'revision': image_revision,
-                'migration_062_sha256': image_sha,
+                'migration_063_sha256': image_sha,
             },
         }
     except Exception:
@@ -317,7 +317,7 @@ def status(candidate=None):
         'schema': None,
         'postgresql_version': None,
         'highest_migration': None,
-        'migration_062_applied': None,
+        'migration_063_applied': None,
         'server_time': None,
         'timezone': None,
     }
@@ -425,7 +425,7 @@ def deploy(project, digest, commit):
         # Image labels are consistency checks, not cryptographic provenance.
         # Registry write access is a trusted release authority.
         if project == 'api':
-            require_062_already_applied(image, digest, commit, labels)
+            require_063_already_applied(image, digest, commit, labels)
         try:
             compose(project, image, 'up', '-d', '--no-deps', '--no-build', '--wait', '--wait-timeout', '120', *spec['services'])
             records = healthy_ids(project, image)
