@@ -1,0 +1,72 @@
+[
+  {
+    "model": "Venu 3 · 45 mm, AMOLED",
+    "variant": "45 mm, AMOLED",
+    "caseSizeMm": 45,
+    "displayType": "AMOLED",
+    "screenTechnology": "AMOLED",
+    "solar": null,
+    "inReach": null,
+    "family": "venu",
+    "familyName": "Venu",
+    "imageUrl": null,
+    "successfulInstallations": 1,
+    "lastSuccessfulInstallation": "2026-09-18T17:25:07+00:00"
+  },
+  {
+    "model": "Forerunner 265 · Standard",
+    "variant": "Standard",
+    "caseSizeMm": null,
+    "displayType": "AMOLED",
+    "screenTechnology": "AMOLED",
+    "solar": null,
+    "inReach": null,
+    "family": "forerunner",
+    "familyName": "Forerunner",
+    "imageUrl": null,
+    "successfulInstallations": 1,
+    "lastSuccessfulInstallation": "2026-09-18T17:25:07+00:00"
+  },
+  {
+    "model": "Instinct 2 · Solar",
+    "variant": "Solar",
+    "caseSizeMm": null,
+    "displayType": "Solar",
+    "screenTechnology": null,
+    "solar": true,
+    "inReach": null,
+    "family": "instinct",
+    "familyName": "Instinct",
+    "imageUrl": null,
+    "successfulInstallations": 1,
+    "lastSuccessfulInstallation": "2026-09-18T17:25:07+00:00"
+  },
+  {
+    "model": "Epix Pro (Gen 2) · 42 mm, AMOLED",
+    "variant": "42 mm, AMOLED",
+    "caseSizeMm": 42,
+    "displayType": "AMOLED",
+    "screenTechnology": "AMOLED",
+    "solar": null,
+    "inReach": null,
+    "family": "epix",
+    "familyName": "epix",
+    "imageUrl": null,
+    "successfulInstallations": 1,
+    "lastSuccessfulInstallation": "2026-09-18T17:25:07+00:00"
+  },
+  {
+    "model": "Vivoactive 5 · Standard",
+    "variant": "Standard",
+    "caseSizeMm": null,
+    "displayType": "AMOLED",
+    "screenTechnology": "AMOLED",
+    "solar": null,
+    "inReach": null,
+    "family": "vivoactive",
+    "familyName": "vívoactive",
+    "imageUrl": null,
+    "successfulInstallations": 1,
+    "lastSuccessfulInstallation": "2026-09-18T17:25:07+00:00"
+  }
+]

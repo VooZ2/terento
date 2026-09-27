@@ -37,6 +37,7 @@ jobs:
       - name: Validate public compatibility output
         run: |
           node Tests/shared-compatibility-data-tests.cjs
+          node Tests/compatibility-snapshot-growth-tests.cjs
           node Tests/site-compatibility-refresh-tests.cjs
           git diff --check
 
