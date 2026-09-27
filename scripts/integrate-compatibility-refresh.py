@@ -95,6 +95,16 @@ def dispatch_and_wait(workflow, branch, sha, reuse=False):
     return selected["databaseId"]
 
 
+def wait_for_pr_head(branch, sha):
+    for attempt in range(12):
+        pr = gh("pr", "view", branch, "--repo", REPO, "--json", "number,headRefOid")
+        if pr["headRefOid"] == sha:
+            return pr
+        if attempt < 11:
+            time.sleep(5)
+    raise RuntimeError("PR head changed unexpectedly")
+
+
 def commit_files(files, title):
     run("git", "add", "--", *files)
     allowed(run("git", "diff", "--cached", "--name-only").splitlines(), files)
@@ -149,10 +159,8 @@ def main():
     if not prs:
         run("gh", "pr", "create", "--repo", REPO, "--head", BRANCH, "--base", "beta",
             "--title", TITLE, "--body", MARKER + "\nGenerated public compatibility facts only. Required exact-head CI gates merge.")
-    pr = gh("pr", "view", BRANCH, "--repo", REPO, "--json", "number,headRefOid")
+    pr = wait_for_pr_head(BRANCH, sha)
     number = str(pr["number"])
-    if pr["headRefOid"] != sha:
-        raise RuntimeError("PR head changed unexpectedly")
     # GITHUB_TOKEN suppresses pull_request events: explicitly test this exact head.
     dispatch_and_wait("swift-ci.yml", BRANCH, sha)
     run("gh", "pr", "checks", number, "--repo", REPO, "--required", "--watch",

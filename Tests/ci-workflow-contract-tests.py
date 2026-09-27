@@ -67,6 +67,16 @@ def verify_refresh_flow():
     assert not any(event[0] == "run" and event[1][:3] == ("git", "diff", "--")
                    for event in unchanged_events)
 
+    delayed_sha = "c" * 40
+    with patch.object(flow, "gh", side_effect=[
+        {"number": 310, "headRefOid": "b" * 40},
+        {"number": 310, "headRefOid": delayed_sha},
+    ]), patch.object(flow.time, "sleep") as sleeper:
+        assert flow.wait_for_pr_head(flow.BRANCH, delayed_sha) == {
+            "number": 310, "headRefOid": delayed_sha
+        }
+        sleeper.assert_called_once_with(5)
+
     staged_calls = []
     with patch.object(flow, "run", side_effect=lambda *a, **k: staged_calls.append(a) or
                       ("\n".join(flow.FACT_FILES) if a == ("git", "diff", "--cached", "--name-only") else "")):
@@ -112,7 +122,7 @@ def verify_refresh_flow():
             else:
                 raise AssertionError("wrong SHA or failed required job accepted")
     source = (REPO_ROOT / "scripts/integrate-compatibility-refresh.py").read_text()
-    for guard in ('len(prs) > 1', 'MARKER not in', 'if not prs', 'gh("pr", "view", BRANCH',
+    for guard in ('len(prs) > 1', 'MARKER not in', 'if not prs', 'wait_for_pr_head',
                   'FACT_FILES', 'GENERATED_METADATA_FILES', 'SITEMAP_TITLE',
                   '--force-with-lease=refs/heads/{BRANCH}:{old}',
                   '"--required", "--watch"', '"CLEAN"', '"--match-head-commit", sha',
