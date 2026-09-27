@@ -2,3 +2,4 @@
 set -eu
 repo_root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 python3 "$repo_root/Tests/ci-documentation-tests.py"
+python3 "$repo_root/Tests/deployment-simplicity-contract-tests.py"

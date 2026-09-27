@@ -57,13 +57,20 @@ second execution. Deployment repeats backend checks on its own exact commit;
 removing that repeat requires a verified same-SHA quality artifact handoff, not
 trust in an earlier PR head. The current explicit rerun is retained.
 
-The production-operations contract runner separately exercises the fixed root
-helper, read-only status, migration-only target/digest enforcement, shared
-deploy/migrate lock, deploy guard, SSH argument allowlist, and owner installer
-preflight/apply behavior using offline fakes and temporary files. It never
-connects to a production host, database, registry, or Docker daemon. A passing
-run does not prove the helper is installed or authorize its installer apply
-mode.
+The production-operations contract runner exercises the fixed root helper,
+generic image-inventory/ledger-prefix migration gate, one deploy lock spanning
+migration and service replacement, deploy rollback guards, the deploy-only SSH
+argument allowlist, and owner installer preflight/apply behavior using offline
+fakes and temporary files. It never connects to a production host, database,
+registry, or Docker daemon. A passing run does not prove the helper is
+installed or authorize its installer apply mode.
+
+The deployment contract deliberately covers the forward cases 001..063 with a
+database ledger through 062, 001..065 with a ledger through 063, equal
+inventory, ledger gaps/ahead states, candidate gaps/aliases/duplicates,
+migration failure, and postcondition mismatch. It also asserts that GitHub
+sends only `deploy <digest> <revision>` and that no remote migration command
+or target-specific workflow remains.
 
 Backend test modules are named by current ownership: provider acquisition and
 catalog projection live in `test_provider_catalog.py` and `test_maprando.py`,

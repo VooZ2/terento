@@ -113,29 +113,20 @@ SELECT json_build_object(
   'schema', current_schema(),
   'postgresql_version', current_setting('server_version'),
   'highest_migration', (SELECT max(version)::text FROM schema_migrations),
-  'migration_063_applied', EXISTS (SELECT 1 FROM schema_migrations WHERE version = '063'),
+  'migration_count', (SELECT count(*) FROM schema_migrations),
   'server_time', clock_timestamp()::text,
   'timezone', current_setting('TimeZone')
 )::text;
 ROLLBACK;
 """
 
-def require_063_already_applied(image, digest, revision, labels):
-    """Prove the pinned API image and DB schema match; never migrate in deploy."""
-    migration_sha = labels.get('io.terento.migration.063.sha256')
-    runner_sha = labels.get('io.terento.migrate.py.sha256')
-    if not isinstance(migration_sha, str) or not re.fullmatch(r'[0-9a-f]{64}', migration_sha):
-        raise DeploymentError('API candidate must carry a valid migration 063 identity; deployment is refused.')
-    if not isinstance(runner_sha, str) or not re.fullmatch(r'[0-9a-f]{64}', runner_sha):
-        raise DeploymentError('API candidate must carry a valid migration runner identity; deployment is refused.')
+def migrate_candidate(image, digest, revision):
+    """Run the candidate image's forward migrations before service replacement."""
     tool = migration_tool()
-    arguments = [
-        '--target', '063', '--image', digest, '--revision', revision,
-        '--expected-migration-063-sha256', migration_sha,
-        '--expected-migrate-py-sha256', runner_sha,
-    ]
     try:
-        return tool.verify_deploy_schema(arguments, docker=docker, compose=compose)
+        return tool.migrate_candidate(
+            image, digest, revision, docker=docker, compose=compose,
+        )
     except tool.MigrationError as error:
         raise DeploymentError(str(error)) from None
 
@@ -145,7 +136,6 @@ def validate_status(args):
     patterns = {
         '--candidate-digest': r'sha256:[0-9a-f]{64}',
         '--candidate-revision': r'[0-9a-f]{40}',
-        '--expected-migration-063-sha256': r'[0-9a-f]{64}',
     }
     index = 0
     while index < len(args):
@@ -159,29 +149,23 @@ def validate_status(args):
         index += 2
     if ('--candidate-digest' in values) != ('--candidate-revision' in values):
         raise DeploymentError('Candidate digest and revision must be supplied together.')
-    if '--expected-migration-063-sha256' in values and '--candidate-digest' not in values:
-        raise DeploymentError('Migration checksum requires a candidate digest and revision.')
     if not values:
         return None
     return {
         'digest': values.get('--candidate-digest'),
         'revision': values.get('--candidate-revision'),
-        'expected_migration_063_sha256': values.get('--expected-migration-063-sha256'),
     }
 
 def inspect_candidate(candidate):
     """Validate a locally cached immutable API image without pulling or running it."""
     digest = candidate.get('digest', '')
     revision = candidate.get('revision', '')
-    expected_sha = candidate.get('expected_migration_063_sha256')
-    if (not re.fullmatch(r'sha256:[0-9a-f]{64}', digest)
-            or not re.fullmatch(r'[0-9a-f]{40}', revision)
-            or (expected_sha is not None and not re.fullmatch(r'[0-9a-f]{64}', expected_sha))):
+    if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest) or not re.fullmatch(
+        r'[0-9a-f]{40}', revision
+    ):
         raise DeploymentError('Invalid candidate image identity.')
     image = PROJECTS['api']['image'] + '@' + digest
     request = {'digest': digest, 'expected_revision': revision}
-    if expected_sha is not None:
-        request['expected_migration_063_sha256'] = expected_sha
     try:
         raw = docker('image', 'inspect', image, timeout=30)
     except subprocess.CalledProcessError as error:
@@ -204,15 +188,6 @@ def inspect_candidate(candidate):
         image_revision = labels.get('org.opencontainers.image.revision')
         if not isinstance(image_revision, str) or image_revision != revision:
             return {'status': 'revision_mismatch', 'request': request}
-        image_sha = labels.get('io.terento.migration.063.sha256')
-        if not isinstance(image_sha, str) or not re.fullmatch(r'[0-9a-f]{64}', image_sha):
-            return {'status': 'missing_migration_063_label', 'request': request}
-        if expected_sha is not None and image_sha != expected_sha:
-            return {
-                'status': 'expected_sha_mismatch',
-                'request': request,
-                'observed_migration_063_sha256': image_sha,
-            }
         return {
             'status': 'verified',
             'request': request,
@@ -220,7 +195,6 @@ def inspect_candidate(candidate):
                 'image': image,
                 'source': source,
                 'revision': image_revision,
-                'migration_063_sha256': image_sha,
             },
         }
     except Exception:
@@ -317,7 +291,7 @@ def status(candidate=None):
         'schema': None,
         'postgresql_version': None,
         'highest_migration': None,
-        'migration_063_applied': None,
+        'migration_count': None,
         'server_time': None,
         'timezone': None,
     }
@@ -351,30 +325,15 @@ def status(candidate=None):
     return snapshot
 
 def migration_tool():
-    """Load the adjacent, root-owned migration-only implementation."""
+    """Load the adjacent, root-owned generic migration implementation."""
     module_path = Path(__file__).resolve().with_name('terento-deploy-migration.py')
     spec = importlib.util.spec_from_file_location('_terento_deploy_migration', module_path)
     if spec is None or spec.loader is None:
-        raise DeploymentError('Migration-only tooling is unavailable.')
+        raise DeploymentError('Generic migration tooling is unavailable.')
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
-
-def migrate_only(arguments, *, tool=None):
-    """Run the separately targeted migration while sharing the deploy lock."""
-    migration = tool or migration_tool()
-    try:
-        migration.parse_arguments(arguments)
-    except migration.MigrationError as error:
-        raise DeploymentError(str(error)) from None
-    with operations_lock():
-        try:
-            return migration.run_migration(arguments, docker=docker, compose=compose)
-        except migration.MigrationError as error:
-            # MigrationError messages are constructed from fixed checks and
-            # validated artifact filenames; they are safe to show to operators.
-            raise DeploymentError(str(error)) from None
 
 def status_command(arguments):
     candidate = validate_status(arguments)
@@ -386,14 +345,8 @@ def dispatch(arguments):
     """Dispatch root CLI and the API SSH role without changing deploy semantics."""
     if arguments[:1] == ['status']:
         return status_command(arguments[1:])
-    if arguments[:1] == ['migrate']:
-        migrate_only(arguments[1:])
-        return 0
     if arguments[:2] == ['api', 'status']:
         return status_command(arguments[2:])
-    if arguments[:2] == ['api', 'migrate']:
-        migrate_only(arguments[2:])
-        return 0
     deploy(*validate(arguments))
     return 0
 
@@ -422,10 +375,8 @@ def deploy(project, digest, commit):
             raise DeploymentError('Image revision does not match requested commit.')
         if labels.get('org.opencontainers.image.source') != 'https://github.com/VooZ2/terento':
             raise DeploymentError('Image source label does not match Terento.')
-        # Image labels are consistency checks, not cryptographic provenance.
-        # Registry write access is a trusted release authority.
         if project == 'api':
-            require_063_already_applied(image, digest, commit, labels)
+            migrate_candidate(image, digest, commit)
         try:
             compose(project, image, 'up', '-d', '--no-deps', '--no-build', '--wait', '--wait-timeout', '120', *spec['services'])
             records = healthy_ids(project, image)

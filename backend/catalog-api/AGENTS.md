@@ -31,5 +31,16 @@ precedence over older generic presentation wording.
 Admin/API runtime behavior changes must update the owning canonical document in
 the same PR.
 
+## Deployment simplicity rule
+
+The normal catalog production path is one immutable-image `deploy <digest>
+<full revision>` request from the deploy-only GitHub API principal. Ordinary
+forward migrations are internal to the root helper and run from the same image
+under the shared operations lock before API/scheduler replacement. Do not add
+target-specific migration commands, workflow inputs, branches, helper logic,
+manual SQL, Web Console bootstrap, or a second routine deployment protocol.
+Stop for architecture review only for destructive, non-transactional,
+downtime-requiring, or externally backfilled migrations.
+
 The admin interface may remain denser and more operational than the public
 website; it is not a public marketing surface.

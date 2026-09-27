@@ -97,6 +97,19 @@ result. Unknown base models are `PENDING`; support status, public
 Compatibility, install counts, and `TESTED`/`VERIFIED` never grant or revoke
 write permission.
 
+### Deployment simplicity rule
+
+The normal catalog production path is one immutable-image deploy request:
+`deploy <digest> <full revision>`. GitHub's fixed API principal is deploy-only;
+ordinary migrations are internal to the root helper, which inventories and runs
+pending forward migrations from the same immutable image while holding one
+operations lock across migration and service replacement. Do not add migration
+targets, migration-specific workflow inputs, migration branches, separate
+migration SSH commands, manual SQL, Web Console bootstrap, or per-version
+helper behavior. If a migration is destructive, non-transactional,
+downtime-requiring, or needs an external backfill, stop and request an
+exceptional architecture review rather than creating a second routine path.
+
 ## Admin and diagnostic workflow contract
 
 For Admin, diagnostic, statistics, or app/API payload work, read the scoped

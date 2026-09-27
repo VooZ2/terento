@@ -13,12 +13,11 @@ on:
       - "Tests/admin-access-boundary-tests.py"
       - ".github/workflows/publish-vps-images.yml"
       - "scripts/infra/deploy-vps-image.sh"
-      - "scripts/infra/migrate-vps-image.sh"
       - "scripts/ci_http.py"
   workflow_dispatch:
     inputs:
-      target_063_separately_applied:
-        description: Confirm the approved target-063 migration may run through the fixed migration-only operation
+      confirm_production_deploy:
+        description: Confirm this immutable beta image may be deployed to production
         required: true
         type: boolean
         default: false
@@ -31,33 +30,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  migration-source-impact:
-    runs-on: ubuntu-latest
-    outputs:
-      migration_source_changed: ${{ steps.impact.outputs.changed }}
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - id: impact
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          EVENT_NAME: ${{ github.event_name }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          # A push that changes migration bytes or their runner may publish an
-          # immutable candidate, but must not use the combined deploy path.
-          # Unknown push ancestry is fail-closed.
-          if [[ "$EVENT_NAME" == push ]] && ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          elif [[ "$EVENT_NAME" == push ]] && git diff --name-only "$BEFORE_SHA" HEAD | grep -Eq '^backend/catalog-api/src/terento_catalog/(migrations/|migrate\.py$)'; then
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
-          fi
-
   catalog-contract-scope:
     runs-on: ubuntu-latest
     outputs:
@@ -96,28 +68,9 @@ jobs:
     with:
       role: api
 
-  migrate:
-    needs: [publish, migration-source-impact]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta' && github.event_name == 'workflow_dispatch' && inputs.target_063_separately_applied == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    environment: rukas-api
-    steps:
-      - name: Check out source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          persist-credentials: false
-      - name: Apply target 063 through its scoped migration operation
-        env:
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          VPS_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
-          VPS_MIGRATION_063_SHA256: ${{ needs.publish.outputs.migration_063_sha256 }}
-          VPS_MIGRATE_PY_SHA256: ${{ needs.publish.outputs.migrate_py_sha256 }}
-        run: bash scripts/infra/migrate-vps-image.sh api
-
   deploy:
-    needs: [publish, migrate]
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta' && github.event_name == 'workflow_dispatch' && inputs.target_063_separately_applied == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true' && needs.migrate.result == 'success'
+    needs: publish
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta' && github.event_name == 'workflow_dispatch' && inputs.confirm_production_deploy == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: rukas-api
@@ -129,7 +82,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Deploy immutable API image through its scoped account
+      - name: Deploy immutable API image through the stable deploy path
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
