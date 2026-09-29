@@ -26,8 +26,8 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 8,
-      "lastSuccessfulInstallation": "2026-09-20T15:25:55+00:00"
+      "successfulInstallations": 9,
+      "lastSuccessfulInstallation": "2026-09-28T20:50:11+00:00"
     },
     {
       "model": "fēnix 8 · 51 mm, AMOLED",
@@ -114,6 +114,20 @@
       "lastSuccessfulInstallation": "2026-09-16T08:22:50+00:00"
     },
     {
+      "model": "fēnix 9 Pro · inReach, 47 mm",
+      "variant": "inReach, 47 mm",
+      "caseSizeMm": 47,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": true,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04336-20/g/cf-lg.jpg",
+      "successfulInstallations": 6,
+      "lastSuccessfulInstallation": "2026-09-29T07:48:27+00:00"
+    },
+    {
       "model": "Forerunner 955 · Standard",
       "variant": "Standard",
       "caseSizeMm": null,
@@ -126,20 +140,6 @@
       "imageUrl": "https://res.garmin.com/en/products/010-02638-10/v/cf-lg-d0a186df-582c-4f80-aeef-7eb37b60471b.jpg",
       "successfulInstallations": 5,
       "lastSuccessfulInstallation": "2026-09-27T15:53:59+00:00"
-    },
-    {
-      "model": "fēnix 9 Pro · inReach, 47 mm",
-      "variant": "inReach, 47 mm",
-      "caseSizeMm": 47,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": true,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-04336-20/g/cf-lg.jpg",
-      "successfulInstallations": 5,
-      "lastSuccessfulInstallation": "2026-09-14T21:02:41+00:00"
     },
     {
       "model": "fēnix 9 Pro · 47 mm",
@@ -324,5 +324,5 @@
       "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
     }
   ],
-  "generatedAt": "2026-09-27T20:17:48.103399+00:00"
+  "generatedAt": "2026-09-29T11:42:04.503644+00:00"
 }
