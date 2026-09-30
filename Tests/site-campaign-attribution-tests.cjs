@@ -56,5 +56,11 @@ assert.doesNotMatch(links[0].href, /utm_term/);
 assert.equal(links[2].href, "https://example.com/");
 assert.equal(links[3].href, "#section");
 assert.equal(run()[0].href, "/download/", "A fresh visit does not inherit stored campaigns");
+for (const source of ["chatgpt.com", "claude.ai", "gemini.google.com", "bing", "other-source"]) {
+  const incoming = run(`?utm_source=${source}`);
+  assert.equal(new URL(incoming[0].href, "https://terento.app").searchParams.get("utm_source"), source);
+  assert.equal(incoming[1].dataset.umamiEventCampaignSource, source);
+  assert.equal(incoming[2].href, "https://example.com/");
+}
 
 console.log("Campaign attribution and Umami privacy contract tests passed.");

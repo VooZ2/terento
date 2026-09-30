@@ -247,3 +247,12 @@ endings when checking the required `Cache-Control: no-store` policy directive.
 Live page comparisons restore Cloudflare's observed protected email links and
 visible email spans only when the decoded values occur in the expected source;
 the complete restored page must still match exactly.
+
+### Search and AI discovery
+
+See [AI_DISCOVERABILITY.md](AI_DISCOVERABILITY.md) for crawler policy, static
+compatibility content, canonical/sitemap/IndexNow contracts and local checks.
+The supplemental `site/llms.txt` is generated from page metadata. JSON metadata
+stays publicly fetchable with a noindex response header. API-host and Cloudflare
+crawler controls require separate operational review; website publication does
+not modify those boundaries.
