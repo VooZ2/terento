@@ -30,6 +30,20 @@
       "lastSuccessfulInstallation": "2026-09-28T20:50:11+00:00"
     },
     {
+      "model": "Forerunner 965 · Historical",
+      "variant": "Historical",
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "forerunner",
+      "familyName": "Forerunner",
+      "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
+      "successfulInstallations": 7,
+      "lastSuccessfulInstallation": "2026-09-29T18:47:22+00:00"
+    },
+    {
       "model": "fēnix 8 · 51 mm, AMOLED",
       "variant": "51 mm, AMOLED",
       "caseSizeMm": 51,
@@ -56,20 +70,6 @@
       "imageUrl": "https://res.garmin.com/en/products/010-04337-00/g/cf-lg.jpg",
       "successfulInstallations": 7,
       "lastSuccessfulInstallation": "2026-09-18T02:51:04+00:00"
-    },
-    {
-      "model": "Forerunner 965 · Historical",
-      "variant": "Historical",
-      "caseSizeMm": null,
-      "displayType": null,
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "forerunner",
-      "familyName": "Forerunner",
-      "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
-      "successfulInstallations": 6,
-      "lastSuccessfulInstallation": "2026-09-24T14:39:50+00:00"
     },
     {
       "model": "Forerunner 970",
@@ -282,6 +282,20 @@
       "lastSuccessfulInstallation": "2026-09-23T14:32:01+00:00"
     },
     {
+      "model": "fēnix 8 · 47 mm, Solar",
+      "variant": "47 mm, Solar",
+      "caseSizeMm": 47,
+      "displayType": "Solar",
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02906-10/g/cf-lg.jpg",
+      "successfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-09-29T18:53:52+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · inReach, Solar, 51 mm",
       "variant": "inReach, Solar, 51 mm",
       "caseSizeMm": 51,
@@ -324,5 +338,5 @@
       "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
     }
   ],
-  "generatedAt": "2026-09-29T11:42:04.503644+00:00"
+  "generatedAt": "2026-09-30T11:28:47.686672+00:00"
 }
