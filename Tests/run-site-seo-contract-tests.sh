@@ -5,3 +5,5 @@ cd "$(dirname "$0")/.."
 . Tests/node-runtime.sh
 "$NODE_BIN" Tests/site-seo-contract-tests.cjs
 PYTHONDONTWRITEBYTECODE=1 python3 Tests/site-indexnow-tests.py
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/generate-llms.py --check
+PYTHONDONTWRITEBYTECODE=1 python3 Tests/site-discoverability-tests.py
