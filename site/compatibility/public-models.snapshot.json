@@ -12,8 +12,8 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 17,
-      "lastSuccessfulInstallation": "2026-09-24T16:29:07+00:00"
+      "successfulInstallations": 18,
+      "lastSuccessfulInstallation": "2026-10-01T17:47:55+00:00"
     },
     {
       "model": "fēnix 9 Pro · 51 mm",
@@ -254,6 +254,20 @@
       "lastSuccessfulInstallation": "2026-09-12T15:22:29+00:00"
     },
     {
+      "model": "fēnix 7 Pro · Solar (no Wi-Fi)",
+      "variant": "Solar (no Wi-Fi)",
+      "caseSizeMm": null,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02777-10/v/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "lastSuccessfulInstallation": "2026-10-01T17:29:01+00:00"
+    },
+    {
       "model": "fēnix 8 Pro · 47 mm, AMOLED",
       "variant": "47 mm, AMOLED",
       "caseSizeMm": 47,
@@ -266,20 +280,6 @@
       "imageUrl": "https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg",
       "successfulInstallations": 2,
       "lastSuccessfulInstallation": "2026-09-02T22:00:21+00:00"
-    },
-    {
-      "model": "fēnix 7 Pro · Solar (no Wi-Fi)",
-      "variant": "Solar (no Wi-Fi)",
-      "caseSizeMm": null,
-      "displayType": "Solar",
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02777-10/v/cf-lg.jpg",
-      "successfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-09-16T09:58:52+00:00"
     },
     {
       "model": "fēnix 8 · 47 mm, Solar",
@@ -338,5 +338,5 @@
       "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
     }
   ],
-  "generatedAt": "2026-10-01T11:57:03.225898+00:00"
+  "generatedAt": "2026-10-01T22:04:28.363403+00:00"
 }
