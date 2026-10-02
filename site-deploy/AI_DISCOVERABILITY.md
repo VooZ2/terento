@@ -111,6 +111,21 @@ a website image. API-wide noindex and a restrictive API robots response require
 an owner-reviewed edge change; preserve Cloudflare Access and the origin guard.
 Staging must retain its existing noindex/no-tracking configuration.
 
+The `terento.app` Cloudflare zone has an active Response Header Transform Rule
+named `Terento agent discovery headers on homepage`. It matches only GET/HEAD
+requests for the apex homepage (`http.host eq "terento.app" and
+http.request.uri.path eq "/" and http.request.method in {"GET" "HEAD"}`) and
+sets one static `Link` header for [RFC 9727 Section 3](https://www.rfc-editor.org/rfc/rfc9727#section-3)
+discovery, using the [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288)
+relations `api-catalog`, `service-desc`, `service-doc`, and `describedby`. The
+catalog points to `/.well-known/api-catalog`; both description relations point
+to `/openapi.json`; the documentation relation points to the maintained catalog
+API guide in the repository. Static replacement keeps one complete homepage
+Link value even though the origin already supplies `api-catalog`. Other paths
+and the origin configuration are unchanged. The live header and isitagentready scan passed on
+2026-10-02; see `internal/reports/2026-10-02-link-response-headers/README.md`.
+This rule is managed in Cloudflare and is not represented by repository IaC.
+
 `site/privacy-consent.js` preserves allowed UTM strings in incoming URLs and
 on relevant navigation/download links. Tests cover `chatgpt.com`, `claude.ai`,
 `gemini.google.com`, Bing and an arbitrary source without application hardcoding.

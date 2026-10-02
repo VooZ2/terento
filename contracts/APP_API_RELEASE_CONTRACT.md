@@ -1,10 +1,11 @@
 # App–API compatibility and release contract
 
-## Provider recovery and update diagnostics — unreleased local continuation
+## Beta.16 build 38 — provider recovery and update diagnostics candidate
 
-Local changes dated 2026-10-02 accept both reviewed BBBike README date forms in
-backend and native validation. They add provider artifact rechecks and separate
-update outcome diagnostics; no new public version/build is assigned here.
+The beta.16 build 38 candidate accepts both reviewed BBBike README date forms in
+backend and native validation. It adds provider artifact rechecks and separate
+update outcome diagnostics. Publication remains subject to the server-first
+and signed/notarized artifact checks below.
 
 Before shipping the native producer, deploy migrations 064–065 and backend acceptance
 of schema-v4 `operationKind=update`, required Boolean `oldMapPreserved`, and the
@@ -45,8 +46,8 @@ write failure, duplicate/intake-order handling, exact diagnostic correlation,
 old-client acceptance, provider queue recovery and the two BBBike date formats.
 Use the same operation ID for local, diagnostic and map-update records. Publish
 neither a cause for the historical France failure nor new hardware compatibility
-claims from these checks. Candidate release notes and app-update notification
-copy require owner approval before publication.
+claims from these checks. The owner approved the release notes and app-update notification copy on
+2026-10-02; the build remains unpublished until the release checks pass.
 
 This is the shared release contract for the native app, catalog/evidence API and
 admin read models. Read it before changing either diagnostic stream, payload
