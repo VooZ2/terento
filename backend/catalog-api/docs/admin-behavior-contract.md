@@ -473,3 +473,12 @@ status text. Expanded download history retains its start, finish, and duration
 facts; historical in-progress icons remain static.
 
 Provider recovery respects HTTP 429 Retry-After cooldown across package rechecks, catalog collection and health checks. A matching active request reuses its job; a different scope waits for the active provider job. Sources display artifact validation state, separately from provider enablement. Failed update counters link to update reports.
+
+### Failure presentation correction — 2026-10-03
+
+Failed updates use red diagonal stripes in chart bars and legends; failed installs
+remain solid red. Activity keeps the failure status as plain text and provides
+`View failure` as an inline text link without a button border or padding. The
+Updates failed total uses the same direct error-counter markup and size as the
+Installs failed total, without a link. The dedicated Update failures navigation
+continues to provide access to the failure list.
