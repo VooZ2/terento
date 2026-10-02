@@ -52,8 +52,11 @@ class DiscoverabilityTests(unittest.TestCase):
         cls.pages = {p['path']: Page((ROOT / p['file']).read_text()) for p in CONFIG['pages']}
 
     def test_robots_public_and_private_for_every_crawler(self):
+        robots_source = (ROOT / 'site/robots.txt').read_text()
+        self.assertEqual(re.findall(r'(?mi)^Content-Signal:\s*(.+)$', robots_source),
+                         ['ai-train=yes, search=yes, ai-input=no'])
         robots = RobotFileParser()
-        robots.parse((ROOT / 'site/robots.txt').read_text().splitlines())
+        robots.parse(robots_source.splitlines())
         self.assertEqual(robots.site_maps(), [BASE + '/sitemap.xml'])
         for agent in ('OAI-SearchBot', 'ChatGPT-User', 'Claude-SearchBot', 'Claude-User',
                       'Googlebot', 'Google-Extended', 'bingbot', 'GPTBot', 'ClaudeBot', 'other'):

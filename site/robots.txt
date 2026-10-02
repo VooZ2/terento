@@ -1,6 +1,8 @@
 User-agent: *
 # Public pages and their assets remain crawlable, including search/retrieval bots.
 # These exclusions are not authentication or a substitute for noindex.
+# Publisher preferences using the proposed Content Signals vocabulary.
+Content-Signal: ai-train=yes, search=yes, ai-input=no
 Disallow: /admin
 Disallow: /internal
 Disallow: /api/
