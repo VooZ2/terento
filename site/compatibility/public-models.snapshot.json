@@ -12,8 +12,50 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 11,
-      "lastSuccessfulInstallation": "2026-09-18T11:17:55+00:00"
+      "successfulInstallations": 20,
+      "lastSuccessfulInstallation": "2026-10-02T12:11:13+00:00"
+    },
+    {
+      "model": "fēnix 9 Pro · 51 mm",
+      "variant": "51 mm",
+      "caseSizeMm": 51,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
+      "successfulInstallations": 9,
+      "lastSuccessfulInstallation": "2026-09-28T20:50:11+00:00"
+    },
+    {
+      "model": "Forerunner 965 · Historical",
+      "variant": "Historical",
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "forerunner",
+      "familyName": "Forerunner",
+      "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
+      "successfulInstallations": 7,
+      "lastSuccessfulInstallation": "2026-09-29T18:47:22+00:00"
+    },
+    {
+      "model": "fēnix 8 · 51 mm, AMOLED",
+      "variant": "51 mm, AMOLED",
+      "caseSizeMm": 51,
+      "displayType": "AMOLED",
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg",
+      "successfulInstallations": 7,
+      "lastSuccessfulInstallation": "2026-09-27T02:47:41+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -30,6 +72,34 @@
       "lastSuccessfulInstallation": "2026-09-18T02:51:04+00:00"
     },
     {
+      "model": "Forerunner 970",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "forerunner",
+      "familyName": "Forerunner",
+      "imageUrl": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
+      "successfulInstallations": 6,
+      "lastSuccessfulInstallation": "2026-09-23T07:21:50+00:00"
+    },
+    {
+      "model": "fēnix 7X Pro · Historical",
+      "variant": "Historical",
+      "caseSizeMm": null,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
+      "successfulInstallations": 6,
+      "lastSuccessfulInstallation": "2026-09-21T15:04:45+00:00"
+    },
+    {
       "model": "fēnix 8 Pro · 51 mm, AMOLED",
       "variant": "51 mm, AMOLED",
       "caseSizeMm": 51,
@@ -44,18 +114,18 @@
       "lastSuccessfulInstallation": "2026-09-16T08:22:50+00:00"
     },
     {
-      "model": "fēnix 7X Pro · Historical",
-      "variant": "Historical",
-      "caseSizeMm": null,
+      "model": "fēnix 9 Pro · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
       "displayType": null,
-      "screenTechnology": null,
+      "screenTechnology": "AMOLED",
       "solar": null,
       "inReach": null,
       "family": "fenix",
       "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
-      "successfulInstallations": 5,
-      "lastSuccessfulInstallation": "2026-09-18T06:39:30+00:00"
+      "imageUrl": "https://res.garmin.com/en/products/010-04336-05/g/cf-lg.jpg",
+      "successfulInstallations": 6,
+      "lastSuccessfulInstallation": "2026-10-01T06:05:49+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 47 mm",
@@ -68,8 +138,8 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04336-20/g/cf-lg.jpg",
-      "successfulInstallations": 5,
-      "lastSuccessfulInstallation": "2026-09-14T21:02:41+00:00"
+      "successfulInstallations": 6,
+      "lastSuccessfulInstallation": "2026-09-29T07:48:27+00:00"
     },
     {
       "model": "Forerunner 955 · Standard",
@@ -82,36 +152,64 @@
       "family": "forerunner",
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02638-10/v/cf-lg-d0a186df-582c-4f80-aeef-7eb37b60471b.jpg",
-      "successfulInstallations": 4,
-      "lastSuccessfulInstallation": "2026-09-15T09:45:54+00:00"
+      "successfulInstallations": 5,
+      "lastSuccessfulInstallation": "2026-09-27T15:53:59+00:00"
     },
     {
-      "model": "Forerunner 970",
-      "variant": null,
+      "model": "fēnix 7S Pro · Historical",
+      "variant": "Historical",
       "caseSizeMm": null,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02776-10/v/cf-lg.jpg",
+      "successfulInstallations": 4,
+      "lastSuccessfulInstallation": "2026-10-02T16:10:46+00:00"
+    },
+    {
+      "model": "fēnix 9 · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
       "displayType": null,
       "screenTechnology": "AMOLED",
       "solar": null,
       "inReach": null,
-      "family": "forerunner",
-      "familyName": "Forerunner",
-      "imageUrl": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04762-00/g/cf-lg.jpg",
       "successfulInstallations": 4,
-      "lastSuccessfulInstallation": "2026-09-18T17:25:07+00:00"
+      "lastSuccessfulInstallation": "2026-09-23T18:33:25+00:00"
     },
     {
-      "model": "Forerunner 965 · Historical",
-      "variant": "Historical",
-      "caseSizeMm": null,
+      "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
+      "variant": "51 mm, AMOLED",
+      "caseSizeMm": 51,
       "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "epix",
+      "familyName": "epix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02804-00/v/cf-lg.jpg",
+      "successfulInstallations": 3,
+      "lastSuccessfulInstallation": "2026-09-24T07:32:19+00:00"
+    },
+    {
+      "model": "fēnix 7X · 51 mm",
+      "variant": "51 mm",
+      "caseSizeMm": 51,
+      "displayType": "Solar",
       "screenTechnology": null,
       "solar": null,
       "inReach": null,
-      "family": "forerunner",
-      "familyName": "Forerunner",
-      "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02541-01/v/cf-lg-69399493-9540-4ea5-8033-b4aba04cea8f.jpg",
       "successfulInstallations": 3,
-      "lastSuccessfulInstallation": "2026-09-12T08:06:09+00:00"
+      "lastSuccessfulInstallation": "2026-09-19T08:10:13+00:00"
     },
     {
       "model": "fēnix 8 · 43 mm, AMOLED",
@@ -128,32 +226,18 @@
       "lastSuccessfulInstallation": "2026-09-17T20:37:17+00:00"
     },
     {
-      "model": "fēnix 8 · 51 mm, AMOLED",
-      "variant": "51 mm, AMOLED",
-      "caseSizeMm": 51,
-      "displayType": "AMOLED",
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg",
-      "successfulInstallations": 3,
-      "lastSuccessfulInstallation": "2026-09-16T10:25:32+00:00"
-    },
-    {
-      "model": "fēnix 9 Pro · 47 mm",
-      "variant": "47 mm",
+      "model": "epix Pro (Gen 2) · 47 mm, AMOLED",
+      "variant": "47 mm, AMOLED",
       "caseSizeMm": 47,
       "displayType": null,
       "screenTechnology": "AMOLED",
       "solar": null,
       "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-04336-05/g/cf-lg.jpg",
-      "successfulInstallations": 3,
-      "lastSuccessfulInstallation": "2026-09-18T06:22:26+00:00"
+      "family": "epix",
+      "familyName": "epix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02803-10/v/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "lastSuccessfulInstallation": "2026-09-24T17:51:20+00:00"
     },
     {
       "model": "fēnix 7 Pro · Historical",
@@ -170,6 +254,20 @@
       "lastSuccessfulInstallation": "2026-09-12T15:22:29+00:00"
     },
     {
+      "model": "fēnix 7 Pro · Solar (no Wi-Fi)",
+      "variant": "Solar (no Wi-Fi)",
+      "caseSizeMm": null,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02777-10/v/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "lastSuccessfulInstallation": "2026-10-01T17:29:01+00:00"
+    },
+    {
       "model": "fēnix 8 Pro · 47 mm, AMOLED",
       "variant": "47 mm, AMOLED",
       "caseSizeMm": 47,
@@ -184,46 +282,46 @@
       "lastSuccessfulInstallation": "2026-09-02T22:00:21+00:00"
     },
     {
-      "model": "fēnix 9 Pro · 51 mm",
-      "variant": "51 mm",
-      "caseSizeMm": 51,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 2,
-      "lastSuccessfulInstallation": "2026-09-17T18:07:39+00:00"
-    },
-    {
-      "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
-      "variant": "51 mm, AMOLED",
-      "caseSizeMm": 51,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "epix",
-      "familyName": "epix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02804-00/v/cf-lg.jpg",
-      "successfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-09-14T18:46:45+00:00"
-    },
-    {
-      "model": "fēnix 7 Pro · Solar (no Wi-Fi)",
-      "variant": "Solar (no Wi-Fi)",
-      "caseSizeMm": null,
+      "model": "fēnix 8 · 47 mm, Solar",
+      "variant": "47 mm, Solar",
+      "caseSizeMm": 47,
       "displayType": "Solar",
-      "screenTechnology": null,
-      "solar": null,
+      "screenTechnology": "MIP",
+      "solar": true,
       "inReach": null,
       "family": "fenix",
       "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02777-10/v/cf-lg.jpg",
+      "imageUrl": "https://res.garmin.com/en/products/010-02906-10/g/cf-lg.jpg",
       "successfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-09-16T09:58:52+00:00"
+      "lastSuccessfulInstallation": "2026-09-29T18:53:52+00:00"
+    },
+    {
+      "model": "fēnix 9 Pro · inReach, Solar, 51 mm",
+      "variant": "inReach, Solar, 51 mm",
+      "caseSizeMm": 51,
+      "displayType": "Solar",
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": true,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04339-00/g/cf-lg.jpg",
+      "successfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-09-20T22:29:46+00:00"
+    },
+    {
+      "model": "fēnix 9 Pro · Solar, 47 mm",
+      "variant": "inReach, Solar, 47 mm",
+      "caseSizeMm": 47,
+      "displayType": "Solar",
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": true,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04338-00/g/cf-lg.jpg",
+      "successfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-09-27T09:13:24+00:00"
     },
     {
       "model": "fēnix 9 Pro · Solar, 47 mm",
@@ -240,5 +338,5 @@
       "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
     }
   ],
-  "generatedAt": "2026-09-18T19:45:05.841483+00:00"
+  "generatedAt": "2026-10-02T16:55:47.119288+00:00"
 }

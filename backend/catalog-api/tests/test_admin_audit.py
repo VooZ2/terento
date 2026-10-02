@@ -129,10 +129,11 @@ class AdminAuditTests(unittest.TestCase):
         ids = [node.attrib['id'] for chart in charts for node in chart.iter() if 'id' in node.attrib]
         self.assertEqual(len(ids), len(set(ids)))
         for chart in charts:
-            points = [node for node in chart.iter('circle') if node.attrib.get('class') == 'overview-chart-success']
-            self.assertEqual(len(points), 24)
-            self.assertIn('Install succeeded: 1', points[-1].attrib['aria-label'])
-            self.assertIn('23:00', points[-1].attrib['aria-label'])
+            bars = [node for node in chart.iter('rect') if node.attrib.get('class') == 'overview-chart-success']
+            self.assertEqual(len(bars), 1)
+            self.assertIn('Install succeeded: 1', bars[-1].attrib['aria-label'])
+            self.assertIn('23:00', bars[-1].attrib['aria-label'])
+            self.assertFalse(any(node.tag in {'circle', 'polyline'} for node in chart.iter()))
         self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
         self.assertIn('No map installations', _overview_trend_chart([], 'hour'))
 
@@ -171,7 +172,7 @@ class AdminAuditTests(unittest.TestCase):
         rows = [{"provider_id": "p", "map_package_id": "m", "region": "LT", "region_country": "LT",
                  "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1}]
         body = map_statistics_page({"rows": rows}, [{"id": "p", "name": "Provider"}], {"username": "audit"}, "csrf").decode()
-        for text in ("Map downloads", "Successful", "Success rate", "Map installs",
+        for text in ("Downloads", "Successful", "Success rate", "Installs",
                      "Top countries", "Maps by provider",
                      "min-width:880px"):
             self.assertIn(text, body)
@@ -342,7 +343,7 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn("text-anchor='end'>1</text>", markup)
         self.assertIn("text-anchor='end'>4</text>", markup)
         self.assertIn("text-anchor='end'>0</text>", markup)
-        self.assertRegex(markup, r"class='overview-chart-success'[^>]*cy='\d+\.\d'")
+        self.assertRegex(markup, r"class='overview-chart-success'[^>]*y='\d+\.\d+'")
 
     def test_chart_grid_uses_five_even_ticks_with_independent_ceilings(self):
         import re

@@ -9,9 +9,12 @@ REPO = "VooZ2/terento"
 BRANCH = "terento/compatibility-snapshot-refresh"
 MARKER = "<!-- terento-compatibility-snapshot-refresh -->"
 TITLE = "chore: refresh compatibility snapshot"
-FILES = ["site/compatibility/public-models.snapshot.json", "site/compatibility/index.html"] + [
+SITEMAP_TITLE = "chore: refresh compatibility sitemap metadata"
+FACT_FILES = ["site/compatibility/public-models.snapshot.json", "site/compatibility/index.html"] + [
     f"site/{locale}/compatibility/index.html" for locale in ("de", "fr", "pl", "cs", "it")
 ]
+GENERATED_METADATA_FILES = ["site/sitemap.xml"]
+OWNED_FILES = FACT_FILES + GENERATED_METADATA_FILES
 
 
 def run(*args, timeout=120):
@@ -22,8 +25,8 @@ def gh(*args):
     return json.loads(run("gh", *args))
 
 
-def allowed(paths):
-    if not set(paths).issubset(FILES):
+def allowed(paths, expected=OWNED_FILES):
+    if not set(paths).issubset(expected):
         raise RuntimeError("Unexpected files in automation branch or worktree")
 
 
@@ -92,11 +95,71 @@ def dispatch_and_wait(workflow, branch, sha, reuse=False):
     return selected["databaseId"]
 
 
+def wait_for_pr_head(branch, sha):
+    for attempt in range(12):
+        pr = gh("pr", "view", branch, "--repo", REPO, "--json", "number,headRefOid")
+        if pr["headRefOid"] == sha:
+            return pr
+        if attempt < 11:
+            time.sleep(5)
+    raise RuntimeError("PR head changed unexpectedly")
+
+
+def ensure_pull_request_checks(branch, sha):
+    matching = []
+    for attempt in range(12):
+        matching = exact_runs(
+            [r for r in runs("swift-ci.yml", branch) if r["event"] == "pull_request"],
+            sha,
+        )
+        if matching:
+            break
+        if attempt < 11:
+            time.sleep(5)
+    if not matching:
+        raise RuntimeError("No pull_request workflow run for exact refresh SHA")
+    selected = max(matching, key=lambda result: result["databaseId"])
+    if selected["conclusion"] == "action_required":
+        run("gh", "run", "rerun", str(selected["databaseId"]), "--repo", REPO)
+    elif selected["status"] == "completed" and selected["conclusion"] != "success":
+        raise RuntimeError("Exact pull_request workflow failed")
+    if selected["conclusion"] != "success":
+        run("gh", "run", "watch", str(selected["databaseId"]), "--repo", REPO,
+            "--interval", "30", "--exit-status", timeout=7200)
+    result = gh("run", "view", str(selected["databaseId"]), "--repo", REPO,
+                "--json", "headSha,conclusion,jobs")
+    if result["headSha"] != sha or result["conclusion"] != "success":
+        raise RuntimeError("Exact pull_request workflow did not pass")
+    if not any(j["name"] == "build-and-test" and j["conclusion"] == "success"
+               for j in result["jobs"]):
+        raise RuntimeError("build-and-test did not pass for exact pull_request SHA")
+
+
+def commit_files(files, title):
+    run("git", "add", "--", *files)
+    allowed(run("git", "diff", "--cached", "--name-only").splitlines(), files)
+    run("git", "diff", "--cached", "--check")
+    run("git", "commit", "-m", title, "-m", MARKER)
+
+
+def prepare_refresh_commits():
+    commit_files(FACT_FILES, TITLE)
+    # Generate metadata only after the factual content has a Git commit date.
+    run("python3", "scripts/generate-sitemap.py", "--write")
+    run("python3", "scripts/generate-sitemap.py", "--check")
+    generated_paths = run("git", "diff", "--name-only", "HEAD").splitlines()
+    allowed(generated_paths, GENERATED_METADATA_FILES)
+    if generated_paths:
+        run("git", "diff", "--", *GENERATED_METADATA_FILES)
+        commit_files(GENERATED_METADATA_FILES, SITEMAP_TITLE)
+    return run("git", "rev-parse", "HEAD")
+
+
 def main():
     if os.environ.get("GITHUB_REPOSITORY") != REPO:
         raise RuntimeError("Unexpected repository")
     paths = run("git", "diff", "--name-only", "HEAD").splitlines()
-    allowed(paths)
+    allowed(paths, FACT_FILES)
     if run("git", "ls-files", "--others", "--exclude-standard"):
         raise RuntimeError("Unexpected untracked content")
     if not paths:
@@ -119,23 +182,18 @@ def main():
         allowed(run("git", "diff", "--name-only", f"HEAD...{old}").splitlines())
     run("git", "config", "user.name", "github-actions[bot]")
     run("git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
-    run("git", "add", "--", *FILES)
-    allowed(run("git", "diff", "--cached", "--name-only").splitlines())
-    run("git", "diff", "--cached", "--check")
-    run("git", "commit", "-m", TITLE, "-m", MARKER)
-    sha = run("git", "rev-parse", "HEAD")
+    sha = prepare_refresh_commits()
     # Explicit lease also protects first creation against a racing human branch.
     run("git", "push", f"--force-with-lease=refs/heads/{BRANCH}:{old}",
         "origin", f"HEAD:refs/heads/{BRANCH}")
     if not prs:
         run("gh", "pr", "create", "--repo", REPO, "--head", BRANCH, "--base", "beta",
             "--title", TITLE, "--body", MARKER + "\nGenerated public compatibility facts only. Required exact-head CI gates merge.")
-    pr = gh("pr", "view", BRANCH, "--repo", REPO, "--json", "number,headRefOid")
+    pr = wait_for_pr_head(BRANCH, sha)
     number = str(pr["number"])
-    if pr["headRefOid"] != sha:
-        raise RuntimeError("PR head changed unexpectedly")
     # GITHUB_TOKEN suppresses pull_request events: explicitly test this exact head.
     dispatch_and_wait("swift-ci.yml", BRANCH, sha)
+    ensure_pull_request_checks(BRANCH, sha)
     run("gh", "pr", "checks", number, "--repo", REPO, "--required", "--watch",
         "--fail-fast", timeout=7200)
     pr = gh("pr", "view", number, "--repo", REPO,

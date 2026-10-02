@@ -105,13 +105,14 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.15 (build 36)**. The macOS app is notarized
+The latest public release is **beta.15 (build 37)**. The macOS app is notarized
 and does not require Homebrew.
 
-Beta.15 restores the Install action on the Ready to install screen, explains
-when authorization or the device map scan is still pending, and fixes About's
-Update check rejecting a valid release summary. The authorization and map-file
-safety boundaries introduced in beta.14 remain in force.
+Beta.15 build 37 further hardens the Install action handoff and removes
+obsolete internal installation/update code. The authorization and map-file
+safety boundaries introduced in beta.14 remain in force. Owner hardware
+validation covers BBBike install/update/remove, MapRando multi-map installation,
+and disconnect/reconnect inventory on a Garmin fēnix 8 AMOLED 47 mm.
 Confirmed removal of valid external maps remains available after an app
 reinstall or on another Mac; automatic Update still requires durable local
 ownership. Uncertain failed-install cleanup keeps recovery information and
@@ -122,11 +123,12 @@ refuses to guess which object to delete.
 DMG, ZIP, release notes, and previous versions are available on
 [GitHub Releases](https://github.com/VooZ2/terento/releases).
 
-Terento remains a **Public beta — RC evaluation**. The owner-reported BBBike
-Lithuania safe update is PASS, while the beta exit gate still requires one real
-update to a newer map release for Freizeitkarte and one for OpenTopoMap.
-MapRando and BBBike remain subject to provider-specific lifecycle evidence, and
-compatibility claims remain exact-model and variant specific.
+Terento remains a **Public beta — RC evaluation**. On 2026-10-02, the owner
+confirmed **BBBike update — PASS** and **MapRando update — PASS** on a Garmin
+fēnix 8 47 mm AMOLED with beta.15 (build 37). Two provider update checks remain:
+one real update to a newer map release for **Freizeitkarte** and one for
+**OpenTopoMap**. These are owner-reported hardware results, not independent
+verification; compatibility claims remain exact-model and variant specific.
 
 During an update, Terento verifies the replacement before removing the
 previous Terento-owned version. If there is not enough space for both, it

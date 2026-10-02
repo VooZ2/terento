@@ -41,13 +41,16 @@ class FakeOpener:
 
 
 class SnapshotConnection:
-    def __init__(self, latest, trend):
+    def __init__(self, latest, trend, release_markers=None):
         self.latest = latest
         self.trend = trend
+        self.release_markers = release_markers or []
         self.queries = []
 
     def execute(self, query, parameters=None):
         self.queries.append((query, parameters))
+        if "FROM github_release_marker" in query:
+            return SnapshotResult(self.release_markers)
         return SnapshotResult(self.latest if "SELECT dmg_total, zip_total, observed_at" in query else self.trend)
 
 
@@ -63,9 +66,9 @@ class SnapshotResult:
 
 
 class SnapshotDatabase(Database):
-    def __init__(self, latest, trend):
+    def __init__(self, latest, trend, release_markers=None):
         super().__init__("unused")
-        self.connection_instance = SnapshotConnection(latest, trend)
+        self.connection_instance = SnapshotConnection(latest, trend, release_markers)
 
     @contextmanager
     def connection(self):
@@ -75,6 +78,11 @@ class SnapshotDatabase(Database):
 class CollectDatabase:
     def __init__(self):
         self.values = None
+        self.release_markers = None
+
+    def record_github_release_markers(self, markers):
+        self.release_markers = markers
+        return len(markers)
 
     def record_github_download_snapshot(self, **values):
         self.values = values
@@ -131,12 +139,88 @@ class GithubDownloadTests(unittest.TestCase):
             fetch_github_download_totals(opener=opener),
             {
                 "dmg_total": 2, "zip_total": 5, "release_count": 101,
-                "asset_count": 2, "population_fingerprint": ANY,
+                "asset_count": 2, "population_fingerprint": ANY, "release_markers": [],
             },
         )
         self.assertEqual(len(opener.urls), 2)
         self.assertIn("per_page=100", opener.urls[0])
         self.assertIn("page=2", opener.urls[1])
+
+    def test_release_totals_retain_authoritative_identity_and_published_time(self):
+        totals = release_download_totals([{
+            "id": 37,
+            "tag_name": "v1.0.0-beta.15-build37",
+            "name": "Terento beta.15 build 37",
+            "published_at": "2026-09-11T19:30:00Z",
+            "assets": [],
+        }])
+        self.assertEqual(totals["release_markers"], [{
+            "id": "37",
+            "tag": "v1.0.0-beta.15-build37",
+            "label": "beta.15 · build 37",
+            "published_at": "2026-09-11T19:30:00+00:00",
+        }])
+
+    def test_release_label_uses_tag_build_when_release_name_omits_it(self):
+        totals = release_download_totals([{
+            "id": 36,
+            "tag_name": "v1.0.0-beta.15-build36",
+            "name": "Terento 1.0.0-beta.15",
+            "published_at": "2026-09-26T10:57:17Z",
+            "assets": [],
+        }])
+        self.assertEqual(totals["release_markers"][0]["label"], "beta.15 · build 36")
+
+    def test_historical_release_markers_backfill_snapshot_boundaries(self):
+        previous = {
+            "observed_at": datetime(2026, 9, 11, 19, tzinfo=timezone.utc),
+            "dmg_total": 10, "zip_total": 5, "release_count": 1,
+            "asset_count": 2, "population_fingerprint": "same",
+        }
+        current = {
+            "observed_at": datetime(2026, 9, 11, 20, tzinfo=timezone.utc),
+            "dmg_total": 10, "zip_total": 5, "release_count": 2,
+            "asset_count": 4, "population_fingerprint": "changed",
+        }
+        database = SnapshotDatabase(current, [previous, current], [{
+            "release_id": "new", "release_tag": "v1.0.0-beta.15-build37",
+            "release_label": "beta.15 · build 37",
+            "published_at": datetime(2026, 9, 11, 19, 30, tzinfo=timezone.utc),
+        }])
+
+        result = database.github_downloads_snapshot(
+            now=datetime(2026, 9, 11, 20, 13, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(result["trend"][1]["state"], "discontinuity")
+        self.assertEqual(result["trend"][1]["release_markers"], [{
+            "id": "new", "tag": "v1.0.0-beta.15-build37",
+            "label": "beta.15 · build 37",
+            "published_at": datetime(2026, 9, 11, 19, 30, tzinfo=timezone.utc),
+        }])
+
+    def test_two_releases_and_a_separate_boundary_share_one_visible_bucket(self):
+        now = datetime(2026, 9, 11, 20, 13, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 10, "zip_total": 5, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 11, 18, tzinfo=timezone.utc), "dmg_total": 10, "zip_total": 5, "release_count": 1, "asset_count": 2, "population_fingerprint": "old"},
+                {"observed_at": now, "dmg_total": 8, "zip_total": 5, "release_count": 1, "asset_count": 2, "population_fingerprint": "old"},
+            ],
+            [
+                {"release_id": "r36", "release_tag": "v1.0.0-beta.15-build36", "release_label": "beta.15 · build 36", "published_at": datetime(2026, 9, 11, 19, 5, tzinfo=timezone.utc)},
+                {"release_id": "r37", "release_tag": "v1.0.0-beta.15-build37", "release_label": "beta.15 · build 37", "published_at": datetime(2026, 9, 11, 19, 45, tzinfo=timezone.utc)},
+            ],
+        )
+
+        result = database.github_downloads_snapshot(now=now, period="7d")
+        item = result["trend"][-1]
+
+        self.assertEqual(item["state"], "discontinuity")
+        self.assertEqual(item["discontinuity_reason"], "counter_decrease")
+        self.assertEqual([marker["label"] for marker in item["release_markers"]], [
+            "beta.15 · build 36", "beta.15 · build 37",
+        ])
 
     def test_fetch_rejects_oversized_response(self):
         class OversizedOpener:
@@ -159,6 +243,23 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(database.values["zip_total"], 8)
         self.assertEqual(database.values["release_count"], 4)
         self.assertEqual(database.values["observed_at"], observed_at)
+        self.assertEqual(database.release_markers, [])
+
+    def test_collect_backfills_authoritative_release_population(self):
+        database = CollectDatabase()
+        marker = {
+            "id": "release-37", "tag": "v1.0.0-beta.15-build37",
+            "label": "beta.15 · build 37",
+            "published_at": "2026-09-11T19:30:00Z",
+        }
+        collect_once(
+            database,
+            fetch=lambda: {
+                "dmg_total": 12, "zip_total": 8, "release_count": 1,
+                "release_markers": [marker],
+            },
+        )
+        self.assertEqual(database.release_markers, [marker])
 
     def test_database_snapshot_uses_observed_intervals_without_filling_gaps(self):
         now = datetime(2026, 9, 11, 20, 13, tzinfo=timezone.utc)
@@ -282,6 +383,7 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual([item["zip_count"] for item in trend], [None, 2, 7])
         self.assertTrue(all(item.get("legacy") for item in trend[1:]))
         self.assertTrue(all(item["population_comparability"] == "unconfirmed" for item in trend[1:]))
+        self.assertTrue(all(not item["release_markers"] for item in trend))
         self.assertNotIn("discontinuity", [item["state"] for item in trend[1:]])
 
     def test_legacy_to_new_metadata_arrival_is_not_a_discontinuity(self):
@@ -342,6 +444,7 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(trend[2]["state"], "discontinuity")
         self.assertEqual(trend[2]["discontinuity_reason"], "population_change")
         self.assertIsNone(trend[2]["dmg_count"])
+        self.assertTrue(all(not item["release_markers"] for item in trend))
 
     def test_daily_aggregation_keeps_known_delta_next_to_unknown_interval(self):
         now = datetime(2026, 9, 11, 12, tzinfo=timezone.utc)
@@ -434,6 +537,25 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(insert[1][0], datetime(2026, 9, 11, 20, tzinfo=timezone.utc))
         self.assertEqual(insert[1][2:], (12, 8, 4, None, None))
         self.assertIn("ON CONFLICT (hour_start)", insert[0])
+
+    def test_record_release_markers_uses_a_separate_idempotent_population(self):
+        database = WriteDatabase()
+        marker = {
+            "id": "release-37", "tag": "v1.0.0-beta.15-build37",
+            "label": "beta.15 · build 37",
+            "published_at": datetime(2026, 9, 11, 19, 30, tzinfo=timezone.utc),
+        }
+        self.assertEqual(database.record_github_release_markers([marker]), 1)
+        insert = database.connection_instance.calls[0]
+        self.assertIn("github_release_marker", insert[0])
+        self.assertIn("ON CONFLICT (release_id) DO UPDATE SET", insert[0])
+        self.assertIn("release_label = EXCLUDED.release_label", insert[0])
+        self.assertEqual(insert[1], (
+            "release-37", "v1.0.0-beta.15-build37", "beta.15 · build 37",
+            marker["published_at"],
+        ))
+        self.assertEqual(database.record_github_release_markers([marker]), 1)
+        self.assertEqual(len(database.connection_instance.calls), 2)
 
     def test_record_snapshot_skips_when_another_collector_holds_the_lock(self):
         database = WriteDatabase(acquired=False)

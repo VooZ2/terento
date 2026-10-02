@@ -11,12 +11,27 @@
     Content-Security-Policy "default-src 'self'; script-src 'self' https://stats.enduristas.lt; connect-src 'self' https://api.terento.app https://res.garmin.com https://stats.enduristas.lt; img-src 'self' data: https://api.terento.app https://res.garmin.com; style-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
   }
 
+  # RFC 9727 discovery is available on GET and HEAD, including its Link header.
+  header Link "<https://terento.app/.well-known/api-catalog>; rel=api-catalog"
+  @apiCatalog path /.well-known/api-catalog
+  header @apiCatalog {
+    Content-Type "application/linkset+json"
+    Cache-Control "public, max-age=300"
+    X-Robots-Tag "noindex, nofollow"
+  }
+  @openAPI path /openapi.json
+  header @openAPI Content-Type "application/vnd.oai.openapi+json"
+
   @assets path *.css *.js *.svg *.png *.ico *.woff2 *.webmanifest *.xml
   header @assets Cache-Control "public, max-age=604800"
 
   @updateManifest path /updates/macos-arm64.json
   header @updateManifest Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
   header @updateManifest Pragma "no-cache"
+
+  # Public JSON remains available to clients but is not a search landing page.
+  @machineMetadata path *.json
+  header @machineMetadata X-Robots-Tag "noindex, nofollow"
 
   @indexNowKey path_regexp indexNowKey ^/[0-9A-Fa-f]{32}\.txt$
   header @indexNowKey Content-Type "text/plain; charset=utf-8"

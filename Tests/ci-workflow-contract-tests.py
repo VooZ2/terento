@@ -16,13 +16,76 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 PINNED_ACTION = re.compile(r"^\s*uses:\s*[^\s@]+@[0-9a-f]{40}\s*$")
 
 
+def required_check_visibility_decision(observations, expected_head, max_attempts=18):
+    """Model the bounded workflow gate without sleeps, GitHub or network access."""
+    for observation in observations[:max_attempts]:
+        if observation["head"] != expected_head:
+            return "head-changed"
+        checks = observation["checks"]
+        if any(
+            check.get("bucket") in {"fail", "cancel"}
+            or check.get("state") in {"FAILURE", "ERROR", "CANCELLED", "TIMED_OUT"}
+            for check in checks
+        ):
+            return "failed"
+        if checks:
+            return "visible"
+    return "timeout"
+
+
+def verify_indexnow_visibility_race_contract(deploy_site):
+    expected_head = "a" * 40
+    passed = [{"name": "build-and-test", "state": "SUCCESS", "bucket": "pass"}]
+    failed = [{"name": "build-and-test", "state": "FAILURE", "bucket": "fail"}]
+    empty = {"head": expected_head, "checks": []}
+
+    assert required_check_visibility_decision(
+        [empty, empty, {"head": expected_head, "checks": passed}], expected_head
+    ) == "visible", "checks must become visible after bounded retries"
+    assert required_check_visibility_decision(
+        [{"head": expected_head, "checks": failed}], expected_head
+    ) == "failed", "visible required failures must stop immediately"
+    assert required_check_visibility_decision([empty] * 18, expected_head) == "timeout"
+    assert required_check_visibility_decision(
+        [empty, {"head": "b" * 40, "checks": passed}], expected_head
+    ) == "head-changed", "a changed PR head must never proceed to merge"
+    assert required_check_visibility_decision(
+        [{"head": expected_head, "checks": passed}], expected_head
+    ) == "visible"
+
+    for contract in (
+        "visibility_attempts=18",
+        "visibility_interval=5",
+        'required_checks_file="$RUNNER_TEMP/indexnow-required-checks.json"',
+        'visible_head="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY"',
+        'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required \\\n              --json name,state,bucket',
+        "type == \"array\" and length > 0",
+        '.bucket == "fail" or .bucket == "cancel"',
+        'sleep "$visibility_interval"',
+        'test "$checks_visible" = true',
+        'exit 1',
+        '--match-head-commit "$state_sha"',
+        "--delete-branch",
+    ):
+        assert contract in deploy_site, f"deploy-site.yml is missing visibility contract {contract!r}"
+    visibility_gate = deploy_site.index("visibility_attempts=18")
+    required_watch = deploy_site.index(
+        'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch'
+    )
+    merge = deploy_site.index('gh pr merge "$pr_number"')
+    assert visibility_gate < required_watch < merge
+    assert deploy_site.index("IndexNow state PR has an explicit failed required check") < merge
+    assert deploy_site.index("Timed out waiting for required IndexNow state PR checks") < merge
+
+
 def verify_refresh_flow():
     import importlib.util
     from unittest.mock import patch
     spec = importlib.util.spec_from_file_location("refresh_flow", REPO_ROOT / "scripts/integrate-compatibility-refresh.py")
     flow = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(flow)
-    flow.allowed(flow.FILES)
+    flow.allowed(flow.FACT_FILES)
+    flow.allowed(flow.GENERATED_METADATA_FILES)
     try:
         flow.allowed(["site/index.html"])
     except RuntimeError:
@@ -33,6 +96,59 @@ def verify_refresh_flow():
     with patch.dict(os.environ, GITHUB_REPOSITORY=flow.REPO), patch.object(flow, "run", side_effect=lambda *a, **k: calls.append(a) or ""):
         flow.main()
     assert all(c[0] == "git" for c in calls), "no diff must not touch GitHub"
+
+    def exercise_prepare(generated_paths):
+        events = []
+        final_sha = "f" * 40
+
+        def fake_run(*args, **kwargs):
+            events.append(("run", args))
+            if args == ("git", "diff", "--name-only", "HEAD"):
+                return "\n".join(generated_paths)
+            if args == ("git", "rev-parse", "HEAD"):
+                return final_sha
+            return ""
+
+        with patch.object(flow, "commit_files",
+                          side_effect=lambda files, title: events.append(("commit", files, title))), \
+             patch.object(flow, "run", side_effect=fake_run):
+            assert flow.prepare_refresh_commits() == final_sha
+        return events
+
+    changed_events = exercise_prepare(flow.GENERATED_METADATA_FILES)
+    changed_labels = [event[2] for event in changed_events if event[0] == "commit"]
+    assert changed_labels == [flow.TITLE, flow.SITEMAP_TITLE]
+    assert changed_events.index(("commit", flow.FACT_FILES, flow.TITLE)) < changed_events.index(
+        ("run", ("python3", "scripts/generate-sitemap.py", "--write")))
+    assert ("run", ("python3", "scripts/generate-sitemap.py", "--check")) in changed_events
+    assert ("run", ("git", "diff", "--", *flow.GENERATED_METADATA_FILES)) in changed_events
+
+    unchanged_events = exercise_prepare([])
+    unchanged_labels = [event[2] for event in unchanged_events if event[0] == "commit"]
+    assert unchanged_labels == [flow.TITLE], "unchanged sitemap must not create an empty commit"
+    assert not any(event[0] == "run" and event[1][:3] == ("git", "diff", "--")
+                   for event in unchanged_events)
+
+    delayed_sha = "c" * 40
+    with patch.object(flow, "gh", side_effect=[
+        {"number": 310, "headRefOid": "b" * 40},
+        {"number": 310, "headRefOid": delayed_sha},
+    ]), patch.object(flow.time, "sleep") as sleeper:
+        assert flow.wait_for_pr_head(flow.BRANCH, delayed_sha) == {
+            "number": 310, "headRefOid": delayed_sha
+        }
+        sleeper.assert_called_once_with(5)
+
+    staged_calls = []
+    with patch.object(flow, "run", side_effect=lambda *a, **k: staged_calls.append(a) or
+                      ("\n".join(flow.FACT_FILES) if a == ("git", "diff", "--cached", "--name-only") else "")):
+        flow.commit_files(flow.FACT_FILES, flow.TITLE)
+    assert staged_calls == [
+        ("git", "add", "--", *flow.FACT_FILES),
+        ("git", "diff", "--cached", "--name-only"),
+        ("git", "diff", "--cached", "--check"),
+        ("git", "commit", "-m", flow.TITLE, "-m", flow.MARKER),
+    ]
 
     sha = "a" * 40
     with patch.object(flow, "run", return_value="") as command:
@@ -55,6 +171,18 @@ def verify_refresh_flow():
         assert flow.dispatch_and_wait("swift-ci.yml", flow.BRANCH, sha) == 3
     assert any(c[:4] == ("gh", "workflow", "run", "swift-ci.yml") for c in calls)
     assert any(c[:4] == ("gh", "run", "watch", "3") for c in calls)
+    pending_pr = dict(databaseId=4, headSha=sha, event="pull_request", status="completed", conclusion="action_required")
+    calls = []
+    with patch.object(flow, "runs", return_value=[pending_pr]), \
+         patch.object(flow, "run", side_effect=lambda *a, **k: calls.append(a) or ""), \
+         patch.object(flow, "gh", return_value={
+             "headSha": sha,
+             "conclusion": "success",
+             "jobs": [{"name": "build-and-test", "conclusion": "success"}],
+         }):
+        flow.ensure_pull_request_checks(flow.BRANCH, sha)
+    assert any(c[:4] == ("gh", "run", "rerun", "4") for c in calls)
+    assert any(c[:4] == ("gh", "run", "watch", "4") for c in calls)
     with patch.object(flow, "runs", return_value=[old]), patch.object(flow, "run") as command:
         assert flow.dispatch_and_wait("deploy-site.yml", "beta", sha, reuse=True) == 1
         command.assert_not_called()
@@ -68,10 +196,19 @@ def verify_refresh_flow():
             else:
                 raise AssertionError("wrong SHA or failed required job accepted")
     source = (REPO_ROOT / "scripts/integrate-compatibility-refresh.py").read_text()
-    for guard in ('len(prs) > 1', 'MARKER not in', '--force-with-lease=refs/heads/{BRANCH}:{old}',
+    for guard in ('len(prs) > 1', 'MARKER not in', 'if not prs', 'wait_for_pr_head',
+                  'ensure_pull_request_checks', '"event"] == "pull_request"',
+                  'FACT_FILES', 'GENERATED_METADATA_FILES', 'SITEMAP_TITLE',
+                  '--force-with-lease=refs/heads/{BRANCH}:{old}',
                   '"--required", "--watch"', '"CLEAN"', '"--match-head-commit", sha',
                   'merged["state"] != "MERGED"', 'merged["mergeCommit"]["oid"]', 'reuse=True'):
         assert guard in source, guard
+    assert source.index('commit_files(FACT_FILES, TITLE)') < source.index(
+        'scripts/generate-sitemap.py", "--write"')
+    assert source.index('scripts/generate-sitemap.py", "--check"') < source.index(
+        'sha = prepare_refresh_commits()')
+    assert source.index('ensure_pull_request_checks(BRANCH, sha)') < source.index(
+        '"gh", "pr", "checks"')
     assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
     assert "HEAD:beta" not in source and "--admin" not in source
 
@@ -349,14 +486,17 @@ def main() -> int:
 
     deploy_api = (WORKFLOWS / "deploy-catalog-api.yml").read_text(encoding="utf-8")
     assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in deploy_api
-    assert "migration-source-impact:" in deploy_api
-    assert "backend/catalog-api/src/terento_catalog/(migrations/|migrate\\.py$)" in deploy_api
-    assert "migration_source_changed != 'true'" in deploy_api
-    assert "target_062_separately_applied:" in deploy_api
+    assert "confirm_production_deploy:" in deploy_api
     assert "default: false" in deploy_api
     assert "github.event_name == 'workflow_dispatch'" in deploy_api
-    assert "inputs.target_062_separately_applied == true" in deploy_api
+    assert "inputs.confirm_production_deploy == true" in deploy_api
     assert "vars.TERENTO_FIXED_OPS_INSTALLED == 'true'" in deploy_api
+    assert "  migrate:" not in deploy_api
+    assert "bash scripts/infra/migrate-vps-image.sh" not in deploy_api
+    assert "needs.publish.outputs.migration_063_sha256" not in deploy_api
+    assert "needs.publish.outputs.migrate_py_sha256" not in deploy_api
+    assert "bash scripts/infra/deploy-vps-image.sh api" in deploy_api
+    assert "needs: publish" in deploy_api
 
     cache_pattern = re.search(r"grep -Eiq '([^']+)' \"\$policy_headers_file\"", deploy_api).group(1)
     for header, expected in [
@@ -396,22 +536,16 @@ def main() -> int:
     assert 'sleep $((attempt * 2))' in publisher
     assert "VPS_SSH_KEY" not in publisher and "environment:" not in publisher
     assert "secrets." not in publisher.replace("secrets.GITHUB_TOKEN", "TOKEN")
-    assert "io.terento.migration.062.sha256" in publisher
-    assert "io.terento.migrate.py.sha256" in publisher
-    assert "062_reconcile_installation_statistics_schema.sql" in publisher
-    assert 'sha256sum "$migration_062"' in publisher
-    assert 'sha256sum "$migrate_py"' in publisher
-    assert "value: ${{ jobs.publish.outputs.migration_062_sha256 }}" in publisher
-    assert "value: ${{ jobs.publish.outputs.migrate_py_sha256 }}" in publisher
+    assert "io.terento.migration.063.sha256" not in publisher
+    assert "io.terento.migrate.py.sha256" not in publisher
+    assert "migration_063_sha256" not in publisher
+    assert "migrate_py_sha256" not in publisher
     assert "value: ${{ jobs.publish.outputs.build_timestamp }}" in publisher
     for gate in ("Tests/run-site-tests.sh", "Tests/run-release-documentation-tests.sh",
                  "Tests/run-release-legal-content-tests.sh"):
         assert gate in publisher
     for role, source in (("api", deploy_api), ("site", deploy_site)):
-        if role == "api":
-            assert "needs: [publish, migration-source-impact]" in source
-        else:
-            assert "needs: publish" in source
+        assert "needs: publish" in source
         assert f"environment: rukas-{role}" in source
         assert f"bash scripts/infra/deploy-vps-image.sh {role}" in source
         assert "${{ needs.publish.outputs.digest }}" in source
@@ -421,99 +555,24 @@ def main() -> int:
         assert "scp " not in source and "bash -s" not in source
         assert "Synchronize operations ingest secret" not in source
 
-    candidate = (WORKFLOWS / "build-catalog-migration-candidate.yml").read_text(encoding="utf-8")
-    publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
-    assert "push:" in candidate
-    assert "- terento/062-production-candidate" in candidate
-    assert "workflow_dispatch:" in candidate
-    assert "source_ref:" in candidate and "source_sha:" in candidate
-    assert "default: refs/heads/terento/062-production-candidate" in candidate
-    assert "candidate-source-gate:" in candidate
-    assert candidate.index("Validate candidate source identity before checkout") < candidate.index("uses: actions/checkout@", candidate.index("candidate-source-gate:"))
-    assert '[[ "$REQUESTED_SOURCE_REF" == "refs/heads/terento/062-production-candidate" ]]' in candidate
-    assert '[[ "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]' in candidate
-    assert '[[ "$GITHUB_REF" == "$REQUESTED_SOURCE_REF" ]]' in candidate
-    assert '[[ "$GITHUB_SHA" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
-    assert '[[ "$(git rev-parse HEAD)" == "$REQUESTED_SOURCE_SHA" ]]' in candidate
-    assert 'git ls-remote --exit-code --refs https://github.com/VooZ2/terento.git "$REQUESTED_SOURCE_REF"' in candidate
-    assert 'ref: ${{ inputs.source_sha || github.sha }}' in candidate
-    assert 'REQUESTED_SOURCE_REF: ${{ inputs.source_ref || github.ref }}' in candidate
-    assert 'REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}' in candidate
-    assert 'git status --porcelain=v1 --untracked-files=all' in candidate
-    assert candidate.index("candidate-source-gate:") < candidate.index("  publish:")
-    assert "needs: [candidate-source-gate, quality, production-operations-tests, candidate-contract-tests, swift-authorization-tests]" in candidate
-    assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in candidate
-    assert "uses: ./.github/workflows/publish-vps-images.yml" in candidate
-    assert "candidate_source_ref: ${{ inputs.source_ref || github.ref }}" in candidate
-    assert "candidate_source_sha: ${{ inputs.source_sha || github.sha }}" in candidate
-    assert "github.ref == 'refs/heads/terento/062-production-candidate'" in candidate
-    assert "refs/heads/beta" not in candidate
-    assert "candidate-contract-tests:" in candidate
-    assert "Tests/run-ci-workflow-contract-tests.sh" in candidate
-    assert "Tests/run-ci-documentation-tests.sh" in candidate
-    assert "git show --check --oneline HEAD" in candidate
-    assert "swift-authorization-tests:" in candidate
-    assert "app/TerentoCore/Tests/run-native-installation-authorization-tests.sh" in candidate
-    assert "packages: read" in candidate
-    assert "docker pull \"$image_ref\"" in candidate
-    assert "--network none --read-only --cap-drop ALL" in candidate
-    assert "migration_root.glob(\"*.sql\")" in candidate
-    assert "list(range(1, 63))" in candidate
-    assert "image_migration_sha" in candidate and "image_runner_sha" in candidate
-    assert "migration inventory" in candidate
-    assert "actions/upload-artifact@" in candidate
-    assert "retention-days: 90" in candidate
-    assert "VPS_SSH_KEY" not in candidate and "environment:" not in candidate
-    assert "TERENTO_FIXED_OPS_INSTALLED" not in candidate
-    assert "scripts/infra/deploy-vps-image.sh" not in candidate
-    assert "inputs.candidate_source_ref == 'refs/heads/terento/062-production-candidate'" in publisher
-    assert "inputs.candidate_source_sha == github.sha" in publisher
-    assert "github.workflow_ref == 'VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate'" in publisher
-    assert '[[ "$GITHUB_WORKFLOW_REF" == "VooZ2/terento/.github/workflows/build-catalog-migration-candidate.yml@refs/heads/terento/062-production-candidate" ]]' in publisher
-    assert '[[ "$GITHUB_REF" == "refs/heads/beta" ]]' in publisher
-    assert '[[ "$remote_source_sha" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
+    assert not (WORKFLOWS / "build-catalog-migration-candidate.yml").exists()
+    assert not (REPO_ROOT / "scripts/infra/migrate-vps-image.sh").exists()
+    assert "candidate_source_ref" not in publisher
+    assert "candidate_source_sha" not in publisher
     publisher_validation = publisher.index("name: Validate release source and target")
     publisher_build = publisher.index("name: Build and publish immutable release")
     assert publisher_validation < publisher_build
     assert publisher.index('git status --porcelain=v1 --untracked-files=all', publisher_validation) < publisher.index('docker build --platform linux/amd64', publisher_build)
     assert publisher.index('git show --check --oneline "$GITHUB_SHA"', publisher_validation) < publisher.index('docker push "$image:$image_tag"', publisher_build)
-    assert 'image_tag="candidate-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"' in publisher
-    assert 'CANDIDATE_SOURCE_SHA: ${{ inputs.candidate_source_sha }}' in publisher
-    assert 'image_tag="sha-$GITHUB_SHA"' in publisher
-    assert "state=active" in publisher and "state=deleted" not in publisher
-    assert 'grep -Fqx -- "$image_tag"' in publisher
+    assert publisher.count('image_tag="sha-$GITHUB_SHA"') == 1
+    assert "CANDIDATE_SOURCE_" not in publisher
+    assert "candidate-" not in publisher
     assert 'local_image_id="$(docker image inspect --format \'{{.Id}}\' "$image:$image_tag")"' in publisher
     assert '[[ "$pulled_image_id" == "$local_image_id" ]]' in publisher
     assert 'docker push "$image:latest"' not in publisher
     assert 'docker push "$image:current"' not in publisher
     assert 'docker push "$image:production"' not in publisher
     assert '[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]' in publisher
-    assert '[[ "$GITHUB_SHA" == "$CANDIDATE_SOURCE_SHA" ]]' in publisher
-
-    receipt = candidate[candidate.index("  receipt:"):]
-    receipt_checkout = receipt[:receipt.index("      - uses: actions/setup-python@")]
-    assert "fetch-depth: 0" in receipt_checkout
-    assert "SOURCE_SHA: ${{ inputs.source_sha || github.sha }}" in receipt
-    assert "IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}" in receipt
-    assert '[[ "$GITHUB_SHA" == "$SOURCE_SHA" ]]' in receipt
-    assert '[[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]' in receipt
-    assert 'image_ref="ghcr.io/vooz2/terento-catalog@$IMAGE_DIGEST"' in receipt
-    assert '[[ "$embedded_revision" == "$SOURCE_SHA" ]]' in receipt
-    assert '[[ "$image_migration_sha" == "$PUBLISHED_062_SHA" ]]' in receipt
-    assert '[[ "$image_runner_sha" == "$PUBLISHED_RUNNER_SHA" ]]' in receipt
-    assert '"$migration_sha" == "$PUBLISHED_062_SHA"' in receipt
-    assert '"$runner_sha" == "$PUBLISHED_RUNNER_SHA"' in receipt
-    assert '"- Source commit: $SOURCE_SHA"' in receipt
-    assert '"- Image digest: $IMAGE_DIGEST"' in receipt
-    for helper in (
-        "terento-deploy.py SHA-256 (source)",
-        "terento-deploy-migration.py SHA-256 (source)",
-        "install-terento-production-ops.py SHA-256 (source)",
-        "terento-deploy-ssh-entry.py.in SHA-256 (source; not installed)",
-    ):
-        assert helper in receipt
-    assert 'name: catalog-migration-candidate-${{ github.sha }}-${{ github.run_id }}' in receipt
-    assert "Approval: NOT GRANTED" in candidate
     rejection = (WORKFLOWS / "check-vps-access.yml").read_text(encoding="utf-8")
     assert "expect 64 id" in rejection
     assert "expect 0 " not in rejection and "expect 1 " not in rejection
@@ -532,6 +591,7 @@ def main() -> int:
         "continue-on-error: true", "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
     ):
         assert contract in deploy_site, f"deploy-site.yml is missing {contract!r}"
+    verify_indexnow_visibility_race_contract(deploy_site)
     assert "keyLocation" not in deploy_site, "the IndexNow key location must not be printed by the workflow"
     assert "actions: write" in deploy_site
     assert "pull-requests: write" in deploy_site
@@ -569,6 +629,7 @@ def main() -> int:
     assert "pull-requests: write" in refresh
     assert "scripts/ci_http.py compatibility-snapshot --fail" in refresh
     assert '--input "$RUNNER_TEMP/compatibility-live.json"' in refresh
+    assert "Tests/compatibility-snapshot-growth-tests.cjs" in refresh
     assert "if: steps.diff.outputs.changed == 'true'" in refresh
     assert "scripts/integrate-compatibility-refresh.py" in refresh
     verify_refresh_flow()

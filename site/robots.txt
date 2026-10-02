@@ -1,4 +1,12 @@
 User-agent: *
-Allow: /
+# Public pages and their assets remain crawlable, including search/retrieval bots.
+# These exclusions are not authentication or a substitute for noindex.
+Disallow: /admin
+Disallow: /internal
+Disallow: /api/
+Disallow: /diagnostics
+Disallow: /preview
+Disallow: /lab
+Disallow: /test/
 
 Sitemap: https://terento.app/sitemap.xml

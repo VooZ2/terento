@@ -121,6 +121,47 @@ def _github_snapshot_population_change(
     )
 
 
+def _github_release_identity(item: dict[str, Any]) -> str:
+    return str(item.get("release_id") or item.get("id") or item.get("tag") or "")
+
+
+def _github_release_markers_between(
+    markers: list[dict[str, Any]],
+    previous_at: datetime | None,
+    current_at: datetime,
+) -> list[dict[str, Any]]:
+    if previous_at is None:
+        return []
+    if previous_at.tzinfo is None:
+        previous_at = previous_at.replace(tzinfo=timezone.utc)
+    if current_at.tzinfo is None:
+        current_at = current_at.replace(tzinfo=timezone.utc)
+    previous_at = previous_at.astimezone(timezone.utc)
+    current_at = current_at.astimezone(timezone.utc)
+    result: list[dict[str, Any]] = []
+    for marker in markers:
+        published_at = marker.get("published_at")
+        if not isinstance(published_at, datetime):
+            continue
+        if published_at.tzinfo is None:
+            published_at = published_at.replace(tzinfo=timezone.utc)
+        published_at = published_at.astimezone(timezone.utc)
+        if not previous_at < published_at <= current_at:
+            continue
+        if not _github_release_identity(marker):
+            continue
+        result.append({
+            "id": marker.get("release_id") or marker.get("id"),
+            "tag": marker.get("tag") or marker.get("release_tag"),
+            "label": marker.get("label") or marker.get("release_label")
+            or marker.get("tag") or marker.get("release_tag")
+            or marker.get("release_id") or marker.get("id"),
+            "published_at": published_at,
+        })
+    result.sort(key=lambda item: (item["published_at"], _github_release_identity(item)))
+    return result
+
+
 def _fill_overview_trend_buckets(
     rows: list[dict[str, Any]],
     *,
@@ -162,6 +203,41 @@ def _fill_overview_trend_buckets(
     return result
 
 
+def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Summarize rows returned by the canonical map-statistics read model."""
+    def count(event_type: str, outcome: str) -> int:
+        return sum(
+            int(row.get("operation_count") or 0)
+            for row in rows
+            if row.get("event_type") == event_type
+            and row.get("outcome") == outcome
+        )
+
+    downloads = count("DOWNLOAD_SUCCEEDED", "SUCCEEDED")
+    failed_downloads = count("DOWNLOAD_FAILED", "FAILED")
+    installs = count("INSTALL_SUCCEEDED", "SUCCEEDED")
+    failed_installs = count("INSTALL_FAILED", "FAILED")
+    successful_updates = count("MAP_UPDATE_SUCCEEDED", "SUCCEEDED")
+    failed_updates = count("MAP_UPDATE_FAILED", "FAILED")
+    return {
+        "completedInstallCount": installs,
+        "failedInstallCount": failed_installs,
+        "installSuccessRate": (
+            installs / (installs + failed_installs) * 100
+            if installs + failed_installs else None
+        ),
+        "completedDownloadCount": downloads,
+        "failedDownloadCount": failed_downloads,
+        "downloadSuccessRate": (
+            downloads / (downloads + failed_downloads) * 100
+            if downloads + failed_downloads else None
+        ),
+        "completedMapUpdateCount": successful_updates,
+        "failedMapUpdateCount": failed_updates,
+        "mapUpdateCount": successful_updates + failed_updates,
+    }
+
+
 class Database:
     def __init__(self, dsn: str, connect_timeout_seconds: int = 5) -> None:
         self.dsn = dsn
@@ -191,7 +267,10 @@ class Database:
             applied = {row["version"] for row in connection.execute(
                 "SELECT version FROM schema_migrations"
             ).fetchall()}
-            required = {path.name.split("_", 1)[0] for path in migration_directory().glob("[0-9]*.sql")}
+            required = {
+                path.name.split("_", 1)[0]
+                for path in migration_directory().glob("[0-9]*.sql")
+            }
             if not required.issubset(applied):
                 raise RuntimeError("diagnostic storage migrations are incomplete")
             column = connection.execute("""
@@ -361,6 +440,55 @@ class Database:
             )
         return True
 
+    def record_github_release_markers(
+        self,
+        markers: list[dict[str, Any]],
+    ) -> int:
+        """Retain authoritative release identities independently of snapshots."""
+        normalized: list[dict[str, Any]] = []
+        for marker in markers:
+            if not isinstance(marker, dict):
+                raise ValueError("invalid GitHub release marker")
+            release_id = str(marker.get("id") or marker.get("tag") or "").strip()
+            tag = str(marker.get("tag") or "").strip() or None
+            label = str(marker.get("label") or tag or release_id).strip()
+            published_at = marker.get("published_at")
+            if isinstance(published_at, str):
+                try:
+                    published_at = datetime.fromisoformat(
+                        published_at.replace("Z", "+00:00")
+                    )
+                except ValueError as exc:
+                    raise ValueError("invalid GitHub release marker") from exc
+            if not release_id or not label or not isinstance(published_at, datetime):
+                raise ValueError("invalid GitHub release marker")
+            if published_at.tzinfo is None:
+                published_at = published_at.replace(tzinfo=timezone.utc)
+            normalized.append({
+                "release_id": release_id,
+                "release_tag": tag,
+                "release_label": label,
+                "published_at": published_at.astimezone(timezone.utc),
+            })
+        with self.connection() as connection:
+            for marker in normalized:
+                connection.execute(
+                    """
+                    INSERT INTO github_release_marker (
+                        release_id, release_tag, release_label, published_at
+                    ) VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (release_id) DO UPDATE SET
+                        release_tag = EXCLUDED.release_tag,
+                        release_label = EXCLUDED.release_label,
+                        published_at = EXCLUDED.published_at
+                    """,
+                    (
+                        marker["release_id"], marker["release_tag"],
+                        marker["release_label"], marker["published_at"],
+                    ),
+                )
+        return len(normalized)
+
     def github_downloads_snapshot(
         self,
         *,
@@ -437,10 +565,18 @@ class Database:
                 ORDER BY observed_at, hour_start
                 """, (now,),
             ).fetchall()
+            release_markers = connection.execute(
+                """
+                SELECT release_id, release_tag, release_label, published_at
+                FROM github_release_marker
+                ORDER BY published_at, release_id
+                """
+            ).fetchall()
         observations = [
             dict(row) for row in snapshots
             if isinstance(row.get("observed_at"), datetime)
         ]
+        authoritative_markers = [dict(row) for row in release_markers]
         period_observations = [row for row in observations if row["observed_at"] >= start]
         first_period_index = observations.index(period_observations[0]) if period_observations else len(observations)
         raw_trend: list[dict[str, Any]] = []
@@ -463,6 +599,11 @@ class Database:
                 "zip_count": None,
                 "confidence": "baseline",
                 "population_comparability": "baseline",
+                "release_markers": _github_release_markers_between(
+                    authoritative_markers,
+                    previous["observed_at"] if previous is not None else None,
+                    current["observed_at"],
+                ),
             }
             if previous is None:
                 raw_trend.append(item)
@@ -516,6 +657,8 @@ class Database:
                     "previous_observed_at": row.get("previous_observed_at"),
                     "observed_at": row["observed_at"],
                     "dmg_count": None, "zip_count": None, "states": [],
+                    "release_markers": [],
+                    "discontinuity_reasons": [],
                 })
                 previous_observed_at = row.get("previous_observed_at")
                 if previous_observed_at is not None and (
@@ -525,6 +668,9 @@ class Database:
                     target["previous_observed_at"] = previous_observed_at
                 target["observed_at"] = max(target["observed_at"], row["observed_at"])
                 target["states"].append(row["state"])
+                target["release_markers"].extend(row.get("release_markers") or [])
+                if row.get("discontinuity_reason"):
+                    target["discontinuity_reasons"].append(row["discontinuity_reason"])
                 if row["dmg_count"] is not None:
                     target["dmg_count"] = (
                         row["dmg_count"]
@@ -546,6 +692,18 @@ class Database:
             filled = []
             for row in sorted(aggregated.values(), key=lambda value: value["observed_at"]):
                 states = row.pop("states")
+                seen_release_ids: set[str] = set()
+                unique_release_markers: list[dict[str, Any]] = []
+                for marker in row.get("release_markers", []):
+                    identity = _github_release_identity(marker)
+                    if not identity or identity in seen_release_ids:
+                        continue
+                    seen_release_ids.add(identity)
+                    unique_release_markers.append(marker)
+                row["release_markers"] = unique_release_markers
+                reasons = list(dict.fromkeys(row.pop("discontinuity_reasons", [])))
+                if reasons:
+                    row["discontinuity_reason"] = reasons[0] if len(reasons) == 1 else "mixed"
                 has_known_counts = row["dmg_count"] is not None or row["zip_count"] is not None
                 has_unknown_intervals = bool(row.get("unknown_interval_count")) or "discontinuity" in states
                 row["contains_discontinuity"] = has_unknown_intervals
@@ -1527,43 +1685,34 @@ class Database:
         Map statistics keeps custom results visible with unknown catalog
         geography when no unambiguous package match exists. No records are changed.
         """
-        # Keep the date_trunc field as a trusted SQL literal. PostgreSQL can
-        # resolve a bound value here in some driver/server combinations, but
-        # not all combinations infer the parameter as text for date_trunc's
-        # overloaded signature. The period is already allow-listed above, so
-        # embedding the selected expression is both safe and deterministic.
-        bucket_expression = {
-            "24h": "date_trunc('hour', local_occurred_at)",
-            "7d": "date_trunc('day', local_occurred_at)",
-            "30d": "date_trunc('day', local_occurred_at)",
-            "all": "date_trunc('month', local_occurred_at)",
-        }.get(period, "date_trunc('hour', local_occurred_at)")
-        bucket = {
-            "24h": "hour",
-            "7d": "day",
-            "30d": "day",
-            "all": "month",
-        }.get(period, "hour")
+        # Dashboard metrics and trends are projections of the same canonical
+        # map-statistics read model used by the Maps page. Keep raw map-event
+        # queries below for activity/review context only; they must not define
+        # a second install population.
+        metric_filters = {} if period == "all" else {"dateFrom": since}
+        canonical_rows = self.map_statistics(metric_filters)
+        all_time_rows = (
+            canonical_rows
+            if period == "all"
+            else self.map_statistics({})
+        )
+        period_metrics = _canonical_map_statistics_summary(canonical_rows)
+        all_time_metrics = _canonical_map_statistics_summary(all_time_rows)
+        canonical_event_count = sum(
+            int(row.get("event_count") or 0) for row in canonical_rows
+        )
+        trend_filters = dict(metric_filters)
         if period == "all":
-            # Keep all-time charts compact while preserving useful resolution
-            # for a young installation with only a few days of history.
-            with self.connection() as connection:
-                extent = connection.execute(
-                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event WHERE is_local_test IS NOT TRUE AND statistics_exclusion_code IS NULL UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE AND statistics_exclusion_code IS NULL) AS chart_events"
-                ).fetchone() or {}
-            first = extent.get("first_occurred_at")
-            last = extent.get("last_occurred_at")
-            span_days = (
-                (last - first).total_seconds() / 86400
-                if isinstance(first, datetime) and isinstance(last, datetime)
-                else None
-            )
-            if span_days is not None and span_days <= 31:
-                bucket_expression = "date_trunc('day', local_occurred_at)"
-                bucket = "day"
-            elif span_days is not None and span_days <= 180:
-                bucket_expression = "date_trunc('week', local_occurred_at)"
-                bucket = "week"
+            observed_starts = [
+                row.get("first_occurred_at")
+                for row in canonical_rows
+                if isinstance(row.get("first_occurred_at"), datetime)
+            ]
+            if observed_starts:
+                trend_filters["dateFrom"] = min(observed_starts)
+        trend, bucket = self.map_statistics_trend(
+            trend_filters, period=period, time_zone=time_zone,
+        )
         event_scope = """
             FROM map_download_event AS e
             LEFT JOIN map_provider AS p ON p.id = e.provider_id
@@ -1678,106 +1827,7 @@ class Database:
                    )
             )
         """
-        all_time_since = datetime(1970, 1, 1, tzinfo=timezone.utc)
         with self.connection() as connection:
-            summary = connection.execute(
-                f"""
-                {compatibility_fallback_cte}
-                SELECT
-                    count(*) + (
-                        SELECT count(*) FROM compatibility_fallback
-                    ) AS event_count,
-                    count(*) FILTER (
-                        WHERE e.event_type = 'INSTALL_SUCCEEDED'
-                          AND e.outcome = 'SUCCEEDED'
-                    ) + (
-                        SELECT count(*) FROM compatibility_fallback
-                        WHERE outcome = 'SUCCEEDED'
-                    ) AS completed_install_count,
-                    count(*) FILTER (
-                        WHERE e.event_type = 'INSTALL_FAILED'
-                          AND e.outcome = 'FAILED'
-                    ) + (SELECT count(*) FROM compatibility_fallback
-                         WHERE outcome = 'FAILED') AS failed_install_count
-                    ,count(*) FILTER (
-                        WHERE e.event_type = 'MAP_UPDATE_SUCCEEDED'
-                          AND e.outcome = 'SUCCEEDED'
-                    ) AS completed_map_update_count
-                    ,count(*) FILTER (
-                        WHERE e.event_type = 'MAP_UPDATE_FAILED'
-                          AND e.outcome = 'FAILED'
-                    ) AS failed_map_update_count
-                    ,count(DISTINCT CASE
-                        WHEN e.event_type = 'DOWNLOAD_SUCCEEDED'
-                             AND e.outcome = 'SUCCEEDED'
-                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
-                                 || ':' || COALESCE(e.operation_id::text, '')
-                                 || ':' || COALESCE(e.provider_id, '')
-                                 || ':' || COALESCE(e.map_package_id::text, '')
-                                 || ':' || COALESCE(e.component_kind, '')
-                     END) AS completed_download_count
-                    ,count(DISTINCT CASE
-                        WHEN e.event_type = 'DOWNLOAD_FAILED'
-                             AND e.outcome = 'FAILED'
-                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
-                                 || ':' || COALESCE(e.operation_id::text, '')
-                                 || ':' || COALESCE(e.provider_id, '')
-                                 || ':' || COALESCE(e.map_package_id::text, '')
-                                 || ':' || COALESCE(e.component_kind, '')
-                     END) AS failed_download_count
-                {event_scope}
-                """,
-                (since, since),
-            ).fetchone() or {}
-            all_time_summary = connection.execute(
-                f"""
-                {compatibility_fallback_cte}
-                SELECT
-                    count(*) FILTER (
-                        WHERE e.event_type = 'INSTALL_SUCCEEDED'
-                          AND e.outcome = 'SUCCEEDED'
-                    ) + (
-                        SELECT count(*) FROM compatibility_fallback
-                        WHERE outcome = 'SUCCEEDED'
-                    ) AS all_time_success_count,
-                    count(*) FILTER (
-                        WHERE e.event_type = 'INSTALL_FAILED'
-                          AND e.outcome = 'FAILED'
-                    ) + (
-                        SELECT count(*) FROM compatibility_fallback
-                        WHERE outcome = 'FAILED'
-                    ) AS all_time_failed_count,
-                    (
-                        SELECT count(*) FROM compatibility_fallback
-                        WHERE outcome = 'SUCCEEDED'
-                          AND provider_id = 'custom'
-                    ) AS all_time_custom_count,
-                    count(*) FILTER (
-                        WHERE e.event_type = 'MAP_UPDATE_SUCCEEDED'
-                          AND e.outcome = 'SUCCEEDED'
-                    ) AS all_time_map_update_success_count,
-                    count(*) FILTER (
-                        WHERE e.event_type = 'MAP_UPDATE_FAILED'
-                          AND e.outcome = 'FAILED'
-                    ) AS all_time_map_update_failed_count
-                    ,count(DISTINCT COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
-                                 || ':' || COALESCE(e.operation_id::text, '')
-                                 || ':' || COALESCE(e.provider_id, '')
-                                 || ':' || COALESCE(e.map_package_id::text, '')
-                                 || ':' || COALESCE(e.component_kind, '')) FILTER (
-                        WHERE e.event_type = 'DOWNLOAD_SUCCEEDED' AND e.outcome = 'SUCCEEDED'
-                     ) AS all_time_completed_download_count
-                    ,count(DISTINCT COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
-                                 || ':' || COALESCE(e.operation_id::text, '')
-                                 || ':' || COALESCE(e.provider_id, '')
-                                 || ':' || COALESCE(e.map_package_id::text, '')
-                                 || ':' || COALESCE(e.component_kind, '')) FILTER (
-                        WHERE e.event_type = 'DOWNLOAD_FAILED' AND e.outcome = 'FAILED'
-                     ) AS all_time_failed_download_count
-                {event_scope}
-                """,
-                (all_time_since, all_time_since),
-            ).fetchone() or {}
             recent = list(connection.execute(
                 f"""
                 {compatibility_fallback_cte}, acquisition_events AS (
@@ -1943,77 +1993,6 @@ class Database:
                 """, (attention_limit,),
             ).fetchall())
             attention: list[dict[str, Any]] = []
-            trend = list(connection.execute(
-                f"""
-                {compatibility_fallback_cte}, localized_events AS (
-                    SELECT
-                        COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
-                            || ':' || COALESCE(e.operation_id::text, '')
-                            || ':' || COALESCE(e.provider_id, '')
-                            || ':' || COALESCE(e.map_package_id::text, '')
-                            || ':' || COALESCE(e.component_kind, '')
-                            AS operation_key,
-                        e.event_type,
-                        e.outcome,
-                        timezone(%s, e.occurred_at) AS local_occurred_at
-                    FROM map_download_event AS e
-                    WHERE e.occurred_at >= %s
-                      AND e.is_local_test IS NOT TRUE
-                      AND e.statistics_exclusion_code IS NULL
-                    UNION ALL
-                    SELECT
-                        c.operation_key,
-                        CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
-                            WHEN c.provider_id = 'custom'
-                            THEN 'CUSTOM_SUCCEEDED'
-                            ELSE 'INSTALL_SUCCEEDED'
-                        END AS event_type,
-                        c.outcome,
-                        timezone(%s, c.occurred_at) AS local_occurred_at
-                    FROM compatibility_fallback AS c
-                )
-                SELECT
-                    ({bucket_expression} AT TIME ZONE %s) AS bucket,
-                    count(DISTINCT operation_key) FILTER (
-                        WHERE event_type = 'INSTALL_SUCCEEDED'
-                          AND outcome = 'SUCCEEDED'
-                    ) AS success_count,
-                    count(DISTINCT operation_key) FILTER (
-                        WHERE event_type = 'INSTALL_FAILED'
-                          AND outcome = 'FAILED'
-                    ) AS failed_count,
-                    count(*) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED') AS custom_count,
-                    count(DISTINCT operation_key) FILTER (
-                        WHERE event_type = 'DOWNLOAD_SUCCEEDED'
-                          AND outcome = 'SUCCEEDED'
-                    ) AS download_success_count,
-                    count(DISTINCT operation_key) FILTER (
-                        WHERE event_type = 'DOWNLOAD_FAILED'
-                          AND outcome = 'FAILED'
-                    ) AS download_failed_count,
-                    count(DISTINCT operation_key) FILTER (
-                        WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
-                    ) AS map_update_count,
-                    count(DISTINCT operation_key) FILTER (
-                        WHERE event_type = 'MAP_UPDATE_SUCCEEDED'
-                          AND outcome = 'SUCCEEDED'
-                    ) AS map_update_success_count,
-                    count(DISTINCT operation_key) FILTER (
-                        WHERE event_type = 'MAP_UPDATE_FAILED'
-                          AND outcome = 'FAILED'
-                    ) AS map_update_failed_count,
-                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_SUCCEEDED' AND outcome = 'SUCCEEDED'))[1:20] AS success_times,
-                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_FAILED' AND outcome = 'FAILED'))[1:20] AS failed_times,
-                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED'))[1:20] AS custom_times,
-                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'DOWNLOAD_SUCCEEDED' AND outcome = 'SUCCEEDED'))[1:20] AS download_success_times,
-                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'DOWNLOAD_FAILED' AND outcome = 'FAILED'))[1:20] AS download_failed_times,
-                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')))[1:20] AS map_update_times
-                FROM localized_events
-                GROUP BY {bucket_expression}
-                ORDER BY bucket
-                """,
-                (since, time_zone, since, time_zone, time_zone),
-            ).fetchall())
         trend_rows = [dict(row) for row in trend]
         if trend_rows:
             trend_rows = _fill_overview_trend_buckets(
@@ -2024,52 +2003,46 @@ class Database:
                 all_time=period == "all",
                 time_zone=time_zone,
             )
-        completed = int(summary.get("completed_install_count") or 0)
-        failed = int(summary.get("failed_install_count") or 0)
-        completed_updates = int(summary.get("completed_map_update_count") or 0)
-        failed_updates = int(summary.get("failed_map_update_count") or 0)
-        completed_downloads = int(summary.get("completed_download_count") or 0)
-        failed_downloads = int(summary.get("failed_download_count") or 0)
-        download_attempts = completed_downloads + failed_downloads
-        all_time_install_successes = int(all_time_summary.get("all_time_success_count") or 0)
-        all_time_install_failures = int(all_time_summary.get("all_time_failed_count") or 0)
-        all_time_install_attempts = all_time_install_successes + all_time_install_failures
-        all_time_download_successes = int(all_time_summary.get("all_time_completed_download_count") or 0)
-        all_time_download_failures = int(all_time_summary.get("all_time_failed_download_count") or 0)
-        all_time_download_attempts = all_time_download_successes + all_time_download_failures
-        all_time_update_successes = int(all_time_summary.get("all_time_map_update_success_count") or 0)
-        all_time_update_failures = int(all_time_summary.get("all_time_map_update_failed_count") or 0)
+        completed = period_metrics["completedInstallCount"]
+        failed = period_metrics["failedInstallCount"]
+        completed_updates = period_metrics["completedMapUpdateCount"]
+        failed_updates = period_metrics["failedMapUpdateCount"]
+        completed_downloads = period_metrics["completedDownloadCount"]
+        failed_downloads = period_metrics["failedDownloadCount"]
+        all_time_install_successes = all_time_metrics["completedInstallCount"]
+        all_time_install_failures = all_time_metrics["failedInstallCount"]
+        all_time_download_successes = all_time_metrics["completedDownloadCount"]
+        all_time_download_failures = all_time_metrics["failedDownloadCount"]
+        all_time_update_successes = all_time_metrics["completedMapUpdateCount"]
+        all_time_update_failures = all_time_metrics["failedMapUpdateCount"]
         return {
-            "eventCount": int(summary.get("event_count") or 0),
+            "eventCount": canonical_event_count,
             "completedInstallCount": completed,
             "failedInstallCount": failed,
-            "installSuccessRate": completed / (completed + failed) * 100 if completed + failed else None,
+            "installSuccessRate": period_metrics["installSuccessRate"],
             "completedDownloadCount": completed_downloads,
             "failedDownloadCount": failed_downloads,
-            "downloadSuccessRate": (
-                completed_downloads / download_attempts * 100
-                if download_attempts else None
-            ),
+            "downloadSuccessRate": period_metrics["downloadSuccessRate"],
             "completedMapUpdateCount": completed_updates,
             "failedMapUpdateCount": failed_updates,
             "mapUpdateCount": completed_updates + failed_updates,
             "allTimeSuccessCount": all_time_install_successes,
             "allTimeFailedCount": all_time_install_failures,
-            "allTimeInstallSuccessRate": (
-                all_time_install_successes / all_time_install_attempts * 100
-                if all_time_install_attempts else None
-            ),
+            "allTimeInstallSuccessRate": all_time_metrics["installSuccessRate"],
             "allTimeCompletedDownloadCount": all_time_download_successes,
             "allTimeFailedDownloadCount": all_time_download_failures,
-            "allTimeDownloadSuccessRate": (
-                all_time_download_successes / all_time_download_attempts * 100
-                if all_time_download_attempts else None
+            "allTimeDownloadSuccessRate": all_time_metrics["downloadSuccessRate"],
+            "allTimeCustomCount": sum(
+                int(row.get("operation_count") or 0)
+                for row in all_time_rows
+                if row.get("event_type") == "INSTALL_SUCCEEDED"
+                and row.get("outcome") == "SUCCEEDED"
+                and row.get("provider_id") == "custom"
             ),
-            "allTimeCustomCount": int(all_time_summary.get("all_time_custom_count") or 0),
             "allTimeMapUpdateCount": all_time_update_successes + all_time_update_failures,
             "allTimeMapUpdateSuccessCount": all_time_update_successes,
             "allTimeMapUpdateFailedCount": all_time_update_failures,
-            "hasData": int(summary.get("event_count") or 0) > 0,
+            "hasData": bool(canonical_rows or recent),
             "recentActivity": [dict(row) for row in recent],
             "attention": [dict(row) for row in attention],
             "missingDiagnosticFailures": [dict(row) for row in missing_diagnostics],
