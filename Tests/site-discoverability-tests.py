@@ -131,6 +131,48 @@ class DiscoverabilityTests(unittest.TestCase):
         for path in ('/', '/about/', '/compatibility/', '/download/', '/guides/install-garmin-maps-mac/'):
             self.assertIn(BASE + path, links)
 
+    def test_api_catalog_links_and_openapi_routes(self):
+        catalog = json.loads((ROOT / 'site/.well-known/api-catalog').read_text())
+        self.assertEqual(len(catalog['linkset']), 1)
+        entry = catalog['linkset'][0]
+        self.assertEqual(entry['anchor'], 'https://api.terento.app')
+        for relation in ('service-desc', 'service-doc', 'status'):
+            self.assertTrue(entry[relation])
+            for link in entry[relation]:
+                parsed = urlsplit(link['href'])
+                self.assertEqual(parsed.scheme, 'https')
+                self.assertTrue(parsed.netloc)
+                self.assertFalse(parsed.query or parsed.fragment)
+        self.assertEqual(entry['service-desc'][0]['href'], BASE + '/openapi.json')
+        self.assertEqual(entry['status'][0]['href'], entry['anchor'] + '/health')
+        spec = json.loads((ROOT / 'site/openapi.json').read_text())
+        self.assertEqual(spec['openapi'], '3.1.0')
+        self.assertEqual(spec['servers'], [{'url': entry['anchor']}])
+        self.assertEqual(spec['externalDocs']['url'], entry['service-doc'][0]['href'])
+        self.assertEqual(set(spec['paths']), {
+            '/health', '/maps/catalog.json', '/maps/catalog-v3.json',
+            '/maps/catalog-v4.json', '/devices/catalog.json',
+            '/devices/installation-policy.json', '/compatibility/public/models.json',
+            '/compatibility/public/top-models.json',
+        })
+        implementation = (ROOT / 'backend/catalog-api/src/terento_catalog/http_api.py').read_text()
+        operation_ids = []
+        for path, operations in spec['paths'].items():
+            self.assertIn('"' + path + '"', implementation)
+            self.assertEqual(set(operations), {'get'})
+            self.assertIn('200', operations['get']['responses'])
+            operation_ids.append(operations['get']['operationId'])
+        self.assertEqual(len(operation_ids), len(set(operation_ids)))
+        robots = RobotFileParser()
+        robots.parse((ROOT / 'site/robots.txt').read_text().splitlines())
+        for path in ('/.well-known/api-catalog', '/openapi.json'):
+            self.assertTrue(robots.can_fetch('*', BASE + path))
+        caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
+        self.assertIn('@apiCatalog path /.well-known/api-catalog', caddy)
+        self.assertIn('Content-Type "application/linkset+json"', caddy)
+        self.assertIn('header Link "<https://terento.app/.well-known/api-catalog>; rel=api-catalog"', caddy)
+        self.assertIn('header @openAPI Content-Type "application/vnd.oai.openapi+json"', caddy)
+
     def test_public_json_is_available_but_not_indexable(self):
         site = (ROOT / 'site-deploy/Caddyfile').read_text()
         self.assertIn('@machineMetadata path *.json', site)

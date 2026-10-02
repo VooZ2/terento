@@ -123,11 +123,12 @@ refuses to guess which object to delete.
 DMG, ZIP, release notes, and previous versions are available on
 [GitHub Releases](https://github.com/VooZ2/terento/releases).
 
-Terento remains a **Public beta — RC evaluation**. The owner-reported BBBike
-Lithuania safe update is PASS, while the beta exit gate still requires one real
-update to a newer map release for Freizeitkarte and one for OpenTopoMap.
-MapRando and BBBike remain subject to provider-specific lifecycle evidence, and
-compatibility claims remain exact-model and variant specific.
+Terento remains a **Public beta — RC evaluation**. On 2026-10-02, the owner
+confirmed **BBBike update — PASS** and **MapRando update — PASS** on a Garmin
+fēnix 8 47 mm AMOLED with beta.15 (build 37). Two provider update checks remain:
+one real update to a newer map release for **Freizeitkarte** and one for
+**OpenTopoMap**. These are owner-reported hardware results, not independent
+verification; compatibility claims remain exact-model and variant specific.
 
 During an update, Terento verifies the replacement before removing the
 previous Terento-owned version. If there is not enough space for both, it
