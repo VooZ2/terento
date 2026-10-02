@@ -43,6 +43,22 @@ Legal/Privacy must remain fetchable so their noindex can be read.
 | Google-Extended | Product token for Gemini training and grounding uses; existing access retained |
 | Bingbot / other crawlers | Public pages allowed under the same exclusions |
 
+### Content Signals
+
+The shared wildcard group in `site/robots.txt` publishes:
+
+```text
+Content-Signal: ai-train=yes, search=yes, ai-input=no
+```
+
+This signals a preference to allow AI model training and search indexing/results,
+and to disallow using the content as input for generative AI, including RAG or
+grounding. These values follow the proposed vocabulary in the
+[IETF Content Signals Internet-Draft](https://datatracker.ietf.org/doc/draft-romm-aipref-contentsignals/).
+They express publisher preferences; they do not change crawler access rules or
+provide technical enforcement. Keep this preference distinct from `robots.txt`
+allow/disallow behavior and review it if publisher intent changes.
+
 Google-Extended has no independent HTTP user agent. It controls future Gemini
 training and grounding in Gemini Apps and Grounding with Google Search on
 Vertex AI; it does not determine Google Search inclusion or ranking. Review
