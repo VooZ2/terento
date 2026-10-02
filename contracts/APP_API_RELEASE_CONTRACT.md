@@ -1,11 +1,23 @@
 # App–API compatibility and release contract
 
-## Beta.16 build 38 — provider recovery and update diagnostics candidate
+## Beta.16 build 38 — provider recovery and update diagnostics
 
-The beta.16 build 38 candidate accepts both reviewed BBBike README date forms in
+Beta.16 build 38 accepts both reviewed BBBike README date forms in
 backend and native validation. It adds provider artifact rechecks and separate
-update outcome diagnostics. Publication remains subject to the server-first
-and signed/notarized artifact checks below.
+update outcome diagnostics. Published tag `v1.0.0-beta.16-build38` points to GitHub-verified source
+`b2bbabf5afd0acd4cb655e0859cd8da34a6dce8f`. All 83 release runners passed;
+the optional migration 062 PostgreSQL check also passed separately. Signing,
+Apple notarization, stapling, Gatekeeper and launch checks passed for ZIP and DMG.
+API deployment [37059654512](https://github.com/VooZ2/terento/actions/runs/37059654512)
+deployed that same source before distribution, including migrations 064–065 and
+released-client catalog verification. The initial SSH timeout was retried with
+the same immutable image.
+
+The DMG is 6,860,640 bytes, SHA-256
+`7cd45a731d3cdfa589ac4fe7fa41aae4226a381ee447bf6b9247962152d9a794`;
+the ZIP is 6,182,464 bytes, SHA-256
+`90ad60036a2020ca1a15743d89e64e07009aa2ba913f27450564b1ef69698ea2`.
+No new hardware test or broader model claim is established by this release.
 
 Before shipping the native producer, deploy migrations 064–065 and backend acceptance
 of schema-v4 `operationKind=update`, required Boolean `oldMapPreserved`, and the
@@ -47,7 +59,7 @@ old-client acceptance, provider queue recovery and the two BBBike date formats.
 Use the same operation ID for local, diagnostic and map-update records. Publish
 neither a cause for the historical France failure nor new hardware compatibility
 claims from these checks. The owner approved the release notes and app-update notification copy on
-2026-10-02; the build remains unpublished until the release checks pass.
+2026-10-02; the approved text is published with build 38.
 
 This is the shared release contract for the native app, catalog/evidence API and
 admin read models. Read it before changing either diagnostic stream, payload
