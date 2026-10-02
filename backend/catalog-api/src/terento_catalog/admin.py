@@ -6502,6 +6502,8 @@ def _diagnostics_script() -> str:
             if (event.key === 'ArrowUp' && visible.length) { event.preventDefault(); visible[visible.length - 1].focus(); }
             if (event.key === 'Escape' && wrap) { wrap.hidden = Boolean(canonical?.value); if (results) results.hidden = true; sync(); }
           });
+          // Bind the initial choices too, before any search input or Edit action.
+          render('');
           sync();
         });
       });

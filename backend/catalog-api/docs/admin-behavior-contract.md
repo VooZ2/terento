@@ -329,7 +329,10 @@ a diagnostic reviewed; it is secondary to investigating the failure. Assigned
 model administration stays collapsed; unresolved identity has a clear action.
 Cards use content-driven heights and stack when space requires it.
 
-Assign model is an operator-assisted exact-catalog selection. Reported facts and
+Assign model is an operator-assisted exact-catalog selection. Initial candidate
+buttons are immediately usable by pointer and keyboard without
+typing into the search field. Confirm stays disabled until a specific catalog
+model is selected; changing the search clears a stale selection. Reported facts and
 missing facts stay distinct; catalog facts may enrich only a consistent exact
 target. A conflicting normal assignment requires the separate explicit manual
 action and an audit record. Scope remains one exact result unless the operator

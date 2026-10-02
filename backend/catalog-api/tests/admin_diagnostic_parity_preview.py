@@ -55,6 +55,13 @@ def build(root):
             operations=[] if state == 'resolved' else [install_record],
             resolved_operations=[install_record] if state == 'resolved' else [])
         pages['update-' + state] = update_diagnostics_page({'detail': update_record}, user, 'fixture')
+    ambiguous_install = {**install, 'canonical_device_model_id': None,
+        'identity_resolution_state': 'UNRESOLVED', 'identity_recommendation': None,
+        'compatibility_identity': 'fēnix 8', 'variant': None}
+    second_device = {**device_row, 'id': 'fenix-8-47-amoled', 'device_id': 'fenix-8-47-amoled',
+        'variant': '47 mm, AMOLED', 'case_size_mm': 47}
+    pages['install-ambiguous'] = diagnostics_page([], user, 'fixture', identity='fēnix 8',
+        operations=[ambiguous_install], identity_devices=[device_row, second_device], unresolved_only=True)
     unknown = {**update, 'canonical_device_model_id': None, 'device': None,
         'identity_assessment': {'state': 'UNRESOLVED'}}
     pages['update-unknown'] = update_diagnostics_page({'detail': unknown}, user, 'fixture')

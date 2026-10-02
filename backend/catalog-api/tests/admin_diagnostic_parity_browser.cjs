@@ -37,7 +37,7 @@ const diagnosticID = '22222222-2222-4222-8222-222222222222';
       const req = route.request(), url = new URL(req.url());
       const kind = url.pathname.startsWith('/admin/update-diagnostics') ? 'update' : 'install';
       if (req.method() === 'POST') {
-        assert(/^\/admin\/(update-diagnostics|diagnostics)\/(issue|resolve|reopen|workflow)$/.test(url.pathname), 'only diagnostic review writes');
+        assert(/^\/admin\/(update-diagnostics|diagnostics)\/(issue|resolve|reopen|workflow|identity)$/.test(url.pathname), 'only diagnostic review writes');
         const form = new URLSearchParams(req.postData());
         assert.equal(form.get('csrf_token'), 'fixture');
         if (kind === 'update') assert.equal(form.get('diagnostic_id'), diagnosticID);
@@ -206,8 +206,39 @@ const diagnosticID = '22222222-2222-4222-8222-222222222222';
     assert.equal(failedURL.searchParams.get('outcome'), 'failed');
     await page.locator('#updates a').filter({hasText: 'Inspect update'}).nth(1).click();
     assert(page.url().includes('diagnosticId=' + diagnosticID));
+    // Initial server-rendered identity options must work without a search input event.
+    for (const exactID of [deviceID, 'fenix-8-47-amoled']) {
+      const surface = await load('install-ambiguous');
+      const form = surface.locator('[data-identity-form]');
+      assert.equal(await form.locator('[data-identity-search]').inputValue(), '');
+      assert.equal(await form.locator('[data-identity-device-id]').count(), 2);
+      assert.equal(await form.locator('[data-identity-confirm]').isDisabled(), true);
+      await form.locator(`[data-identity-device-id='${exactID}']`).click();
+      assert.equal(await form.locator('input[name="canonical_device_model_id"]').inputValue(), exactID);
+      assert.equal(await form.locator('[data-identity-confirm]').isDisabled(), false);
+    }
+    const ambiguous = await load('install-ambiguous');
+    const picker = ambiguous.locator('[data-identity-form]');
+    const search = picker.locator('[data-identity-search]');
+    const firstID = await picker.locator('[data-identity-device-id]').first().getAttribute('data-identity-device-id');
+    await search.focus();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    assert.equal(await picker.locator('input[name="canonical_device_model_id"]').inputValue(), firstID);
+    assert.equal(await picker.locator('[data-identity-confirm]').isDisabled(), false);
+    await picker.locator('[data-identity-edit]').click();
+    await search.fill('47');
+    assert.equal(await picker.locator('input[name="canonical_device_model_id"]').inputValue(), '');
+    assert.equal(await picker.locator('[data-identity-confirm]').isDisabled(), true);
+    await picker.locator("[data-identity-device-id='fenix-8-47-amoled']").click();
+    await picker.locator('[data-identity-confirm]').click();
+    await page.waitForFunction(() => !document.querySelector('form[data-submitting="true"]'));
+    assert.equal(mutations.at(-1).action, 'identity');
+    assert.equal(mutations.at(-1).data.canonical_device_model_id, 'fenix-8-47-amoled');
+    assert.equal(mutations.at(-1).data.identity_action, 'ASSIGN');
+    assert.equal(mutations.at(-1).data.csrf_token, 'fixture');
     assert.deepEqual(errors, []);
     assert(external.every(request => request.method === 'GET'), 'no remote writes');
-    console.log('PASS diagnostic parity: 20 page/width LTR+RTL, 200% CSS zoom, GitHub preview/sanitization/copy/bounded preparation, mock issue link/resolve/reopen, unknown identity, exact-device navigation, dialog ARIA/focus/Escape.');
+    console.log('PASS diagnostic parity: 20 page/width LTR+RTL, 200% CSS zoom, GitHub preview/sanitization/copy/bounded preparation, mock issue link/resolve/reopen, unknown identity, exact-device navigation, dialog ARIA/focus/Escape, initial identity choices/mouse/keyboard/search clearing/exact-ID confirmation.');
   } finally {await browser.close();}
 })().catch(error => {console.error(error); process.exitCode = 1;});
