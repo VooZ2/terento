@@ -134,6 +134,30 @@ class DiscoverabilityTests(unittest.TestCase):
         for path in ('/', '/about/', '/compatibility/', '/download/', '/guides/install-garmin-maps-mac/'):
             self.assertIn(BASE + path, links)
 
+    def test_markdown_negotiation_representations_match_public_html(self):
+        spec = importlib.util.spec_from_file_location('markdown_pages', ROOT / 'scripts/build-markdown-pages.py')
+        generator = importlib.util.module_from_spec(spec); spec.loader.exec_module(generator)
+        expected_files = set()
+        for page in CONFIG['pages']:
+            markdown_path = (ROOT / page['file']).with_name('index.md')
+            expected_files.add(markdown_path)
+            rendered = generator.render_page(page)
+            self.assertEqual(markdown_path.read_text(), rendered, page['path'])
+            self.assertTrue(rendered.startswith('---\ntitle: '), page['path'])
+            self.assertIn(f"canonical: {BASE}{page['path']}", rendered)
+            self.assertNotRegex(rendered, r'<(?:html|head|body|script|style)\b')
+            self.assertGreater(len(rendered), 300, page['path'])
+        self.assertEqual(set((ROOT / 'site').rglob('index.md')), expected_files)
+
+        caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
+        self.assertIn('header Accept *text/markdown*', caddy)
+        self.assertIn('method GET HEAD', caddy)
+        self.assertIn('path_regexp markdownPage ^/([a-zA-Z0-9_-]+/)*$', caddy)
+        self.assertIn('header @negotiatedPage Vary Accept', caddy)
+        self.assertIn('rewrite * {path}index.md', caddy)
+        self.assertIn('header Vary "Accept"', caddy)
+        self.assertIn('header Content-Type "text/markdown; charset=utf-8"', caddy)
+
     def test_api_catalog_links_and_openapi_routes(self):
         catalog = json.loads((ROOT / 'site/.well-known/api-catalog').read_text())
         self.assertEqual(len(catalog['linkset']), 1)

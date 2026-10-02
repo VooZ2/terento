@@ -58,10 +58,23 @@ http_status() {
 }
 
 home_body="$temporary/home.html"
+markdown_body="$temporary/home.md"
 sitemap_body="$temporary/sitemap.xml"
 key_body="$temporary/key-response.txt"
 bad_body="$temporary/bad-response.html"
 [ "$(http_status "http://127.0.0.1:$port/" "$home_body")" = 200 ]
+[ "$(curl --silent --show-error --dump-header "$temporary/markdown-headers" --output "$markdown_body" --write-out '%{http_code}' --header 'Accept: text/markdown' "http://127.0.0.1:$port/")" = 200 ]
+grep -iq '^Content-Type: text/markdown; charset=utf-8' "$temporary/markdown-headers"
+grep -iq '^Vary: Accept' "$temporary/markdown-headers"
+cmp -s "$repo_root/site/index.md" "$markdown_body"
+grep -q '^# Install maps on Garmin watches, simply$' "$markdown_body"
+! grep -qi '<html' "$markdown_body"
+curl --silent --show-error --head --dump-header "$temporary/markdown-head-headers" --header 'Accept: text/markdown' "http://127.0.0.1:$port/" >/dev/null
+grep -iq '^Content-Type: text/markdown; charset=utf-8' "$temporary/markdown-head-headers"
+curl --silent --show-error --dump-header "$temporary/html-headers" --output "$temporary/default-home.html" "http://127.0.0.1:$port/"
+grep -iq '^Content-Type: text/html' "$temporary/html-headers"
+grep -iq '^Vary: Accept' "$temporary/html-headers"
+cmp -s "$home_body" "$temporary/default-home.html"
 [ "$(http_status "http://127.0.0.1:$port/sitemap.xml" "$sitemap_body")" = 200 ]
 grep -q '<urlset' "$sitemap_body"
 # Discovery files and headers use the actual production Caddy configuration.
