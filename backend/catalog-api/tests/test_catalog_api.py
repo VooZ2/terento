@@ -370,7 +370,7 @@ class CatalogAPITests(unittest.TestCase):
             self.assertEqual(detail.status, 200)
             self.assertIn(b"Metadata and attribution", detail_body)
             self.assertIn(b"Health check history", detail_body)
-            self.assertIn(b"Collect catalog", detail_body)
+            self.assertIn(b"Refresh catalog", detail_body)
 
             database.status = "PAUSED"
             blocked_detail, blocked_detail_body = self._request(

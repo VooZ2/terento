@@ -4,6 +4,47 @@
 
 # Catalog API contract
 
+## Local provider recovery and update diagnostic additions — 2026-10-02
+
+Requires additive migration `064_provider_rechecks_update_diagnostics.sql`.
+This describes the local implementation, not deployed route availability.
+
+- `POST /admin/providers/{id}/rechecks`: authenticated and CSRF protected;
+  body `{}` selects failed/unavailable artifacts, or `{ "packageId": "..." }`
+  selects one provider-owned, non-retired package. Returns `{ "jobId": ... }`.
+  The same active scope reuses its queued/running job. Another active scope
+  returns provider-busy; recent completed checks return an explicit cooldown
+  with the earliest retry time.
+- `GET /admin/providers/{id}/rechecks`: authenticated, no-store/noindex;
+  returns `{ "jobs": [...] }`, the latest ten jobs, including state, results
+  and any retry-not-before time. States are `QUEUED`, `RUNNING`, `SUCCEEDED`,
+  `FAILED`, `INTERRUPTED`. The existing scheduler runs the persistent queue.
+- `GET /admin/update-diagnostics`: authenticated HTML, no-store/noindex.
+  Optional `outcome=failed|not_started`, nonnegative `offset` paginates 50
+  reports. `eventId` accepts a map-update statistics UUID; `diagnosticId`
+  accepts a diagnostic UUID. These identifiers are mutually exclusive.
+  Invalid filters return 400; unavailable storage returns 503. No matching
+  or ambiguous diagnostic renders an explicit availability message.
+
+`POST /compatibility/events` accepts an additive schema-v4 update report:
+`operationKind: "update"` plus required Boolean `oldMapPreserved`; existing
+operation ID, provider, region, stage, write-started fact and closed update
+failure code carry the result. `phaseOutcome` is `SUCCEEDED`, `FAILED` or
+`NOT_STARTED`. The backend stores these in `map_update_diagnostic`, never in
+installation evidence or compatibility aggregates. An absent discriminator
+retains the existing installation contract. `oldMapPreserved` is invalid on
+an installation report; unreviewed update codes are rejected.
+
+Update reports use the existing diagnostic sharing preference and delivery controller, while
+map-use statistics retain their independent preference. Update diagnostics are
+pruned after 24 months by the existing evidence-retention task. No new raw logs,
+paths, serial numbers or manifests are transmitted. Exact correlation requires
+one matching operation/provider/region and outcome. Region matching lowercases
+both values because map-use intake lowercases canonical region codes; no name
+aliases or timestamp-based inference
+or historical reconstruction is performed. See ADR0033 and the shared app/API
+release contract for deployment order.
+
 Base URL in production:
 
 ```text
@@ -485,8 +526,9 @@ regions/packages, health details/history, collection history, and retained
 provider history. Large source and package lists have client-side search,
 broken-only filters, 25/50-row pagination, and no zero-item package-source
 disclosure. An empty collection uses a compact `Collection · No runs yet`
-state. It also provides `Check now`, `Collect
-catalog`, `Pause`/`Activate`, and an overflow `Retire` control. A request
+state. It also provides `Check provider health`, `Refresh catalog`,
+`Recheck affected packages`, targeted package rechecks, `Pause`/`Activate`,
+and an overflow `Retire` control. A request
 without a valid admin session redirects to `/admin/login`; the page never
 serves map binaries.
 
@@ -568,9 +610,10 @@ be removed only by an authenticated, CSRF-protected admin action at
 `MAP_UPDATE_*` events represent a safe replacement of an already installed
 Terento-owned provider map. They are counted separately from first
 installations; they do not increase installation totals, country coverage, or
-map popularity counts. Admin Dashboard renders both update outcomes as one
-dedicated Map update chart series, while Map statistics exposes their success
-and failure breakdown and supports filtering by either event type.
+map popularity counts. Admin Dashboard and Map statistics render successful
+and failed updates separately: solid green for success and green diagonal
+stripes for failure. Fresh-install failures remain red. Map statistics supports
+filtering by either update event type.
 
 This endpoint receives map-usage diagnostics while the independent map-usage
 diagnostics switch is enabled in `Terento → Diagnostics`; it must not be used

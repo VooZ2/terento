@@ -54,24 +54,24 @@ class _RemoteZip(io.RawIOBase):
         return response.body
 
 
-def _metadata(url):
-    with urlopen(Request(url, method='HEAD', headers={'User-Agent': HTTPRangeFetcher.user_agent}), timeout=30) as response:
+def _metadata(url, opener=None):
+    with (opener.open if opener else urlopen)(Request(url, method='HEAD', headers={'User-Agent': HTTPRangeFetcher.user_agent}), timeout=30) as response:
         if response.status != 200 or response.geturl() != url:
             raise ValueError('Contour source must remain at its official URL')
         return (int(response.headers.get('Content-Length', '0')),
                 response.headers.get('ETag'), response.headers.get('Last-Modified'))
 
 
-def inspect_contour(url):
+def inspect_contour(url, *, opener=None, fetcher=None):
     match = re.fullmatch(r'https://garmin\.opentopomap\.org/[a-z-]+/([a-z0-9-]+)/otm-\1-contours\.zip', url)
     if not match:
         raise ValueError('Not an exact official contour source path')
     region = match.group(1)
-    before = _metadata(url)
+    before = _metadata(url, opener)
     if before[0] <= 0 or not before[1] or before[1].startswith('W/') or not before[2]:
         raise ValueError('Contour source lacks stable HTTP metadata')
     expected = f'otm-{region}-contours.img'
-    with zipfile.ZipFile(_RemoteZip(url, before[0], HTTPRangeFetcher())) as archive:
+    with zipfile.ZipFile(_RemoteZip(url, before[0], fetcher or HTTPRangeFetcher())) as archive:
         images = [item for item in archive.infolist() if item.filename.lower().endswith('.img')]
         if len(images) != 1 or images[0].filename != expected or images[0].file_size <= 4096:
             raise ValueError('Contour ZIP does not contain the exact expected IMG')
@@ -83,7 +83,7 @@ def inspect_contour(url):
         if 'opentopomap' not in identity or region.replace('-', '') not in identity:
             raise ValueError('Contour header does not match provider and region')
         install_size = images[0].file_size
-    if _metadata(url) != before:
+    if _metadata(url, opener) != before:
         raise ValueError('Contour HTTP metadata changed during inspection')
     proof = {"sourceURL": url, "etag": before[1], "lastModified": before[2],
              "downloadSizeBytes": before[0], "installSizeBytes": install_size,

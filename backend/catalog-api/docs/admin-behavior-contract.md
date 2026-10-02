@@ -1,5 +1,40 @@
 # Administration, statistics and diagnostic behavior contract
 
+## Provider recovery and update diagnostics — local 2026-10-02
+
+The local implementation adds provider-scoped recheck jobs, per-artifact check
+results and an update-only diagnostic view. This section describes the working
+tree; production deployment and a new native release are separate gates.
+
+Provider actions have distinct meanings: **Check provider health** samples
+provider infrastructure; **Refresh catalog** collects its catalog; **Recheck
+affected packages** validates currently failed/unavailable artifacts. A package
+row can request a targeted recheck. Rechecks use original catalog URLs and the
+existing provider validators, obey acquisition restrictions and stop after HTTP
+429. The operator sees a reason, next action, time and stored job results;
+missing historical reasons remain explicitly unknown. Failed optional contours
+do not make a validated required main map unavailable. A check never asserts
+that a full download or a Garmin installation has passed.
+
+Activity failures link to `/admin/update-diagnostics?eventId=...`. The detail
+requires one exact operation/provider/region match with the same outcome. Region
+casing is normalized to lowercase in both streams; names and aliases are not
+guessed. Missing,
+ambiguous or conflicting evidence is shown explicitly. The list can filter failed
+and not-started updates. Detail reports show a closed failure-code explanation,
+stage, next action, app version/build and known write/old-map-preservation facts.
+An unconfirmed preservation result is not proof of absence; failed updates say
+“Not confirmed — inspect device.” Acquisition/source-validation failures link
+to the known provider package view. Raw payloads, device paths and logs are not
+exposed. A historical statistic alone
+cannot establish the France failure's cause.
+
+Install successes/failures and update successes/failures have distinct chart
+series and labels. Failed updates use green diagonal stripes, successful updates
+solid green; fresh-install failures remain red. Fresh-install KPI denominators
+exclude every update. Not-started updates are diagnostics, not failed device-write
+attempts. Charts and legends must preserve these distinctions at supported widths.
+
 This is the canonical behavioral contract for the private Terento admin surface
 and its diagnostic data dependencies. It complements `api.md` (routes and current
 implementation) and the exact-model compatibility policy. Read it before changing
@@ -370,3 +405,5 @@ App/API sequencing and revision/test receipts follow
 Recent map activity uses semantic icons and color while retaining visible
 status text. Expanded download history retains its start, finish, and duration
 facts; historical in-progress icons remain static.
+
+Provider recovery respects HTTP 429 Retry-After cooldown across package rechecks, catalog collection and health checks. A matching active request reuses its job; a different scope waits for the active provider job. Sources display artifact validation state, separately from provider enablement. Failed update counters link to update reports.

@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from terento_catalog.admin import token_hash
@@ -7,6 +8,21 @@ UTC = timezone.utc
 
 
 class FakeProviderDatabase:
+    @contextmanager
+    def connection(self):
+        yield self
+
+    def execute(self, sql, args=()):
+        # Provider health reads the persisted Retry-After boundary before HTTP.
+        # Keep the fixture strict so a new query cannot silently pass a fake DB.
+        if sql.startswith("SELECT max(retry_not_before) AS retry_at FROM provider_recheck"):
+            return type("CooldownResult", (), {"fetchone": lambda _: {"retry_at": None}})()
+        if sql.startswith("SELECT pg_try_advisory_lock"):
+            return type("LockResult", (), {"fetchone": lambda _: {"acquired": True}})()
+        if sql.startswith("SELECT pg_advisory_unlock"):
+            return type("UnlockResult", (), {"fetchone": lambda _: {"released": True}})()
+        raise AssertionError(f"Unexpected fixture SQL: {sql}")
+
     def operational_health_snapshot(self):
         return {}
 

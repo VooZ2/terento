@@ -1078,7 +1078,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Top countries", body)
         self.assertIn("Maps by provider", body)
         self.assertIn(">Downloads</h2>", body)
-        self.assertIn(">Installs</h2>", body)
+        self.assertIn(">Installs and updates</h2>", body)
         self.assertNotIn("Popular maps", body)
         self.assertNotIn("id='regions-view'", body)
 
@@ -1522,7 +1522,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
         body = _overview_trend_chart([{
             "bucket": "2026-09-24T00:00:00Z", "success_count": 5,
-            "failed_count": 2, "map_update_count": 1,
+            "failed_count": 1, "map_update_success_count": 1, "map_update_failed_count": 1,
         }], "day")
         charts = [ET.fromstring(markup) for markup in re.findall(r"<svg.*?</svg>", body)]
         self.assertEqual([chart.attrib["viewBox"] for chart in charts], ["0 0 720 260", "0 0 360 220"])
@@ -1531,7 +1531,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
         self.assertEqual(
             [bar.attrib["class"] for bar in bars],
-            ["overview-chart-success", "overview-chart-failed", "overview-chart-update"],
+            ["overview-chart-success", "overview-chart-failed", "overview-chart-update", "overview-chart-update-failed"],
         )
         self.assertEqual({bar.attrib["x"] for bar in bars}, {bars[0].attrib["x"]})
         self.assertEqual({bar.attrib["width"] for bar in bars}, {bars[0].attrib["width"]})
@@ -3181,7 +3181,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"},
             "csrf",
         ).decode()
-        for text in ("Packages", "Broken", "Catalog sync", "Health", "Check now", "Collect catalog", "More", "Retire provider", "Metadata and attribution", "Original links", "Download source URLs", "Regions and packages", "Health", "View check details", "Collection history", "Provider history"):
+        for text in ("Packages", "Broken", "Catalog sync", "Health", "Check provider health", "Refresh catalog", "More", "Retire provider", "Metadata and attribution", "Original links", "Download source URLs", "Regions and packages", "Health", "View check details", "Collection history", "Provider history"):
             self.assertIn(text, body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)

@@ -1257,6 +1257,8 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
     if state == "stale":
         tone = "neutral"
     status_markup = _download_history_icon(event_type) + html.escape(label)
+    if event_type == 'MAP_UPDATE_FAILED' and event.get('event_id'):
+        status_markup += f" <a class='secondary-button' href='/admin/update-diagnostics?eventId={quote(str(event['event_id']),safe='')}'>View failure</a>"
     component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
     context = html.escape(_overview_map_event_context(event)) + (' · ' + component if component else '')
     device = _overview_activity_device(event)
@@ -1329,7 +1331,7 @@ def _overview_chart_bucket_label(
     if bucket == "month":
         return parsed.strftime("%b %Y")
     if bucket == "week":
-        return "Week of " + parsed.strftime("%d %b")
+        return parsed.strftime("%d %b")
     return parsed.strftime("%d %b")
 
 
@@ -1370,7 +1372,8 @@ def _overview_trend_chart(
         series = (
             ("success", "Install succeeded", "success_count"),
             ("failed", "Install failed", "failed_count"),
-            ("update", "Map update", "map_update_count"),
+            ("update", "Update succeeded", "map_update_success_count"),
+            ("update-failed", "Update failed", "map_update_failed_count"),
         )
         chart_label = "Map installation trend"
     values = []
@@ -1428,7 +1431,7 @@ def _overview_trend_chart(
                 continue
             segment_x, segment_width, y, height = geometry
             group_bars.append(
-                f"<rect class='overview-chart-{name}' data-stack-index='{series_index}' "
+                f"<rect class='overview-chart-{name}' style='{'fill:url(#update-failed-' + ('mobile' if _compact else 'desktop') + ')' if name == 'update-failed' else ''}' data-stack-index='{series_index}' "
                 f"data-stack-total='{stack_total}' x='{segment_x:.1f}' y='{y:.2f}' "
                 f"width='{segment_width:.1f}' height='{height:.2f}' tabindex='0' role='img' "
                 f"aria-label='{html.escape(title, quote=True)}'><title>{html.escape(title)}</title></rect>"
@@ -1456,7 +1459,7 @@ def _overview_trend_chart(
         )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='{chart_label}'>"
-        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        f"<defs><pattern id='update-failed-{'mobile' if _compact else 'desktop'}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--status-success-text)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
@@ -1470,7 +1473,7 @@ def _overview_trend_chart(
         + (
             "<div class='overview-chart-legend'><span><i class='overview-chart-download-success'></i>Successful</span><span><i class='overview-chart-download-failed'></i>Failed</span></div></div>"
             if metric == "downloads"
-            else "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Successful</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-update'></i>Map update</span></div></div>"
+            else "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Install successful</span><span><i class='overview-chart-failed'></i>Install failed</span><span><i class='overview-chart-update'></i>Update successful</span><span><i class='overview-chart-update-failed'></i>Update failed</span></div></div>"
         )
     )
 
@@ -1705,7 +1708,7 @@ def _overview_downloads_chart(
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
         f"viewBox='0 0 {chart_width} {chart_height}' role='img' "
         f"aria-label='Observed download increases between checks over {period_label}'>"
-        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        f"<defs><pattern id='update-failed-{'mobile' if _compact else 'desktop'}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--status-success-text)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
@@ -1934,7 +1937,7 @@ def overview_page(
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
-        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-download-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-download-trend-title'>Map downloads</h2></div>{download_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, metric='downloads', has_activity=bool((data.get('completedDownloadCount') or 0) + (data.get('failedDownloadCount') or 0)))}</section><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-trend-title'>Map installs</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, has_activity=bool((data.get('completedInstallCount') or 0) + (data.get('failedInstallCount') or 0) + (data.get('mapUpdateCount') or 0)))}</section></div>
+        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-download-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-download-trend-title'>Map downloads</h2></div>{download_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, metric='downloads', has_activity=bool((data.get('completedDownloadCount') or 0) + (data.get('failedDownloadCount') or 0)))}</section><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-trend-title'>Map installs and updates</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, has_activity=bool((data.get('completedInstallCount') or 0) + (data.get('failedInstallCount') or 0) + (data.get('mapUpdateCount') or 0)))}</section></div>
         <div class='overview-composition-grid'>{attention_section}<section class='overview-panel overview-activity-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><h2 id='overview-activity-title'>Activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{downloads_section}</div>
       </main>
       <script>{_overview_period_script()}</script>
@@ -2705,6 +2708,21 @@ def providers_page(
     return _layout("Providers", content, sections={"providers": provider_rows})
 
 
+def _provider_problem(package, provider_id):
+    problems = []
+    for artifact in package.get('artifacts') or []:
+        if artifact.get('validation_status') not in {'UNAVAILABLE', 'FAILED'}:
+            continue
+        check = artifact.get('last_check') or {}
+        message = check.get('message') or 'The previous check did not record a reason. Check this package again.'
+        action = check.get('nextAction') or 'Recheck to get current validation evidence.'
+        url = str(artifact.get('source_url') or '')
+        diagnostic = {'package': package.get('id'), 'source': url, **check}
+        source = _provider_url(url, label='Open source')
+        problems.append(f"<article class='provider-problem'><h3>{html.escape(_admin_map_display_name(package.get('country'),package.get('name'),package.get('region'),package.get('id')))}</h3><p>{'Ontrail' if 'ontrail' in str(package.get('id')) else html.escape(provider_id.title())} · {html.escape(str(artifact.get('kind') or 'main'))}</p><p><strong>{html.escape(str(message))}</strong></p><p>Installation availability: {html.escape(str(package.get('availability') or 'Unknown'))}. {html.escape(str(action))}</p><p>Last check: {_timestamp_markup(check.get('checkedAt'))}</p><div class='provider-problem-actions'><button class='secondary-button' data-provider-action='rechecks' data-provider-id='{html.escape(provider_id,quote=True)}' data-package-id='{html.escape(str(package.get('id')),quote=True)}'>Recheck</button>{source}<button class='secondary-button' data-copy-diagnostic='{html.escape(json.dumps(diagnostic),quote=True)}'>Copy diagnostic details</button></div></article>")
+    return ''.join(problems)
+
+
 def _provider_package_row(package: dict[str, Any]) -> str:
     broken_count = _optional_nonnegative_int(package.get("broken_artifact_count"))
     availability = str(package.get("availability") or "UNKNOWN")
@@ -2731,11 +2749,11 @@ def _provider_package_row(package: dict[str, Any]) -> str:
             f"Source date: {html.escape(str(artifact.get('source_updated_at') or 'Unknown'))}<br>{source}</p>"
         )
     if artifact_details:
-        artifact_details = f"<details class='admin-disclosure' style='text-align:left;overflow-wrap:anywhere'><summary>Artifact details</summary>{artifact_details}</details>"
+        artifact_details = f"<details class='admin-disclosure' style='text-align:start;overflow-wrap:anywhere'><summary>Artifact details</summary>{artifact_details}</details>"
     return (
-        f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-broken='{str(is_broken).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}{artifact_details}</td>"
+        f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-state='{html.escape(availability,quote=True)}' data-package-broken='{str(is_broken).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}{artifact_details}</td>"
         f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='column-number numeric'>{_optional_count_label(package.get('artifact_count'))}</td>"
-        f"<td class='column-status'>{broken_markup}{f' <small>{broken_count} broken</small>' if is_broken else ''}</td></tr>"
+        f"<td class='column-status'>{broken_markup}{f' <small>{broken_count} need attention</small>' if is_broken else ''}</td></tr>"
     )
 
 
@@ -2748,7 +2766,7 @@ def _provider_source_row(source: dict[str, Any]) -> str:
     return (
         f"<tr data-source-type='{html.escape(source_type, quote=True)}' data-source-search='{html.escape(search, quote=True)}' data-source-broken='{str(broken).lower()}'><td>{html.escape({'main': 'Main map', 'contours': 'Contours'}.get(source.get('artifact_kind'), _provider_source_type_label(source_type)))}</td>"
         f"<td class='provider-url-cell' title='{html.escape(source_url, quote=True)}'>{_provider_url(source_url, label=source_label)}</td>"
-        f"<td class='column-status'>{_provider_status_badge('ACTIVE' if source.get('enabled', True) else 'PAUSED')}</td>"
+        f"<td class='column-status'>{_provider_status_badge(str(source.get('validation_status') or 'UNKNOWN') if source.get('enabled', True) else 'PAUSED')}</td>"
         f"<td class='column-date'>{_timestamp_markup(source.get('last_checked_at'))}</td></tr>"
     )
 
@@ -2979,8 +2997,8 @@ def provider_detail_page(
         )
     elif broken_packages > 0:
         provider_attention = (
-            f"<p class='provider-attention'><strong>{broken_packages} broken artifacts "
-            "need review.</strong> <a href='#provider-packages'>Review packages</a></p>"
+            f"<p class='provider-attention'><strong>{broken_packages} map files "
+            "need attention.</strong> <a href='#provider-packages'>Review packages</a></p>"
         )
     content = f"""
       {_admin_header(user, csrf_token, active='providers')}
@@ -2988,19 +3006,19 @@ def provider_detail_page(
         <p class='back-link'><a href='/admin/providers'>{_admin_icon('arrow-left')} Back to providers</a></p>
         <div class='heading-row'><div><h1>{html.escape(name)}</h1></div><div class='provider-heading-status'>{_provider_status_badge(status)}</div></div>
         <section class='provider-action-bar' data-provider-id='{html.escape(provider_id, quote=True)}' aria-label='Provider actions'>
-          {_provider_action_button(provider_id, 'check', 'Check now')}
-          {_provider_action_button(provider_id, 'collect', 'Collect catalog', secondary=True)}
+          {_provider_action_button(provider_id, 'check', 'Check provider health')}
+          {_provider_action_button(provider_id, 'collect', 'Refresh catalog', secondary=True)}
           {state_button}
           <details class='provider-action-overflow'><summary>More</summary><div>{_provider_action_button(provider_id, 'retire', 'Retire provider', secondary=True, disabled=status == 'RETIRED')}</div></details>
           {activation_note}
           <p class='admin-action-status' id='provider-action-status' aria-live='polite'></p>
         </section>
         {provider_attention}
-        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel' aria-label='Provider summary'><div class='map-statistics-kpi-groups installation-kpi-groups'><section class='map-statistics-kpi-group'><h2 class='sr-only'>Provider summary</h2><div class='map-statistics-kpi-values provider-kpi-values'><div class='map-statistics-kpi-value'><span>Affected packages</span><strong><a href='#provider-packages'>{_optional_count_label(affected_package_count)}</a></strong></div><div class='map-statistics-kpi-value'><span>Problematic sources</span><strong><a href='#provider-download-sources'>{_optional_count_label(problematic_source_count)}</a></strong></div><div class='map-statistics-kpi-value'><span>Broken artifacts</span><strong>{_optional_count_label(broken_packages)}</strong></div></div></section></div></section>
+        <section class='provider-card' aria-label='Package problems'><div class='section-heading'><h2>Package problems</h2>{_provider_action_button(provider_id, 'rechecks', 'Recheck affected packages', disabled=status == 'RETIRED')}</div><p id='provider-recheck-progress' role='status'></p>{''.join(_provider_problem(p, provider_id) for p in packages) or '<p>No known package validation problems.</p>'}</section>
         <div class='provider-state-grid'>
         <section class='provider-card'><div class='section-heading'><div><h2>Health</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{_timestamp_markup(provider.get('lastHealthCheck'))}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history <span class='disclosure-meta'>· {len(previous_health)} previous {'check' if len(previous_health) == 1 else 'checks'}</span></summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
         {collection_section}</div>
-        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages <span class='disclosure-meta'>· {len(packages)} catalog entries · {_optional_count_label(broken_packages)} broken artifacts</span></summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
+        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages <span class='disclosure-meta'>· {len(packages)} catalog entries · {_optional_count_label(broken_packages)} artifacts needing attention</span></summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Needs attention</option><option value='available'>Available</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
         <details class='provider-card admin-disclosure' id='provider-technical-details'><summary>Technical details</summary><div class='disclosure-body'>
         <details class='admin-disclosure'><summary>Package releases</summary><div class='disclosure-body'><p>{release_summary}</p><p class='table-help'>Each region keeps its own provider release.</p></div></details>
         {download_source_section}
@@ -3155,7 +3173,7 @@ def map_statistics_page(
         "<section class='map-statistics-kpi-group' id='map-statistics-updates' aria-labelledby='map-statistics-updates-title'><h2 id='map-statistics-updates-title'>Updates <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
         f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedMapUpdates'>{event_value(all_time_summary, 'completedMapUpdates')}</strong></div>"
         f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(all_time_summary.get('mapUpdateSuccessRate'))}</strong></div>"
-        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedMapUpdates')}</div>"
+        f"<div class='map-statistics-kpi-value failed'><span>Failed</span><a href='/admin/update-diagnostics?outcome=failed' aria-label='View failed update reports'>{failed_metric_markup(all_time_summary, 'failedMapUpdates')}</a></div>"
         "</div></section>"
     )
     metrics_section = (
@@ -3224,14 +3242,14 @@ def map_statistics_page(
         "<div class='section-heading'><h2 id='map-download-trend-title'>Downloads</h2></div>"
         f"{_overview_trend_chart(trend, bucket, chart_time_zone, metric='downloads', has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0)))}"
         "</section><section class='overview-panel overview-chart-panel' aria-labelledby='map-install-trend-title'>"
-        "<div class='section-heading'><h2 id='map-install-trend-title'>Installs</h2></div>"
+        "<div class='section-heading'><h2 id='map-install-trend-title'>Installs and updates</h2></div>"
         f"{_overview_trend_chart(trend, bucket, chart_time_zone, has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0)))}"
         "</section></section>"
     )
     content = f"""
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
-        <div class='heading-row'><div><h1>Maps</h1></div></div>
+        <div class='heading-row'><div><h1>Maps</h1><a class='secondary-button' href='/admin/update-diagnostics?outcome=failed'>Update failures</a></div></div>
         <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><label><span class='sr-only'>Time range</span><select id='map-statistics-range' name='period'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider' name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' name='eventType'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='MAP_UPDATE_SUCCEEDED'>Map update succeeded</option><option value='MAP_UPDATE_FAILED'>Map update failed</option><option value='DOWNLOAD_STARTED'>Download started</option><option value='DOWNLOAD_PROCESSING'>Checking / unpacking</option><option value='DOWNLOAD_CANCELLED'>Download cancelled</option><option value='DOWNLOAD_INTERRUPTED'>Download interrupted</option></select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
         {metrics_section if has_all_time_data else ""}
         {"" if has_event_data else "<section class='map-statistics-empty' aria-live='polite'><h2>No map activity for this scope</h2></section>"}
@@ -3259,7 +3277,7 @@ def _provider_detail_script() -> str:
           if (action === 'retire' && !window.confirm('Retire this provider? Historical events and packages will be retained.')) return;
           let reason = '';
           if (action === 'retire' || action === 'state') reason = window.prompt('Reason for this provider status change (optional):', '') || '';
-          const body = action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
+          const body = action === 'rechecks' ? JSON.stringify(button.dataset.packageId ? {packageId: button.dataset.packageId} : {}) : action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
           const original = button.textContent;
           button.disabled = true;
           if (status) status.textContent = `${original}…`;
@@ -3267,11 +3285,36 @@ def _provider_detail_script() -> str:
             const response = await fetch(`/admin/providers/${encodeURIComponent(id)}/${action}`, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body});
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.error || `Action failed (${response.status})`);
+            if (action === 'rechecks') { sawActiveRecheck = true; if (status) status.textContent = 'Check queued. Results will appear below.'; button.disabled = false; pollRechecks(); return; }
             if (status) status.textContent = 'Saved. Refreshing…';
             window.location.reload();
           } catch (error) { button.disabled = false; if (status) status.textContent = error.message || 'Provider action failed.'; }
         });
       });
+      let recheckTimer;
+      let sawActiveRecheck = false;
+      async function pollRechecks() {
+        const bar = document.querySelector('.provider-action-bar');
+        const progress = document.getElementById('provider-recheck-progress');
+        if (!bar || !progress) return;
+        clearTimeout(recheckTimer);
+        try {
+          const response = await fetch(`/admin/providers/${encodeURIComponent(bar.dataset.providerId)}/rechecks`, {credentials:'same-origin'});
+          if (!response.ok) throw new Error('Check status unavailable. Refresh this page to retry.');
+          const payload = await response.json();
+          const job = payload.jobs?.[0];
+          if (!job) return;
+          const active = ['QUEUED','RUNNING'].includes(job.state);
+          progress.textContent = `Last check: ${job.state}. ${(job.results || []).length} artifacts checked. ` + (job.results || []).map(r => `${r.packageId}: ${r.message}`).join(' ');
+          if (active) { sawActiveRecheck = true; recheckTimer = setTimeout(pollRechecks, 3000); }
+          else if (sawActiveRecheck) window.location.reload();
+        } catch (error) { progress.textContent = error.message; }
+      }
+      pollRechecks();
+      document.querySelectorAll('[data-copy-diagnostic]').forEach(button => button.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(button.dataset.copyDiagnostic); button.textContent = 'Copied'; }
+        catch { button.textContent = 'Copy unavailable'; }
+      }));
       const setupPagination = ({rowsSelector, searchSelector, filterSelector, pageSizeSelector, paginationSelector, noun}) => {
         const rows = [...document.querySelectorAll(rowsSelector)];
         const search = document.querySelector(searchSelector);
@@ -3281,14 +3324,22 @@ def _provider_detail_script() -> str:
         if (!pagination) return;
         if (!rows.length) { pagination.hidden = true; return; }
         pagination.hidden = false;
+        const storageKey = `terento:provider:${location.pathname}:${noun}`;
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}');
+          if (search && typeof saved.search === 'string') search.value = saved.search;
+          if (filter && [...filter.options].some(o => o.value === saved.filter)) filter.value = saved.filter;
+          if (pageSizeControl && ['25','50'].includes(saved.size)) pageSizeControl.value = saved.size;
+        } catch {}
         let page = 0;
         const refresh = () => {
+          try { sessionStorage.setItem(storageKey, JSON.stringify({search:search?.value,filter:filter?.value,size:pageSizeControl?.value})); } catch {}
           const pageSize = Number(pageSizeControl?.value || 25) === 50 ? 50 : 25;
           const query = (search?.value || '').trim().toLocaleLowerCase();
           const brokenOnly = filter?.value === 'broken';
           const visible = rows.filter((row) => {
             const matchesSearch = !query || (row.dataset[`${noun}Search`] || '').includes(query);
-            const matchesFilter = !brokenOnly || row.dataset[`${noun}Broken`] === 'true';
+            const matchesFilter = filter?.value === 'available' ? row.dataset.packageState === 'AVAILABLE' : !brokenOnly || row.dataset[`${noun}Broken`] === 'true';
             return matchesSearch && matchesFilter;
           });
           const pages = Math.max(1, Math.ceil(visible.length / pageSize));
@@ -6624,7 +6675,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .copy-status{min-width:54px;color:var(--interactive);font-size:12px;font-weight:700}
 .admin-action-status{margin:8px 0 0;color:var(--interactive);font-size:12px;font-weight:700}.admin-async-action [disabled]{cursor:wait;opacity:.68}
 .button-link,.provider-action-bar button{display:inline-flex;align-items:center;justify-content:center;min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700;text-decoration:none}.button-link:hover,.provider-action-bar button:hover{background:var(--interactive-hover)}.provider-action-bar button.secondary-button{border:1px solid var(--border);background:var(--surface);color:var(--graphite)}.provider-action-bar button.secondary-button:hover{border-color:var(--interactive);background:var(--surface-muted);color:var(--interactive)}
-.provider-table-wrap table{min-width:980px}.provider-name-link{display:flex;flex-direction:column;gap:2px;text-decoration:none}.provider-name-link:hover strong{text-decoration:underline}.provider-name-link small{color:var(--secondary);font:500 11px var(--font-mono)}.provider-table-wrap code{font:500 11px var(--font-mono);overflow-wrap:anywhere}.provider-status{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;text-transform:uppercase;white-space:nowrap}.provider-status-active,.provider-status-healthy,.provider-status-succeeded{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.provider-status-paused,.provider-status-unknown,.provider-status-running{background:var(--surface-muted);color:var(--secondary)}.provider-status-retired,.provider-status-down,.provider-status-failed{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.provider-status-degraded{background:var(--status-tested-surface);border-color:var(--status-tested-border);color:var(--status-tested-text)}.provider-broken-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:750}.provider-error{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--danger);font-size:12px}.provider-table-wrap .numeric{text-align:right;font-variant-numeric:tabular-nums}.provider-action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 20px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-action-bar .admin-action-status{flex:1 1 180px;margin:0}.provider-activation-note{flex:1 1 100%;margin:2px 0 0;padding:9px 11px;border:1px solid var(--status-tested-border);border-radius:8px;background:var(--status-tested-surface);color:var(--status-tested-text);font-size:12px;line-height:1.45}.provider-heading-status{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.provider-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 24px}.provider-metrics article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-metrics article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.provider-metrics article>strong{display:block;margin-top:6px;font-family:var(--font-brand);font-size:20px;line-height:1.15}.provider-metrics article>strong .admin-timestamp{font-size:15px}.provider-card{margin-top:24px;padding:22px 24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}.provider-card .section-heading{margin-bottom:16px}.provider-card .section-heading h2{font-size:20px}.provider-information-list{margin:0;border-top:1px solid var(--border)}.provider-information-list div{display:grid;grid-template-columns:minmax(150px,.45fr) minmax(0,1.55fr);gap:18px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.provider-information-list dt{color:var(--secondary);font-size:12px}.provider-information-list dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.provider-information-list a,.provider-url-cell a{color:var(--interactive);text-underline-offset:3px}.provider-package-broken{background:color-mix(in srgb,var(--error-surface) 35%,var(--surface))}.provider-package-broken small{display:block;margin-top:3px;color:var(--danger);font-size:10px}.provider-component-list{display:flex;gap:5px;flex-wrap:wrap}.provider-component{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.provider-component .provider-status{min-height:21px;padding:4px 6px;font-size:9px}.provider-history-wrap table{min-width:1240px}.provider-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.provider-dashboard-grid .provider-card{min-width:0}.map-statistics-filter-bar label{flex:0 1 auto}.map-statistics-filter-bar input,.map-statistics-filter-bar select{min-width:130px}.map-statistics-filter-bar .results-count{flex:1 1 120px}
+.provider-table-wrap table{min-width:980px}.provider-name-link{display:flex;flex-direction:column;gap:2px;text-decoration:none}.provider-name-link:hover strong{text-decoration:underline}.provider-name-link small{color:var(--secondary);font:500 11px var(--font-mono)}.provider-table-wrap code{font:500 11px var(--font-mono);overflow-wrap:anywhere}.provider-status{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;text-transform:uppercase;white-space:nowrap}.provider-status-active,.provider-status-healthy,.provider-status-succeeded,.provider-status-validated{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.provider-status-paused,.provider-status-unknown,.provider-status-running{background:var(--surface-muted);color:var(--secondary)}.provider-status-retired,.provider-status-down,.provider-status-failed,.provider-status-unavailable{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.provider-status-degraded{background:var(--status-tested-surface);border-color:var(--status-tested-border);color:var(--status-tested-text)}.provider-broken-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:750}.provider-error{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--danger);font-size:12px}.provider-table-wrap .numeric{text-align:right;font-variant-numeric:tabular-nums}.provider-action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 20px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-action-bar .admin-action-status{flex:1 1 180px;margin:0}.provider-activation-note{flex:1 1 100%;margin:2px 0 0;padding:9px 11px;border:1px solid var(--status-tested-border);border-radius:8px;background:var(--status-tested-surface);color:var(--status-tested-text);font-size:12px;line-height:1.45}.provider-heading-status{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.provider-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 24px}.provider-metrics article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-metrics article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.provider-metrics article>strong{display:block;margin-top:6px;font-family:var(--font-brand);font-size:20px;line-height:1.15}.provider-metrics article>strong .admin-timestamp{font-size:15px}.provider-card{margin-top:24px;padding:22px 24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}.provider-card .section-heading{margin-bottom:16px}.provider-card .section-heading h2{font-size:20px}.provider-information-list{margin:0;border-top:1px solid var(--border)}.provider-information-list div{display:grid;grid-template-columns:minmax(150px,.45fr) minmax(0,1.55fr);gap:18px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.provider-information-list dt{color:var(--secondary);font-size:12px}.provider-information-list dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.provider-information-list a,.provider-url-cell a{color:var(--interactive);text-underline-offset:3px}.provider-package-broken{background:color-mix(in srgb,var(--error-surface) 35%,var(--surface))}.provider-package-broken small{display:block;margin-top:3px;color:var(--danger);font-size:10px}.provider-component-list{display:flex;gap:5px;flex-wrap:wrap}.provider-component{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.provider-component .provider-status{min-height:21px;padding:4px 6px;font-size:9px}.provider-history-wrap table{min-width:1240px}.provider-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.provider-dashboard-grid .provider-card{min-width:0}.map-statistics-filter-bar label{flex:0 1 auto}.map-statistics-filter-bar input,.map-statistics-filter-bar select{min-width:130px}.map-statistics-filter-bar .results-count{flex:1 1 120px}
 .attribution-preview{display:grid;grid-template-columns:minmax(220px,.65fr) minmax(0,1.35fr);gap:24px;margin-top:26px;padding-top:21px;border-top:1px solid var(--border)}
 .attribution-preview h2{font-size:20px}
 .attribution-preview .table-help{margin-top:8px;max-width:420px}
@@ -6916,7 +6967,7 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
 .diagnostic-action-form button[type='submit']{min-height:var(--admin-control-height);padding:8px 12px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:600}
 .diagnostic-action-form button[type='submit']:hover{background:var(--interactive-hover)}
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
-.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-update{fill:var(--status-success-text);background:var(--status-success-text)}
+.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-update{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend .overview-chart-update-failed{background:repeating-linear-gradient(45deg,var(--status-success-text) 0 4px,var(--surface) 4px 6px);border:1px solid var(--status-success-text)}
 .model-status-line{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-top:8px}.model-status-line>span{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.model-status-line strong{color:var(--graphite);font-size:12px}.compact-empty-state{margin-top:20px;padding:18px 20px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.compact-empty-state h2{margin:0 0 4px}.compact-empty-state p{margin:0;color:var(--secondary)}.diagnostic-identity-state{margin:12px 0;padding:10px 12px;border-left:3px solid var(--warning);background:var(--surface-muted);font-size:13px}
 .timestamp-metric strong{font-size:var(--admin-type-subsection-size)!important;line-height:var(--admin-type-subsection-line)!important}
 .overview-primary-grid{align-items:start}.overview-primary-grid>.overview-panel{min-height:0}
@@ -7416,7 +7467,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
   .admin-nav form{width:100%;margin:0}.admin-nav button{min-height:44px;width:100%;text-align:left}.admin-nav .admin-mobile-website{display:flex}
 }
 .disclosure-meta{color:var(--secondary);font-weight:400}
-.provider-state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.provider-problem h3{margin:0;font-size:16px}.provider-card>.section-heading button[data-provider-action]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}.provider-problem{padding-block:16px;border-block-end:1px solid var(--border)}.provider-problem p{margin-block:6px}.provider-problem-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-block-start:14px}.provider-state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .provider-state-grid>.provider-card{min-width:0}
 @media(max-width:700px){.provider-state-grid{grid-template-columns:minmax(0,1fr)}.mobile-record-table td[colspan]{display:block!important;width:100%}}
 """

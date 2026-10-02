@@ -1,5 +1,33 @@
 # Terento statistics contract
 
+## Update diagnostic continuation — local 2026-10-02
+
+The local producer records the actual safe-update write boundary. A failed
+operation before that boundary reports `NOT_STARTED` through diagnostics and
+creates no `MAP_UPDATE_FAILED` result. A terminal write failure reports `FAILED`;
+success reports `SUCCEEDED`. The operation ID is shared with the local report
+and any emitted update statistic. Missing remote objects do not imply that no
+write was attempted.
+
+Update acquisition events come from the real provider acquisition observer:
+`DOWNLOAD_STARTED` begins at the downloader boundary, `DOWNLOAD_PROCESSING`
+begins when returned bytes are being validated, and a single terminal result
+records success, failure or cancellation. A failure while validating or
+extracting downloaded bytes is a failed acquisition, matching installation
+acquisition semantics; it is not a failed device write. Policy, identity or
+workspace failures before the downloader boundary create no download attempt.
+All phases share one acquisition ID, the main component and the update's
+operation ID. They use the independent map-usage sharing preference.
+Unmeasured update progress is omitted from diagnostics; cleanup attempt and
+result fields describe the cleanup actually performed by the transaction.
+
+Schema-v4 `operationKind=update` evidence is retained in the separate
+`map_update_diagnostic` store. It never contributes to fresh-install counts,
+success-rate denominators, provider install popularity or compatibility gates.
+Statistics remain authoritative for update totals; diagnostic arrival, duplicates
+or opt-out cannot create another counted result. Historical update events are
+not reclassified without evidence about their write boundary.
+
 Status: active
 Semantics version: 2
 Effective date: 2026-09-17
@@ -191,8 +219,10 @@ Fresh-install outcomes and map-update outcomes are separate statistical
 populations. Updates must never change fresh-install counts or success rates.
 
 Its fresh series are provider fresh successes, custom fresh successes, and
-confirmed fresh-install failures (including custom). The update series is
-separate. Fresh attempt totals are `F_success + F_failed`; download,
+confirmed fresh-install failures (including custom). Successful updates and
+failed updates are separate series. Successful updates are solid green; failed
+updates use green diagonal stripes in bars and legends, while fresh-install
+failures remain red. Fresh attempt totals are `F_success + F_failed`; download,
 pre-install, device-check, not-started, cancelled, and unknown events are not
 chart series.
 

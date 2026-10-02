@@ -1,5 +1,43 @@
 # App–API compatibility and release contract
 
+## Provider recovery and update diagnostics — unreleased local continuation
+
+Local changes dated 2026-10-02 accept both reviewed BBBike README date forms in
+backend and native validation. They add provider artifact rechecks and separate
+update outcome diagnostics; no new public version/build is assigned here.
+
+Before shipping the native producer, deploy migration 064 and backend acceptance
+of schema-v4 `operationKind=update`, required Boolean `oldMapPreserved`, and the
+closed `UPDATE_*` failure-code set. These additive fields do not change schema
+version or catalog routes. Old producers remain accepted; an old backend may
+reject the new update report, so backend deployment and intake verification must
+precede the app release. Report storage must bypass installation/compatibility
+aggregation and share the existing diagnostic opt-out and 24-month retention.
+
+Update diagnostics send measured cleanup attempt/result facts. An unmeasured
+`transferProgressBucket` is omitted only for explicit update reports; the
+existing installation contract still requires it. If a rolled-back backend
+returns HTTP 400 for an update report, the client retains its original ID and
+kind for a later flush and continues sending supported installation reports.
+It never removes the discriminator or recasts the update as an installation.
+
+Local update reports and their pending/uploaded IDs are stored separately in
+`update-evidence.json`. The legacy `installation-evidence.json` contains only
+installation reports, so an older app cannot resend updates as installations.
+The installation file remains the canonical sharing-choice record. The update
+file stores its last consent stamp; a changed stamp or a declined choice clears
+pending updates on load, including an old-app revoke/reaccept cycle. Local reports
+remain available. Each file is written atomically, updates first; event IDs remain
+idempotent across retries and recovery of an unreleased mixed-file candidate.
+
+Release checks include separate fresh/update counters, pre-write NOT_STARTED,
+write failure, duplicate/intake-order handling, exact diagnostic correlation,
+old-client acceptance, provider queue recovery and the two BBBike date formats.
+Use the same operation ID for local, diagnostic and map-update records. Publish
+neither a cause for the historical France failure nor new hardware compatibility
+claims from these checks. Candidate release notes and app-update notification
+copy require owner approval before publication.
+
 This is the shared release contract for the native app, catalog/evidence API and
 admin read models. Read it before changing either diagnostic stream, payload
 schemas, accepted codes, correlation, counting, or release order. The behavioral

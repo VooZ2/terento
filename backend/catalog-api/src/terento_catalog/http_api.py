@@ -255,6 +255,20 @@ class CatalogService:
         admin_user_id: int | None = None,
         request_id: str | None = None,
     ) -> dict[str, Any]:
+        from .provider_rechecks import provider_lock, ensure_retry_allowed
+        with provider_lock(self.database, provider_id):
+            ensure_retry_allowed(self.database, provider_id)
+            return self._check_provider(
+                provider_id, admin_user_id=admin_user_id, request_id=request_id
+            )
+
+    def _check_provider(
+        self,
+        provider_id: str,
+        *,
+        admin_user_id: int | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, Any]:
         definition = KNOWN_PROVIDER_DEFINITIONS.get(provider_id)
         if definition is None:
             raise LookupError("provider_not_found")
@@ -856,7 +870,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
                 return
-            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire)", request_path):
+            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire|rechecks)", request_path):
                 self._handle_provider_post(request_path)
                 return
             if request_path.startswith("/admin"):
@@ -1357,6 +1371,28 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
+            if request_path == "/admin/update-diagnostics":
+                from .update_diagnostics import load_update_diagnostics, update_diagnostics_page
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                try:
+                    offset = int(query.get('offset', ['0'])[-1])
+                    if offset < 0: raise ValueError('invalid_offset')
+                    data = load_update_diagnostics(service.database,
+                        event_id=query.get('eventId', [''])[-1],
+                        diagnostic_id=query.get('diagnosticId', [''])[-1],
+                        outcome=query.get('outcome', [''])[-1], offset=offset)
+                    self._send_admin_html(update_diagnostics_page(data, session, csrf_token), send_body=send_body)
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error":"invalid_update_filter"}, send_body=send_body, cache_control="no-store", noindex=True)
+                except Exception:
+                    LOGGER.exception("update diagnostics unavailable")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error":"update_diagnostics_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            recheck_match = re.fullmatch(r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/rechecks", request_path)
+            if recheck_match:
+                from .provider_rechecks import jobs
+                self._send_json(HTTPStatus.OK, {"jobs": _format_json_value(jobs(service.database, recheck_match[1]))}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
             provider_page_match = re.fullmatch(
                 r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})",
                 request_path,
@@ -1570,7 +1606,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_provider_post(self, request_path: str) -> None:
             match = re.fullmatch(
-                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire)",
+                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire|rechecks)",
                 request_path,
             )
             if not match:
@@ -1642,6 +1678,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                     if result is None:
                         raise LookupError("provider_not_found")
+                elif action == "rechecks":
+                    from .provider_rechecks import enqueue
+                    if set(body) - {"packageId"} or (body.get("packageId") is not None and (not isinstance(body["packageId"], str) or not body["packageId"].strip() or len(body["packageId"]) > 160)):
+                        raise ValueError("invalid_recheck_payload")
+                    result = enqueue(service.database, provider_id, body.get("packageId"), int(session["id"]))
                 elif action == "check":
                     if body:
                         raise ValueError("invalid_check_payload")

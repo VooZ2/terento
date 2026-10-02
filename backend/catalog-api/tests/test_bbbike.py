@@ -40,6 +40,14 @@ class MemoryFetcher:
         return RangeResponse(206,start,end,len(self.body),body,url)
 
 class BBBikeTests(unittest.TestCase):
+    def test_both_creation_date_orders_validate_the_same_source_identity(self):
+        for date in ('Wed  9 Sep 00:15:05 UTC 2026', 'Wed Sep 9 00:15:05 UTC 2026'):
+            m = inspect_bbbike(URL, PATH, TYPE, fetcher=MemoryFetcher(readme=README.replace('Wed  9 Sep 00:15:05 UTC 2026', date)))
+            self.assertEqual(m.generated_at, datetime(2026,9,9,0,15,5,tzinfo=timezone.utc))
+        for date in ('Thu Sep 9 00:15:05 UTC 2026', 'Wed Sep 31 00:15:05 UTC 2026'):
+            with self.assertRaises(ValueError):
+                inspect_bbbike(URL, PATH, TYPE, fetcher=MemoryFetcher(readme=README.replace('Wed  9 Sep 00:15:05 UTC 2026', date)))
+
     def test_reviewed_url_boundaries(self):
         self.assertEqual(source_url(URL,artifact=True),URL)
         for bad in (URL.replace('https:','http:'), URL+'?x=1',URL.replace('andorra.osm','france.osm'),

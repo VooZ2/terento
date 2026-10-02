@@ -833,9 +833,12 @@ final class MapLifecycleViewModel: ObservableObject {
         let operationGate = self.operationGate
         let operationController = self.operationController
         let authorizationDeviceEngine = self.deviceEngine
+        let reportingMapEngine = self.mapEngine
         guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
         let mapStatisticsOperationID = UUID()
+        let acquisitionObserver = reportingMapEngine.updateAcquisitionObserver(
+            package: selectedMap, operationID: mapStatisticsOperationID)
         FinishingTrace.beginInstallation()
         let relay = MapLifecycleProgressRelay(
             viewModel: self,
@@ -883,7 +886,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     )
                     return await SafeUpdateTransaction().run(
                         request: liveRequest,
-                        provider: MapPackageAcquisitionProvider(),
+                        provider: MapPackageAcquisitionProvider(onAcquisition: acquisitionObserver),
                         transport: MTPSafeUpdateTransport(
                             operationProfile: operationProfile,
                             operationGate: operationGate,
@@ -894,6 +897,9 @@ final class MapLifecycleViewModel: ObservableObject {
                     )
                 }
             } catch {
+                // Only lease acquisition and the pre-entry token check can throw.
+                // The nonthrowing transaction returns its measured result even if
+                // cancellation arrives after entry; CancellableDetached awaits it.
                 result = SafeUpdateResult(
                     status: .failedDeviceDisconnected,
                     state: .failed,
@@ -922,20 +928,24 @@ final class MapLifecycleViewModel: ObservableObject {
                         "Final inventory object count: \(result.finalObjects.count)",
                         "Available device bytes: \(result.storagePlan.map { String($0.currentFreeSpace) } ?? "Unavailable")",
                         "Required temporary bytes: \(result.storagePlan.map { String($0.requiredTemporarySpace) } ?? "Unavailable")"],
-                    error: result.message, operationID: nil,
+                    error: result.message, operationID: mapStatisticsOperationID,
                     errorCodes: [result.status.rawValue]
                 ))
             }
             if result.status != .blockedInstallationAuthorization {
-                self?.mapEngine.recordMapUpdateStatistics(
+                reportingMapEngine.recordUpdateDiagnostic(identity: context.identity, package: selectedMap,
+                    operationID: mapStatisticsOperationID, result: result)
+            }
+            if result.isSuccess || result.writeStarted {
+                reportingMapEngine.recordMapUpdateStatistics(
                     package: selectedMap,
                     operationID: mapStatisticsOperationID,
                     outcome: result.isSuccess ? .succeeded : .failed
                 )
             }
-            guard let self else { return }
             let isCurrent = operationController.isCurrent(operationToken)
             operationController.finish(operationToken)
+            guard let self else { return }
             operationTasks.removeValue(forKey: itemID)
             inFlightOperationCount = max(0, inFlightOperationCount - 1)
             guard isCurrent, lifecycleEpoch == operationEpoch else { return }

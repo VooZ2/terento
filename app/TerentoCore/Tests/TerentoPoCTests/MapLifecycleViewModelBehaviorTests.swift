@@ -11,6 +11,8 @@ extension Bundle {
 struct MapLifecycleViewModelBehaviorTests {
     @MainActor
     static func main() async throws {
+        try await testUpdateAcquisitionStatisticsCorrelation()
+        try await testDetachedCancellationRetainsTransactionResult()
         try testConfirmationDisablesEject()
         try testDisconnectedDeviceCannotStartRemoval()
         try testResetInvalidatesPresentationState()
@@ -21,7 +23,71 @@ struct MapLifecycleViewModelBehaviorTests {
         try await testExternalPreparationReset(cancel: true)
         try testMapEngineOwnershipNamespaceBinding()
 
-        print("PASS: 9 MapLifecycleViewModel behavior tests")
+        print("PASS: 11 MapLifecycleViewModel behavior tests")
+    }
+
+    private actor DetachedEntryGate {
+        var entered = false
+        var continuation: CheckedContinuation<Void, Never>?
+        func wait() async {
+            await withCheckedContinuation { continuation in
+                self.continuation = continuation
+                entered = true
+            }
+        }
+        func finish() { continuation?.resume(); continuation = nil }
+    }
+
+    private static func testDetachedCancellationRetainsTransactionResult() async throws {
+        let gate = DetachedEntryGate()
+        let operation = Task {
+            try await CancellableDetached.run {
+                await gate.wait()
+                // Models the nonthrowing transaction after its write boundary.
+                return "measured transaction result"
+            }
+        }
+        while !(await gate.entered) { await Task.yield() }
+        operation.cancel()
+        await gate.finish()
+        let result = try await operation.value
+        precondition(result == "measured transaction result",
+            "cancellation after transaction entry must not replace its facts with pre-entry defaults")
+    }
+
+    @MainActor
+    private static func testUpdateAcquisitionStatisticsCorrelation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let controller = MapStatisticsEventController(store: store, retryDelays: [])
+        var engine: MapEngine? = MapEngine(statisticsController: controller)
+        let package = MapPackage(id: "freizeitkarte-fra", providerId: "freizeitkarte",
+            regionId: "FRA", name: "France", version: MapVersion(year: 2026, month: 9)!,
+            sizeBytes: 16, sourceURL: nil, releaseDate: nil, identifier: "FRA")
+        let operationID = UUID()
+        let observerCreated = Date()
+        let observer = engine!.updateAcquisitionObserver(package: package, operationID: operationID)
+        engine = nil
+        try await Task.sleep(nanoseconds: 1_100_000_000)
+        let actualEntry = Date()
+        observer(.started); observer(.processing); observer(.failed)
+        // The production bridge queues recording on MainActor; wait for those tasks.
+        for _ in 0..<100 where store.pendingEvents().count < 3 { await Task.yield() }
+        let events = store.pendingEvents()
+        // The durable store uses ISO8601 seconds, so compare at persisted precision.
+        let started = events.first { $0.eventType == .downloadStarted }!.timestamp
+        precondition(started.timeIntervalSince1970 >= floor(actualEntry.timeIntervalSince1970)
+            && started.timeIntervalSince1970 > floor(observerCreated.timeIntervalSince1970),
+            "authorization/preflight time must not be included in download duration")
+        precondition(events.count == 3 && Set(events.map(\.eventType)) == [.downloadStarted, .downloadProcessing, .downloadFailed])
+        precondition(events.allSatisfy { $0.operationId == operationID && $0.componentKind == .main })
+        precondition(Set(events.compactMap(\.acquisitionId)).count == 1)
+        precondition(!events.contains { $0.eventType == .installFailed || $0.eventType == .mapUpdateFailed })
+        controller.decideConsent(.declined)
+        observer(.started); observer(.succeeded)
+        for _ in 0..<10 { await Task.yield() }
+        precondition(store.pendingEvents().isEmpty, "map-use opt-out applies to update acquisitions")
     }
 
     @MainActor

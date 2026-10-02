@@ -99,6 +99,7 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
     let oldHash: String
     var freeSpace: UInt64 = 12 * 1024 * 1024 * 1024
     var mode: Mode = .success
+    var cleanupFails = false
     var postDeleteSnapshot: (([SafeUpdateRemoteObject]) -> [SafeUpdateRemoteObject])?
     var rawSnapshotTransform: (([DeviceFile], Bool) throws -> [DeviceFile])?
     var renumberAfterOldDeletion = false
@@ -152,6 +153,7 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
 
     func cleanupTransactionObject(_ object: SafeUpdateRemoteObject) throws {
         events.append("cleanupTransactionObject")
+        if cleanupFails { throw SafeUpdateTransportError.operationFailed("cleanup failed") }
         objects.removeAll { $0.file == object.file }
     }
 
@@ -483,6 +485,7 @@ private func testSuccessfulUpdateAndOrdering() async throws {
     let harness = makeHarness(withWorkspace: true)
     let result = await run(harness)
     try require(result.status == .success, "valid update should succeed")
+    try require(result.writeStarted, "successful update reports write boundary")
     try require(!result.oldMapPreserved, "old map should be replaced only after verification")
     try require(harness.reconciler.called, "manifest reconciliation should be last domain step")
     try require(harness.transport.events == [
@@ -499,6 +502,7 @@ private func testInstallFailureRemovesAcquisitionWorkspace() async throws {
     harness.transport.mode = .writeFailure
     let result = await run(harness)
     try require(result.status == .failedWrite, "install failure should be reported")
+    try require(result.writeStarted, "a write throwing before returning an object still crossed the write boundary")
     try require(result.oldMapPreserved && harness.transport.objects.count == 1
         && harness.transport.objects[0].file == harness.request.currentObject.file,
         "write failure preserves the exact original map")
@@ -618,6 +622,7 @@ private func testStorageGateAndBackupFreeUpdate() async throws {
     insufficient.transport.freeSpace = insufficient.artifact.installSizeBytes + StoragePlanner.defaultSafetyReserve - 1
     let storageResult = await run(insufficient)
     try require(storageResult.status == .blockedInsufficientSpace, "insufficient storage must block before writing")
+    try require(!storageResult.writeStarted, "insufficient storage is not a failed update attempt")
     try require(!insufficient.transport.events.contains("writeTransactionObject"), "insufficient storage must not write a new map")
 
     let successful = makeHarness()
@@ -634,6 +639,20 @@ private func testVerificationFailureCleansOnlyNewObject() async throws {
     try require(harness.transport.events.contains("cleanupTransactionObject"), "failed verification must clean the new transaction object")
     try require(harness.transport.objects.contains(where: { $0.file == harness.request.currentObject.file }), "old map must remain after failed verification")
     try require(!harness.transport.events.contains("deleteExactObject"), "old map must not be deleted after failed verification")
+    try require(result.cleanupAttempted && result.cleanupSucceeded,
+        "successful rollback cleanup must be recorded as measured evidence")
+    let cleanupFailure = makeHarness()
+    cleanupFailure.transport.mode = .verifyHashMismatch
+    cleanupFailure.transport.cleanupFails = true
+    let failedCleanup = await run(cleanupFailure)
+    try require(failedCleanup.cleanupAttempted && !failedCleanup.cleanupSucceeded,
+        "failed cleanup must not be reported as unattempted or successful")
+    let noCleanup = makeHarness()
+    noCleanup.transport.mode = .writeFailure
+    let failedWrite = await run(noCleanup)
+    try require(!failedWrite.cleanupAttempted && !failedWrite.cleanupSucceeded,
+        "a failure before cleanup must retain unattempted facts")
+
 }
 
 private func testCommitAndManifestFailuresAreNotSuccess() async throws {
@@ -998,10 +1017,132 @@ private func testPostCommitHandleRenumberPreservesSuccessfulUpdate() async throw
                 "durable manifest must advance to the verified new map despite handle renumbering")
 }
 
+private final class AcquisitionEventRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var events: [SafeUpdateAcquisitionEvent] = []
+    func record(_ event: SafeUpdateAcquisitionEvent) {
+        lock.lock(); defer { lock.unlock() }
+        events.append(event)
+    }
+    func snapshot() -> [SafeUpdateAcquisitionEvent] {
+        lock.lock(); defer { lock.unlock() }
+        return events
+    }
+}
+
+private struct UpdateTestDownloadClient: MapPackageDownloadClient {
+    let payload: URL?
+    var cancel = false
+    func download(from url: URL) async throws -> MapPackageDownloadResponse {
+        if cancel {
+            withUnsafeCurrentTask { $0?.cancel() }
+            throw CancellationError()
+        }
+        guard let payload else { throw MapAcquisitionError.downloadFailed("test connection failure") }
+        return MapPackageDownloadResponse(statusCode: 200, temporaryFileURL: payload)
+    }
+}
+
+private struct FailingUpdateExtractor: MapPackageArchiveExtractor {
+    func extract(archiveURL: URL, to extractionDirectory: URL) throws {
+        throw MapAcquisitionError.extractionFailed("test extraction failure")
+    }
+}
+
+private struct StagedUpdateFailureProvider: SafeUpdateArtifactProvider {
+    let stage: SafeUpdateAcquisitionStage
+    func acquire(package: MapPackage, onProgress: (@Sendable (SafeUpdateProgress) -> Void)?) async throws -> SafeUpdateSourceArtifact {
+        throw SafeUpdateAcquisitionError.failed("test acquisition failure", stage: stage)
+    }
+}
+
+private func testRealUpdateAcquisitionEvents() async throws {
+    let harness = makeHarness()
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    for processing in [false, true] {
+        let recorder = AcquisitionEventRecorder()
+        let payload = root.appendingPathComponent("invalid-map-\(processing)")
+        try Data("not a map".utf8).write(to: payload)
+        let adapter = MapPackageAcquisitionProvider(acquirer: MapPackageAcquirer(
+            downloadClient: UpdateTestDownloadClient(payload: processing ? payload : nil),
+            workspaceFactory: { try MapAcquisitionWorkspace(rootURL: root.appendingPathComponent(UUID().uuidString)) }),
+            onAcquisition: { recorder.record($0) })
+        do {
+            _ = try await adapter.acquire(package: harness.package)
+            try require(false, "invalid test acquisition must fail")
+        } catch let error as SafeUpdateAcquisitionError {
+            try require(error.stage == (processing ? .sourceValidation : .download),
+                "typed acquirer failure retains validation versus download stage")
+        }
+        try require(recorder.snapshot() == (processing ? [.started, .processing, .failed] : [.started, .failed]),
+            "real acquirer distinguishes failed download from failed processing without duplicate terminals")
+    }
+    let archiveURL = root.appendingPathComponent("archive.zip")
+    try Data([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]).write(to: archiveURL)
+    let extractor = MapPackageAcquisitionProvider(acquirer: MapPackageAcquirer(
+        downloadClient: UpdateTestDownloadClient(payload: archiveURL),
+        archiveExtractor: FailingUpdateExtractor(),
+        workspaceFactory: { try MapAcquisitionWorkspace(rootURL: root.appendingPathComponent(UUID().uuidString)) }))
+    do {
+        _ = try await extractor.acquire(package: harness.package)
+        try require(false, "test extraction must fail")
+    } catch let error as SafeUpdateAcquisitionError {
+        try require(error.stage == .extract, "extraction error must retain extract stage")
+    }
+    for stage: SafeUpdateAcquisitionStage in [.preflight, .download, .extract, .sourceValidation] {
+        let staged = makeHarness()
+        let result = await SafeUpdateTransaction(gate: staged.gate,
+            sourceValidator: staged.validator, manifestReconciler: staged.reconciler).run(
+                request: withFixtureAuthorization(staged.request), provider: StagedUpdateFailureProvider(stage: stage), transport: staged.transport)
+        try require(result.status == .failedAcquisition && result.acquisitionFailureStage == stage
+            && !result.writeStarted, "transaction preserves the acquisition stage without implying a device write")
+    }
+    let successfulRecorder = AcquisitionEventRecorder()
+    let imageURL = root.appendingPathComponent("valid.img")
+    var image = Data(repeating: 0, count: 8192)
+    for (offset, value) in [(0x10, "DSKIMG"), (0x41, "GARMIN"),
+                            (0x49, "Freizeitkarte_FRA+"), (0x65, "Release 26.06")] {
+        image.replaceSubrange(offset..<(offset + value.utf8.count), with: value.utf8)
+    }
+    try image.write(to: imageURL)
+    let successful = MapPackageAcquisitionProvider(acquirer: MapPackageAcquirer(
+        downloadClient: UpdateTestDownloadClient(payload: imageURL),
+        workspaceFactory: { try MapAcquisitionWorkspace(rootURL: root.appendingPathComponent(UUID().uuidString)) }),
+        onAcquisition: { successfulRecorder.record($0) })
+    _ = try await successful.acquire(package: harness.package)
+    try require(successfulRecorder.snapshot() == [.started, .processing, .succeeded],
+        "only a validated acquired artifact records successful acquisition")
+    let cancelledRecorder = AcquisitionEventRecorder()
+    let cancelled = MapPackageAcquisitionProvider(acquirer: MapPackageAcquirer(
+        downloadClient: UpdateTestDownloadClient(payload: nil, cancel: true),
+        workspaceFactory: { try MapAcquisitionWorkspace(rootURL: root.appendingPathComponent(UUID().uuidString)) }),
+        onAcquisition: { cancelledRecorder.record($0) })
+    await Task {
+        _ = try? await cancelled.acquire(package: harness.package)
+    }.value
+    try require(cancelledRecorder.snapshot() == [.started, .cancelled],
+        "cancelled acquisition is not counted as a failed download")
+    let recorder = AcquisitionEventRecorder()
+    let beforeDownload = MapPackageAcquisitionProvider(acquirer: MapPackageAcquirer(
+        downloadClient: UpdateTestDownloadClient(payload: nil),
+        workspaceFactory: { throw MapAcquisitionError.workspaceFailed("test workspace error") }),
+        onAcquisition: { recorder.record($0) })
+    do {
+        _ = try await beforeDownload.acquire(package: harness.package)
+        try require(false, "workspace creation must fail")
+    } catch let error as SafeUpdateAcquisitionError {
+        try require(error.stage == .preflight, "workspace failure is preflight, not a download failure")
+    }
+    try require(recorder.snapshot().isEmpty, "failure before download boundary must not create download statistics")
+}
+
 @main
 struct Stage53SafeUpdateTests {
     static func main() async throws {
         let tests: [(String, () async throws -> Void)] = [
+            ("real update acquisition telemetry", testRealUpdateAcquisitionEvents),
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
             ("protected replacement full raw matrix", testProtectedUpdateTransitionMatrix),
             ("protected baseline and binding gate", testProtectedBaselineRefusesBeforeSend),

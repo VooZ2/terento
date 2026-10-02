@@ -756,6 +756,13 @@ class Database:
         }
 
     def insert_compatibility_event(self, event: dict[str, Any]) -> bool:
+        if event.get("operationKind") == "update":
+            # Intentionally separate: update evidence cannot enter any install aggregate.
+            with self.connection() as connection:
+                return connection.execute("""INSERT INTO map_update_diagnostic
+                    (event_id,operation_id,occurred_at,provider,region,outcome,payload,is_local_test)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s) ON CONFLICT DO NOTHING RETURNING event_id""",
+                    (event['id'],event['operationId'],event['timestamp'],event['provider'],event['region'],event['phaseOutcome'],json.dumps(event),is_local_release_label(event.get('releaseLabel')))).fetchone() is not None
         validate_event_contexts(event)
         query = """
             INSERT INTO compatibility_evidence_event (
@@ -913,6 +920,7 @@ class Database:
 
     def prune_compatibility_events(self) -> int:
         with self.connection() as connection:
+            connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
             result = connection.execute(
                 "DELETE FROM compatibility_evidence_event WHERE received_at < now() - interval '24 months'"
             )
@@ -3401,14 +3409,19 @@ class Database:
                     ),
                 )
                 for artifact in package.artifacts:
+                    check = artifact.last_check or {
+                        "status": artifact.validation_status,
+                        "checkedAt": snapshot.collected_at.isoformat(),
+                        "message": "Source validation passed." if artifact.validation_status == "VALIDATED" else "The collector could not validate this source. Recheck for details.",
+                    }
                     connection.execute(
                         """
                         INSERT INTO map_artifact (
                             id, package_id, kind, source_url, size_bytes,
                             install_size_bytes, checksum_sha256, content_type,
                             required, validation_status, install_payload_path,
-                            source_updated_at, source_proof, updated_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
+                            source_updated_at, source_proof, last_check, updated_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, now())
                         ON CONFLICT (id) DO UPDATE SET
                             package_id = EXCLUDED.package_id,
                             kind = EXCLUDED.kind,
@@ -3422,6 +3435,7 @@ class Database:
                             install_payload_path = EXCLUDED.install_payload_path,
                             source_updated_at = EXCLUDED.source_updated_at,
                             source_proof = EXCLUDED.source_proof,
+                            last_check = EXCLUDED.last_check,
                             updated_at = now()
                         """,
                         (
@@ -3431,8 +3445,10 @@ class Database:
                             artifact.required, artifact.validation_status,
                             artifact.install_payload_path, artifact.source_updated_at,
                             json.dumps(artifact.source_proof) if artifact.source_proof else None,
+                            json.dumps(check),
                         ),
                     )
+                    connection.execute("INSERT INTO provider_artifact_check(artifact_id,result) VALUES(%s,%s::jsonb)", (artifact.id,json.dumps(check)))
                     connection.execute(
                         """
                         INSERT INTO provider_source (
@@ -3572,8 +3588,9 @@ class Database:
                 return None
             provider["sources"] = list(connection.execute(
                 """
-                SELECT source_type, source_url, enabled, last_checked_at
-                FROM provider_source WHERE provider_id = %s
+                SELECT ps.source_type, ps.source_url, ps.enabled, ps.last_checked_at,
+                       CASE WHEN EXISTS(SELECT 1 FROM map_artifact a JOIN map_package p ON p.id=a.package_id WHERE a.source_url=ps.source_url AND p.availability <> 'RETIRED' AND a.validation_status IN ('FAILED','UNAVAILABLE')) THEN 'UNAVAILABLE' ELSE 'UNKNOWN' END AS validation_status
+                FROM provider_source ps WHERE provider_id = %s
                 ORDER BY source_type, source_url
                 """,
                 (provider_id,),
@@ -3583,7 +3600,7 @@ class Database:
                 SELECT mp.id, mp.name, mp.region, mp.release, mp.availability,
                        count(ma.id) AS artifact_count,
                        COALESCE(jsonb_agg(jsonb_build_object(
-                           'kind', ma.kind, 'source_url', ma.source_url,
+                           'id', ma.id, 'kind', ma.kind, 'source_url', ma.source_url, 'last_check', ma.last_check,
                            'size_bytes', ma.size_bytes, 'install_size_bytes', ma.install_size_bytes,
                            'validation_status', ma.validation_status, 'source_updated_at', ma.source_updated_at
                        ) ORDER BY ma.kind) FILTER (WHERE ma.id IS NOT NULL), '[]'::jsonb) AS artifacts,
@@ -3847,8 +3864,13 @@ class Database:
                        count(DISTINCT operation_id) AS operation_count,
                        COALESCE(array_agg(DISTINCT release_label ORDER BY release_label)
                            FILTER (WHERE release_label IS NOT NULL), ARRAY[]::text[]) AS labels
-                FROM compatibility_evidence_event
-                WHERE is_local_test IS TRUE
+                FROM (
+                    SELECT operation_id, release_label FROM compatibility_evidence_event
+                    WHERE is_local_test IS TRUE
+                    UNION ALL
+                    SELECT operation_id, payload->>'releaseLabel' AS release_label
+                    FROM map_update_diagnostic WHERE is_local_test IS TRUE
+                ) diagnostic_events
                 """
             ).fetchone() or {}
             maps = connection.execute(
@@ -3870,6 +3892,9 @@ class Database:
                     WHERE is_local_test IS TRUE
                       AND operation_id IS NOT NULL
                     UNION
+                    SELECT operation_id FROM map_update_diagnostic
+                    WHERE is_local_test IS TRUE
+                    UNION
                     SELECT operation_id
                     FROM map_download_event
                     WHERE is_local_test IS TRUE
@@ -3885,6 +3910,9 @@ class Database:
                     SELECT 'Compatibility' AS stream, release_label,
                            phase_outcome AS outcome, occurred_at
                     FROM compatibility_evidence_event WHERE is_local_test IS TRUE
+                    UNION ALL
+                    SELECT 'Update diagnostics' AS stream, payload->>'releaseLabel' AS release_label, outcome, occurred_at
+                    FROM map_update_diagnostic WHERE is_local_test IS TRUE
                     UNION ALL
                     SELECT 'Map usage' AS stream, release_label, outcome, occurred_at
                     FROM map_download_event WHERE is_local_test IS TRUE
@@ -3923,6 +3951,9 @@ class Database:
                     SELECT operation_id FROM compatibility_evidence_event
                     WHERE is_local_test IS TRUE
                     UNION
+                    SELECT operation_id FROM map_update_diagnostic
+                    WHERE is_local_test IS TRUE
+                    UNION
                     SELECT operation_id FROM map_download_event
                     WHERE is_local_test IS TRUE
                 ) AS local_operations
@@ -3932,6 +3963,16 @@ class Database:
                 """
                 WITH deleted AS (
                     DELETE FROM compatibility_evidence_event
+                    WHERE is_local_test IS TRUE
+                    RETURNING event_id
+                )
+                SELECT count(*) AS event_count FROM deleted
+                """
+            ).fetchone() or {}
+            update_row = connection.execute(
+                """
+                WITH deleted AS (
+                    DELETE FROM map_update_diagnostic
                     WHERE is_local_test IS TRUE
                     RETURNING event_id
                 )
@@ -3949,7 +3990,7 @@ class Database:
                 """
             ).fetchone() or {}
             counts = {
-                "diagnosticEventCount": int(diagnostic_row.get("event_count") or 0),
+                "diagnosticEventCount": int(diagnostic_row.get("event_count") or 0) + int(update_row.get("event_count") or 0),
                 "mapEventCount": int(map_row.get("event_count") or 0),
                 "operationCount": int(operation_row.get("operation_count") or 0),
             }
@@ -4339,7 +4380,9 @@ class Database:
                 ) AS download_failed_count,
                 count(DISTINCT operation_key) FILTER (
                     WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
-                ) AS map_update_count
+                ) AS map_update_count,
+                count(DISTINCT operation_key) FILTER (WHERE event_type = 'MAP_UPDATE_SUCCEEDED' AND outcome = 'SUCCEEDED') AS map_update_success_count,
+                count(DISTINCT operation_key) FILTER (WHERE event_type = 'MAP_UPDATE_FAILED' AND outcome = 'FAILED') AS map_update_failed_count
             FROM localized_events
             GROUP BY {bucket_expression}
             ORDER BY bucket

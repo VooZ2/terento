@@ -2028,6 +2028,58 @@ final class MapEngine: ObservableObject {
         mapStatisticsEvents.append(event)
     }
 
+    @MainActor
+    func updateAcquisitionObserver(package: MapPackage, operationID: UUID)
+        -> @Sendable (SafeUpdateAcquisitionEvent) -> Void {
+        let start = MapStatisticsEvent(operationId: operationID, package: package,
+            eventType: .downloadStarted, outcome: .unknown,
+            acquisitionId: UUID(), componentKind: .main)
+        let controller = statisticsController
+        return { phase in
+            let type: MapStatisticsEventType
+            switch phase {
+            case .started: type = .downloadStarted
+            case .processing: type = .downloadProcessing
+            case .succeeded: type = .downloadSucceeded
+            case .failed: type = .downloadFailed
+            case .cancelled: type = .downloadCancelled
+            }
+            let event = start.phase(type) // Timestamp the actual boundary, not observer creation.
+            Task { @MainActor in controller?.record(event) }
+        }
+    }
+
+    @MainActor
+    func recordUpdateDiagnostic(identity: DeviceIdentity, package: MapPackage,
+                                operationID: UUID, result: SafeUpdateResult) {
+        let stage: EvidenceFailureStage
+        switch result.status {
+        case .failedAcquisition:
+            switch result.acquisitionFailureStage ?? .preflight {
+            case .preflight: stage = .preflight
+            case .download: stage = .download
+            case .extract: stage = .extract
+            case .sourceValidation: stage = .sourceValidation
+            }
+        case .failedSourceValidation: stage = .sourceValidation
+        case .failedManifestReconciliation: stage = .manifest
+        case .failedCleanup, .failedCommit: stage = .cleanup
+        case .failedPostVerify, .failedRemoteMissing, .failedSizeMismatch, .failedHashMismatch, .failedMetadataMismatch: stage = .verify
+        default: stage = result.writeStarted ? .write : .preflight
+        }
+        var event = InstallationEvidenceEvent(identity: identity, package: package,
+            outcome: result.isSuccess ? .succeeded : result.writeStarted ? .failed : .notStarted,
+            finishingResult: result.isSuccess ? .verified : result.writeStarted ? .failed : .notReached,
+            operationId: operationID, failureStage: result.isSuccess ? nil : stage,
+            failureCode: result.isSuccess ? nil : result.status.rawValue,
+            writeStarted: result.writeStarted, remoteObjectCreated: result.newObject != nil,
+            cleanupAttempted: result.cleanupAttempted, cleanupSucceeded: result.cleanupSucceeded,
+            transferProgressBucket: nil)
+        event.operationKind = "update"
+        event.oldMapPreserved = result.oldMapPreserved
+        evidenceController?.record(event)
+    }
+
     private func finishAcquisition(_ type: MapStatisticsEventType) {
         guard let start = activeAcquisition else { return }
         statisticsController?.record(start.phase(type))

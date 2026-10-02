@@ -70,6 +70,13 @@ def snapshot_release_evidence(snapshot: ProviderSnapshot) -> tuple[str, str]:
 
 
 def collect_once(database: Database, *, dry_run: bool = False) -> int:
+    from .provider_rechecks import provider_lock, ensure_retry_allowed
+    with provider_lock(database, "freizeitkarte"):
+        ensure_retry_allowed(database, "freizeitkarte")
+        return _collect_once(database, dry_run=dry_run)
+
+
+def _collect_once(database: Database, *, dry_run: bool = False) -> int:
     run_id = None if dry_run else database.begin_catalog_collection("freizeitkarte")
     try:
         records = FreizeitkarteCollector().collect()
@@ -119,7 +126,14 @@ def collect_once(database: Database, *, dry_run: bool = False) -> int:
     return len(records)
 
 
-def collect_provider_once(
+def collect_provider_once(database, adapter, *, dry_run=False):
+    from .provider_rechecks import provider_lock, ensure_retry_allowed
+    with provider_lock(database, adapter.definition.id):
+        ensure_retry_allowed(database, adapter.definition.id)
+        return _collect_provider_once(database, adapter, dry_run=dry_run)
+
+
+def _collect_provider_once(
     database: Database, adapter: ProviderAdapter, *, dry_run: bool = False
 ) -> dict[str, int | str]:
     """Collect one known provider and persist one auditable collection run."""
