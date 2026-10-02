@@ -1208,19 +1208,17 @@ def _overview_map_event_context(event: dict[str, Any]) -> str:
 
 
 def _overview_activity_device(event: dict[str, Any]) -> str:
-    model = str(event.get("model") or event.get("compatibility_identity") or "").strip()
-    if not model:
+    device_id = str(event.get("canonical_device_model_id") or "").strip()
+    model = str(event.get("model") or "").strip()
+    if not device_id or not model:
         return ""
     variant = _normalise_variant(event.get("variant")) if event.get("variant") else ""
     label = model if not variant or variant in model else f"{model} · {variant}"
-    device_id = str(event.get("canonical_device_model_id") or "").strip()
-    if device_id:
-        href = _device_detail_url(device_id, origin="overview")
-        return (
-            f"<a class='overview-activity-device' href='{html.escape(href, quote=True)}'>"
-            f"{html.escape(label)}</a>"
-        )
-    return f"<span class='overview-activity-device'>{html.escape(label)}</span>"
+    href = _device_detail_url(device_id, origin="overview")
+    return (
+        f"<a class='overview-activity-device' href='{html.escape(href, quote=True)}'>"
+        f"{html.escape(label)}</a>"
+    )
 
 
 def _overview_map_event_href(event: dict[str, Any]) -> str:
@@ -1262,6 +1260,8 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
     component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
     context = html.escape(_overview_map_event_context(event)) + (' · ' + component if component else '')
     device = _overview_activity_device(event)
+    if device:
+        context += " · " + device
     lifecycle = event.get("lifecycle") or []
     if len(lifecycle) > 1:
         started = next((_parse_timestamp(item.get("at")) for item in lifecycle
@@ -1293,14 +1293,13 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
             f"<span class='overview-activity-label'>{status_markup}</span>"
             f"{_timestamp_markup(event.get('occurred_at'))}"
             f"<span class='download-context'>{context}</span>"
-            f"{device}"
             "</summary><ol class='download-timeline' aria-label='Download start, total duration and finish'>"
             + "".join(entries) + "</ol></details></li>"
         )
     return (
         f"<li class='overview-activity-item overview-activity-{state} map-activity-row map-activity-{tone}'>"
         f"<span class='map-activity-copy'><span class='overview-activity-label'>{status_markup}</span>"
-        f"<span>{context}</span></span>{device}"
+        f"<span class='activity-context'>{context}</span></span>"
         f"{_timestamp_markup(event.get('occurred_at'))}</li>"
     )
 
@@ -7398,11 +7397,8 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .overview-attention-item{padding-block:6px}
 .overview-primary-grid{gap:16px;margin-top:16px}
 .overview-activity-panel{margin-top:16px}
-.overview-activity-device{display:block;min-width:0;overflow-wrap:anywhere;color:var(--secondary);font-size:11px;text-decoration:none;white-space:normal}
+.overview-activity-device{display:inline;overflow-wrap:anywhere;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px}
 .overview-activity-device:hover{text-decoration:underline;text-underline-offset:3px}
-.download-history>summary>.overview-activity-device{grid-column:1/-1;margin-top:2px}
-.map-activity-row>.overview-activity-device{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>time{grid-row:1/span 3}
-@media(max-width:500px){.map-activity-row:has(>.overview-activity-device)>time{grid-row:4}}
 .overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
 .admin-kpi-panel .installation-kpi-groups{grid-template-columns:minmax(0,1fr)}
@@ -7504,8 +7500,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .installation-failed-value{color:var(--danger)!important}
 .overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}
 .map-activity-row>time{grid-row:1}
-.map-activity-row:has(>.overview-activity-device)>time{grid-row:1/span 3}
-@media(max-width:500px){.overview-activity-item{grid-template-columns:minmax(0,1fr)}.overview-activity-item>time,.map-activity-row:has(>.overview-activity-device)>time{grid-column:1;grid-row:auto;margin-left:21px}}
+@media(max-width:500px){.overview-activity-item{grid-template-columns:minmax(0,1fr)}.overview-activity-item>time{grid-column:1;grid-row:auto;margin-left:21px}}
 .model-evidence-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px}
 .model-evidence-summary,.model-evidence-history{min-width:0}
 .model-evidence-summary{display:grid;align-content:start;gap:16px}

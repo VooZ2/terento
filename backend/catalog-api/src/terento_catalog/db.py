@@ -238,6 +238,83 @@ def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, A
     }
 
 
+def _enrich_activity_models(connection, rows):
+    """Attach a catalog model only through exact retained diagnostic evidence.
+
+    A diagnostic's missing or conflicting identity is not repaired using names,
+    nearby timestamps or another result from the same multi-map operation.
+    """
+    rows = [dict(row) for row in rows]
+    targets = []
+    event_types = {'INSTALL_SUCCEEDED','INSTALL_FAILED','MAP_UPDATE_SUCCEEDED','MAP_UPDATE_FAILED'}
+    for index, row in enumerate(rows):
+        if row.get('event_type') not in event_types:
+            continue
+        trusted_id = row.get('canonical_device_model_id') if row.get('provider_id') == 'custom' else None
+        for field in ('canonical_device_model_id','model','variant','compatibility_identity','case_size_mm','screen_technology','display_type'):
+            row[field] = None
+        expected = 'SUCCEEDED' if row['event_type'].endswith('_SUCCEEDED') else 'FAILED'
+        if row.get('outcome') != expected:
+            continue
+        try:
+            operation = str(UUID(str(row.get('operation_id'))))
+        except (ValueError,TypeError,AttributeError):
+            operation = None
+        if row.get('provider_id') == 'custom':
+            if not trusted_id:
+                continue
+        elif not operation or not row.get('provider_id') or not row.get('region'):
+            continue
+        targets.append({'index':index,'operation_id':operation,'provider_id':row['provider_id'],
+                        'region':row.get('region'),'map_package_id':row.get('map_package_id'),
+                        'event_type':row['event_type'],'outcome':row['outcome'],'trusted_model_id':trusted_id})
+    if not targets:
+        return rows
+    matches = connection.execute("""
+        /* Exact diagnostic correlation for Activity presentation only. */
+        WITH targets AS (
+            SELECT * FROM jsonb_to_recordset(%s::jsonb) AS t(
+                index integer,operation_id uuid,provider_id text,region text,map_package_id text,
+                event_type text,outcome text,trusted_model_id text)
+        ), candidates AS (
+            SELECT t.index,t.outcome AS expected_outcome,d.phase_outcome AS outcome,d.canonical_device_model_id
+            FROM targets t
+            LEFT JOIN map_package p ON p.id=t.map_package_id AND p.provider_id=t.provider_id
+            JOIN compatibility_evidence_event d ON d.operation_id=t.operation_id AND d.provider=t.provider_id
+              AND (lower(d.region)=lower(t.region) OR (
+                lower(t.region) IN (lower(p.region),lower(p.provider_region_id),lower(p.canonical_region_id))
+                AND lower(d.region) IN (lower(p.region),lower(p.provider_region_id),lower(p.canonical_region_id))))
+            WHERE t.provider_id <> 'custom' AND t.event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
+              AND d.is_local_test IS NOT TRUE AND d.statistics_exclusion_code IS NULL
+            UNION ALL
+            SELECT t.index,t.outcome,d.outcome,d.canonical_device_model_id
+            FROM targets t
+            LEFT JOIN map_package p ON p.id=t.map_package_id AND p.provider_id=t.provider_id
+            JOIN map_update_diagnostic d ON d.operation_id=t.operation_id AND d.provider=t.provider_id
+              AND (lower(d.region)=lower(t.region) OR (
+                lower(t.region) IN (lower(p.region),lower(p.provider_region_id),lower(p.canonical_region_id))
+                AND lower(d.region) IN (lower(p.region),lower(p.provider_region_id),lower(p.canonical_region_id))))
+            WHERE t.provider_id <> 'custom' AND t.event_type IN ('MAP_UPDATE_SUCCEEDED','MAP_UPDATE_FAILED')
+              AND d.is_local_test IS FALSE
+        ), identities AS (
+            SELECT index,min(canonical_device_model_id) AS device_id
+            FROM candidates GROUP BY index
+            HAVING count(*)=1 AND bool_and(canonical_device_model_id IS NOT NULL AND outcome=expected_outcome)
+            UNION ALL
+            SELECT index,trusted_model_id FROM targets
+            WHERE provider_id='custom' AND trusted_model_id IS NOT NULL
+        )
+        SELECT i.index,m.id AS canonical_device_model_id,m.model,m.variant,m.case_size_mm,m.screen_technology
+        FROM identities i JOIN device_model m ON m.id=i.device_id
+    """, (json.dumps(targets),)).fetchall()
+    for match in matches:
+        row = rows[match['index']]
+        for field in ('canonical_device_model_id','model','variant','case_size_mm','screen_technology'):
+            row[field] = match[field]
+        row['display_type'] = match['screen_technology']
+    return rows
+
+
 class Database:
     def __init__(self, dsn: str, connect_timeout_seconds: int = 5) -> None:
         self.dsn = dsn
@@ -1885,6 +1962,7 @@ class Database:
                         e.occurred_at DESC, e.event_id DESC
                 )
                 SELECT
+                    e.event_id::text AS event_id,
                     e.operation_id::text AS operation_id,
                     e.provider_id,
                     p.name AS provider_name,
@@ -1912,6 +1990,7 @@ class Database:
                 {event_scope.replace('FROM map_download_event AS e', 'FROM acquisition_activity AS e')}
                 UNION ALL
                 SELECT
+                    NULL::text AS event_id,
                     c.operation_id::text AS operation_id,
                     c.provider_id,
                     p.name AS provider_name,
@@ -1940,6 +2019,7 @@ class Database:
                 """,
                 (since, since, recent_limit),
             ).fetchall())
+            recent = _enrich_activity_models(connection, recent)
             # A failed install can arrive without compatibility diagnostics
             # (the streams have separate sharing controls and delivery). Surface
             # this evidence gap, but never resurrect a linked resolved report.

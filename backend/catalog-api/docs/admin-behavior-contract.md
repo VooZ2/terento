@@ -198,6 +198,11 @@ the all-time scope without permanent visible copy. App downloads means Terento
 application downloads and is omitted when no usable counter or trend data exists.
 Activity is internally scrollable and must not force page height. A generic
 activity row has no Maps link unless an exact useful destination exists.
+Installation and update activity use two text rows: status, then map/region,
+provider and exact assessed model/variant separated by middle dots. Custom .img
+omits provider. The model link is inline in that same context row, never a
+separate row with a blank gap. Unassigned or ambiguous models are omitted rather
+than shown as a reported guess. Long context may wrap naturally on narrow screens.
 
 Dashboard chart series use one stacked bar for each bucket: downloads are
 successful/failed, while map operations distinguish install successful, install

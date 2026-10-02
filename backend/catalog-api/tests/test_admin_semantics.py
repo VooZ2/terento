@@ -827,6 +827,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                         "outcome": "SUCCEEDED", "model": "fēnix 7 Pro",
                         "compatibility_identity": "fēnix 7 Pro",
                         "device_link_state": "LINKED",
+                        "canonical_device_model_id": "fenix-7-pro",
                         "occurred_at": "2026-09-04T08:00:00+00:00",
                     }],
                     "attention": [], "trend": [], "bucket": "hour",
@@ -855,7 +856,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertNotIn("Recent compatibility activity", body)
         self.assertIn("Custom .img", body)
-        self.assertIn("overview-activity-device'>fēnix 7 Pro</span>", body)
+        self.assertIn("Custom .img · <a class='overview-activity-device'", body)
+        self.assertIn(">fēnix 7 Pro</a>", body)
         self.assertNotIn("Reported device:", body)
         self.assertNotIn("No map telemetry in this period", body)
         self.assertNotIn("No map activity in this period", body)
@@ -881,7 +883,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("<span>Lithuania · OpenTopoMap</span>", body)
+        self.assertIn("<span class='activity-context'>Lithuania · OpenTopoMap</span>", body)
         self.assertNotIn("Device report unavailable", body)
 
     def test_overview_presents_model_activity_and_exact_period_vocabulary(self):

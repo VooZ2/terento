@@ -206,6 +206,12 @@ and `.zip` cumulative-counter trend and is omitted without usable data. Activity
 is bounded and internally scrollable. Generic rows have no Maps link unless an
 exact event/detail destination exists.
 
+Activity presents installation/update status followed by one context row:
+map/region, provider (except Custom .img), and a catalog-assessed model and
+variant when an exact diagnostic relationship exists. Missing or ambiguous
+identity is omitted. This display enrichment does not alter event populations,
+installation/update counters or compatibility evidence.
+
 Map/package reconciliation requires shared operation, provider, and exact or
 unambiguous package-region identity. Operation ID alone is not a unique map.
 Historical acquisition failures remain activity and Maps evidence. A failure
