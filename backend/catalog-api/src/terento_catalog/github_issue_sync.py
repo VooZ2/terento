@@ -85,6 +85,32 @@ def apply_closed_issue(connection, number: int, reason: str | None) -> int:
     return changed
 
 
+def apply_closed_update_issue(connection, number: int, reason: str | None) -> int:
+    """Resolve exact linked update UUIDs without touching update outcomes."""
+    reference = f"#{number}"
+    rows = connection.execute("""SELECT event_id,diagnostic_status,diagnostic_workflow_status,
+        linked_github_issue,resolution_code,resolution_note
+        FROM map_update_diagnostic WHERE linked_github_issue=%s
+          AND diagnostic_status='ACTIVE' AND is_local_test IS FALSE
+        ORDER BY event_id FOR UPDATE""", (reference,)).fetchall()
+    code = 'FIXED' if reason == 'completed' else 'OTHER'
+    note = f"GitHub issue #{number} closed ({reason if reason in {'completed','not_planned'} else 'unspecified'}); synchronized automatically."
+    changed = 0
+    for row in rows:
+        if row.get('linked_github_issue') != reference or row.get('diagnostic_status') != 'ACTIVE':
+            continue
+        previous = {key:row.get(key) for key in ('diagnostic_status','diagnostic_workflow_status','linked_github_issue','resolution_code','resolution_note')}
+        next_state = {**previous,'diagnostic_status':'RESOLVED','diagnostic_workflow_status':'OPEN',
+                      'resolution_code':code,'resolution_note':note}
+        connection.execute("""UPDATE map_update_diagnostic SET diagnostic_status='RESOLVED',
+            diagnostic_workflow_status='OPEN',resolution_code=%s,resolution_note=%s,resolved_at=now(),resolved_by=NULL
+            WHERE event_id=%s""", (code,note,row['event_id']))
+        connection.execute("""INSERT INTO map_update_diagnostic_audit(event_id,action,previous_state,next_state,changed_by)
+            VALUES(%s,'github.closed',%s::jsonb,%s::jsonb,NULL)""", (row['event_id'],json.dumps(previous),json.dumps(next_state)))
+        changed += 1
+    return changed
+
+
 def sync_once(database, *, fetch=fetch_issue) -> int:
     changed = 0
     with database.connection() as connection:
@@ -92,9 +118,14 @@ def sync_once(database, *, fetch=fetch_issue) -> int:
         if not connection.execute("SELECT pg_try_advisory_xact_lock(734820194) AS acquired").fetchone()["acquired"]:
             return 0
         targets = connection.execute("""
+            WITH linked AS (
+                SELECT linked_github_issue,diagnostic_status FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE
+                UNION ALL
+                SELECT linked_github_issue,diagnostic_status FROM map_update_diagnostic WHERE is_local_test IS FALSE
+            )
             SELECT DISTINCT substring(e.linked_github_issue from 2)::bigint AS issue_number,
                             s.checked_at
-            FROM compatibility_evidence_event e
+            FROM linked e
             LEFT JOIN admin_github_issue_sync s
                 ON e.linked_github_issue = '#' || s.issue_number::text
             WHERE e.diagnostic_status = 'ACTIVE'
@@ -111,6 +142,7 @@ def sync_once(database, *, fetch=fetch_issue) -> int:
                 state = issue["state"]
                 if state == "closed":
                     changed += apply_closed_issue(connection, number, issue.get("state_reason"))
+                    changed += apply_closed_update_issue(connection, number, issue.get("state_reason"))
             except HTTPError as exc:
                 error = f"GitHub HTTP {exc.code}"
                 stop = exc.code in {403, 429}
@@ -130,6 +162,11 @@ def sync_once(database, *, fetch=fetch_issue) -> int:
 
 def sync_health(connection) -> dict:
     row = connection.execute("""
+        WITH linked AS (
+            SELECT linked_github_issue,diagnostic_status FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE
+            UNION ALL
+            SELECT linked_github_issue,diagnostic_status FROM map_update_diagnostic WHERE is_local_test IS FALSE
+        )
         SELECT count(DISTINCT e.linked_github_issue) AS linked,
             count(DISTINCT e.linked_github_issue) FILTER (
                 WHERE e.diagnostic_status = 'ACTIVE' AND
@@ -139,7 +176,7 @@ def sync_health(connection) -> dict:
                 WHERE e.diagnostic_status = 'ACTIVE' AND s.error IS NOT NULL
             ) AS errors,
             max(s.checked_at) AS checked_at
-        FROM compatibility_evidence_event e
+        FROM linked e
         LEFT JOIN admin_github_issue_sync s ON e.linked_github_issue = '#' || s.issue_number::text
         WHERE e.linked_github_issue IS NOT NULL
     """).fetchone() or {}

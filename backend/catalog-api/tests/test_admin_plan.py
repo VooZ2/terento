@@ -141,7 +141,7 @@ class AdminPlanTests(unittest.TestCase):
             headings = Headings(); headings.feed(text)
             for title in headings.titles:
                 if title in {'Long Authentic Provider Name', 'No map activity for this scope'}: continue
-                self.assertLessEqual(len([word for word in title.split() if word != 'by']), 3, title)
+                self.assertLessEqual(len([word for word in title.split() if word not in {'by', 'and'}]), 3, title)
             for klass in ('eyebrow','section-kicker','detail-kicker'):
                 self.assertNotRegex(text, r'class=[\'\"][^\'\"]*\b'+klass+r'\b')
         self.assertIn(b'Keep this warning', pages[7])

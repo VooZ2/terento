@@ -121,12 +121,23 @@ struct SafeUpdateSourceArtifact: Equatable, Sendable {
     }
 }
 
+enum SafeUpdateAcquisitionStage: String, Equatable, Sendable {
+    case preflight, download, extract
+    case sourceValidation = "source-validation"
+}
+
 enum SafeUpdateAcquisitionError: LocalizedError, Equatable, Sendable {
-    case failed(String)
+    case failed(String, stage: SafeUpdateAcquisitionStage = .preflight)
 
     var errorDescription: String? {
         switch self {
-        case .failed(let message): return message
+        case .failed(let message, _): return message
+        }
+    }
+
+    var stage: SafeUpdateAcquisitionStage {
+        switch self {
+        case .failed(_, let stage): return stage
         }
     }
 }
@@ -138,27 +149,89 @@ protocol SafeUpdateArtifactProvider: Sendable {
     ) async throws -> SafeUpdateSourceArtifact
 }
 
+enum SafeUpdateAcquisitionEvent: Equatable, Sendable {
+    case started, processing, succeeded, failed, cancelled
+}
+
+/// Tracks the real acquisition boundary without exposing provider errors or paths.
+private final class SafeUpdateAcquisitionObserver: @unchecked Sendable {
+    private let lock = NSLock()
+    private var started = false
+    private var processing = false
+    private var finished = false
+    private let observer: (@Sendable (SafeUpdateAcquisitionEvent) -> Void)?
+
+    init(_ observer: (@Sendable (SafeUpdateAcquisitionEvent) -> Void)?) {
+        self.observer = observer
+    }
+
+    func state(_ state: MapAcquisitionState) {
+        lock.lock()
+        var event: SafeUpdateAcquisitionEvent?
+        if !finished && state == .downloading && !started {
+            started = true
+            event = .started
+        } else if !finished && state == .validatingDownload && started && !processing {
+            processing = true
+            event = .processing
+        }
+        lock.unlock()
+        if let event { observer?(event) }
+    }
+
+    func failureStage(for error: Error) -> SafeUpdateAcquisitionStage {
+        lock.lock()
+        let reachedDownload = started
+        lock.unlock()
+        guard reachedDownload, let error = error as? MapAcquisitionError else { return .preflight }
+        switch error {
+        case .downloadFailed, .providerUnavailable, .downloadIncomplete, .untrustedSourceURL:
+            return .download
+        case .extractionFailed, .unsafeArchivePath:
+            return .extract
+        case .invalidPackage, .unsupportedPackageFormat, .sourceIdentityMismatch,
+             .sourceVersionMismatch, .noIMGFound, .ambiguousIMG, .customMapNotConfirmed:
+            return .sourceValidation
+        case .workspaceFailed, .acquisitionWithheld:
+            return .preflight
+        }
+    }
+
+    func finish(_ event: SafeUpdateAcquisitionEvent) {
+        lock.lock()
+        let shouldEmit = started && !finished
+        finished = true
+        lock.unlock()
+        if shouldEmit { observer?(event) }
+    }
+}
+
 /// Production adapter for the existing Stage 4.1 acquisition pipeline. It
 /// does not introduce a second download path or a hardcoded provider URL.
 struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
     private let acquirer: MapPackageAcquirer
+    private let onAcquisition: (@Sendable (SafeUpdateAcquisitionEvent) -> Void)?
 
     init(
         acquirer: MapPackageAcquirer = MapPackageAcquirer(
             providerHealthChecker: FoundationMapProviderHealthChecker()
-        )
+        ),
+        onAcquisition: (@Sendable (SafeUpdateAcquisitionEvent) -> Void)? = nil
     ) {
         self.acquirer = acquirer
+        self.onAcquisition = onAcquisition
     }
 
     func acquire(
         package: MapPackage,
         onProgress: (@Sendable (SafeUpdateProgress) -> Void)? = nil
     ) async throws -> SafeUpdateSourceArtifact {
+        let evidence = SafeUpdateAcquisitionObserver(onAcquisition)
         do {
             let artifact = try await acquirer.acquire(
                 package: package,
                 onStateChange: { state in
+                    evidence.state(state)
                     let safeState: SafeUpdateState = {
                         switch state {
                         case .downloading: return .acquiring
@@ -184,9 +257,12 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
                     ))
                 }
             )
+            evidence.finish(.succeeded)
             return SafeUpdateSourceArtifact(artifact)
         } catch {
-            throw SafeUpdateAcquisitionError.failed(error.localizedDescription)
+            evidence.finish(Task.isCancelled || error is CancellationError
+                || (error as? URLError)?.code == .cancelled ? .cancelled : .failed)
+            throw SafeUpdateAcquisitionError.failed(error.localizedDescription, stage: evidence.failureStage(for: error))
         }
     }
 }
@@ -479,6 +555,10 @@ struct SafeUpdateResult: Equatable, Sendable {
     let newObject: SafeUpdateRemoteObject?
     let finalObjects: [SafeUpdateRemoteObject]
     let oldMapPreserved: Bool
+    var writeStarted: Bool = false
+    var cleanupAttempted: Bool = false
+    var cleanupSucceeded: Bool = false
+    var acquisitionFailureStage: SafeUpdateAcquisitionStage? = nil
 
     var isSuccess: Bool { status.isSuccess }
 }
@@ -504,6 +584,25 @@ struct SafeUpdateTransaction: Sendable {
         transport: any SafeUpdateTransport,
         onProgress: (@Sendable (SafeUpdateProgress) -> Void)? = nil
     ) async -> SafeUpdateResult {
+        var writeStarted = false
+        var cleanupAttempted = false
+        var cleanupSucceeded = false
+        func cleanup(_ object: SafeUpdateRemoteObject, transport: any SafeUpdateTransport) -> SafeUpdateStatus {
+            cleanupAttempted = true
+            let status = self.cleanup(object, transport: transport)
+            cleanupSucceeded = status != .failedCleanup
+            return status
+        }
+        func failure(_ status: SafeUpdateStatus, _ message: String,
+                     storagePlan: StoragePlan? = nil, newObject: SafeUpdateRemoteObject? = nil,
+                     oldMapPreserved: Bool = true, finalObjects: [SafeUpdateRemoteObject] = []) -> SafeUpdateResult {
+            var result = self.failure(status, message, storagePlan: storagePlan, newObject: newObject,
+                                      oldMapPreserved: oldMapPreserved, finalObjects: finalObjects)
+            result.writeStarted = writeStarted
+            result.cleanupAttempted = cleanupAttempted
+            result.cleanupSucceeded = cleanupSucceeded
+            return result
+        }
         let transactionID = UUID()
 
         guard request.authorizationRefresh != nil, request.currentIdentity != nil else {
@@ -613,7 +712,9 @@ struct SafeUpdateTransaction: Sendable {
                 onProgress: onProgress
             )
         } catch {
-            return failure(.failedAcquisition, "The selected map could not be acquired from its provider.")
+            var result = failure(.failedAcquisition, "The selected map could not be acquired from its provider.")
+            result.acquisitionFailureStage = (error as? SafeUpdateAcquisitionError)?.stage ?? .preflight
+            return result
         }
 
         defer {
@@ -742,6 +843,7 @@ struct SafeUpdateTransaction: Sendable {
             transferProgress = nil
         }
         do {
+            writeStarted = true
             written = try transport.writeTransactionObject(
                 sourceURL: artifact.localIMGURL,
                 targetPath: targetPath,
@@ -893,7 +995,8 @@ struct SafeUpdateTransaction: Sendable {
             storagePlan: storagePlan,
             newObject: verified,
             finalObjects: finalObjects,
-            oldMapPreserved: false
+            oldMapPreserved: false,
+            writeStarted: true
         )
     }
 

@@ -7,6 +7,7 @@ from pathlib import PurePosixPath
 from typing import Protocol
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 
 EOCD_SIGNATURE = b"PK\x05\x06"
@@ -53,18 +54,23 @@ class HTTPRangeFetcher:
 
     user_agent = "TerentoCatalog/0.1 (+https://terento.app)"
 
-    def __init__(self, *, timeout_seconds: int = 30, max_response_bytes: int = MAX_CENTRAL_DIRECTORY_BYTES) -> None:
+    def __init__(self, *, timeout_seconds: int = 30, max_response_bytes: int = MAX_CENTRAL_DIRECTORY_BYTES, opener=None) -> None:
+        self.opener = opener
         self.timeout_seconds = timeout_seconds
         self.max_response_bytes = max_response_bytes
 
     def head_size(self, url: str) -> int | None:
         request = Request(url, method="HEAD", headers={"User-Agent": self.user_agent})
         try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
+            with (self.opener.open if self.opener else urlopen)(request, timeout=self.timeout_seconds) as response:
                 self._validate_redirect(url, response.geturl())
                 if getattr(response, "status", 200) != 200:
                     return None
                 value = response.headers.get("Content-Length")
+        except HTTPError as error:
+            if error.code == 429:
+                raise
+            return None
         except OSError:
             return None
         try:
@@ -84,7 +90,7 @@ class HTTPRangeFetcher:
             },
         )
         try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
+            with (self.opener.open if self.opener else urlopen)(request, timeout=self.timeout_seconds) as response:
                 final_url = response.geturl()
                 self._validate_redirect(url, final_url)
                 status = getattr(response, "status", 200)

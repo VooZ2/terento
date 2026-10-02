@@ -21,20 +21,186 @@ private actor UploadRecorder: InstallationEvidenceUploading {
     func count() -> Int { uploaded.count }
 }
 
+private actor LegacyServerRecorder: InstallationEvidenceUploading {
+    private var acceptsUpdates = false
+    private(set) var uploaded: [UUID] = []
+    func upload(_ event: InstallationEvidenceEvent) async throws {
+        if event.operationKind == "update" && !acceptsUpdates {
+            throw InstallationEvidenceUploadError.httpStatus(code: 400, body: "unknown_fields")
+        }
+        uploaded.append(event.id)
+    }
+    func acceptUpdates() { acceptsUpdates = true }
+    func uploadedIDs() -> [UUID] { uploaded }
+}
+
 @main
 struct InstallationEvidenceTests {
     @MainActor
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
         try testFailureContextRoundTrip()
+        try testUpdateEvidenceRoundTripAndIsolation()
+        try testUpdateOutboxSurvivesOlderAppAndConsentChanges()
         try testCustomIMGEvidencePayload()
         try testOTMClassificationAudit()
         try testOriginalModelMetadata()
         testStatisticsAndPromotionThresholds()
         try await testConsentAndUploadIsolation()
+        try await testUnsupportedUpdateDoesNotBlockInstallationReports()
         testDiagnosticSanitization()
         testPreparedInstallationIssue()
         print("PASS: installation evidence, privacy, default-on upload, report, and promotion tests")
+    }
+
+    static func testUpdateEvidenceRoundTripAndIsolation() throws {
+        var update = InstallationEvidenceEvent(identity: identity, package: package,
+            outcome: .failed, finishingResult: .failed, errorCategory: .transport,
+            operationId: UUID(uuidString: "aabbccdd-2222-4222-8222-222222222222")!,
+            appBuild: "38-local", releaseLabel: "1.0.0-beta.16-local",
+            failureStage: .write, failureCode: "UPDATE_FAILED_WRITE",
+            writeStarted: true, remoteObjectCreated: false, transferProgressBucket: nil,
+            terentoVersion: "1.0.0-beta.16-local", macOSVersion: "test macOS")
+        update.operationKind = "update"
+        update.oldMapPreserved = true
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let encoded = try encoder.encode(update)
+        let payload = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+        expect(payload["transferProgressBucket"] == nil,
+            "updates omit unmeasured progress instead of reporting a fabricated zero")
+        let decoded = try decoder.decode(InstallationEvidenceEvent.self, from: encoded)
+        expect(decoded.operationKind == "update" && decoded.oldMapPreserved == true,
+            "update kind and old-map preservation survive JSON round trip")
+        expect(decoded.operationId == update.operationId && decoded.failureCode == "UPDATE_FAILED_WRITE",
+            "diagnostics preserve the operation linkage and bounded update code")
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        _ = try LocalInstallationEvidenceStore(rootURL: root).append(update, queueForUpload: true)
+        let reopened = LocalInstallationEvidenceStore(rootURL: root)
+        expect(reopened.pendingUploads().first?.operationKind == "update"
+            && reopened.events().first?.oldMapPreserved == true,
+            "queued update remains distinct after reopening the diagnostic store")
+        let legacy = try decoder.decode(InstallationEvidenceEvent.self, from: encoder.encode(makeEvent()))
+        expect(legacy.operationKind == nil && legacy.oldMapPreserved == nil,
+            "legacy installations do not acquire update facts")
+        var successfulUpdate = makeEvent()
+        successfulUpdate.operationKind = "update"
+        successfulUpdate.oldMapPreserved = false
+        let model = identity.canonicalModel ?? identity.model
+        let onlyUpdates = CompatibilityEvidenceCalculator.summarize([update, successfulUpdate], forModel: model)
+        expect(onlyUpdates.attemptedInstallCount == 0 && onlyUpdates.successfulInstallCount == 0
+            && onlyUpdates.failedInstallCount == 0, "updates never create local installation counts")
+        let installs = [makeEvent(), makeEvent(outcome: .failed, finishing: .failed)]
+        let mixed = CompatibilityEvidenceCalculator.summarize(installs + [update, successfulUpdate], forModel: model)
+        expect(mixed.attemptedInstallCount == 2 && mixed.successfulInstallCount == 1
+            && mixed.failedInstallCount == 1 && mixed.successRate == 0.5,
+            "failed and successful updates do not change the installation denominator")
+        if let exportPath = ProcessInfo.processInfo.environment["TERENTO_UPDATE_EVIDENCE_TEST_PAYLOAD"] {
+            try encoded.write(to: URL(fileURLWithPath: exportPath))
+        }
+        print("PASS: update diagnostic round trip, outbox persistence and install-statistics isolation")
+    }
+
+    static func testUpdateOutboxSurvivesOlderAppAndConsentChanges() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let initialDate = Date(timeIntervalSince1970: 1_800_000_000)
+        try store.setConsent(.accepted, now: initialDate)
+        let installation = makeEvent()
+        var queued = makeEvent()
+        queued.operationKind = "update"; queued.oldMapPreserved = false
+        var uploaded = makeEvent(outcome: .failed, finishing: .failed)
+        uploaded.operationKind = "update"; uploaded.oldMapPreserved = true
+        _ = try store.append(installation, queueForUpload: true)
+        _ = try store.append(queued, queueForUpload: true)
+        _ = try store.append(uploaded, queueForUpload: true)
+        try store.markUploaded(eventID: uploaded.id)
+        let duplicateInserted = try store.append(queued, queueForUpload: true)
+        expect(!duplicateInserted, "cross-file event IDs remain idempotent")
+        func read(_ filename: String) throws -> [String: Any] {
+            try JSONSerialization.jsonObject(with: Data(contentsOf: root.appendingPathComponent(filename))) as! [String: Any]
+        }
+        func olderAppSave(_ object: [String: Any]) throws {
+            try JSONSerialization.data(withJSONObject: object).write(to: root.appendingPathComponent("installation-evidence.json"), options: .atomic)
+        }
+        func consentObject(_ choice: EvidenceConsentChoice, seconds: Double) throws -> Any {
+            try JSONSerialization.jsonObject(with: encoder.encode(VersionedEvidenceConsent(
+                noticeVersion: VersionedEvidenceConsent.currentNoticeVersion,
+                choice: choice, decidedAt: initialDate.addingTimeInterval(seconds))))
+        }
+        var legacy = try read("installation-evidence.json")
+        let legacyText = String(decoding: try JSONSerialization.data(withJSONObject: legacy), as: UTF8.self).lowercased()
+        expect(!legacyText.contains(queued.id.uuidString.lowercased())
+            && !legacyText.contains(uploaded.id.uuidString.lowercased())
+            && !legacyText.contains("operationKind".lowercased()),
+            "older app cannot see update events or their pending/uploaded IDs")
+        // Simulate an old app reading and saving its known file after sending its install.
+        legacy["pendingUploadEventIDs"] = []
+        legacy["uploadedEventIDs"] = [installation.id.uuidString]
+        try olderAppSave(legacy)
+        let reopened = LocalInstallationEvidenceStore(rootURL: root)
+        expect(Set(reopened.events().map(\.id)) == Set([installation.id, queued.id, uploaded.id]),
+            "older app save does not drop or reclassify separate update reports")
+        expect(reopened.pendingUploads().map(\.id) == [queued.id], "unaffected update remains queued")
+        // Revocation followed by reacceptance in an old app must not revive the old queue.
+        legacy["consent"] = try consentObject(.declined, seconds: 10)
+        try olderAppSave(legacy)
+        legacy["consent"] = try consentObject(.accepted, seconds: 20)
+        try olderAppSave(legacy)
+        let afterToggle = LocalInstallationEvidenceStore(rootURL: root)
+        expect(afterToggle.pendingUploads().isEmpty && afterToggle.events().count == 3,
+            "changed old-app consent stamp clears update delivery but preserves local reports")
+        var newUpdate = makeEvent()
+        newUpdate.operationKind = "update"; newUpdate.oldMapPreserved = false
+        _ = try afterToggle.append(newUpdate, queueForUpload: true)
+        expect(afterToggle.pendingUploads().count == 1, "new reports may queue after explicit reacceptance")
+        legacy = try read("installation-evidence.json")
+        legacy["consent"] = try consentObject(.declined, seconds: 30)
+        try olderAppSave(legacy)
+        let declined = LocalInstallationEvidenceStore(rootURL: root)
+        expect(declined.pendingUploads().isEmpty, "old-app decline suppresses update pending on restart")
+        let storedPending = try read("update-evidence.json")["pendingUploadEventIDs"] as! [Any]
+        expect(storedPending.isEmpty,
+            "revoked update pending is cleared on disk")
+        var afterDecline = makeEvent()
+        afterDecline.operationKind = "update"; afterDecline.oldMapPreserved = false
+        _ = try declined.append(afterDecline, queueForUpload: true)
+        expect(declined.pendingUploads().isEmpty, "store honors canonical decline even if a stale caller asks to queue")
+        expect(declined.events().filter { $0.operationKind == nil }.map(\.id) == [installation.id],
+            "legacy installation evidence remains unchanged")
+    }
+
+    @MainActor
+    static func testUnsupportedUpdateDoesNotBlockInstallationReports() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        var update = makeEvent(outcome: .failed, finishing: .failed)
+        update.operationKind = "update"
+        update.oldMapPreserved = true
+        let install = makeEvent()
+        _ = try store.append(update, queueForUpload: true)
+        _ = try store.append(install, queueForUpload: true)
+        let uploader = LegacyServerRecorder()
+        let controller = InstallationEvidenceController(store: store, uploader: uploader, automaticRetryDelays: [0])
+        await controller.scheduledUploadForTesting()?.value
+        let firstUploaded = await uploader.uploadedIDs()
+        expect(firstUploaded == [install.id], "rejected update does not starve a supported install report")
+        expect(store.pendingUploads().map(\.id) == [update.id],
+            "unsupported update remains queued with its original kind and ID")
+        expect(store.pendingUploads().first?.operationKind == "update",
+            "an update must never be downgraded into installation evidence")
+        await uploader.acceptUpdates()
+        await controller.flushPendingUploads()
+        expect(store.pendingUploads().isEmpty, "deferred update uploads after server acceptance returns")
+        let uploaded = await uploader.uploadedIDs()
+        expect(uploaded == [install.id, update.id], "already delivered installation is not resent")
     }
 
     static func testFailureContextRoundTrip() throws {

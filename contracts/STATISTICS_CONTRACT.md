@@ -1,5 +1,33 @@
 # Terento statistics contract
 
+## Update diagnostic continuation — local 2026-10-02
+
+The local producer records the actual safe-update write boundary. A failed
+operation before that boundary reports `NOT_STARTED` through diagnostics and
+creates no `MAP_UPDATE_FAILED` result. A terminal write failure reports `FAILED`;
+success reports `SUCCEEDED`. The operation ID is shared with the local report
+and any emitted update statistic. Missing remote objects do not imply that no
+write was attempted.
+
+Update acquisition events come from the real provider acquisition observer:
+`DOWNLOAD_STARTED` begins at the downloader boundary, `DOWNLOAD_PROCESSING`
+begins when returned bytes are being validated, and a single terminal result
+records success, failure or cancellation. A failure while validating or
+extracting downloaded bytes is a failed acquisition, matching installation
+acquisition semantics; it is not a failed device write. Policy, identity or
+workspace failures before the downloader boundary create no download attempt.
+All phases share one acquisition ID, the main component and the update's
+operation ID. They use the independent map-usage sharing preference.
+Unmeasured update progress is omitted from diagnostics; cleanup attempt and
+result fields describe the cleanup actually performed by the transaction.
+
+Schema-v4 `operationKind=update` evidence is retained in the separate
+`map_update_diagnostic` store. It never contributes to fresh-install counts,
+success-rate denominators, provider install popularity or compatibility gates.
+Map-statistics events remain authoritative for global/provider update totals;
+diagnostic arrival, duplicates or opt-out cannot create another map-event result. Historical update events are
+not reclassified without evidence about their write boundary.
+
 Status: active
 Semantics version: 2
 Effective date: 2026-09-17
@@ -182,6 +210,31 @@ diagnostic and map-event facts remain retained and visible in acquisition
 activity. `STARTED`, `PROCESSING`, `CANCELLED`, `INTERRUPTED`, stale and
 missing terminal outcomes do not enter the acquisition failure denominator.
 
+## Exact-model reported update results
+
+Private model detail has a separate diagnostic population: all retained nonlocal
+update reports with a server-assessed exact catalog identity. It describes the
+model and variant, not an individual physical watch. Client ID hints, neighboring
+installations, names alone and timestamps cannot establish that identity.
+Historical unassessed rows remain unassigned.
+
+A logical update is grouped by operation ID, provider and normalized region.
+Repeated event IDs are idempotent. Different reports for that logical result
+count once only when assessed identity, outcome, write-start and finishing facts
+agree; a conflicting group remains in history and is excluded from completed
+counts. No latest-report rule chooses a winning model or outcome.
+
+- Successful: explicit write started, SUCCEEDED and VERIFIED finishing.
+- Failed: explicit write started and FAILED.
+- Not started: retained history, excluded from attempts and failure counts.
+- Attempts: Successful + Failed. Zero attempts give an unavailable rate, not 0%.
+
+These counts use the complete retained history, not the loaded page. Resolution,
+issue linking and reopen actions change review state only. The summary identifies
+its scope as reported results/all time. It may differ from the independent global
+map-statistics stream because sharing and delivery differ. It is never added to
+fresh-install totals, compatibility promotion, provider popularity or map coverage.
+
 ## Charts, cards, and activity
 
 The Dashboard installation trend is an installation-outcome chart. It must never
@@ -191,8 +244,10 @@ Fresh-install outcomes and map-update outcomes are separate statistical
 populations. Updates must never change fresh-install counts or success rates.
 
 Its fresh series are provider fresh successes, custom fresh successes, and
-confirmed fresh-install failures (including custom). The update series is
-separate. Fresh attempt totals are `F_success + F_failed`; download,
+confirmed fresh-install failures (including custom). Successful updates and
+failed updates are separate series. Successful updates are solid green; failed
+updates use green diagonal stripes in bars and legends, while fresh-install
+failures remain red. Fresh attempt totals are `F_success + F_failed`; download,
 pre-install, device-check, not-started, cancelled, and unknown events are not
 chart series.
 
@@ -317,12 +372,14 @@ the current counts, and the full current catalog population is counted before
 any display pagination.
 
 The private Needs attention read model counts active actionable tasks, not unique incidents.
-Failure-diagnostic review and GitHub handling for one operation are alternative
+Installation failure-diagnostic review and GitHub handling for one operation are alternative
 states of one task; linking an issue moves that task between categories and
 does not add a second task. Identity review is an independent task, and
-publication review is counted per exact model. Queue lists and badges use the
-same operation-level grouping and exclude resolved work; operation work is not
-labelled as a count of unique GitHub issues. A failed queue query is
+publication review is counted per exact model. Installation queue entries use
+operation-level grouping. Linked update review adds one entry per active,
+nonlocal diagnostic UUID; the GitHub badge includes those same entries. Unlinked
+update reports do not enter installation issue counts. Both scopes exclude
+resolved work and are not labelled as a count of unique GitHub issues. A failed queue query is
 `unavailable`, never an empty zero queue.
 Needs attention actions use the operation-level diagnostic scope when a batch contains
 multiple map-result rows; this does not merge those rows in installation

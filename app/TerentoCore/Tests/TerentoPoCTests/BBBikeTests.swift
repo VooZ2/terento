@@ -49,6 +49,12 @@ private struct PrefixReader: DeviceFileReader {
         return .approved(record: record, policyVersion: 1)
     }
     static func main() async throws {
+        let oldDate = MapSourceValidator.bbbikeCreationDate("Wed 30 Sep 10:46:38 UTC 2026")
+        let newDate = MapSourceValidator.bbbikeCreationDate("Wed Sep 30 10:46:38 UTC 2026")
+        check(oldDate != nil && oldDate == newDate, "both official README date orders preserve identity")
+        check(MapSourceValidator.bbbikeCreationDate("Wed Sep 31 10:46:38 UTC 2026") == nil, "invalid README calendar date rejected")
+        check(MapSourceValidator.bbbikeCreationDate("Thu Sep 30 10:46:38 UTC 2026") == nil, "incorrect README weekday rejected")
+
         let defaultFixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Fixtures/BBBike/catalog.json")
         let fixture = ProcessInfo.processInfo.environment["TERENTO_BBBIKE_CATALOG_PATH"].map { URL(fileURLWithPath: $0) } ?? defaultFixture

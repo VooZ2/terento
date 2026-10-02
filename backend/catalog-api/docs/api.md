@@ -4,6 +4,68 @@
 
 # Catalog API contract
 
+## Local provider recovery and update diagnostic additions — 2026-10-02
+
+Requires additive migrations `064_provider_rechecks_update_diagnostics.sql` and
+`065_update_diagnostic_review.sql`.
+This describes the local implementation, not deployed route availability.
+
+- `POST /admin/providers/{id}/rechecks`: authenticated and CSRF protected;
+  body `{}` selects failed/unavailable artifacts, or `{ "packageId": "..." }`
+  selects one provider-owned, non-retired package. Returns `{ "jobId": ... }`.
+  The same active scope reuses its queued/running job. Another active scope
+  returns provider-busy; recent completed checks return an explicit cooldown
+  with the earliest retry time.
+- `GET /admin/providers/{id}/rechecks`: authenticated, no-store/noindex;
+  returns `{ "jobs": [...] }`, the latest ten jobs, including state, results
+  and any retry-not-before time. States are `QUEUED`, `RUNNING`, `SUCCEEDED`,
+  `FAILED`, `INTERRUPTED`. The existing scheduler runs the persistent queue.
+- `GET /admin/update-diagnostics`: authenticated HTML, no-store/noindex.
+  Optional `outcome=succeeded|failed|not_started`, exact catalog `deviceId`,
+  `lifecycle=ACTIVE|RESOLVED` and nonnegative `offset` paginate 50 reports.
+  `eventId` accepts a map-update statistics UUID; `diagnosticId` accepts a
+  diagnostic UUID. These identifiers are mutually exclusive and cannot be
+  combined with list filters or pagination.
+  Invalid filters return 400; unavailable storage returns 503. No matching
+  or ambiguous diagnostic renders an explicit availability message.
+- `POST /admin/update-diagnostics/issue|resolve|reopen|workflow`: authenticated,
+  CSRF-protected form actions targeting one `diagnostic_id` UUID. Issue actions
+  link a validated repository issue number or unlink it; they do not create
+  GitHub issues. Resolve requires an allowed `resolution_reason` and accepts
+  an optional note up to 2,000 characters. Workflow accepts the existing
+  `OPEN`, `IN_PROGRESS`, `UNDER_REVIEW` states and rejects changes to resolved
+  reports or `OPEN` with a linked issue. A missing report returns 404, invalid
+  input 400. Review changes are audited without changing original outcome
+  facts. Closed linked GitHub issues resolve active reports during the existing
+  synchronization job; reopening remains an explicit admin action.
+
+Exact-model device detail includes separate reported update counters and
+paginated update history (`updateOutcome`, `updateOffset`, `updateLifecycle`).
+New update intake uses the server's existing identity assessment to attach an
+exact catalog model and variant; client identity claims alone are insufficient.
+Historical reports without an assessment remain unassigned. Counters follow
+the independent diagnostic population and conflict exclusions in
+`contracts/STATISTICS_CONTRACT.md`; they never change installation statistics.
+
+`POST /compatibility/events` accepts an additive schema-v4 update report:
+`operationKind: "update"` plus required Boolean `oldMapPreserved`; existing
+operation ID, provider, region, stage, write-started fact and closed update
+failure code carry the result. `phaseOutcome` is `SUCCEEDED`, `FAILED` or
+`NOT_STARTED`. The backend stores these in `map_update_diagnostic`, never in
+installation evidence or compatibility aggregates. An absent discriminator
+retains the existing installation contract. `oldMapPreserved` is invalid on
+an installation report; unreviewed update codes are rejected.
+
+Update reports use the existing diagnostic sharing preference and delivery controller, while
+map-use statistics retain their independent preference. Update diagnostics are
+pruned after 24 months by the existing evidence-retention task. No new raw logs,
+paths, serial numbers or manifests are transmitted. Exact correlation requires
+one matching operation/provider/region and outcome. Region matching lowercases
+both values because map-use intake lowercases canonical region codes; no name
+aliases or timestamp-based inference
+or historical reconstruction is performed. See ADR0033 and the shared app/API
+release contract for deployment order.
+
 Base URL in production:
 
 ```text
@@ -144,6 +206,12 @@ and `.zip` cumulative-counter trend and is omitted without usable data. Activity
 is bounded and internally scrollable. Generic rows have no Maps link unless an
 exact event/detail destination exists.
 
+Activity presents installation/update status followed by one context row:
+map/region, provider (except Custom .img), and a catalog-assessed model and
+variant when an exact diagnostic relationship exists. Missing or ambiguous
+identity is omitted. This display enrichment does not alter event populations,
+installation/update counters or compatibility evidence.
+
 Map/package reconciliation requires shared operation, provider, and exact or
 unambiguous package-region identity. Operation ID alone is not a unique map.
 Historical acquisition failures remain activity and Maps evidence. A failure
@@ -211,9 +279,11 @@ native, public, or existing device API contract.
 
 ## `GET https://api.terento.app/admin/review/github-issues`
 
-Returns the authenticated active GitHub issue queue. Each linked issue is
-listed once per installation operation with its device, map/region, result,
-workflow state, and last activity. Linking an active diagnostic automatically
+Returns the authenticated active GitHub issue queue. Linked installation work is
+listed once per installation operation; linked update work is listed per exact
+diagnostic UUID and opens update detail directly. Each entry shows its device,
+map/region, result, workflow state and last activity. The GitHub badge uses those
+same scopes and excludes local-test and resolved reports. Linking an active diagnostic automatically
 sets its workflow to `IN_PROGRESS`; the detail dialog also allows
 `UNDER_REVIEW`. The diagnostic remains active and the issue remains in this
 queue until the read-only GitHub synchronizer observes the issue as closed;
@@ -485,8 +555,9 @@ regions/packages, health details/history, collection history, and retained
 provider history. Large source and package lists have client-side search,
 broken-only filters, 25/50-row pagination, and no zero-item package-source
 disclosure. An empty collection uses a compact `Collection · No runs yet`
-state. It also provides `Check now`, `Collect
-catalog`, `Pause`/`Activate`, and an overflow `Retire` control. A request
+state. It also provides `Check provider health`, `Refresh catalog`,
+`Recheck affected packages`, targeted package rechecks, `Pause`/`Activate`,
+and an overflow `Retire` control. A request
 without a valid admin session redirects to `/admin/login`; the page never
 serves map binaries.
 
@@ -568,9 +639,10 @@ be removed only by an authenticated, CSRF-protected admin action at
 `MAP_UPDATE_*` events represent a safe replacement of an already installed
 Terento-owned provider map. They are counted separately from first
 installations; they do not increase installation totals, country coverage, or
-map popularity counts. Admin Dashboard renders both update outcomes as one
-dedicated Map update chart series, while Map statistics exposes their success
-and failure breakdown and supports filtering by either event type.
+map popularity counts. Admin Dashboard and Map statistics render successful
+and failed updates separately: solid green for success and green diagonal
+stripes for failure. Fresh-install failures remain red. Map statistics supports
+filtering by either update event type.
 
 This endpoint receives map-usage diagnostics while the independent map-usage
 diagnostics switch is enabled in `Terento → Diagnostics`; it must not be used

@@ -53,6 +53,7 @@ class CatalogArtifact:
     install_payload_path: str | None = None
     source_updated_at: datetime | None = None
     source_proof: dict[str, Any] | None = None
+    last_check: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -166,6 +167,19 @@ class FreizeitkarteProviderAdapter:
     def collect(self) -> ProviderSnapshot:
         records = self.collector.collect()
         return snapshot_from_freizeitkarte_records(records, self.definition)
+
+
+def freizeitkarte_policy_country_codes(provider_region_id: str, country_codes) -> tuple[str, ...]:
+    """Map FZK's RUS aliases at the provider identity boundary only.
+
+    Existing FZK rows predate canonical two-letter country codes. Other unknown
+    identities stay unknown; this mapper never changes device ownership keys.
+    """
+    if provider_region_id.upper().startswith("RUS") or any(
+        str(code).upper().startswith("RUS") for code in country_codes
+    ):
+        return ("RU",)
+    return tuple(country_codes)
 
 
 def snapshot_from_freizeitkarte_records(

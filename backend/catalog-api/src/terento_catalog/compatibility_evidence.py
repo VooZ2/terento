@@ -15,6 +15,7 @@ MAX_EVENT_BYTES = 16_384
 # the client sends only the coarse custom/custom/custom labels.
 SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "maprando", "bbbike", "custom"})
 ALLOWED_KEYS = {
+    "operationKind", "oldMapPreserved",
     "failureContext", "originalFailureContext",
     "garminModelDescription", "garminModelPartNumber",
     "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
@@ -152,6 +153,13 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         event["region"] != "custom" or event["mapRelease"] != "custom"
     ):
         raise EvidenceValidationError("invalid_custom_identity")
+    if event.get("operationKind") not in (None, "update"):
+        raise EvidenceValidationError("invalid_operation_kind")
+    if event.get("operationKind") == "update":
+        if schema_version != 4 or type(event.get("oldMapPreserved")) is not bool:
+            raise EvidenceValidationError("invalid_update_evidence")
+    elif "oldMapPreserved" in event:
+        raise EvidenceValidationError("unexpected_update_fact")
     event["provider"] = provider
     if "userConfirmed" in event and not isinstance(event["userConfirmed"], bool):
         raise EvidenceValidationError("invalid_confirmation")
@@ -175,6 +183,8 @@ def _validate_v3(event: dict[str, Any]) -> None:
         "writeStarted", "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded",
         "transferProgressBucket",
     }
+    if event.get("operationKind") == "update":
+        required.discard("transferProgressBucket")
     if required - set(event):
         raise EvidenceValidationError("missing_diagnostic_fields")
     if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(event["operationId"])):
@@ -201,7 +211,7 @@ def _validate_v3(event: dict[str, Any]) -> None:
     for key in ("writeStarted", "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded"):
         if not isinstance(event[key], bool):
             raise EvidenceValidationError(f"invalid_{key}")
-    if event["transferProgressBucket"] not in {"0", "1-24", "25-99", "100"}:
+    if "transferProgressBucket" in event and event["transferProgressBucket"] not in {"0", "1-24", "25-99", "100"}:
         raise EvidenceValidationError("invalid_transfer_progress_bucket")
     stages = {"download", "extract", "source-validation", "preflight", "write", "verify", "cleanup", "manifest"}
     if event.get("failureStage") not in stages | {None}:
@@ -224,6 +234,8 @@ def _validate_v3(event: dict[str, Any]) -> None:
         "INSTALL_AUTHORIZATION_UNAVAILABLE",
         "INSTALL_FAILED_UNKNOWN",
     }
+    if event.get("operationKind") == "update":
+        failure_codes = {'UPDATE_FAILED_ACQUISITION', 'UPDATE_FAILED_DEVICE_DISCONNECTED', 'UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING', 'UPDATE_BLOCKED_TERENTO_DEVICE_SCOPE', 'UPDATE_FAILED_WRITE', 'UPDATE_BLOCKED_UNKNOWN_TARGET', 'UPDATE_FAILED_POST_VERIFY', 'UPDATE_FAILED_HASH_MISMATCH', 'UPDATE_BLOCKED_AMBIGUOUS_MAP_IDENTITY', 'UPDATE_FAILED_SOURCE_VALIDATION', 'UPDATE_BLOCKED_UNSUPPORTED_DEVICE', 'UPDATE_BLOCKED_NO_UPDATE', 'UPDATE_FAILED_COMMIT', 'UPDATE_FAILED_SIZE_MISMATCH', 'UPDATE_BLOCKED_NEWER_INSTALLED', 'UPDATE_BLOCKED_CONFIRMATION_REQUIRED', 'UPDATE_BLOCKED_INSUFFICIENT_SPACE', 'UPDATE_FAILED_REMOTE_MISSING', 'UPDATE_BLOCKED_NOT_MANAGED', 'UPDATE_FAILED_MANIFEST_RECONCILIATION', 'UPDATE_BLOCKED_UNKNOWN_STATE', 'UPDATE_FAILED_METADATA_MISMATCH', 'UPDATE_FAILED_CLEANUP', 'UPDATE_BLOCKED_CURRENT_OBJECT_CHANGED'}
     if event.get("failureCode") not in failure_codes | {None}:
         raise EvidenceValidationError("invalid_failure_code")
     native_codes = {

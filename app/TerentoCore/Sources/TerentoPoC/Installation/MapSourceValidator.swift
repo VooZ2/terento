@@ -111,23 +111,33 @@ struct MapSourceValidator: Sendable {
             guard matches.count == 1 else { return nil }
             return String(matches[0].dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces)
         }
-        let date = DateFormatter()
-        date.locale = Locale(identifier: "en_US_POSIX")
-        date.timeZone = TimeZone(secondsFromGMT: 0)
-        date.dateFormat = "EEE d MMM HH:mm:ss 'UTC' yyyy"
-        date.isLenient = false
         let iso = ISO8601DateFormatter()
         guard fileURL.lastPathComponent == "gmapsupp.img",
               fileURL.deletingLastPathComponent().lastPathComponent == proof.payloadPath.split(separator: "/").first.map(String.init),
               field("Name of area:") == proof.sourceRegion,
               field("Garmin map style:") == "\(context.mapType.replacingOccurrences(of: "-latin1", with: "")) (latin1)",
               let creation = field("This Garmin map was created on:"),
-              let timestamp = date.date(from: creation),
+              let timestamp = Self.bbbikeCreationDate(creation),
               timestamp == iso.date(from: proof.generatedAt),
               checksum.trimmingCharacters(in: .whitespacesAndNewlines) == "\(proof.payloadMD5)  gmapsupp.img" else {
             throw MapSourceValidationError.identityMismatch
         }
         return ValidatedMapSource(url: fileURL, sizeBytes: inspected.sizeBytes, sha256: inspected.sha256, metadata: metadata)
+    }
+
+    static func bbbikeCreationDate(_ value: String) -> Date? {
+        let normalized = value.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.isLenient = false
+        for format in ["EEE d MMM HH:mm:ss 'UTC' yyyy", "EEE MMM d HH:mm:ss 'UTC' yyyy"] {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: normalized), formatter.string(from: date) == normalized {
+                return date
+            }
+        }
+        return nil
     }
 
     private func inspect(fileURL: URL) throws -> (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String) {

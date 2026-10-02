@@ -1,5 +1,40 @@
 # Administration, statistics and diagnostic behavior contract
 
+## Provider recovery and update diagnostics — local 2026-10-02
+
+The local implementation adds provider-scoped recheck jobs, per-artifact check
+results and an update-only diagnostic view. This section describes the working
+tree; production deployment and a new native release are separate gates.
+
+Provider actions have distinct meanings: **Check provider health** samples
+provider infrastructure; **Refresh catalog** collects its catalog; **Recheck
+affected packages** validates currently failed/unavailable artifacts. A package
+row can request a targeted recheck. Rechecks use original catalog URLs and the
+existing provider validators, obey acquisition restrictions and stop after HTTP
+429. The operator sees a reason, next action, time and stored job results;
+missing historical reasons remain explicitly unknown. Failed optional contours
+do not make a validated required main map unavailable. A check never asserts
+that a full download or a Garmin installation has passed.
+
+Activity failures link to `/admin/update-diagnostics?eventId=...`. The detail
+requires one exact operation/provider/region match with the same outcome. Region
+casing is normalized to lowercase in both streams; names and aliases are not
+guessed. Missing,
+ambiguous or conflicting evidence is shown explicitly. The list can filter failed
+and not-started updates. Detail reports show a closed failure-code explanation,
+stage, next action, app version/build and known write/old-map-preservation facts.
+An unconfirmed preservation result is not proof of absence; failed updates say
+“Not confirmed — inspect device.” Acquisition/source-validation failures link
+to the known provider package view. Raw payloads, device paths and logs are not
+exposed. A historical statistic alone
+cannot establish the France failure's cause.
+
+Install successes/failures and update successes/failures have distinct chart
+series and labels. Failed updates use green diagonal stripes, successful updates
+solid green; fresh-install failures remain red. Fresh-install KPI denominators
+exclude every update. Not-started updates are diagnostics, not failed device-write
+attempts. Charts and legends must preserve these distinctions at supported widths.
+
 This is the canonical behavioral contract for the private Terento admin surface
 and its diagnostic data dependencies. It complements `api.md` (routes and current
 implementation) and the exact-model compatibility policy. Read it before changing
@@ -163,13 +198,18 @@ the all-time scope without permanent visible copy. App downloads means Terento
 application downloads and is omitted when no usable counter or trend data exists.
 Activity is internally scrollable and must not force page height. A generic
 activity row has no Maps link unless an exact useful destination exists.
+Installation and update activity use two text rows: status, then map/region,
+provider and exact assessed model/variant separated by middle dots. Custom .img
+omits provider. The model link is inline in that same context row, never a
+separate row with a blank gap. Unassigned or ambiguous models are omitted rather
+than shown as a reported guess. Long context may wrap naturally on narrow screens.
 
 Dashboard chart series use one stacked bar for each bucket: downloads are
-successful/failed, and installs are successful/failed/map update. A custom
-fresh success is combined into Successful; optional components and pre-write
-failures remain excluded by the statistics contract. The Maps page uses the
-short headings `Downloads` and `Installs`; Dashboard retains the outcome-first
-`Map downloads` and `Map installs` headings.
+successful/failed, while map operations distinguish install successful, install
+failed, update successful and update failed. A custom fresh success is combined
+into install successful; optional components and pre-write failures remain
+excluded by the statistics contract. Headings that include updates say
+`Installs and updates` (Maps) or `Map installs and updates` (Dashboard).
 
 Needs attention covers unresolved work across all dates. Counts and Inspect links
 must lead to the corresponding work even when the preview is truncated. Failures,
@@ -177,10 +217,13 @@ linked issue work, identity/publication review, and provider/system problems rem
 distinct work types. Empty active work does not mean there have been no failures.
 A failed query is unavailable rather than zero.
 
-A failed diagnostic and GitHub handling linked to one operation are alternative
+A failed installation diagnostic and GitHub handling linked to one operation are alternative
 states of one task; linking an issue moves the task between categories and does
 not increase the total. Identity review is a separate task and publication review
-is counted per exact model. Resolved work is excluded.
+is counted per exact model. The GitHub queue and its badge also include each active,
+nonlocal linked update diagnostic by exact report UUID. Unlinked update failures
+remain in update diagnostics and do not enter installation issues. Resolved work
+is excluded.
 
 A map install failure without matching device diagnostic evidence is a per-map
 review task keyed by the immutable map event ID. Dismiss/reopen is authenticated,
@@ -238,6 +281,19 @@ Narrow layouts stack that same reading order. Historical catalog provenance
 remains accessible and does not change Maps, Install policy, support, or public
 compatibility.
 
+Historical provenance is determined by `record_source=HISTORICAL_REVIEWED`
+(`recordSource` in the admin payload), independently of variant text. Display its
+marker on Devices, Installations and model detail while preserving real variant
+labels such as 47 mm or Solar (no Wi-Fi). The legacy variant placeholder
+`Historical` displays as an empty variant, not a hardware feature. The marker
+describes catalog provenance, not product age or Garmin's discontinued status.
+
+The historical fēnix 7 Pro and Solar (no Wi-Fi) identities remain separate, as do
+their 7X Pro equivalents: Garmin lists them separately in its
+[Connect IQ device catalog](https://developer.garmin.com/connect-iq/compatible-devices/).
+Migration051 uses shared representative model photographs for these pairs;
+identical images do not establish identical variants or justify merging evidence.
+
 ### Maps and downloads
 
 Map acquisition, fresh installation, and update populations remain separate.
@@ -278,12 +334,18 @@ Download phase icons remain static. Timestamps use the selected time zone.
 
 ### Diagnostics
 
-Primary actions precede raw technical evidence. GitHub issue and Technical
-details use the same disclosure presentation, with no duplicate heading inside
-its own disclosure. Resolve and Assign model align naturally with content-driven
-heights and stack when space requires it.
+Primary actions precede raw technical evidence. Prepare GitHub issue is visible
+without opening a disclosure in both installation and update failure views.
+Issue preview/link management, Technical details and review administration use
+the same disclosure presentation, without duplicate headings. Resolve marks
+a diagnostic reviewed; it is secondary to investigating the failure. Assigned
+model administration stays collapsed; unresolved identity has a clear action.
+Cards use content-driven heights and stack when space requires it.
 
-Assign model is an operator-assisted exact-catalog selection. Reported facts and
+Assign model is an operator-assisted exact-catalog selection. Initial candidate
+buttons are immediately usable by pointer and keyboard without
+typing into the search field. Confirm stays disabled until a specific catalog
+model is selected; changing the search clears a stale selection. Reported facts and
 missing facts stay distinct; catalog facts may enrich only a consistent exact
 target. A conflicting normal assignment requires the separate explicit manual
 action and an audit record. Scope remains one exact result unless the operator
@@ -294,6 +356,44 @@ Diagnostic detail retains the result, time, map/provider, device identity,
 available image, reason, lifecycle actions, issue actions, and one collapsed
 Technical details section. A successful result with pending identity is not a
 failure.
+
+### Shared installation and update review
+
+Installation and update failures use the same reading order and control patterns:
+operation, model/variant, date, provider/map, result and app version; What happened;
+Next action with visible Prepare GitHub issue; known safety facts; expandable
+issue management, review administration and Technical details. Both use the same
+bounded content width, typography, spacing and button hierarchy. A generic
+installation failure explicitly says the specific reason was not received and
+points to the local report; it does not merely repeat “Installation error.”
+An update also shows whether the previous map was confirmed preserved. A failed
+check names the observed boundary; it does not invent the underlying cause.
+
+Both views prepare a sanitised issue title/body for the Terento repository, offer
+preview and copy, accept an optional bounded admin note, and link or unlink an
+existing issue. Preparing opens the GitHub composer; the administrator reviews
+and submits it there. Oversized reports use the same copy fallback. No report is
+posted automatically. Update issue links and lifecycle actions target one exact
+diagnostic UUID, require authentication/CSRF and record an audit. Resolving,
+reopening or linking never changes the received outcome, write fact or counts.
+The bounded issue synchronizer resolves active linked diagnostics when GitHub
+confirms closure; reopening remains an explicit administrator action.
+
+An update report links to the model detail only through a server-assessed exact
+catalog identity. Reported model text and unresolved/conflicting identity remain
+visible as such. A client-provided catalog ID alone is insufficient. Historical
+rows without an assessment remain unassigned; no adjacent installation or time
+match supplies identity. The cards describe model-and-variant history; no unique
+physical-watch identifier is collected.
+
+The model detail adds a separate Map updates summary and Update history, scoped
+to all retained nonlocal reports for that exact identity. Successful and Failed
+values link to the corresponding update records. Not-started results stay in
+history and outside the attempt denominator. Summary totals are independent of
+history pagination and diagnostic resolution. Conflicting logical reports remain
+visible with an ambiguity notice and are excluded from completed counts.
+Updates never change installation metrics or public compatibility evidence.
+The broad Devices listing keeps its existing compact columns.
 
 ### Model source review
 
@@ -370,3 +470,5 @@ App/API sequencing and revision/test receipts follow
 Recent map activity uses semantic icons and color while retaining visible
 status text. Expanded download history retains its start, finish, and duration
 facts; historical in-progress icons remain static.
+
+Provider recovery respects HTTP 429 Retry-After cooldown across package rechecks, catalog collection and health checks. A matching active request reuses its job; a different scope waits for the active provider job. Sources display artifact validation state, separately from provider enablement. Failed update counters link to update reports.

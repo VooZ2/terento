@@ -197,6 +197,19 @@ class BBBikeMeasurement:
     source_proof: dict | None
 
 
+def parse_creation_date(value):
+    value = ' '.join(value.split())
+    for pattern in ('%a %d %b %H:%M:%S UTC %Y', '%a %b %d %H:%M:%S UTC %Y'):
+        try:
+            result = datetime.strptime(value, pattern).replace(tzinfo=timezone.utc)
+            if result.strftime(pattern).replace(' 0', ' ') != value.replace(' 0', ' '):
+                continue
+            return result
+        except ValueError:
+            continue
+    raise ValueError('BBBike README creation date is unsupported')
+
+
 def inspect_bbbike(url, path, map_type, *, fetcher=None):
     source_url(url, artifact=True); region_path(path)
     allowed_sources={f'{ARTIFACT_ROOT}{path}/{path.split("/")[-1]}.osm.garmin-{map_type}.zip'}
@@ -232,7 +245,7 @@ def inspect_bbbike(url, path, map_type, *, fetcher=None):
             raise ProviderCollectionError('BBBike README region/style differs from source')
         date=re.search(r'^This Garmin map was created on:\s*(.+)$',readme,re.M)
         if not date: raise ProviderCollectionError('BBBike README creation date missing')
-        generated=datetime.strptime(' '.join(date[1].split()),'%a %d %b %H:%M:%S UTC %Y').replace(tzinfo=timezone.utc)
+        generated=parse_creation_date(date[1])
         checksum=re.fullmatch(r'\s*([0-9a-fA-F]{32})\s+\*?gmapsupp\.img\s*',metadata_text('CHECKSUM.txt'))
         if not checksum: raise ProviderCollectionError('BBBike payload checksum identity missing')
         with archive.open(images[0]) as image: header=image.read(512)
@@ -272,15 +285,15 @@ class BBBikeProviderAdapter:
                     return BBBikeMeasurement(metadata[0],proof['installSizeBytes'],proof['payloadPath'],
                         datetime.fromisoformat(proof['generatedAt']),proof),None
             return self.fetcher.inspect(url,path,map_type),None
-        except (OSError, ValueError, KeyError, zipfile.BadZipFile) as error:
+        except (OSError, ValueError, KeyError, zipfile.BadZipFile, ProviderCollectionError) as error:
             # One broken source must not erase every other valid package. Retain
             # the known source metadata as unavailable; never claim fresh validation.
             date=self.source_dates.get(url) or previous.get('package_source_updated_at')
             if isinstance(date,str): date=datetime.fromisoformat(date)
             size=previous.get('artifact_size_bytes') or 0
             if not date:
-                return None,str(error)
-            return BBBikeMeasurement(size,None,f'{path.split("/")[-1]}-garmin-{map_type}/gmapsupp.img',date,None),str(error)
+                return None,error
+            return BBBikeMeasurement(size,None,f'{path.split("/")[-1]}-garmin-{map_type}/gmapsupp.img',date,None),error
     def discover(self):
         pending=[ROOT]; visited=set(); found={}
         while pending:
@@ -304,6 +317,7 @@ class BBBikeProviderAdapter:
         return found
     def collect(self):
         from .bbbike_geography import geography
+        from .provider_rechecks import check_failure
         packages=[]; identities=set()
         discovered=self.discover()
         items=[(path,t,url) for path,artifacts in sorted(discovered.items()) for t,url in sorted(artifacts.items())]
@@ -334,5 +348,6 @@ class BBBikeProviderAdapter:
                         size_bytes=measurement.download_size_bytes,install_size_bytes=measurement.install_size_bytes,
                         checksum_sha256=None,content_type='application/zip',required=True,validation_status='UNAVAILABLE' if error else 'VALIDATED',
                         install_payload_path=measurement.payload_path,source_updated_at=measurement.generated_at,
-                        source_proof=measurement.source_proof),)))
+                        source_proof=measurement.source_proof,
+                        last_check=(check_failure(error) if error else {'status':'VALIDATED','message':'Source validation passed.','checkedAt':datetime.now(timezone.utc).isoformat()})),)))
         return ProviderSnapshot(self.definition,tuple(packages),datetime.now(timezone.utc))

@@ -4,6 +4,23 @@ from terento_catalog.admin import _overview_map_activity_row
 
 
 class AdminMapActivityTests(unittest.TestCase):
+    def test_install_and_update_context_keep_assessed_device_inline(self):
+        for event_type in ('INSTALL_SUCCEEDED', 'INSTALL_FAILED', 'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED'):
+            with self.subTest(event_type=event_type):
+                row = dict(event_type=event_type, provider_id='bbbike', provider_name='BBBike',
+                    region='LTU', model='fēnix 8', variant='47 mm', canonical_device_model_id='fenix-8-47')
+                markup = _overview_map_activity_row(row)
+                context = markup.split("<span class='activity-context'>")[1].split('</span>')[0]
+                self.assertIn("Lithuania · BBBike · <a class='overview-activity-device'", context)
+                self.assertIn('fēnix 8 · 47 mm</a>', context)
+                self.assertNotIn('</span></span><a', markup)
+                custom = _overview_map_activity_row({**row, 'provider_id':'custom'})
+                self.assertIn("Custom .img · <a class='overview-activity-device'", custom)
+                self.assertNotIn('BBBike', custom)
+                unknown = _overview_map_activity_row({**row, 'canonical_device_model_id':None})
+                self.assertNotIn('fēnix', unknown)
+                self.assertNotIn('overview-activity-device', unknown)
+
     def test_download_title_expands_start_duration_finish_without_generic_map_link(self):
         row = dict(event_type='DOWNLOAD_SUCCEEDED', provider_id='freizeitkarte', region='FRA',
                    lifecycle=[dict(type='DOWNLOAD_STARTED', at='2026-09-15T23:59:00Z'),

@@ -10,9 +10,31 @@ UTC = timezone.utc
 
 
 class DeviceInformationLayoutTests(unittest.TestCase):
+    def test_historical_provenance_is_independent_of_variant(self):
+        from terento_catalog.admin import _statistics_row
+        for variant in ('47 mm', 'Solar (no Wi-Fi)', 'Historical'):
+            with self.subTest(variant=variant):
+                source = device_row(device_id='historical-variant', model='fēnix 7 Pro',
+                    variant=variant, case_size_mm=None, display_type=None,
+                    record_source='HISTORICAL_REVIEWED', public_compatibility_identity=None)
+                device = _admin_device_payload([source], None)['devices'][0]
+                table = devices_page([source], None, {'username':'operator'}, 'csrf').decode()
+                row = table.split('<tbody', 1)[1].split('</tbody>', 1)[0]
+                self.assertIn('catalog-archive-icon', row)
+                evidence = _statistics_row({'model':'fēnix 7 Pro'}, catalog_device=device)
+                self.assertIn('catalog-archive-icon', evidence)
+                detail = device_detail_page(device, {'username':'operator'}, 'csrf').decode()
+                self.assertIn("admin-state'>Historical catalog entry", detail)
+                if variant != 'Historical':
+                    label = '47 mm' if variant == '47 mm' else 'no Wi-Fi'
+                    for markup in (row, evidence, detail): self.assertIn(label, markup)
+        retail = device_row(variant='47 mm', record_source='CURRENT_RETAIL')
+        body = devices_page([retail], None, {'username':'operator'}, 'csrf').decode()
+        self.assertNotIn('catalog-archive-icon', body.split('<tbody',1)[1].split('</tbody>',1)[0])
+
     def test_historical_table_marker_preserves_label_and_device_link(self):
         body = devices_page([device_row(device_id="historical-example", model="Descent Mk1",
-            variant="Historical", case_size_mm=None, display_type=None,
+            variant="Historical", record_source="HISTORICAL_REVIEWED", case_size_mm=None, display_type=None,
             public_compatibility_identity=None)], None, {"username": "operator"}, "csrf").decode()
         row = body.split("<tbody", 1)[1].split("</tbody>", 1)[0]
         self.assertIn("catalog-archive-icon", row)

@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import unittest
+import json
+import os
+from pathlib import Path
+import subprocess
 
 from terento_catalog.db import Database
 
@@ -25,7 +29,7 @@ class Connection:
         self.queries.append((query, params))
         if "array_agg" in query:
             if "compatibility_evidence_event" in query:
-                return Result({"event_count": 2, "operation_count": 1, "labels": ["1.0.0-beta.10-local"]})
+                return Result({"event_count": 7, "operation_count": 1, "labels": ["1.0.0-beta.10-local"]})
             return Result({"event_count": 3, "operation_count": 1, "labels": ["1.0.0-beta.10-local"]})
         if "local_operations" in query and "count(DISTINCT operation_id)" not in query:
             return Result({"operation_count": 1})
@@ -33,6 +37,8 @@ class Connection:
             return Result({"operation_count": 4})
         if "DELETE FROM compatibility_evidence_event" in query:
             return Result({"event_count": 6})
+        if "DELETE FROM map_update_diagnostic" in query:
+            return Result({"event_count": 5})
         if "DELETE FROM map_download_event" in query:
             return Result({"event_count": 8})
         return Result({})
@@ -55,7 +61,7 @@ class LocalTelemetryTests(unittest.TestCase):
         self.assertEqual(
             database.local_test_telemetry_summary(),
             {
-                "diagnosticEventCount": 2,
+                "diagnosticEventCount": 7,
                 "mapEventCount": 3,
                 "operationCount": 1,
                 "releaseLabels": ["1.0.0-beta.10-local"],
@@ -73,15 +79,31 @@ class LocalTelemetryTests(unittest.TestCase):
         )
         self.assertEqual(
             result,
-            {"diagnosticEventCount": 6, "mapEventCount": 8, "operationCount": 4},
+            {"diagnosticEventCount": 11, "mapEventCount": 8, "operationCount": 4},
         )
         delete_queries = [query for query, _ in connection.queries if query.lstrip().startswith("WITH deleted")]
-        self.assertEqual(len(delete_queries), 2)
+        self.assertEqual(len(delete_queries), 3)
         self.assertTrue(all("WHERE is_local_test IS TRUE" in query for query in delete_queries))
         audit = next((params for query, params in connection.queries if "INSERT INTO admin_audit_log" in query), None)
         self.assertIsNotNone(audit)
         self.assertEqual(audit[1], "telemetry.local_test_purged")
         self.assertEqual(audit[7], "local-test-1")
+
+
+    @unittest.skipUnless(os.environ.get('PGLITE_MODULE_PATH'), 'Set PGLITE_MODULE_PATH for PostgreSQL purge verification')
+    def test_actual_postgres_purge_preserves_production_with_shared_operation(self):
+        connection = Connection()
+        database = LocalTelemetryDatabase(connection)
+        database.local_test_telemetry_summary()
+        summary = list(connection.queries)
+        connection.queries.clear()
+        database.purge_local_test_telemetry(admin_user_id=7)
+        root = Path(__file__).parent
+        payload = {'summary':summary, 'purge':connection.queries,
+                   'migration':(root.parent / 'src/terento_catalog/migrations/064_provider_rechecks_update_diagnostics.sql').read_text()}
+        result = subprocess.run(['node',str(root / 'local_telemetry_postgres.cjs'),os.environ['PGLITE_MODULE_PATH']],
+                                input=json.dumps(payload), text=True, capture_output=True)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
 
 
 if __name__ == "__main__":

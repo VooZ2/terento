@@ -827,6 +827,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                         "outcome": "SUCCEEDED", "model": "fēnix 7 Pro",
                         "compatibility_identity": "fēnix 7 Pro",
                         "device_link_state": "LINKED",
+                        "canonical_device_model_id": "fenix-7-pro",
                         "occurred_at": "2026-09-04T08:00:00+00:00",
                     }],
                     "attention": [], "trend": [], "bucket": "hour",
@@ -855,7 +856,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertNotIn("Recent compatibility activity", body)
         self.assertIn("Custom .img", body)
-        self.assertIn("overview-activity-device'>fēnix 7 Pro</span>", body)
+        self.assertIn("Custom .img · <a class='overview-activity-device'", body)
+        self.assertIn(">fēnix 7 Pro</a>", body)
         self.assertNotIn("Reported device:", body)
         self.assertNotIn("No map telemetry in this period", body)
         self.assertNotIn("No map activity in this period", body)
@@ -881,7 +883,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("<span>Lithuania · OpenTopoMap</span>", body)
+        self.assertIn("<span class='activity-context'>Lithuania · OpenTopoMap</span>", body)
         self.assertNotIn("Device report unavailable", body)
 
     def test_overview_presents_model_activity_and_exact_period_vocabulary(self):
@@ -1078,7 +1080,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Top countries", body)
         self.assertIn("Maps by provider", body)
         self.assertIn(">Downloads</h2>", body)
-        self.assertIn(">Installs</h2>", body)
+        self.assertIn(">Installs and updates</h2>", body)
         self.assertNotIn("Popular maps", body)
         self.assertNotIn("id='regions-view'", body)
 
@@ -1522,7 +1524,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
         body = _overview_trend_chart([{
             "bucket": "2026-09-24T00:00:00Z", "success_count": 5,
-            "failed_count": 2, "map_update_count": 1,
+            "failed_count": 1, "map_update_success_count": 1, "map_update_failed_count": 1,
         }], "day")
         charts = [ET.fromstring(markup) for markup in re.findall(r"<svg.*?</svg>", body)]
         self.assertEqual([chart.attrib["viewBox"] for chart in charts], ["0 0 720 260", "0 0 360 220"])
@@ -1531,7 +1533,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
         self.assertEqual(
             [bar.attrib["class"] for bar in bars],
-            ["overview-chart-success", "overview-chart-failed", "overview-chart-update"],
+            ["overview-chart-success", "overview-chart-failed", "overview-chart-update", "overview-chart-update-failed"],
         )
         self.assertEqual({bar.attrib["x"] for bar in bars}, {bars[0].attrib["x"]})
         self.assertEqual({bar.attrib["width"] for bar in bars}, {bars[0].attrib["width"]})
@@ -2680,10 +2682,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Copy issue report", body)
         self.assertIn("Link issue", body)
         self.assertEqual(body.count("<h4 id='github-review-"), 0)
-        self.assertEqual(body.count("<summary>GitHub issue</summary>"), 4)
-        self.assertIn('<span class="muted-value">No linked issue</span>', body)
+        self.assertEqual(body.count("<h3>GitHub issue</h3>"), 4)
+        self.assertIn("No linked issue", body)
         self.assertIn("class='diagnostic-secondary-grid'", body)
-        self.assertEqual(body.count("<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'>"), 8)
+        self.assertEqual(body.count("<summary>Review administration</summary>"), 4)
+        self.assertEqual(body.count("<summary>Technical details</summary>"), 4)
         self.assertIn(".diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px))", body)
         self.assertNotIn("width:min(860px,calc(100% - 32px))", body)
         self.assertIn(".github-review{overflow-wrap:anywhere}", body)
@@ -2692,8 +2695,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn(".diagnostic-id code{overflow-wrap:anywhere", body)
         self.assertIn(".diagnostic-technical-details dd{min-width:0", body)
         self.assertIn(".diagnostic-detail-dialog{width:calc(100% - 32px);max-width:none", body)
-        self.assertIn("<details class='github-issue-disclosure'>", body)
-        self.assertIn("Manage linked issue", body)
+        self.assertIn("<details class='github-link-disclosure'>", body)
+        self.assertIn("Link or manage an existing issue", body)
         self.assertIn("Change linked issue", body)
         self.assertIn("Unlink issue", body)
         self.assertIn("#32 <svg class='admin-icon admin-icon-external'", body)
@@ -3181,7 +3184,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"},
             "csrf",
         ).decode()
-        for text in ("Packages", "Broken", "Catalog sync", "Health", "Check now", "Collect catalog", "More", "Retire provider", "Metadata and attribution", "Original links", "Download source URLs", "Regions and packages", "Health", "View check details", "Collection history", "Provider history"):
+        for text in ("Packages", "Broken", "Catalog sync", "Health", "Check provider health", "Refresh catalog", "More", "Retire provider", "Metadata and attribution", "Original links", "Download source URLs", "Regions and packages", "Health", "View check details", "Collection history", "Provider history"):
             self.assertIn(text, body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)
@@ -3267,7 +3270,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("Firmware</dt>", body)
         self.assertIn("Write failed", body)
         self.assertIn("SEND_OBJECT_FAILED", body)
-        self.assertIn("Failure reason:", body)
+        self.assertIn("<h3>What happened</h3>", body)
         self.assertIn("data-history-filter='failed'", body)
         self.assertNotIn("Each map installation counts separately", body)
         self.assertIn("maxlength='500'", body)

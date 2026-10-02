@@ -156,6 +156,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let optionalComponentFailureStage: EvidenceFailureStage?
     let optionalComponentFailureCode: String?
     let optionalComponentNativeFailureCode: EvidenceNativeFailureCode?
+    var operationKind: String? = nil
+    var oldMapPreserved: Bool? = nil
 
     init(
         id: UUID = UUID(),
@@ -179,7 +181,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         remoteObjectCreated: Bool = false,
         cleanupAttempted: Bool = false,
         cleanupSucceeded: Bool = false,
-        transferProgressBucket: EvidenceTransferProgressBucket = .zero,
+        transferProgressBucket: EvidenceTransferProgressBucket? = .zero,
         terentoVersion: String = TerentoTelemetryMetadata.releaseLabel,
         macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
         failureContext: InstallationFailureContext? = nil,
@@ -254,6 +256,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
+        case operationKind, oldMapPreserved
         case failureContext
         case originalFailureContext
         case optionalComponentSelected
@@ -273,6 +276,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        operationKind = try container.decodeIfPresent(String.self, forKey: .operationKind)
+        oldMapPreserved = try container.decodeIfPresent(Bool.self, forKey: .oldMapPreserved)
         schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
         id = try container.decode(UUID.self, forKey: .id)
         timestamp = try container.decode(Date.self, forKey: .timestamp)
@@ -384,7 +389,7 @@ enum CompatibilityEvidenceCalculator {
         // The identity key is exact. Legacy v1 events decode their missing
         // key as `model`, so this remains backwards-compatible without
         // allowing a base family label to absorb a sized variant.
-        let matching = events.filter { $0.compatibilityIdentity == model }
+        let matching = events.filter { $0.compatibilityIdentity == model && $0.operationKind != "update" }
         let operations = Dictionary(grouping: matching) { event in
             event.operationId?.uuidString ?? "legacy:\(event.id.uuidString)"
         }.values
@@ -429,6 +434,7 @@ private struct InstallationEvidenceFile: Codable {
 
 final class LocalInstallationEvidenceStore: @unchecked Sendable {
     private let fileURL: URL
+    private let updateFileURL: URL
     private let lock = NSLock()
     private let encoder: JSONEncoder
     private let decoder = JSONDecoder()
@@ -439,6 +445,7 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
             in: .userDomainMask
         ).first!.appendingPathComponent("Terento", isDirectory: true)
         fileURL = root.appendingPathComponent("installation-evidence.json")
+        updateFileURL = root.appendingPathComponent("update-evidence.json")
         encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -454,7 +461,7 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
             var file = try loadUnlocked()
             guard !file.events.contains(where: { $0.id == event.id }) else { return false }
             file.events.append(event)
-            if queueForUpload { file.pendingUploadEventIDs.append(event.id) }
+            if queueForUpload && file.consent?.choice != .declined { file.pendingUploadEventIDs.append(event.id) }
             try saveUnlocked(file)
             return true
         }
@@ -518,20 +525,63 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
     }
 
     private func loadUnlocked() throws -> InstallationEvidenceFile {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            return InstallationEvidenceFile()
+        let installation = try readUnlocked(fileURL)
+        var updates = try readUnlocked(updateFileURL)
+        // Older apps only read/write the installation file. A changed consent
+        // stamp means they may have revoked then re-enabled sharing while away.
+        // Discard old pending updates conservatively; retained reports stay local.
+        if updates.consent != installation.consent || installation.consent?.choice == .declined {
+            let changed = !updates.pendingUploadEventIDs.isEmpty || updates.consent != installation.consent
+            updates.pendingUploadEventIDs.removeAll()
+            updates.consent = installation.consent
+            if changed { try writeUnlocked(updates, to: updateFileURL) }
         }
-        return try decoder.decode(InstallationEvidenceFile.self, from: Data(contentsOf: fileURL))
+        let all = installation.events + updates.events
+        let updateIDs = Set(all.filter { $0.operationKind == "update" }.map(\.id))
+        var seen = Set<UUID>()
+        let events = all.filter { event in
+            if updateIDs.contains(event.id) && event.operationKind != "update" { return false }
+            return seen.insert(event.id).inserted
+        }
+        let uploaded = Set((installation.uploadedEventIDs ?? []) + (updates.uploadedEventIDs ?? []))
+        let pending = installation.consent?.choice == .declined ? [] : Array(
+            Set(installation.pendingUploadEventIDs + updates.pendingUploadEventIDs)
+                .intersection(seen).subtracting(uploaded))
+        let merged = InstallationEvidenceFile(events: events, pendingUploadEventIDs: pending,
+            uploadedEventIDs: Array(uploaded.intersection(seen)), consent: installation.consent)
+        // Recover unreleased mixed-file candidates without leaving update rows
+        // visible to an older app. Update-first writes make retries idempotent.
+        if installation.events.contains(where: { $0.operationKind == "update" })
+            || !Set(installation.pendingUploadEventIDs + (installation.uploadedEventIDs ?? [])).isDisjoint(with: updateIDs) {
+            try saveUnlocked(merged)
+        }
+        return merged
+    }
+
+    private func readUnlocked(_ url: URL) throws -> InstallationEvidenceFile {
+        guard FileManager.default.fileExists(atPath: url.path) else { return InstallationEvidenceFile() }
+        return try decoder.decode(InstallationEvidenceFile.self, from: Data(contentsOf: url))
     }
 
     private func saveUnlocked(_ file: InstallationEvidenceFile) throws {
-        try FileManager.default.createDirectory(
-            at: fileURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        let data = try encoder.encode(file)
-        try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+        func partition(update: Bool) -> InstallationEvidenceFile {
+            let events = file.events.filter { ($0.operationKind == "update") == update }
+            let ids = Set(events.map(\.id))
+            return InstallationEvidenceFile(events: events,
+                pendingUploadEventIDs: file.pendingUploadEventIDs.filter { ids.contains($0) },
+                uploadedEventIDs: file.uploadedEventIDs?.filter { ids.contains($0) },
+                consent: file.consent)
+        }
+        try writeUnlocked(partition(update: true), to: updateFileURL)
+        try writeUnlocked(partition(update: false), to: fileURL)
     }
+
+    private func writeUnlocked(_ file: InstallationEvidenceFile, to url: URL) throws {
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try encoder.encode(file).write(to: url, options: [.atomic, .completeFileProtection])
+    }
+
 }
 
 private extension NSLock {
@@ -842,6 +892,7 @@ final class InstallationEvidenceController: ObservableObject {
         }
 
         uploadStatus = .uploading(count: pending.count)
+        var deferredUpdate = false
         for event in pending {
             // Opt-out during an in-flight upload must stop the remaining snapshot.
             guard uploadEnabled else { return .empty }
@@ -858,11 +909,24 @@ final class InstallationEvidenceController: ObservableObject {
                     willRetry: willRetry,
                     pendingCount: remaining
                 )
+                if event.operationKind == "update",
+                   case InstallationEvidenceUploadError.httpStatus(let code, _) = error,
+                   code == 400 {
+                    // A backend rollback may reject additive update fields. Retain the
+                    // exact report for a later attempt without blocking older installs.
+                    deferredUpdate = true
+                    continue
+                }
                 uploadStatus = .waiting(count: remaining, reason: reason, willRetry: willRetry)
                 return willRetry ? .retryableFailure : .permanentFailure
             }
         }
 
+        if deferredUpdate {
+            uploadStatus = .waiting(count: store.pendingUploads().count,
+                reason: "Update reports are waiting for a compatible server.", willRetry: false)
+            return .permanentFailure
+        }
         uploadStatus = .uploaded
         return .completed
     }

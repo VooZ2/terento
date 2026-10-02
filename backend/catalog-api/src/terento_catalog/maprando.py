@@ -59,9 +59,9 @@ class MapRandoFetcher:
         return inspect_maprando_img(url)
 
 
-def inspect_maprando_img(url: str) -> ImageMeasurement:
+def inspect_maprando_img(url: str, *, fetcher=None) -> ImageMeasurement:
     url = _source_url(url)
-    response = HTTPRangeFetcher(timeout_seconds=30, max_response_bytes=512).fetch_range(url, 0, 511)
+    response = (fetcher or HTTPRangeFetcher(timeout_seconds=30, max_response_bytes=512)).fetch_range(url, 0, 511)
     if (len(response.body) != 512 or response.total_size < 512
             or response.body[0] != 0 or response.body[16:22] != b"DSKIMG"
             or response.body[65:71] != b"GARMIN"):

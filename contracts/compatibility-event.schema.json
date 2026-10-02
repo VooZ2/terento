@@ -35,7 +35,7 @@
         3,
         4
       ],
-      "description": "Evidence body version. Versions 1–3 retain a legacy deletionToken; version 4 forbids it. Not an app release."
+      "description": "Evidence body version. Versions 1\u20133 retain a legacy deletionToken; version 4 forbids it. Not an app release."
     },
     "id": {
       "type": "string",
@@ -113,7 +113,7 @@
     },
     "deletionToken": {
       "type": "string",
-      "description": "Legacy versions 1–3 only: historical random deletion token. It is not a credential; deletion is no longer supported. Never emit in version 4."
+      "description": "Legacy versions 1\u20133 only: historical random deletion token. It is not a credential; deletion is no longer supported. Never emit in version 4."
     },
     "compatibilityIdentity": {
       "$ref": "#/$defs/optionalText"
@@ -140,46 +140,46 @@
       "type": "boolean"
     },
     "operationId": {
-      "description": "Random operation identity groups map results; not a physical device identifier. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Random operation identity groups map results; not a physical device identifier. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "mapResultIndex": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "selectedMapCount": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "appBuild": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "releaseLabel": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "writeStarted": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "remoteObjectCreated": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "cleanupAttempted": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "cleanupSucceeded": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "transferProgressBucket": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "failureStage": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "identityResolutionCode": {
-      "description": "Resolution method name only; never the underlying serial or Unit ID. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Resolution method name only; never the underlying serial or Unit ID. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "failureCode": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "nativeFailureCode": {
-      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+      "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
     },
     "garminModelDescription": {
       "type": "string",
@@ -253,6 +253,17 @@
           "$ref": "#/$defs/failureContext"
         }
       ]
+    },
+    "operationKind": {
+      "enum": [
+        null,
+        "update"
+      ],
+      "description": "Absent or null preserves legacy fresh-install evidence. Explicit update routes to separate diagnostics and never counts as an installation."
+    },
+    "oldMapPreserved": {
+      "type": "boolean",
+      "description": "Transaction-reported preservation of the previous map; required only for explicit update evidence."
     }
   },
   "required": [
@@ -540,38 +551,6 @@
             ],
             "description": "Resolution method name only; never the underlying serial or Unit ID."
           },
-          "failureCode": {
-            "enum": [
-              null,
-              "INSTALL_BLOCKED_BACKUP_FAILED",
-              "INSTALL_BLOCKED_DOWNLOAD_FAILED",
-              "INSTALL_BLOCKED_EXISTING_MAP_CONFLICT",
-              "INSTALL_BLOCKED_INSUFFICIENT_SPACE",
-              "INSTALL_BLOCKED_MAP_IDENTITY_AMBIGUOUS",
-              "INSTALL_BLOCKED_SOURCE_ARTIFACT_INVALID",
-              "INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED",
-              "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE",
-              "INSTALL_BLOCKED_TERENTO_DEVICE_SCOPE",
-              "INSTALL_AUTHORIZATION_UNAVAILABLE",
-              "INSTALL_BLOCKED_TRANSACTION_ALREADY_RUNNING",
-              "INSTALL_BLOCKED_UNKNOWN_INSTALL_SIZE",
-              "INSTALL_BLOCKED_UNKNOWN_TARGET",
-              "INSTALL_BLOCKED_VERIFICATION_REQUIRED",
-              "INSTALL_FAILED_CLEANUP",
-              "INSTALL_FAILED_DEVICE_DISCONNECTED",
-              "INSTALL_FAILED_HASH_MISMATCH",
-              "INSTALL_FAILED_INVALID_STATE_TRANSITION",
-              "INSTALL_FAILED_PREFLIGHT_MTP_READ",
-              "INSTALL_FAILED_UNKNOWN",
-              "INSTALL_FAILED_MANIFEST",
-              "INSTALL_FAILED_METADATA_MISMATCH",
-              "INSTALL_FAILED_PROTECTION_VIOLATION",
-              "INSTALL_FAILED_REMOTE_FILE_MISSING",
-              "INSTALL_FAILED_SIZE_MISMATCH",
-              "INSTALL_FAILED_WRITE",
-              "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE"
-            ]
-          },
           "nativeFailureCode": {
             "enum": [
               null,
@@ -601,8 +580,7 @@
           "writeStarted",
           "remoteObjectCreated",
           "cleanupAttempted",
-          "cleanupSucceeded",
-          "transferProgressBucket"
+          "cleanupSucceeded"
         ],
         "allOf": [
           {
@@ -715,6 +693,38 @@
                   "const": true
                 }
               }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "operationKind": {
+                  "const": "update"
+                }
+              },
+              "required": [
+                "operationKind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "failureCode": {
+                  "$ref": "#/$defs/updateFailureCode"
+                },
+                "optionalComponentFailureCode": {
+                  "$ref": "#/$defs/updateFailureCode"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "failureCode": {
+                  "$ref": "#/$defs/installFailureCode"
+                }
+              },
+              "required": [
+                "transferProgressBucket"
+              ]
             }
           }
         ]
@@ -1411,6 +1421,35 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationKind": {
+            "const": "update"
+          }
+        },
+        "required": [
+          "operationKind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "schemaVersion": {
+            "const": 4
+          }
+        },
+        "required": [
+          "oldMapPreserved"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "oldMapPreserved"
+          ]
+        }
+      }
     }
   ],
   "$defs": {
@@ -1940,6 +1979,67 @@
             }
           }
         }
+      ]
+    },
+    "installFailureCode": {
+      "enum": [
+        null,
+        "INSTALL_BLOCKED_BACKUP_FAILED",
+        "INSTALL_BLOCKED_DOWNLOAD_FAILED",
+        "INSTALL_BLOCKED_EXISTING_MAP_CONFLICT",
+        "INSTALL_BLOCKED_INSUFFICIENT_SPACE",
+        "INSTALL_BLOCKED_MAP_IDENTITY_AMBIGUOUS",
+        "INSTALL_BLOCKED_SOURCE_ARTIFACT_INVALID",
+        "INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED",
+        "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE",
+        "INSTALL_BLOCKED_TERENTO_DEVICE_SCOPE",
+        "INSTALL_AUTHORIZATION_UNAVAILABLE",
+        "INSTALL_BLOCKED_TRANSACTION_ALREADY_RUNNING",
+        "INSTALL_BLOCKED_UNKNOWN_INSTALL_SIZE",
+        "INSTALL_BLOCKED_UNKNOWN_TARGET",
+        "INSTALL_BLOCKED_VERIFICATION_REQUIRED",
+        "INSTALL_FAILED_CLEANUP",
+        "INSTALL_FAILED_DEVICE_DISCONNECTED",
+        "INSTALL_FAILED_HASH_MISMATCH",
+        "INSTALL_FAILED_INVALID_STATE_TRANSITION",
+        "INSTALL_FAILED_PREFLIGHT_MTP_READ",
+        "INSTALL_FAILED_UNKNOWN",
+        "INSTALL_FAILED_MANIFEST",
+        "INSTALL_FAILED_METADATA_MISMATCH",
+        "INSTALL_FAILED_PROTECTION_VIOLATION",
+        "INSTALL_FAILED_REMOTE_FILE_MISSING",
+        "INSTALL_FAILED_SIZE_MISMATCH",
+        "INSTALL_FAILED_WRITE",
+        "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE"
+      ]
+    },
+    "updateFailureCode": {
+      "enum": [
+        null,
+        "UPDATE_BLOCKED_AMBIGUOUS_MAP_IDENTITY",
+        "UPDATE_BLOCKED_CONFIRMATION_REQUIRED",
+        "UPDATE_BLOCKED_CURRENT_OBJECT_CHANGED",
+        "UPDATE_BLOCKED_INSUFFICIENT_SPACE",
+        "UPDATE_BLOCKED_NEWER_INSTALLED",
+        "UPDATE_BLOCKED_NOT_MANAGED",
+        "UPDATE_BLOCKED_NO_UPDATE",
+        "UPDATE_BLOCKED_TERENTO_DEVICE_SCOPE",
+        "UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING",
+        "UPDATE_BLOCKED_UNKNOWN_STATE",
+        "UPDATE_BLOCKED_UNKNOWN_TARGET",
+        "UPDATE_BLOCKED_UNSUPPORTED_DEVICE",
+        "UPDATE_FAILED_ACQUISITION",
+        "UPDATE_FAILED_CLEANUP",
+        "UPDATE_FAILED_COMMIT",
+        "UPDATE_FAILED_DEVICE_DISCONNECTED",
+        "UPDATE_FAILED_HASH_MISMATCH",
+        "UPDATE_FAILED_MANIFEST_RECONCILIATION",
+        "UPDATE_FAILED_METADATA_MISMATCH",
+        "UPDATE_FAILED_POST_VERIFY",
+        "UPDATE_FAILED_REMOTE_MISSING",
+        "UPDATE_FAILED_SIZE_MISMATCH",
+        "UPDATE_FAILED_SOURCE_VALIDATION",
+        "UPDATE_FAILED_WRITE"
       ]
     }
   }

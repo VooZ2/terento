@@ -255,6 +255,20 @@ class CatalogService:
         admin_user_id: int | None = None,
         request_id: str | None = None,
     ) -> dict[str, Any]:
+        from .provider_rechecks import provider_lock, ensure_retry_allowed
+        with provider_lock(self.database, provider_id):
+            ensure_retry_allowed(self.database, provider_id)
+            return self._check_provider(
+                provider_id, admin_user_id=admin_user_id, request_id=request_id
+            )
+
+    def _check_provider(
+        self,
+        provider_id: str,
+        *,
+        admin_user_id: int | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, Any]:
         definition = KNOWN_PROVIDER_DEFINITIONS.get(provider_id)
         if definition is None:
             raise LookupError("provider_not_found")
@@ -620,6 +634,10 @@ class CatalogService:
         rows, sync = self.database.admin_device_snapshot()
         return _admin_device_payload(rows, sync)
 
+    def update_issue_queue_diagnostics(self):
+        getter = getattr(self.database, 'update_issue_queue_diagnostics', None)
+        return getter() if getter else []
+
     def update_device_support_status(self, device_id: str, support_status: str) -> bool:
         return self.database.update_device_support_status(device_id, support_status)
 
@@ -856,7 +874,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
                 return
-            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire)", request_path):
+            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire|rechecks)", request_path):
                 self._handle_provider_post(request_path)
                 return
             if request_path.startswith("/admin"):
@@ -1267,6 +1285,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         payload.get("devices", []),
                         session,
                         csrf_token,
+                        update_diagnostics=service.update_issue_queue_diagnostics(),
                     )
                 except Exception:
                     LOGGER.exception("GitHub issue review queue failed")
@@ -1356,6 +1375,29 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                     return
                 self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path == "/admin/update-diagnostics":
+                from .update_diagnostics import load_update_diagnostics, update_diagnostics_page
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                try:
+                    offset = int(query.get('offset', ['0'])[-1])
+                    if offset < 0: raise ValueError('invalid_offset')
+                    data = load_update_diagnostics(service.database,
+                        event_id=query.get('eventId', [''])[-1],
+                        diagnostic_id=query.get('diagnosticId', [''])[-1],
+                        outcome=query.get('outcome', [''])[-1], offset=offset,
+                        device_id=query.get('deviceId',[''])[-1], lifecycle=query.get('lifecycle',[''])[-1])
+                    self._send_admin_html(update_diagnostics_page(data, session, csrf_token), send_body=send_body)
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error":"invalid_update_filter"}, send_body=send_body, cache_control="no-store", noindex=True)
+                except Exception:
+                    LOGGER.exception("update diagnostics unavailable")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error":"update_diagnostics_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            recheck_match = re.fullmatch(r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/rechecks", request_path)
+            if recheck_match:
+                from .provider_rechecks import jobs
+                self._send_json(HTTPStatus.OK, {"jobs": _format_json_value(jobs(service.database, recheck_match[1]))}, send_body=send_body, cache_control="no-store", noindex=True)
                 return
             provider_page_match = re.fullmatch(
                 r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})",
@@ -1529,8 +1571,18 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         return
                     query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                     origin = query.get("from", ["devices"])[0]
+                    from .update_diagnostics import load_update_diagnostics
+                    try:
+                        update_history = load_update_diagnostics(service.database, device_id=device_id,
+                            outcome=query.get('updateOutcome',[''])[-1], offset=int(query.get('updateOffset',['0'])[-1]),
+                            lifecycle=query.get('updateLifecycle',[''])[-1])
+                    except ValueError:
+                        self._send_json(HTTPStatus.BAD_REQUEST, {'error':'invalid_update_filter'}, send_body=True, cache_control='no-store')
+                        return
+                    device['update_statistics'] = update_history['summary']
                     body = device_detail_page(
                         device, session, csrf_token,
+                        update_history=update_history,
                         operations=service.compatibility_identity_details("ACTIVE", device_id=device_id),
                         resolved_operations=service.compatibility_identity_details("RESOLVED", device_id=device_id),
                         identity_devices=payload.get("devices", []),
@@ -1570,7 +1622,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_provider_post(self, request_path: str) -> None:
             match = re.fullmatch(
-                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire)",
+                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire|rechecks)",
                 request_path,
             )
             if not match:
@@ -1642,6 +1694,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                     if result is None:
                         raise LookupError("provider_not_found")
+                elif action == "rechecks":
+                    from .provider_rechecks import enqueue
+                    if set(body) - {"packageId"} or (body.get("packageId") is not None and (not isinstance(body["packageId"], str) or not body["packageId"].strip() or len(body["packageId"]) > 160)):
+                        raise ValueError("invalid_recheck_payload")
+                    result = enqueue(service.database, provider_id, body.get("packageId"), int(session["id"]))
                 elif action == "check":
                     if body:
                         raise ValueError("invalid_check_payload")
@@ -1874,6 +1931,24 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     send_body=True,
                 )
                 return
+            if request_path in {f'/admin/update-diagnostics/{action}' for action in ('issue','resolve','reopen','workflow')}:
+                try:
+                    diagnostic_id = str(UUID(form.get('diagnostic_id','')))
+                    action = request_path.rsplit('/',1)[-1]
+                    issue = _normalise_github_issue_reference(form.get('linked_github_issue',''))
+                    changed = service.database.review_update_diagnostic(
+                        diagnostic_id, action=action, admin_user_id=int(session['id']), linked_github_issue=issue,
+                        workflow_status=form.get('diagnostic_workflow_status','').strip() or None,
+                        resolution_reason=form.get('resolution_reason','').strip() or None,
+                        resolution_note=form.get('resolution_note','').strip() or None)
+                    if not changed:
+                        self._send_json(HTTPStatus.NOT_FOUND, {'error':'update_diagnostic_not_found'},send_body=True,cache_control='no-store')
+                        return
+                except (ValueError,TypeError):
+                    self._send_json(HTTPStatus.BAD_REQUEST, {'error':'invalid_update_diagnostic_review'},send_body=True,cache_control='no-store')
+                    return
+                self._redirect(self._safe_admin_return(form.get('return_to'), '/admin/update-diagnostics?diagnosticId='+diagnostic_id),send_body=True)
+                return
             if request_path in {"/admin/diagnostics/resolve", "/admin/diagnostics/reopen"}:
                 try:
                     operation_key = form.get("operation_key", "").strip()
@@ -1997,6 +2072,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             target = (value or "").strip()
             if (
                 target.startswith("/admin/diagnostics")
+                or re.fullmatch(r"/admin/update-diagnostics(?:\?[^#\s]*)?", target)
                 or re.fullmatch(r"/admin/device-identification(?:\?[^#\s]*)?", target)
                 or target.startswith("/admin/review/github-issues")
                 or re.fullmatch(

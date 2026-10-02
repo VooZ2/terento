@@ -194,11 +194,15 @@ def main() -> None:
         name="github-download-collector",
     )
     download_worker.start()
+    from .provider_rechecks import run_worker
+    recheck_worker = Thread(target=run_worker, args=(database, stop), daemon=True, name="provider-rechecks")
+    recheck_worker.start()
     try:
         run_schedule(database, settings.collector_schedule_utc)
     finally:
         stop.set()
         download_worker.join(timeout=12)
+        recheck_worker.join(timeout=12)
 
 
 if __name__ == "__main__":

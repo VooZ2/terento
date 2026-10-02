@@ -90,12 +90,6 @@ directory: it shows exact Garmin models and variants with at least one
 successful shared installation. The list grows as more successful
 installations are shared, and a model missing from the list does not mean it
 is unsupported. Terento is intended for Garmin smartwatches with map support.
-Beta.14 checks current catalog authorization before acquiring and writing a map;
-appearance or absence in public results is not that authorization. Authorization
-matches a Garmin base model and evaluates Maps capability across every
-remaining plausible variant. Conflicting variant hints alone do not deny
-authorization; if all candidates have Maps=Yes, the device may be authorized.
-Public compatibility evidence and install counts do not grant write permission.
 
 **[Check your watch's compatibility](https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_compatibility)**
 
@@ -105,34 +99,21 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.15 (build 37)**. The macOS app is notarized
-and does not require Homebrew.
-
-Beta.15 build 37 further hardens the Install action handoff and removes
-obsolete internal installation/update code. The authorization and map-file
-safety boundaries introduced in beta.14 remain in force. Owner hardware
-validation covers BBBike install/update/remove, MapRando multi-map installation,
-and disconnect/reconnect inventory on a Garmin fēnix 8 AMOLED 47 mm.
-Confirmed removal of valid external maps remains available after an app
-reinstall or on another Mac; automatic Update still requires durable local
-ownership. Uncertain failed-install cleanup keeps recovery information and
-refuses to guess which object to delete.
+The latest public release is **beta.15 (build 37)**. Download the notarized
+macOS app below; no additional software is required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
 DMG, ZIP, release notes, and previous versions are available on
 [GitHub Releases](https://github.com/VooZ2/terento/releases).
 
-Terento remains a **Public beta — RC evaluation**. On 2026-10-02, the owner
-confirmed **BBBike update — PASS** and **MapRando update — PASS** on a Garmin
-fēnix 8 47 mm AMOLED with beta.15 (build 37). Two provider update checks remain:
-one real update to a newer map release for **Freizeitkarte** and one for
-**OpenTopoMap**. These are owner-reported hardware results, not independent
-verification; compatibility claims remain exact-model and variant specific.
+Terento is a **Public beta**. Compatibility and map updates are still being
+tested on real watches. In particular, updates to newer Freizeitkarte and
+OpenTopoMap releases still need real-device confirmation.
 
-During an update, Terento verifies the replacement before removing the
-previous Terento-owned version. If there is not enough space for both, it
-stops and keeps the working map; no persistent local map backup is created.
+During an update, Terento checks the new map before removing the old version
+it installed. If there is not enough space for both, it stops and keeps the
+working map. Terento does not keep a backup of your maps on your Mac.
 Bugs are still possible during the beta.
 Some watches may need to be reconnected if detection or map listing stalls.
 
@@ -144,29 +125,23 @@ The current catalog includes main-map packages from
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
 [BBBike](https://garmin.bbbike.org), based on OpenStreetMap data.
 BBBike offers two map choices: BBBike and the smaller BBBike (Ontrail)
-packages for hiking and cycling. The catalog includes its ready-made Garmin
-regional packages in latin1 format.
-Maps download from each provider's original infrastructure; Terento does not
-host, mirror, or repackage them.
+packages for hiking and cycling. Maps download directly from their providers.
 
-- Multiple maps from one provider can be installed in one operation;
-  mixed-provider batches are not supported.
-- MapRando publishes direct daily Garmin IMG packages; Terento downloads them
-  from the provider's original source and does not host or repackage binaries.
+- Install several regions together by choosing maps from the same provider.
+- Some MapRando map labels are in French.
 - OpenTopoMap contour lines are an optional add-on. Choose whether to include
   them when installing a region in Terento; the main map works without them.
-- Compatible local `.img` maps can be imported, but have no automatic provider
-  update path.
-- The validated catalog remains visible, but downloads and updates for Russia
-  and Crimea are withheld under Terento's acquisition policy. Existing maps
-  are not automatically removed.
+- Import compatible `.img` maps from your Mac. Terento cannot check these
+  maps for updates.
+- Maps for Russia and Crimea appear in the catalog but cannot be downloaded
+  or updated through Terento. Existing maps are not automatically removed.
 
 ## Privacy
 
 No account or cloud device profile is required.
 
-Two privacy-minimised diagnostic streams are enabled by default: compatibility
-installation results and map-usage outcomes. You can turn either off in
+Compatibility reports and map-usage diagnostics are enabled by default
+during the beta. You can turn either off in
 `Terento → Diagnostics` without affecting installation. Custom map imports
 contribute only to compatibility diagnostics, never map-usage diagnostics.
 
@@ -205,30 +180,13 @@ For connection or map-visibility problems, see the
 ## Contributing
 
 Bug reports, compatibility testing, documentation improvements, and focused
-pull requests are welcome. The production app is a native Xcode macOS project
-that uses the repository's SwiftPM source module.
+pull requests are welcome.
 
 - [Contributing](CONTRIBUTING.md) — development setup, test suites, and safe device testing.
 - [Brand guidelines](brand/BRAND_GUIDELINES.md) — visual and user-facing rules.
 - [Security](SECURITY.md) — reporting security issues.
 - [Packaging](Packaging/README.md) — build, signing, and release details.
-
-## Repository structure
-
-Terento stays in one monorepo:
-
-| Directory | Purpose |
-| --- | --- |
-| `app/Terento/` | Native macOS shell, resources, entitlements and app configuration |
-| `app/TerentoCore/` | SwiftPM core, libmtp bridge, map/device logic and native tests |
-| `backend/catalog-api/` | Catalog, device metadata, compatibility evidence, diagnostics and admin API |
-| `site/` | Public website and localized pages |
-| [`contracts/`](contracts/README.md) | Shared public API schemas and cross-language fixtures |
-| `Tests/` | Repository test runners and cross-component contract checks |
-| `Packaging/` | macOS build, validation, signing and release tooling |
-| `site-deploy/` | Public website container configuration |
-
-See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for the detailed repository map.
+- [Repository structure](PROJECT_STRUCTURE.md) — source code and component documentation.
 
 ## License and attribution
 
@@ -239,7 +197,3 @@ retain their own licenses and attribution.
 
 Terento is an independent open-source project and is not affiliated with,
 endorsed by, or sponsored by Garmin.
-
-MapRando cards note that some map labels are in French in all six website
-locales. Provider cards retain scrolling and navigation controls with the
-horizontal scrollbar hidden.

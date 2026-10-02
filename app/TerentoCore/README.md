@@ -1,5 +1,22 @@
 # Terento native core
 
+## Local update diagnostic continuation — 2026-10-02
+
+The working tree accepts both reviewed BBBike README date layouts. Safe Update
+now retains an explicit `writeStarted` fact at the transport write boundary,
+including failures that return no remote object. Update completion produces a
+schema-v4 diagnostic with `operationKind=update`, a shared operation ID, closed
+failure stage/code and `oldMapPreserved`. The local issue report uses that same ID.
+Pre-write failure is `NOT_STARTED`; only successful updates or failures after
+the write boundary emit terminal map-update statistics.
+
+These reports reuse `InstallationEvidenceController` delivery and its sharing
+preference. Backend migration 064 and matching intake must be deployed before
+this app producer is released. Backend storage is update-only, separate from
+installation compatibility evidence and counts. Raw local reports remain on the
+Mac. This is a local implementation description, not a new published release or
+real-device acceptance claim; see `contracts/APP_API_RELEASE_CONTRACT.md`.
+
 This is the production SwiftPM module and native regression harness consumed by
 `Terento.xcodeproj`. `app/Terento/` owns the macOS shell and packaging resources.
 The retained `TerentoPoC`, `TerentoWriteTest` and `TerentoInterruptionTest` target
