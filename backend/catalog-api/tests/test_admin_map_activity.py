@@ -21,6 +21,17 @@ class AdminMapActivityTests(unittest.TestCase):
                 self.assertNotIn('fēnix', unknown)
                 self.assertNotIn('overview-activity-device', unknown)
 
+    def test_activity_omits_historical_placeholder_but_preserves_real_variants(self):
+        for event_type in ('INSTALL_SUCCEEDED', 'INSTALL_FAILED', 'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED'):
+            with self.subTest(event_type=event_type):
+                row = dict(event_type=event_type, provider_id='bbbike', region='LTU',
+                           model='fēnix 7S Pro', canonical_device_model_id='fenix-7s-pro', variant='Historical')
+                markup = _overview_map_activity_row(row)
+                self.assertIn('>fēnix 7S Pro</a>', markup)
+                self.assertNotIn('Historical', markup)
+                self.assertIn('>fēnix 7S Pro · Solar</a>',
+                              _overview_map_activity_row({**row, 'variant': 'Solar'}))
+
     def test_download_title_expands_start_duration_finish_without_generic_map_link(self):
         row = dict(event_type='DOWNLOAD_SUCCEEDED', provider_id='freizeitkarte', region='FRA',
                    lifecycle=[dict(type='DOWNLOAD_STARTED', at='2026-09-15T23:59:00Z'),

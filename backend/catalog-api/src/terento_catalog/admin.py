@@ -1217,6 +1217,8 @@ def _overview_activity_device(event: dict[str, Any]) -> str:
     if not device_id or not model:
         return ""
     variant = _normalise_variant(event.get("variant")) if event.get("variant") else ""
+    if variant == "Historical":
+        variant = ""
     label = model if not variant or variant in model else f"{model} · {variant}"
     href = _device_detail_url(device_id, origin="overview")
     return (
