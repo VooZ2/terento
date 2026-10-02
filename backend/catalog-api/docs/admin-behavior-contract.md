@@ -281,6 +281,19 @@ Narrow layouts stack that same reading order. Historical catalog provenance
 remains accessible and does not change Maps, Install policy, support, or public
 compatibility.
 
+Historical provenance is determined by `record_source=HISTORICAL_REVIEWED`
+(`recordSource` in the admin payload), independently of variant text. Display its
+marker on Devices, Installations and model detail while preserving real variant
+labels such as 47 mm or Solar (no Wi-Fi). The legacy variant placeholder
+`Historical` displays as an empty variant, not a hardware feature. The marker
+describes catalog provenance, not product age or Garmin's discontinued status.
+
+The historical fēnix 7 Pro and Solar (no Wi-Fi) identities remain separate, as do
+their 7X Pro equivalents: Garmin lists them separately in its
+[Connect IQ device catalog](https://developer.garmin.com/connect-iq/compatible-devices/).
+Migration051 uses shared representative model photographs for these pairs;
+identical images do not establish identical variants or justify merging evidence.
+
 ### Maps and downloads
 
 Map acquisition, fresh installation, and update populations remain separate.

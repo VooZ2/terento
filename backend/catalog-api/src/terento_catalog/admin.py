@@ -257,6 +257,10 @@ def _admin_icon(name: str) -> str:
     )
 
 
+def _is_historical_catalog(row: dict[str, Any]) -> bool:
+    return str(row.get("recordSource") or row.get("record_source") or "").upper() == "HISTORICAL_REVIEWED"
+
+
 def _historical_catalog_indicator() -> str:
     """Compact provenance; the surrounding model link provides keyboard focus."""
     return (
@@ -4763,11 +4767,9 @@ def device_detail_page(
     authorization_label, authorization_kind, _ = _admin_installation_authorization_code(
         device.get("installationAuthorization")
     )
+    provenance = "<span class='admin-state'>Historical catalog entry</span>" if _is_historical_catalog(device) else ""
     if variant == "Historical":
         variant = "—"
-        provenance = "<span class='admin-state'>Historical catalog entry</span>"
-    else:
-        provenance = ""
     status_line = (
         f"<div class='model-status-line'>{provenance}"
         f"<span><strong>Maps</strong> {_admin_status_badge(map_label, f'map-{map_kind}')}</span>"
@@ -5312,8 +5314,8 @@ def _admin_status_badge(label: str, kind: str) -> str:
 
 def _admin_device_row(device: dict[str, Any], index: int) -> str:
     model, variant, _ = _identity_parts(device)
-    provenance = _historical_catalog_indicator() if variant == "Historical" else ""
-    variant = "—" if provenance else variant or "—"
+    provenance = _historical_catalog_indicator() if _is_historical_catalog(device) else ""
+    variant = "—" if variant == "Historical" else variant or "—"
     family = str(device.get("familyName") or device.get("family") or "")
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
     authorization_label, authorization_kind, _ = _admin_installation_authorization_code(
@@ -5547,8 +5549,9 @@ def _statistics_row(
     diagnostics_url = _model_detail_url(row)
     pending_count = int(summary.get("identity_pending") or 0)
     model_cell = html.escape(model)
-    if variant == "Historical":
+    if _is_historical_catalog(catalog_device if catalog_device is not None else row):
         model_cell += " " + _historical_catalog_indicator()
+    if variant == "Historical":
         variant = "—"
     if pending_count:
         model_cell += (
