@@ -759,10 +759,16 @@ class Database:
         if event.get("operationKind") == "update":
             # Intentionally separate: update evidence cannot enter any install aggregate.
             with self.connection() as connection:
+                devices = list(connection.execute("SELECT * FROM device_model").fetchall())
+                mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+                assessment = assess_identity(event, devices, mappings)
                 return connection.execute("""INSERT INTO map_update_diagnostic
-                    (event_id,operation_id,occurred_at,provider,region,outcome,payload,is_local_test)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s) ON CONFLICT DO NOTHING RETURNING event_id""",
-                    (event['id'],event['operationId'],event['timestamp'],event['provider'],event['region'],event['phaseOutcome'],json.dumps(event),is_local_release_label(event.get('releaseLabel')))).fetchone() is not None
+                    (event_id,operation_id,occurred_at,provider,region,outcome,payload,is_local_test,
+                     canonical_device_model_id,identity_assessment)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s::jsonb) ON CONFLICT DO NOTHING RETURNING event_id""",
+                    (event['id'],event['operationId'],event['timestamp'],event['provider'],event['region'],event['phaseOutcome'],
+                     json.dumps(event),is_local_release_label(event.get('releaseLabel')),
+                     assessment['canonicalDeviceId'],json.dumps(assessment))).fetchone() is not None
         validate_event_contexts(event)
         query = """
             INSERT INTO compatibility_evidence_event (
@@ -1257,7 +1263,11 @@ class Database:
             SELECT
                 count(*) FILTER (WHERE has_failure AND NOT has_github_issue)
                     AS installation_issues,
-                count(*) FILTER (WHERE has_github_issue) AS github_issues_in_progress,
+                count(*) FILTER (WHERE has_github_issue) + (
+                    SELECT count(*) FROM map_update_diagnostic
+                    WHERE diagnostic_status='ACTIVE' AND is_local_test IS FALSE
+                      AND linked_github_issue IS NOT NULL
+                ) AS github_issues_in_progress,
                 count(*) FILTER (WHERE identity_pending) AS identity_pending,
                 (SELECT ready_to_publish FROM publication_reviews) AS ready_to_publish,
                 (SELECT missing_diagnostics FROM missing_diagnostic_reviews)
@@ -2288,6 +2298,111 @@ class Database:
                     ),
                 )
         return True
+
+    def update_model_statistics(self) -> dict[str, dict[str, int]]:
+        """Full retained, non-local reported update attempts, never install evidence.
+
+        Replayed UUIDs are idempotent. Distinct report UUIDs for one logical
+        operation/map count once only when their identity and result facts agree.
+        Conflicting groups remain in history and never inflate attempt totals.
+        """
+        with self.connection() as connection:
+            rows = connection.execute("""
+                WITH reports AS (
+                    SELECT * FROM map_update_diagnostic WHERE is_local_test IS FALSE
+                ), groups AS (
+                    SELECT operation_id,provider,lower(region) AS region_key,
+                        count(DISTINCT (COALESCE(canonical_device_model_id,''),outcome,
+                            COALESCE(payload->>'writeStarted',''),COALESCE(payload->>'automaticFinishingResult',''))) = 1 AS agrees,
+                        min(outcome) AS outcome,min(payload->>'writeStarted') AS write_started,
+                        min(payload->>'automaticFinishingResult') AS finishing
+                    FROM reports GROUP BY operation_id,provider,lower(region)
+                ), model_groups AS (
+                    SELECT DISTINCT r.canonical_device_model_id,g.*
+                    FROM reports r JOIN groups g ON g.operation_id=r.operation_id AND g.provider=r.provider AND g.region_key=lower(r.region)
+                    WHERE r.canonical_device_model_id IS NOT NULL
+                )
+                SELECT canonical_device_model_id,
+                    count(*) FILTER (WHERE agrees AND outcome='SUCCEEDED' AND write_started='true' AND finishing='VERIFIED') AS successful,
+                    count(*) FILTER (WHERE agrees AND outcome='FAILED' AND write_started='true') AS failed,
+                    count(*) FILTER (WHERE agrees AND outcome='NOT_STARTED') AS not_started,
+                    count(*) FILTER (WHERE NOT agrees) AS ambiguous
+                FROM model_groups GROUP BY canonical_device_model_id
+            """).fetchall()
+        return {row['canonical_device_model_id']: {
+            'successfulUpdateCount':int(row['successful']), 'failedUpdateCount':int(row['failed']),
+            'attemptedUpdateCount':int(row['successful'])+int(row['failed']),
+            'notStartedCount':int(row['not_started']), 'ambiguousUpdateCount':int(row['ambiguous']),
+        } for row in rows}
+
+    def update_issue_queue_diagnostics(self) -> list[dict[str, Any]]:
+        with self.connection() as connection:
+            return list(connection.execute("""
+                SELECT d.*, 'update' AS source, m.model AS canonical_device_model_name, m.variant AS canonical_device_variant
+                FROM map_update_diagnostic d LEFT JOIN device_model m ON m.id=d.canonical_device_model_id
+                WHERE d.is_local_test IS FALSE AND d.diagnostic_status='ACTIVE'
+                  AND d.linked_github_issue IS NOT NULL
+                ORDER BY d.occurred_at DESC,d.event_id
+            """).fetchall())
+
+    def review_update_diagnostic(self, diagnostic_id: str, *, action: str,
+                                 admin_user_id: int | None, linked_github_issue: str | None = None,
+                                 workflow_status: str | None = None, resolution_reason: str | None = None,
+                                 resolution_note: str | None = None) -> bool:
+        """Change exactly one report's review state; evidence remains immutable."""
+        identifier = str(UUID(diagnostic_id))
+        if action not in {'issue','workflow','resolve','reopen'}:
+            raise ValueError('invalid_update_action')
+        issue = (linked_github_issue or '').strip() or None
+        if issue and not re.fullmatch(r'#[1-9][0-9]{0,9}', issue):
+            raise ValueError('invalid_github_issue')
+        note = (resolution_note or '').strip() or None
+        if note and len(note) > 2000:
+            raise ValueError('resolution_note_too_long')
+        reasons = {'FIXED','HISTORICAL_SUPERSEDED','DUPLICATE','IDENTITY_CORRECTED','NOT_TERENTO_ISSUE','OTHER'}
+        if action == 'resolve' and resolution_reason not in reasons:
+            raise ValueError('resolution_reason_required')
+        if action == 'workflow' and workflow_status not in {'OPEN','IN_PROGRESS','UNDER_REVIEW'}:
+            raise ValueError('invalid_diagnostic_workflow')
+        with self.connection() as connection:
+            row = connection.execute("""SELECT event_id,diagnostic_status,diagnostic_workflow_status,
+                linked_github_issue,resolution_code,resolution_note,resolved_at,resolved_by
+                FROM map_update_diagnostic WHERE event_id=%s AND is_local_test IS FALSE FOR UPDATE""", (identifier,)).fetchone()
+            if not row:
+                return False
+            previous = {key:row.get(key) for key in ('diagnostic_status','diagnostic_workflow_status','linked_github_issue','resolution_code','resolution_note')}
+            next_state = dict(previous)
+            if action == 'issue':
+                next_state['linked_github_issue'] = issue
+                if row['diagnostic_status'] == 'ACTIVE':
+                    next_state['diagnostic_workflow_status'] = 'IN_PROGRESS' if issue else 'OPEN'
+            elif action == 'workflow':
+                if row['diagnostic_status'] != 'ACTIVE':
+                    raise ValueError('resolved_diagnostic_cannot_change_workflow')
+                if workflow_status == 'OPEN' and row.get('linked_github_issue'):
+                    raise ValueError('linked_issue_requires_in_progress_or_under_review')
+                next_state['diagnostic_workflow_status'] = workflow_status
+            elif action == 'resolve':
+                next_state.update(diagnostic_status='RESOLVED',diagnostic_workflow_status='OPEN',
+                                  resolution_code=resolution_reason,resolution_note=note)
+            else:
+                next_state.update(diagnostic_status='ACTIVE',diagnostic_workflow_status='IN_PROGRESS' if row.get('linked_github_issue') else 'OPEN',
+                                  resolution_code=None,resolution_note=None)
+            if next_state == previous:
+                return True
+            connection.execute("""UPDATE map_update_diagnostic SET diagnostic_status=%s,diagnostic_workflow_status=%s,
+                linked_github_issue=%s,resolution_code=%s,resolution_note=%s,
+                resolved_at=CASE WHEN %s='RESOLVED' THEN COALESCE(resolved_at,now()) ELSE NULL END,
+                resolved_by=CASE WHEN %s='RESOLVED' THEN %s::bigint ELSE NULL END
+                WHERE event_id=%s""", (next_state['diagnostic_status'],next_state['diagnostic_workflow_status'],
+                next_state['linked_github_issue'],next_state['resolution_code'],next_state['resolution_note'],
+                next_state['diagnostic_status'],next_state['diagnostic_status'],
+                admin_user_id if action == 'resolve' else row.get('resolved_by'),identifier))
+            connection.execute("""INSERT INTO map_update_diagnostic_audit(event_id,action,previous_state,next_state,changed_by)
+                VALUES(%s,%s,%s::jsonb,%s::jsonb,%s)""", (identifier,action,json.dumps(previous),json.dumps(next_state),admin_user_id))
+            self._insert_admin_audit(connection,admin_user_id=admin_user_id,action='update_diagnostic.'+action,
+                                     target=identifier,details={'previous':previous,'next':next_state})
+            return True
 
     def update_diagnostic_lifecycle(
         self,

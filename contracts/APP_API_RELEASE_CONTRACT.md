@@ -6,13 +6,23 @@ Local changes dated 2026-10-02 accept both reviewed BBBike README date forms in
 backend and native validation. They add provider artifact rechecks and separate
 update outcome diagnostics; no new public version/build is assigned here.
 
-Before shipping the native producer, deploy migration 064 and backend acceptance
+Before shipping the native producer, deploy migrations 064–065 and backend acceptance
 of schema-v4 `operationKind=update`, required Boolean `oldMapPreserved`, and the
 closed `UPDATE_*` failure-code set. These additive fields do not change schema
 version or catalog routes. Old producers remain accepted; an old backend may
 reject the new update report, so backend deployment and intake verification must
 precede the app release. Report storage must bypass installation/compatibility
 aggregation and share the existing diagnostic opt-out and 24-month retention.
+
+Migration 065 adds only server-side identity assessment and admin review fields,
+plus review audit storage. Shared install/update error presentation, GitHub
+report preparation/linking, and exact-model update history do not add native
+payload fields. Model update totals use retained diagnostics and remain separate
+from map-activity totals and installation evidence. Conflicting reports for one
+logical operation are excluded from model attempt totals and remain inspectable.
+GitHub closure synchronization changes review state only; it never changes a
+recorded failure into a successful operation. Existing reports with no assessed
+identity remain unassigned instead of being backfilled by name.
 
 Update diagnostics send measured cleanup attempt/result facts. An unmeasured
 `transferProgressBucket` is omitted only for explicit update reports; the

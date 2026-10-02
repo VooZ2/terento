@@ -41,6 +41,28 @@ def event(**changes):
 
 
 class FakeEvidenceDatabase:
+    def update_model_statistics(self):
+        return {}
+
+    @contextmanager
+    def connection(self):
+        database=self
+        class Connection:
+            def execute(self, query, parameters=None):
+                class Result:
+                    def fetchone(self):
+                        if 'FROM device_model WHERE id=' in query:
+                            row=database.admin_device_snapshot()[0][0]
+                            return {'id':row['device_id'], 'model':row['model'], 'variant':row['variant'],
+                                    'case_size_mm':row['case_size_mm'], 'screen_technology':'AMOLED'}
+                        raise AssertionError('Unexpected update history query')
+                    def fetchall(self):
+                        if 'FROM map_update_diagnostic d' in query:
+                            return []
+                        raise AssertionError('Unexpected update history query')
+                return Result()
+        yield Connection()
+
     def operational_health_snapshot(self):
         return {}
 

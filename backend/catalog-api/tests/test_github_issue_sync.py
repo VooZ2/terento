@@ -24,6 +24,7 @@ class Connection:
         self.targets = list(targets)
         self.acquired = acquired
         self.calls = []
+        self.update_rows = []
 
     def execute(self, sql, args=None):
         self.calls.append((sql, args))
@@ -31,6 +32,10 @@ class Connection:
             return Result([{'acquired': self.acquired}])
         if 'SELECT DISTINCT substring' in sql:
             return Result(self.targets[:args[0]])
+        if 'FROM map_update_diagnostic WHERE linked_github_issue' in sql:
+            return Result([dict(row) for row in self.update_rows if row['linked_github_issue']==args[0] and row['diagnostic_status']=='ACTIVE'])
+        if 'UPDATE map_update_diagnostic' in sql:
+            next(row for row in self.update_rows if row['event_id']==args[-1])['diagnostic_status']='RESOLVED'
         if 'SELECT event_id' in sql:
             return Result(self.rows)
         if 'UPDATE compatibility_evidence_event' in sql:
@@ -79,6 +84,20 @@ class GitHubIssueSyncTests(unittest.TestCase):
         args = next(args for sql, args in connection.calls if sql.strip().startswith('UPDATE'))
         self.assertEqual(args[:2], ('OTHER', 'OTHER'))
         self.assertIn('not_planned', args[2])
+
+    def test_shared_poller_includes_update_issue_closure_once(self):
+        connection=Connection(targets=[{'issue_number':94}])
+        connection.update_rows=[dict(event_id='update-report',linked_github_issue='#94',diagnostic_status='ACTIVE',
+                                     diagnostic_workflow_status='IN_PROGRESS',resolution_code=None,resolution_note=None)]
+        fetch=lambda number:{'state':'closed','state_reason':'completed'}
+        self.assertEqual(sync_once(Database(connection),fetch=fetch),1)
+        self.assertEqual(sync_once(Database(connection),fetch=fetch),0)
+        self.assertEqual(connection.update_rows[0]['diagnostic_status'],'RESOLVED')
+        audits=[sql for sql,args in connection.calls if 'INSERT INTO map_update_diagnostic_audit' in sql]
+        self.assertEqual(len(audits),1)
+        targets=next(sql for sql,args in connection.calls if 'SELECT DISTINCT substring' in sql)
+        self.assertIn('FROM map_update_diagnostic WHERE is_local_test IS FALSE',targets)
+        self.assertIn("e.diagnostic_status = 'ACTIVE'",targets)
 
     def test_open_issue_keeps_diagnostic_open_and_checks_are_bounded(self):
         connection = Connection([event(1)], [{'issue_number': i} for i in range(1, 21)])

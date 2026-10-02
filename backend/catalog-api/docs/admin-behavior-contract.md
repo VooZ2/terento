@@ -200,11 +200,11 @@ Activity is internally scrollable and must not force page height. A generic
 activity row has no Maps link unless an exact useful destination exists.
 
 Dashboard chart series use one stacked bar for each bucket: downloads are
-successful/failed, and installs are successful/failed/map update. A custom
-fresh success is combined into Successful; optional components and pre-write
-failures remain excluded by the statistics contract. The Maps page uses the
-short headings `Downloads` and `Installs`; Dashboard retains the outcome-first
-`Map downloads` and `Map installs` headings.
+successful/failed, while map operations distinguish install successful, install
+failed, update successful and update failed. A custom fresh success is combined
+into install successful; optional components and pre-write failures remain
+excluded by the statistics contract. Headings that include updates say
+`Installs and updates` (Maps) or `Map installs and updates` (Dashboard).
 
 Needs attention covers unresolved work across all dates. Counts and Inspect links
 must lead to the corresponding work even when the preview is truncated. Failures,
@@ -212,10 +212,13 @@ linked issue work, identity/publication review, and provider/system problems rem
 distinct work types. Empty active work does not mean there have been no failures.
 A failed query is unavailable rather than zero.
 
-A failed diagnostic and GitHub handling linked to one operation are alternative
+A failed installation diagnostic and GitHub handling linked to one operation are alternative
 states of one task; linking an issue moves the task between categories and does
 not increase the total. Identity review is a separate task and publication review
-is counted per exact model. Resolved work is excluded.
+is counted per exact model. The GitHub queue and its badge also include each active,
+nonlocal linked update diagnostic by exact report UUID. Unlinked update failures
+remain in update diagnostics and do not enter installation issues. Resolved work
+is excluded.
 
 A map install failure without matching device diagnostic evidence is a per-map
 review task keyed by the immutable map event ID. Dismiss/reopen is authenticated,
@@ -313,10 +316,13 @@ Download phase icons remain static. Timestamps use the selected time zone.
 
 ### Diagnostics
 
-Primary actions precede raw technical evidence. GitHub issue and Technical
-details use the same disclosure presentation, with no duplicate heading inside
-its own disclosure. Resolve and Assign model align naturally with content-driven
-heights and stack when space requires it.
+Primary actions precede raw technical evidence. Prepare GitHub issue is visible
+without opening a disclosure in both installation and update failure views.
+Issue preview/link management, Technical details and review administration use
+the same disclosure presentation, without duplicate headings. Resolve marks
+a diagnostic reviewed; it is secondary to investigating the failure. Assigned
+model administration stays collapsed; unresolved identity has a clear action.
+Cards use content-driven heights and stack when space requires it.
 
 Assign model is an operator-assisted exact-catalog selection. Reported facts and
 missing facts stay distinct; catalog facts may enrich only a consistent exact
@@ -329,6 +335,44 @@ Diagnostic detail retains the result, time, map/provider, device identity,
 available image, reason, lifecycle actions, issue actions, and one collapsed
 Technical details section. A successful result with pending identity is not a
 failure.
+
+### Shared installation and update review
+
+Installation and update failures use the same reading order and control patterns:
+operation, model/variant, date, provider/map, result and app version; What happened;
+Next action with visible Prepare GitHub issue; known safety facts; expandable
+issue management, review administration and Technical details. Both use the same
+bounded content width, typography, spacing and button hierarchy. A generic
+installation failure explicitly says the specific reason was not received and
+points to the local report; it does not merely repeat “Installation error.”
+An update also shows whether the previous map was confirmed preserved. A failed
+check names the observed boundary; it does not invent the underlying cause.
+
+Both views prepare a sanitised issue title/body for the Terento repository, offer
+preview and copy, accept an optional bounded admin note, and link or unlink an
+existing issue. Preparing opens the GitHub composer; the administrator reviews
+and submits it there. Oversized reports use the same copy fallback. No report is
+posted automatically. Update issue links and lifecycle actions target one exact
+diagnostic UUID, require authentication/CSRF and record an audit. Resolving,
+reopening or linking never changes the received outcome, write fact or counts.
+The bounded issue synchronizer resolves active linked diagnostics when GitHub
+confirms closure; reopening remains an explicit administrator action.
+
+An update report links to the model detail only through a server-assessed exact
+catalog identity. Reported model text and unresolved/conflicting identity remain
+visible as such. A client-provided catalog ID alone is insufficient. Historical
+rows without an assessment remain unassigned; no adjacent installation or time
+match supplies identity. The cards describe model-and-variant history; no unique
+physical-watch identifier is collected.
+
+The model detail adds a separate Map updates summary and Update history, scoped
+to all retained nonlocal reports for that exact identity. Successful and Failed
+values link to the corresponding update records. Not-started results stay in
+history and outside the attempt denominator. Summary totals are independent of
+history pagination and diagnostic resolution. Conflicting logical reports remain
+visible with an ambiguity notice and are excluded from completed counts.
+Updates never change installation metrics or public compatibility evidence.
+The broad Devices listing keeps its existing compact columns.
 
 ### Model source review
 

@@ -24,13 +24,19 @@ class CaptureUpdateDatabase(Database):
         super().__init__('unused')
         self.queries = []
         self.ids = set()
+        self.devices = []
+        self.mappings = []
 
     @contextmanager
     def connection(self):
         database = self
 
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query == 'SELECT * FROM device_model':
+                    return type('Rows', (), {'fetchall':lambda _:database.devices})()
+                if query == 'SELECT * FROM device_identity_mapping':
+                    return type('Rows', (), {'fetchall':lambda _:database.mappings})()
                 database.queries.append((query, parameters))
                 event_id = parameters[0]
                 inserted = event_id not in database.ids
@@ -117,7 +123,30 @@ class UpdateEvidenceTests(unittest.TestCase):
             database.insert_compatibility_event(event)
             query, parameters = database.queries[-1]
             self.assertIn('is_local_test', query)
-            self.assertIs(parameters[-1], expected)
+            self.assertIs(parameters[7], expected)
+
+    def test_update_identity_is_assessed_instead_of_trusting_client_id(self):
+        device = dict(id='fenix8pro-51-amoled',model='fēnix 8 Pro',case_size_mm=51,
+                      screen_technology='AMOLED',solar=False,inreach=True)
+        mappings = [dict(kind=kind,value=value,device_model_id=device['id'],status='APPROVED',
+                         source_url='https://example.org/evidence',source_version='1')
+                    for kind,value in [('USB','091e:51b8'),('XML_PART_NUMBER','006-B4631-00')]]
+        known = dict(model='fēnix 8 Pro',rawMTPModel='fenix 8 Pro 51mm AMOLED inReach',
+                     usbVendorID=2334,usbProductID=20920,garminModelPartNumber='006-B4631-00',
+                     garminModelDescription='fenix 8 Pro 51mm AMOLED inReach',caseSizeMm=51,
+                     displayType='AMOLED',variant='51mm',canonicalDeviceId='bogus-client-id')
+        for changes, expected in ((known,device['id']),
+                                  ({**known,'rawMTPModel':'fenix 7 Pro 47mm'},None),
+                                  ({'model':'unknown','canonicalDeviceId':device['id']},None)):
+            database=CaptureUpdateDatabase()
+            database.devices=[device]
+            database.mappings=mappings
+            database.insert_compatibility_event(update_event(**changes))
+            parameters=database.queries[-1][1]
+            self.assertEqual(parameters[8],expected)
+            assessment=json.loads(parameters[9])
+            self.assertEqual(assessment['canonicalDeviceId'],expected)
+            self.assertEqual(json.loads(parameters[6])['canonicalDeviceId'],changes['canonicalDeviceId'])
 
     def test_insert_only_uses_update_diagnostics_and_is_idempotent(self):
         database = CaptureUpdateDatabase()
@@ -133,9 +162,9 @@ class UpdateEvidenceTests(unittest.TestCase):
         for query, parameters in database.queries:
             self.assertIn('INSERT INTO map_update_diagnostic', query)
             self.assertIn('ON CONFLICT DO NOTHING', query)
-            for forbidden in ('compatibility_evidence_event', 'compatibility_evidence_operation', 'device_model', 'map_download_event'):
+            for forbidden in ('compatibility_evidence_event', 'compatibility_evidence_operation', 'INSERT INTO device_model', 'map_download_event'):
                 self.assertNotIn(forbidden, query)
-            stored = json.loads(parameters[-2])
+            stored = json.loads(parameters[6])
             self.assertEqual(stored['operationKind'], 'update')
             self.assertEqual(stored['operationId'], parameters[1])
             self.assertEqual(stored['phaseOutcome'], parameters[5])

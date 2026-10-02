@@ -4171,6 +4171,27 @@ def _operation_region_label(results: list[dict[str, Any]]) -> str:
     return ", ".join(values) if values else "—"
 
 
+def _operation_map_label(results: list[dict[str, Any]]) -> str:
+    """Keep each reported region paired with its actual provider in the summary."""
+    providers = {'freizeitkarte': 'Freizeitkarte', 'opentopomap': 'OpenTopoMap',
+                 'maprando': 'MapRando', 'bbbike': 'BBBike', 'custom': 'Custom import'}
+    labels = []
+    for row in results:
+        provider = str(row.get('provider') or row.get('provider_id') or '').strip()
+        region = _operation_region_label([row])
+        label = ' · '.join(part for part in (region if region != '—' else '', providers.get(provider, provider)) if part)
+        if label and label not in labels:
+            labels.append(label)
+    return ', '.join(labels) if labels else 'Map not recorded'
+
+
+def _diagnostic_heading(outcome: Any, *, update: bool = False) -> str:
+    operation = 'Map update' if update else 'Installation'
+    suffix = {'FAILED': 'failed', 'SUCCEEDED': 'succeeded', 'NOT_STARTED': 'not started',
+              'BLOCKED': 'blocked', 'INCOMPLETE': 'incomplete'}.get(str(outcome or '').upper(), 'result unknown')
+    return operation + ' ' + suffix
+
+
 def _operation_issue(results: list[dict[str, Any]]) -> str | None:
     for result in results:
         try:
@@ -4399,6 +4420,58 @@ def _github_issue_url(
     return candidate, True
 
 
+def _github_issue_controls(issue_title: str, issue_body: str, *, issue: str | None,
+                           csrf_token: str, identifier: str, return_to: str,
+                           action: str = "/admin/diagnostics/issue",
+                           identifier_name: str = "operation_key") -> str:
+    """Shared review-first controls; report producers supply sanitized allowlisted text."""
+    candidate = GITHUB_NEW_ISSUE_URL + "?" + urlencode({"title": issue_title, "body": issue_body})
+    issue_prefilled = len(candidate) <= GITHUB_ISSUE_URL_MAX_LENGTH
+    issue_url = candidate if issue_prefilled else GITHUB_NEW_ISSUE_URL
+    return f"""
+        <div class='github-actions'><a class='secondary-button' href='{html.escape(issue_url, quote=True)}' data-github-create data-issue-title='{html.escape(issue_title, quote=True)}' data-issue-body='{html.escape(issue_body, quote=True)}' data-prefilled='{'true' if issue_prefilled else 'false'}' data-url-limit='{GITHUB_ISSUE_URL_MAX_LENGTH}' target='_blank' rel='noreferrer'>Prepare GitHub issue</a><button class='secondary-button' type='button' data-copy-issue-report>Copy issue report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'>{'Report is too large to prefill; copy it instead.' if not issue_prefilled else ''}</span></div>
+        <details class='github-issue-preview'><summary>Preview issue report</summary><label>Title<input value='{html.escape(issue_title, quote=True)}' readonly data-issue-preview-title></label><label>Body<textarea rows='8' readonly data-issue-preview-body>{html.escape(issue_body)}</textarea></label><label>Admin note <span class='optional-label'>Optional · maximum {GITHUB_ADMIN_NOTE_MAX_LENGTH} characters</span><textarea rows='3' maxlength='{GITHUB_ADMIN_NOTE_MAX_LENGTH}' data-issue-note></textarea></label></details>
+        <details class='github-link-disclosure'><summary>Link or manage an existing issue</summary><form method='post' action='{html.escape(action, quote=True)}' class='github-link-form admin-async-action'>
+          <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
+          <input type='hidden' name='{html.escape(identifier_name, quote=True)}' value='{html.escape(identifier, quote=True)}'>
+          <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
+          <label>{'Change' if issue else 'Link'} issue <span class='optional-label'>e.g. #32</span><input name='linked_github_issue' placeholder='#32' inputmode='numeric' pattern='#?[0-9]{{1,10}}'></label>
+          <button type='submit' class='secondary-button'>{'Change linked issue' if issue else 'Link issue'}</button>
+        </form>
+        {f"<form method='post' action='{html.escape(action, quote=True)}' class='github-remove-form admin-async-action' data-confirm='Unlink this GitHub issue from this diagnostic?'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='{html.escape(identifier_name, quote=True)}' value='{html.escape(identifier, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Unlink issue</button></form>" if issue else ''}</details>"""
+
+
+def _installation_explanation(results: list[dict[str, Any]]) -> tuple[str, str]:
+    outcome = _operation_result(results)
+    if outcome == 'SUCCEEDED':
+        return 'The installation succeeded.', 'No failure action is required.'
+    first = next((row for row in results if row.get('failure_code') or row.get('failure_stage')), results[0])
+    code = str(first.get('failure_code') or '')
+    stage = str(first.get('failure_stage') or '')
+    specific = {
+        'INSTALL_BLOCKED_EXISTING_MAP_CONFLICT': ('An existing map conflicts with this installation.', 'Review installed maps in Terento before trying again. Do not remove unknown device files.'),
+        'INSTALL_FAILED_PREFLIGHT_MTP_READ': ('Terento could not read the device before installation.', 'Reconnect the device and rescan it in Terento.'),
+        'INSTALL_FAILED_MANIFEST': ('The local ownership record could not be saved.', 'Review the installed map and local diagnostic report before retrying.'),
+        'INSTALL_FAILED_CLEANUP': ('Cleanup did not complete.', 'Inspect the device in Terento and review the local diagnostic report. Do not remove unknown files.'),
+        'INSTALL_BLOCKED_UNKNOWN_INSTALL_SIZE': ('The required installation size could not be established.', 'Recheck the provider package before retrying.'),
+        'INSTALL_BLOCKED_TRANSACTION_ALREADY_RUNNING': ('Another device operation is running.', 'Wait for that operation to finish, then retry in Terento.'),
+        'INSTALL_BLOCKED_TERENTO_DEVICE_SCOPE': ('Device authorization did not permit installation.', 'Review the exact model and its authorization result in Terento.'),
+    }
+    if code in specific:
+        return specific[code]
+    if stage == 'extract':
+        return 'The map package could not be extracted.', 'Check available Mac storage and the provider package before retrying.'
+    reason = normalize_failure_reason(first.get('error_category'), failure_stage=stage, failure_code=code)
+    return {
+        'verification': ('The transferred map did not pass device verification. The failed check does not establish the root cause.', 'Reconnect and inspect the installed-map status in Terento. Review the local diagnostic report before retrying.'),
+        'source_validation': ('The map package did not pass source validation.', 'Recheck the provider package before retrying.'),
+        'acquisition': ('The map could not be downloaded or prepared.', 'Check the provider package and Mac connection before retrying.'),
+        'storage': ('The reported failure concerns device storage.', 'Review the available space in Terento. Keep existing working maps until a safe installation is possible.'),
+        'device_disconnected': ('The device disconnected during installation.', 'Reconnect and inspect its map status in Terento before retrying.'),
+        'transport': ('The map could not be written to the device.', 'Reconnect and inspect its map status in Terento. Review the local diagnostic report if the failure repeats.'),
+    }.get(reason, ('The installation did not complete. This report does not establish the cause.', 'Review the technical details and request the local Terento diagnostic report. Prepare an issue with the available evidence.'))
+
+
 def _diagnostic_detail_dialog(
     identity: str,
     operation_key: str,
@@ -4506,27 +4579,9 @@ def _diagnostic_detail_dialog(
         if str(device.get("id") or device.get("device_id") or "") == str(canonical_device_model_id or "")
     ), None)
     issue_title, issue_body = _github_issue_report(identity, results, device=report_device)
-    issue_url, issue_prefilled = _github_issue_url(identity, results, device=report_device)
-    issue_controls = f"""
-        <div class='github-actions'><a class='secondary-button' href='{html.escape(issue_url, quote=True)}' data-github-create data-issue-title='{html.escape(issue_title, quote=True)}' data-issue-body='{html.escape(issue_body, quote=True)}' data-prefilled='{'true' if issue_prefilled else 'false'}' data-url-limit='{GITHUB_ISSUE_URL_MAX_LENGTH}' target='_blank' rel='noreferrer'>Prepare GitHub issue</a><button class='secondary-button' type='button' data-copy-issue-report>Copy issue report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'>{'Report is too large to prefill; copy it instead.' if not issue_prefilled else ''}</span></div>
-        <details class='github-issue-preview'><summary>Preview issue report</summary><label>Title<input value='{html.escape(issue_title, quote=True)}' readonly data-issue-preview-title></label><label>Body<textarea rows='8' readonly data-issue-preview-body>{html.escape(issue_body)}</textarea></label><label>Admin note <span class='optional-label'>Optional · maximum {GITHUB_ADMIN_NOTE_MAX_LENGTH} characters</span><textarea rows='3' maxlength='{GITHUB_ADMIN_NOTE_MAX_LENGTH}' data-issue-note></textarea></label></details>
-        <form method='post' action='/admin/diagnostics/issue' class='github-link-form admin-async-action'>
-          <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
-          <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
-          <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
-          <label>{'Change' if issue else 'Link'} issue <span class='optional-label'>e.g. #32</span><input name='linked_github_issue' placeholder='#32' inputmode='numeric' pattern='#?[0-9]{{1,10}}'></label>
-          <button type='submit' class='secondary-button'>{'Change linked issue' if issue else 'Link issue'}</button>
-        </form>
-        {f"<form method='post' action='/admin/diagnostics/issue' class='github-remove-form admin-async-action' data-confirm='Unlink this GitHub issue from the installation?'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Unlink issue</button></form>" if issue else ''}"""
-    issue_content = f"""
-        <p class='github-current'>{_github_issue_link(issue) if issue else '<span class="muted-value">No linked issue</span>'}</p>
-        <p class='table-help'>Closed linked issues resolve this diagnostic after synchronization, normally within 15 minutes. Installation results stay in history.</p>
-        <details class='github-issue-disclosure'><summary>{'Manage linked issue' if issue else 'Report an anomaly or link issue'}</summary><div class='github-issue-controls'>{issue_controls}</div></details>"""
-    issue_form = (
-        "<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'>"
-        "<summary>GitHub issue</summary><div class='disclosure-body github-review'>"
-        + issue_content + "</div></details>"
-    )
+    issue_controls = _github_issue_controls(issue_title, issue_body, issue=issue,
+        csrf_token=csrf_token, identifier=operation_key, return_to=return_to)
+    issue_form = f"<section class='diagnostic-issue-section github-review'><h3>GitHub issue</h3><p class='github-current'>{_github_issue_link(issue) if issue else 'No linked issue'}</p><p class='table-help'>Review the report before sharing. Closed linked issues resolve this diagnostic after synchronization; installation results stay in history.</p><div class='github-issue-controls'>{issue_controls}</div></section>"
     workflow_form = ""
     if not resolved and issue:
         workflow_value = {
@@ -4552,14 +4607,12 @@ def _diagnostic_detail_dialog(
         review_state = f"<div><dt>Review state</dt><dd>{state_badge}{identity_badge}</dd></div>"
     elif identity_pending:
         review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('IDENTITY_PENDING')}</dd></div>"
-    verification_note = (
-        " Terento could not verify the transferred map. This identifies the failed check, not its root cause; review the technical report before deciding what to fix."
-        if result_label == "FAILED" and _diagnostic_error_reason(results, resolved=resolved) == "Transfer verification" else ""
-    )
-    failure_summary = (
-        f"<p class='diagnostic-failure-summary'><strong>Failure reason:</strong> {html.escape(_diagnostic_error_reason(results, resolved=resolved))}{verification_note}</p>"
-        if result_label == "FAILED" else ""
-    )
+    reason, next_action = _installation_explanation(results)
+    if identity_pending:
+        next_action += ' Assign the exact catalog model in Review administration.'
+    safety = "".join(f"<div><dt>{label}</dt><dd>{html.escape(_operation_report_boolean(results, field) or 'Unknown')}</dd></div>"
+        for label, field in (("Write started", "write_started"), ("Cleanup attempted", "cleanup_attempted"), ("Cleanup succeeded", "cleanup_succeeded")))
+    failure_summary = f"<section class='diagnostic-outcome'><h3>What happened</h3><p>{html.escape(reason)}</p><h3>Next action</h3><p>{html.escape(next_action)}</p><h3>Safety facts</h3><dl class='diagnostic-detail-summary'>{safety}</dl></section>"
     technical_details = f"<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'><summary>Technical details</summary><div class='disclosure-body'><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</div></details>"
     identity_state = (
         "<p class='diagnostic-identity-state'><strong>Identity incomplete.</strong> Assign the exact catalog model.</p>"
@@ -4574,23 +4627,27 @@ def _diagnostic_detail_dialog(
         if identity_pending else
         f"{lifecycle_action}{workflow_form}{identity_form}"
     )
+    model_markup = html.escape(model)
+    if first.get('canonical_device_model_id'):
+        model_markup = f"<a href='{html.escape(_device_detail_url(first['canonical_device_model_id']), quote=True)}'>{model_markup}</a>"
     return f"""
       <dialog class='diagnostic-detail-dialog' id='{dialog_id}' aria-labelledby='{dialog_id}-title'>
         <div class='diagnostic-detail-inner'>
-          <div class='device-dialog-header'><div><h2 id='{dialog_id}-title'>Diagnostic detail</h2></div><button class='dialog-close' type='button' data-close-dialog aria-label='Close diagnostic detail'>{_admin_icon('close')}</button></div>
+          <div class='device-dialog-header'><div><h2 id='{dialog_id}-title'>{_diagnostic_heading(result_label)}</h2></div><button class='dialog-close' type='button' data-close-dialog aria-label='Close diagnostic detail'>{_admin_icon('close')}</button></div>
           <dl class='diagnostic-detail-summary'>
-            <div><dt>Device</dt><dd>{html.escape(model)}</dd></div>
+            <div><dt>Operation</dt><dd>Map installation</dd></div>
+            <div><dt>Device</dt><dd>{model_markup}</dd></div>
             <div><dt>Variant</dt><dd>{html.escape(variant)}</dd></div>
             <div><dt>Date</dt><dd>{_timestamp_markup(first.get('occurred_at'))}</dd></div>
-            <div><dt>Map / region</dt><dd>{html.escape(_operation_region_label(results))}</dd></div>
+            <div><dt>Map / region</dt><dd>{html.escape(_operation_map_label(results))}</dd></div>
             <div><dt>Result</dt><dd>{_diagnostic_result(result_label)}</dd></div>
             <div><dt>App version</dt><dd>{html.escape(_admin_app_version_label(first.get('release_label') or first.get('terento_version'), first.get('app_build')))}</dd></div>
             {review_state}
           </dl>
           {failure_summary}
           {identity_state}
-          <div class='diagnostic-actions-grid'>{action_markup}</div>
-          <div class='diagnostic-secondary-grid'>{issue_form}{technical_details}</div>
+          {issue_form}
+          <div class='diagnostic-secondary-grid'><details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'{' open' if identity_pending else ''}><summary>Review administration</summary><div class='disclosure-body'><p class='table-help'>Resolving marks the diagnostic as reviewed; it does not repair the map or change the original result.</p><div class='diagnostic-actions-grid'>{action_markup}</div></div></details>{technical_details}</div>
         </div>
       </dialog>"""
 
@@ -4663,6 +4720,7 @@ def device_detail_page(
     identity_devices: list[dict[str, Any]] | None = None,
     origin: str = "devices",
     requested_state: str | None = None,
+    update_history: dict[str, Any] | None = None,
 ) -> bytes:
     device_id = str(device.get("id") or "").strip()
     model, variant, _ = _identity_parts(device)
@@ -4862,13 +4920,16 @@ def device_detail_page(
         <details class='model-technical-details admin-disclosure'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
         </div>
     """
+    from .update_diagnostics import update_history_markup, update_summary_markup
+    update_summary = update_summary_markup(device.get('update_statistics') or {}, device_id)
+    updates = update_history_markup(update_history or {'device_id': device_id, 'rows': []}, base_url=detail_url, embedded=True)
     active_header = "evidence" if origin == "installations" else "devices"
     content = f"""
       {_admin_header(user, csrf_token, active=active_header)}
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1>{status_line}</div>{public_link}</header>
-        <div class='model-evidence-grid'><div class='model-evidence-summary'>{statistics_section}{alert}{administration_section}{information_sections}</div><div class='model-evidence-history'>{history_section}</div></div>
+        <div class='model-evidence-grid'><div class='model-evidence-summary'>{statistics_section}{update_summary}{alert}{administration_section}{information_sections}</div><div class='model-evidence-history'>{history_section}{updates}</div></div>
         {''.join(dialogs)}
       </main>
       <script>{_diagnostics_script()}</script>
@@ -4987,6 +5048,7 @@ def github_issue_queue_page(
     identity_devices: list[dict[str, Any]] | None,
     user: dict[str, Any],
     csrf_token: str,
+    *, update_diagnostics: list[dict[str, Any]] | None = None,
 ) -> bytes:
     """Render the active linked-issue queue separately from closed diagnostics."""
     def has_valid_issue(event: dict[str, Any]) -> bool:
@@ -5033,6 +5095,12 @@ def github_issue_queue_page(
             canonical_device_model_id=first.get("canonical_device_model_id"),
             return_to="/admin/review/github-issues",
         ))
+    from .update_diagnostics import _update_identity
+    update_queue = [row for row in (update_diagnostics or []) if has_valid_issue(row) and row.get('diagnostic_status') != 'RESOLVED']
+    for row in update_queue:
+        model_markup, variant, _ = _update_identity(row)
+        href = '/admin/update-diagnostics?' + urlencode({'diagnosticId': str(row['event_id'])})
+        rows_markup.append(f"<tr><td>{_github_issue_link(row.get('linked_github_issue'))}</td><td>{model_markup}<small class='table-secondary'>{html.escape(variant)}</small></td><td>Map update · {html.escape(str(row.get('region') or 'Unknown'))}</td><td>{_diagnostic_result(row.get('outcome'))}</td><td>{_diagnostic_state_badge(row.get('diagnostic_workflow_status') or 'OPEN')}</td><td>{_timestamp_markup(row.get('occurred_at'))}</td><td><a class='secondary-button' href='{html.escape(href, quote=True)}'>Inspect update</a></td></tr>")
     rows = "".join(rows_markup) or (
         "<tr><td colspan='7' class='empty'>No active GitHub review tasks are waiting for resolution.</td></tr>"
     )
@@ -5042,14 +5110,14 @@ def github_issue_queue_page(
         <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
         <div class='heading-row'><div><h1>GitHub review tasks</h1></div></div>
         <section class='diagnostics-detail-section' aria-labelledby='github-issue-queue-title'>
-          <div class='section-heading'><div><h2 id='github-issue-queue-title'>Linked diagnostics</h2><span class='table-help'>{len(queue)} tasks</span></div></div>
+          <div class='section-heading'><div><h2 id='github-issue-queue-title'>Linked diagnostics</h2><span class='table-help'>{len(queue) + len(update_queue)} tasks</span></div></div>
           <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>Workflow</th><th scope='col' class='column-date'>Last activity</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
         </section>
         {''.join(dialogs)}
       </main>
       <script>{_diagnostics_script()}</script>
     """
-    return _layout("GitHub issue queue", content, sections={"queue": operations})
+    return _layout("GitHub issue queue", content, sections={"queue": operations, "updates": update_diagnostics})
 
 
 def _admin_map_capability(value: Any) -> tuple[str, str]:
@@ -6079,8 +6147,7 @@ def _diagnostics_script() -> str:
       const count = document.querySelector('#diagnostic-results-count');
       const pagination = document.querySelector('#diagnostic-history-pagination');
       const pageSize = document.querySelector('#diagnostic-history-page-size');
-      if ((!filter && !quickFilters.length) || !body || !count) return;
-      const rows = [...body.querySelectorAll('tr[data-diagnostic-state]')];
+      const rows = body ? [...body.querySelectorAll('tr[data-diagnostic-state]')] : [];
       const dialogs = [...document.querySelectorAll('.diagnostic-detail-dialog')];
       let page = 1;
       let lastFocused = null;
@@ -6099,6 +6166,7 @@ def _diagnostics_script() -> str:
         });
       };
       const refresh = () => {
+          if (!count || !body) return;
           const selected = selectedFilter;
           const matching = rows.filter((row) => {
             const matches = selected === 'all'
@@ -7055,6 +7123,8 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
   .diagnostic-detail-inner>.device-dialog-header,.device-dialog-inner>.device-dialog-header{position:sticky;top:-24px;z-index:2;background:var(--surface);padding:12px 0}
 }
 
+/* Shared diagnostic hierarchy for installation dialogs and update reports. */
+.diagnostic-detail-dialog{width:min(960px,calc(100% - 32px))}.update-diagnostics-page>.provider-card{max-width:960px;padding:24px}.diagnostic-outcome{margin-block:24px}.diagnostic-issue-section{margin-block:24px}.diagnostic-issue-section h3{font-size:16px;margin-block:0 8px}.github-link-disclosure>summary{min-height:40px;cursor:pointer}.diagnostic-secondary-grid .diagnostic-actions-grid{grid-template-columns:1fr}.diagnostic-secondary-grid .diagnostic-action-form{background:var(--surface-muted)}.diagnostic-outcome h3{margin-block:24px 8px;font-size:16px}.diagnostic-outcome p{margin-block:8px;max-width:75ch}.update-diagnostics-page>.provider-card{margin-block:24px}.github-actions{display:flex;flex-wrap:wrap;gap:12px}.github-issue-preview label{display:block;margin-block:12px}.github-issue-preview :is(input,textarea){display:block;width:100%;min-height:40px}.diagnostic-secondary-disclosure>summary{min-height:40px}.github-issue-preview>summary{min-height:40px;cursor:pointer}.github-issue-preview textarea{resize:vertical}.diagnostic-outcome .diagnostic-detail-summary{margin-block-start:12px}
 /* Admin audit: consistent page hierarchy, disclosures and connected diagnostics. */
 main.dashboard{padding-top:30px}
 main.dashboard>.heading-row{align-items:flex-start}

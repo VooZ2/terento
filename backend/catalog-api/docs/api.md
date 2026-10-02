@@ -6,7 +6,8 @@
 
 ## Local provider recovery and update diagnostic additions — 2026-10-02
 
-Requires additive migration `064_provider_rechecks_update_diagnostics.sql`.
+Requires additive migrations `064_provider_rechecks_update_diagnostics.sql` and
+`065_update_diagnostic_review.sql`.
 This describes the local implementation, not deployed route availability.
 
 - `POST /admin/providers/{id}/rechecks`: authenticated and CSRF protected;
@@ -20,11 +21,31 @@ This describes the local implementation, not deployed route availability.
   and any retry-not-before time. States are `QUEUED`, `RUNNING`, `SUCCEEDED`,
   `FAILED`, `INTERRUPTED`. The existing scheduler runs the persistent queue.
 - `GET /admin/update-diagnostics`: authenticated HTML, no-store/noindex.
-  Optional `outcome=failed|not_started`, nonnegative `offset` paginates 50
-  reports. `eventId` accepts a map-update statistics UUID; `diagnosticId`
-  accepts a diagnostic UUID. These identifiers are mutually exclusive.
+  Optional `outcome=succeeded|failed|not_started`, exact catalog `deviceId`,
+  `lifecycle=ACTIVE|RESOLVED` and nonnegative `offset` paginate 50 reports.
+  `eventId` accepts a map-update statistics UUID; `diagnosticId` accepts a
+  diagnostic UUID. These identifiers are mutually exclusive and cannot be
+  combined with list filters or pagination.
   Invalid filters return 400; unavailable storage returns 503. No matching
   or ambiguous diagnostic renders an explicit availability message.
+- `POST /admin/update-diagnostics/issue|resolve|reopen|workflow`: authenticated,
+  CSRF-protected form actions targeting one `diagnostic_id` UUID. Issue actions
+  link a validated repository issue number or unlink it; they do not create
+  GitHub issues. Resolve requires an allowed `resolution_reason` and accepts
+  an optional note up to 2,000 characters. Workflow accepts the existing
+  `OPEN`, `IN_PROGRESS`, `UNDER_REVIEW` states and rejects changes to resolved
+  reports or `OPEN` with a linked issue. A missing report returns 404, invalid
+  input 400. Review changes are audited without changing original outcome
+  facts. Closed linked GitHub issues resolve active reports during the existing
+  synchronization job; reopening remains an explicit admin action.
+
+Exact-model device detail includes separate reported update counters and
+paginated update history (`updateOutcome`, `updateOffset`, `updateLifecycle`).
+New update intake uses the server's existing identity assessment to attach an
+exact catalog model and variant; client identity claims alone are insufficient.
+Historical reports without an assessment remain unassigned. Counters follow
+the independent diagnostic population and conflict exclusions in
+`contracts/STATISTICS_CONTRACT.md`; they never change installation statistics.
 
 `POST /compatibility/events` accepts an additive schema-v4 update report:
 `operationKind: "update"` plus required Boolean `oldMapPreserved`; existing
@@ -252,9 +273,11 @@ native, public, or existing device API contract.
 
 ## `GET https://api.terento.app/admin/review/github-issues`
 
-Returns the authenticated active GitHub issue queue. Each linked issue is
-listed once per installation operation with its device, map/region, result,
-workflow state, and last activity. Linking an active diagnostic automatically
+Returns the authenticated active GitHub issue queue. Linked installation work is
+listed once per installation operation; linked update work is listed per exact
+diagnostic UUID and opens update detail directly. Each entry shows its device,
+map/region, result, workflow state and last activity. The GitHub badge uses those
+same scopes and excludes local-test and resolved reports. Linking an active diagnostic automatically
 sets its workflow to `IN_PROGRESS`; the detail dialog also allows
 `UNDER_REVIEW`. The diagnostic remains active and the issue remains in this
 queue until the read-only GitHub synchronizer observes the issue as closed;

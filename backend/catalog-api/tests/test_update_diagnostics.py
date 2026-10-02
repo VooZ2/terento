@@ -18,7 +18,7 @@ class FakeDatabase:
 
     def execute(self, sql, args):
         self.calls.append((sql, args))
-        self.current = next(self.results)
+        self.current = [] if 'FROM map_update_diagnostic_audit' in sql else next(self.results)
         return self
 
     def fetchone(self):
@@ -37,7 +37,8 @@ class UpdateDiagnosticsTests(unittest.TestCase):
         report = {'event_id': EVENT, 'outcome': 'FAILED', 'payload': {}}
         db = FakeDatabase([self.event(), [report]])
         result = load_update_diagnostics(db, event_id=EVENT)
-        self.assertEqual(result['detail'], report)
+        self.assertEqual(result['detail']['event_id'], report['event_id'])
+        self.assertEqual(result['detail']['audit'], [])
         self.assertEqual(db.calls[1][1], (OPERATION, 'maprando', 'france'))
         self.assertIn('provider = %s AND lower(region) = lower(%s)', db.calls[1][0])
         ambiguous = load_update_diagnostics(FakeDatabase([self.event(), [report, report]]), event_id=EVENT)
@@ -54,7 +55,9 @@ class UpdateDiagnosticsTests(unittest.TestCase):
         connection = sqlite3.connect(':memory:')
         connection.row_factory = sqlite3.Row
         connection.execute('CREATE TABLE map_download_event(event_id TEXT, operation_id TEXT, provider_id TEXT, region TEXT, event_type TEXT, outcome TEXT, occurred_at TEXT, app_build TEXT, release_label TEXT, is_local_test BOOLEAN DEFAULT FALSE)')
-        connection.execute("CREATE TABLE map_update_diagnostic(event_id TEXT, operation_id TEXT, provider TEXT, region TEXT, outcome TEXT, occurred_at TEXT, payload TEXT, is_local_test BOOLEAN DEFAULT FALSE)")
+        connection.execute("CREATE TABLE map_update_diagnostic(event_id TEXT, operation_id TEXT, provider TEXT, region TEXT, outcome TEXT, occurred_at TEXT, payload TEXT, is_local_test BOOLEAN DEFAULT FALSE,canonical_device_model_id TEXT,diagnostic_status TEXT DEFAULT 'ACTIVE')")
+        connection.execute('CREATE TABLE device_model(id TEXT,model TEXT,variant TEXT,case_size_mm INTEGER,screen_technology TEXT)')
+        connection.execute('CREATE TABLE map_update_diagnostic_audit(id INTEGER,event_id TEXT,action TEXT,previous_state TEXT,next_state TEXT,changed_by INTEGER,changed_at TEXT)')
         connection.execute('INSERT INTO map_download_event(event_id,operation_id,provider_id,region,event_type,outcome,occurred_at,app_build,release_label) VALUES(?,?,?,?,?,?,?,?,?)',
             (EVENT, OPERATION, 'maprando', 'fra', 'MAP_UPDATE_FAILED', 'FAILED', '2026-10-02', None, None))
         connection.execute('INSERT INTO map_update_diagnostic(event_id,operation_id,provider,region,outcome,occurred_at) VALUES(?,?,?,?,?,?)',
@@ -101,7 +104,7 @@ class UpdateDiagnosticsTests(unittest.TestCase):
         data = load_update_diagnostics(FakeDatabase([self.event(), []]), event_id=EVENT)
         page = update_diagnostics_page(data, {'username': 'admin'}, 'csrf').decode()
         self.assertIn('Failure details were not received', page)
-        self.assertIn('france', page)
+        self.assertIn('France', page)
         self.assertNotIn('The device disconnected', page)
 
     def test_invalid_identifier_does_not_query_uuid_column(self):
@@ -109,6 +112,13 @@ class UpdateDiagnosticsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_update_diagnostics(db, event_id='invalid')
         self.assertEqual(db.calls, [])
+
+    def test_exact_report_rejects_mixed_model_or_list_filters(self):
+        for filters in ({'device_id':'other-model'}, {'outcome':'failed'}, {'lifecycle':'RESOLVED'}, {'offset':50}):
+            db=FakeDatabase([])
+            with self.assertRaises(ValueError):
+                load_update_diagnostics(db, diagnostic_id=EVENT, **filters)
+            self.assertEqual(db.calls,[])
 
     def test_safe_rendering_and_unknown_safety_facts(self):
         detail = dict(region='<script>x</script>', provider='bbbike', outcome='FAILED',
@@ -158,7 +168,7 @@ class UpdateDiagnosticsTests(unittest.TestCase):
         result = load_update_diagnostics(db, outcome='not_started', offset=50)
         self.assertEqual(len(result['rows']), 50)
         self.assertTrue(result['has_more'])
-        self.assertEqual(db.calls[0][1], ('NOT_STARTED', 'NOT_STARTED', 50))
+        self.assertEqual(db.calls[0][1], ('NOT_STARTED', 'NOT_STARTED', '', '', '', '', 50))
         direct = load_update_diagnostics(FakeDatabase([{'event_id': EVENT}]), diagnostic_id=EVENT)
         self.assertEqual(direct['detail']['event_id'], EVENT)
 
