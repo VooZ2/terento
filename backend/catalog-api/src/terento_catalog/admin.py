@@ -1262,7 +1262,7 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
         tone = "neutral"
     status_markup = _download_history_icon(event_type) + html.escape(label)
     if event_type == 'MAP_UPDATE_FAILED' and event.get('event_id'):
-        status_markup += f" <a class='secondary-button' href='/admin/update-diagnostics?eventId={quote(str(event['event_id']),safe='')}'>View failure</a>"
+        status_markup += f" <a href='/admin/update-diagnostics?eventId={quote(str(event['event_id']),safe='')}'>View failure</a>"
     component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
     context = html.escape(_overview_map_event_context(event)) + (' · ' + component if component else '')
     device = _overview_activity_device(event)
@@ -1464,7 +1464,7 @@ def _overview_trend_chart(
         )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='{chart_label}'>"
-        f"<defs><pattern id='update-failed-{'mobile' if _compact else 'desktop'}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--status-success-text)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        f"<defs><pattern id='update-failed-{'mobile' if _compact else 'desktop'}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--danger)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
@@ -1713,7 +1713,7 @@ def _overview_downloads_chart(
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
         f"viewBox='0 0 {chart_width} {chart_height}' role='img' "
         f"aria-label='Observed download increases between checks over {period_label}'>"
-        f"<defs><pattern id='update-failed-{'mobile' if _compact else 'desktop'}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--status-success-text)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        f"<defs><pattern id='update-failed-{'mobile' if _compact else 'desktop'}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--danger)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
@@ -3178,7 +3178,7 @@ def map_statistics_page(
         "<section class='map-statistics-kpi-group' id='map-statistics-updates' aria-labelledby='map-statistics-updates-title'><h2 id='map-statistics-updates-title'>Updates <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
         f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedMapUpdates'>{event_value(all_time_summary, 'completedMapUpdates')}</strong></div>"
         f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(all_time_summary.get('mapUpdateSuccessRate'))}</strong></div>"
-        f"<div class='map-statistics-kpi-value failed'><span>Failed</span><a href='/admin/update-diagnostics?outcome=failed' aria-label='View failed update reports'>{failed_metric_markup(all_time_summary, 'failedMapUpdates')}</a></div>"
+        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedMapUpdates')}</div>"
         "</div></section>"
     )
     metrics_section = (
@@ -7041,7 +7041,7 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
 .diagnostic-action-form button[type='submit']{min-height:var(--admin-control-height);padding:8px 12px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:600}
 .diagnostic-action-form button[type='submit']:hover{background:var(--interactive-hover)}
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
-.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-update{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend .overview-chart-update-failed{background:repeating-linear-gradient(45deg,var(--status-success-text) 0 4px,var(--surface) 4px 6px);border:1px solid var(--status-success-text)}
+.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-update{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend .overview-chart-update-failed{background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px);border:1px solid var(--danger)}
 .model-status-line{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-top:8px}.model-status-line>span{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.model-status-line strong{color:var(--graphite);font-size:12px}.compact-empty-state{margin-top:20px;padding:18px 20px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.compact-empty-state h2{margin:0 0 4px}.compact-empty-state p{margin:0;color:var(--secondary)}.diagnostic-identity-state{margin:12px 0;padding:10px 12px;border-left:3px solid var(--warning);background:var(--surface-muted);font-size:13px}
 .timestamp-metric strong{font-size:var(--admin-type-subsection-size)!important;line-height:var(--admin-type-subsection-line)!important}
 .overview-primary-grid{align-items:start}.overview-primary-grid>.overview-panel{min-height:0}
@@ -7313,6 +7313,7 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-activity-row>.map-activity-copy{grid-template-columns:minmax(0,1fr)}
 .map-activity-row .download-history>summary{padding:0;margin:0;column-gap:10px;font-weight:400}
 .map-activity-row .overview-activity-label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:750;line-height:1.4}
+.map-activity-row .overview-activity-label>a{color:var(--interactive);text-underline-offset:3px}
 .map-activity-row .overview-activity-label .download-phase-icon{width:14px;height:14px;flex:0 0 14px}
 .map-activity-row .download-history>summary .overview-activity-label::before{content:none}
 .map-activity-row .download-history>summary .overview-activity-label::after{content:'›';display:inline-block;color:var(--secondary);margin-left:2px;line-height:1;transform-origin:center}
