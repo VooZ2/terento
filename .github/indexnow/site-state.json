@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "f215ca333dbfda734ca8115b2f44343bf9e5ce13",
+    "commit": "250eb3ea541e689f76b87aa35b73bba74a82939e",
     "pages": [
       {
         "path": "/",
@@ -1038,16 +1038,16 @@
     "pending": [],
     "lastSubmissionAt": "2026-10-02T20:46:10Z",
     "lastSuccessfulSubmissionAt": "2026-10-02T20:46:10Z",
-    "lastResult": "submitted",
+    "lastResult": "no_changes",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-10-02T20:46:11Z",
-    "status": "accepted",
+    "at": "2026-10-02T21:19:28Z",
+    "status": "no-eligible-notifications",
     "bootstrap": false,
-    "planned": 18,
-    "accepted": 18,
+    "planned": 0,
+    "accepted": 0,
     "pending": 0,
-    "previousAccepted": 105
+    "previousAccepted": 123
   }
 }
