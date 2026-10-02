@@ -1,6 +1,6 @@
 # Search and AI discoverability
 
-Reviewed against official vendor documentation on 2026-09-30. This is the
+Reviewed against official vendor documentation on 2026-10-02. This is the
 public website contract; crawl access never guarantees indexing or citation.
 
 ## Public content and identity
@@ -119,6 +119,19 @@ vendor documentation does not establish universal consumption or ranking gains.
 metadata while keeping it available to app/browser clients. It keeps the
 existing error-page noindex and security/cache headers. No CSS or JavaScript
 was changed by this audit; asset versions therefore stay unchanged.
+
+For agent content negotiation, `scripts/build-markdown-pages.py` renders a
+deterministic Markdown sidecar from each public page's main HTML content. Caddy
+serves the sidecar with `Content-Type: text/markdown; charset=utf-8` and
+`Vary: Accept` when a GET or HEAD request for a canonical directory page
+includes `Accept: text/markdown`. Requests without that preference continue to
+receive the existing HTML. The renderer omits navigation and interactive
+controls while preserving headings, paragraphs, lists, image descriptions and
+links; generator parity is checked across the full public page inventory.
+Cloudflare's built-in Markdown for Agents switch is currently marked Pro-plan
+only in the `terento.app` zone dashboard, so origin-side negotiation supplies
+the same request behavior without a plan change. See
+[Cloudflare Markdown for Agents](https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/).
 
 The API hostname and production Cloudflare settings are separate operational
 boundaries. Public-host robots do not apply to `api.terento.app` or testing

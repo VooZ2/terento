@@ -609,7 +609,10 @@ def main() -> int:
     assert "internal/infra/vps/deployment/site/compose.json" not in deploy_site
     assert "git diff --quiet" in deploy_site
     assert "steps.current.outputs.deploy == 'true'" in deploy_site
-    assert '"!site/**/*.md"' in deploy_site
+    assert '"site/**"' in deploy_site
+    assert '"!site/**/*.md"' not in deploy_site, "generated Markdown sidecars must trigger site deployment"
+    assert '"!site-deploy/**/*.md"' in deploy_site, "repository documentation should not trigger site deployment"
+    assert "':(exclude)site-deploy/**/*.md'" in deploy_site
     assert "actions/upload-artifact@" in swift
     assert "actions/upload-artifact@" in reusable
     assert "schedule:" in swift
