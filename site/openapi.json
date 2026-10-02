@@ -1,0 +1,267 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Terento public catalog API",
+    "version": "1.0.0",
+    "description": "Public read-only map, device and reviewed compatibility metadata. Map binaries are downloaded from original providers, never through this API. This discovery specification covers public read operations; diagnostic ingestion and authenticated administration are outside its scope."
+  },
+  "servers": [
+    {
+      "url": "https://api.terento.app"
+    }
+  ],
+  "externalDocs": {
+    "url": "https://github.com/VooZ2/terento/blob/beta/backend/catalog-api/docs/api.md"
+  },
+  "paths": {
+    "/maps/catalog.json": {
+      "get": {
+        "summary": "Read the legacy map catalog",
+        "operationId": "maps_catalog_json",
+        "responses": {
+          "200": {
+            "description": "Read the legacy map catalog. Catalog membership and compatibility evidence do not grant device write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged response; reuse the cached representation."
+          },
+          "503": {
+            "description": "Service temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/maps/catalog-v3.json": {
+      "get": {
+        "summary": "Read the map catalog including MapRando",
+        "operationId": "maps_catalog_v3_json",
+        "responses": {
+          "200": {
+            "description": "Read the map catalog including MapRando. Catalog membership and compatibility evidence do not grant device write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged response; reuse the cached representation."
+          },
+          "503": {
+            "description": "Service temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/maps/catalog-v4.json": {
+      "get": {
+        "summary": "Read the map catalog including BBBike",
+        "operationId": "maps_catalog_v4_json",
+        "responses": {
+          "200": {
+            "description": "Read the map catalog including BBBike. Catalog membership and compatibility evidence do not grant device write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged response; reuse the cached representation."
+          },
+          "503": {
+            "description": "Service temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/devices/catalog.json": {
+      "get": {
+        "summary": "Read device model metadata",
+        "operationId": "devices_catalog_json",
+        "responses": {
+          "200": {
+            "description": "Read device model metadata. Catalog membership and compatibility evidence do not grant device write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged response; reuse the cached representation."
+          },
+          "503": {
+            "description": "Service temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/devices/installation-policy.json": {
+      "get": {
+        "summary": "Read current installation authorization policy",
+        "operationId": "devices_installation_policy_json",
+        "responses": {
+          "200": {
+            "description": "Read current installation authorization policy. Catalog membership and compatibility evidence do not grant device write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged response; reuse the cached representation."
+          },
+          "503": {
+            "description": "Service temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/compatibility/public/models.json": {
+      "get": {
+        "summary": "Read reviewed public compatibility evidence",
+        "operationId": "compatibility_public_models_json",
+        "responses": {
+          "200": {
+            "description": "Read reviewed public compatibility evidence. Catalog membership and compatibility evidence do not grant device write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable."
+          },
+          "404": {
+            "description": "Public statistics disabled or invalid limit parameter."
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 500
+            }
+          }
+        ]
+      }
+    },
+    "/compatibility/public/top-models.json": {
+      "get": {
+        "summary": "Read reviewed compatibility statistics",
+        "operationId": "compatibility_public_top_models_json",
+        "responses": {
+          "200": {
+            "description": "Read reviewed compatibility statistics. Catalog membership and compatibility evidence do not grant device write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable."
+          },
+          "404": {
+            "description": "Public statistics disabled or invalid limit parameter."
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 5
+            }
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Check API and database availability",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Service and database available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://api.terento.app",
+      "service-desc": [
+        {
+          "href": "https://terento.app/openapi.json",
+          "type": "application/vnd.oai.openapi+json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://github.com/VooZ2/terento/blob/beta/backend/catalog-api/docs/api.md",
+          "type": "text/html"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://api.terento.app/health",
+          "type": "application/json"
+        }
+      ]
+    }
+  ]
+}

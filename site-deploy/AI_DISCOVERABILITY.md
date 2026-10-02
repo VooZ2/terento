@@ -158,3 +158,27 @@ After a separately authorized deployment, fetch robots, sitemap and representati
 pages with headers and inspect canonical/noindex/content. Compare all sitemap
 URLs against live pages. Use real verified crawler observations to assess WAF
 access; user-agent spoofing from a developer machine cannot establish it.
+
+## API catalog
+
+`GET` and `HEAD /.well-known/api-catalog` serve the RFC 9727 Linkset with
+HTTP 200 and `Content-Type: application/linkset+json`. The public host emits
+an `api-catalog` Link header, including on HEAD. The catalog identifies the
+single catalog API service at `https://api.terento.app`, its read-only OpenAPI
+3.1 description at `/openapi.json`, its maintained repository documentation,
+and `/health`. The specification describes public reads only; diagnostic
+submission and authenticated administration are outside its scope. Metadata
+never grants device write permission or expands public compatibility claims.
+
+Both discovery documents ship with the static site image. Caddy explicitly
+sets the extensionless catalog media type and a five-minute cache lifetime;
+JSON and catalog responses remain noindex. No backend or edge-policy change
+is required. Keep the API inventory, OpenAPI routes and source documentation
+consistent when public services change. The existing discovery test suite
+checks links, route coverage and serving configuration.
+
+After publication, verify GET/HEAD headers and linked resources, then POST
+`{"url":"https://terento.app"}` as JSON to
+`https://isitagentready.com/api/scan`; require
+`checks.discovery.apiCatalog.status == "pass"`. A local test is not evidence
+that production has been published.
