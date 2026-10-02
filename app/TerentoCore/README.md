@@ -81,12 +81,14 @@ trace markers separate session open, file-list read, session close and native
 cleanup. The initiating 091e:51b5 hardware stall remains unproven pending a
 controlled failing/successful-model retest.
 
-Installation/removal evidence is model-specific. The owner reported a
-successful real-device BBBike Lithuania Update using the local Debug candidate;
-Manage maps shows the installed `2026-09-16` release. This is owner-reported
-evidence, not independent verification or evidence for every model/provider.
-Freizeitkarte and OpenTopoMap still require their own real newer-release update
-gates. There is no public release or API deployment implied. See
+Installation/removal evidence is model-specific. On 2026-10-02, the owner
+confirmed **BBBike Update — PASS** and **MapRando Update — PASS** on Garmin
+fēnix 8 47 mm AMOLED using beta.15 build 37 after a Migration Assistant transfer
+to another Mac. This is owner-reported hardware evidence, not independent
+verification or evidence for other models/variants. Two real newer-release
+update checks remain: **Freizeitkarte** and **OpenTopoMap**. These results do
+not establish the cause of the earlier update-blocking message or confirm a
+code fix. No new release or API deployment is implied. See
 [historical evidence](../../history/README.md).
 
 ## Catalog and privacy contracts

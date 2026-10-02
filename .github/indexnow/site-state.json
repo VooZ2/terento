@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "ccf59ed39716e137e9b9f8ace95e8fde7286e1e4",
+    "commit": "a47fadd1de6ecc7665d1efee123799cc5c20da2d",
     "pages": [
       {
         "path": "/",
@@ -28,8 +28,8 @@
         "file": "site/compatibility/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "81bfd77a577a971b17379ee0d4c808e245c2bf94696f688fbf1402c1dd6f751b",
-        "lastmod": "2026-09-27"
+        "fingerprint": "a74e9bf23fd0c5da850bb87d45aec409d668a9ba9e86f2c409308a95bf031504",
+        "lastmod": "2026-09-29"
       },
       {
         "path": "/cs/",
@@ -55,8 +55,8 @@
         "file": "site/cs/compatibility/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "8b99e6bb151002c40e68801d9699a802b750a92358bca374003cb79601571880",
-        "lastmod": "2026-09-27"
+        "fingerprint": "9f6f113a2603616201a752bae72f7f8ab256a01c4267daeab14e579a157bf8a7",
+        "lastmod": "2026-09-29"
       },
       {
         "path": "/cs/download/",
@@ -100,8 +100,8 @@
         "file": "site/de/compatibility/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "31fb2295968df46fd71433981c321c7df1ac794ecd759864c3adf744b448a1c0",
-        "lastmod": "2026-09-27"
+        "fingerprint": "87f4ed891f414139fe84c5b1c56baa2b465e8b0805fe3b22ed23b72797404d27",
+        "lastmod": "2026-09-29"
       },
       {
         "path": "/de/download/",
@@ -154,8 +154,8 @@
         "file": "site/fr/compatibility/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "bac9bc1d19df02be2b89d08440a86ec3c97df4b805bb635c3c1afdaf99124276",
-        "lastmod": "2026-09-27"
+        "fingerprint": "d932ab77abbfe8691bdd8e8bce1ef6a76c9a4510551f4fc405d7e3926e648ce9",
+        "lastmod": "2026-09-29"
       },
       {
         "path": "/fr/download/",
@@ -208,8 +208,8 @@
         "file": "site/it/compatibility/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "895f26a20d0a3c59b390a62df3f63d03a299e0015fb93312a2468917f4d1fccf",
-        "lastmod": "2026-09-27"
+        "fingerprint": "e9e273b6ca965e4466a757e0c600f1f8262fba0d2e87385a212c5694798bfbb7",
+        "lastmod": "2026-09-29"
       },
       {
         "path": "/it/download/",
@@ -262,8 +262,8 @@
         "file": "site/pl/compatibility/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "7fc9e7cbbfddbcff9df8708b989d8d8b163437ac684dc2b24f834448b4a7246f",
-        "lastmod": "2026-09-27"
+        "fingerprint": "cd4268b9f701d705c0b1bd7ca09f5b92074b712437d567b070170fc9d005527e",
+        "lastmod": "2026-09-29"
       },
       {
         "path": "/pl/download/",
@@ -853,21 +853,57 @@
         "fingerprint": "73e5c0fe84e86087193f6538ec38022b1800fc29ff8c556c795a33e4db84b70b",
         "status": 200,
         "acceptedAt": "2026-09-27T20:30:21Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "a74e9bf23fd0c5da850bb87d45aec409d668a9ba9e86f2c409308a95bf031504",
+        "status": 200,
+        "acceptedAt": "2026-09-30T09:39:12Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "9f6f113a2603616201a752bae72f7f8ab256a01c4267daeab14e579a157bf8a7",
+        "status": 200,
+        "acceptedAt": "2026-09-30T09:39:12Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "87f4ed891f414139fe84c5b1c56baa2b465e8b0805fe3b22ed23b72797404d27",
+        "status": 200,
+        "acceptedAt": "2026-09-30T09:39:12Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "d932ab77abbfe8691bdd8e8bce1ef6a76c9a4510551f4fc405d7e3926e648ce9",
+        "status": 200,
+        "acceptedAt": "2026-09-30T09:39:12Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "e9e273b6ca965e4466a757e0c600f1f8262fba0d2e87385a212c5694798bfbb7",
+        "status": 200,
+        "acceptedAt": "2026-09-30T09:39:12Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "cd4268b9f701d705c0b1bd7ca09f5b92074b712437d567b070170fc9d005527e",
+        "status": 200,
+        "acceptedAt": "2026-09-30T09:39:12Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-09-27T20:30:21Z",
-    "lastSuccessfulSubmissionAt": "2026-09-27T20:30:21Z",
+    "lastSubmissionAt": "2026-09-30T09:39:11Z",
+    "lastSuccessfulSubmissionAt": "2026-09-30T09:39:11Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-09-27T20:30:21Z",
+    "at": "2026-09-30T09:39:12Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 24,
-    "accepted": 24,
+    "planned": 6,
+    "accepted": 6,
     "pending": 0,
-    "previousAccepted": 69
+    "previousAccepted": 93
   }
 }

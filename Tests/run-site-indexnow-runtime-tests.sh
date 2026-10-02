@@ -64,6 +64,19 @@ bad_body="$temporary/bad-response.html"
 [ "$(http_status "http://127.0.0.1:$port/" "$home_body")" = 200 ]
 [ "$(http_status "http://127.0.0.1:$port/sitemap.xml" "$sitemap_body")" = 200 ]
 grep -q '<urlset' "$sitemap_body"
+# Discovery files and headers use the actual production Caddy configuration.
+for discovery_file in robots.txt llms.txt; do
+  [ "$(http_status "http://127.0.0.1:$port/$discovery_file" "$temporary/$discovery_file")" = 200 ]
+  cmp -s "$repo_root/site/$discovery_file" "$temporary/$discovery_file"
+done
+curl --fail --silent --show-error --dump-header "$temporary/html-headers" \
+  --output "$temporary/campaign.html" "http://127.0.0.1:$port/?utm_source=chatgpt.com"
+cmp -s "$home_body" "$temporary/campaign.html"
+! grep -iq '^X-Robots-Tag:.*noindex' "$temporary/html-headers"
+curl --fail --silent --show-error --dump-header "$temporary/json-headers" \
+  --output "$temporary/update.json" "http://127.0.0.1:$port/updates/macos-arm64.json"
+grep -iq '^X-Robots-Tag: noindex, nofollow' "$temporary/json-headers"
+cmp -s "$repo_root/site/updates/macos-arm64.json" "$temporary/update.json"
 [ "$(http_status "http://127.0.0.1:$port/$test_key.txt" "$key_body")" = 200 ]
 cmp -s "$key_file" "$key_body"
 

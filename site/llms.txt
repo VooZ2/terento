@@ -1,0 +1,27 @@
+# Terento
+
+> Install and manage third-party maps on Garmin smartwatches with map support using Terento, a free macOS app for Apple Silicon.
+
+Canonical website: https://terento.app/
+
+This supplemental index does not replace the website, robots.txt, or sitemap.
+
+## Public pages
+
+- [Terento — Third-Party Maps for Garmin on Mac](https://terento.app/): Install and manage third-party maps on Garmin smartwatches with map support using Terento, a free macOS app for Apple Silicon.
+- [About Terento — Free, Open-Source Garmin Maps for Mac](https://terento.app/about/): Learn why Terento exists: a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches.
+- [Download Terento for Mac — Third-Party Maps for Garmin](https://terento.app/download/): Download the free, notarized Terento beta for Apple Silicon Macs to install and manage third-party maps on Garmin smartwatches with map support.
+- [Garmin Watch Compatibility & Successful Installs — Terento](https://terento.app/compatibility/): Terento is designed for Garmin smartwatches with map support. See exact models and variants with successful third-party map installations.
+- [Install Third-Party Garmin Maps on Mac — Terento](https://terento.app/guides/install-garmin-maps-mac/): Install third-party maps on a Garmin smartwatch with map support from an Apple Silicon Mac. Connect your watch, choose a map or upload your own .img file, and finish in three simple steps with Terento.
+
+## Other languages
+
+- [de](https://terento.app/de/)
+- [fr](https://terento.app/fr/)
+- [pl](https://terento.app/pl/)
+- [cs](https://terento.app/cs/)
+- [it](https://terento.app/it/)
+
+## Source
+
+- [Official repository](https://github.com/VooZ2/terento)
