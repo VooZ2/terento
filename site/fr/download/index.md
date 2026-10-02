@@ -12,9 +12,9 @@ Une application Mac native pour installer et gérer des cartes communautaires su
 - Gratuit
 - Notarié
 - Apple Silicon
-[Télécharger le DMG Recommandé](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.15-build37/Terento-1.0.0-beta.15-macOS-arm64.dmg) [Télécharger le ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.15-build37/Terento-1.0.0-beta.15-macOS-arm64.zip) [Notes de version](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.15-build37)
+[Télécharger le DMG Recommandé](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.16-build38/Terento-1.0.0-beta.16-macOS-arm64.dmg) [Télécharger le ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.16-build38/Terento-1.0.0-beta.16-macOS-arm64.zip) [Notes de version](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.16-build38)
 
-Dernière bêta: **v1.0.0-beta.15** Publiée le 27 septembre 2026
+Dernière bêta: **v1.0.0-beta.16** Publiée le 2 octobre 2026
 
 Terento affiche une montre Garmin connectée sur macOS
 

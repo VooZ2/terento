@@ -13,9 +13,9 @@ A native Mac app for installing and managing community maps on Garmin smartwatch
 - Notarized
 - Apple Silicon
 
-[Download DMG Recommended](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.15-build37/Terento-1.0.0-beta.15-macOS-arm64.dmg) [Download ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.15-build37/Terento-1.0.0-beta.15-macOS-arm64.zip) [View release notes](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.15-build37)
+[Download DMG Recommended](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.16-build38/Terento-1.0.0-beta.16-macOS-arm64.dmg) [Download ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.16-build38/Terento-1.0.0-beta.16-macOS-arm64.zip) [View release notes](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.16-build38)
 
-Latest: **v1.0.0-beta.15** Released 27 September 2026
+Latest: **v1.0.0-beta.16** Released 2 October 2026
 
 Terento showing a connected Garmin watch on macOS
 
