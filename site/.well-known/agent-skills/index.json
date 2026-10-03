@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "terento-map-catalog",
+      "type": "skill-md",
+      "description": "Read Terento’s public map catalog and follow original-provider sources while preserving attribution, licensing, and device-safety boundaries.",
+      "url": "https://terento.app/.well-known/agent-skills/terento-map-catalog/SKILL.md",
+      "digest": "sha256:a191276e53ab639860927f52be14fe91813eabefe74a9f8a7f68ff208dfb0687"
+    }
+  ]
+}

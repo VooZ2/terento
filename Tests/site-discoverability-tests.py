@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline discovery boundaries, full public inventory and static content contracts."""
 import importlib.util
+import hashlib
 import json
 import re
 import unittest
@@ -168,13 +169,48 @@ class DiscoverabilityTests(unittest.TestCase):
         self.assertEqual(len(operation_ids), len(set(operation_ids)))
         robots = RobotFileParser()
         robots.parse((ROOT / 'site/robots.txt').read_text().splitlines())
-        for path in ('/.well-known/api-catalog', '/openapi.json'):
+        for path in ('/.well-known/api-catalog', '/openapi.json',
+                     '/.well-known/agent-skills/index.json',
+                     '/.well-known/agent-skills/terento-map-catalog/SKILL.md'):
             self.assertTrue(robots.can_fetch('*', BASE + path))
         caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
         self.assertIn('@apiCatalog path /.well-known/api-catalog', caddy)
         self.assertIn('Content-Type "application/linkset+json"', caddy)
         self.assertIn('header Link "<https://terento.app/.well-known/api-catalog>; rel=api-catalog"', caddy)
         self.assertIn('header @openAPI Content-Type "application/vnd.oai.openapi+json"', caddy)
+
+    def test_agent_skills_index_and_artifact_digest(self):
+        index_path = ROOT / 'site/.well-known/agent-skills/index.json'
+        index = json.loads(index_path.read_text())
+        self.assertEqual(index['$schema'], 'https://schemas.agentskills.io/discovery/0.2.0/schema.json')
+        self.assertEqual(len(index['skills']), 1)
+
+        names = set()
+        for skill in index['skills']:
+            self.assertTrue(re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', skill['name']))
+            self.assertLessEqual(len(skill['name']), 64)
+            self.assertNotIn(skill['name'], names)
+            names.add(skill['name'])
+            self.assertEqual(skill['type'], 'skill-md')
+            self.assertTrue(skill['description'].strip())
+            parsed = urlsplit(skill['url'])
+            self.assertEqual((parsed.scheme, parsed.netloc, parsed.query, parsed.fragment),
+                             ('https', 'terento.app', '', ''))
+            self.assertRegex(parsed.path, r'^/\.well-known/agent-skills/[a-z0-9-]+/SKILL\.md$')
+            artifact = ROOT / 'site' / parsed.path.lstrip('/')
+            content = artifact.read_bytes()
+            self.assertRegex(skill['digest'], r'^sha256:[0-9a-f]{64}$')
+            self.assertEqual(skill['digest'], 'sha256:' + hashlib.sha256(content).hexdigest())
+
+            frontmatter = content.decode('utf-8').split('---', 2)
+            self.assertEqual(frontmatter[0], '')
+            self.assertEqual(frontmatter[1].splitlines()[0], '')
+            self.assertIn(f'name: {skill["name"]}', frontmatter[1])
+            self.assertIn(f'description: {skill["description"]}', frontmatter[1])
+
+        caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
+        self.assertIn('@agentSkill path /.well-known/agent-skills/*/SKILL.md', caddy)
+        self.assertIn('Content-Type "text/markdown; charset=utf-8"', caddy)
 
     def test_public_json_is_available_but_not_indexable(self):
         site = (ROOT / 'site-deploy/Caddyfile').read_text()
