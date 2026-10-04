@@ -11,4 +11,5 @@ Disallow: /preview
 Disallow: /lab
 Disallow: /test/
 
+Agentmap: https://terento.app/.well-known/ard.json
 Sitemap: https://terento.app/sitemap.xml

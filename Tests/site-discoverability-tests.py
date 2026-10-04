@@ -56,6 +56,7 @@ class DiscoverabilityTests(unittest.TestCase):
         robots_source = (ROOT / 'site/robots.txt').read_text()
         self.assertEqual(re.findall(r'(?mi)^Content-Signal:\s*(.+)$', robots_source),
                          ['ai-train=yes, search=yes, ai-input=no'])
+        self.assertIn(f'Agentmap: {BASE}/.well-known/ard.json', robots_source)
         robots = RobotFileParser()
         robots.parse(robots_source.splitlines())
         self.assertEqual(robots.site_maps(), [BASE + '/sitemap.xml'])
@@ -194,6 +195,7 @@ class DiscoverabilityTests(unittest.TestCase):
         robots = RobotFileParser()
         robots.parse((ROOT / 'site/robots.txt').read_text().splitlines())
         for path in ('/.well-known/api-catalog', '/openapi.json',
+                     '/.well-known/ai-catalog.json', '/.well-known/ard.json',
                      '/.well-known/agent-skills/index.json',
                      '/.well-known/agent-skills/terento-map-catalog/SKILL.md'):
             self.assertTrue(robots.can_fetch('*', BASE + path))
@@ -202,6 +204,54 @@ class DiscoverabilityTests(unittest.TestCase):
         self.assertIn('Content-Type "application/linkset+json"', caddy)
         self.assertIn('header Link "<https://terento.app/.well-known/api-catalog>; rel=api-catalog"', caddy)
         self.assertIn('header @openAPI Content-Type "application/vnd.oai.openapi+json"', caddy)
+
+    def test_ard_manifest_and_legacy_catalog_alias(self):
+        canonical_path = ROOT / 'site/.well-known/ard.json'
+        scanner_path = ROOT / 'site/.well-known/ai-catalog.json'
+        self.assertEqual(canonical_path.read_bytes(), scanner_path.read_bytes())
+        manifest = json.loads(canonical_path.read_text())
+        self.assertEqual(manifest['specVersion'], '1.0')
+        self.assertEqual(manifest['host'], {
+            'displayName': 'Terento',
+            'identifier': BASE,
+        })
+        self.assertEqual(len(manifest['entries']), 2)
+
+        expected = {
+            'urn:air:terento.app:api:public-catalog': ('Terento Public Catalog API', 'application/json'),
+            'urn:air:terento.app:skill:map-catalog': ('Terento Map Catalog Skill', 'text/markdown'),
+        }
+        identifiers = set()
+        for entry in manifest['entries']:
+            identifier = entry['identifier']
+            self.assertRegex(identifier, r'^urn:air:terento\.app:[a-z0-9-]+:[a-z0-9-]+$')
+            self.assertNotIn(identifier, identifiers)
+            identifiers.add(identifier)
+            self.assertEqual(entry['@context'], 'https://agenticresourcediscovery.org/context/v1')
+            self.assertEqual(entry['@id'], identifier)
+            self.assertEqual((entry['displayName'], entry['type']), expected[identifier])
+            self.assertEqual(('url' in entry) + ('data' in entry), 1)
+            self.assertIn(entry['type'], {'application/json', 'text/markdown'})
+            queries = entry['representativeQueries']
+            self.assertGreaterEqual(len(queries), 2)
+            self.assertLessEqual(len(queries), 5)
+            self.assertTrue(all(isinstance(query, str) and query.strip() for query in queries))
+
+            parsed = urlsplit(entry['url'])
+            self.assertEqual((parsed.scheme, parsed.netloc, parsed.query, parsed.fragment),
+                             ('https', 'terento.app', '', ''))
+            if identifier.endswith(':public-catalog'):
+                self.assertEqual(parsed.path, '/openapi.json')
+                self.assertEqual(json.loads((ROOT / 'site/openapi.json').read_text())['openapi'], '3.1.0')
+            else:
+                self.assertEqual(parsed.path, '/.well-known/agent-skills/terento-map-catalog/SKILL.md')
+                self.assertTrue((ROOT / 'site' / parsed.path.lstrip('/')).is_file())
+
+        self.assertEqual(identifiers, set(expected))
+        caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
+        self.assertIn('@ardManifest path /.well-known/ai-catalog.json /.well-known/ard.json', caddy)
+        self.assertIn('Content-Type "application/json"', caddy)
+        self.assertIn('Access-Control-Allow-Origin "*"', caddy)
 
     def test_agent_skills_index_and_artifact_digest(self):
         index_path = ROOT / 'site/.well-known/agent-skills/index.json'

@@ -230,3 +230,25 @@ POST `{"url":"https://terento.app"}` as JSON to
 `https://isitagentready.com/api/scan`; require
 `checks.discovery.agentSkills.status == "pass"`. Local digest and content-type
 tests do not establish that production has been published.
+
+## Agentic Resource Discovery
+
+The canonical ARD manifest is `/.well-known/ard.json`; the same document is
+also served at `/.well-known/ai-catalog.json` for the predecessor path checked
+by the current isitagentready scanner. Both paths return HTTP 200 with
+`application/json`, `Access-Control-Allow-Origin: *`, and a short public cache.
+`site/robots.txt` advertises the canonical path with `Agentmap`.
+
+The manifest's `specVersion` is `1.0` for the AI Catalog data model. Its host
+identifier is the stable canonical site URL. The two entries describe the
+public read-only OpenAPI document (`application/json`) and the catalog skill
+(`text/markdown`); each carries an ARD URN, JSON-LD context, and three
+representative queries. No MCP server or A2A agent is advertised because
+Terento does not provide one. The API remains metadata-only and does not grant
+device write permission. Entry `type` values use IANA-registered media types.
+
+The site runtime test exercises both paths over GET and HEAD, checks their
+content type and CORS headers, and confirms that both return the same manifest.
+After deployment, POST `{"url":"https://terento.app"}` as JSON to
+`https://isitagentready.com/api/scan`; require
+`checks.discovery.ard.status == "pass"`.
