@@ -326,7 +326,11 @@ After the immutable source is recorded, later API/admin work must preserve the
 released-client acceptance contract; it does not change the artifact's source.
 
 
-## Provider availability controls (PR 336 candidate)
+## Beta.17 build 39 — provider availability candidate (PR 336)
+
+The owner authorized publication of beta.17 build 39 on 2026-10-04.
+Packaging/release-candidate.json and Xcode identify this candidate; public
+metadata continues to identify beta.16 build 38 until verified artifacts exist.
 
 The candidate adds migration 066 (default-safe provider monitoring/cooldown
 and package download overrides), an hourly scheduler worker with per-provider
