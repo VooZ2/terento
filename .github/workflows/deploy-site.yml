@@ -7,7 +7,6 @@ on:
     paths:
       - "site/**"
       - "site-deploy/**"
-      - "!site/**/*.md"
       - "!site-deploy/**/*.md"
       - ".github/workflows/deploy-site.yml"
       - ".github/workflows/publish-vps-images.yml"
@@ -73,7 +72,7 @@ jobs:
             .github/workflows/deploy-site.yml .github/workflows/publish-vps-images.yml \
             scripts/infra/deploy-vps-image.sh scripts/ci_http.py scripts/check-live-release-manifest.py \
             scripts/generate-sitemap.py scripts/submit-indexnow.py scripts/verify-live-site.py \
-            ':(exclude)**/*.md'; then
+            ':(exclude)site-deploy/**/*.md'; then
             echo 'deploy=true' >> "$GITHUB_OUTPUT"
           else
             echo 'deploy=false' >> "$GITHUB_OUTPUT"

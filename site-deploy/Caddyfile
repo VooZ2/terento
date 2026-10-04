@@ -42,10 +42,12 @@
   header @indexNowKey Content-Type "text/plain; charset=utf-8"
 
   @legacySupportedWatches path /supported-watches /supported-watches/*
-  redir @legacySupportedWatches /compatibility/ permanent
-
   @legacyAdmin path /admin /admin/*
-  redir @legacyAdmin https://api.terento.app{uri} permanent
+  @negotiatedPage {
+    method GET HEAD
+    path_regexp negotiatedPage ^/([a-zA-Z0-9_-]+/)*$
+  }
+  header @negotiatedPage Vary Accept
 
   handle_errors {
     header X-Robots-Tag "noindex, nofollow"
@@ -53,5 +55,25 @@
     file_server
   }
 
-  file_server
+  route {
+    redir @legacySupportedWatches /compatibility/ permanent
+    redir @legacyAdmin https://api.terento.app{uri} permanent
+
+    # Serve generated public-page Markdown only when an agent asks for it.
+    @markdown {
+      header Accept *text/markdown*
+      method GET HEAD
+      path_regexp markdownPage ^/([a-zA-Z0-9_-]+/)*$
+    }
+    handle @markdown {
+      rewrite * {path}index.md
+      header Vary "Accept"
+      header Content-Type "text/markdown; charset=utf-8"
+      file_server
+    }
+
+    handle {
+      file_server
+    }
+  }
 }
