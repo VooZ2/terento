@@ -90,6 +90,24 @@ curl --fail --silent --show-error --dump-header "$temporary/json-headers" \
   --output "$temporary/update.json" "http://127.0.0.1:$port/updates/macos-arm64.json"
 grep -iq '^X-Robots-Tag: noindex, nofollow' "$temporary/json-headers"
 cmp -s "$repo_root/site/updates/macos-arm64.json" "$temporary/update.json"
+
+for manifest in ai-catalog.json ard.json; do
+  manifest_url="http://127.0.0.1:$port/.well-known/$manifest"
+  manifest_body="$temporary/$manifest"
+  manifest_headers="$temporary/$manifest.headers"
+  [ "$(curl --silent --show-error --dump-header "$manifest_headers" --output "$manifest_body" --write-out '%{http_code}' "$manifest_url")" = 200 ]
+  grep -iq '^Content-Type: application/json' "$manifest_headers"
+  grep -iq '^Access-Control-Allow-Origin: \*' "$manifest_headers"
+  grep -iq '^X-Robots-Tag: noindex, nofollow' "$manifest_headers"
+  cmp -s "$repo_root/site/.well-known/$manifest" "$manifest_body"
+
+  manifest_head_headers="$temporary/$manifest.head-headers"
+  [ "$(curl --silent --show-error --head --dump-header "$manifest_head_headers" --output /dev/null --write-out '%{http_code}' "$manifest_url")" = 200 ]
+  grep -iq '^Content-Type: application/json' "$manifest_head_headers"
+  grep -iq '^Access-Control-Allow-Origin: \*' "$manifest_head_headers"
+done
+cmp -s "$temporary/ard.json" "$temporary/ai-catalog.json"
+
 [ "$(http_status "http://127.0.0.1:$port/$test_key.txt" "$key_body")" = 200 ]
 cmp -s "$key_file" "$key_body"
 

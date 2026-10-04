@@ -26,6 +26,12 @@
     Content-Type "text/markdown; charset=utf-8"
     Cache-Control "public, max-age=300"
   }
+  @ardManifest path /.well-known/ai-catalog.json /.well-known/ard.json
+  header @ardManifest {
+    Content-Type "application/json"
+    Access-Control-Allow-Origin "*"
+    Cache-Control "public, max-age=300"
+  }
 
   @assets path *.css *.js *.svg *.png *.ico *.woff2 *.webmanifest *.xml
   header @assets Cache-Control "public, max-age=604800"
