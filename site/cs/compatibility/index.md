@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**24** modely s úspěšnými instalacemi**114** úspěšných instalacíPoslední úspěšná instalace 2. října 2026
+**24** modely s úspěšnými instalacemi**130** úspěšných instalacíPoslední úspěšná instalace 4. října 2026
 
 Jak tento seznam funguje
 
@@ -29,9 +29,19 @@ fēnix
 
 47 mm, AMOLED
 
-20 úspěšných instalací
+27 úspěšných instalací
 
-Poslední úspěšná instalace 2. října 2026
+Poslední úspěšná instalace 4. října 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, AMOLED, inReach
+
+12 úspěšných instalací
+
+Poslední úspěšná instalace 4. října 2026
 
 fēnix
 
@@ -42,6 +52,16 @@ fēnix
 9 úspěšných instalací
 
 Poslední úspěšná instalace 28. září 2026
+
+Forerunner
+
+### Forerunner 970
+
+AMOLED
+
+8 úspěšných instalací
+
+Poslední úspěšná instalace 4. října 2026
 
 Forerunner
 
@@ -63,25 +83,15 @@ fēnix
 
 Poslední úspěšná instalace 27. září 2026
 
-fēnix
-
-### fēnix 9 Pro
-
-51 mm, AMOLED, inReach
-
-7 úspěšných instalací
-
-Poslední úspěšná instalace 18. září 2026
-
 Forerunner
 
-### Forerunner 970
+### Forerunner 955
 
-AMOLED
+Solar, Standard
 
 6 úspěšných instalací
 
-Poslední úspěšná instalace 23. září 2026
+Poslední úspěšná instalace 3. října 2026
 
 fēnix
 
@@ -122,16 +132,6 @@ fēnix
 6 úspěšných instalací
 
 Poslední úspěšná instalace 29. září 2026
-
-Forerunner
-
-### Forerunner 955
-
-Standard
-
-5 úspěšných instalací
-
-Poslední úspěšná instalace 27. září 2026
 
 fēnix
 
@@ -175,6 +175,16 @@ Poslední úspěšná instalace 19. září 2026
 
 fēnix
 
+### fēnix 8 Pro
+
+47 mm, AMOLED, inReach
+
+3 úspěšných instalací
+
+Poslední úspěšná instalace 3. října 2026
+
+fēnix
+
 ### fēnix 8
 
 43 mm, AMOLED
@@ -212,16 +222,6 @@ Solar, (no Wi-Fi)
 2 úspěšných instalací
 
 Poslední úspěšná instalace 1. října 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-47 mm, AMOLED, inReach
-
-2 úspěšných instalací
-
-Poslední úspěšná instalace 2. září 2026
 
 fēnix
 

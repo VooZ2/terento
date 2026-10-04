@@ -11,7 +11,7 @@ Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej po
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
-**24** modele z udanymi instalacjami**114** udane instalacjeOstatnia udana instalacja 2 października 2026
+**24** modele z udanymi instalacjami**130** udane instalacjeOstatnia udana instalacja 4 października 2026
 
 Jak działa ta lista
 
@@ -29,9 +29,19 @@ fēnix
 
 47 mm, AMOLED
 
-20 udanych instalacji
+27 udanych instalacji
 
-Ostatnia udana instalacja 2 października 2026
+Ostatnia udana instalacja 4 października 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, AMOLED, inReach
+
+12 udanych instalacji
+
+Ostatnia udana instalacja 4 października 2026
 
 fēnix
 
@@ -42,6 +52,16 @@ fēnix
 9 udanych instalacji
 
 Ostatnia udana instalacja 28 września 2026
+
+Forerunner
+
+### Forerunner 970
+
+AMOLED
+
+8 udanych instalacji
+
+Ostatnia udana instalacja 4 października 2026
 
 Forerunner
 
@@ -63,25 +83,15 @@ fēnix
 
 Ostatnia udana instalacja 27 września 2026
 
-fēnix
-
-### fēnix 9 Pro
-
-51 mm, AMOLED, inReach
-
-7 udanych instalacji
-
-Ostatnia udana instalacja 18 września 2026
-
 Forerunner
 
-### Forerunner 970
+### Forerunner 955
 
-AMOLED
+Solar, Standard
 
 6 udanych instalacji
 
-Ostatnia udana instalacja 23 września 2026
+Ostatnia udana instalacja 3 października 2026
 
 fēnix
 
@@ -122,16 +132,6 @@ fēnix
 6 udanych instalacji
 
 Ostatnia udana instalacja 29 września 2026
-
-Forerunner
-
-### Forerunner 955
-
-Standard
-
-5 udanych instalacji
-
-Ostatnia udana instalacja 27 września 2026
 
 fēnix
 
@@ -175,6 +175,16 @@ Ostatnia udana instalacja 19 września 2026
 
 fēnix
 
+### fēnix 8 Pro
+
+47 mm, AMOLED, inReach
+
+3 udanych instalacji
+
+Ostatnia udana instalacja 3 października 2026
+
+fēnix
+
 ### fēnix 8
 
 43 mm, AMOLED
@@ -212,16 +222,6 @@ Solar, (no Wi-Fi)
 2 udanych instalacji
 
 Ostatnia udana instalacja 1 października 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-47 mm, AMOLED, inReach
-
-2 udanych instalacji
-
-Ostatnia udana instalacja 2 września 2026
 
 fēnix
 
