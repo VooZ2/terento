@@ -86,6 +86,17 @@ def verify_refresh_flow():
     spec.loader.exec_module(flow)
     flow.allowed(flow.FACT_FILES)
     flow.allowed(flow.GENERATED_METADATA_FILES)
+    expected_markdown = {f"site/{prefix}compatibility/index.md"
+                         for prefix in ("", "de/", "fr/", "pl/", "cs/", "it/")}
+    assert {p for p in flow.FACT_FILES if p.endswith(".md")} == expected_markdown
+    for unrelated in ("site/index.md", "site/de/guide/index.md"):
+        try:
+            flow.allowed([unrelated])
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("unrelated Markdown accepted")
+
     try:
         flow.allowed(["site/index.html"])
     except RuntimeError:
@@ -211,6 +222,41 @@ def verify_refresh_flow():
         '"gh", "pr", "checks"')
     assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
     assert "HEAD:beta" not in source and "--admin" not in source
+
+
+def verify_released_fixture_adapter():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("released_fixture", REPO_ROOT / "scripts/prepare-released-catalog-tests.py")
+    adapter = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(adapter)
+    current = (REPO_ROOT / adapter.TEST_PATH).read_text()
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        target = root / adapter.TEST_PATH
+        target.parent.mkdir(parents=True)
+        runtime = root / "Sources" / "decoder.swift"
+        runtime.parent.mkdir()
+        runtime.write_text("immutable released production source")
+        target.write_text(current)
+        adapter.prepare(root)
+        assert target.read_text() == current, "fixed tests must remain byte-identical"
+        historical = "\n".join(old for old, _, count in adapter.REPLACEMENTS for _ in range(count))
+        target.write_text(historical)
+        adapter.prepare(root)
+        patched = target.read_text()
+        assert "Release 26.05" not in patched
+        assert "version: package.version" in patched
+        adapter.prepare(root)
+        assert target.read_text() == patched
+        assert runtime.read_text() == "immutable released production source"
+        for drift in (historical.replace("Release 26.05", "Release 26.09"), historical + "\nRelease 26.05"):
+            target.write_text(drift)
+            try:
+                adapter.prepare(root)
+            except ValueError:
+                assert target.read_text() == drift, "unknown source must not be partially rewritten"
+            else:
+                raise AssertionError("unknown historical fixture accepted")
 
 
 def verify_scoped_transport() -> None:
@@ -636,6 +682,7 @@ def main() -> int:
     assert "if: steps.diff.outputs.changed == 'true'" in refresh
     assert "scripts/integrate-compatibility-refresh.py" in refresh
     verify_refresh_flow()
+    verify_released_fixture_adapter()
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "compatibility-page" in deploy_site
     assert "live-compatibility.html" in deploy_site

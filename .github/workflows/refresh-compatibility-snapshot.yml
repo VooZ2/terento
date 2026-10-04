@@ -39,6 +39,7 @@ jobs:
           node Tests/shared-compatibility-data-tests.cjs
           node Tests/compatibility-snapshot-growth-tests.cjs
           node Tests/site-compatibility-refresh-tests.cjs
+          python3 scripts/build-markdown-pages.py --check
           git diff --check
 
       - name: Detect factual changes
@@ -50,7 +51,13 @@ jobs:
             site/fr/compatibility/index.html \
             site/pl/compatibility/index.html \
             site/cs/compatibility/index.html \
-            site/it/compatibility/index.html; then
+            site/it/compatibility/index.html \
+            site/compatibility/index.md \
+            site/de/compatibility/index.md \
+            site/fr/compatibility/index.md \
+            site/pl/compatibility/index.md \
+            site/cs/compatibility/index.md \
+            site/it/compatibility/index.md; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"

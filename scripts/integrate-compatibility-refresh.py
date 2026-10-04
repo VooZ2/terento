@@ -13,6 +13,7 @@ SITEMAP_TITLE = "chore: refresh compatibility sitemap metadata"
 FACT_FILES = ["site/compatibility/public-models.snapshot.json", "site/compatibility/index.html"] + [
     f"site/{locale}/compatibility/index.html" for locale in ("de", "fr", "pl", "cs", "it")
 ]
+FACT_FILES += [path.replace("index.html", "index.md") for path in FACT_FILES if path.endswith("index.html")]
 GENERATED_METADATA_FILES = ["site/sitemap.xml"]
 OWNED_FILES = FACT_FILES + GENERATED_METADATA_FILES
 

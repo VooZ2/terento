@@ -176,8 +176,14 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true", help="write generated Markdown beside each page")
     mode.add_argument("--check", action="store_true", help="check committed Markdown output parity")
+    parser.add_argument("--page", action="append", help="limit output to an exact public route; repeat for multiple pages")
     args = parser.parse_args()
     pages = json.loads(METADATA.read_text(encoding="utf-8"))["pages"]
+    if args.page:
+        unknown = set(args.page) - {page["path"] for page in pages}
+        if unknown:
+            parser.error(f"Unknown public routes: {sorted(unknown)}")
+        pages = [page for page in pages if page["path"] in args.page]
     failed = []
     for page in pages:
         destination = (ROOT / page["file"]).with_name("index.md")
