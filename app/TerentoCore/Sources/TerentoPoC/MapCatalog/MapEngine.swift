@@ -1976,7 +1976,7 @@ final class MapEngine: ObservableObject {
         switch error {
         case .acquisitionWithheld:
             return (.preflight, .sourceArtifactInvalid)
-        case .downloadFailed, .providerUnavailable, .downloadIncomplete, .untrustedSourceURL:
+        case .downloadFailed, .providerUnavailable, .providerConnectionFailed, .downloadIncomplete, .untrustedSourceURL:
             return (.download, .downloadFailed)
         case .workspaceFailed, .unsafeArchivePath, .extractionFailed:
             return (.extract, .sourceValidationFailed)

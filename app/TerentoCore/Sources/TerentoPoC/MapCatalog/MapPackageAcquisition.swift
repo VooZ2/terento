@@ -91,6 +91,7 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case acquisitionWithheld(MapAcquisitionAvailability)
     case downloadFailed(String)
     case providerUnavailable(providerId: String, statusCode: Int?)
+    case providerConnectionFailed(providerId: String, code: URLError.Code)
     case downloadIncomplete(expected: UInt64?, actual: UInt64)
     case invalidPackage(String)
     case extractionFailed(String)
@@ -111,8 +112,29 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
                 ?? "This map is not available for download in Terento."
         case .downloadFailed:
             return "The map could not be downloaded. Check your connection and try again."
-        case .providerUnavailable:
-            return "The selected map provider is temporarily unavailable. Try again later."
+        case .providerUnavailable(let providerID, let status):
+            let name = MapProviderDisplay.downloadName(providerID)
+            switch status {
+            case 404, 410:
+                return "The selected map is unavailable from \(name). Refresh the map list and try again."
+            case 429:
+                return "\(name) is limiting downloads right now. Try again later."
+            case 401, 403:
+                return "\(name) refused the map download. Try again later."
+            case .some(500...599), .none:
+                return "\(name)’s download server is temporarily unavailable. Try again later."
+            default:
+                return "\(name) could not provide the selected map. Refresh the map list and try again."
+            }
+        case .providerConnectionFailed(let providerID, let code):
+            let name = MapProviderDisplay.downloadName(providerID)
+            if code == .notConnectedToInternet {
+                return "Your Mac is offline. Connect to the internet to download from \(name), then try again."
+            }
+            if code == .timedOut {
+                return "\(name)’s download server did not respond in time. Check your connection or try again later."
+            }
+            return "Cannot connect to \(name)’s download server. Check your connection or try again later."
         case .downloadIncomplete:
             return "The map download did not complete. Try again."
         case .invalidPackage, .extractionFailed, .unsupportedPackageFormat,
@@ -137,8 +159,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return availability.detailedExplanation
         case .downloadFailed(let message):
             return "The map package could not be downloaded: \(message)"
-        case .providerUnavailable:
-            return "The selected map provider is currently down. Try again later."
+        case .providerUnavailable, .providerConnectionFailed:
+            return userMessage
         case .downloadIncomplete(let expected, let actual):
             if let expected {
                 return "The map package is incomplete: expected \(expected) bytes, received \(actual)."
@@ -467,13 +489,16 @@ extension MapPackageDownloadClient {
 struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
     private let sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry
     private let directSourcePolicy: ReviewedProviderURLPolicy?
+    private let sessionConfiguration: @Sendable () -> URLSessionConfiguration
 
     init(
         sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry = .bundled,
-        sourcePolicy: ReviewedProviderURLPolicy? = nil
+        sourcePolicy: ReviewedProviderURLPolicy? = nil,
+        sessionConfiguration: @escaping @Sendable () -> URLSessionConfiguration = { .ephemeral }
     ) {
         self.sourcePolicyRegistry = sourcePolicyRegistry
         self.directSourcePolicy = sourcePolicy
+        self.sessionConfiguration = sessionConfiguration
     }
 
     func download(from url: URL) async throws -> MapPackageDownloadResponse {
@@ -522,14 +547,15 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.timeoutInterval = 120
+        // Bound an unresponsive connection without imposing a total map-download limit.
+        request.timeoutInterval = 30
         if let sourceProof {
             request.setValue(sourceProof.etag, forHTTPHeaderField: "If-Match")
             request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
         }
         let redirectDelegate = ReviewedProviderRedirectDelegate(policy: sourcePolicy)
         let session = URLSession(
-            configuration: .ephemeral,
+            configuration: sessionConfiguration(),
             delegate: redirectDelegate,
             delegateQueue: nil
         )
@@ -614,6 +640,9 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
                 temporaryFileURL: temporaryURL
             )
         } catch let error as MapAcquisitionError {
+            throw error
+        } catch let error as URLError {
+            // Keep structured network failures for the provider-aware acquisition boundary.
             throw error
         } catch {
             throw MapAcquisitionError.downloadFailed(error.localizedDescription)
@@ -1293,6 +1322,11 @@ struct MapPackageAcquirer: Sendable {
                     ))
                 }
             )
+        } catch let error as URLError {
+            if error.code == .cancelled { throw CancellationError() }
+            throw MapAcquisitionError.providerConnectionFailed(providerId: package.providerId, code: error.code)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch let error as MapAcquisitionError {
             throw await providerAwareDownloadError(error, package: package)
         } catch {
@@ -1310,9 +1344,8 @@ struct MapPackageAcquirer: Sendable {
         }
 
         guard (200...299).contains(response.statusCode) else {
-            throw await providerAwareDownloadError(
-                .downloadFailed("Provider returned HTTP \(response.statusCode)."),
-                package: package
+            throw MapAcquisitionError.providerUnavailable(
+                providerId: package.providerId, statusCode: response.statusCode
             )
         }
 
@@ -1617,7 +1650,7 @@ struct MapPackageAcquirer: Sendable {
         switch error {
         case .downloadFailed, .downloadIncomplete:
             return true
-        case .acquisitionWithheld, .providerUnavailable, .invalidPackage,
+        case .acquisitionWithheld, .providerUnavailable, .providerConnectionFailed, .invalidPackage,
              .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
              .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound,
              .ambiguousIMG, .workspaceFailed, .untrustedSourceURL,

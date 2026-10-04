@@ -247,6 +247,22 @@ retaining the current safety boundaries. Owner hardware evidence covers a
 Garmin fēnix 8 AMOLED 47 mm: BBBike install/update/remove, MapRando multi-map
 installation, and disconnect/reconnect inventory verification.
 
+### Provider download failures
+
+Install and Update name the map provider when its download server cannot be
+reached or returns an error. A timeout says the server did not respond in time;
+it does not claim a confirmed provider outage. Offline errors identify the Mac's
+connection. Server errors, missing downloads, rejected requests and rate limits
+have separate guidance. Update preserves the typed, safe acquisition message
+instead of replacing it with a generic failure; raw paths and unclassified
+technical errors remain excluded from normal UI.
+
+Provider downloads use a 30-second request inactivity timeout, not a 30-second
+limit on the full map download. Structured network failures do not trigger an
+additional health probe before showing the error. Downloads still come directly
+from reviewed provider sources. A failed update download stops before device
+writes and leaves the installed map intact.
+
 ### Map acquisition reporting
 
 The app records each provider component acquisition directly through the shared

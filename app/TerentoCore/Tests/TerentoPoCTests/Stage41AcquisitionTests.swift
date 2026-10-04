@@ -277,15 +277,15 @@ struct Stage41AcquisitionTests {
                 package: makePackage(),
                 workspace: try makeWorkspace()
             )
-            expect(false, "failed HTTP response returns DOWNLOAD_FAILED")
+            expect(false, "failed HTTP response identifies provider unavailability")
         } catch let error as MapAcquisitionError {
-            if case .downloadFailed = error {
-                expect(true, "failed HTTP response returns DOWNLOAD_FAILED")
+            if case .providerUnavailable = error {
+                expect(true, "failed HTTP response identifies provider unavailability")
             } else {
-                expect(false, "failed HTTP response returns DOWNLOAD_FAILED")
+                expect(false, "failed HTTP response identifies provider unavailability")
             }
         } catch {
-            expect(false, "failed HTTP response returns DOWNLOAD_FAILED")
+            expect(false, "failed HTTP response identifies provider unavailability")
         }
     }
 
@@ -913,7 +913,7 @@ struct Stage41AcquisitionTests {
             ).acquire(package: makePackage(), workspace: workspace)
             expect(false, "failed acquisition produces no validated artifact")
         } catch let error as MapAcquisitionError {
-            if case .downloadFailed = error {
+            if case .providerUnavailable = error {
                 expect(
                     root.map { !FileManager.default.fileExists(atPath: $0.path) } == true,
                     "failed acquisition removes its workspace"

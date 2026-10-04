@@ -1106,6 +1106,16 @@ struct MapProviderFilterOption: Identifiable, Equatable, Sendable {
 }
 
 enum MapProviderDisplay {
+    static func downloadName(_ providerID: String) -> String {
+        switch MapIdentity.normalizeProvider(providerID) {
+        case "freizeitkarte": return "Freizeitkarte"
+        case "opentopomap": return "OpenTopoMap"
+        case "maprando": return "MapRando"
+        case "bbbike": return "BBBike"
+        default: return "The map provider"
+        }
+    }
+
     static func sourceProviderID(filterID: String) -> String {
         let id = MapIdentity.normalizeProvider(filterID)
         return id == "bbbikeontrail" ? "bbbike" : id

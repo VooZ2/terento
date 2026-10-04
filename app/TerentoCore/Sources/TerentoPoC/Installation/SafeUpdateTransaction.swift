@@ -128,16 +128,25 @@ enum SafeUpdateAcquisitionStage: String, Equatable, Sendable {
 
 enum SafeUpdateAcquisitionError: LocalizedError, Equatable, Sendable {
     case failed(String, stage: SafeUpdateAcquisitionStage = .preflight)
+    case acquisition(MapAcquisitionError, stage: SafeUpdateAcquisitionStage)
 
     var errorDescription: String? {
         switch self {
         case .failed(let message, _): return message
+        case .acquisition(let error, _): return error.localizedDescription
+        }
+    }
+
+    var userMessage: String {
+        switch self {
+        case .acquisition(let error, _): return error.userMessage
+        case .failed: return "The selected map could not be acquired from its provider."
         }
     }
 
     var stage: SafeUpdateAcquisitionStage {
         switch self {
-        case .failed(_, let stage): return stage
+        case .failed(_, let stage), .acquisition(_, let stage): return stage
         }
     }
 }
@@ -185,7 +194,7 @@ private final class SafeUpdateAcquisitionObserver: @unchecked Sendable {
         lock.unlock()
         guard reachedDownload, let error = error as? MapAcquisitionError else { return .preflight }
         switch error {
-        case .downloadFailed, .providerUnavailable, .downloadIncomplete, .untrustedSourceURL:
+        case .downloadFailed, .providerUnavailable, .providerConnectionFailed, .downloadIncomplete, .untrustedSourceURL:
             return .download
         case .extractionFailed, .unsafeArchivePath:
             return .extract
@@ -262,7 +271,11 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
         } catch {
             evidence.finish(Task.isCancelled || error is CancellationError
                 || (error as? URLError)?.code == .cancelled ? .cancelled : .failed)
-            throw SafeUpdateAcquisitionError.failed(error.localizedDescription, stage: evidence.failureStage(for: error))
+            let stage = evidence.failureStage(for: error)
+            if let acquisitionError = error as? MapAcquisitionError {
+                throw SafeUpdateAcquisitionError.acquisition(acquisitionError, stage: stage)
+            }
+            throw SafeUpdateAcquisitionError.failed(error.localizedDescription, stage: stage)
         }
     }
 }
@@ -712,7 +725,8 @@ struct SafeUpdateTransaction: Sendable {
                 onProgress: onProgress
             )
         } catch {
-            var result = failure(.failedAcquisition, "The selected map could not be acquired from its provider.")
+            var result = failure(.failedAcquisition, (error as? SafeUpdateAcquisitionError)?.userMessage
+                ?? "The selected map could not be acquired from its provider.")
             result.acquisitionFailureStage = (error as? SafeUpdateAcquisitionError)?.stage ?? .preflight
             return result
         }
