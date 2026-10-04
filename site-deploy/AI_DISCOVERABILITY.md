@@ -211,3 +211,22 @@ After publication, verify GET/HEAD headers and linked resources, then POST
 `https://isitagentready.com/api/scan`; require
 `checks.discovery.apiCatalog.status == "pass"`. A local test is not evidence
 that production has been published.
+
+## Agent Skills Discovery
+
+`/.well-known/agent-skills/index.json` publishes the Agent Skills Discovery
+RFC v0.2.0 index with the required schema URI and SHA-256 digest for each
+listed artifact. The current `terento-map-catalog` skill explains how agents
+can read the public map catalog while preserving the original-provider,
+attribution, licensing and device-safety boundaries. Its `SKILL.md` is served
+as `text/markdown; charset=utf-8`; the JSON index is served as `application/json`
+and inherits the public JSON noindex rule. Keep the frontmatter and index
+description synchronized, and recalculate the digest from the exact artifact
+bytes whenever the skill changes. Discovery metadata does not add a new API
+capability or authorize map installation or device writes.
+
+After publication, verify GET and HEAD for the index and skill resource, then
+POST `{"url":"https://terento.app"}` as JSON to
+`https://isitagentready.com/api/scan`; require
+`checks.discovery.agentSkills.status == "pass"`. Local digest and content-type
+tests do not establish that production has been published.
