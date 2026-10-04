@@ -241,15 +241,37 @@ def verify_released_fixture_adapter():
         adapter.prepare(root)
         assert target.read_text() == current, "fixed tests must remain byte-identical"
         historical = "\n".join(old for old, _, count in adapter.REPLACEMENTS for _ in range(count))
+        for name, provider_id, count in adapter.MATRICES:
+            contour = ('            let requiresBundledContourFixture = ProcessInfo.processInfo.environment[\n'
+                       '                "TERENTO_CATALOG_CONTRACT_PATH"\n'
+                       '            ] == nil') if provider_id == "opentopomap" else ""
+            historical += f'''\n    private static func {name}() {{
+        do {{
+            let data = try Data(contentsOf: identityContractCatalogURL)
+            let allRowsPass = packages.count == {count} && packages.allSatisfy {{ package in true }}
+{contour}
+        }} catch {{}}
+    }}
+'''
+        historical += "\n    private static func unchangedConfiguredCatalogCompatibility() {}"
         target.write_text(historical)
         adapter.prepare(root)
         patched = target.read_text()
         assert "Release 26.05" not in patched
         assert "version: package.version" in patched
+        assert patched.count("for catalogURL in matrixURLs") == 2
+        assert patched.count("provider != nil && packages.count == expectedRowCount") == 2
+        assert patched.count("installationEligibility = provider.map") == 2
+        assert patched.count("actualRows=") == 2 and patched.count("expectedRows=") == 2
+        assert patched.count("missing-provider") == 2
+        assert "? 63 : 0" in patched and "? 177 : 0" in patched
+        assert "let requiresBundledContourFixture = catalogURL == bundledCatalogURL" in patched
+        assert "unchangedConfiguredCatalogCompatibility() {}" in patched
+        assert 'health = "HEALTHY"' not in patched
         adapter.prepare(root)
         assert target.read_text() == patched
         assert runtime.read_text() == "immutable released production source"
-        for drift in (historical.replace("Release 26.05", "Release 26.09"), historical + "\nRelease 26.05"):
+        for drift in (historical.replace("Release 26.05", "Release 26.09"), historical + "\nRelease 26.05", historical.replace("packages.count == 63", "packages.count >= 63"), historical.replace("testEveryBundledFreizeitkarteRowMatchesProviderIdentity", "unknownMatrix")):
             target.write_text(drift)
             try:
                 adapter.prepare(root)
