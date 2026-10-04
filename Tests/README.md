@@ -84,7 +84,12 @@ suite.
 routes for a candidate. Daily monitoring and API deployment additionally use
 `validate-released-map-catalog.sh` with immutable published source commits from
 `contracts/released-catalog-clients.json`. Those tests execute source decoders,
-not the downloaded application or Garmin hardware. Weekly CI does not duplicate
+not the downloaded application or Garmin hardware. The known historical
+Freizeitkarte synthetic IMG fixture is adapted in the temporary test file to
+use each catalog row's release instead of a fixed May 2026 date. Production
+sources and decoder validation remain pinned and unmodified; unknown fixture
+layouts fail closed. The current fixture also verifies that the production
+source validator still rejects a mismatched release. Weekly CI does not duplicate
 the daily live monitor. CodeQL scans Python on affected paths and weekly.
 
 ## Local mutation simulations

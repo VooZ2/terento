@@ -132,6 +132,10 @@ def main() -> int:
             if args.output.resolve() != SNAPSHOT_PATH.resolve():
                 raise ValueError("page generation requires the canonical snapshot output path")
             subprocess.run([sys.executable, str(GENERATOR_PATH)], cwd=ROOT, check=True)
+            markdown_args = [sys.executable, str(ROOT / "scripts/build-markdown-pages.py"), "--write"]
+            for prefix in ("", "de/", "fr/", "pl/", "cs/", "it/"):
+                markdown_args.extend(["--page", f"/{prefix}compatibility/"])
+            subprocess.run(markdown_args, cwd=ROOT, check=True)
     except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1

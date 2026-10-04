@@ -19,6 +19,8 @@ while read -r commit route tag; do
   python3 "$repo_root/scripts/ci_http.py" "released-$route" --fail --silent --show-error \
     --connect-timeout 10 --max-time 60 --output "$work_dir/catalog.json" "https://api.terento.app/maps/$route"
   print "Checking $tag ($commit) against $route"
+  # Repair only the historical synthetic test fixture; production sources stay pinned.
+  python3 "$repo_root/scripts/prepare-released-catalog-tests.py" "$work_dir/$commit"
   runner="$work_dir/$commit/app/TerentoCore/Tests/run-native-provider-neutral-tests.sh"
   TERENTO_CATALOG_CONTRACT_PATH="$work_dir/catalog.json" /bin/zsh "$runner"
 done < "$work_dir/clients"

@@ -48,6 +48,7 @@ struct Stage1ProviderNeutralTests {
         testOpenTopoMapSplitDateHeadersAreIdentified()
         testEveryBundledOpenTopoMapRowAcceptsBothDateHeaderForms()
         testEveryBundledFreizeitkarteRowMatchesProviderIdentity()
+        testFreizeitkarteVersionMismatchRemainsRejected()
         testConfiguredCatalogContractIsCompatibleWithClient()
         testIncompatibleRemoteIdentityIsRejected()
         testBundledCatalogIncludesOpenTopoMap()
@@ -58,7 +59,7 @@ struct Stage1ProviderNeutralTests {
         testProviderLifecycleMetadataDecodesFailClosed()
         await testDownloadFailureUsesConfirmedProviderDownState()
 
-        print("PASS: 28 Stage 1 provider-neutral core tests")
+        print("PASS: 29 Stage 1 provider-neutral core tests")
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {
@@ -643,7 +644,7 @@ struct Stage1ProviderNeutralTests {
             let allRowsPass = packages.count == 63 && packages.allSatisfy { package in
                 let metadata = parser.parse(
                     Array(
-                        makeFreizeitkarteIMG(token: package.providerRegionId)
+                        makeFreizeitkarteIMG(token: package.providerRegionId, version: package.version)
                             .prefix(GarminIMGMetadataParser.prefixLength)
                     ),
                     filename: "\(package.providerRegionId)_en_gmapsupp.img"
@@ -680,6 +681,33 @@ struct Stage1ProviderNeutralTests {
                 false,
                 "all 63 Freizeitkarte rows match their provider-region IMG identity"
             )
+        }
+    }
+
+    private static func testFreizeitkarteVersionMismatchRemainsRejected() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        do {
+            let catalog = try MapCatalogDocumentDecoder().decode(Data(contentsOf: identityContractCatalogURL))
+            guard let package = catalog.packages.first(where: { $0.providerId == "freizeitkarte" }) else {
+                expect(false, "Freizeitkarte validation fixture exists")
+                return
+            }
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let file = directory.appendingPathComponent("fixture.img")
+            try Data(makeFreizeitkarteIMG(token: package.providerRegionId, version: package.version)).write(to: file)
+            let validator = MapSourceValidator()
+            _ = try validator.validate(fileURL: file, expectedPackage: package)
+            let wrongVersion = MapVersion(year: package.version.year + 1, month: package.version.month)!
+            try Data(makeFreizeitkarteIMG(token: package.providerRegionId, version: wrongVersion)).write(to: file)
+            do {
+                _ = try validator.validate(fileURL: file, expectedPackage: package)
+                expect(false, "Freizeitkarte source with mismatched release must be rejected")
+            } catch MapSourceValidationError.versionMismatch {
+                expect(true, "Freizeitkarte matching release passes and a different release remains rejected")
+            }
+        } catch {
+            expect(false, "Freizeitkarte source version validation: \(error)")
         }
     }
 
@@ -972,7 +1000,7 @@ struct Stage1ProviderNeutralTests {
         return bytes
     }
 
-    private static func makeFreizeitkarteIMG(token: String) -> [UInt8] {
+    private static func makeFreizeitkarteIMG(token: String, version: MapVersion) -> [UInt8] {
         var bytes = Array(repeating: UInt8(0), count: 8192)
         write("DSKIMG", at: 0x10, to: &bytes)
         write("GARMIN", at: 0x41, to: &bytes)
@@ -985,8 +1013,8 @@ struct Stage1ProviderNeutralTests {
 
         let continuation = Array(header.dropFirst(20))
         let detail = continuation.isEmpty
-            ? Array("Release 26.05".utf8)
-            : continuation + Array(" (Release 26.05)".utf8)
+            ? Array("Release \(String(format: "%02d.%02d", version.year % 100, version.month))".utf8)
+            : continuation + Array(" (Release \(String(format: "%02d.%02d", version.year % 100, version.month)))".utf8)
         bytes.replaceSubrange(
             0x65..<(0x65 + 31),
             with: Array(detail.prefix(31))

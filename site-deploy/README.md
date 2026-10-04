@@ -217,13 +217,15 @@ Public compatibility pages contain a generated factual snapshot and refresh
 from the live API. Failed background refresh retains the snapshot with a stale
 notice and Retry. The six-hour scheduled/manual snapshot workflow fetches the
 public API through the bounded CI HTTP transport, validates and regenerates
-the snapshot/pages. An unchanged factual snapshot succeeds without a commit,
+the snapshot/pages and their six Markdown representations. An unchanged factual snapshot succeeds without a commit,
 PR or deployment.
 
 Factual changes use the single workflow-owned
 `terento/compatibility-snapshot-refresh` branch and a reusable PR into protected
-`beta`; only the snapshot JSON and six generated compatibility HTML files may
-be committed. Existing branch ownership is checked before an explicit
+`beta`; the factual commit includes only the snapshot JSON and six generated
+compatibility HTML/Markdown pairs. The subsequent sitemap metadata commit
+records the factual commit date. Unrelated page representations remain outside
+the automation allowlist. Existing branch ownership is checked before an explicit
 force-with-lease update. The workflow never pushes beta directly. It explicitly
 dispatches Swift CI and waits for a new run on the exact PR head, including
 `build-and-test`, then checks all required PR checks and mergeability before

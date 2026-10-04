@@ -20,6 +20,7 @@ const sourceFiles = [
   "site/compatibility/compatibility-locales.js",
   "site/compatibility/compatibility.js",
   "scripts/build-compatibility-pages.py",
+  "scripts/build-markdown-pages.py",
   "scripts/update-compatibility-snapshot.py",
 ];
 
@@ -52,12 +53,20 @@ function createGeneratedSite(additionalModels) {
     path.join(testRoot, "scripts/update-compatibility-snapshot.py"),
     "--input", payloadPath,
     "--output", path.join(testRoot, "site/compatibility/public-models.snapshot.json"),
-    "--no-pages",
   ], { cwd: testRoot, env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" } });
-  run("python3", [path.join(testRoot, "scripts/build-compatibility-pages.py")], {
+  run("python3", [path.join(testRoot, "scripts/build-markdown-pages.py"), "--check",
+    ...["", "de/", "fr/", "pl/", "cs/", "it/"].flatMap(prefix => ["--page", `/${prefix}compatibility/`])], {
     cwd: testRoot,
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
   });
+  const before = sourceFiles.filter(file => file.endsWith("index.html") && file.includes("compatibility/"))
+    .flatMap(file => [file, file.replace("index.html", "index.md")])
+    .map(file => [file, fs.readFileSync(path.join(testRoot, file), "utf8")]);
+  run("python3", [path.join(testRoot, "scripts/update-compatibility-snapshot.py"),
+    "--input", payloadPath], { cwd: testRoot });
+  for (const [file, contents] of before) {
+    assert.equal(fs.readFileSync(path.join(testRoot, file), "utf8"), contents, `repeat refresh changed ${file}`);
+  }
   const generatedSnapshot = JSON.parse(fs.readFileSync(path.join(testRoot, "site/compatibility/public-models.snapshot.json"), "utf8"));
   assert.equal(generatedSnapshot.models.length, baseline.models.length + additionalModels.length, "generated snapshot preserves factual growth");
   return { testRoot, baselineCount: baseline.models.length, expandedCount: generatedSnapshot.models.length };
