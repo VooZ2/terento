@@ -12,8 +12,8 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 27,
-      "lastSuccessfulInstallation": "2026-10-04T15:43:58+00:00"
+      "successfulInstallations": 35,
+      "lastSuccessfulInstallation": "2026-10-04T19:24:44+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -338,5 +338,5 @@
       "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
     }
   ],
-  "generatedAt": "2026-10-04T18:35:19.765382+00:00"
+  "generatedAt": "2026-10-04T20:33:53.817452+00:00"
 }
