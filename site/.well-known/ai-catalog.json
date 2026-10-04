@@ -1,0 +1,37 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Terento",
+    "identifier": "https://terento.app"
+  },
+  "entries": [
+    {
+      "@context": "https://agenticresourcediscovery.org/context/v1",
+      "@id": "urn:air:terento.app:api:public-catalog",
+      "identifier": "urn:air:terento.app:api:public-catalog",
+      "displayName": "Terento Public Catalog API",
+      "type": "application/json",
+      "url": "https://terento.app/openapi.json",
+      "description": "OpenAPI 3.1 description for Terento’s public read-only map, device, and reviewed compatibility metadata API. It does not authorize map acquisition or device writes.",
+      "representativeQueries": [
+        "Find Terento’s public read-only map catalog and provider metadata.",
+        "Which read-only endpoints provide map, device, and compatibility metadata?",
+        "Find original provider URLs, licenses, and map version details in Terento."
+      ]
+    },
+    {
+      "@context": "https://agenticresourcediscovery.org/context/v1",
+      "@id": "urn:air:terento.app:skill:map-catalog",
+      "identifier": "urn:air:terento.app:skill:map-catalog",
+      "displayName": "Terento Map Catalog Skill",
+      "type": "text/markdown",
+      "url": "https://terento.app/.well-known/agent-skills/terento-map-catalog/SKILL.md",
+      "description": "Read-only instructions for discovering Terento map metadata while preserving original-provider, attribution, licensing, and device-safety boundaries.",
+      "representativeQueries": [
+        "How can I safely read Terento’s public map catalog?",
+        "Find a map package’s original provider URL and license information.",
+        "What does Terento’s map catalog say about providers and compatibility evidence?"
+      ]
+    }
+  ]
+}
