@@ -281,14 +281,14 @@ class HTTPAPITests(unittest.TestCase):
         )
         self.assertIn("ETag", response.headers)
         self.assertIn("Last-Modified", response.headers)
-        self.assertIn("Cache-Control", response.headers)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
 
         cached, cached_body = self.request(
             "/maps/catalog.json",
             {"If-None-Match": response.headers["ETag"]},
         )
-        self.assertEqual(cached.status, 304)
-        self.assertEqual(cached_body, b"")
+        self.assertEqual(cached.status, 200)
+        self.assertEqual(json.loads(cached_body), document)
 
     def test_health_is_not_cached(self) -> None:
         original_rows = [dict(row) for row in self.database.compatibility_rows]

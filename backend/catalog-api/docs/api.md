@@ -292,7 +292,7 @@ closure then moves the diagnostic to resolved history.
 The device detail history keeps the exact model/variant scope, supports All,
 Successful, Failed, Open errors, and Resolved errors filters, and uses a
 25/50-row presentation page. The provider detail primary health disclosure
-shows the newest check; its history disclosure contains only previous checks,
+shows the newest observation even when stale; its compact history disclosure contains at most 10 previous checks from the last 30 days,
 so the newest row is not repeated.
 
 ## `GET https://api.terento.app/admin/campaign-links`
@@ -507,12 +507,13 @@ collection failure does not clear the previous known-good catalog.
 Successful responses include:
 
 ```text
-Cache-Control: public, max-age=300, stale-while-revalidate=86400
+Cache-Control: no-store
 ETag: "<sha256>"
 Last-Modified: <HTTP date>
 ```
 
-Clients should send `If-None-Match` or `If-Modified-Since` and accept HTTP 304.
+Map availability is time-sensitive. Conditional map requests return a fresh
+HTTP 200 body; clients must not reuse stale catalog authorization.
 The `catalogVersion` value changes only for an intentional contract change;
 adding optional metadata fields does not require a version bump.
 
@@ -574,10 +575,54 @@ count.
 
 ## `GET /admin/providers/{id}/health`
 
-Returns the latest provider health result and bounded health history. The
+Returns the latest provider health result and up to 10 previous checks from the
+last 30 days. The newest result is retained even when older than 30 days. The
 health record separates website, catalog, redirect, download, MIME, magic
 bytes, ZIP, IMG, and last-update statuses. Checks use bounded `HEAD`/`GET`/`Range`
 requests and do not persist an archive on the server.
+
+## Provider monitoring and download controls
+
+The scheduler checks active providers every hour by default, independently of
+catalog collection. Each provider supports 1, 6, or 24 hours from its last
+completed check. The worker wakes every minute and uses the same provider lock
+and persisted Retry-After cooldown as manual checks and collection. A failed
+provider does not stop checks for other providers. Scheduled observations do
+not create hourly Admin audit entries. Raw health observations older than
+30 days are pruned, retaining the latest observation per provider. Admin audit
+and collection evidence are not deleted by this cleanup.
+
+`POST /admin/providers/{id}/health-schedule` accepts exactly
+`{"intervalHours":1}` (or 6/24). `POST /admin/providers/{id}/downloads` accepts
+`{"packageId":"…","enabled":false,"reason":"…"}`. Both require the existing
+Admin session and CSRF token and create audit records. Disabling requires a
+non-empty reason of at most 500 characters; enabling clears it. The reason is
+private Admin evidence. The package must belong to this provider. The separate
+package override survives catalog refreshes; it does not change source
+validation or remove installed files.
+
+Provider detail adds `monitoring` (`intervalHours`, `nextCheckAt`, `stale`) and
+`downloadBlockReason`; package rows add `downloads_disabled` and
+`downloads_disabled_reason`. `nextCheckAt` includes a provider cooldown and is
+a due time, not a guarantee when another provider operation holds the lock.
+
+Public map catalogs add nullable `downloadBlockReason` to providers/packages:
+`PROVIDER_DOWN`, `PROVIDER_PAUSED`, `PROVIDER_RATE_LIMITED`, `STATUS_STALE`,
+`ADMIN_DISABLED`, or `PACKAGE_UNAVAILABLE`. Only download-specific DOWN blocks
+all maps; website failure alone does not. Up to eight original source URLs are
+sampled. All transport/5xx failures mean DOWN; mixed outcomes or missing maps
+mean DEGRADED. A missing/unknown observation or one older than its interval plus
+10 minutes means STATUS_STALE; a known outage remains blocked until checked
+again. HTTP 429 stops further probes and persists a cooldown.
+
+Catalog responses use `Cache-Control: no-store` and return a fresh body even
+for conditional requests because eligibility can change with elapsed time.
+Validated catalog entries remain visible. The native app refreshes metadata
+while open and rechecks current API eligibility before creating acquisition
+workspace or sending provider download requests. Blocked Install/Update
+controls display a named provider reason; installed-map removal remains
+independent. These controls require the updated native client; already released
+clients do not interpret the new fields. No map data passes through the API.
 
 ## `POST /admin/providers/{id}/check`
 
@@ -854,7 +899,7 @@ directly by the Mac and cached locally; the API does not proxy or host it. A
 missing or invalid asset/source falls back to the generic Terento watch
 illustration.
 
-The device endpoint supports the same public cache policy as the map endpoint:
+The device endpoint retains its public cache policy:
 `ETag`, `Last-Modified`, `Cache-Control: public, max-age=300,
 stale-while-revalidate=86400`, and conditional GET responses with HTTP 304.
 

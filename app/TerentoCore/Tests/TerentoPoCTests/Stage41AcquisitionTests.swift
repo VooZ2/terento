@@ -48,6 +48,7 @@ struct Stage41AcquisitionTests {
         testAcquisitionPolicyIdentityMapping()
         testBundledCatalogPolicyCounts()
         testAcquisitionErrorsHaveSafeUserCopy()
+        await testDownloadBlocksBeforeSideEffects()
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
@@ -277,15 +278,15 @@ struct Stage41AcquisitionTests {
                 package: makePackage(),
                 workspace: try makeWorkspace()
             )
-            expect(false, "failed HTTP response returns DOWNLOAD_FAILED")
+            expect(false, "failed HTTP response identifies provider unavailability")
         } catch let error as MapAcquisitionError {
-            if case .downloadFailed = error {
-                expect(true, "failed HTTP response returns DOWNLOAD_FAILED")
+            if case .providerUnavailable = error {
+                expect(true, "failed HTTP response identifies provider unavailability")
             } else {
-                expect(false, "failed HTTP response returns DOWNLOAD_FAILED")
+                expect(false, "failed HTTP response identifies provider unavailability")
             }
         } catch {
-            expect(false, "failed HTTP response returns DOWNLOAD_FAILED")
+            expect(false, "failed HTTP response identifies provider unavailability")
         }
     }
 
@@ -913,7 +914,7 @@ struct Stage41AcquisitionTests {
             ).acquire(package: makePackage(), workspace: workspace)
             expect(false, "failed acquisition produces no validated artifact")
         } catch let error as MapAcquisitionError {
-            if case .downloadFailed = error {
+            if case .providerUnavailable = error {
                 expect(
                     root.map { !FileManager.default.fileExists(atPath: $0.path) } == true,
                     "failed acquisition removes its workspace"
@@ -1125,6 +1126,27 @@ struct Stage41AcquisitionTests {
             },
             "acquisition failures keep paths and byte details in diagnostics, not user-facing copy"
         )
+    }
+
+    private static func testDownloadBlocksBeforeSideEffects() async {
+        for remote in [false, true] {
+            let counter = AcquisitionSideEffectCounter()
+            let package = MapPackage(id: "fzk-ltu", providerId: "freizeitkarte", regionId: "LTU",
+                name: "Lithuania", version: MapVersion(year: 2026, month: 5)!, sizeBytes: 1,
+                sourceURL: URL(string: "https://download.freizeitkarte-osm.de/garmin/latest/LTU.zip"),
+                releaseDate: nil, identifier: "LTU", downloadBlockReason: remote ? nil : "ADMIN_DISABLED")
+            do {
+                _ = try await MapPackageAcquirer(
+                    availabilityCheck: { _ in throw MapAcquisitionError.acquisitionWithheld(.blocked(provider: "Freizeitkarte", reason: "PROVIDER_DOWN")) },
+                    downloadClient: CountingDownloadClient(counter: counter),
+                    workspaceFactory: { counter.workspaceCreations += 1; return try makeWorkspace() }
+                ).acquire(package: package)
+                expect(false, "blocked download must fail")
+            } catch let error as MapAcquisitionError {
+                expect(error.userMessage.contains("Freizeitkarte") && counter.workspaceCreations == 0 && counter.downloads == 0,
+                    "\(remote ? "remote" : "catalog") block fails before workspace and provider HTTP")
+            } catch { expect(false, "unexpected block error") }
+        }
     }
 
     private static func testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP() async {

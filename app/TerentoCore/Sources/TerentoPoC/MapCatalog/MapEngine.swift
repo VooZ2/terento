@@ -1021,9 +1021,26 @@ final class MapEngine: ObservableObject {
         return ((try? store.read(deviceKey: key))?.entries ?? []).filter { $0.deviceKey == key }
     }
 
-    /// Refreshes the device-derived inventory after a successful lifecycle
-    /// operation. This is read-only and reuses the normal scanner/catalog
-    /// pipeline.
+    /// Refresh metadata without touching or rescanning the connected device.
+    func refreshCatalogAvailability() async {
+        guard !isBusy, !operationGate.isBusy, let original = result else { return }
+        let refreshed = try? await catalogLoader.loadCurrentRemote()
+        guard !isBusy, !operationGate.isBusy, result == original,
+              let catalog = refreshed ?? loadedCatalog?.withUnverifiedDownloadAvailability() else { return }
+        let comparisons = catalog.packages.compactMap { package -> MapComparison? in
+            guard let provider = catalog.provider(for: package.providerId),
+                  let region = catalog.region(for: package.regionId, providerId: package.providerId) else { return nil }
+            return MapComparisonEngine().compare(installedMaps: original.scan.installedMaps,
+                provider: provider, region: region, catalogMap: package)
+        }
+        loadedCatalog = catalog
+        catalogSource = refreshed == nil ? .cachedRemote : .remote
+        catalogUpdatedAt = catalog.updatedAt
+        result = MapInventoryResult(scan: original.scan, deviceFiles: original.deviceFiles,
+            comparisons: comparisons + original.comparisons.filter { $0.catalogMap.sourceKind == .custom })
+    }
+
+    /// Refreshes the device inventory after a completed lifecycle operation.
     func refreshCurrentDeviceMaps() {
         guard let identity = currentIdentity,
               let availableStorage = currentAvailableStorage else {
@@ -1290,6 +1307,7 @@ final class MapEngine: ObservableObject {
             installPackageIDs.contains($0.item.package.id)
         }
         let acquirer = MapPackageAcquirer(
+            availabilityCheck: { try await MapCatalogLoader().validateCurrentAvailability(package: $0) },
             providerHealthChecker: FoundationMapProviderHealthChecker()
         )
         let customAcquirer = CustomMapSourceAcquirer()
@@ -1976,7 +1994,7 @@ final class MapEngine: ObservableObject {
         switch error {
         case .acquisitionWithheld:
             return (.preflight, .sourceArtifactInvalid)
-        case .downloadFailed, .providerUnavailable, .downloadIncomplete, .untrustedSourceURL:
+        case .downloadFailed, .providerUnavailable, .providerConnectionFailed, .downloadIncomplete, .untrustedSourceURL:
             return (.download, .downloadFailed)
         case .workspaceFailed, .unsafeArchivePath, .extractionFailed:
             return (.extract, .sourceValidationFailed)

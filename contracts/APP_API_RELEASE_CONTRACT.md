@@ -324,3 +324,28 @@ an unrelated merge can invalidate an up-to-date-branch check and force the entir
 candidate CI to rerun. Do not bypass branch protection to recover lost time.
 After the immutable source is recorded, later API/admin work must preserve the
 released-client acceptance contract; it does not change the artifact's source.
+
+
+## Beta.17 build 39 — provider availability candidate (PR 336)
+
+The owner authorized publication of beta.17 build 39 on 2026-10-04.
+Packaging/release-candidate.json and Xcode identify this candidate; public
+metadata continues to identify beta.16 build 38 until verified artifacts exist.
+
+The candidate adds migration 066 (default-safe provider monitoring/cooldown
+and package download overrides), an hourly scheduler worker with per-provider
+1/6/24-hour intervals, and additive nullable `downloadBlockReason` in the map
+catalog. Schema and catalog versions remain unchanged. Deploy the backend via
+the normal immutable-image migration path before distributing the native build
+that requires a current eligibility response. Validate live health scheduling,
+Admin CSRF controls, catalog `no-store`, and enabled/disabled package responses
+before the native release gate. No production rollout or hardware PASS is
+established by local tests.
+
+Released older clients ignore the new restriction fields; this rollout does
+not retroactively enforce manual map controls in those binaries. The new
+native client keeps restricted maps visible, disables Install/Update, and
+checks current remote eligibility before acquisition. Removal and device
+ownership rules are unchanged. If the API is unreachable or its health evidence
+is stale, new acquisition waits for a current response. An in-flight transfer
+is not cancelled when monitoring changes.

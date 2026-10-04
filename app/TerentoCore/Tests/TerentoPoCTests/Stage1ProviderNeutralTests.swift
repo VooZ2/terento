@@ -28,7 +28,52 @@ struct Stage1ProviderNeutralTests {
         )
     }
 
+    private static func testBlockedCatalogStaysVisible() {
+        do {
+            let url = packageRoot.appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json")
+            var document = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
+            var providers = document["providers"] as! [[String: Any]]
+            for index in providers.indices {
+                providers[index]["downloadBlockReason"] = "PROVIDER_DOWN"
+                providers[index]["health"] = "DOWN"
+            }
+            document["providers"] = providers
+            let catalog = try MapCatalogDocumentDecoder().decode(JSONSerialization.data(withJSONObject: document))
+            expect(catalog.packages.count == 1160 && MapCatalogClientCompatibilityValidator().isCompatible(catalog),
+                "all blocked providers retain complete compatible catalog")
+            for lifecycle in [MapProviderLifecycleStatus.paused, .retired] {
+                let emptyProvider = MapProvider(id: "empty-provider", name: "Empty provider", website: nil,
+                    attribution: nil, licenseURL: nil, lifecycleStatus: lifecycle)
+                let withEmptyProvider = MapCatalog(catalogVersion: catalog.catalogVersion,
+                    updatedAt: catalog.updatedAt, providers: catalog.providers + [emptyProvider],
+                    regions: catalog.regions, packages: catalog.packages)
+                expect(MapCatalogClientCompatibilityValidator().isCompatible(withEmptyProvider),
+                    "empty \(lifecycle) provider does not invalidate other providers")
+            }
+            let package = catalog.packages[0]
+            expect(package.withArtifacts(package.artifacts).downloadBlockReason == "PROVIDER_DOWN"
+                && package.acquisitionPackage(for: package.mainArtifact!).downloadBlockReason == "PROVIDER_DOWN",
+                "artifact projections preserve download block")
+            expect(MapPackageAcquisitionPolicyResolver().availability(for: package) != .available,
+                "provider download block disables package acquisition")
+            expect(package.withUnverifiedDownloadAvailability().downloadBlockReason == "PROVIDER_DOWN",
+                "failed refresh preserves a known provider outage")
+            for index in providers.indices { providers[index].removeValue(forKey: "downloadBlockReason") }
+            document["providers"] = providers
+            let websiteDown = try MapCatalogDocumentDecoder().decode(JSONSerialization.data(withJSONObject: document))
+            let lithuania = websiteDown.packages.first { $0.providerId == "freizeitkarte" && MapPackageAcquisitionPolicyResolver().availability(for: $0) == .available }!
+            expect(MapPackageAcquisitionPolicyResolver().availability(for: lithuania) == .available,
+                "website-only aggregate DOWN cannot override explicit download availability")
+            expect(lithuania.withUnverifiedDownloadAvailability().downloadBlockReason == "STATUS_UNVERIFIED",
+                "failed refresh disables previously available downloads")
+            let invalidMain = lithuania.withArtifacts(lithuania.artifacts.map { $0.withValidationState(.failed) })
+            expect(invalidMain.requiredMainArtifactUnavailable,
+                "failed required artifact blocks acquisition without a server block code")
+        } catch { expect(false, "blocked catalog regression: \(error)") }
+    }
+
     static func main() async {
+        testBlockedCatalogStaysVisible()
         testLegacyPackageGetsRequiredMainArtifact()
         testOptionalContoursDoesNotHideMainArtifact()
         testProviderNativeMetadataDecodesWithoutFZKSemantics()
@@ -58,8 +103,11 @@ struct Stage1ProviderNeutralTests {
         testRemotePausedProviderDoesNotReceiveBundledPackages()
         testProviderLifecycleMetadataDecodesFailClosed()
         await testDownloadFailureUsesConfirmedProviderDownState()
+        await testNetworkFailuresNameProvider()
+        testProviderFailureMessages()
+        await testFoundationDownloadTimeout()
 
-        print("PASS: 29 Stage 1 provider-neutral core tests")
+        print("PASS: 32 Stage 1 provider-neutral core tests")
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {
@@ -1048,12 +1096,76 @@ struct Stage1ProviderNeutralTests {
         } catch let error as MapAcquisitionError {
             expect(
                 error == .providerUnavailable(providerId: "freizeitkarte", statusCode: 503)
-                    && error.localizedDescription == "The selected map provider is currently down. Try again later.",
+                    && error.localizedDescription == "Freizeitkarte’s download server is temporarily unavailable. Try again later.",
                 "confirmed provider outage becomes a provider-down error"
             )
         } catch {
             expect(false, "confirmed provider outage becomes a provider-down error")
         }
+    }
+
+    private static func testFoundationDownloadTimeout() async {
+        let downloader = FoundationMapPackageDownloadClient(sessionConfiguration: {
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.protocolClasses = [TimeoutDownloadProtocol.self]
+            return configuration
+        })
+        do {
+            _ = try await MapPackageAcquirer(downloadClient: downloader).acquire(package: makePackage(),
+                workspace: MapAcquisitionWorkspace(rootURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
+            expect(false, "Foundation timeout must fail acquisition")
+        } catch let error as MapAcquisitionError {
+            expect(error == .providerConnectionFailed(providerId: "freizeitkarte", code: .timedOut),
+                "real Foundation downloader preserves timeout through provider-aware acquisition: \(error)")
+        } catch {
+            expect(false, "unexpected Foundation error: \(error)")
+        }
+    }
+
+    private static func testNetworkFailuresNameProvider() async {
+        for code in [URLError.timedOut, .cannotConnectToHost, .cannotFindHost,
+                     .networkConnectionLost, .notConnectedToInternet, .cancelled] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            do {
+                let acquirer = MapPackageAcquirer(downloadClient: NetworkFailureDownloadClient(code: code))
+                _ = try await acquirer.acquire(package: makePackage(),
+                    workspace: MapAcquisitionWorkspace(rootURL: root))
+                expect(false, "network failure must stop acquisition")
+            } catch is CancellationError {
+                expect(code == .cancelled, "cancellation remains cancellation, not a provider outage")
+            } catch let error as MapAcquisitionError {
+                expect(error == .providerConnectionFailed(providerId: "freizeitkarte", code: code),
+                    "network error retains provider and structured cause")
+                expect(error.userMessage.contains("Freizeitkarte") && error.localizedDescription == error.userMessage,
+                    "Install and Update surface the same named-provider message")
+                expect(!error.userMessage.contains("temporarily unavailable"),
+                    "a connection failure does not claim a confirmed provider outage")
+            } catch {
+                expect(false, "unexpected network failure: \(error)")
+            }
+            expect(!FileManager.default.fileExists(atPath: root.path), "failed download workspace is removed")
+        }
+    }
+
+    private static func testProviderFailureMessages() {
+        for (id, name) in [("freizeitkarte", "Freizeitkarte"), ("opentopomap", "OpenTopoMap"),
+                           ("maprando", "MapRando"), ("bbbike", "BBBike")] {
+            let timeout = MapAcquisitionError.providerConnectionFailed(providerId: id, code: .timedOut)
+            expect(timeout.userMessage.contains(name) && timeout.userMessage.contains("did not respond in time"),
+                "timeout names \(name) and explains the wait")
+            let offline = MapAcquisitionError.providerConnectionFailed(providerId: id, code: .notConnectedToInternet)
+            expect(offline.userMessage.contains("Your Mac is offline") && offline.userMessage.contains(name),
+                "offline failure explains the local connection for \(name)")
+            for (status, detail) in [(503, "temporarily unavailable"), (404, "map is unavailable"),
+                                     (410, "map is unavailable"), (429, "limiting downloads"),
+                                     (403, "refused"), (401, "refused"), (400, "could not provide")] {
+                let error = MapAcquisitionError.providerUnavailable(providerId: id, statusCode: status)
+                expect(error.userMessage.contains(name) && error.userMessage.contains(detail),
+                    "HTTP \(status) explains the provider response for \(name)")
+            }
+        }
+        let unknown = MapAcquisitionError.providerUnavailable(providerId: "/private/unknown", statusCode: 503)
+        expect(!unknown.userMessage.contains("/private/"), "unknown provider IDs are not exposed as UI labels")
     }
 
     private static func makeOpenTopoMapContractPackage(
@@ -1183,4 +1295,21 @@ private struct FixedProviderHealthChecker: MapProviderHealthChecking, Sendable {
     func check(package: MapPackage) async -> MapProviderHealthProbeResult {
         result
     }
+}
+
+private struct NetworkFailureDownloadClient: MapPackageDownloadClient, Sendable {
+    let code: URLError.Code
+    func download(from url: URL) async throws -> MapPackageDownloadResponse {
+        throw URLError(code)
+    }
+}
+
+private final class TimeoutDownloadProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        precondition(request.timeoutInterval == 30, "unresponsive downloads must have a 30-second inactivity bound")
+        client?.urlProtocol(self, didFailWithError: URLError(.timedOut))
+    }
+    override func stopLoading() {}
 }

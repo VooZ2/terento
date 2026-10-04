@@ -1056,6 +1056,31 @@ private struct StagedUpdateFailureProvider: SafeUpdateArtifactProvider {
     }
 }
 
+private struct TimedOutUpdateDownloadClient: MapPackageDownloadClient {
+    func download(from url: URL) async throws -> MapPackageDownloadResponse {
+        throw URLError(.timedOut)
+    }
+}
+
+private func testProviderTimeoutPreservesInstalledMap() async throws {
+    let harness = makeHarness()
+    let adapter = MapPackageAcquisitionProvider(acquirer: MapPackageAcquirer(
+        downloadClient: TimedOutUpdateDownloadClient(),
+        workspaceFactory: { try MapAcquisitionWorkspace(rootURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)) }))
+    let result = await SafeUpdateTransaction(gate: harness.gate,
+        sourceValidator: harness.validator, manifestReconciler: harness.reconciler).run(
+            request: withFixtureAuthorization(harness.request), provider: adapter, transport: harness.transport)
+    try require(result.status == .failedAcquisition && result.acquisitionFailureStage == .download,
+        "provider timeout remains a download failure through the production Update adapter: \(result.status) \(result.message)")
+    try require(result.message.contains("Freizeitkarte") && result.message.contains("did not respond in time"),
+        "Update shows the provider timeout to the user")
+    try require(SafeUpdateAcquisitionError.failed("/Users/private/source.zip").userMessage
+        == "The selected map could not be acquired from its provider.",
+        "unclassified raw errors remain hidden from Update UI")
+    try require(!result.writeStarted && harness.transport.events.isEmpty && !harness.reconciler.called,
+        "provider timeout performs no device operations or manifest reconciliation")
+}
+
 private func testRealUpdateAcquisitionEvents() async throws {
     let harness = makeHarness()
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -1142,6 +1167,7 @@ private func testRealUpdateAcquisitionEvents() async throws {
 struct Stage53SafeUpdateTests {
     static func main() async throws {
         let tests: [(String, () async throws -> Void)] = [
+            ("provider timeout preserves installed map", testProviderTimeoutPreservesInstalledMap),
             ("real update acquisition telemetry", testRealUpdateAcquisitionEvents),
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
             ("protected replacement full raw matrix", testProtectedUpdateTransitionMatrix),

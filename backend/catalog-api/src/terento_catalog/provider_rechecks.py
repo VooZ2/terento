@@ -24,6 +24,9 @@ def provider_lock(database, provider_id):
 def ensure_retry_allowed(database, provider_id):
     """Shared cooldown for collection, health checks and targeted recovery."""
     with database.connection() as c:
+        health = c.execute("SELECT health_retry_not_before FROM map_provider WHERE id=%s", (provider_id,)).fetchone()
+        if health and health['health_retry_not_before'] and health['health_retry_not_before'] > datetime.now(timezone.utc):
+            raise ValueError(f"Provider rate limit: retry after {health['health_retry_not_before'].isoformat()}")
         row = c.execute(
             "SELECT max(retry_not_before) AS retry_at FROM provider_recheck "
             "WHERE provider_id=%s AND retry_not_before > now()", (provider_id,)

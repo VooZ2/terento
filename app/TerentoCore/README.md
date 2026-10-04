@@ -247,6 +247,22 @@ retaining the current safety boundaries. Owner hardware evidence covers a
 Garmin fēnix 8 AMOLED 47 mm: BBBike install/update/remove, MapRando multi-map
 installation, and disconnect/reconnect inventory verification.
 
+### Provider download failures
+
+Install and Update name the map provider when its download server cannot be
+reached or returns an error. A timeout says the server did not respond in time;
+it does not claim a confirmed provider outage. Offline errors identify the Mac's
+connection. Server errors, missing downloads, rejected requests and rate limits
+have separate guidance. Update preserves the typed, safe acquisition message
+instead of replacing it with a generic failure; raw paths and unclassified
+technical errors remain excluded from normal UI.
+
+Provider downloads use a 30-second request inactivity timeout, not a 30-second
+limit on the full map download. Structured network failures do not trigger an
+additional health probe before showing the error. Downloads still come directly
+from reviewed provider sources. A failed update download stops before device
+writes and leaves the installed map intact.
+
 ### Map acquisition reporting
 
 The app records each provider component acquisition directly through the shared
@@ -423,3 +439,25 @@ engine/no-screen regression and producer/outbox/privacy cases. Initial context
 is in memory; force-quitting before a terminal result is observed is not a
 crash-recovery journal. Reports already persisted retain existing retry behavior.
 Diagnostic delivery does not itself grant any device mutation authority.
+
+### Provider and map download availability
+
+Catalog v4 keeps blocked maps visible and supplies `downloadBlockReason` on
+providers and packages. The native client carries these reasons through artifact
+selection, disables Install/Update with provider-specific copy, and preserves
+Remove and the installed map inventory. Provider website health alone does not
+block acquisition; the API's download decision is authoritative.
+
+Production acquisition checks current remote catalog authorization before creating
+an acquisition workspace or sending a provider download request. Failure to obtain
+current authorization stops acquisition; bundled data cannot authorize it. During
+the running session the last accepted remote catalog is retained if a refresh
+fails, preserving known blocks and disabling other rows until status can be checked.
+Connection failures are explained as an inability to check availability, separately
+from a confirmed provider outage. Failed or unavailable required main artifacts
+also block acquisition when legacy metadata has no explicit reason. Every five minutes an idle app refreshes metadata
+and recomputes comparisons from the existing inventory without scanning or writing
+the device. Acquisition still rechecks authorization independently of this timer.
+
+This is local implementation and automated evidence, not a released app or a new
+hardware lifecycle result.

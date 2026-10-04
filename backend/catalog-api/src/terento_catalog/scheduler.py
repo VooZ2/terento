@@ -197,12 +197,16 @@ def main() -> None:
     from .provider_rechecks import run_worker
     recheck_worker = Thread(target=run_worker, args=(database, stop), daemon=True, name="provider-rechecks")
     recheck_worker.start()
+    from .provider_monitoring import run_worker as run_health_worker
+    health_worker = Thread(target=run_health_worker, args=(database, stop), daemon=True, name="provider-health")
+    health_worker.start()
     try:
         run_schedule(database, settings.collector_schedule_utc)
     finally:
         stop.set()
         download_worker.join(timeout=12)
         recheck_worker.join(timeout=12)
+        health_worker.join(timeout=12)
 
 
 if __name__ == "__main__":

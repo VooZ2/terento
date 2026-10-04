@@ -14,6 +14,7 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
     let actions: Set<MapLifecycleAction>
     let status: String
     let reason: String?
+    var updateBlocked: Bool = false
 
     func allows(_ action: MapLifecycleAction) -> Bool {
         actions.contains(action)
@@ -182,7 +183,8 @@ struct MapLifecyclePresentationResolver: Sendable {
         return MapLifecycleActionAvailability(
             actions: actions,
             status: status,
-            reason: reason
+            reason: acquisitionAvailability.detailedExplanation ?? reason,
+            updateBlocked: acquisitionAvailability != .available
         )
     }
 }
