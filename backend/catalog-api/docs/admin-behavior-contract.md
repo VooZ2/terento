@@ -417,6 +417,28 @@ problematic source identities, and the latest health state/error. Retired or
 resolved historical entries do not enter current counts. Measured zero,
 unknown/unavailable, stale, and partial remain distinct.
 
+Provider **View check details** shows only the latest observation as labelled
+check/status pairs, its reason, observation time, next scheduled check and stale
+warning. It must fit the card width without a horizontally scrolling history
+row. The source of evidence is the Terento server; do not imply every user's
+network has the same result or that a complete map install was verified.
+Download-server availability is separate from website and catalog health.
+
+Automatic checks offer 1, 6 or 24 hours per provider (default one hour). Saving
+uses the authenticated, CSRF-protected provider action. Health check history is
+at most ten previous checks within 30 days, each a compact timestamp, result,
+counts and observed reason. It has no pagination or growing scroll container;
+the latest observation remains available even when stale. Collection and admin
+audit previews likewise show at most ten rows; limiting the preview never deletes
+administrative audit evidence.
+
+Current, nonretired map rows expose **Disable downloads** / **Enable downloads**
+separately from artifact validation. Disabling requires a nonempty internal
+reason, which is escaped in Admin and is not public user copy. Administrator
+choices survive catalog refresh and automated checks. Enabling removes only the
+manual block and cannot override provider availability or artifact validation.
+Retired maps/providers have no usable download control.
+
 ### Health
 
 Health uses compact rows with the check name, status, and relative time.

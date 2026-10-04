@@ -176,6 +176,16 @@ func runMapLifecyclePresentationTests() throws {
         "ownership tools stay out of the primary action group"
     )
 
+    let providerDown = resolver.resolve(
+        item: managed, comparison: comparison(status: .updateAvailable),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
+        acquisitionAvailability: .blocked(provider: "Freizeitkarte", reason: "PROVIDER_DOWN")
+    )
+    try require(providerDown.allows(.remove) && !providerDown.allows(.update) && providerDown.updateBlocked,
+        "provider outage keeps Remove and exposes a disabled Update")
+    try require(providerDown.reason == "Freizeitkarte map servers are currently unreachable. Try again later.",
+        "provider outage names the provider and tells the user to try later")
+
     let withheldUpdate = resolver.resolve(
         item: managed,
         comparison: comparison(status: .updateAvailable),

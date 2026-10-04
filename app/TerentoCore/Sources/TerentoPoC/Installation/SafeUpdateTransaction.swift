@@ -223,6 +223,7 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
 
     init(
         acquirer: MapPackageAcquirer = MapPackageAcquirer(
+            availabilityCheck: { try await MapCatalogLoader().validateCurrentAvailability(package: $0) },
             providerHealthChecker: FoundationMapProviderHealthChecker()
         ),
         onAcquisition: (@Sendable (SafeUpdateAcquisitionEvent) -> Void)? = nil

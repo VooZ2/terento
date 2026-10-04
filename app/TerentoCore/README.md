@@ -439,3 +439,25 @@ engine/no-screen regression and producer/outbox/privacy cases. Initial context
 is in memory; force-quitting before a terminal result is observed is not a
 crash-recovery journal. Reports already persisted retain existing retry behavior.
 Diagnostic delivery does not itself grant any device mutation authority.
+
+### Provider and map download availability
+
+Catalog v4 keeps blocked maps visible and supplies `downloadBlockReason` on
+providers and packages. The native client carries these reasons through artifact
+selection, disables Install/Update with provider-specific copy, and preserves
+Remove and the installed map inventory. Provider website health alone does not
+block acquisition; the API's download decision is authoritative.
+
+Production acquisition checks current remote catalog authorization before creating
+an acquisition workspace or sending a provider download request. Failure to obtain
+current authorization stops acquisition; bundled data cannot authorize it. During
+the running session the last accepted remote catalog is retained if a refresh
+fails, preserving known blocks and disabling other rows until status can be checked.
+Connection failures are explained as an inability to check availability, separately
+from a confirmed provider outage. Failed or unavailable required main artifacts
+also block acquisition when legacy metadata has no explicit reason. Every five minutes an idle app refreshes metadata
+and recomputes comparisons from the existing inventory without scanning or writing
+the device. Acquisition still rechecks authorization independently of this timer.
+
+This is local implementation and automated evidence, not a released app or a new
+hardware lifecycle result.

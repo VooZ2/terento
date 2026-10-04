@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import time
+from email.utils import parsedate_to_datetime
+from itertools import islice
+from urllib.error import HTTPError
 from typing import Iterable, Protocol
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -24,6 +27,7 @@ class HTTPProbeResult:
     content_type: str | None
     body_prefix: bytes = b""
     body: bytes = b""
+    retry_after: str | None = None
 
 
 class ProviderProbe(Protocol):
@@ -53,6 +57,7 @@ class DefaultProviderProbe:
                 content_type=response.headers.get("Content-Type"),
                 body_prefix=body[:16],
                 body=body,
+                retry_after=response.headers.get("Retry-After"),
             )
 
     def inspect_zip(self, url: str):
@@ -95,6 +100,7 @@ class ProviderHealthResult:
     error_code: str | None
     error_detail: str | None
     duration_ms: int
+    retry_after_seconds: int | None = None
 
     def as_database_values(self) -> dict[str, object]:
         return {
@@ -117,6 +123,7 @@ class ProviderHealthResult:
             "error_code": self.error_code,
             "error_detail": self.error_detail,
             "duration_ms": self.duration_ms,
+            "retry_after_seconds": self.retry_after_seconds,
         }
 
 
@@ -154,10 +161,13 @@ def check_provider(
         if redirect_status == "DOWN":
             errors.append("website_redirect_host")
 
-    catalog = _safe_inspect(probe, definition.catalog_url, read_body=True)
+    catalog = None if website is not None and website.status_code == 429 else _safe_inspect(probe, definition.catalog_url, read_body=True)
     if catalog is None:
-        catalog_status = "DOWN"
-        errors.append("catalog_unreachable")
+        if website is not None and website.status_code == 429:
+            errors.append("catalog_not_evaluated:rate_limited")
+        else:
+            catalog_status = "DOWN"
+            errors.append("catalog_unreachable")
     else:
         catalog_status = "HEALTHY" if 200 <= catalog.status_code < 400 else "DOWN"
         if not _same_host(definition.catalog_url, catalog.final_url):
@@ -169,77 +179,90 @@ def check_provider(
             catalog_status = "DEGRADED"
             errors.append("catalog_body_empty")
 
-    for url in list(download_urls)[:MAX_DOWNLOAD_CHECKS]:
+    sample_statuses: list[str] = []
+    details: dict[str, list[str]] = {key: [] for key in ("mime", "magic", "zip", "img")}
+    rate_limited = next((response for response in (website, catalog)
+                         if response is not None and response.status_code == 429), None)
+    retry_after_seconds = _retry_after_seconds(rate_limited.retry_after) if rate_limited else None
+    if rate_limited:
+        errors.append("rate_limited:remaining_checks_not_evaluated")
+
+    for url in (() if rate_limited else islice(download_urls, MAX_DOWNLOAD_CHECKS)):
         checked_downloads += 1
         artifact = _safe_inspect(probe, url, read_body=False)
         if artifact is None:
-            errors.append("download_unreachable")
+            sample_statuses.append("DOWN")
+            errors.append("download_unreachable:validation_not_evaluated")
+            for values in details.values():
+                values.append("UNKNOWN")
             continue
         final_url = artifact.final_url
         http_status = artifact.status_code
         content_type = artifact.content_type
-        if not _same_host(url, artifact.final_url):
+        if artifact.status_code == 429:
+            sample_statuses.append("DEGRADED")
+            retry_after_seconds = _retry_after_seconds(artifact.retry_after)
+            errors.append("rate_limited:remaining_checks_not_evaluated")
+            break
+        if not 200 <= artifact.status_code < 400:
+            sample_statuses.append("DOWN" if artifact.status_code >= 500 else "DEGRADED")
+            errors.append(f"download_http_{artifact.status_code}:validation_not_evaluated")
+            for values in details.values():
+                values.append("UNKNOWN")
+            continue
+        sample = {key: "UNKNOWN" for key in details}
+        safe_redirect = _same_host(url, artifact.final_url)
+        if not safe_redirect:
             redirect_status = "DOWN"
             errors.append("download_redirect_host")
-        if 200 <= artifact.status_code < 400:
-            download_status = "HEALTHY"
-        else:
-            download_status = "DOWN"
-            errors.append("download_http")
+            sample_statuses.append("DEGRADED")
+            for values in details.values():
+                values.append("UNKNOWN")
+            continue
         raw_img = definition.id == "maprando" and urlparse(url).path.lower().endswith(".img")
         if artifact.content_type and ("zip" in artifact.content_type.lower() or (raw_img and artifact.content_type.split(";", 1)[0].lower() in {"application/octet-stream", "application/x-garmin-img"})):
-            mime_status = "HEALTHY"
+            sample["mime"] = "HEALTHY"
         else:
-            mime_status = "DEGRADED"
+            sample["mime"] = "DEGRADED"
             errors.append("download_mime")
-        if raw_img:
-            try:
+        try:
+            if raw_img:
+                sample["zip"] = "NOT_APPLICABLE"
                 inspect_img = getattr(probe, "inspect_img", None)
-                if inspect_img is None:
-                    raise ValueError("IMG probe unavailable")
-                if not inspect_img(url).identity_validated:
-                    raise ValueError("MapRando source identity is unavailable")
-                magic_status = img_status = "HEALTHY"
-                zip_status = "NOT_APPLICABLE"
-            except (OSError, ValueError, ZipRangeError, ProviderCollectionError) as exc:
-                magic_status = img_status = "DEGRADED"
-                zip_status = "NOT_APPLICABLE"
-                errors.append(f"img_check:{type(exc).__name__}")
-            continue
-        try:
-            inspect_magic = getattr(probe, "inspect_magic", None)
-            prefix = (
-                inspect_magic(url)
-                if callable(inspect_magic)
-                else artifact.body_prefix
-            )
-            if prefix[:4] in {b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"}:
-                magic_status = "HEALTHY"
+                if inspect_img is None or not inspect_img(url).identity_validated:
+                    raise ValueError("IMG identity unavailable")
+                sample["magic"] = sample["img"] = "HEALTHY"
             else:
-                magic_status = "DEGRADED"
-                errors.append("download_magic")
-        except (OSError, ValueError, ZipRangeError):
-            magic_status = "UNKNOWN"
-            errors.append("magic_check")
-        try:
-            measurement = probe.inspect_zip(url)
-            zip_status = "HEALTHY"
-            img_status = "HEALTHY" if measurement.install_size_bytes else "DEGRADED"
-            if not measurement.install_size_bytes:
-                errors.append("img_missing")
+                inspect_magic = getattr(probe, "inspect_magic", None)
+                prefix = inspect_magic(url) if callable(inspect_magic) else artifact.body_prefix
+                sample["magic"] = "HEALTHY" if prefix[:4] in {b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"} else "DEGRADED"
+                if sample["magic"] == "DEGRADED":
+                    errors.append("download_magic")
+                measurement = probe.inspect_zip(url)
+                sample["zip"] = "HEALTHY"
+                sample["img"] = "HEALTHY" if measurement.install_size_bytes else "DEGRADED"
+                if sample["img"] == "DEGRADED":
+                    errors.append("img_missing")
+        except HTTPError as exc:
+            if exc.code == 429:
+                retry_after_seconds = _retry_after_seconds(exc.headers.get("Retry-After") if exc.headers else None)
+                errors.append("rate_limited:remaining_checks_not_evaluated")
+            else:
+                errors.append(f"package_http_{exc.code}")
+            sample["img"] = "DEGRADED"
         except (OSError, ValueError, ZipRangeError, ProviderCollectionError) as exc:
-            zip_status = "DEGRADED"
-            img_status = "UNKNOWN"
-            errors.append(f"zip_check:{type(exc).__name__}")
+            errors.append(f"package_check:{type(exc).__name__}")
+            sample["img"] = "DEGRADED"
+        sample_statuses.append("HEALTHY" if all(value in {"HEALTHY", "NOT_APPLICABLE"} for value in sample.values()) else "DEGRADED")
+        for key, values in details.items():
+            values.append(sample[key])
+        if retry_after_seconds is not None:
+            break
 
-    if checked_downloads == 0:
-        download_status = "UNKNOWN"
-        mime_status = "UNKNOWN"
-        magic_status = "UNKNOWN"
-        zip_status = "UNKNOWN"
-        img_status = "UNKNOWN"
-    elif download_status == "UNKNOWN":
-        download_status = "DOWN"
+    download_status = "DEGRADED" if rate_limited else _aggregate(sample_statuses)
+    mime_status, magic_status, zip_status, img_status = (_aggregate(details[key]) for key in details)
+    if not checked_downloads and not rate_limited:
+        errors.append("download_not_evaluated:no_samples")
 
     last_update_status = _last_update_status(source_updated_at)
     availability_statuses = {
@@ -280,6 +303,7 @@ def check_provider(
         error_code=errors[0] if errors else None,
         error_detail=", ".join(errors[:8]) if errors else None,
         duration_ms=max(0, int((time.monotonic() - started) * 1000)),
+        retry_after_seconds=retry_after_seconds,
     )
 
 
@@ -295,6 +319,8 @@ def _safe_inspect(
         if final.scheme != "https" or not final.hostname:
             return None
         return result
+    except HTTPError as exc:
+        return HTTPProbeResult(exc.code, exc.geturl(), exc.headers.get("Content-Type") if exc.headers else None, retry_after=exc.headers.get("Retry-After") if exc.headers else None)
     except (OSError, ValueError):
         return None
 
@@ -318,3 +344,28 @@ def _last_update_status(value: str | None) -> str:
     if age_days > 180:
         return "DEGRADED"
     return "HEALTHY"
+
+
+def _aggregate(statuses: list[str]) -> str:
+    if not statuses:
+        return "UNKNOWN"
+    unique = set(statuses)
+    if len(unique) == 1:
+        return statuses[0]
+    if unique <= {"HEALTHY", "NOT_APPLICABLE"}:
+        return "HEALTHY"
+    return "DEGRADED"
+
+
+def _retry_after_seconds(value: str | None) -> int:
+    """Respect server cooldown; use an hour when the header is absent/invalid."""
+    if value:
+        try:
+            return max(60, min(604800, int(value)))
+        except ValueError:
+            try:
+                date = parsedate_to_datetime(value)
+                return max(60, min(604800, int((date - datetime.now(timezone.utc)).total_seconds())))
+            except (TypeError, ValueError, OverflowError):
+                pass
+    return 3600

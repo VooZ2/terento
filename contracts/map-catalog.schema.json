@@ -288,6 +288,22 @@
             "null"
           ],
           "description": "Shared geographic identity; BBBike canonicalRegionId remains variant-specific lifecycle identity."
+        },
+        "downloadBlockReason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "PROVIDER_DOWN",
+            "PROVIDER_PAUSED",
+            "PROVIDER_RATE_LIMITED",
+            "STATUS_STALE",
+            "ADMIN_DISABLED",
+            "PACKAGE_UNAVAILABLE"
+          ],
+          "description": "Current acquisition restriction. Null allows acquisition subject to all other policy and artifact checks. Maps remain visible; applies to Install and Update only."
         }
       },
       "required": [
@@ -373,6 +389,22 @@
           "items": {
             "$ref": "#/$defs/map"
           }
+        },
+        "downloadBlockReason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "PROVIDER_DOWN",
+            "PROVIDER_PAUSED",
+            "PROVIDER_RATE_LIMITED",
+            "STATUS_STALE",
+            "ADMIN_DISABLED",
+            "PACKAGE_UNAVAILABLE"
+          ],
+          "description": "Current acquisition restriction. Null allows acquisition subject to all other policy and artifact checks. Maps remain visible; applies to Install and Update only."
         }
       },
       "required": [

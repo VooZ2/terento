@@ -6,7 +6,7 @@ const input = JSON.parse(fs.readFileSync(0, 'utf8'));
 (async () => {
   const db = new PGlite();
   await db.exec(`
-    CREATE TABLE map_provider(id TEXT PRIMARY KEY, status TEXT);
+    CREATE TABLE map_provider(id TEXT PRIMARY KEY, status TEXT, health_retry_not_before TIMESTAMPTZ);
     CREATE TABLE map_package(id TEXT PRIMARY KEY, provider_id TEXT, provider_region_id TEXT,
       map_type TEXT, country_codes JSONB, region TEXT, availability TEXT,
       release TEXT, version_label TEXT, release_id TEXT, generated_at TIMESTAMPTZ,
@@ -20,7 +20,7 @@ const input = JSON.parse(fs.readFileSync(0, 'utf8'));
       last_checked_at TIMESTAMPTZ, updated_at TIMESTAMPTZ);
   `);
   await db.exec(input.migration);
-  await db.exec("INSERT INTO map_provider VALUES ('bbbike','ACTIVE')");
+  await db.exec("INSERT INTO map_provider(id,status) VALUES ('bbbike','ACTIVE')");
   for (const row of input.rows) {
     await db.query("INSERT INTO map_package(id,provider_id,availability) VALUES($1,'bbbike','UNAVAILABLE')", [row.package_id]);
     await db.query("INSERT INTO map_artifact(id,package_id,source_url,updated_at,validation_status,required) VALUES($1,$2,$3,$4,'UNAVAILABLE',TRUE)", [row.id,row.package_id,row.source_url,row.updated_at]);

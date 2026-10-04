@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import CATALOG_VERSION
+from .provider_monitoring import provider_block_reason
 
 
 def build_catalog(
@@ -150,6 +151,9 @@ def _build_provider_neutral_catalog(
         ):
             continue
         provider_id = str(row["provider_id"])
+        download_block = provider_block_reason(row.get("provider_status") or "ACTIVE",
+            row.get("provider_download_health"), row.get("provider_last_checked_at"),
+            row.get("health_check_interval_hours", 1), retry_at=row.get("health_retry_not_before"))
         provider = providers.setdefault(
             provider_id,
             {
@@ -158,6 +162,7 @@ def _build_provider_neutral_catalog(
                 "adapterId": row.get("provider_adapter_id") or provider_id,
                 "status": row.get("provider_status") or "ACTIVE",
                 "health": row.get("provider_health") or "UNKNOWN",
+                "downloadBlockReason": download_block,
                 "lastCheckedAt": _format_optional_date(row.get("provider_last_checked_at")),
                 "lastSuccessfulCatalogSync": _format_optional_date(
                     row.get("provider_last_catalog_sync")
@@ -223,6 +228,8 @@ def _build_provider_neutral_catalog(
                 "capabilities": row.get("capabilities") or [],
                 "release": release,
                 "availability": row.get("availability") or "AVAILABLE",
+                "downloadBlockReason": download_block or ("ADMIN_DISABLED" if row.get("downloads_disabled") else None)
+                    or ("PACKAGE_UNAVAILABLE" if row.get("availability") not in (None, "AVAILABLE") else None),
                 "releaseMetadata": {
                     "releaseId": row.get("release_id"),
                     "versionLabel": row.get("version_label"),
@@ -297,6 +304,11 @@ def _build_provider_neutral_catalog(
                                sizeBytes=main["downloadSizeBytes"], downloadSizeBytes=main["downloadSizeBytes"],
                                installSizeBytes=main["installSizeBytes"],
                                capabilities=[item["kind"] for item in package["artifacts"]])
+                if not package["downloadBlockReason"] and any(
+                    item["required"] and item["validationStatus"] in ("FAILED", "UNAVAILABLE")
+                    for item in package["artifacts"]
+                ):
+                    package["downloadBlockReason"] = "PACKAGE_UNAVAILABLE"
                 valid_packages.append(package)
             else:
                 package.pop("artifacts", None)

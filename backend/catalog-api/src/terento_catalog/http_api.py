@@ -254,12 +254,15 @@ class CatalogService:
         *,
         admin_user_id: int | None = None,
         request_id: str | None = None,
+        scheduled: bool = False,
     ) -> dict[str, Any]:
         from .provider_rechecks import provider_lock, ensure_retry_allowed
         with provider_lock(self.database, provider_id):
             ensure_retry_allowed(self.database, provider_id)
+            if scheduled and not self.database.due_provider_health_checks(provider_id):
+                return {"status": "not_due"}
             return self._check_provider(
-                provider_id, admin_user_id=admin_user_id, request_id=request_id
+                provider_id, admin_user_id=admin_user_id, request_id=request_id, scheduled=scheduled
             )
 
     def _check_provider(
@@ -268,6 +271,7 @@ class CatalogService:
         *,
         admin_user_id: int | None = None,
         request_id: str | None = None,
+        scheduled: bool = False,
     ) -> dict[str, Any]:
         definition = KNOWN_PROVIDER_DEFINITIONS.get(provider_id)
         if definition is None:
@@ -288,14 +292,15 @@ class CatalogService:
             source_updated_at=source_updated_at,
         )
         health_id = self.database.record_provider_health(result)
-        self.database.record_admin_audit(
-            admin_user_id=admin_user_id,
-            action="provider.health_checked",
-            provider_id=provider_id,
-            target=str(health_id),
-            request_id=request_id,
-            details={"status": result.status},
-        )
+        if not scheduled:
+            self.database.record_admin_audit(
+                admin_user_id=admin_user_id,
+                action="provider.health_checked",
+                provider_id=provider_id,
+                target=str(health_id),
+                request_id=request_id,
+                details={"status": result.status},
+            )
         health_payload = _format_json_value(result.as_database_values())
         return {
             "schemaVersion": 1,
@@ -874,7 +879,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
                 return
-            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire|rechecks)", request_path):
+            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire|rechecks|health-schedule|downloads)", request_path):
                 self._handle_provider_post(request_path)
                 return
             if request_path.startswith("/admin"):
@@ -1018,6 +1023,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     service.catalog_v3_response if request_path == "/maps/catalog-v3.json" else service.catalog_response,
                     send_body=send_body,
                     unavailable_error="catalog_unavailable",
+                    cache_control="no-store",
                 )
                 return
             if request_path == "/devices/catalog.json":
@@ -1622,7 +1628,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_provider_post(self, request_path: str) -> None:
             match = re.fullmatch(
-                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire|rechecks)",
+                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire|rechecks|health-schedule|downloads)",
                 request_path,
             )
             if not match:
@@ -1694,6 +1700,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                     if result is None:
                         raise LookupError("provider_not_found")
+                elif action == "health-schedule":
+                    if set(body) != {"intervalHours"}:
+                        raise ValueError("invalid_health_interval")
+                    result = service.database.set_provider_health_interval(provider_id,
+                        body["intervalHours"], int(session["id"]), request_id)
+                elif action == "downloads":
+                    if set(body) != {"packageId", "enabled", "reason"}:
+                        raise ValueError("invalid_package_download_control")
+                    result = service.database.set_package_downloads(provider_id,
+                        body["packageId"], body["enabled"], body["reason"], int(session["id"]), request_id)
                 elif action == "rechecks":
                     from .provider_rechecks import enqueue
                     if set(body) - {"packageId"} or (body.get("packageId") is not None and (not isinstance(body["packageId"], str) or not body["packageId"].strip() or len(body["packageId"]) > 160)):
@@ -2736,6 +2752,13 @@ def _provider_detail_payload(
     payload["healthStatus"] = latest_health.get("status") if isinstance(latest_health, dict) else "UNKNOWN"
     payload["lastHealthCheck"] = _format_json_value(latest_health.get("checked_at")) if isinstance(latest_health, dict) else None
     payload["lastDownloadTest"] = payload["lastHealthCheck"]
+    from .provider_monitoring import monitoring_state, provider_block_reason
+    interval = detail.get("health_check_interval_hours", 1)
+    payload["monitoring"] = monitoring_state(latest_health.get("checked_at"), interval, retry_at=detail.get("health_retry_not_before"))
+    if payload["status"] != "ACTIVE":
+        payload["monitoring"]["nextCheckAt"] = None
+    payload["downloadBlockReason"] = provider_block_reason(payload["status"],
+        latest_health.get("download_status"), latest_health.get("checked_at"), interval, retry_at=detail.get("health_retry_not_before"))
     payload["healthHistory"] = _format_json_value(detail.get("health_history") or [])
     return {"schemaVersion": 1, "provider": payload}
 

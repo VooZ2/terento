@@ -1220,8 +1220,10 @@ struct MapPackageAcquirer: Sendable {
     private let archiveExtractor: any MapPackageArchiveExtractor
     private let workspaceFactory: @Sendable () throws -> MapAcquisitionWorkspace
     private let parser = GarminIMGMetadataParser()
+    private let availabilityCheck: (@Sendable (MapPackage) async throws -> Void)?
 
     init(
+        availabilityCheck: (@Sendable (MapPackage) async throws -> Void)? = nil,
         downloadClient: any MapPackageDownloadClient = FoundationMapPackageDownloadClient(),
         providerHealthChecker: any MapProviderHealthChecking = NoopMapProviderHealthChecker(),
         archiveExtractor: any MapPackageArchiveExtractor = SystemZIPArchiveExtractor(),
@@ -1229,6 +1231,7 @@ struct MapPackageAcquirer: Sendable {
             try MapAcquisitionWorkspace.make()
         }
     ) {
+        self.availabilityCheck = availabilityCheck
         self.downloadClient = downloadClient
         self.providerHealthChecker = providerHealthChecker
         self.archiveExtractor = archiveExtractor
@@ -1253,6 +1256,16 @@ struct MapPackageAcquirer: Sendable {
             onStateChange?(.failed)
             throw MapAcquisitionError.acquisitionWithheld(error.availability)
         }
+
+        guard !package.requiredMainArtifactUnavailable else {
+            throw MapAcquisitionError.acquisitionWithheld(.blocked(
+                provider: MapProviderDisplay.downloadName(package.providerId), reason: "PACKAGE_UNAVAILABLE"))
+        }
+        let availability = MapPackageAcquisitionPolicyResolver().availability(for: package)
+        guard availability == .available else {
+            throw MapAcquisitionError.acquisitionWithheld(availability)
+        }
+        try await availabilityCheck?(package)
 
         if MapIdentity.normalizeProvider(acquisitionPackage.providerId) == "bbbike",
            BBBikeProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {

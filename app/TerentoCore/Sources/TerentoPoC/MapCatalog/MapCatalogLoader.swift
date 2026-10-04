@@ -2,12 +2,15 @@ import Foundation
 
 enum MapCatalogSource: String, Sendable, Equatable {
     case remote
+    case cachedRemote
     case bundledFallback
 
     var userLabel: String {
         switch self {
         case .remote:
             return "Remote catalog"
+        case .cachedRemote:
+            return "Using the last checked catalog — status may be out of date"
         case .bundledFallback:
             return "Using local catalog — may be out of date"
         }
@@ -144,6 +147,17 @@ struct MapCatalogLoadResult: Sendable {
     let source: MapCatalogSource
 }
 
+private actor LatestRemoteMapCatalog {
+    static let shared = LatestRemoteMapCatalog()
+    var catalogs: [URL: MapCatalog] = [:]
+    func save(_ catalog: MapCatalog, for endpoint: URL?) {
+        if let endpoint { catalogs[endpoint] = catalog }
+    }
+    func load(for endpoint: URL?) -> MapCatalog? {
+        endpoint.flatMap { catalogs[$0] }
+    }
+}
+
 struct MapCatalogLoader: Sendable {
     static let defaultEndpoint: URL? = {
         #if DEBUG
@@ -189,15 +203,53 @@ struct MapCatalogLoader: Sendable {
             let catalog = contourRolloutPolicy.applying(
                 to: remoteCatalog.mergingSupplemental(bundledCatalog)
             )
+            await LatestRemoteMapCatalog.shared.save(catalog, for: endpoint)
             return MapCatalogLoadResult(
                 catalog: catalog,
                 source: .remote
             )
         } catch {
+            if let catalog = await LatestRemoteMapCatalog.shared.load(for: endpoint) {
+                return MapCatalogLoadResult(catalog: catalog.withUnverifiedDownloadAvailability(), source: .cachedRemote)
+            }
             return MapCatalogLoadResult(
-                catalog: try loadBundled(),
+                catalog: try loadBundled().withUnverifiedDownloadAvailability(),
                 source: .bundledFallback
             )
+        }
+    }
+
+    func loadCurrentRemote() async throws -> MapCatalog {
+        let catalog = try decode(await loadRemoteData())
+        guard MapCatalogClientCompatibilityValidator().isCompatible(catalog) else {
+            throw MapCatalogError.remoteUnavailable
+        }
+        let current = contourRolloutPolicy.applying(to: catalog)
+        await LatestRemoteMapCatalog.shared.save(current, for: endpoint)
+        return current
+    }
+
+    /// Acquisition must use current server authorization, never a bundled fallback.
+    func validateCurrentAvailability(package: MapPackage) async throws {
+        guard package.sourceKind == .provider else { return }
+        let catalog: MapCatalog
+        do {
+            catalog = try await loadCurrentRemote()
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw MapAcquisitionError.acquisitionWithheld(.blocked(
+                provider: MapProviderDisplay.downloadName(package.providerId), reason: "STATUS_UNVERIFIED"))
+        }
+        guard let current = catalog.packages.first(where: { $0.id == package.id }) else {
+            throw MapAcquisitionError.invalidPackage("This map is no longer available. Refresh the catalog.")
+        }
+        guard !current.requiredMainArtifactUnavailable else {
+            throw MapAcquisitionError.acquisitionWithheld(.blocked(
+                provider: MapProviderDisplay.downloadName(current.providerId), reason: "PACKAGE_UNAVAILABLE"))
+        }
+        let availability = MapPackageAcquisitionPolicyResolver().availability(for: current)
+        guard availability == .available else {
+            throw MapAcquisitionError.acquisitionWithheld(availability)
         }
     }
 
@@ -282,18 +334,17 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
     }
 
     func isCompatible(_ catalog: MapCatalog) -> Bool {
-        let installableProviderIDs = catalog.providers
-            .filter(\.allowsNewInstallCatalog)
+        let catalogProviderIDs = catalog.providers
             .map { MapIdentity.normalizeProvider($0.id) }
         let packageProviderIDs = catalog.packages
             .map { MapIdentity.normalizeProvider($0.providerId) }
         let packageIDs = catalog.packages.map(\.id)
 
-        guard !installableProviderIDs.isEmpty,
+        guard !catalogProviderIDs.isEmpty,
               !catalog.packages.isEmpty,
-              installableProviderIDs.allSatisfy({ !$0.isEmpty }),
-              Set(installableProviderIDs).count == installableProviderIDs.count,
-              Set(packageProviderIDs) == Set(installableProviderIDs),
+              catalogProviderIDs.allSatisfy({ !$0.isEmpty }),
+              Set(catalogProviderIDs).count == catalogProviderIDs.count,
+              Set(packageProviderIDs).isSubset(of: Set(catalogProviderIDs)),
               packageIDs.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }),
               Set(packageIDs).count == packageIDs.count else {
             return false
@@ -497,13 +548,12 @@ private struct MapCatalogDocument: Decodable {
                 lifecycleStatus: lifecycleStatus,
                 health: health,
                 lastCheckedAt: providerDocument.lastCheckedAt,
-                lastSuccessfulCatalogSync: providerDocument.lastSuccessfulCatalogSync
+                lastSuccessfulCatalogSync: providerDocument.lastSuccessfulCatalogSync,
+                downloadBlockReason: providerDocument.downloadBlockReason
             )
             providers.append(
                 provider
             )
-
-            guard provider.allowsNewInstallCatalog else { continue }
 
             for map in providerDocument.maps {
                 let regionID = map.region
@@ -537,7 +587,9 @@ private struct MapCatalogDocument: Decodable {
                         tags: map.tags ?? [],
                         capabilities: map.capabilities ?? [],
                         releaseMetadata: map.releaseMetadata,
-                        artifacts: map.artifacts
+                        artifacts: map.artifacts,
+                        downloadBlockReason: map.downloadBlockReason ?? provider.downloadBlockReason
+                            ?? (provider.lifecycleStatus != .active ? "PROVIDER_PAUSED" : nil)
                     )
                 )
             }
@@ -583,10 +635,12 @@ private struct ProviderDocument: Decodable {
     let health: String?
     let lastCheckedAt: Date?
     let lastSuccessfulCatalogSync: Date?
+    let downloadBlockReason: String?
     let maps: [MapDocument]
 }
 
 private struct MapDocument: Decodable {
+    let downloadBlockReason: String?
     let id: String
     let region: String
     let name: String

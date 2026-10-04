@@ -353,6 +353,7 @@ struct MapProvider: Codable, Equatable, Identifiable, Sendable {
     let health: MapProviderHealth
     let lastCheckedAt: Date?
     let lastSuccessfulCatalogSync: Date?
+    let downloadBlockReason: String?
 
     init(
         id: String,
@@ -364,7 +365,8 @@ struct MapProvider: Codable, Equatable, Identifiable, Sendable {
         lifecycleStatus: MapProviderLifecycleStatus = .active,
         health: MapProviderHealth = .unknown,
         lastCheckedAt: Date? = nil,
-        lastSuccessfulCatalogSync: Date? = nil
+        lastSuccessfulCatalogSync: Date? = nil,
+        downloadBlockReason: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -376,13 +378,17 @@ struct MapProvider: Codable, Equatable, Identifiable, Sendable {
         self.health = health
         self.lastCheckedAt = lastCheckedAt
         self.lastSuccessfulCatalogSync = lastSuccessfulCatalogSync
+        self.downloadBlockReason = downloadBlockReason
     }
 
     var allowsNewInstallCatalog: Bool {
-        lifecycleStatus == .active && health != .down
+        lifecycleStatus == .active && downloadBlockReason == nil
     }
 
     var temporaryUnavailableReason: String? {
+        if let downloadBlockReason {
+            return MapAcquisitionAvailability.blocked(provider: name, reason: downloadBlockReason).detailedExplanation
+        }
         guard !allowsNewInstallCatalog else { return nil }
         switch lifecycleStatus {
         case .paused, .retired:
@@ -432,15 +438,18 @@ struct CanonicalMapRegionIdentity: Equatable, Sendable {
     }
 }
 
-enum MapAcquisitionAvailability: String, Equatable, Hashable, Sendable {
+enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
     case available
     case withheldRussia
     case withheldCrimea
+    case blocked(provider: String, reason: String)
 
     var shortStatus: String? {
         switch self {
         case .available:
             return nil
+        case .blocked:
+            return "Downloads temporarily unavailable"
         case .withheldRussia, .withheldCrimea:
             return "Downloads are not offered for this region under Terento's current policy."
         }
@@ -450,6 +459,16 @@ enum MapAcquisitionAvailability: String, Equatable, Hashable, Sendable {
         switch self {
         case .available:
             return nil
+        case .blocked(let provider, let reason):
+            switch reason {
+            case "PROVIDER_DOWN": return "\(provider) map servers are currently unreachable. Try again later."
+            case "PROVIDER_RATE_LIMITED": return "\(provider) is limiting downloads. Try again later."
+            case "PROVIDER_PAUSED": return "\(provider) downloads are temporarily paused. Try again later."
+            case "STATUS_UNVERIFIED": return "Could not check current download availability for \(provider). Check your connection and try again."
+            case "STATUS_STALE": return "\(provider) server status needs to be checked. Try again later."
+            case "ADMIN_DISABLED": return "Downloads for this \(provider) map are temporarily disabled. Try again later."
+            default: return "This \(provider) map is currently unavailable. Try again later."
+            }
         case .withheldRussia:
             return "Terento does not offer map downloads for russia while its war of aggression against Ukraine continues."
         case .withheldCrimea:
@@ -555,7 +574,7 @@ struct MapAcquisitionPolicy: Sendable {
 
     func validate(_ identity: CanonicalMapRegionIdentity?) throws {
         switch availability(for: identity) {
-        case .available:
+        case .available, .blocked:
             return
         case .withheldRussia:
             throw MapAcquisitionPolicyError.withheldRussia
@@ -584,7 +603,10 @@ struct MapPackageAcquisitionPolicyResolver: Sendable {
     }
 
     func availability(for package: MapPackage) -> MapAcquisitionAvailability {
-        policy.availability(for: canonicalIdentity(for: package))
+        let regional = policy.availability(for: canonicalIdentity(for: package))
+        guard regional == .available else { return regional }
+        guard let reason = package.downloadBlockReason else { return .available }
+        return .blocked(provider: MapProviderDisplay.downloadName(package.providerId), reason: reason)
     }
 
     func validate(package: MapPackage) throws {
@@ -593,6 +615,7 @@ struct MapPackageAcquisitionPolicyResolver: Sendable {
 }
 
 struct MapPackage: Codable, Equatable, Identifiable, Sendable {
+    private(set) var downloadBlockReason: String?
     let sourceKind: MapSourceKind
     let id: String
     let providerId: String
@@ -651,8 +674,10 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         capabilities: [String] = [],
         releaseMetadata: MapReleaseMetadata? = nil,
         artifacts: [MapArtifact]? = nil,
-        sourceKind: MapSourceKind = .provider
+        sourceKind: MapSourceKind = .provider,
+        downloadBlockReason: String? = nil
     ) {
+        self.downloadBlockReason = downloadBlockReason
         self.sourceKind = sourceKind
         self.id = id
         self.providerId = providerId
@@ -698,6 +723,19 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
                 downloadSizeBytes: downloadSizeBytes ?? sizeBytes
             )
         ]
+    }
+
+    var requiredMainArtifactUnavailable: Bool {
+        mainArtifact == nil || mainArtifact?.validationState == .failed
+            || mainArtifact?.validationState == .unavailable
+    }
+
+    func withUnverifiedDownloadAvailability() -> MapPackage {
+        var copy = self
+        if copy.sourceKind == .provider && copy.downloadBlockReason == nil {
+            copy.downloadBlockReason = "STATUS_UNVERIFIED"
+        }
+        return copy
     }
 
     var downloadURL: URL? {
@@ -780,7 +818,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             capabilities: capabilities,
             releaseMetadata: releaseMetadata,
             artifacts: [artifact],
-            sourceKind: sourceKind
+            sourceKind: sourceKind,
+            downloadBlockReason: downloadBlockReason
         )
     }
 
@@ -807,7 +846,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             capabilities: capabilities,
             releaseMetadata: releaseMetadata,
             artifacts: artifacts,
-            sourceKind: sourceKind
+            sourceKind: sourceKind,
+            downloadBlockReason: downloadBlockReason
         )
     }
 
@@ -867,7 +907,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             capabilities: capabilities,
             releaseMetadata: releaseMetadata,
             artifacts: artifacts,
-            sourceKind: sourceKind
+            sourceKind: sourceKind,
+            downloadBlockReason: downloadBlockReason
         )
     }
 
@@ -893,11 +934,13 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         case releaseMetadata
         case artifacts
         case sourceKind
+        case downloadBlockReason
         case hasExplicitArtifactCollection
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        downloadBlockReason = try container.decodeIfPresent(String.self, forKey: .downloadBlockReason)
         sourceKind = try container.decodeIfPresent(MapSourceKind.self, forKey: .sourceKind) ?? .provider
         id = try container.decode(String.self, forKey: .id)
         providerId = try container.decode(String.self, forKey: .providerId)
@@ -1007,6 +1050,12 @@ struct MapCatalog: Equatable, Sendable {
     let providers: [MapProvider]
     let regions: [MapRegion]
     let packages: [MapPackage]
+
+    func withUnverifiedDownloadAvailability() -> MapCatalog {
+        MapCatalog(catalogVersion: catalogVersion, updatedAt: updatedAt,
+            providers: providers, regions: regions,
+            packages: packages.map { $0.withUnverifiedDownloadAvailability() })
+    }
 
     func provider(for id: String) -> MapProvider? {
         providers.first { $0.id == id }

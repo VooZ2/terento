@@ -17,6 +17,8 @@ class FakeProviderDatabase:
         # Keep the fixture strict so a new query cannot silently pass a fake DB.
         if sql.startswith("SELECT max(retry_not_before) AS retry_at FROM provider_recheck"):
             return type("CooldownResult", (), {"fetchone": lambda _: {"retry_at": None}})()
+        if sql.startswith("SELECT health_retry_not_before FROM map_provider"):
+            return type("HealthCooldownResult", (), {"fetchone": lambda _: {"health_retry_not_before": None}})()
         if sql.startswith("SELECT pg_try_advisory_lock"):
             return type("LockResult", (), {"fetchone": lambda _: {"acquired": True}})()
         if sql.startswith("SELECT pg_advisory_unlock"):

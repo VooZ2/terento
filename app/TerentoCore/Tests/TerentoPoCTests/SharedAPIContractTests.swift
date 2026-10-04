@@ -58,7 +58,18 @@ struct SharedAPIContractTests {
         // Runner places the unchanged bundled resource next to the executable.
         let bundled = try MapCatalogLoader(endpoint: nil).loadBundled()
         let fallback = try await MapCatalogLoader(endpoint: nil).loadRemoteThenFallback()
-        precondition(fallback.source == .bundledFallback && fallback.catalog == bundled)
+        precondition(fallback.source == .bundledFallback)
+        precondition(fallback.catalog.providers == bundled.providers)
+        precondition(fallback.catalog.regions == bundled.regions)
+        precondition(fallback.catalog.packages.map(\.id) == bundled.packages.map(\.id))
+        precondition(fallback.catalog.packages.allSatisfy {
+            $0.sourceKind != .provider || MapPackageAcquisitionPolicyResolver().availability(for: $0) != .available
+        }, "Unverified fallback preserves catalog entries but cannot authorize provider downloads")
+        let custom = MapPackage(id: "custom-fixture", providerId: "custom", regionId: "custom",
+            name: "Custom map", version: MapVersion(year: 2026, month: 10)!, sizeBytes: 1,
+            sourceURL: nil, releaseDate: nil, identifier: nil, sourceKind: .custom)
+        precondition(custom.withUnverifiedDownloadAvailability() == custom,
+            "Metadata outage must not change a local custom map")
         precondition(!bundled.packages.isEmpty)
         let collisions = Dictionary(grouping: bundled.regions, by: { $0.name.lowercased() + ":" + $0.id })
             .values.filter { $0.count > 1 }

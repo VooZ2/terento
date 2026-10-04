@@ -28,7 +28,52 @@ struct Stage1ProviderNeutralTests {
         )
     }
 
+    private static func testBlockedCatalogStaysVisible() {
+        do {
+            let url = packageRoot.appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json")
+            var document = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
+            var providers = document["providers"] as! [[String: Any]]
+            for index in providers.indices {
+                providers[index]["downloadBlockReason"] = "PROVIDER_DOWN"
+                providers[index]["health"] = "DOWN"
+            }
+            document["providers"] = providers
+            let catalog = try MapCatalogDocumentDecoder().decode(JSONSerialization.data(withJSONObject: document))
+            expect(catalog.packages.count == 1160 && MapCatalogClientCompatibilityValidator().isCompatible(catalog),
+                "all blocked providers retain complete compatible catalog")
+            for lifecycle in [MapProviderLifecycleStatus.paused, .retired] {
+                let emptyProvider = MapProvider(id: "empty-provider", name: "Empty provider", website: nil,
+                    attribution: nil, licenseURL: nil, lifecycleStatus: lifecycle)
+                let withEmptyProvider = MapCatalog(catalogVersion: catalog.catalogVersion,
+                    updatedAt: catalog.updatedAt, providers: catalog.providers + [emptyProvider],
+                    regions: catalog.regions, packages: catalog.packages)
+                expect(MapCatalogClientCompatibilityValidator().isCompatible(withEmptyProvider),
+                    "empty \(lifecycle) provider does not invalidate other providers")
+            }
+            let package = catalog.packages[0]
+            expect(package.withArtifacts(package.artifacts).downloadBlockReason == "PROVIDER_DOWN"
+                && package.acquisitionPackage(for: package.mainArtifact!).downloadBlockReason == "PROVIDER_DOWN",
+                "artifact projections preserve download block")
+            expect(MapPackageAcquisitionPolicyResolver().availability(for: package) != .available,
+                "provider download block disables package acquisition")
+            expect(package.withUnverifiedDownloadAvailability().downloadBlockReason == "PROVIDER_DOWN",
+                "failed refresh preserves a known provider outage")
+            for index in providers.indices { providers[index].removeValue(forKey: "downloadBlockReason") }
+            document["providers"] = providers
+            let websiteDown = try MapCatalogDocumentDecoder().decode(JSONSerialization.data(withJSONObject: document))
+            let lithuania = websiteDown.packages.first { $0.providerId == "freizeitkarte" && MapPackageAcquisitionPolicyResolver().availability(for: $0) == .available }!
+            expect(MapPackageAcquisitionPolicyResolver().availability(for: lithuania) == .available,
+                "website-only aggregate DOWN cannot override explicit download availability")
+            expect(lithuania.withUnverifiedDownloadAvailability().downloadBlockReason == "STATUS_UNVERIFIED",
+                "failed refresh disables previously available downloads")
+            let invalidMain = lithuania.withArtifacts(lithuania.artifacts.map { $0.withValidationState(.failed) })
+            expect(invalidMain.requiredMainArtifactUnavailable,
+                "failed required artifact blocks acquisition without a server block code")
+        } catch { expect(false, "blocked catalog regression: \(error)") }
+    }
+
     static func main() async {
+        testBlockedCatalogStaysVisible()
         testLegacyPackageGetsRequiredMainArtifact()
         testOptionalContoursDoesNotHideMainArtifact()
         testProviderNativeMetadataDecodesWithoutFZKSemantics()

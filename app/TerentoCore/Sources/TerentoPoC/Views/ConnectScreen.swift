@@ -282,6 +282,10 @@ struct ConnectScreen: View {
         .onChange(of: deviceEngine.installationAuthorization) { authorization in
             mapEngine.setInstallationAuthorization(authorization)
         }
+        .onReceive(Timer.publish(every: 300, on: .main, in: .common).autoconnect()) { _ in
+            guard !lifecycleViewModel.isBusy else { return }
+            Task { await mapEngine.refreshCatalogAvailability() }
+        }
         .onChange(of: mapEngine.result) { _ in refreshMapSelectionPresentation() }
         .onChange(of: selectedMapProviderID) { _ in refreshProviderPresentation() }
         .onChange(of: mapSearchText) { _ in refreshSearchPresentation() }
@@ -3790,6 +3794,7 @@ private struct ManageMapRow: View {
                 ManageActionGroup(
                     mapTitle: item.title,
                     primaryActions: primaryActions,
+                    updateBlocked: availability.updateBlocked,
                     isEnabled: !isLifecycleBusy,
                     onAction: perform
                 )
@@ -3809,7 +3814,7 @@ private struct ManageMapRow: View {
             }
         }
 
-        return item.manageMetadataLabel
+        return availability.updateBlocked ? (availability.reason ?? item.manageMetadataLabel) : item.manageMetadataLabel
     }
 
     private func perform(_ action: MapLifecycleAction) {
@@ -3827,11 +3832,15 @@ private struct ManageMapRow: View {
 private struct ManageActionGroup: View {
     let mapTitle: String
     let primaryActions: [MapLifecycleAction]
+    var updateBlocked: Bool = false
     let isEnabled: Bool
     let onAction: (MapLifecycleAction) -> Void
 
     var body: some View {
         HStack(spacing: 9) {
+            if updateBlocked {
+                ManageActionButton(action: .update, mapTitle: mapTitle, isEnabled: false, onAction: onAction)
+            }
             ForEach(primaryActions.filter { $0 == .update }, id: \.rawValue) { action in
                 ManageActionButton(
                     action: action,
@@ -4580,7 +4589,7 @@ struct MapSelectionRow: View {
                 guard isAvailable, item.isSelectable, selectionEnabled else { return }
                 isSelected.toggle()
             }
-            .opacity(crossProviderSelectionDisabled ? 0.62 : 1)
+            .opacity(crossProviderSelectionDisabled || item.acquisitionAvailability != .available ? 0.62 : 1)
             .help(crossProviderSelectionDisabled ? "Choose maps from one provider at a time." : "")
             .accessibilityElement(children: .combine)
             .accessibilityLabel(accessibilityLabel)

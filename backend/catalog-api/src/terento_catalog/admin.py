@@ -2594,6 +2594,12 @@ def _provider_health_counts(health: dict[str, Any] | None) -> tuple[int, int]:
     return passed, not_evaluated
 
 
+def _provider_health_attention_count(health: dict[str, Any]) -> int:
+    return sum(str(health.get(key) or "").upper() in {"DOWN", "DEGRADED"}
+               for key in ("website_status", "catalog_status", "redirect_status", "download_status",
+                           "mime_status", "magic_status", "zip_status", "img_status", "last_update_status"))
+
+
 def _provider_action_label(value: Any) -> str:
     labels = {
         "provider.health_checked": "Health checked",
@@ -2601,6 +2607,9 @@ def _provider_action_label(value: Any) -> str:
         "provider.catalog_collection_failed": "Catalog collection failed",
         "provider.status_changed": "Status changed",
         "provider.retired": "Provider retired",
+        "provider.health_schedule_changed": "Health check interval changed",
+        "package.downloads_disabled": "Map downloads disabled",
+        "package.downloads_enabled": "Map downloads enabled",
     }
     raw = str(value or "").strip()
     return labels.get(raw, raw.replace("_", " ").title() or "Provider action")
@@ -2728,7 +2737,7 @@ def _provider_problem(package, provider_id):
     return ''.join(problems)
 
 
-def _provider_package_row(package: dict[str, Any]) -> str:
+def _provider_package_row(package: dict[str, Any], provider_id: str = "") -> str:
     broken_count = _optional_nonnegative_int(package.get("broken_artifact_count"))
     availability = str(package.get("availability") or "UNKNOWN")
     is_broken = broken_count is not None and broken_count > 0
@@ -2753,12 +2762,22 @@ def _provider_package_row(package: dict[str, Any]) -> str:
             f"Download: {_optional_count_label(artifact.get('size_bytes'), ' bytes')} · IMG: {_optional_count_label(artifact.get('install_size_bytes'), ' bytes')}<br>"
             f"Source date: {html.escape(str(artifact.get('source_updated_at') or 'Unknown'))}<br>{source}</p>"
         )
+    download_control = ""
+    if provider_id and availability != "RETIRED":
+        disabled = bool(package.get("downloads_disabled"))
+        note = str(package.get("downloads_disabled_reason") or "").strip()
+        download_control = (
+            "<div class='provider-download-control'>"
+            f"<strong>{'Downloads disabled by admin' if disabled else 'Downloads enabled by admin'}</strong>"
+            + (f"<small>{html.escape(note)}</small>" if disabled and note else "")
+            + f"<button type='button' class='secondary-button' data-provider-action='downloads' data-provider-id='{html.escape(provider_id, quote=True)}' data-package-id='{html.escape(package_id, quote=True)}' data-downloads-enabled='{str(disabled).lower()}'>{'Enable downloads' if disabled else 'Disable downloads'}</button></div>"
+        )
     if artifact_details:
         artifact_details = f"<details class='admin-disclosure' style='text-align:start;overflow-wrap:anywhere'><summary>Artifact details</summary>{artifact_details}</details>"
     return (
         f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-state='{html.escape(availability,quote=True)}' data-package-broken='{str(is_broken).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}{artifact_details}</td>"
         f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='column-number numeric'>{_optional_count_label(package.get('artifact_count'))}</td>"
-        f"<td class='column-status'>{broken_markup}{f' <small>{broken_count} need attention</small>' if is_broken else ''}</td></tr>"
+        f"<td class='column-status'>{broken_markup}{f' <small>{broken_count} need attention</small>' if is_broken else ''}{download_control}</td></tr>"
     )
 
 
@@ -2773,6 +2792,52 @@ def _provider_source_row(source: dict[str, Any]) -> str:
         f"<td class='provider-url-cell' title='{html.escape(source_url, quote=True)}'>{_provider_url(source_url, label=source_label)}</td>"
         f"<td class='column-status'>{_provider_status_badge(str(source.get('validation_status') or 'UNKNOWN') if source.get('enabled', True) else 'PAUSED')}</td>"
         f"<td class='column-date'>{_timestamp_markup(source.get('last_checked_at'))}</td></tr>"
+    )
+
+
+def _provider_current_health(health: dict[str, Any], provider: dict[str, Any]) -> str:
+    monitoring = provider.get("monitoring") or {}
+    reason = str(health.get("error_detail") or health.get("error_code") or "").strip()
+    provider_status = str(provider.get("status") or "ACTIVE").upper()
+    next_check = ("Automatic checks paused" if provider_status == "PAUSED" else
+                  "Automatic checks stopped" if provider_status == "RETIRED" else
+                  _timestamp_markup(monitoring.get("nextCheckAt")))
+    components = (
+        ("website_status", "Website"), ("catalog_status", "Catalog"),
+        ("download_status", "Download server"), ("redirect_status", "Redirects"),
+        ("mime_status", "Content type"), ("magic_status", "File signature"),
+        ("zip_status", "Archive"), ("img_status", "Map image"),
+        ("last_update_status", "Catalog freshness"),
+    )
+    checks = "".join(f"<div><dt>{label}</dt><dd>{_provider_check_badge(health.get(key))}</dd></div>" for key, label in components)
+    stale = "<p class='provider-attention'><strong>Check overdue.</strong> The last result may no longer reflect availability.</p>" if monitoring.get("stale") else ""
+    block = str(provider.get("downloadBlockReason") or "")
+    block_message = {
+        "STATUS_STALE": "Downloads are waiting for a fresh provider availability check. Run Check provider health or wait for the scheduled check.",
+        "PROVIDER_DOWN": "Downloads unavailable: the provider download server did not respond to the latest check. Try again later.",
+        "PROVIDER_RATE_LIMITED": "Downloads are temporarily unavailable because the provider requested a cooldown. Try again later.",
+        "PROVIDER_PAUSED": "Downloads paused by an administrator.",
+        "PROVIDER_RETIRED": "Downloads unavailable: this provider is retired.",
+    }.get(block, "Downloads are blocked by the current provider policy." if block else "No provider-wide download block. Package checks and admin settings still apply.")
+    if not health:
+        return "<p class='empty'>No health checks recorded yet.</p>" + stale + f"<p>Next check: {next_check}</p>"
+    reason_markup = f"<p class='provider-current-reason'><strong>Observed issue:</strong> {html.escape(reason)}</p>" if reason else ""
+    return (
+        f"<div class='provider-current-health'>{stale}<p>{html.escape(block_message)}</p>{reason_markup}"
+        f"<dl class='provider-health-facts'><div><dt>Last checked</dt><dd>{_timestamp_markup(health.get('checked_at'))}</dd></div><div><dt>Next scheduled check</dt><dd>{next_check}</dd></div></dl>"
+        f"<dl class='provider-health-checks'>{checks}</dl>"
+        f"<p class='table-help'>HTTP: {_optional_count_label(health.get('http_status'))} · Artifacts sampled: {_optional_count_label(health.get('artifact_count'))} · Duration: {_optional_count_label(health.get('duration_ms'), ' ms')}</p>"
+        "<p class='table-help'>Results describe the latest check from the Terento server. Missing evidence is not a failed check; this does not verify a complete download or installation.</p></div>"
+    )
+
+
+def _provider_health_history_item(health: dict[str, Any]) -> str:
+    passed, missing = _provider_health_counts(health)
+    reason = str(health.get("error_detail") or health.get("error_code") or "").strip()
+    return (
+        f"<li><div>{_timestamp_markup(health.get('checked_at'))}{_provider_status_badge(health.get('status'), kind='health')}</div>"
+        f"<small>{passed} passed · {_provider_health_attention_count(health)} need attention · {missing} not evaluated</small>"
+        + (f"<p>{html.escape(reason)}</p>" if reason else "") + "</li>"
     )
 
 
@@ -2852,6 +2917,8 @@ def provider_detail_page(
     detail: dict[str, Any], runs: list[dict[str, Any]], audits: list[dict[str, Any]],
     user: dict[str, Any], csrf_token: str,
 ) -> bytes:
+    runs = runs[:10]
+    audits = audits[:10]
     provider = detail.get("provider", detail)
     provider_id = str(provider.get("id") or "").strip()
     name = str(provider.get("name") or provider_id or "Provider")
@@ -2910,8 +2977,12 @@ def provider_detail_page(
         f"{html.escape(release)}: {count} packages"
         for release, count in sorted(release_counts.items(), reverse=True)
     ) or 'No package releases recorded.'
-    latest_health = health_history[0] if health_history else {}
-    previous_health = health_history[1:] if latest_health else []
+    latest_health = health_record or (health_history[0] if health_history else {})
+    previous_health = [
+        item for item in health_history
+        if (item.get("id") != latest_health.get("id") if item.get("id") is not None and latest_health.get("id") is not None
+            else item.get("checked_at") != latest_health.get("checked_at"))
+    ][:10]
     health_passed, health_not_evaluated = _provider_health_counts(latest_health)
     latest_health_status = str(latest_health.get("status") or health or "UNKNOWN").upper()
     latest_run = runs[0] if runs else {}
@@ -2945,7 +3016,7 @@ def provider_detail_page(
             + html.escape(" ".join(activation_blockers))
             + "</p>"
         )
-    rows_packages = "".join(_provider_package_row(package) for package in packages)
+    rows_packages = "".join(_provider_package_row(package, provider_id if status != "RETIRED" else "") for package in packages)
     rows_sources = "".join(_provider_source_row(source) for source in provider_sources)
     artifact_kinds = {str(a.get("source_url") or ""): str(a.get("kind") or "main")
                       for package in packages for a in package.get("artifacts") or []}
@@ -2954,7 +3025,7 @@ def provider_detail_page(
     main_sources = sum(source["artifact_kind"] == "main" for source in typed_sources)
     source_counts = f"<span class='status-badge'>Main maps · {main_sources}</span> <span class='status-badge'>Contours · {contour_sources}</span>"
     rows_download_sources = "".join(_provider_source_row(source) for source in typed_sources)
-    rows_health = "".join(_provider_health_row(item) for item in previous_health)
+    rows_health = "".join(_provider_health_history_item(item) for item in previous_health)
     rows_runs = "".join(_provider_run_row(run) for run in runs)
     rows_audits = "".join(_provider_audit_row(audit) for audit in audits)
     empty_packages = "<p class='empty'>No catalog packages collected yet.</p>" if not packages else ""
@@ -2968,15 +3039,20 @@ def provider_detail_page(
     download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Download source URLs</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
     download_source_section = f"<details class='admin-disclosure' id='provider-download-sources'><summary>Download source URLs <span class='disclosure-meta'>· {len(download_sources)}</span></summary><div class='disclosure-body'><p>{source_counts}</p><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details>" if download_sources else ""
     package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-package-table'><caption class='sr-only'>Regions and packages</caption><thead><tr><th scope='col'>Region / package</th><th scope='col'>Release</th><th scope='col' class='column-number'>Artifacts</th><th scope='col' class='column-status'>State</th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
-    latest_health_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><caption class='sr-only'>Health check details</caption><thead><tr><th scope='col' class='column-date'>Checked</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>Checks</th><th scope='col' class='column-number'>HTTP</th><th scope='col' class='column-number'>Artifacts</th><th scope='col' class='column-number'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{_provider_health_row(latest_health)}</tbody></table></div>" if latest_health else ""
-    health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col' class='column-date'>Checked</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>Checks</th><th scope='col' class='column-number'>HTTP</th><th scope='col' class='column-number'>Artifacts</th><th scope='col' class='column-number'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if previous_health else ""
+    latest_health_table = _provider_current_health(latest_health, provider)
+    health_history_table = f"<p class='table-help'>Up to 10 previous checks from the last 30 days.</p><ol class='provider-health-history'>{rows_health}</ol>" if previous_health else ""
+    monitoring = provider.get("monitoring") or {}
+    schedule_options = "".join(f"<option value='{hours}'{' selected' if monitoring.get('intervalHours', 1) == hours else ''}>Every {hours} {'hour' if hours == 1 else 'hours'}</option>" for hours in (1, 6, 24))
+    schedule = f"<div class='provider-health-schedule'><label for='provider-health-interval'>Automatic health checks</label><select id='provider-health-interval'{ ' disabled' if status == 'RETIRED' else ''}>{schedule_options}</select>{_provider_action_button(provider_id, 'health-schedule', 'Save interval', secondary=True, disabled=status == 'RETIRED')}</div>"
     run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-run-table'><thead><tr><th scope='col'>Run</th><th scope='col' class='column-date'>Started</th><th scope='col' class='column-date'>Finished</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-number'>Updates</th><th scope='col' class='column-number'>Packages</th><th scope='col' class='column-number'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
     audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Action</th><th scope='col' class='column-status'>Old status</th><th scope='col' class='column-status'>New status</th><th scope='col'>Reason</th><th scope='col' class='column-date'>Timestamp</th><th scope='col'>Details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
     health_summary = (
         f"{_provider_status_badge(latest_health_status, kind='health')} "
-        f"<span>{health_passed} checks passed · {health_not_evaluated} not evaluated</span>"
+        f"<span>{health_passed} passed · {_provider_health_attention_count(latest_health)} need attention · {health_not_evaluated} not evaluated</span>"
         if latest_health else "<span class='muted-value'>No health check recorded yet.</span>"
     )
+    if monitoring.get("stale"):
+        health_summary += " <span class='provider-status provider-status-unknown'>Check overdue</span>"
     health_transport = (
         f"HTTP {html.escape(str(latest_health.get('http_status') or '—'))} · "
         f"{html.escape(str(latest_health.get('duration_ms') or '—'))} ms"
@@ -2990,7 +3066,7 @@ def provider_detail_page(
         if latest_run else "<span class='muted-value'>No collection run recorded yet.</span>"
     )
     collection_section = (
-        f"<section class='provider-card'><div class='section-heading'><div><h2>Collection</h2></div></div><div class='provider-latest-summary'>{collection_summary}</div><details class='admin-disclosure' id='provider-collection-history'><summary>Collection history <span class='disclosure-meta'>· {len(runs)} runs</span></summary><div class='disclosure-body'><p class='table-help'>Updates counts new maps and maps with a changed release or source date. — means the count was not recorded.</p><p class='table-help'>Catalog sync: {_timestamp_markup(provider.get('lastCatalogSync'))}</p>{empty_runs}{run_table}</div></details></section>"
+        f"<section class='provider-card'><div class='section-heading'><div><h2>Collection</h2></div></div><div class='provider-latest-summary'>{collection_summary}</div><details class='admin-disclosure' id='provider-collection-history'><summary>Collection history <span class='disclosure-meta'>· {len(runs)} runs</span></summary><div class='disclosure-body'><p class='table-help'>Latest 10 collection runs. Updates counts new maps and maps with a changed release or source date. — means the count was not recorded.</p><p class='table-help'>Catalog sync: {_timestamp_markup(provider.get('lastCatalogSync'))}</p>{empty_runs}{run_table}</div></details></section>"
         if latest_run or runs else
         f"<section class='provider-card provider-empty-disclosure'><details class='admin-disclosure' id='provider-collection-history'><summary>Collection <span class='table-help'>No runs yet</span></summary><div class='disclosure-body'><p class='empty'>No catalog collection runs recorded yet.</p><p>Catalog sync: {_timestamp_markup(provider.get('lastCatalogSync'))}</p></div></details></section>"
     )
@@ -3021,7 +3097,7 @@ def provider_detail_page(
         {provider_attention}
         <section class='provider-card' aria-label='Package problems'><div class='section-heading'><h2>Package problems</h2>{_provider_action_button(provider_id, 'rechecks', 'Recheck affected packages', disabled=status == 'RETIRED')}</div><p id='provider-recheck-progress' role='status'></p>{''.join(_provider_problem(p, provider_id) for p in packages) or '<p>No known package validation problems.</p>'}</section>
         <div class='provider-state-grid'>
-        <section class='provider-card'><div class='section-heading'><div><h2>Health</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{_timestamp_markup(provider.get('lastHealthCheck'))}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history <span class='disclosure-meta'>· {len(previous_health)} previous {'check' if len(previous_health) == 1 else 'checks'}</span></summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
+        <section class='provider-card'><div class='section-heading'><div><h2>Health</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{_timestamp_markup(latest_health.get('checked_at') or provider.get('lastHealthCheck'))}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{latest_health_table}</div></details>{schedule}<details class='admin-disclosure' id='provider-health-history'><summary>Health check history <span class='disclosure-meta'>· {len(previous_health)} previous {'check' if len(previous_health) == 1 else 'checks'}</span></summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
         {collection_section}</div>
         <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages <span class='disclosure-meta'>· {len(packages)} catalog entries · {_optional_count_label(broken_packages)} artifacts needing attention</span></summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Needs attention</option><option value='available'>Available</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
         <details class='provider-card admin-disclosure' id='provider-technical-details'><summary>Technical details</summary><div class='disclosure-body'>
@@ -3029,7 +3105,7 @@ def provider_detail_page(
         {download_source_section}
         <details class='admin-disclosure'><summary>Metadata and attribution</summary><dl class='provider-information-list'><div><dt>Provider ID</dt><dd><code>{html.escape(provider_id)}</code></dd></div><div><dt>Adapter</dt><dd><code>{html.escape(str(provider.get('adapterId') or '—'))}</code></dd></div><div><dt>Website</dt><dd>{_provider_url(provider.get('website'))}</dd></div><div><dt>License</dt><dd>{html.escape(str(provider.get('license') or '—'))}</dd></div><div><dt>Attribution</dt><dd>{html.escape(str(provider.get('attribution') or '—'))}</dd></div><div><dt>License URL</dt><dd>{_provider_url(provider.get('licenseUrl'))}</dd></div></dl></details>
         <details class='admin-disclosure'><summary>Original links</summary>{empty_sources}{source_table}</details>
-        <details class='admin-disclosure' id='provider-history'><summary>Provider history <span class='disclosure-meta'>· {len(audits)} events</span></summary><div class='disclosure-body'>{empty_audits}{audit_table}</div></details>
+        <details class='admin-disclosure' id='provider-history'><summary>Provider history <span class='disclosure-meta'>· {len(audits)} events</span></summary><div class='disclosure-body'><p class='table-help'>Latest 10 administrative actions. Earlier audit records remain retained.</p>{empty_audits}{audit_table}</div></details>
         </div></details>
       </main>
       <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_provider_detail_script()}</script>
@@ -3282,7 +3358,14 @@ def _provider_detail_script() -> str:
           if (action === 'retire' && !window.confirm('Retire this provider? Historical events and packages will be retained.')) return;
           let reason = '';
           if (action === 'retire' || action === 'state') reason = window.prompt('Reason for this provider status change (optional):', '') || '';
-          const body = action === 'rechecks' ? JSON.stringify(button.dataset.packageId ? {packageId: button.dataset.packageId} : {}) : action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
+          let downloadReason = '';
+          if (action === 'downloads' && button.dataset.downloadsEnabled !== 'true') {
+            const answer = window.prompt('Why disable downloads for this map? This note stays in Admin.', '');
+            if (answer === null) return;
+            downloadReason = answer.trim();
+            if (!downloadReason) { if (status) status.textContent = 'Enter a reason to disable downloads.'; return; }
+          }
+          const body = action === 'health-schedule' ? JSON.stringify({intervalHours: Number(document.getElementById('provider-health-interval').value)}) : action === 'downloads' ? JSON.stringify({packageId: button.dataset.packageId, enabled: button.dataset.downloadsEnabled === 'true', reason: downloadReason}) : action === 'rechecks' ? JSON.stringify(button.dataset.packageId ? {packageId: button.dataset.packageId} : {}) : action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
           const original = button.textContent;
           button.disabled = true;
           if (status) status.textContent = `${original}…`;
@@ -6860,6 +6943,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .admin-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 12px}.admin-kpi-grid article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.admin-kpi-grid article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.admin-kpi-grid article>strong{display:block;margin-top:6px;color:var(--graphite);font-family:var(--font-brand);font-size:25px;line-height:1.15;font-variant-numeric:tabular-nums}.historical-failure-note{margin:0 0 24px;color:var(--secondary);font-size:12px}.historical-failure-note .info-control{margin-left:3px}
 .map-statistics-empty{margin:0 0 18px;padding:28px 24px;border:1px dashed var(--border);border-radius:14px;background:var(--surface);text-align:center}.map-statistics-empty h2{font-size:20px}.map-statistics-empty p{margin:8px 0 0;color:var(--secondary);font-size:13px}.map-events-card{margin-top:24px}
 .admin-disclosure{margin:0}.admin-disclosure>summary{cursor:pointer;color:var(--interactive);font-size:13px;font-weight:750;list-style-position:inside;text-underline-offset:3px}.admin-disclosure>summary:hover{text-decoration:underline}.admin-disclosure>summary:focus-visible{outline:3px solid var(--admin-focus-ring);outline-offset:3px}.disclosure-body{margin-top:14px}.filter-disclosure{align-self:stretch;min-width:130px;position:relative}.filter-disclosure>summary{display:flex;align-items:center;justify-content:center;height:var(--admin-control-height);padding:8px 10px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font-size:var(--admin-control-font-size);font-weight:650;list-style:none;text-decoration:none}.filter-disclosure>summary::-webkit-details-marker{display:none}.filter-disclosure .disclosure-body{display:flex;gap:8px;flex-wrap:wrap;position:absolute;z-index:5;margin-top:7px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.14)}.filter-disclosure .disclosure-body label{display:flex}.filter-disclosure .disclosure-body input,.filter-disclosure .disclosure-body select{min-width:140px}.inline-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}.inline-filter-row label{display:flex;flex:1 1 220px}.inline-filter-row select{flex:0 1 170px}.provider-pagination{display:flex;align-items:center;justify-content:center;gap:14px;min-height:34px;margin-top:12px;color:var(--secondary);font-size:12px;text-align:center}.provider-pagination button{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font:700 12px var(--font-ui)}.provider-pagination button:hover:not(:disabled){border-color:var(--interactive);background:var(--success-bg)}.provider-pagination button:disabled{cursor:not-allowed;opacity:.45}.provider-latest-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border-radius:10px;background:var(--surface-muted);color:var(--secondary);font-size:12px}.provider-latest-summary>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.provider-action-overflow{position:relative}.provider-action-overflow>summary{display:inline-flex;align-items:center;justify-content:center;min-height:var(--admin-control-height);padding:8px 12px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);cursor:pointer;font-size:13px;font-weight:700;list-style:none}.provider-action-overflow>summary::-webkit-details-marker{display:none}.provider-action-overflow>summary:hover{border-color:var(--interactive);color:var(--interactive)}.provider-action-overflow>div{position:absolute;z-index:4;right:0;top:calc(100% + 7px);min-width:180px;padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.14)}.provider-action-overflow button{width:100%}.provider-package-name{display:block;font-weight:700}.provider-package-id{display:block;margin-top:2px;color:var(--secondary)!important;font-size:10px!important}.provider-package-broken td:last-child{color:var(--danger)}.provider-issue-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-weight:750}.provider-issue-count.is-positive{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--border))}.audit-technical-details{margin-top:5px}.audit-technical-details summary{cursor:pointer;color:var(--interactive);font-size:11px;font-weight:700}.audit-technical-details code{display:block;margin-top:5px;max-width:300px;overflow:auto;white-space:pre-wrap;font:500 10px var(--font-mono);color:var(--secondary)}.provider-information-list dd{text-align:left}.provider-section .provider-table-wrap table{min-width:820px}.provider-detail .provider-table-wrap table{min-width:760px}.provider-detail .provider-history-wrap table{min-width:1240px}
+.provider-health-checks,.provider-health-facts{margin:12px 0}.provider-health-checks>div,.provider-health-facts>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)}.provider-health-checks dt,.provider-health-facts dt{color:var(--secondary)}.provider-health-checks dd,.provider-health-facts dd{margin:0;text-align:right;overflow-wrap:anywhere}.provider-current-health p{overflow-wrap:anywhere}.provider-health-history{list-style:none;padding:0;margin:0}.provider-health-history li{padding:10px 0;border-bottom:1px solid var(--border)}.provider-health-history li>div{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.provider-health-history small{display:block;margin-top:4px;color:var(--secondary)}.provider-health-history p{margin:4px 0 0;font-size:12px;overflow-wrap:anywhere}.provider-health-schedule{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0;font-size:12px}.provider-health-schedule label{flex-basis:100%;font-weight:700}.provider-download-control{display:grid;justify-items:start;gap:7px;margin-top:10px;text-align:left;white-space:normal}.provider-download-control strong,.provider-download-control small{font-size:11px;overflow-wrap:anywhere}
 @media(max-width:1100px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.admin-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-detail .provider-history-wrap{overflow-x:auto}}
 @media(max-width:700px){.admin-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.installation-heading{align-items:flex-start}.page-meta{white-space:normal}.provider-latest-summary{align-items:flex-start;flex-direction:column;gap:6px}.filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}}
 @media(max-width:480px){.admin-kpi-grid{grid-template-columns:1fr}.admin-kpi-grid article{min-height:70px;padding:12px}.inline-filter-row{align-items:stretch;flex-direction:column}.inline-filter-row label,.inline-filter-row select{width:100%;flex-basis:auto}.provider-pagination{gap:8px;font-size:11px}.provider-pagination span{max-width:130px}.provider-action-overflow>div{position:static;margin-top:7px}.provider-action-overflow>summary{width:100%}}
@@ -7540,7 +7624,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
   .admin-nav form{width:100%;margin:0}.admin-nav button{min-height:44px;width:100%;text-align:left}.admin-nav .admin-mobile-website{display:flex}
 }
 .disclosure-meta{color:var(--secondary);font-weight:400}
-.provider-problem h3{margin:0;font-size:16px}.provider-card>.section-heading button[data-provider-action]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}.provider-problem{padding-block:16px;border-block-end:1px solid var(--border)}.provider-problem p{margin-block:6px}.provider-problem-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-block-start:14px}.provider-state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.provider-problem h3{margin:0;font-size:16px}.provider-card>.section-heading button[data-provider-action]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}.provider-problem{padding-block:16px;border-block-end:1px solid var(--border)}.provider-problem p{margin-block:6px}.provider-problem-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-block-start:14px}.provider-state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
 .provider-state-grid>.provider-card{min-width:0}
 @media(max-width:700px){.provider-state-grid{grid-template-columns:minmax(0,1fr)}.mobile-record-table td[colspan]{display:block!important;width:100%}}
 """

@@ -3036,9 +3036,12 @@ class Database:
                 p.attribution AS provider_attribution,
                 p.license_url AS provider_license_url,
                 COALESCE(h.status, 'UNKNOWN') AS provider_health,
+                h.download_status AS provider_download_health,
+                p.health_check_interval_hours, p.health_retry_not_before,
                 h.checked_at AS provider_last_checked_at,
                 p.last_catalog_sync AS provider_last_catalog_sync,
                 package.id AS package_id,
+                package.downloads_disabled,
                 package.provider_region_id,
                 package.canonical_region_id,
                 package.map_type, package.geographic_region_id,
@@ -3069,7 +3072,7 @@ class Database:
                 AND package.availability <> 'RETIRED'
             LEFT JOIN map_artifact AS artifact ON artifact.package_id = package.id
             LEFT JOIN LATERAL (
-                SELECT ph.status, ph.checked_at
+                SELECT ph.status, ph.checked_at, ph.download_status
                 FROM provider_health_check AS ph
                 WHERE ph.provider_id = p.id
                 ORDER BY ph.checked_at DESC, ph.id DESC
@@ -3687,7 +3690,7 @@ class Database:
         query = """
             SELECT
                 p.id AS provider_id, p.name AS provider_name,
-                p.adapter_id, p.status, p.website,
+                p.adapter_id, p.status, p.website, p.health_check_interval_hours, p.health_retry_not_before,
                 COALESCE(p.license, p.license_information) AS license_information,
                 p.attribution, p.license_url, p.last_catalog_sync,
                 h.status AS health, h.checked_at AS last_checked_at,
@@ -3774,7 +3777,7 @@ class Database:
                 SELECT id AS provider_id, name AS provider_name, adapter_id, status,
                        website, COALESCE(license, license_information) AS license_information,
                        attribution, license_url,
-                       last_catalog_sync
+                       last_catalog_sync, health_check_interval_hours, health_retry_not_before
                 FROM map_provider WHERE id = %s
                 """,
                 (provider_id,),
@@ -3793,6 +3796,7 @@ class Database:
             provider["packages"] = list(connection.execute(
                 """
                 SELECT mp.id, mp.name, mp.region, mp.release, mp.availability,
+                       mp.downloads_disabled, mp.downloads_disabled_reason,
                        count(ma.id) AS artifact_count,
                        COALESCE(jsonb_agg(jsonb_build_object(
                            'id', ma.id, 'kind', ma.kind, 'source_url', ma.source_url, 'last_check', ma.last_check,
@@ -3826,29 +3830,104 @@ class Database:
             provider["health_history"] = list(connection.execute(
                 """
                 SELECT * FROM provider_health_check
-                WHERE provider_id = %s
+                WHERE provider_id = %s AND checked_at >= now() - interval '30 days'
                 ORDER BY checked_at DESC, id DESC
-                LIMIT 50
+                LIMIT 11
                 """,
                 (provider_id,),
             ).fetchall())
             return provider
 
-    def provider_download_urls(self, provider_id: str) -> list[dict[str, Any]]:
+    def prune_provider_health_history(self):
         with self.connection() as connection:
-            return list(connection.execute(
+            return connection.execute("""DELETE FROM provider_health_check h
+                WHERE checked_at < now() - interval '30 days'
+                  AND EXISTS (SELECT 1 FROM provider_health_check newer
+                    WHERE newer.provider_id=h.provider_id AND
+                    (newer.checked_at,newer.id) > (h.checked_at,h.id))""").rowcount
+
+    def due_provider_health_checks(self, provider_id=None):
+        with self.connection() as connection:
+            return list(connection.execute("""
+                SELECT p.id FROM map_provider p
+                LEFT JOIN LATERAL (SELECT checked_at FROM provider_health_check
+                    WHERE provider_id=p.id ORDER BY checked_at DESC,id DESC LIMIT 1) h ON TRUE
+                WHERE p.status='ACTIVE' AND (%s::text IS NULL OR p.id=%s)
+                  AND (p.health_retry_not_before IS NULL OR p.health_retry_not_before <= now())
+                  AND (h.checked_at IS NULL OR h.checked_at +
+                       p.health_check_interval_hours * interval '1 hour' <= now())
+                ORDER BY h.checked_at NULLS FIRST, p.id
+            """, (provider_id, provider_id)).fetchall())
+
+    def set_provider_health_interval(self, provider_id, hours, admin_user_id, request_id):
+        if type(hours) is not int or hours not in (1, 6, 24):
+            raise ValueError('invalid_health_interval')
+        with self.connection() as connection:
+            row = connection.execute("UPDATE map_provider SET health_check_interval_hours=%s, updated_at=now() WHERE id=%s RETURNING id",
+                                     (hours, provider_id)).fetchone()
+            if not row:
+                raise LookupError('provider_not_found')
+            self._insert_admin_audit(connection, admin_user_id=admin_user_id,
+                action='provider.health_schedule_changed', provider_id=provider_id,
+                request_id=request_id, details={'intervalHours': hours})
+        return {'intervalHours': hours}
+
+    def set_package_downloads(self, provider_id, package_id, enabled, reason, admin_user_id, request_id):
+        if type(enabled) is not bool or not isinstance(package_id, str) or not package_id or len(package_id)>160:
+            raise ValueError('invalid_package_download_control')
+        if not isinstance(reason, str) or len(reason.strip())>500 or (not enabled and not reason.strip()):
+            raise ValueError('download_control_reason_required')
+        with self.connection() as connection:
+            row = connection.execute("""UPDATE map_package SET downloads_disabled=%s,
+                downloads_disabled_reason=%s, updated_at=now()
+                WHERE id=%s AND provider_id=%s AND availability <> 'RETIRED'
+                  AND EXISTS (SELECT 1 FROM map_provider p WHERE p.id=map_package.provider_id AND p.status <> 'RETIRED')
+                RETURNING id""",
+                (not enabled, reason.strip() if not enabled else None, package_id, provider_id)).fetchone()
+            if not row:
+                raise LookupError('package_not_found')
+            self._insert_admin_audit(connection, admin_user_id=admin_user_id,
+                action='package.downloads_enabled' if enabled else 'package.downloads_disabled',
+                provider_id=provider_id, target=package_id, reason=reason.strip(), request_id=request_id,
+                details={'enabled': enabled})
+        return {'packageId': package_id, 'enabled': enabled}
+
+    def provider_download_urls(self, provider_id: str) -> list[dict[str, Any]]:
+        from .provider_catalog import freizeitkarte_policy_country_codes
+        with self.connection() as connection:
+            rows = connection.execute(
                 """
-                SELECT DISTINCT ma.source_url, mp.source_updated_at
+                SELECT DISTINCT ma.source_url, mp.source_updated_at,
+                    mp.provider_region_id, mp.canonical_region_id, mp.country_codes, mp.country, mp.region, mp.availability
                 FROM map_artifact ma
                 JOIN map_package mp ON mp.id = ma.package_id
                 WHERE mp.provider_id = %s
                   AND ma.required AND ma.kind = 'main'
                   AND mp.availability <> 'RETIRED'
                 ORDER BY ma.source_url
-                LIMIT 8
                 """,
                 (provider_id,),
-            ).fetchall())
+            ).fetchall()
+        # Apply acquisition policy before sampling, so withheld first entries
+        # neither trigger network access nor hide eligible download evidence.
+        samples = []
+        seen = set()
+        for row in rows:
+            codes = [str(code).upper() for code in (row.get("country_codes") or [])]
+            if row.get("country"):
+                codes.append(str(row["country"]).upper())
+            if provider_id == "freizeitkarte":
+                codes = freizeitkarte_policy_country_codes(row.get("provider_region_id") or "", codes)
+            if (row.get("availability") == "WITHHELD" or "RU" in codes
+                    or ("UA" in codes and str(row.get("canonical_region_id") or row.get("region") or "").upper() == "CRIMEA")):
+                continue
+            if row["source_url"] in seen:
+                continue
+            seen.add(row["source_url"])
+            samples.append(row)
+            if len(samples) == 8:
+                break
+        return samples
 
     def provider_runs(self, provider_id: str, limit: int = 50) -> list[dict[str, Any]]:
         with self.connection() as connection:
@@ -3865,16 +3944,16 @@ class Database:
                 (provider_id, limit),
             ).fetchall())
 
-    def provider_health_history(self, provider_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    def provider_health_history(self, provider_id: str, limit: int = 11) -> list[dict[str, Any]]:
         with self.connection() as connection:
             return list(connection.execute(
                 """
                 SELECT * FROM provider_health_check
-                WHERE provider_id = %s
+                WHERE provider_id = %s AND checked_at >= now() - interval '30 days'
                 ORDER BY checked_at DESC, id DESC
                 LIMIT %s
                 """,
-                (provider_id, limit),
+                (provider_id, max(1, min(11, limit))),
             ).fetchall())
 
     def record_provider_health(self, result: ProviderHealthResult) -> int:
@@ -3898,6 +3977,17 @@ class Database:
                 """,
                 values,
             ).fetchone()
+            connection.execute(
+                """
+                UPDATE map_provider SET health_retry_not_before = CASE
+                    WHEN %s::integer IS NOT NULL THEN GREATEST(health_retry_not_before,
+                        now() + make_interval(secs => %s))
+                    WHEN health_retry_not_before <= now() THEN NULL
+                    ELSE health_retry_not_before END, updated_at = now()
+                WHERE id = %s
+                """,
+                (values.get("retry_after_seconds"), values.get("retry_after_seconds"), values["provider_id"]),
+            )
         return int(row["id"])
 
     def set_provider_status(
