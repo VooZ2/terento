@@ -12,9 +12,9 @@ Nativní aplikace pro Mac k instalaci a správě komunitních map na hodinkách 
 - Zdarma
 - Notarizovaná
 - Apple Silicon
-[Stáhnout DMG Doporučeno](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.17-build39/Terento-1.0.0-beta.17-macOS-arm64.dmg) [Stáhnout ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.17-build39/Terento-1.0.0-beta.17-macOS-arm64.zip) [Poznámky k vydání](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.17-build39)
+[Stáhnout DMG Doporučeno](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.dmg) [Stáhnout ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.zip) [Poznámky k vydání](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.18-build40)
 
-Nejnovější beta: **v1.0.0-beta.17** Vydáno 5. října 2026
+Nejnovější beta: **v1.0.0-beta.18** Vydáno 5. října 2026
 
 Terento zobrazuje připojené hodinky Garmin v macOS
 
