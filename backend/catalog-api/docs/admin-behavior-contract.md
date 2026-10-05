@@ -556,6 +556,14 @@ one card per provider. Vendor and pipeline names (SMTP2GO, IndexNow, manifest)
 stay in Technical details. Search indexing reports IndexNow submission state as
 one independent check and does not imply that a submitted URL was indexed.
 
+### Resilience
+
+A failing sub-query renders only its card as `Unavailable` with a Retry link
+inside the admin chrome; the rest of the page keeps working. HTML routes never
+answer with raw JSON: an invalid link, a missing page and an unavailable page
+are HTML error pages with the navigation. The review summary query runs only for
+the Dashboard.
+
 ### Responsive and layout invariants
 
 Admin preserves consistent left edges and the existing spacing scale, with no

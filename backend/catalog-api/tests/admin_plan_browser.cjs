@@ -204,7 +204,7 @@ const {chromium}=require(process.argv[2]);
  await healthTechnical.locator('summary').focus();await page.keyboard.press('Enter');
  assert.equal(await healthTechnical.getAttribute('open'),'');
  // Polling is controlled without sleeping: the real installed handler runs against a routed snapshot.
- const refresh=await browser.newPage();await refresh.addInitScript(()=>{const original=setInterval;window.setInterval=(f,ms)=>ms===60000?(window.testPoll=f,1):original(f,ms);});
+ const refresh=await browser.newPage();await refresh.addInitScript(()=>{const original=setInterval;window.setInterval=(f,ms)=>ms===120000?(window.testPoll=f,1):original(f,ms);});
  await refresh.goto(base+'/admin/device.html');await refresh.waitForFunction(()=>!!window.testPoll);
  const originalHTML=await (await refresh.request.get(base+'/admin/device.html')).text();
  let snapshot=await refresh.locator('main').getAttribute('data-admin-revisions');let mode='ok';let release;let requests=0;

@@ -45,7 +45,9 @@ PBKDF2_ITERATIONS = 600_000
 GITHUB_ADMIN_NOTE_MAX_LENGTH = 500
 GITHUB_ISSUE_URL_MAX_LENGTH = 7_000
 GITHUB_NEW_ISSUE_URL = "https://github.com/VooZ2/terento/issues/new"
-_ADMIN_NONCE_PLACEHOLDER = "__TERENTO_ADMIN_NONCE__"
+# Per-process, unguessable placeholder: only template-owned <script> tags carry
+# it, so escaped data can never receive the response nonce (ADM-28).
+_ADMIN_NONCE_PLACEHOLDER = "__TERENTO_ADMIN_NONCE_" + secrets.token_hex(12) + "__"
 _ADMIN_TEXT_INPUT_LIMIT = 8_192
 
 
@@ -2442,7 +2444,7 @@ def overview_page(
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
         <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
-      <script>{_overview_period_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
     """
     return _layout("Dashboard", content, sections={
         "mapActivity": data, "compatibility": compatibility, "downloads": downloads,
@@ -2523,7 +2525,7 @@ def missing_reports_page(
         <div class='heading-row'><div><h1>Missing reports</h1></div></div>
         {notice}{body}
       </main>
-      <script>{_diagnostics_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
     """
     return _layout("Missing reports", content, sections={"missingReports": payload})
 
@@ -3027,7 +3029,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
         {''.join(groups)}
         <details class='admin-card admin-disclosure system-health-weekly'><summary>Weekly results</summary>{_health_run_link(weekly)}<div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Check</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-status'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></details>
       </main>
-      <script>(() => {{
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">(() => {{
         const form = document.querySelector('#health-filters');
         const search = document.querySelector('#health-search');
         const status = document.querySelector('#health-status');
@@ -3159,7 +3161,7 @@ def dashboard_page(
           {pagination}
         </section>
       </main>
-      <script>{_dashboard_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_dashboard_script()}</script>
     """
     return _layout("Installations", content, sections={"installations": rows, "diagnostics": diagnostic_summary, "catalog": identity_devices})
 
@@ -3819,7 +3821,7 @@ def provider_detail_page(
         <details class='admin-card admin-disclosure provider-technical-section'><summary>Original links</summary>{empty_sources}{source_table}</details>
         </div>
       </main>
-      <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_provider_detail_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoAdminCsrf = {_admin_json(csrf_token)};{_provider_detail_script()}</script>
     """
     return _layout(name, content, sections={"provider": detail, "collection": runs, "history": audits})
 
@@ -4127,7 +4129,7 @@ def map_statistics_page(
         {empty_notice}
         {"" if not has_event_data else coverage + provider_table + ranking + events}
       </main>
-      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
+      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
     return _layout("Maps", content, revisions={**statistics_revisions(statistics), **section_revisions({"providers": providers})})
 
@@ -4672,7 +4674,7 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
             )
         )
     body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard identification-page'><h1>Model sources</h1>" + content + '</main>'
-    return _layout('Model sources', body + '<script>' + _identification_review_script() + '</script>', sections={'identification': devices})
+    return _layout('Model sources', body + _script_tag(_identification_review_script()), sections={'identification': devices})
 
 
 def _identification_review_script() -> str:
@@ -5971,7 +5973,7 @@ def device_detail_page(
         <div class='model-evidence-grid'><div class='model-evidence-summary'>{statistics_section}{update_summary}{alert}{administration_section}{information_sections}</div><div class='model-evidence-history'>{history_section}{updates}</div></div>
         {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
       </main>
-      <script>{_diagnostics_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
     """
     return _layout(f"{model} {variant}", content, sections={"device": device, "diagnostics": operations, "resolved": resolved_operations})
 
@@ -6088,7 +6090,7 @@ def diagnostics_page(
         </section>
         {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
       </main>
-      <script>{_diagnostics_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
     """
     return _layout("Installation details", content, sections={"model": model_row, "diagnostics": active_events, "resolved": resolved_operations})
 
@@ -6156,19 +6158,19 @@ def github_issue_queue_page(
         "<tr><td colspan='7' class='empty'>No active GitHub review tasks are waiting for resolution.</td></tr>"
     )
     content = f"""
-      {_admin_header(user, csrf_token, active='installations')}
+      {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard diagnostics-page' id='main-content'>
-        <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
-        <div class='heading-row'><div><h1>GitHub review tasks</h1></div></div>
-        <section class='diagnostics-detail-section' aria-labelledby='github-issue-queue-title'>
-          <div class='section-heading'><div><h2 id='github-issue-queue-title'>Linked diagnostics</h2><span class='table-help'>{len(queue) + len(update_queue)} tasks</span></div></div>
-          <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>Workflow</th><th scope='col' class='column-date'>Last activity</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
+        <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
+        <div class='heading-row'><div><h1>GitHub issues</h1></div></div>
+        <section class='diagnostics-detail-section admin-card' aria-labelledby='github-issue-queue-title'>
+          <div class='section-heading'><div><h2 id='github-issue-queue-title'>Tasks</h2>{_glossary_link('task')}{_scope_chip('now')}<span class='table-help'>{_count_label(len(queue) + len(update_queue), 'task')}</span></div></div>
+          <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-date'>Last activity</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
         </section>
         {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
       </main>
-      <script>{_diagnostics_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
     """
-    return _layout("GitHub issue queue", content, sections={"queue": operations, "updates": update_diagnostics})
+    return _layout("GitHub issues", content, sections={"queue": operations, "updates": update_diagnostics})
 
 
 def _admin_map_capability(value: Any) -> tuple[str, str]:
@@ -6485,7 +6487,7 @@ def devices_page(
         <div class="heading-row"><div><h1>Devices</h1></div></div>
         {device_list}
       </main>
-      <script>const terentoAdminDevices = {payload_json};{_devices_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">const terentoAdminDevices = {payload_json};{_devices_script()}</script>
     """
     return _layout("Devices", content, sections={"devices": payload})
 
@@ -6573,7 +6575,7 @@ def campaign_links_page(user: dict[str, Any], csrf_token: str) -> bytes:
           </section>
         </section>
       </main>
-      <script>{_campaign_links_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_campaign_links_script()}</script>
     """
     return _layout("Campaign links", content)
 
@@ -8740,20 +8742,20 @@ def _success(message: str | None) -> str:
     return f"<p class='success'>{html.escape(message)}</p>" if message else ""
 
 
+def _script_tag(code: str) -> str:
+    """A template-owned inline script carrying the per-response nonce placeholder."""
+    return f'<script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{code}</script>'
+
+
 def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None, revisions: dict[str, str] | None = None) -> bytes:
     if 'id="main-content"' in content or "id='main-content'" in content:
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += f"<script>{_admin_freshness_script()}{_admin_mobile_script()}{_admin_filter_clear_script()}{_admin_disclosure_script()}</script>"
-    content = content.replace(
-        "<script>", f"<script nonce=\"{_ADMIN_NONCE_PLACEHOLDER}\">"
-    )
-    timezone_script = _admin_timezone_script()
-    content = f"{content}<script>{timezone_script}</script>"
-    content = content.replace(
-        "<script>", f"<script nonce=\"{_ADMIN_NONCE_PLACEHOLDER}\">"
-    )
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script())
+    # Scripts get the nonce at their template site; the assembled body is never
+    # post-processed, so data that slipped through escaping gets no nonce.
+    content = f"{content}{_script_tag(_admin_timezone_script())}"
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body class="admin-shell">{content}</body></html>""".encode("utf-8")
 
 
@@ -8917,8 +8919,10 @@ def _admin_freshness_script() -> str:
           if (!stale()) { message.textContent = 'Live check unavailable. Try Refresh.'; notice.hidden = false; }
         } finally { clearTimeout(timeout); running = false; }
       };
-      setInterval(check, 60000);
-      document.addEventListener('visibilitychange', check);
+      // Lighter freshness polling (ADM-27): every two minutes while visible,
+      // plus one check when the tab becomes visible again.
+      setInterval(check, 120000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
     })();"""
 
 

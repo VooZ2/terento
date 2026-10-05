@@ -399,4 +399,5 @@ def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_tok
         else:
             content += _update_totals_markup(data.get('totals'))
         content += update_history_markup(data)
-    return _layout('Update reports', content + f'</main><script>{_diagnostics_script()}</script>')
+    from .admin import _script_tag
+    return _layout('Update reports', content + '</main>' + _script_tag(_diagnostics_script()))

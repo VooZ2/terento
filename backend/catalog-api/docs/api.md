@@ -264,6 +264,16 @@ aggregated partial buckets stay marked partial. Buckets follow the map trend rul
 (24h hourly, 7d daily, 30d weekly, all time adaptive by observed span). A failed GitHub read does not
 erase the last successful observation or timestamp.
 
+Authenticated HTML routes answer errors with an HTML page inside the admin
+chrome (400 invalid link, 404 not found, 503 unavailable); JSON routes
+(`*.json`, provider JSON resources and `/admin/providers/{id}/rechecks`) keep JSON
+errors, and the recheck status route now returns `503
+provider_rechecks_unavailable` instead of dropping the connection. Inline
+scripts carry the CSP nonce only at their template sites through a per-process
+unguessable placeholder; the assembled body is never post-processed for
+`<script>`. Open pages check freshness every two minutes while visible and once
+when the tab becomes visible again.
+
 Production `/admin*` is first protected by Cloudflare Access and the trusted
 origin assertion. The application then requires its native admin session and
 CSRF checks. A local preview that bypasses Access is not production authorization

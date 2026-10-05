@@ -3634,7 +3634,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             }},
             "csrf",
         ).decode()
-        self.assertIn("<h1>GitHub review tasks</h1>", body)
+        self.assertIn("<h1>GitHub issues</h1>", body)
         self.assertIn("#157", body)
         self.assertIn("In progress", body)
         self.assertIn("action='/admin/diagnostics/workflow'", body)
@@ -3697,7 +3697,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<h2 id='github-issue-queue-title'>Linked diagnostics</h2><span class='table-help'>1 tasks</span>", body)
+        self.assertIn("<h2 id='github-issue-queue-title'>Tasks</h2>", body)
+        self.assertIn("<span class='table-help'>1 task</span>", body)
         self.assertEqual(body.count("class='diagnostic-detail-dialog'"), 1)
 
     def test_issue_workflow_migration_is_additive_and_backfills_linked_active_rows(self):
