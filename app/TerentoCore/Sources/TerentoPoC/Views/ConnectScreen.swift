@@ -2001,11 +2001,11 @@ struct ConnectScreen: View {
         }
         .onAppear {
             mapEngine.recordInstallReviewBlocked(plan: plan,
-                authorization: deviceEngine.installationAuthorization, supportedInstallFlow: supportedInstallFlow)
+                authorization: deviceEngine.installationAuthorization, supportedInstallFlow: true)
         }
         .onChange(of: deviceEngine.installationAuthorization) { authorization in
             mapEngine.recordInstallReviewBlocked(plan: plan,
-                authorization: authorization, supportedInstallFlow: supportedInstallFlow)
+                authorization: authorization, supportedInstallFlow: true)
         }
     }
 

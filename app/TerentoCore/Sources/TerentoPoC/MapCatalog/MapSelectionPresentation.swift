@@ -223,6 +223,13 @@ struct DeviceAuthorizationPresentation: Equatable, Sendable {
                 tone = .warning
                 reviewReason = "This watch model isn't enabled for map installation yet."
                 browsingNotice = "This watch model isn't enabled for map installation yet. You can browse maps, but installing isn't available."
+            case .updateRequired:
+                title = "Update Terento"
+                detail = "This Terento version needs an update before it can install maps. Update Terento, then try again."
+                systemImage = "arrow.down.circle"
+                tone = .warning
+                reviewReason = detail
+                browsingNotice = "Update Terento to install maps. You can still browse maps."
             case .outOfScope, .notAuthorized:
                 title = "Not available for this model"
                 detail = "Map installation isn't available for this watch model in Terento."
