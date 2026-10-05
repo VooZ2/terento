@@ -1103,7 +1103,14 @@ README day; same-day republishes do not invent a new version ordering.
 
 Unavailable BBBike entries may have unknown ZIP bytes represented as0, unknown
 install size, unavailable artifact validation and no source proof. They are
-catalog metadata only and cannot be acquired. Ready-region pages for Cambodia, Jordan and Luxembourg point to the provider's
+catalog metadata only and cannot be acquired. This also holds after a failed
+recheck of a previously validated package: publication omits `sourceProof`,
+`sourceUpdatedAt` and `installPayloadPath` from an unavailable BBBike main
+artifact while the stored proof remains database evidence, because released
+clients reject the whole catalog when such an artifact carries a proof. The
+backend release gate `test_catalog_native_acceptance` mirrors the native
+per-package acceptance rules for every published package; provider IMG identity
+matching remains covered by the native released-client gate. Ready-region pages for Cambodia, Jordan and Luxembourg point to the provider's
 separate example namespace. Exactly those six URLs (three regions × two types)
 are reviewed aliases: source README/IMG identity, complete country input-PBF
 bounds and ready-region polygon bounds were checked for both styles. No other
