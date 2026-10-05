@@ -156,8 +156,12 @@ handoff, never silent application replacement.
 
 Map-use delivery drains events appended during an in-flight upload before
 reporting the queue uploaded. Retryable failures retain the queue and use the
-existing bounded retry schedule; permanent failures stop that send attempt.
-Opt-out clears pending events and stops the sender before another event is sent.
+existing bounded retry schedule. A non-retryable HTTP 4xx rejection parks only
+that event (status, count, time and build are kept locally) and later events
+continue in order; parked events are retried only by a new app build or after a
+24-hour back-off, a bounded number of times, and expire with the 24-month
+retention window. Compatibility/update diagnostics use the same parking rules.
+Opt-out clears pending and parked events and stops the sender before another event is sent.
 A response already in flight cannot restore the opted-out status. This does not
 add cancellation/interruption events or reconstruct missing historical outcomes;
 a download start without a received outcome is not proof of a failed download.
@@ -532,8 +536,8 @@ through all phases; legacy saved events without it remain unknown. Fresh events
 also preserve the selected map result index. Download reporting starts only at
 the awaited downloader boundary, after policy, current availability, workspace
 and source checks. Pre-download failures produce no fictitious download attempt.
-Rejected HTTP 400 compatibility reports remain available under their original
-IDs while independent reports continue; consent and retry boundaries are unchanged.
+Rejected compatibility reports remain available under their original IDs and
+are parked (see map-use delivery above) while independent reports continue.
 A preflight component failure is attributed to its owning selected map, not the
 flattened component position. MapRando's standalone France contours catalog entry
 has its own main artifact; it remains a selectable independent map, distinct from

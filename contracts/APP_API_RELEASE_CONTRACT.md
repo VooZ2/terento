@@ -14,6 +14,21 @@ write policy change. Strict event-type/outcome agreement also covers legacy
 requests; map result indices reject Boolean, fractional and out-of-range values.
 These are local candidate changes, not a deployed API or released app claim.
 
+## Rejected telemetry parking (unreleased app candidate)
+
+Every durable telemetry queue (map usage, compatibility/update diagnostics and
+the app funnel) treats HTTP 4xx except 408/425/429 as a rejection of that one
+event. The client parks the event locally with its rejection status, count, time
+and app build, and continues with independent later events in order. A parked
+event is offered again only by a different app build or after a 24-hour back-off,
+at most three times per build and ten times overall, and is dropped after the
+24-month telemetry retention window. Retryable failures (network, 408, 425, 429,
+5xx) never park or drop an event: they keep queue order and stop the current send
+attempt, so a rate limit is not burned by later reports. Opt-out clears parked
+events with pending ones. Parked reports keep their original event ID and kind;
+a server rollback that rejects a field therefore delays, but never blocks, other
+telemetry. Replays remain idempotent by event ID. No payload field changes.
+
 ## Beta.16 build 38 — provider recovery and update diagnostics
 
 Beta.16 build 38 accepts both reviewed BBBike README date forms in
@@ -54,9 +69,9 @@ identity remain unassigned instead of being backfilled by name.
 Update diagnostics send measured cleanup attempt/result facts. An unmeasured
 `transferProgressBucket` is omitted only for explicit update reports; the
 existing installation contract still requires it. If a rolled-back backend
-returns HTTP 400 for an update report, the client retains its original ID and
-kind for a later flush and continues sending supported installation reports.
-It never removes the discriminator or recasts the update as an installation.
+rejects an update report, the client parks it under its original ID and kind
+(see "Rejected telemetry parking") and continues sending supported installation
+reports. It never removes the discriminator or recasts the update as an installation.
 
 Local update reports and their pending/uploaded IDs are stored separately in
 `update-evidence.json`. The legacy `installation-evidence.json` contains only

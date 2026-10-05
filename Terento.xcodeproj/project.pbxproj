@@ -93,6 +93,7 @@
 		0000000000000000000000d0 /* app/TerentoCore/Sources/TerentoPoC/Statistics/MapStatisticsEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000d1 /* app/TerentoCore/Sources/TerentoPoC/Statistics/MapStatisticsEvent.swift */; };
 		0000000000000000000000d3 /* app/TerentoCore/Sources/TerentoPoC/Views/DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000d2 /* app/TerentoCore/Sources/TerentoPoC/Views/DiagnosticsView.swift */; };
 		0000000000000000000000d4 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000d5 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift */; };
+		7E1E7E1E0000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TelemetryDeliveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E1E7E1E0000000000000002 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TelemetryDeliveryPolicy.swift */; };
 		B11000000000000000000001 /* app/TerentoCore/Sources/TerentoPoC/MTPTransport/BoundedNativeProcess.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11000000000000000000002 /* app/TerentoCore/Sources/TerentoPoC/MTPTransport/BoundedNativeProcess.swift */; };
 		BBB100000000000000000002 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB100000000000000000001 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift */; };
 		CA7A10600000000000000002 /* app/TerentoCore/Sources/TerentoPoC/Views/MapInventoryListPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7A10600000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Views/MapInventoryListPresentation.swift */; };
@@ -192,6 +193,7 @@
 		0000000000000000000000d1 /* app/TerentoCore/Sources/TerentoPoC/Statistics/MapStatisticsEvent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Statistics/MapStatisticsEvent.swift; sourceTree = SOURCE_ROOT; };
 		0000000000000000000000d2 /* app/TerentoCore/Sources/TerentoPoC/Views/DiagnosticsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Views/DiagnosticsView.swift; sourceTree = SOURCE_ROOT; };
 		0000000000000000000000d5 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift; sourceTree = SOURCE_ROOT; };
+		7E1E7E1E0000000000000002 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TelemetryDeliveryPolicy.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Telemetry/TelemetryDeliveryPolicy.swift; sourceTree = SOURCE_ROOT; };
 		B11000000000000000000002 /* app/TerentoCore/Sources/TerentoPoC/MTPTransport/BoundedNativeProcess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/MTPTransport/BoundedNativeProcess.swift; sourceTree = SOURCE_ROOT; };
 		BBB100000000000000000001 /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift; sourceTree = SOURCE_ROOT; };
 		CA7A10600000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Views/MapInventoryListPresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Views/MapInventoryListPresentation.swift; sourceTree = SOURCE_ROOT; };
@@ -302,6 +304,7 @@
 				00000000000000000000009e /* app/TerentoCore/Sources/TerentoPoC/Views/NavigationPresentation.swift */,
 				0000000000000000000000a0 /* app/TerentoCore/Sources/TerentoPoC/Views/WindowPresentation.swift */,
 				0000000000000000000000d5 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift */,
+				7E1E7E1E0000000000000002 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TelemetryDeliveryPolicy.swift */,
 				0000000000000000000000a4 /* app/TerentoCore/Sources/TerentoPoC/Views/AppLinks.swift */,
 				0000000000000000000000a6 /* app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift */,
 				0000000000000000000000a8 /* app/TerentoCore/Sources/TerentoPoC/Compatibility/MapCapability.swift */,
@@ -458,6 +461,7 @@
 				0000000000000000000000d0 /* app/TerentoCore/Sources/TerentoPoC/Statistics/MapStatisticsEvent.swift in Sources */,
 				0000000000000000000000d3 /* app/TerentoCore/Sources/TerentoPoC/Views/DiagnosticsView.swift in Sources */,
 				0000000000000000000000d4 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift in Sources */,
+				7E1E7E1E0000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TelemetryDeliveryPolicy.swift in Sources */,
 				0000000000000000000000b0 /* app/TerentoCore/Sources/TerentoPoC/Compatibility/InstallationEvidence.swift in Sources */,
 				0000000000000000000000b2 /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/InstallationIssueReport.swift in Sources */,
 				000000000000000000000016 /* app/TerentoCore/Sources/TerentoPoC/Compatibility/CompatibilityEngine.swift in Sources */,
