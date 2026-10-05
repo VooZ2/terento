@@ -39,4 +39,12 @@ if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|Rename
     exit 1
 fi
 
+server_limit="$project_root/../../backend/catalog-api/src/terento_catalog/compatibility_evidence.py"
+if ! grep -Fq '< event["selectedMapCount"] <= 100:' "$server_limit" \
+    || ! grep -Fq 'static let maximumMapsPerOperation = 100' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift"; then
+    print -u2 "FAIL: app map-selection cap and server selectedMapCount bound differ"
+    exit 1
+fi
+
 print 'PASS: map selection behavior and transport boundary'

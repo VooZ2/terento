@@ -41,6 +41,10 @@ lifecycle lease reports `UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING`; only a
 disconnect or eject that invalidated the operation reports
 `UPDATE_FAILED_DEVICE_DISCONNECTED`. Existing codes and fields are unchanged.
 
+The Install plan accepts at most 100 selected maps per operation ("Select up to
+100 maps at a time."), equal to the API's `selectedMapCount <= 100` diagnostic
+bound; the native map-selection runner fails if the two constants diverge.
+
 ## Catalog and installation-policy decoder tolerance (unreleased app candidate)
 
 The next app candidate accepts `/maps/catalog-v4.json` per package and tolerates

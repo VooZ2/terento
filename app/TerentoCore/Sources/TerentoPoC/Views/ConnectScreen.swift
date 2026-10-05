@@ -4948,6 +4948,9 @@ struct MapSelectionStorageSummary: View {
         if plan.selectedItems.isEmpty {
             return ""
         }
+        if plan.selectedItems.count > InstallationPlan.maximumMapsPerOperation {
+            return InstallationPlan.tooManyMapsReason
+        }
         if plan.storagePlan.hasUnresolvedInstallSize {
             return "Map size will be checked before installation."
         }
@@ -4958,6 +4961,9 @@ struct MapSelectionStorageSummary: View {
     }
 
     private var statusColor: Color {
+        if plan.selectedItems.count > InstallationPlan.maximumMapsPerOperation {
+            return TerentoColors.error
+        }
         if plan.selectedItems.isEmpty || plan.storagePlan.hasUnresolvedInstallSize {
             return TerentoColors.secondaryText
         }

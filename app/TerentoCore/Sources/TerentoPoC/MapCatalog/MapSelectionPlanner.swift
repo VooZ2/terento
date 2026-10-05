@@ -131,6 +131,13 @@ struct SelectedMapPackagePlan: Equatable, Sendable {
 /// A domain result passed from Choose to the next workflow step. The view does
 /// not calculate sizes, conflicts, or whether a selection may continue.
 struct InstallationPlan: Equatable, Sendable {
+    /// One installation operation reports at most this many map results.
+    /// Must equal the server's `selectedMapCount <= 100` diagnostic bound
+    /// (backend `compatibility_evidence.py`); a larger batch would make every
+    /// diagnostic of the operation invalid.
+    static let maximumMapsPerOperation = 100
+    static let tooManyMapsReason = "Select up to 100 maps at a time."
+
     let selectedItems: [MapSelectionItem]
     let selectedPackagePlans: [SelectedMapPackagePlan]
     let installItems: [MapSelectionItem]
@@ -348,6 +355,9 @@ struct MapSelectionPlanner: Sendable {
         } else if selectedItems.isEmpty {
             status = .noSelection
             reason = "Select a map to continue."
+        } else if selectedItems.count > InstallationPlan.maximumMapsPerOperation {
+            status = .blocked
+            reason = InstallationPlan.tooManyMapsReason
         } else if selectedProviderIDs.count > 1 {
             status = .blocked
             reason = "Select maps from one provider at a time."
