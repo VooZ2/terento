@@ -88,8 +88,9 @@ class DeviceInformationLayoutTests(unittest.TestCase):
         for value in ('006-B1234-00', "action='/admin/devices/identity-mapping'", "name='mapping_id' value='42'", 'required', '/admin/device-identification?device='):
             self.assertIn(value, tool)
         listing = device_identification_page([device], {'username': 'operator'}, 'csrf').decode()
-        self.assertIn('Select a model', listing)
-        self.assertIn('1 model needs source review', listing)
+        self.assertIn('<h1>Model sources</h1>', listing)
+        self.assertIn("data-source-filter='pending'", listing)
+        self.assertIn('>Needs review · 1<', listing)
         self.assertNotIn("name='mapping_id'", listing)
         empty = device_identification_page([device], {'username': 'operator'}, 'csrf', query='<missing>').decode()
         self.assertIn('No matching models.', empty)

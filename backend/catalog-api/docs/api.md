@@ -1223,12 +1223,13 @@ and release distributions. Download history uses a compact wrapping timeline;
 full timestamps remain in markup and accessible labels, with time-only visible
 labels when all phases occur on the same day in the selected timezone.
 
-### Model source review
+### Model sources
 
 `GET /admin/device-identification` is the authenticated, no-store Model
-source review tool under Tools. Its primary workflow is `Source reported` →
-`Match to` → `Other models using this code` → `Confirm match` → `Technical
-details`. Raw codes, mapping/catalog IDs, source revision, policy internals,
+sources tool under Tools (`?q=` searches models and codes, `?device=` opens one
+model). The list has state filters and a paginated table; the detail workflow is
+`Source says` ⇄ `Catalog model` → `Same code` → `Confirm` → `Technical details`
+with a `Next in queue` link. Raw codes, mapping/catalog IDs, source revision, policy internals,
 missing-source inventory, reasons, and history remain secondary. Existing
 CSRF-protected `POST /admin/devices/identity-mapping` remains the mutation route.
 Saved installation assignments and compatibility approval semantics are

@@ -476,14 +476,18 @@ The Installs card labels its timestamp `Last report` (the last installation
 report); it is not a combined installation/update activity timestamp.
 The broad Devices listing keeps its existing compact columns.
 
-### Model source review
+### Model sources
 
-`/admin/device-identification` is visibly named `Model source review`. Its human
-workflow is `Source reported` → `Match to` → `Other models using this code` →
-`Confirm match` → `Technical details`. Raw codes, mapping/catalog IDs, source
-revision, policy internals, missing-source inventory, and decision history remain
-secondary in Technical details. Mapping review does not reassign historical
-installations automatically.
+`/admin/device-identification` is visibly named `Model sources` (Tools menu).
+The list shows Needs review, Approved, Rejected and No source tiles, state
+filter chips (Needs review preselected when any exist), the server-side model or
+code search, and a table (Model, Garmin code, Source, State, Review) with 25-row
+pagination. The detail keeps the human workflow `Source says` ⇄ `Catalog model`
+(side by side) → `Same code` → `Confirm` → `Technical details`, and offers `Next
+in queue` to the next model that needs review. Raw codes, mapping/catalog IDs,
+source revision, policy internals, missing-source inventory, and decision
+history remain secondary in Technical details. Mapping review does not reassign
+historical installations automatically.
 
 ### Providers and collection history
 

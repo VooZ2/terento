@@ -115,12 +115,12 @@ const {chromium}=require(process.argv[2]);
     if(width>760){const date=page.locator('#provider-statistic-rows td.column-date').first();assert.equal(await date.evaluate(e=>getComputedStyle(e).whiteSpace),'nowrap','Last install stays one line');}
    }
    if(name.startsWith('identification')){
-    assert.equal(await page.locator('h1').innerText(),'Model source review');
+    assert.equal(await page.locator('h1').innerText(),'Model sources');
     assert(!/Review required/.test(await page.locator('main').innerText()));
     assert.equal(await page.getByText('Model codes',{exact:true}).count(),0);
     assert.equal(await page.getByText('Review guidance',{exact:true}).count(),0);
     assert.equal(await page.locator('.identification-result-count').count(),0);
-    assert.deepEqual(await page.locator('.identity-mapping-source').first().locator('h3').allTextContents(),['Source reported','Match to',...(name==='identification-ambiguous'?['Other models using this code']:[]),'Confirm match']);
+    assert.deepEqual(await page.locator('.identity-mapping-source').first().locator('h3').allTextContents(),['Source says','Catalog model',...(name==='identification-ambiguous'?['Same code']:[]),'Confirm']);
     assert.equal(await page.getByRole('button',{name:'Approve match'}).first().isVisible(),true);
     assert.equal(await page.getByRole('button',{name:'Reject match'}).first().isVisible(),true);
     const approve=page.getByRole('button',{name:'Approve match'}).first(), reject=page.getByRole('button',{name:'Reject match'}).first();

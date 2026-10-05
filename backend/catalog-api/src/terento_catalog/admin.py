@@ -4517,7 +4517,7 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
                 f"<span>{html.escape(' / '.join(decisions.get(mapping.get('status'), str(mapping.get('status') or '').title()) for mapping in peer['mappings']))}</span></li>"
                 for key, peer in others
             )
-            other_models = f"<section class='identification-step identification-other-models'><h3>Other models using this code</h3><ul>{links}</ul></section>"
+            other_models = f"<section class='identification-step identification-other-models'><h3>Same code</h3><ul>{links}</ul></section>"
         for mapping_index, mapping in enumerate(sorted(group, key=lambda m: m['status'] != 'PENDING')):
             raw_source = str(mapping['source_url'])
             source_host = (urlsplit(raw_source).hostname or '').removeprefix('www.')
@@ -4532,10 +4532,13 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
                 reason = html.escape(str(mapping.get('review_reason') or 'No reason recorded'))
                 current_decision = f"<p class='identification-existing-decision'><strong>Current decision:</strong> {decisions[mapping['status']]} · {reason}{reviewed}</p>"
             items.append(f"""<article class='identity-mapping-source'>
-            <section class='identification-step'><h3>Source reported</h3><strong class='identification-reported-name'>{names}</strong><div class='identification-source-link'>{source_link}</div></section>
-            <section class='identification-step identification-match'><h3>Match to</h3><strong>{label}</strong>{map_fact}</section>
+            <div class='identification-compare'>
+            <section class='identification-step'><h3>Source says</h3><strong class='identification-reported-name'>{names}</strong><div class='identification-source-link'>{source_link}</div></section>
+            <span class='identification-compare-arrow' aria-hidden='true'>⇄</span>
+            <section class='identification-step identification-match'><h3>Catalog model</h3><strong>{label}</strong>{map_fact}</section>
+            </div>
             {other_models if mapping_index == 0 else ''}
-            <section class='identification-step identification-confirm'><h3>Confirm match</h3>{current_decision}
+            <section class='identification-step identification-confirm'><h3>Confirm</h3>{current_decision}
             <form method='post' action='/admin/devices/identity-mapping' class='admin-async-action identity-mapping-review'>
             <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
             <input type='hidden' name='mapping_id' value='{int(mapping['id'])}'>
@@ -4572,6 +4575,18 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
     return "<div class='identity-mappings'>" + ''.join(items) + technical + '</div>'
 
 
+def _identification_state(mappings: list[dict]) -> str:
+    """List state for Model sources: needs review, approved, rejected or no source."""
+    if not mappings:
+        return "missing"
+    statuses = {str(mapping.get("status") or "") for mapping in mappings}
+    if "PENDING" in statuses:
+        return "pending"
+    if "APPROVED" in statuses:
+        return "approved"
+    return "rejected"
+
+
 def device_identification_page(devices: list[dict], user: dict, csrf_token: str, *, device_id: str = "", query: str = "") -> bytes:
     selected = next((d for d in devices if str(d.get('id')) == device_id), None)
     code_models: dict = {}
@@ -4579,30 +4594,115 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
         for mapping in device.get('identityMappings') or []:
             peer = code_models.setdefault((mapping['kind'], mapping['value']), {}).setdefault(str(device['id']), {'label': _identification_label(device), 'mappings': []})
             peer['mappings'].append(mapping)
-    choices = []
     ordered = sorted(devices, key=lambda d: (not any(m['status'] == 'PENDING' for m in d.get('identityMappings') or []), _identification_label(d).casefold()))
+    state_labels = {"pending": "Needs review", "approved": "Approved", "rejected": "Rejected", "missing": "No source"}
+    counts = {state: 0 for state in state_labels}
+    rows: list[str] = []
     for device in ordered:
         label = _identification_label(device)
         mappings = device.get('identityMappings') or []
+        state = _identification_state(mappings)
+        counts[state] += 1
         searchable = ' '.join([label] + [str(m['value']) for m in mappings])
         if query and query.casefold() not in searchable.casefold():
             continue
-        choices.append(f"<a class='identification-choice' href='/admin/device-identification?{urlencode({'device': device['id']})}'><span class='identification-choice-title'><strong>{html.escape(label)}</strong><span>Review source match →</span></span>{_identification_summary(mappings)}</a>")
-    pending_models = sum(any(m['status'] == 'PENDING' for m in d.get('identityMappings') or []) for d in devices)
-    pending_label = '1 model needs source review.' if pending_models == 1 else f'{pending_models} models need source review.'
+        codes = ", ".join(dict.fromkeys(str(m['value']) for m in mappings)) or "—"
+        hosts = ", ".join(dict.fromkeys(
+            (urlsplit(str(m.get('source_url') or '')).hostname or '').removeprefix('www.') or '—' for m in mappings
+        )) or "—"
+        href = f"/admin/device-identification?{urlencode({'device': device['id']})}"
+        rows.append(
+            f"<tr data-source-state='{state}'><td><a class='identification-choice' href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a></td>"
+            f"<td><code>{html.escape(codes)}</code></td><td>{html.escape(hosts)}</td>"
+            f"<td class='column-status'>{_identification_summary(mappings)}</td>"
+            f"<td class='column-status'><a class='section-link' href='{html.escape(href, quote=True)}'>Review&nbsp;{_admin_icon('arrow-right')}</a></td></tr>"
+        )
+    pending_models = counts["pending"]
     if selected:
-        content = f"<section class='overview-panel identification-workspace'><a class='section-link' href='/admin/device-identification'>← Back to model list</a>{_identity_mapping_markup(selected, csrf_token, code_models=code_models)}<a class='section-link identification-model-detail-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence →</a></section>"
+        pending_queue = [
+            d for d in ordered
+            if any(m['status'] == 'PENDING' for m in d.get('identityMappings') or []) and str(d.get('id')) != str(selected.get('id'))
+        ]
+        position = next((index for index, d in enumerate(ordered) if str(d.get('id')) == str(selected.get('id'))), 0)
+        next_device = next((d for d in pending_queue if ordered.index(d) > position), pending_queue[0] if pending_queue else None)
+        next_link = (
+            f"<a class='section-link identification-next-link' href='/admin/device-identification?{urlencode({'device': next_device['id']})}'>Next in queue&nbsp;{_admin_icon('arrow-right')}</a>"
+            if next_device else ""
+        )
+        content = (
+            "<section class='admin-card identification-workspace'>"
+            f"<div class='identification-workspace-nav'><a class='section-link' href='/admin/device-identification'>{_admin_icon('arrow-left')} Model sources</a>{next_link}</div>"
+            f"{_identity_mapping_markup(selected, csrf_token, code_models=code_models)}"
+            f"<a class='section-link identification-model-detail-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence →</a></section>"
+        )
     else:
-        empty = f"<div class='identification-empty'><h3>No matching models.</h3><p>No model or code matches “{html.escape(query)}”. Try a shorter model name or clear the search.</p><a class='section-link' href='/admin/device-identification'>Clear search</a></div>" if query else "<div class='identification-empty'><h3>No models available</h3><p>Run the device catalog collection, then return here to review its sources.</p><a class='section-link' href='/admin/devices'>Open device catalog</a></div>"
+        if query and not rows:
+            empty = f"<div class='identification-empty'><h3>No matching models.</h3><p>No model or code matches “{html.escape(query)}”. Try a shorter model name or clear the search.</p><a class='section-link' href='/admin/device-identification'>Clear search</a></div>"
+        elif not devices:
+            empty = "<div class='identification-empty'><h3>No models available</h3><p>Run the device catalog collection, then return here to review its sources.</p><a class='section-link' href='/admin/devices'>Open device catalog</a></div>"
+        else:
+            empty = ""
         invalid = "<p class='identification-not-found' role='alert'>This model is unavailable. Search the catalog below and select an existing model.</p>" if device_id else ''
-        content = f"<section class='overview-panel identification-workspace'>{invalid}<h2>Select a model</h2><p><strong>{pending_label}</strong> Pending decisions appear first.</p><form method='get' class='identification-search'><label for='identification-search'>Find a model or code<input id='identification-search' name='q' placeholder='For example, fēnix 8 or 006-B…' value='{html.escape(query, quote=True)}'></label><button class='secondary-button' type='submit'>Search</button></form><div class='identification-choices'>{''.join(choices) or empty}</div></section>"
-    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard identification-page'><h1>Model source review</h1>" + content + '</main>'
-    return _layout('Model source review', body + '<script>' + _identification_review_script() + '</script>', sections={'identification': devices})
-
+        chips = "".join(
+            f"<button type='button' class='quick-filter{' active' if state == ('pending' if pending_models else 'all') else ''}' data-source-filter='{state}' aria-pressed='{'true' if state == ('pending' if pending_models else 'all') else 'false'}'>{label} · {counts.get(state, len(devices)) if state != 'all' else len(devices)}</button>"
+            for state, label in (("all", "All"), *state_labels.items())
+        )
+        table = (
+            "<div class='table-wrap provider-table-wrap'><table class='admin-table identification-table'><caption class='sr-only'>Catalog models and their imported Garmin code sources</caption>"
+            "<thead><tr><th scope='col'>Model</th><th scope='col'>Garmin code</th><th scope='col'>Source</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-status'><span class='sr-only'>Action</span></th></tr></thead>"
+            f"<tbody id='identification-rows'>{''.join(rows)}</tbody></table></div>"
+            "<p class='admin-empty' id='identification-filter-empty' data-state='filtered' hidden>No models for this filter.</p>"
+            "<div class='provider-pagination' id='identification-pagination' aria-live='polite' hidden><button type='button' data-source-page='previous'>Previous</button><span></span><button type='button' data-source-page='next'>Next</button></div>"
+        ) if rows else ""
+        content = (
+            f"{invalid}"
+            + _metric_row([
+                _metric_tile("Needs review", pending_models, scope="now", glossary="model-sources"),
+                _metric_tile("Approved", counts["approved"], scope="now"),
+                _metric_tile("Rejected", counts["rejected"], scope="now"),
+                _metric_tile("No source", counts["missing"], scope="now"),
+            ], label="Model source states")
+            + _section_card(
+                "Models",
+                f"<form method='get' class='identification-search filter-bar'><label for='identification-search'><span class='sr-only'>Find a model or code</span><input id='identification-search' name='q' placeholder='Model or code, e.g. fēnix 8 or 006-B…' value='{html.escape(query, quote=True)}'></label><button class='secondary-button' type='submit'>Search</button></form>"
+                f"<div class='quick-filter-group' role='group' aria-label='Model source state'>{chips}</div>"
+                f"<div class='identification-choices'>{table or empty}</div>",
+                card_id="identification-list", css="identification-workspace",
+            )
+        )
+    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard identification-page'><h1>Model sources</h1>" + content + '</main>'
+    return _layout('Model sources', body + '<script>' + _identification_review_script() + '</script>', sections={'identification': devices})
 
 
 def _identification_review_script() -> str:
     return r"""(() => {
+      const rows = [...document.querySelectorAll('#identification-rows tr[data-source-state]')];
+      const chips = [...document.querySelectorAll('[data-source-filter]')];
+      const pagination = document.querySelector('#identification-pagination');
+      const filterEmpty = document.querySelector('#identification-filter-empty');
+      let state = chips.find(chip => chip.getAttribute('aria-pressed') === 'true')?.dataset.sourceFilter || 'all';
+      let page = 0;
+      const pageSize = 25;
+      const refreshList = () => {
+        const matching = rows.filter(row => state === 'all' || row.dataset.sourceState === state);
+        const pages = Math.max(1, Math.ceil(matching.length / pageSize));
+        page = Math.min(page, pages - 1);
+        rows.forEach(row => { row.hidden = true; });
+        matching.slice(page * pageSize, (page + 1) * pageSize).forEach(row => { row.hidden = false; });
+        chips.forEach(chip => { const active = chip.dataset.sourceFilter === state; chip.classList.toggle('active', active); chip.setAttribute('aria-pressed', active ? 'true' : 'false'); });
+        if (filterEmpty) filterEmpty.hidden = matching.length > 0 || !rows.length;
+        if (pagination) {
+          pagination.hidden = matching.length <= pageSize;
+          const label = pagination.querySelector('span');
+          if (label) label.textContent = `${page * pageSize + 1}–${Math.min(matching.length, (page + 1) * pageSize)} of ${matching.length}`;
+          pagination.querySelector('[data-source-page="previous"]').disabled = page === 0;
+          pagination.querySelector('[data-source-page="next"]').disabled = page >= pages - 1;
+        }
+      };
+      chips.forEach(chip => chip.addEventListener('click', () => { state = chip.dataset.sourceFilter; page = 0; refreshList(); }));
+      pagination?.querySelector('[data-source-page="previous"]')?.addEventListener('click', () => { page -= 1; refreshList(); });
+      pagination?.querySelector('[data-source-page="next"]')?.addEventListener('click', () => { page += 1; refreshList(); });
+      if (rows.length) refreshList();
       document.querySelectorAll('.identity-mapping-review').forEach(form => {
         form.addEventListener('submit', async event => {
           event.preventDefault();
@@ -8553,6 +8653,12 @@ ADMIN_STYLES += """
 .admin-glossary-link:hover>span{background:var(--selected-tint)}
 .admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
 .admin-card-unavailable{border-style:dashed}
+.identification-compare{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:start}
+.identification-compare>.identification-step{min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface)}
+.identification-compare-arrow{align-self:center;color:var(--secondary);font-size:18px}
+.identification-workspace-nav{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin:0 0 12px}
+.identification-table td .identification-choice{display:inline;padding:0;border:0;background:none}
+@media(max-width:760px){.identification-compare{grid-template-columns:minmax(0,1fr)}.identification-compare-arrow{display:none}}
 .health-filter-tiles{margin:0 0 16px}
 button.admin-metric{font:inherit;text-align:start;cursor:pointer}
 button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);background:var(--selected-tint)}
