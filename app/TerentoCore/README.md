@@ -294,6 +294,15 @@ evidence broadens the candidate set rather than denying authorization; the
 Maps capability of all remaining candidates determines the result. Unknown
 base models, mixed or unknown candidate capability, and unavailable policy
 remain pending/fail closed. See the [tracked authorization contract](../../contracts/INSTALLATION_AUTHORIZATION.md).
+After connect the Device page shows the verdict with text and an icon: "Checking…"
+while the policy is resolving (never a connection error), "Ready for maps",
+"Not yet enabled for this model" for PENDING/unknown/ambiguous models (browsing
+stays available and Install maps is labelled), "Not available for this model",
+or "Couldn't check" with Try again when the policy could not be fetched. The
+five-minute catalog timer re-resolves an unavailable policy. A decision fetched
+at download time is applied to `DeviceEngine`, so a rejection is shown on the
+review page instead of silently returning to it. These are presentation and
+retry changes only; the authorization rules are unchanged.
 The public beta.15 build 37 passes the connected-device authorization state into
 the map engine and shows pending or blocked authorization on the Install review
 screen. It also removes obsolete internal installation/update paths while

@@ -190,6 +190,12 @@ enum MapEngineState: Equatable {
     case failed
 }
 
+struct FreshInstallationAuthorization: Equatable, Sendable {
+    let id = UUID()
+    let identity: DeviceIdentity
+    let state: InstallationAuthorizationState
+}
+
 private struct MapInventoryScanOutput: Sendable {
     let inventory: MapInventoryResult
     let ownershipManifestDeviceKeys: Set<String>
@@ -242,6 +248,9 @@ final class MapEngine: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var userErrorMessage: String?
     @Published private(set) var mapStatisticsEvents: [MapStatisticsEvent] = []
+    /// Latest authorization decision fetched at download time. The device
+    /// engine applies it so one source of truth drives every page.
+    @Published private(set) var freshInstallationAuthorization: FreshInstallationAuthorization?
 
     private let statisticsController: MapStatisticsEventController?
     private let evidenceController: InstallationEvidenceController?
@@ -1410,6 +1419,8 @@ final class MapEngine: ObservableObject {
                     client: authorizationClient,
                     onAuthorized: { [weak self] authorization in
                         self?.setInstallationAuthorization(authorization)
+                        self?.freshInstallationAuthorization = FreshInstallationAuthorization(
+                            identity: authorizationIdentity, state: authorization)
                     }
                 ) {
                     for (index, packagePlan) in packagePlans.enumerated() {
@@ -1498,7 +1509,9 @@ final class MapEngine: ObservableObject {
             } catch let authorizationError as InstallationAuthorizationAcquisitionError {
                 guard !Task.isCancelled, let self else { return }
                 self.setInstallationAuthorization(authorizationError.authorization)
-                let userMessage = authorizationError.authorization.userMessage
+                self.freshInstallationAuthorization = FreshInstallationAuthorization(
+                    identity: authorizationIdentity, state: authorizationError.authorization)
+                let userMessage = DeviceAuthorizationPresentation(authorizationError.authorization).reviewReason
                     ?? "Terento could not verify this device's installation authorization right now."
                 self.acquisitionState = .failed
                 self.acquisitionErrorMessage = userMessage

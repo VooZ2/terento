@@ -167,6 +167,74 @@ struct StorageBarProjection: Equatable, Sendable {
     }
 }
 
+/// Text-and-icon verdict for the server-owned installation authorization.
+/// Presentation only: it never grants or revokes write permission.
+struct DeviceAuthorizationPresentation: Equatable, Sendable {
+    enum Tone: Equatable, Sendable {
+        case neutral
+        case success
+        case warning
+        case error
+    }
+
+    let title: String
+    let detail: String?
+    let systemImage: String
+    let tone: Tone
+    /// A "Try again" control re-resolves the policy for retryable reasons.
+    let canRetry: Bool
+    /// One sentence for the review page when authorization blocks Install.
+    let reviewReason: String?
+    /// Label for Install maps while browsing stays available without installs.
+    let browsingNotice: String?
+
+    init(_ state: InstallationAuthorizationState) {
+        switch state {
+        case .resolving:
+            title = "Checking…"
+            detail = "Checking whether this watch can install maps."
+            systemImage = "arrow.triangle.2.circlepath"
+            tone = .neutral
+            canRetry = false
+            reviewReason = "Checking whether this Garmin can install maps."
+            browsingNotice = nil
+        case .approved:
+            title = "Ready for maps"
+            detail = nil
+            systemImage = "checkmark.circle.fill"
+            tone = .success
+            canRetry = false
+            reviewReason = nil
+            browsingNotice = nil
+        case .blocked(let reason):
+            canRetry = reason.isRetryable
+            switch reason {
+            case .catalogUnavailable:
+                title = "Couldn't check"
+                detail = "Terento couldn't check whether this watch can install maps. Check your internet connection and try again."
+                systemImage = "exclamationmark.triangle.fill"
+                tone = .error
+                reviewReason = detail
+                browsingNotice = "Terento couldn't check this watch yet, so installing isn't available right now."
+            case .pending, .unknownModel, .ambiguousCatalogMatch:
+                title = "Not yet enabled for this model"
+                detail = "This watch model isn't enabled for map installation yet. You can still browse maps."
+                systemImage = "info.circle.fill"
+                tone = .warning
+                reviewReason = "This watch model isn't enabled for map installation yet."
+                browsingNotice = "This watch model isn't enabled for map installation yet. You can browse maps, but installing isn't available."
+            case .outOfScope, .notAuthorized:
+                title = "Not available for this model"
+                detail = "Map installation isn't available for this watch model in Terento."
+                systemImage = "info.circle.fill"
+                tone = .warning
+                reviewReason = detail
+                browsingNotice = "Map installation isn't available for this watch model. You can still browse maps."
+            }
+        }
+    }
+}
+
 enum InstallReviewAction: String, Equatable, Sendable {
     case prepare
     case install
@@ -216,7 +284,7 @@ struct InstallReviewAvailabilityResolver: Sendable {
             return .blocked("Reconnect your Garmin to continue.")
         }
         guard installationAuthorization.canInstall else {
-            return .blocked(installationAuthorization.userMessage
+            return .blocked(DeviceAuthorizationPresentation(installationAuthorization).reviewReason
                 ?? "Checking whether this Garmin can install maps.")
         }
         guard let deviceIdentity,

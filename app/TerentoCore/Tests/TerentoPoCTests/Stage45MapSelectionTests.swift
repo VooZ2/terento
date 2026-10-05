@@ -824,6 +824,46 @@ struct Stage45MapSelectionTests {
                 && !scanning.isEnabled && scanning.userReason?.contains("Map checks") == true,
             "review does not offer a silent Install action before authorization and scan are ready"
         )
+        let pending = resolver.resolve(
+            plan: plan, deviceConnected: true,
+            installationAuthorization: .blocked(.pending), deviceIdentity: deviceIdentity,
+            mapScanReady: true, supportedInstallFlow: true,
+            installationPhase: .idle, hasValidatedArtifact: false, operationBusy: false
+        )
+        expect(
+            pending.userReason == "This watch model isn't enabled for map installation yet."
+                && unavailable.userReason == DeviceAuthorizationPresentation(.blocked(.catalogUnavailable)).reviewReason,
+            "authorization blockers use the outcome-language verdict shown on the Device page"
+        )
+        testDeviceAuthorizationPresentation(approved: approved)
+    }
+
+    private static func testDeviceAuthorizationPresentation(approved: InstallationAuthorizationState) {
+        let resolving = DeviceAuthorizationPresentation(.resolving)
+        let ready = DeviceAuthorizationPresentation(approved)
+        let unavailable = DeviceAuthorizationPresentation(.blocked(.catalogUnavailable))
+        let pendingModels = [InstallationAuthorizationBlockReason.pending, .unknownModel, .ambiguousCatalogMatch]
+            .map { DeviceAuthorizationPresentation(.blocked($0)) }
+        let outOfScope = DeviceAuthorizationPresentation(.blocked(.outOfScope))
+        expect(resolving.title == "Checking…" && resolving.tone == .neutral && !resolving.canRetry
+            && resolving.browsingNotice == nil, "resolving is a calm Checking… state, not a connection error")
+        expect(ready.title == "Ready for maps" && ready.tone == .success && ready.reviewReason == nil
+            && ready.systemImage == "checkmark.circle.fill", "approved shows Ready for maps")
+        expect(unavailable.title == "Couldn't check" && unavailable.canRetry && unavailable.tone == .error,
+            "an unavailable policy is retryable and shown as Couldn't check")
+        expect(pendingModels.allSatisfy { $0.title == "Not yet enabled for this model" && !$0.canRetry
+            && $0.detail?.contains("isn't enabled for map installation yet") == true
+            && $0.browsingNotice?.contains("browse") == true },
+            "PENDING and unknown models use outcome language and keep browsing labelled")
+        expect(outOfScope.title == "Not available for this model" && !outOfScope.canRetry,
+            "out-of-scope models are not offered a retry")
+        let all = [resolving, ready, unavailable, outOfScope] + pendingModels
+        expect(all.allSatisfy { !$0.title.isEmpty && !$0.systemImage.isEmpty }, "every verdict has text and an icon")
+        expect(all.allSatisfy { verdict in
+            !["MTP", "IMG", "policy", "authorization"].contains { term in
+                verdict.title.contains(term) || (verdict.detail ?? "").contains(term)
+            }
+        }, "verdict copy avoids technical terms")
     }
 
     private static func testSelectedMapDividerPolicy() {

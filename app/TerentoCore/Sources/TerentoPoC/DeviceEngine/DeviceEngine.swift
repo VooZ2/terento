@@ -120,6 +120,29 @@ final class DeviceEngine: ObservableObject {
         refreshPublicCompatibilityStatus(for: compatibility)
     }
 
+    /// Catalog-timer hook: re-resolve only while blocked by an unavailable
+    /// policy, never while a decision is pending or already made.
+    func retryInstallationAuthorizationIfUnavailable() {
+        guard case .blocked(let reason) = installationAuthorization,
+              reason.isRetryable else { return }
+        retryInstallationAuthorization()
+    }
+
+    /// A fresh decision made at download time is applied here, so the Device
+    /// and review pages show the same verdict that blocked or allowed the
+    /// operation. Decisions for another watch are ignored.
+    func applyFreshInstallationAuthorization(
+        _ authorization: InstallationAuthorizationState,
+        for identity: DeviceIdentity
+    ) {
+        guard currentInstallationIdentity == identity,
+              installationAuthorization != authorization else { return }
+        installationAuthorization = authorization
+        appendLog(
+            "Installation authorization refreshed: \(authorization.canInstall ? "approved" : "blocked")"
+        )
+    }
+
     var currentInstallationIdentity: DeviceIdentity? {
         guard hasConnectedDevice, snapshot != nil else { return nil }
         return compatibility?.identity
@@ -260,6 +283,9 @@ final class DeviceEngine: ObservableObject {
         compatibility = decision
         errorMessage = nil
         disconnectNotice = nil
+        // The policy decision is still in flight: show "Checking…", not a
+        // connection error, until it resolves.
+        installationAuthorization = .resolving
         stateManager.deviceConnected()
         stateManager.deviceReady()
         state = stateManager.state
@@ -728,6 +754,11 @@ final class DeviceEngine: ObservableObject {
             let catalogMetadata = await client.resolveCatalogMetadata(identity: identity)
             let catalogDecision = decision.applying(catalogMetadata: catalogMetadata)
             let installationAuthorization = await authorizationClient.resolve(identity: catalogDecision.identity)
+            // Publish the verdict as soon as it is known; the public
+            // compatibility lookup below is presentation only.
+            if !Task.isCancelled, let self, self.snapshot != nil, self.compatibility?.identity == identity {
+                self.installationAuthorization = installationAuthorization
+            }
             let resolution = await client.resolve(identity: catalogDecision.identity)
             guard !Task.isCancelled,
                   let self,

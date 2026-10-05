@@ -82,6 +82,10 @@ struct ConnectScreen: View {
         return GarminDeviceIdentityAdapter().makeIdentity(from: snapshot)
     }
 
+    private var authorizationPresentation: DeviceAuthorizationPresentation {
+        DeviceAuthorizationPresentation(deviceEngine.installationAuthorization)
+    }
+
     private var mapSupport: GarminMapSupportStatus {
         guard let identity else { return .unknown }
         return GarminMapCapabilityRegistry.local.evaluate(identity: identity)
@@ -282,7 +286,12 @@ struct ConnectScreen: View {
         .onChange(of: deviceEngine.installationAuthorization) { authorization in
             mapEngine.setInstallationAuthorization(authorization)
         }
+        .onChange(of: mapEngine.freshInstallationAuthorization) { fresh in
+            guard let fresh else { return }
+            deviceEngine.applyFreshInstallationAuthorization(fresh.state, for: fresh.identity)
+        }
         .onReceive(Timer.publish(every: 300, on: .main, in: .common).autoconnect()) { _ in
+            deviceEngine.retryInstallationAuthorizationIfUnavailable()
             guard !lifecycleViewModel.isBusy else { return }
             Task { await mapEngine.refreshCatalogAvailability() }
         }
@@ -1094,7 +1103,9 @@ struct ConnectScreen: View {
             DeviceCard(
                 presentation: presentation,
                 canEject: canSafelyEject,
-                onEject: performSafeEject
+                onEject: performSafeEject,
+                authorization: DeviceAuthorizationPresentation(deviceEngine.installationAuthorization),
+                onRetryAuthorization: { deviceEngine.retryInstallationAuthorization() }
             )
             .padding(.top, 30)
 
@@ -1385,6 +1396,14 @@ struct ConnectScreen: View {
                             .help("Refresh map information")
                             .accessibilityLabel("Refresh map information")
                         }
+                    }
+
+                    if let notice = authorizationPresentation.browsingNotice {
+                        Label(notice, systemImage: authorizationPresentation.systemImage)
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(authorizationPresentation.tone.color)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 10)
                     }
 
                     if mapEngine.catalogSource == .bundledFallback {
@@ -1816,11 +1835,28 @@ struct ConnectScreen: View {
                     .padding(.top, 4)
 
                 if let reason = installAvailability.userReason {
-                    Label(reason, systemImage: "info.circle")
-                        .font(.terentoUI(size: 15, weight: .semibold))
-                        .foregroundStyle(TerentoColors.error)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 18)
+                    let authorization = DeviceAuthorizationPresentation(deviceEngine.installationAuthorization)
+                    let authorizationBlocks = reason == authorization.reviewReason
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Icon and colour agree: the authorization verdict keeps
+                        // its own icon; other blockers are warnings.
+                        Label(reason, systemImage: authorizationBlocks
+                            ? authorization.systemImage
+                            : "exclamationmark.circle.fill")
+                            .font(.terentoUI(size: 15, weight: .semibold))
+                            .foregroundStyle(authorizationBlocks
+                                ? authorization.tone.color
+                                : TerentoColors.warning)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if authorizationBlocks && authorization.canRetry {
+                            SecondaryButton(title: "Try again") {
+                                deviceEngine.retryInstallationAuthorization()
+                            }
+                            .accessibilityHint("Checks again whether this watch can install maps.")
+                        }
+                    }
+                    .padding(.top, 18)
                 }
 
             }
@@ -3626,6 +3662,10 @@ struct DeviceCard: View {
     let presentation: DevicePresentation
     let canEject: Bool
     let onEject: () -> Void
+    /// Server-owned install verdict; the local capability line is only shown
+    /// as information while the verdict is not "Ready for maps".
+    var authorization: DeviceAuthorizationPresentation? = nil
+    var onRetryAuthorization: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: 20) {
@@ -3649,8 +3689,18 @@ struct DeviceCard: View {
                         .padding(.top, 12)
                 }
 
-                MapSupportView(status: presentation.mapSupport)
+                if let authorization {
+                    DeviceAuthorizationStatusView(
+                        presentation: authorization,
+                        onRetry: onRetryAuthorization
+                    )
                     .padding(.top, 9)
+                }
+
+                if authorization?.tone != .success {
+                    MapSupportView(status: presentation.mapSupport)
+                        .padding(.top, 9)
+                }
 
                 Button(action: onEject) {
                     Label("Eject device", systemImage: "eject")
@@ -3688,6 +3738,56 @@ struct DeviceCard: View {
             Spacer(minLength: 16)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension DeviceAuthorizationPresentation.Tone {
+    var color: Color {
+        switch self {
+        case .neutral: return TerentoColors.interactive
+        case .success: return TerentoColors.lichenDark
+        case .warning: return TerentoColors.warning
+        case .error: return TerentoColors.error
+        }
+    }
+}
+
+/// Text + icon verdict for map installation; colour only supports it.
+private struct DeviceAuthorizationStatusView: View {
+    let presentation: DeviceAuthorizationPresentation
+    let onRetry: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: presentation.systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(presentation.title)
+                        .font(.terentoUI(size: 13, weight: .medium))
+
+                    if let detail = presentation.detail {
+                        Text(detail)
+                            .font(.terentoUI(size: 12, weight: .regular))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .foregroundStyle(presentation.tone.color)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Map installation: \(presentation.title). \(presentation.detail ?? "")")
+
+            if presentation.canRetry, let onRetry {
+                Button("Try again", action: onRetry)
+                    .buttonStyle(.plain)
+                    .font(.terentoUI(size: 12, weight: .semibold))
+                    .foregroundStyle(TerentoColors.interactive)
+                    .padding(.leading, 18)
+                    .accessibilityHint("Checks again whether this watch can install maps.")
+            }
+        }
     }
 }
 

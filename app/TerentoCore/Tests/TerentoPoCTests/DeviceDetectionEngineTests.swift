@@ -72,6 +72,25 @@ private func makeEngine(_ transport: ScriptedDetectionTransport, outcomes: Outco
     return engine
 }
 
+private let fixtureWatch = DeviceSnapshot(manufacturer: "Garmin", model: "fenix 8 - 47mm", deviceVersion: "fixture",
+    vendorID: 0x091e, productID: 0x51b8, storages: [], serialNumber: "1234567890")
+
+/// First policy request waits and then fails offline; later requests succeed.
+private actor PolicyResponses {
+    private var released = false
+    private var calls = 0
+    func release() { released = true }
+    func next(request: URLRequest, policy: Data) async throws -> (Data, URLResponse) {
+        calls += 1
+        if calls == 1 {
+            while !released { try await Task.sleep(for: .milliseconds(10)) }
+            throw URLError(.notConnectedToInternet)
+        }
+        return (policy, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"])!)
+    }
+}
+
 @MainActor
 private final class OutcomeRecorder {
     var values: [DeviceConnectOutcome] = []
@@ -118,6 +137,7 @@ struct DeviceDetectionEngineTests {
         await testNativeMultipleAndBusyClassification()
         await testStoppedRespondingThenReplug()
         await testUnexpectedDisconnectRestartsDiscovery()
+        await testAuthorizationResolvesAndRetries()
         testClassifier()
         testBoundedReadDeadlines()
         testBoundedScanReaderStopsAfterDeadline()
@@ -304,6 +324,47 @@ struct DeviceDetectionEngineTests {
         } catch {
             check(DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding, "a detection deadline is classified as stopped responding")
         }
+    }
+
+    @MainActor static func testAuthorizationResolvesAndRetries() async {
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        guard let policyData = try? Data(contentsOf: policyURL) else {
+            check(false, "policy fixture is readable")
+            return
+        }
+        let responses = PolicyResponses()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let transport = ScriptedDetectionTransport(usbCount: 1, snapshots: [.success(fixtureWatch)])
+        let engine = DeviceEngine(transport: transport, operationGate: MTPOperationGate(),
+            compatibilityStatusClient: CompatibilityStatusClient(
+                cache: CompatibilityStatusCache(fileURL: root.appendingPathComponent("compatibility.json")),
+                dataLoader: { _ in throw URLError(.notConnectedToInternet) }),
+            installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { request in
+                try await responses.next(request: request, policy: policyData)
+            }))
+        engine.setPresenceMonitoringEnabled(false)
+        engine.readDevice()
+        check(await waitUntil(3) { engine.hasConnectedDevice }, "policy fixture watch connects")
+        check(engine.installationAuthorization == .resolving, "a fresh connection starts in Checking…, not a connection error")
+        await responses.release()
+        check(await waitUntil(3) { engine.installationAuthorization == .blocked(.catalogUnavailable) },
+              "an offline policy fetch becomes a retryable Couldn't check")
+        engine.retryInstallationAuthorizationIfUnavailable()
+        check(engine.installationAuthorization == .resolving, "the catalog timer re-resolves an unavailable policy")
+        check(await waitUntil(3) { engine.installationAuthorization.canInstall }, "a successful retry approves the watch")
+        engine.retryInstallationAuthorizationIfUnavailable()
+        check(engine.installationAuthorization.canInstall, "the catalog timer leaves a made decision alone")
+        guard let identity = engine.currentInstallationIdentity else {
+            check(false, "connected identity is available")
+            return
+        }
+        engine.applyFreshInstallationAuthorization(.blocked(.pending), for: identity)
+        check(engine.installationAuthorization == .blocked(.pending), "a download-time rejection becomes the single verdict")
+        let other = DeviceIdentity(manufacturer: "Garmin", model: "Other", family: nil, variant: nil,
+            usbVendorId: 0x091e, usbProductId: 0x1, firmware: nil, storageCapacity: 0, freeSpace: 0)
+        engine.applyFreshInstallationAuthorization(.blocked(.outOfScope), for: other)
+        check(engine.installationAuthorization == .blocked(.pending), "a decision for another watch is ignored")
     }
 
     static func testClassifier() {
