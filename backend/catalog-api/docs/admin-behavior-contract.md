@@ -30,9 +30,12 @@ exposed. A historical statistic alone
 cannot establish the France failure's cause.
 
 Install successes/failures and update successes/failures have distinct chart
-series and labels. Failed updates use green diagonal stripes, successful updates
-solid green; fresh-install failures remain red. Fresh-install KPI denominators
-exclude every update. Not-started updates are diagnostics, not failed device-write
+series and labels. Chart colours follow the single rule in the statistics
+contract (owner decision 2026-10-05): provider fresh install successful uses the
+existing slate/sky series, custom `.img` fresh install successful its own green
+(Lichen family) series and legend entry, install failed solid red, update
+successful Warm Stone (ochre), and update failed red diagonal stripes in bars and
+legends. Fresh-install KPI denominators exclude every update. Not-started updates are diagnostics, not failed device-write
 attempts. Charts and legends must preserve these distinctions at supported widths.
 
 This is the canonical behavioral contract for the private Terento admin surface
@@ -207,9 +210,9 @@ than shown as a reported guess. Long context may wrap naturally on narrow screen
 
 Dashboard chart series use one stacked bar for each bucket: downloads are
 successful/failed, while map operations distinguish install successful, install
-failed, update successful and update failed. A custom fresh success is combined
-into install successful; optional components and pre-write failures remain
-excluded by the statistics contract. Headings that include updates say
+failed, update successful and update failed, plus a separate custom `.img`
+install successful series with its own legend entry; optional components and
+pre-write failures remain excluded by the statistics contract. Headings that include updates say
 `Installs and updates` (Maps) or `Map installs and updates` (Dashboard).
 
 Needs attention covers unresolved work across all dates. Counts and Inspect links
@@ -525,8 +528,8 @@ Provider recovery respects HTTP 429 Retry-After cooldown across package rechecks
 
 ### Failure presentation correction — 2026-10-03
 
-Failed updates use red diagonal stripes in chart bars and legends; failed installs
-remain solid red. Activity keeps the failure status as plain text and provides
+Chart colours are defined once above and in the statistics contract. Activity
+keeps the failure status as plain text and provides
 `View failure` as an inline text link without a button border or padding. The
 Updates failed total uses the same direct error-counter markup and size as the
 Installs failed total, without a link. The dedicated Update failures navigation

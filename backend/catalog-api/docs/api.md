@@ -705,8 +705,9 @@ be removed only by an authenticated, CSRF-protected admin action at
 Terento-owned provider map. They are counted separately from first
 installations; they do not increase installation totals, country coverage, or
 map popularity counts. Admin Dashboard and Map statistics render successful
-and failed updates separately: solid green for success and green diagonal
-stripes for failure. Fresh-install failures remain red. Map statistics supports
+and failed updates as separate series; their colours follow the statistics
+contract (update successful Warm Stone, update failed red diagonal stripes,
+install failed solid red). Map statistics supports
 filtering by either update event type.
 
 This endpoint receives map-usage diagnostics while the independent map-usage

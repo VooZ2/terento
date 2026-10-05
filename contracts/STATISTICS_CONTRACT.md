@@ -191,8 +191,11 @@ reinterpreted as a per-map count.
 Session counts are reported separately. Custom activity without a map-usage
 stream is not a missing map-telemetry observation, and a provider event plus a
 custom result does not invalidate a reliable provider link. A diagnostic that
-arrives late can change linkage for that map result, but never changes the
-selected map-event denominator.
+arrives late can change linkage for that map result. For a map-side success it
+never changes the selected fresh-attempt (coverage) denominator. A map-side
+`INSTALL_FAILED` needs write-boundary evidence, so it enters fresh attempts —
+`F_failed` and the coverage denominator — only once its linked started-failure
+diagnostic has arrived; until then it remains a raw activity fact.
 
 ## Update and acquisition formulas
 
@@ -257,11 +260,15 @@ populations. Updates must never change fresh-install counts or success rates.
 
 Its fresh series are provider fresh successes, custom fresh successes, and
 confirmed fresh-install failures (including custom). Successful updates and
-failed updates are separate series. Successful updates are solid green; failed
-updates use green diagonal stripes in bars and legends, while fresh-install
-failures remain red. Fresh attempt totals are `F_success + F_failed`; download,
-pre-install, device-check, not-started, cancelled, and unknown events are not
-chart series.
+failed updates are separate series. Colours (owner decision 2026-10-05; existing
+brand tokens only, and every series also has a text label and legend entry):
+provider fresh install successful uses the existing slate/sky series; custom
+`.img` fresh install successful is its own green (Lichen family) series and
+legend entry; install failed is solid red; update successful is Warm Stone
+(ochre); update failed uses red diagonal stripes in bars and legends. This
+supersedes every earlier chart colour rule. Fresh attempt totals are
+`F_success + F_failed`; download, pre-install, device-check, not-started,
+cancelled, and unknown events are not chart series.
 
 The map-statistics read model keeps fresh-install outcomes, acquisition
 outcomes, and update outcomes separate. Period views use the selected period;
