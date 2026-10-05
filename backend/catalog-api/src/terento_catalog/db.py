@@ -1617,7 +1617,8 @@ class Database:
                     result_key,
                     bool_or(result_classification = 'SUCCESS') AS has_success,
                     bool_or(result_classification = 'FAILURE') AS has_failure,
-                    count(DISTINCT result_classification) > 1 AS has_conflict
+                    count(DISTINCT (result_classification, provider, region, canonical_device_model_id)) > 1
+                        AS has_conflict
                 FROM classified_results
                 GROUP BY result_key
             ), deduplicated_results AS (
