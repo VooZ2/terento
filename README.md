@@ -99,7 +99,7 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.17 (build 39)**. Download the notarized
+The latest public release is **beta.18 (build 40)**. Download the notarized
 macOS app below; no additional software is required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**

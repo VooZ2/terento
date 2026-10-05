@@ -360,3 +360,31 @@ ownership rules are unchanged. If the API is unreachable or its health evidence
 is stale, new acquisition waits for a current response. An in-flight transfer
 is not cancelled when monitoring changes. The released-client registry pins
 beta.17 build 39 as the representative decoder for this behavior.
+
+
+## Beta.18 build 40 — Garmin write profile correction
+
+Published on 2026-10-05 from GitHub-verified source
+`e0f0e7041e4aed9e53bdeebb226dff4cd2b6b8c5`, tag `v1.0.0-beta.18-build40`.
+The shared root/storage resolver checks the complete physical profile before
+acquisition and final write. Root-only canonical comparison preserves existing
+manifest paths and protected-object facts. No payload fields, schema versions,
+catalog routes, server codes or database migrations change. The deployed API
+remains `f81eab2ef7ae41825fc0312ee7652d34041c6439` (deployment 37231790220),
+which already accepts these schema-v4 preparation-failure reports. Beta.17 stays
+the representative released catalog decoder; the tag CI also validates this
+release source against the live catalog.
+
+The full 83-runner packaging suite and PR/merged-source/tag CI passed, including
+fresh Swift-to-API diagnostic payloads, backend integration, native mutation
+safety and installation/update regressions. Apple submission
+`2875108d-bf2e-4d6c-8765-cd35f0180ac5` was Accepted without issues. Signing,
+stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner approved the
+release notes before publication. No new hardware result is claimed.
+
+DMG: 6,908,669 bytes, SHA-256
+`17dc52b1c213add8217ad6f2bee4e392e1264fb1ecccc62477c52ca5c9270755`.
+ZIP: 6,233,753 bytes, SHA-256
+`df5c5191d25941d251e8353b3eacd2d263085b8d09843a84bea349d74e0c0211`.
+GitHub asset digests and independently downloaded draft bytes match these values;
+public asset and website verification are separate publication checks.

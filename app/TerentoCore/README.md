@@ -459,11 +459,11 @@ also block acquisition when legacy metadata has no explicit reason. Every five m
 and recomputes comparisons from the existing inventory without scanning or writing
 the device. Acquisition still rechecks authorization independently of this timer.
 
-This is local implementation and automated evidence, not a released app or a new
-hardware lifecycle result.
+Provider availability shipped in beta.17/build39. Its automated checks do not
+establish a new hardware lifecycle result.
 
 
-### Garmin root/write profile regression candidate (2026-10-05)
+### Garmin root/write profile correction — beta.18/build40 (2026-10-05)
 
 The shared write-target resolver accepts the single valid ASCII root variants
 `/GARMIN`, `/Garmin` and `/garmin`, keeps its actual storage binding, and refuses
@@ -488,11 +488,14 @@ safe-update, native authorization and recovery tests retain the destructive-path
 guards. No real Garmin writes are needed for these automated checks.
 
 These tests reproduce a code defect, not the missing historical device facts.
-The eight reported beta.16 attempts remain unconfirmed on hardware. Publication
-and a new owner-reported device installation/update are separate evidence stages.
+The eight reported beta.16 attempts remain unconfirmed on hardware. The correction
+is published in beta.18/build40; affected-watch confirmation remains a separate
+evidence stage.
 
 Candidate validation: native 34/34 and app 26/26 suite runners PASS, including
 125 installation tests, 25 safe-update tests, 33 local lifecycle simulations and
 actual Swift-to-backend diagnostic validation. Unsigned arm64 Xcode Debug build,
-release documentation checks and `git diff --check` PASS. These results apply to
-the isolated candidate based on integrated beta `0febd192`; no release is implied.
+release documentation checks and `git diff --check` PASS. These initial results apply to
+the candidate based on integrated beta `0febd192`. Packaged source `e0f0e704`
+subsequently passed the full 83-runner release suite, signing, notarization,
+Gatekeeper and both ZIP/DMG launch checks before beta.18 publication.
