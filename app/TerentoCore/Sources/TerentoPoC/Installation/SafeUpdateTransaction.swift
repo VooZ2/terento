@@ -5,6 +5,7 @@ enum SafeUpdateState: String, Equatable, Sendable {
     case validating = "VALIDATING"
     case revalidating = "REVALIDATING"
     case acquiring = "ACQUIRING"
+    case preparing = "PREPARING"
     case writing = "WRITING"
     case verifying = "VERIFYING"
     case committing = "COMMITTING"
@@ -20,7 +21,12 @@ struct SafeUpdateProgress: Equatable, Sendable {
     let totalBytes: UInt64
     let bytesPerSecond: Double
 
+    // Non-byte work reports completed checks; never elapsed-time estimates.
+    var phaseFraction: Double? = nil
+    var detail: String? = nil
+
     var fractionCompleted: Double {
+        if let phaseFraction { return phaseFraction.isFinite ? min(1, max(0, phaseFraction)) : 0 }
         guard totalBytes > 0 else { return 0 }
         return min(1, Double(bytesCompleted) / Double(totalBytes))
     }
@@ -242,21 +248,20 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
                 package: package,
                 onStateChange: { state in
                     evidence.state(state)
-                    let safeState: SafeUpdateState = {
-                        switch state {
-                        case .downloading: return .acquiring
-                        case .validatingDownload, .extracting, .inspectingIMG,
-                             .validatingIdentity, .hashing, .validated,
-                             .resolvingPackage, .failed, .idle:
-                            return .acquiring
-                        }
-                    }()
-                    onProgress?(SafeUpdateProgress(
-                        state: safeState,
-                        bytesCompleted: 0,
-                        totalBytes: package.expectedDownloadSizeBytes ?? 0,
-                        bytesPerSecond: 0
-                    ))
+                    let fraction: Double
+                    let detail: String
+                    switch state {
+                    case .validatingDownload: (fraction, detail) = (0, "Checking the downloaded package")
+                    case .extracting: (fraction, detail) = (0.2, "Unpacking the map")
+                    case .inspectingIMG: (fraction, detail) = (0.4, "Finding the map")
+                    case .validatingIdentity: (fraction, detail) = (0.6, "Checking the selected map")
+                    case .hashing: (fraction, detail) = (0.8, "Checking map contents")
+                    case .validated: (fraction, detail) = (1, "Map prepared")
+                    case .idle, .resolvingPackage, .downloading, .failed: return
+                    }
+                    onProgress?(SafeUpdateProgress(state: .preparing,
+                        bytesCompleted: 0, totalBytes: 0, bytesPerSecond: 0,
+                        phaseFraction: fraction, detail: detail))
                 },
                 onDownloadProgress: { progress in
                     onProgress?(SafeUpdateProgress(
@@ -265,6 +270,11 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
                         totalBytes: progress.totalBytes,
                         bytesPerSecond: progress.bytesPerSecond
                     ))
+                },
+                onValidationProgress: { fraction in
+                    onProgress?(SafeUpdateProgress(state: .preparing,
+                        bytesCompleted: 0, totalBytes: 0, bytesPerSecond: 0,
+                        phaseFraction: 0.8 + 0.19 * fraction, detail: "Checking map contents"))
                 }
             )
             evidence.finish(.succeeded)
@@ -282,10 +292,20 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
 }
 
 protocol SafeUpdateSourceValidator: Sendable {
+    func validate(artifact: SafeUpdateSourceArtifact, package: MapPackage,
+                  onProgress: (@Sendable (Double) -> Void)?) throws
     func validate(
         artifact: SafeUpdateSourceArtifact,
         package: MapPackage
     ) throws
+}
+
+extension SafeUpdateSourceValidator {
+    func validate(artifact: SafeUpdateSourceArtifact, package: MapPackage,
+                  onProgress: (@Sendable (Double) -> Void)?) throws {
+        try validate(artifact: artifact, package: package)
+        onProgress?(1)
+    }
 }
 
 enum SafeUpdateSourceValidationError: LocalizedError, Equatable, Sendable {
@@ -306,6 +326,11 @@ struct DefaultSafeUpdateSourceValidator: SafeUpdateSourceValidator, Sendable {
         artifact: SafeUpdateSourceArtifact,
         package: MapPackage
     ) throws {
+        try validate(artifact: artifact, package: package, onProgress: nil)
+    }
+
+    func validate(artifact: SafeUpdateSourceArtifact, package: MapPackage,
+                  onProgress: (@Sendable (Double) -> Void)?) throws {
         guard let expectedIdentity = package.identity,
               MapIdentityMatcher.matches(
                   actual: MapIdentity(provider: artifact.provider, region: artifact.region),
@@ -335,7 +360,8 @@ struct DefaultSafeUpdateSourceValidator: SafeUpdateSourceValidator, Sendable {
         do {
             let validated = try MapSourceValidator().validate(
                 fileURL: artifact.localIMGURL,
-                expectedPackage: package
+                expectedPackage: package,
+                onProgress: onProgress
             )
             guard validated.sizeBytes == artifact.installSizeBytes,
                   normalized(validated.sha256) == normalized(artifact.sha256) else {
@@ -387,6 +413,10 @@ struct SafeUpdateInventorySnapshot: Sendable {
 /// coordinator. Device adapters must implement transaction cleanup only for
 /// the exact object returned by this transaction, never by filename alone.
 protocol SafeUpdateTransport: SafeDeleteTransport, Sendable {
+    func inspectCurrentObject(_ expected: SafeUpdateRemoteObject,
+                              onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject
+    func verifyTransactionObject(_ object: SafeUpdateRemoteObject, expected: SafeUpdateSourceArtifact,
+                                 onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject
     func readProtectedInventory() throws -> SafeUpdateInventorySnapshot
     func inspectCurrentObject(_ expected: SafeUpdateRemoteObject) throws -> SafeUpdateRemoteObject
 
@@ -404,6 +434,22 @@ protocol SafeUpdateTransport: SafeDeleteTransport, Sendable {
     func cleanupTransactionObject(_ object: SafeUpdateRemoteObject) throws
     func readFreeSpace() throws -> UInt64
     func rescanObjects() throws -> [SafeUpdateRemoteObject]
+}
+
+extension SafeUpdateTransport {
+    func inspectCurrentObject(_ expected: SafeUpdateRemoteObject,
+                              onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        let result = try inspectCurrentObject(expected)
+        onProgress?(1)
+        return result
+    }
+
+    func verifyTransactionObject(_ object: SafeUpdateRemoteObject, expected: SafeUpdateSourceArtifact,
+                                 onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        let result = try verifyTransactionObject(object, expected: expected)
+        onProgress?(1)
+        return result
+    }
 }
 
 protocol SafeUpdateManifestReconciler: Sendable {
@@ -735,17 +781,26 @@ struct SafeUpdateTransaction: Sendable {
         defer {
             if let root = artifact.workspaceRootURL { try? MapAcquisitionWorkspace.cleanup(rootURL: root) }
         }
+        emit(.validating, onProgress)
         do {
-            try sourceValidator.validate(artifact: artifact, package: request.selectedMap)
+            try sourceValidator.validate(artifact: artifact, package: request.selectedMap,
+                onProgress: { fraction in
+                    onProgress?(SafeUpdateProgress(state: .validating, bytesCompleted: 0,
+                        totalBytes: 0, bytesPerSecond: 0, phaseFraction: fraction * 0.25,
+                        detail: "Checking the prepared map"))
+                })
         } catch {
             return failure(.failedSourceValidation, error.localizedDescription)
         }
 
-        emit(.validating, onProgress)
-        emit(.revalidating, onProgress)
+        report(.revalidating, fraction: 0.25, detail: "Checking the installed map", onProgress)
         let current: SafeUpdateRemoteObject
         do {
-            current = try transport.inspectCurrentObject(request.currentObject)
+            current = try transport.inspectCurrentObject(request.currentObject, onProgress: { fraction in
+                onProgress?(SafeUpdateProgress(state: .revalidating, bytesCompleted: 0,
+                    totalBytes: 0, bytesPerSecond: 0, phaseFraction: 0.25 + 0.7 * fraction,
+                    detail: "Checking the installed map"))
+            })
         } catch let error as SafeUpdateTransportError {
             return failure(status(for: error), error.localizedDescription)
         } catch {
@@ -842,6 +897,7 @@ struct SafeUpdateTransaction: Sendable {
             return failure(.failedDeviceDisconnected, "The Garmin connection changed before writing. Nothing was changed.", storagePlan: storagePlan)
         }
 
+        report(.revalidating, fraction: 1, detail: "Map and device checked", onProgress)
         emit(.writing, onProgress)
         let written: SafeUpdateRemoteObject
         let transferProgress: (@Sendable (TransferProgress) -> Void)?
@@ -880,7 +936,11 @@ struct SafeUpdateTransaction: Sendable {
         emit(.verifying, onProgress)
         let verified: SafeUpdateRemoteObject
         do {
-            verified = try transport.verifyTransactionObject(written, expected: artifact)
+            verified = try transport.verifyTransactionObject(written, expected: artifact, onProgress: { fraction in
+                onProgress?(SafeUpdateProgress(state: .verifying, bytesCompleted: 0,
+                    totalBytes: 0, bytesPerSecond: 0, phaseFraction: min(0.99, fraction),
+                    detail: "Reading back and checking the new map"))
+            })
         } catch let error as SafeUpdateTransportError {
             let cleanupStatus = cleanup(written, transport: transport)
             return failure(
@@ -919,6 +979,7 @@ struct SafeUpdateTransaction: Sendable {
             return failure(cleanupStatus == .failedCleanup ? .failedCleanup : .failedMetadataMismatch, "The new map metadata did not match the selected map.", storagePlan: storagePlan, newObject: verified)
         }
 
+        report(.verifying, fraction: 1, detail: "New map verified", onProgress)
         emit(.committing, onProgress)
         let filenameGenerator = TerentoManagedFilenameGenerator()
         let expectedOldVersion: MapVersion? = {
@@ -953,7 +1014,12 @@ struct SafeUpdateTransaction: Sendable {
             rescan: {
                 try transport.rescanObjects().map(\.file)
             },
-            transport: transport
+            transport: transport,
+            onProgress: { progress in
+                onProgress?(SafeUpdateProgress(state: .committing, bytesCompleted: 0,
+                    totalBytes: 0, bytesPerSecond: 0, phaseFraction: progress.fractionCompleted,
+                    detail: progress.detail))
+            }
             // The new object has already passed remote size/hash/metadata
             // verification. Delete the old object only after that gate,
             // without a redundant local full-file copy or backup.
@@ -979,6 +1045,7 @@ struct SafeUpdateTransaction: Sendable {
                     "Existing device content changed during the update. The update was not recorded as complete.",
                     storagePlan: storagePlan, newObject: verified, oldMapPreserved: false)
             }
+            report(.postVerifying, fraction: 1.0 / 3, detail: "Checking the remaining maps", onProgress)
             finalObjects = try transport.rescanObjects()
         } catch {
             return failure(.failedPostVerify, "The device could not be rescanned after the update.", storagePlan: storagePlan, newObject: verified, oldMapPreserved: false)
@@ -989,7 +1056,7 @@ struct SafeUpdateTransaction: Sendable {
             return failure(.failedPostVerify, "The final device state did not match the verified update.", storagePlan: storagePlan, newObject: verified, oldMapPreserved: false, finalObjects: finalObjects)
         }
 
-        emit(.reconcilingManifest, onProgress)
+        report(.reconcilingManifest, fraction: 2.0 / 3, detail: "Saving the update record", onProgress)
         do {
             try manifestReconciler.reconcile(
                 deviceKey: request.deviceKey,
@@ -1046,11 +1113,17 @@ struct SafeUpdateTransaction: Sendable {
         value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
     }
 
+    private func report(_ state: SafeUpdateState, fraction: Double, detail: String?,
+                        _ callback: (@Sendable (SafeUpdateProgress) -> Void)?) {
+        callback?(SafeUpdateProgress(state: state, bytesCompleted: 0, totalBytes: 0,
+            bytesPerSecond: 0, phaseFraction: fraction, detail: detail))
+    }
+
     private func emit(
         _ state: SafeUpdateState,
         _ callback: (@Sendable (SafeUpdateProgress) -> Void)?
     ) {
-        callback?(SafeUpdateProgress(state: state, bytesCompleted: 0, totalBytes: 0, bytesPerSecond: 0))
+        report(state, fraction: state == .completed ? 1 : 0, detail: nil, callback)
     }
 
     private func failure(

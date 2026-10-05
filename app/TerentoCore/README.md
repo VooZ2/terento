@@ -81,6 +81,31 @@ identity; cleanup never expands into heuristic deletion. The write profile is
 bound from the live Garmin USB identity and read-only `/GARMIN` inventory; it
 does not contain a model allowlist.
 
+Manage maps shows a determinate bar, percentage and current action throughout
+Update. Downloading and Installing retain their byte counts and transfer speed.
+Preparing reports completed package checks and measured local hashing; Checking
+combines local source validation with measured read-back/hash validation of the
+installed map. Verifying separately reports validation of the newly written map.
+Removing old reports measured full-content verification before deletion, and
+Finishing advances through the existing confirmed checks. Each
+percentage belongs to its displayed stage, not the whole update or time remaining.
+Stage weights allocate work; they do not predict duration. ZIP extraction, device
+inventory and the deletion command itself do not expose intermediate completion, so
+progress holds at the last completed checkpoint with an action description until
+the call returns. Unknown download lengths remain at 0% until a total is known;
+no timer fabricates progress. Device safety checks and mutation order are unchanged.
+Remove and Update's old-map removal reserve 20–90% for the existing full SHA-256
+read immediately before deletion. The internal C bridge reports bytes read
+without changing read sizes, content/identity checks or authorization. Read
+completion is not deletion success: hash or target mismatch still prevents the
+destructive call. At 93%, the UI says “Confirming the map was removed”; repeated
+inventory checks hold that value rather than increasing it for each retry. Only
+confirmed absence completes removal. The existing settle delays and retry limits
+are unchanged. No watchdog, shortened timeout or new USB recovery is introduced.
+
+This change is a candidate for the next app release; automated tests do not replace
+a real-device large-map update acceptance check.
+
 Remote transfer verification uses the implemented bounded sampled-read policy;
 it is not a claim of a whole remote-file SHA-256. Sample workers have a
 120-second advancing-byte inactivity limit and a 600-second absolute limit.

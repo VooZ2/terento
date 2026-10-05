@@ -1856,7 +1856,8 @@ static int map_short_packet_reads(const TerentoMTPMapOperationProfile *profile) 
 /* Full selected-content proof, in the deletion session; not creation provenance. */
 static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
     const TerentoMTPMapOperationProfile *profile, uint32_t object_id,
-    uint64_t size, const char *expected_hash) {
+    uint64_t size, const char *expected_hash,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
     if (!expected_hash || strnlen(expected_hash, 65) != 64 || size < 512) return 0;
     int nonzero_hash = 0;
     for (size_t i = 0; i < 64; ++i) {
@@ -1867,6 +1868,9 @@ static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
     CC_SHA256_CTX hash;
     if (!CC_SHA256_Init(&hash)) return 0;
     uint64_t offset = 0;
+    uint64_t reported = 0;
+    /* Observation only: completion of reads never authorizes deletion. */
+    if (progress_callback) progress_callback(0, size, progress_context);
     while (offset < size) {
         uint32_t remaining = (uint32_t)((size - offset) > 65536 ? 65536 : (size - offset));
         uint32_t requested = terento_sample_read_request(remaining, map_short_packet_reads(profile));
@@ -1880,6 +1884,10 @@ static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
         if (bytes) LIBMTP_FreeMemory(bytes);
         if (!valid) return 0;
         offset += count;
+        if (progress_callback && (reported == 0 || offset - reported >= 1024 * 1024 || offset == size)) {
+            progress_callback(offset, size, progress_context);
+            reported = offset;
+        }
     }
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];
     if (!CC_SHA256_Final(digest, &hash)) return 0;
@@ -2431,6 +2439,8 @@ int terento_mtp_delete_managed_map_authorized(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 ) {
@@ -2507,7 +2517,7 @@ int terento_mtp_delete_managed_map_authorized(
     if (match_count != 1 || actual_item_id == 0 || expected_size_bytes == 0
         || remote_size != expected_size_bytes || storage_id != profile->expected_storage_id
         || authorization->expected_size != remote_size
-        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256)
+        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256, progress_callback, progress_context)
         || !deletion_target_still_matches(device, storage_id, folder_id, target_filename,
             actual_item_id, remote_size)) {
         set_error(error_message, error_message_capacity, "Managed map cleanup refused: exact target identity did not match");
@@ -2551,6 +2561,8 @@ int terento_mtp_delete_external_map_authorized(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 ) {
@@ -2627,7 +2639,7 @@ int terento_mtp_delete_external_map_authorized(
     if (match_count != 1 || actual_item_id == 0 || expected_size_bytes == 0
         || remote_size != expected_size_bytes || storage_id != profile->expected_storage_id
         || authorization->expected_size != remote_size
-        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256)
+        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256, progress_callback, progress_context)
         || !deletion_target_still_matches(device, storage_id, folder_id, target_filename,
             actual_item_id, remote_size)) {
         set_error(error_message, error_message_capacity, "External map removal refused: exact target identity did not match");

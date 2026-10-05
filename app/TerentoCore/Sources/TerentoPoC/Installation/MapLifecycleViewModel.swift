@@ -45,7 +45,9 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
             state: progress.state == .completed ? .completed : .verifying,
             bytesCompleted: progress.bytesCompleted,
             totalBytes: progress.totalBytes,
-            bytesPerSecond: progress.bytesPerSecond
+            bytesPerSecond: progress.bytesPerSecond,
+            phaseFraction: progress.fractionCompleted,
+            detail: progress.detail
         ))
     }
 }
@@ -114,7 +116,7 @@ final class MapLifecycleViewModel: ObservableObject {
             || operations.values.contains { state in
                 switch state.phase {
                 case .removing, .updating, .verifying, .downloading,
-                     .checking, .installing, .removingOld, .finishing:
+                     .preparing, .checking, .installing, .removingOld, .finishing:
                     return true
                 case .idle, .awaitingConfirmation, .completed, .failed:
                     return false
@@ -511,12 +513,14 @@ final class MapLifecycleViewModel: ObservableObject {
         switch progress.state {
         case .acquiring:
             phase = action == .update ? .downloading : .updating
+        case .preparing:
+            phase = .preparing
         case .validating, .revalidating:
             phase = action == .update ? .checking : .verifying
         case .writing:
             phase = action == .update ? .installing : .updating
         case .verifying:
-            phase = action == .update ? .checking : .verifying
+            phase = .verifying
         case .committing:
             phase = action == .update ? .removingOld : .verifying
         case .postVerifying, .reconcilingManifest:
@@ -529,6 +533,8 @@ final class MapLifecycleViewModel: ObservableObject {
         switch phase {
         case .downloading:
             message = "Downloading the new map…"
+        case .preparing:
+            message = "Preparing the new map…"
         case .checking:
             message = "Checking the map and device…"
         case .installing:
@@ -556,7 +562,7 @@ final class MapLifecycleViewModel: ObservableObject {
             action: action,
             phase: phase,
             progress: progress,
-            message: message
+            message: progress.detail ?? message
         )
     }
 

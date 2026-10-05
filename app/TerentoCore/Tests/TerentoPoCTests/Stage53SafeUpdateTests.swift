@@ -120,6 +120,23 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
         return currentInspectionObject
     }
 
+    func inspectCurrentObject(_ expected: SafeUpdateRemoteObject,
+                              onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        onProgress?(0.4)
+        let result = try inspectCurrentObject(expected)
+        onProgress?(1)
+        return result
+    }
+
+    func verifyTransactionObject(_ object: SafeUpdateRemoteObject, expected: SafeUpdateSourceArtifact,
+                                 onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        onProgress?(0.3)
+        onProgress?(0.7)
+        let result = try verifyTransactionObject(object, expected: expected)
+        onProgress?(1)
+        return result
+    }
+
     func writeTransactionObject(
         sourceURL: URL,
         targetPath: String,
@@ -198,6 +215,12 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
         events.append("inspectExactObject")
         if mode == .oldMissingBeforeDelete { throw SafeDeleteTransportError.objectNotFound }
         return SafeDeleteDeviceObject(file: oldObject.file, sha256: oldHash)
+    }
+
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
+        onProgress?(TransferProgress(bytesTransferred: 1, totalBytes: 2))
+        try deleteExactObject(target)
     }
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
@@ -1132,11 +1155,16 @@ private func testRealUpdateAcquisitionEvents() async throws {
         image.replaceSubrange(offset..<(offset + value.utf8.count), with: value.utf8)
     }
     try image.write(to: imageURL)
+    let preparation = UpdateProgressRecorder()
     let successful = MapPackageAcquisitionProvider(acquirer: MapPackageAcquirer(
         downloadClient: UpdateTestDownloadClient(payload: imageURL),
         workspaceFactory: { try MapAcquisitionWorkspace(rootURL: root.appendingPathComponent(UUID().uuidString)) }),
         onAcquisition: { successfulRecorder.record($0) })
-    _ = try await successful.acquire(package: harness.package)
+    _ = try await successful.acquire(package: harness.package, onProgress: { preparation.record($0) })
+    let preparing = preparation.snapshot().filter { $0.state == .preparing }
+    try require(preparing.last?.fractionCompleted == 1, "validated preparation must finish at 100 percent")
+    try require(preparing.contains { $0.fractionCompleted > 0.8 && $0.fractionCompleted < 1 }, "local hash must report measured progress")
+    try require(zip(preparing, preparing.dropFirst()).allSatisfy { $0.fractionCompleted <= $1.fractionCompleted }, "preparation must not regress")
     try require(successfulRecorder.snapshot() == [.started, .processing, .succeeded],
         "only a validated acquired artifact records successful acquisition")
     let cancelledRecorder = AcquisitionEventRecorder()
@@ -1163,10 +1191,50 @@ private func testRealUpdateAcquisitionEvents() async throws {
     try require(recorder.snapshot().isEmpty, "failure before download boundary must not create download statistics")
 }
 
+private final class UpdateProgressRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [SafeUpdateProgress] = []
+    func record(_ value: SafeUpdateProgress) { lock.lock(); defer { lock.unlock() }; values.append(value) }
+    func snapshot() -> [SafeUpdateProgress] { lock.lock(); defer { lock.unlock() }; return values }
+}
+
+private func testMeasuredUpdateProgress() async throws {
+    for failVerification in [false, true] {
+        let harness = makeHarness()
+        if failVerification { harness.transport.mode = .verifyHashMismatch }
+        let recorder = UpdateProgressRecorder()
+        let result = await SafeUpdateTransaction(gate: harness.gate,
+            sourceValidator: harness.validator, manifestReconciler: harness.reconciler).run(
+                request: withFixtureAuthorization(harness.request), provider: harness.provider,
+                transport: harness.transport, onProgress: { recorder.record($0) })
+        let values = recorder.snapshot()
+        try require(values.allSatisfy { (0...1).contains($0.fractionCompleted) }, "progress must stay bounded")
+        for states: Set<SafeUpdateState> in [[.validating, .revalidating], [.verifying], [.committing], [.postVerifying, .reconcilingManifest, .completed]] {
+            let fractions = values.filter { states.contains($0.state) }.map(\.fractionCompleted)
+            try require(zip(fractions, fractions.dropFirst()).allSatisfy { $0 <= $1 }, "phase progress must not regress")
+        }
+        try require(values.contains { $0.state == .revalidating && $0.fractionCompleted > 0.25 && $0.fractionCompleted < 0.95 }, "old-map read must report intermediate progress")
+        try require(values.contains { $0.state == .verifying && $0.fractionCompleted == 0.3 }, "new-map verification must report intermediate progress")
+        if failVerification {
+            try require(result.status == .failedHashMismatch, "verification error must still fail safely")
+            try require(!values.contains { $0.state == .completed || ($0.state == .verifying && $0.fractionCompleted == 1) }, "failed verification must not report completion")
+        } else {
+            try require(result.status == .success, "progress must preserve success")
+            try require(values.contains { $0.state == .committing && $0.fractionCompleted > 0.3 && $0.fractionCompleted < 0.9 && $0.detail == "Checking map contents before removal" }, "update must forward measured final deletion proof")
+            try require(values.last?.state == .completed && values.last?.fractionCompleted == 1, "100 percent only after final success")
+        }
+    }
+    let unknown = SafeUpdateProgress(state: .acquiring, bytesCompleted: 5, totalBytes: 0, bytesPerSecond: 0)
+    try require(unknown.fractionCompleted == 0, "unknown download size must not fabricate a percentage")
+    let invalid = SafeUpdateProgress(state: .verifying, bytesCompleted: 0, totalBytes: 0, bytesPerSecond: 0, phaseFraction: .nan)
+    try require(invalid.fractionCompleted == 0, "nonfinite fractions must not reach the UI")
+}
+
 @main
 struct Stage53SafeUpdateTests {
     static func main() async throws {
         let tests: [(String, () async throws -> Void)] = [
+            ("measured update progress and failure", testMeasuredUpdateProgress),
             ("provider timeout preserves installed map", testProviderTimeoutPreservesInstalledMap),
             ("real update acquisition telemetry", testRealUpdateAcquisitionEvents),
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),

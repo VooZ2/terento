@@ -310,7 +310,9 @@ int terento_mtp_delete_managed_map(
     size_t error_message_capacity
 );
 
-/* Legacy entry point above refuses mutations; use explicit authorization. */
+/* Legacy entry point above refuses mutations; use explicit authorization.
+ * Optional progress observes full-content reads; its return value is ignored.
+ * Read completion is not proof of hash match or authorization to delete. */
 int terento_mtp_delete_managed_map_authorized(
     const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPMutationAuthorization *authorization,
@@ -318,6 +320,8 @@ int terento_mtp_delete_managed_map_authorized(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 );
@@ -332,7 +336,9 @@ int terento_mtp_delete_external_map(
     size_t error_message_capacity
 );
 
-/* Legacy entry point above refuses mutations; use explicit authorization. */
+/* Legacy entry point above refuses mutations; use explicit authorization.
+ * Optional progress observes full-content reads; its return value is ignored.
+ * Read completion is not proof of hash match or authorization to delete. */
 int terento_mtp_delete_external_map_authorized(
     const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPMutationAuthorization *authorization,
@@ -340,6 +346,8 @@ int terento_mtp_delete_external_map_authorized(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 );

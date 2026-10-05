@@ -3761,7 +3761,7 @@ private struct ManageMapRow: View {
         guard let operation else { return false }
         switch operation.phase {
         case .removing, .updating, .verifying, .downloading, .checking,
-             .installing, .removingOld, .finishing:
+             .preparing, .installing, .removingOld, .finishing:
             return true
         case .idle, .awaitingConfirmation, .completed, .failed:
             return false
@@ -3808,7 +3808,7 @@ private struct ManageMapRow: View {
             case .failed:
                 return operation.message
             case .idle, .awaitingConfirmation, .removing, .updating, .verifying,
-                 .downloading, .checking, .installing, .removingOld, .finishing,
+                 .downloading, .preparing, .checking, .installing, .removingOld, .finishing,
                  .completed:
                 break
             }
@@ -3980,7 +3980,7 @@ private struct ManageOperationProgress: View {
 
     private var progress: SafeUpdateProgress? {
         guard let progress = operation.progress,
-              progress.totalBytes > 0 else {
+              (progress.totalBytes > 0 || progress.phaseFraction != nil) else {
             return nil
         }
         return progress
@@ -3999,7 +3999,7 @@ private struct ManageOperationProgress: View {
                     Text("\(Int(progress.fractionCompleted * 100))%")
                         .font(.terentoUI(size: 13, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
-                } else if isRemoval {
+                } else {
                     Text("0%")
                         .font(.terentoUI(size: 13, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
@@ -4013,10 +4013,15 @@ private struct ManageOperationProgress: View {
                     .frame(height: InstallationTimelineLayout.progressBarHeight)
 
                 if isRemoval {
-                    Text("Verifying map removal")
+                    Text(progress.detail ?? "Verifying map removal")
                         .font(.terentoUI(size: 10, weight: .medium))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .lineLimit(1)
+                } else if progress.phaseFraction != nil {
+                    Text(progress.detail ?? operation.message)
+                        .font(.terentoUI(size: 10, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     HStack(spacing: 8) {
                         Text("\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))")
@@ -4038,10 +4043,13 @@ private struct ManageOperationProgress: View {
                     .foregroundStyle(TerentoColors.secondaryText)
                     .lineLimit(1)
             } else {
-                ProgressView()
+                ProgressView(value: 0)
                     .progressViewStyle(.linear)
                     .tint(TerentoColors.interactive)
                     .frame(height: InstallationTimelineLayout.progressBarHeight)
+                Text(operation.message)
+                    .font(.terentoUI(size: 10, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
             }
         }
         .frame(width: InstallationTimelineLayout.manageProgressWidth, alignment: .leading)
@@ -4052,10 +4060,10 @@ private struct ManageOperationProgress: View {
 
     private var accessibilityValue: String {
         guard let progress else {
-            return isRemoval ? "0 percent" : "In progress"
+            return "0 percent, \(operation.message)"
         }
-        if isRemoval {
-            return "\(Int(progress.fractionCompleted * 100)) percent"
+        if isRemoval || progress.phaseFraction != nil {
+            return "\(Int(progress.fractionCompleted * 100)) percent, \(progress.detail ?? operation.message)"
         }
         var value = "\(Int(progress.fractionCompleted * 100)) percent, "
             + "\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))"

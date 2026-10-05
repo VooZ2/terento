@@ -55,3 +55,15 @@ require_text 'return TerentoColors.interactive' "$connect_screen" "Update does n
 require_text '.accessibilityLabel("\(title) \(mapTitle)")' "$connect_screen" "visible actions lack map-specific accessibility labels"
 
 print "PASS: Manage maps simplified action contract"
+
+python3 - "$connect_screen" <<'PYTEST'
+from pathlib import Path
+import sys
+source = Path(sys.argv[1]).read_text()
+component = source.split("private struct ManageOperationProgress: View {", 1)[1].split("private struct ", 1)[0]
+assert "ProgressView()" not in component, "Manage operations must not use an indeterminate bar"
+assert "progress.phaseFraction != nil" in component, "non-byte checking progress must reach the bar"
+assert "progress.detail ?? operation.message" in component, "checking needs an action description"
+assert 'Text("0%")' in component, "initial operations must show a percentage"
+print("PASS: determinate Manage maps progress, description and initial state")
+PYTEST

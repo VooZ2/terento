@@ -128,9 +128,18 @@ struct SafeDeleteDeviceObject: Equatable, Sendable {
 protocol SafeDeleteTransport: Sendable {
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject
     func deleteExactObject(_ target: SafeDeleteTarget) throws
+    func inspectExactObject(_ target: SafeDeleteTarget,
+                            onProgress: (@Sendable (TransferProgress) -> Void)?) throws -> SafeDeleteDeviceObject
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws
 }
 
 extension SafeDeleteTransport {
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
+        try deleteExactObject(target)
+    }
+
     func inspectExactObject(
         _ target: SafeDeleteTarget,
         onProgress: (@Sendable (TransferProgress) -> Void)?
@@ -141,11 +150,21 @@ extension SafeDeleteTransport {
 
 enum SafeDeleteProgressState: Equatable, Sendable {
     case verifying
+    case checkingContent
     case postVerifying
     case completed
 }
 
 struct SafeDeleteProgress: Equatable, Sendable {
+    var detail: String {
+        switch state {
+        case .verifying: return "Checking the selected map"
+        case .checkingContent: return "Checking map contents before removal"
+        case .postVerifying: return "Confirming the map was removed"
+        case .completed: return "Map removal confirmed"
+        }
+    }
+
     let state: SafeDeleteProgressState
     let bytesCompleted: UInt64
     let totalBytes: UInt64
@@ -260,7 +279,7 @@ struct SafeDeleteAdapter: Sendable {
             current = try transport.inspectExactObject(target, onProgress: { transfer in
                 progressReporter.report(
                     state: .verifying,
-                    fraction: transfer.fractionCompleted * 0.84,
+                    fraction: transfer.fractionCompleted * 0.20,
                     bytesPerSecond: transfer.bytesPerSecond
                 )
             })
@@ -291,10 +310,13 @@ struct SafeDeleteAdapter: Sendable {
             )
         }
         let resolvedTarget = target.resolvingObjectID(currentObjectID)
-        progressReporter.report(state: .verifying, fraction: 0.88)
+        progressReporter.report(state: .checkingContent, fraction: 0.20)
 
         do {
-            try transport.deleteExactObject(resolvedTarget)
+            try transport.deleteExactObject(resolvedTarget, onProgress: { transfer in
+                progressReporter.report(state: .checkingContent,
+                    fraction: 0.20 + 0.70 * transfer.fractionCompleted)
+            })
         } catch let error as SafeDeleteTransportError {
             return result(target, status: status(for: error), message: message(for: error))
         } catch {
@@ -321,7 +343,7 @@ struct SafeDeleteAdapter: Sendable {
             do {
                 progressReporter.report(
                     state: .postVerifying,
-                    fraction: 0.94 + (Double(attempt) * 0.02)
+                    fraction: 0.93
                 )
                 let remaining = try rescan()
                 observedSuccessfulRescan = true
