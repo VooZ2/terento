@@ -89,7 +89,9 @@ address per minute. One install of up to 100 maps with optional contours emits
 about seven map events and one diagnostic per map, uploaded sequentially by the
 app with short retries, so the earlier 60/30 limits rejected a single large
 batch. The higher limits still bound abuse; `429` responses remain retryable for
-clients. Idle limiter keys are swept so memory stays bounded.
+clients. Idle limiter keys are swept so memory stays bounded. Each request
+socket has a 60-second timeout per blocking read or write, so a stalled client
+releases its server thread while large requests and responses still progress.
 
 ## Authorization and exceptional migrations
 

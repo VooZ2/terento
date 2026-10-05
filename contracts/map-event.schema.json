@@ -6,11 +6,8 @@
   "type": "object",
   "properties": {
     "schemaVersion": {
-      "enum": [
-        1,
-        true
-      ],
-      "description": "Current server compares with 1 and also accepts true; this documents existing behavior without changing validation."
+      "const": 1,
+      "description": "Integer 1 only; a boolean true is rejected with 400 (it is not a schema version)."
     },
     "id": {
       "type": "string",

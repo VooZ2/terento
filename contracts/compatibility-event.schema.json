@@ -39,7 +39,7 @@
     },
     "id": {
       "type": "string",
-      "pattern": "^[0-9a-fA-F-]{36}$",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
       "description": "Random event identity, not a Garmin unit identifier."
     },
     "timestamp": {
@@ -140,7 +140,7 @@
       "type": "boolean"
     },
     "operationId": {
-      "description": "Random operation identity groups map results; not a physical device identifier. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
+      "description": "Random operation identity groups map results; not a physical device identifier. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate its semantics, but a present value must be a canonical UUID the database can store."
     },
     "mapResultIndex": {
       "description": "Diagnostic field. Typed and checked for versions 3\u20134. Legacy versions 1\u20132 do not validate this field; see README limitations."
@@ -486,7 +486,7 @@
         "properties": {
           "operationId": {
             "type": "string",
-            "pattern": "^[0-9a-fA-F-]{36}$",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
             "description": "Random operation identity groups map results; not a physical device identifier."
           },
           "mapResultIndex": {

@@ -102,6 +102,10 @@ LOGGER = logging.getLogger(__name__)
 MAP_EVENT_RATE_LIMIT = 600
 COMPATIBILITY_EVENT_RATE_LIMIT = 300
 RATE_LIMIT_WINDOW_SECONDS = 60
+# Socket timeout for one blocking read or write. A stalled or slow-loris client
+# cannot pin a server thread indefinitely; large bodies and responses still
+# progress as long as each chunk arrives within this interval.
+REQUEST_SOCKET_TIMEOUT_SECONDS = 60
 # Idle keys are swept periodically so the in-memory limiter cannot grow without bound.
 RATE_LIMIT_SWEEP_INTERVAL = 1000
 RATE_LIMIT_MAX_WINDOW_SECONDS = 900
@@ -931,6 +935,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         server_version = "TerentoCatalog"
         sys_version = ""
+        timeout = REQUEST_SOCKET_TIMEOUT_SECONDS
 
         def _client_ip(self) -> str:
             return service.client_address_for(

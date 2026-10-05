@@ -128,9 +128,14 @@ and can only be purged through the authenticated admin test-data flow.
 Compatibility versions 1–3 retain the historical `deletionToken` field; version
 4 forbids it. This documents old request acceptance, not a restored deletion
 feature. Versions 3–4 check structured diagnostic types and consistency.
-The existing server does not validate those diagnostic fields on versions
-1–2; the schema records this legacy limitation rather than silently tightening
-the API. Clients must not exploit that gap to transmit extra diagnostic data.
+The existing server does not validate the semantics of those diagnostic fields
+on versions 1–2; the schema records this legacy limitation rather than silently
+tightening the API. A present value that the typed database columns cannot store
+(a non-UUID `operationId`, a non-integer or boolean index/count, a non-boolean
+write fact, or a stage/bucket/identity code outside the stored domain) is
+rejected with `400` on every version instead of failing as a retryable `503`.
+Event and operation IDs must be canonical 8-4-4-4-12 UUID text, and a boolean is
+never accepted as a map-event `schemaVersion`. Clients must not exploit that gap to transmit extra diagnostic data.
 A future tightening requires its own privacy/compatibility review.
 
 Some checks remain procedural: raw JSON byte limits (16 KiB compatibility,

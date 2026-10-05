@@ -83,7 +83,7 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         required = (required - {"releaseLabel"}) | {"appBuild", "mapId"}
     if required - set(event):
         raise MapEventValidationError("missing_fields")
-    if event["schemaVersion"] != 1:
+    if type(event["schemaVersion"]) is not int or event["schemaVersion"] != 1:
         raise MapEventValidationError("unsupported_schema")
     if not isinstance(event.get("eventType"), str):
         raise MapEventValidationError("invalid_event_type")
