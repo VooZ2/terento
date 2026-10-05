@@ -45,7 +45,9 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
             state: progress.state == .completed ? .completed : .verifying,
             bytesCompleted: progress.bytesCompleted,
             totalBytes: progress.totalBytes,
-            bytesPerSecond: progress.bytesPerSecond
+            bytesPerSecond: progress.bytesPerSecond,
+            phaseFraction: progress.fractionCompleted,
+            detail: progress.detail
         ))
     }
 }

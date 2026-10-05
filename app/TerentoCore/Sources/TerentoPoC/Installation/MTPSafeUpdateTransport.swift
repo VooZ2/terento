@@ -62,13 +62,19 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
     }
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
+        try deleteExactObject(target, onProgress: nil)
+    }
+
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
         do {
             try mapTransport.deleteAuthorized(
                 targetFilename: target.expectedFilename,
                 expectedItemID: target.objectID,
                 expectedSizeBytes: target.expectedSizeBytes,
                 expectedSHA256: target.expectedSHA256,
-                purpose: .updateOld
+                purpose: .updateOld,
+                onProgress: onProgress
             )
         } catch let error as InstallationTransportError {
             throw mapError(error)

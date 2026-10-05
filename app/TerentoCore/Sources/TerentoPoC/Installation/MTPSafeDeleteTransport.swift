@@ -223,6 +223,11 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
     }
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
+        try deleteExactObject(target, onProgress: nil)
+    }
+
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
         do {
             let hash: String
             let purpose: MapMutationPurpose
@@ -250,7 +255,8 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
                 expectedItemID: target.objectID,
                 expectedSizeBytes: target.expectedSizeBytes,
                 expectedSHA256: hash,
-                purpose: purpose
+                purpose: purpose,
+                onProgress: onProgress
             )
         } catch let error as InstallationTransportError {
             if error.isConfirmedDeviceDisconnected {

@@ -4013,7 +4013,7 @@ private struct ManageOperationProgress: View {
                     .frame(height: InstallationTimelineLayout.progressBarHeight)
 
                 if isRemoval {
-                    Text("Verifying map removal")
+                    Text(progress.detail ?? "Verifying map removal")
                         .font(.terentoUI(size: 10, weight: .medium))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .lineLimit(1)

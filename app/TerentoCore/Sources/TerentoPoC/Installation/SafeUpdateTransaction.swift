@@ -1018,7 +1018,7 @@ struct SafeUpdateTransaction: Sendable {
             onProgress: { progress in
                 onProgress?(SafeUpdateProgress(state: .committing, bytesCompleted: 0,
                     totalBytes: 0, bytesPerSecond: 0, phaseFraction: progress.fractionCompleted,
-                    detail: "Removing the old map and checking the result"))
+                    detail: progress.detail))
             }
             // The new object has already passed remote size/hash/metadata
             // verification. Delete the old object only after that gate,

@@ -37,6 +37,17 @@ static int track_reads, require_short_packets;
 static uint32_t read_requests[8];
 static size_t read_count;
 static uint64_t read_total;
+static uint64_t progress_last;
+static int progress_intermediate, progress_complete, progress_deletes;
+static int read_progress(uint64_t done, uint64_t total, const void *context) {
+    assert(context == &progress_last && total > 0 && done <= total);
+    if (!done) { progress_last = 0; progress_deletes = deletes; }
+    assert(done >= progress_last && deletes == progress_deletes);
+    progress_last = done;
+    if (done > 0 && done < total) ++progress_intermediate;
+    if (done == total) ++progress_complete;
+    return 0;
+}
 static const char *xml_fixture;
 static const char *alias;
 static const char *observed_name;
@@ -105,7 +116,7 @@ static int install(TerentoMTPMapOperationProfile *p,TerentoMTPMutationAuthorizat
 }
 static int remove_map(TerentoMTPMapOperationProfile *p,TerentoMTPMutationAuthorization *a,TerentoMTPMutationRecord *r) {
     char error[256]={0};
-    return terento_mtp_delete_external_map_authorized(p,a,r,filename,999,512,error,sizeof(error));
+    return terento_mtp_delete_external_map_authorized(p,a,r,filename,999,512,read_progress,&progress_last,error,sizeof(error));
 }
 static void reset_matrix_fixture(void) {
     serial="TEST-SERIAL"; filename="terento_test_map.img"; storage.id=1;
@@ -216,7 +227,7 @@ static void grant_negative_matrix(void) {
     TerentoMTPMutationAuthorization a=grant(TERENTO_MUTATION_UPDATE_OLD,TERENTO_MUTATION_DELETE);
     a.sequence=2; snprintf(claim,sizeof(claim),"%s/%s-2.claim",directory,a.operation_id);
     char error[256]; int before_sends=sends, before_deletes=deletes;
-    int result=terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,error,sizeof(error));
+    int result=terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,read_progress,&progress_last,error,sizeof(error));
     refused("update old delete without same-operation verified predecessor",result,before_sends,before_deletes,&r);
 }
 
@@ -284,7 +295,7 @@ int main(void) {
     assert(install(&p,&a,&r)!=0 && sends==2 && r.attempted && r.completed && r.native_result==-123);
     assert(install(&p,&a,&r)!=0 && sends==2);send_failure=0;
     char error[128];
-    a=grant(6,2);assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,77,512,error,sizeof(error))==TERENTO_MTP_MUTATION_REFUSED&&deletes==1);
+    a=grant(6,2);assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,77,512,read_progress,&progress_last,error,sizeof(error))==TERENTO_MTP_MUTATION_REFUSED&&deletes==1);
 assert(terento_mtp_delete_managed_map(&p,filename,77,512,error,sizeof(error))==TERENTO_MTP_MUTATION_REFUSED);
     assert(terento_mtp_write_test_file(source,NULL,NULL,error,sizeof(error))==TERENTO_MTP_MUTATION_REFUSED);
     a=grant(TERENTO_MUTATION_UPDATE_NEW,TERENTO_MUTATION_SEND);
@@ -292,12 +303,12 @@ assert(terento_mtp_delete_managed_map(&p,filename,77,512,error,sizeof(error))==T
     char operation_id[65];strcpy(operation_id,a.operation_id);
     a.operation_id=operation_id;a.sequence=2;a.purpose=TERENTO_MUTATION_UPDATE_OLD;a.mutation_kind=TERENTO_MUTATION_DELETE;
     snprintf(claim,sizeof(claim),"%s/%s-2.claim",directory,operation_id);present=1;
-    assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,error,sizeof(error))!=0&&deletes==1);
+    assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,read_progress,&progress_last,error,sizeof(error))!=0&&deletes==1);
     char marker[PATH_MAX];snprintf(marker,sizeof(marker),"%s/%s-verified-new",directory,operation_id);
     int marker_fd=open(marker,O_WRONLY|O_CREAT|O_EXCL,0600);assert(marker_fd>=0);
     assert(write(marker_fd,operation_id,strlen(operation_id))==(ssize_t)strlen(operation_id));assert(fsync(marker_fd)==0);close(marker_fd);
-    assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,error,sizeof(error))==0&&deletes==2);
-    assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,error,sizeof(error))!=0&&deletes==2);
+    assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,read_progress,&progress_last,error,sizeof(error))==0&&deletes==2);
+    assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,read_progress,&progress_last,error,sizeof(error))!=0&&deletes==2);
     /* Fullhash uses the existing short-packet policy without dropping remainder bytes. */
     for(size_t i=512;i<sizeof(content);++i)content[i]=(unsigned char)(i%251);
     char segment_hash[65];
@@ -305,17 +316,28 @@ assert(terento_mtp_delete_managed_map(&p,filename,77,512,error,sizeof(error))==T
     for(int i=0;i<32;++i)snprintf(segment_hash+i*2,3,"%02x",digest[i]);
     track_reads=1;require_short_packets=1;read_count=0;read_total=0;
     p=profile();
-    assert(verify_deletion_content(&device,&p,77,sizeof(content),segment_hash));
+    assert(verify_deletion_content(&device,&p,77,sizeof(content),segment_hash,read_progress,&progress_last));
     assert(read_total==sizeof(content)&&read_count==4&&read_requests[0]==65535
         &&read_requests[1]==65535&&read_requests[2]==3&&read_requests[3]==1);
     content[sizeof(content)-1]^=1;read_count=0;read_total=0;
-    assert(!verify_deletion_content(&device,&p,77,sizeof(content),segment_hash));
+    assert(!verify_deletion_content(&device,&p,77,sizeof(content),segment_hash,read_progress,&progress_last));
     assert(read_total==sizeof(content));content[sizeof(content)-1]^=1;
     p.product_id=0x51b9;require_short_packets=0;read_count=0;read_total=0;
-    assert(verify_deletion_content(&device,&p,77,sizeof(content),segment_hash));
+    assert(verify_deletion_content(&device,&p,77,sizeof(content),segment_hash,read_progress,&progress_last));
     assert(read_total==sizeof(content)&&read_count==3&&read_requests[0]==65536
         &&read_requests[1]==65536&&read_requests[2]==2);
+    assert(progress_intermediate >= 3 && progress_complete >= 3);
     track_reads=0;
+    /* A complete read is not successful proof: corrupt contents still block deletion. */
+    p=profile(); present=1;
+    a=grant(TERENTO_MUTATION_REMOVE_MANAGED,TERENTO_MUTATION_DELETE);
+    int before_deletes=deletes, before_progress=progress_complete;
+    content[511]^=1;
+    assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,
+        read_progress,&progress_last,error,sizeof(error))!=0);
+    assert(progress_complete==before_progress+1 && deletes==before_deletes && !r.attempted);
+    content[511]^=1;
+    puts("PASS: deletion read progress advances; completed corrupt reads cannot authorize deletion");
     external_negative_matrix();
     grant_negative_matrix();
     puts("PASS: native mutation authorization (real entrypoints, fake libmtp, no USB)");

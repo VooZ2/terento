@@ -217,6 +217,12 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
         return SafeDeleteDeviceObject(file: oldObject.file, sha256: oldHash)
     }
 
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
+        onProgress?(TransferProgress(bytesTransferred: 1, totalBytes: 2))
+        try deleteExactObject(target)
+    }
+
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
         events.append("deleteExactObject")
         if mode == .deleteFailure {
@@ -1214,7 +1220,7 @@ private func testMeasuredUpdateProgress() async throws {
             try require(!values.contains { $0.state == .completed || ($0.state == .verifying && $0.fractionCompleted == 1) }, "failed verification must not report completion")
         } else {
             try require(result.status == .success, "progress must preserve success")
-            try require(values.contains { $0.state == .committing && $0.fractionCompleted > 0 && $0.fractionCompleted < 1 }, "old-map removal must report checks")
+            try require(values.contains { $0.state == .committing && $0.fractionCompleted > 0.3 && $0.fractionCompleted < 0.9 && $0.detail == "Checking map contents before removal" }, "update must forward measured final deletion proof")
             try require(values.last?.state == .completed && values.last?.fractionCompleted == 1, "100 percent only after final success")
         }
     }

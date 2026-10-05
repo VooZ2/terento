@@ -345,7 +345,8 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
 
     func deleteAuthorized(targetFilename: String, expectedItemID: UInt32,
                           expectedSizeBytes: UInt64, expectedSHA256: String,
-                          purpose: MapMutationPurpose) throws {
+                          purpose: MapMutationPurpose,
+                          onProgress: (@Sendable (TransferProgress) -> Void)? = nil) throws {
         guard [.removeManaged, .removeExternal, .updateOld].contains(purpose),
               expectedSHA256.count == 64, expectedSHA256.allSatisfy({ $0.isHexDigit }),
               expectedSHA256 != String(repeating: "0", count: 64) else {
@@ -354,17 +355,24 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         try operationGate.withOperation(kind: .remove, lifecycleLease: lifecycleLease) {
             guard let operationProfile else { throw InstallationTransportError.unsupportedDevice }
             var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-            let result = try withNativeMapOperationProfile(operationProfile) { nativeProfile in
-                try targetFilename.withCString { filename in
-                    try errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                        try authorizedMutation(purpose: purpose, filename: targetFilename,
-                            size: expectedSizeBytes, sha256: expectedSHA256) { authorization, record in
-                            if purpose == .removeExternal {
-                                return terento_mtp_delete_external_map_authorized(nativeProfile, authorization, record,
-                                    filename, expectedItemID, expectedSizeBytes, errorPointer.baseAddress, errorPointer.count)
+            let progressBox = MTPProgressBox(callback: onProgress ?? { _ in })
+            let result = try withExtendedLifetime(progressBox) {
+                try withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                    try targetFilename.withCString { filename in
+                        try errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                            try authorizedMutation(purpose: purpose, filename: targetFilename,
+                                size: expectedSizeBytes, sha256: expectedSHA256) { authorization, record in
+                                if purpose == .removeExternal {
+                                    return terento_mtp_delete_external_map_authorized(nativeProfile, authorization, record,
+                                        filename, expectedItemID, expectedSizeBytes, terentoMTPProgressCallback,
+                                        UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                        errorPointer.baseAddress, errorPointer.count)
+                                }
+                                return terento_mtp_delete_managed_map_authorized(nativeProfile, authorization, record,
+                                    filename, expectedItemID, expectedSizeBytes, terentoMTPProgressCallback,
+                                        UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                        errorPointer.baseAddress, errorPointer.count)
                             }
-                            return terento_mtp_delete_managed_map_authorized(nativeProfile, authorization, record,
-                                filename, expectedItemID, expectedSizeBytes, errorPointer.baseAddress, errorPointer.count)
                         }
                     }
                 }
