@@ -42,9 +42,10 @@ struct MapSourceValidator: Sendable {
 
     func validate(
         fileURL: URL,
-        expectedPackage: MapPackage
+        expectedPackage: MapPackage,
+        onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> ValidatedMapSource {
-        let inspected = try inspect(fileURL: fileURL)
+        let inspected = try inspect(fileURL: fileURL, onProgress: onProgress)
         if MapIdentity.normalizeProvider(expectedPackage.providerId) == "bbbike" {
             return try validateBBBike(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
         }
@@ -140,7 +141,7 @@ struct MapSourceValidator: Sendable {
         return nil
     }
 
-    private func inspect(fileURL: URL) throws -> (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String) {
+    private func inspect(fileURL: URL, onProgress: (@Sendable (Double) -> Void)? = nil) throws -> (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String) {
         guard FileManager.default.isReadableFile(atPath: fileURL.path) else {
             throw MapSourceValidationError.fileMissing
         }
@@ -156,6 +157,7 @@ struct MapSourceValidator: Sendable {
             try? handle.close()
         }
 
+        let expectedSize = (try fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         var prefix: [UInt8] = []
         prefix.reserveCapacity(GarminIMGMetadataParser.prefixLength)
         var hasher = SHA256()
@@ -177,6 +179,7 @@ struct MapSourceValidator: Sendable {
                     throw MapSourceValidationError.readFailed
                 }
                 sizeBytes = newSize
+                if expectedSize > 0 { onProgress?(min(1, Double(sizeBytes) / Double(expectedSize))) }
             }
         } catch let error as MapSourceValidationError {
             throw error

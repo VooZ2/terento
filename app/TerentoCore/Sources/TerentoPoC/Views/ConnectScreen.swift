@@ -66,6 +66,8 @@ struct ConnectScreen: View {
     @State private var resolvedDeviceAsset = ResolvedDeviceAsset.fallback
     @State private var diagnosticLogMessage: String?
     @State private var isShowingInstallationFailure = false
+    @State private var installationFailureFollowUp: InstallationFailureFollowUp = .backToDevice
+    @State private var retryInstallationAfterScan = false
     @State private var evidenceOperationID = UUID()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openWindow) private var openWindow
@@ -82,9 +84,12 @@ struct ConnectScreen: View {
         return GarminDeviceIdentityAdapter().makeIdentity(from: snapshot)
     }
 
-    private var mapSupport: GarminMapSupportStatus {
-        guard let identity else { return .unknown }
-        return GarminMapCapabilityRegistry.local.evaluate(identity: identity)
+    private var currentDeviceFreeSpace: UInt64? {
+        deviceEngine.snapshot?.freeSpace
+    }
+
+    private var authorizationPresentation: DeviceAuthorizationPresentation {
+        DeviceAuthorizationPresentation(deviceEngine.installationAuthorization)
     }
 
     /// Map lifecycle access is determined from the live MTP scan, not from a
@@ -266,6 +271,7 @@ struct ConnectScreen: View {
         }
         .onChange(of: mapEngine.state) { newState in
             updatePresenceMonitoring(for: newState)
+            continueRetryAfterScanIfReady(newState)
         }
         .onChange(of: mapEngine.customMapImportState) { _ in
             updatePresenceMonitoring(for: mapEngine.state)
@@ -282,8 +288,18 @@ struct ConnectScreen: View {
         .onChange(of: deviceEngine.installationAuthorization) { authorization in
             mapEngine.setInstallationAuthorization(authorization)
         }
+        .onChange(of: mapEngine.latestDeviceStorage) { storage in
+            guard let storage else { return }
+            deviceEngine.refreshStorage(storage)
+        }
+        .onChange(of: mapEngine.freshInstallationAuthorization) { fresh in
+            guard let fresh else { return }
+            deviceEngine.applyFreshInstallationAuthorization(fresh.state, for: fresh.identity)
+        }
         .onReceive(Timer.publish(every: 300, on: .main, in: .common).autoconnect()) { _ in
-            guard !lifecycleViewModel.isBusy else { return }
+            deviceEngine.retryInstallationAuthorizationIfUnavailable()
+            // Never refresh (and prune selections) during review or install.
+            guard !lifecycleViewModel.isBusy, selectedInstallationPlan == nil else { return }
             Task { await mapEngine.refreshCatalogAvailability() }
         }
         .onChange(of: mapEngine.result) { _ in refreshMapSelectionPresentation() }
@@ -368,7 +384,7 @@ struct ConnectScreen: View {
         }
         .sheet(
             isPresented: $isShowingInstallationFailure,
-            onDismiss: returnToDeviceAfterFailure
+            onDismiss: handleInstallationFailureDismissed
         ) {
             InstallationFailureDialog(
                 mapTitle: selectedInstallationPlan.flatMap(installationFailureMapTitle),
@@ -376,7 +392,18 @@ struct ConnectScreen: View {
                 safetyMessage: installationFailureSafetyMessage,
                 reportError: diagnosticLogMessage,
                 onReportIssue: { reportInstallationIssue(for: selectedInstallationPlan) },
-                onBackToDevice: { isShowingInstallationFailure = false }
+                onBackToDevice: {
+                    installationFailureFollowUp = .backToDevice
+                    isShowingInstallationFailure = false
+                },
+                onTryAgain: mapEngine.canRetryFailedInstallation && selectedInstallationPlan != nil ? {
+                    installationFailureFollowUp = .tryAgain
+                    isShowingInstallationFailure = false
+                } : nil,
+                onManageMaps: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true ? {
+                    installationFailureFollowUp = .manageMaps
+                    isShowingInstallationFailure = false
+                } : nil
             )
             .interactiveDismissDisabled(false)
         }
@@ -514,6 +541,77 @@ struct ConnectScreen: View {
         updatePrompt = update
     }
 
+    private func handleInstallationFailureDismissed() {
+        let followUp = installationFailureFollowUp
+        installationFailureFollowUp = .backToDevice
+        switch followUp {
+        case .backToDevice:
+            returnToDeviceAfterFailure()
+        case .tryAgain:
+            retryInstallationAfterFailure()
+        case .manageMaps:
+            selectedInstallationPlan = nil
+            selectedOptionalArtifactIDs.removeAll()
+            localInstallStep = .choose
+            navigate(to: .manageMaps)
+        }
+    }
+
+    /// Try again keeps the selection, rereads the watch and then starts the
+    /// normal install flow; a retained artifact skips the download and every
+    /// safety check runs again.
+    private func retryInstallationAfterFailure() {
+        guard let identity,
+              deviceEngine.snapshot != nil,
+              selectedInstallationPlan != nil else {
+            returnToDeviceAfterFailure()
+            return
+        }
+        retryInstallationAfterScan = true
+        selectedSection = .installMaps
+        localInstallStep = .install
+        mapEngine.scanDeviceMaps(
+            deviceIdentity: identity,
+            availableStorage: currentDeviceFreeSpace
+        )
+    }
+
+    private func continueRetryAfterScanIfReady(_ state: MapEngineState) {
+        guard retryInstallationAfterScan else { return }
+        switch state {
+        case .scanned:
+            retryInstallationAfterScan = false
+            guard let plan = currentInstallationPlan, !plan.installItems.isEmpty else {
+                selectedInstallationPlan = nil
+                localInstallStep = .choose
+                return
+            }
+            selectedInstallationPlan = plan
+            if installAvailability(for: plan).isEnabled {
+                beginInstallationAfterConsent(plan)
+            }
+        case .failed, .idle:
+            retryInstallationAfterScan = false
+        case .loadingCatalog, .scanning, .acquiringArtifact, .preparingInstallation, .installing:
+            break
+        }
+    }
+
+    private func installAvailability(for plan: InstallationPlan) -> InstallReviewAvailability {
+        InstallReviewAvailabilityResolver().resolve(
+            plan: plan,
+            deviceConnected: deviceEngine.hasConnectedDevice,
+            installationAuthorization: deviceEngine.installationAuthorization,
+            deviceIdentity: identity,
+            mapScanReady: mapEngine.state == .scanned,
+            supportedInstallFlow: !plan.installItems.isEmpty,
+            installationPhase: mapEngine.installationPhase,
+            hasValidatedArtifact: mapEngine.validatedArtifact != nil,
+            operationBusy: mapEngine.isBusy
+                || lifecycleViewModel.isBusy
+        )
+    }
+
     private func returnToDeviceAfterFailure() {
         selectedInstallationPlan = nil
         selectedOptionalArtifactIDs.removeAll()
@@ -552,6 +650,12 @@ struct ConnectScreen: View {
 
                     connectionStatusView
                         .padding(.top, 14)
+
+                    if showsConnectChecklist {
+                        connectChecklist
+                            .padding(.top, 14)
+                            .frame(maxWidth: 420, alignment: .center)
+                    }
 
                     if deviceEngine.state == .disconnected || deviceEngine.state == .failed {
                         PrimaryButton(
@@ -602,6 +706,13 @@ struct ConnectScreen: View {
 
     private var connectionStatusView: some View {
         VStack(alignment: .center, spacing: TerentoPageLayout.titleSubtitleSpacing) {
+            if let statusIcon = connectionStatusIcon {
+                Image(systemName: statusIcon.name)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(statusIcon.color)
+                    .accessibilityHidden(true)
+            }
+
             Text(connectionStatusTitle)
                 .font(.terentoHeading(size: 42, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
@@ -630,10 +741,46 @@ struct ConnectScreen: View {
     }
 
     private var connectionIllustrationMaxHeight: CGFloat {
+        if showsConnectChecklist {
+            return 240
+        }
         if deviceEngine.state == .failed {
             return troubleshootingExpanded ? 180 : 220
         }
         return troubleshootingExpanded ? 220 : 300
+    }
+
+    /// Every connect status pairs its text with an icon; colour only supports it.
+    private var connectionStatusIcon: (name: String, color: Color)? {
+        switch deviceEngine.state {
+        case .detecting:
+            switch deviceEngine.detectionPhase {
+            case .waitingForWatch:
+                return ("cable.connector", TerentoColors.secondaryText)
+            case .connecting:
+                return ("arrow.triangle.2.circlepath", TerentoColors.interactive)
+            case .needsAttention:
+                return ("exclamationmark.circle.fill", TerentoColors.warning)
+            }
+        case .failed:
+            return ("exclamationmark.triangle.fill", TerentoColors.error)
+        case .disconnected, .connected, .ready, .ejecting, .safeToDisconnect:
+            return nil
+        }
+    }
+
+    private var showsConnectChecklist: Bool {
+        deviceEngine.state == .detecting && deviceEngine.detectionPhase == .waitingForWatch
+    }
+
+    private var connectChecklist: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            troubleshootingRow("Use a USB data cable, not a charge-only cable", icon: "cable.connector")
+            troubleshootingRow("Unlock your watch", icon: "lock.open")
+            troubleshootingRow("Quit Garmin Express", icon: "xmark.app")
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Before you connect: use a USB data cable, unlock your watch, and quit Garmin Express.")
     }
 
     private var connectionStatusTitle: String {
@@ -641,7 +788,15 @@ struct ConnectScreen: View {
         case .disconnected:
             return "Ready when you are."
         case .detecting:
-            return "Waiting for your Garmin…"
+            switch deviceEngine.detectionPhase {
+            case .waitingForWatch:
+                return "Connect your watch"
+            case .connecting:
+                return "Waiting for your Garmin…"
+            case .needsAttention(let outcome):
+                return UserFacingErrorMessage.detectionAttention(outcome)?.title
+                    ?? "Waiting for your Garmin…"
+            }
         case .connected, .ready:
             return "Garmin \(deviceEngine.compatibility?.displayName ?? "watch") connected"
         case .ejecting:
@@ -658,7 +813,16 @@ struct ConnectScreen: View {
         case .disconnected:
             return "Connect your watch to this Mac."
         case .detecting:
-            return "This may take up to 2 minutes."
+            switch deviceEngine.detectionPhase {
+            case .waitingForWatch:
+                return deviceEngine.disconnectNotice
+                    ?? "Plug your Garmin into this Mac. Terento finds it automatically."
+            case .connecting:
+                return "This may take up to 2 minutes."
+            case .needsAttention(let outcome):
+                return UserFacingErrorMessage.detectionAttention(outcome)?.description
+                    ?? "This may take up to 2 minutes."
+            }
         case .connected, .ready:
             return "Your Garmin is ready."
         case .ejecting:
@@ -854,6 +1018,16 @@ struct ConnectScreen: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 .scrollIndicators(.automatic)
+            } else if mapEngine.mapScanFailed && deviceEngine.hasConnectedDevice {
+                MapStatusRow(
+                    title: "Couldn't read your maps",
+                    detail: "Your watch is connected, but its maps couldn't be read.",
+                    status: "Error",
+                    note: mapEngine.userErrorMessage,
+                    isError: true,
+                    onRetry: refreshMapInventory
+                )
+                .padding(.top, 30)
             } else {
                 MapStatusRow(
                     title: mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
@@ -1028,7 +1202,9 @@ struct ConnectScreen: View {
             DeviceCard(
                 presentation: presentation,
                 canEject: canSafelyEject,
-                onEject: performSafeEject
+                onEject: performSafeEject,
+                authorization: DeviceAuthorizationPresentation(deviceEngine.installationAuthorization),
+                onRetryAuthorization: { deviceEngine.retryInstallationAuthorization() }
             )
             .padding(.top, 30)
 
@@ -1321,6 +1497,14 @@ struct ConnectScreen: View {
                         }
                     }
 
+                    if let notice = authorizationPresentation.browsingNotice {
+                        Label(notice, systemImage: authorizationPresentation.systemImage)
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(authorizationPresentation.tone.color)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 10)
+                    }
+
                     if mapEngine.catalogSource == .bundledFallback {
                         Label(
                             MapCatalogSource.bundledFallback.userLabel,
@@ -1330,6 +1514,15 @@ struct ConnectScreen: View {
                         .foregroundStyle(TerentoColors.secondaryText)
                         .padding(.top, 10)
                         .accessibilityHint("Terento is using its bundled local map list. It may be out of date.")
+                    } else if mapEngine.catalogSource == .appUpdateRequired {
+                        Label(
+                            MapCatalogSource.appUpdateRequired.userLabel,
+                            systemImage: "arrow.down.circle"
+                        )
+                        .font(.terentoUI(size: 12, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .padding(.top, 10)
+                        .accessibilityHint("This Terento version can't use the current map catalog. Maps can be browsed; installing needs a Terento update.")
                     }
 
                     if mapEngine.state == .loadingCatalog || mapEngine.state == .scanning {
@@ -1338,6 +1531,16 @@ struct ConnectScreen: View {
                             detail: "Checking your Garmin watch…",
                             status: "Checking",
                             note: "Map information will appear here when your watch is ready."
+                        )
+                        .padding(.top, 18)
+                    } else if mapEngine.mapScanFailed && deviceEngine.hasConnectedDevice {
+                        MapStatusRow(
+                            title: "Couldn't read your maps",
+                            detail: "Your watch is connected, but its maps couldn't be read.",
+                            status: "Error",
+                            note: mapEngine.userErrorMessage,
+                            isError: true,
+                            onRetry: refreshMapInventory
                         )
                         .padding(.top, 18)
                     } else if mapEngine.state != .scanned {
@@ -1717,19 +1920,7 @@ struct ConnectScreen: View {
     }
 
     private func reviewInstallContent(_ plan: InstallationPlan) -> some View {
-        let supportedInstallFlow = !plan.installItems.isEmpty
-        let installAvailability = InstallReviewAvailabilityResolver().resolve(
-            plan: plan,
-            deviceConnected: deviceEngine.hasConnectedDevice,
-            installationAuthorization: deviceEngine.installationAuthorization,
-            deviceIdentity: identity,
-            mapScanReady: mapEngine.state == .scanned,
-            supportedInstallFlow: supportedInstallFlow,
-            installationPhase: mapEngine.installationPhase,
-            hasValidatedArtifact: mapEngine.validatedArtifact != nil,
-            operationBusy: mapEngine.isBusy
-                || lifecycleViewModel.isBusy
-        )
+        let installAvailability = installAvailability(for: plan)
 
         return TerentoInstallFooterPageShell(bodyScrolls: true) {
             VStack(alignment: .leading, spacing: 0) {
@@ -1750,11 +1941,28 @@ struct ConnectScreen: View {
                     .padding(.top, 4)
 
                 if let reason = installAvailability.userReason {
-                    Label(reason, systemImage: "info.circle")
-                        .font(.terentoUI(size: 15, weight: .semibold))
-                        .foregroundStyle(TerentoColors.error)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 18)
+                    let authorization = DeviceAuthorizationPresentation(deviceEngine.installationAuthorization)
+                    let authorizationBlocks = reason == authorization.reviewReason
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Icon and colour agree: the authorization verdict keeps
+                        // its own icon; other blockers are warnings.
+                        Label(reason, systemImage: authorizationBlocks
+                            ? authorization.systemImage
+                            : "exclamationmark.circle.fill")
+                            .font(.terentoUI(size: 15, weight: .semibold))
+                            .foregroundStyle(authorizationBlocks
+                                ? authorization.tone.color
+                                : TerentoColors.warning)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if authorizationBlocks && authorization.canRetry {
+                            SecondaryButton(title: "Try again") {
+                                deviceEngine.retryInstallationAuthorization()
+                            }
+                            .accessibilityHint("Checks again whether this watch can install maps.")
+                        }
+                    }
+                    .padding(.top, 18)
                 }
 
             }
@@ -1784,12 +1992,20 @@ struct ConnectScreen: View {
                         return
                     }
                 }
-                .disabled(
-                    !mapSupport.canAttemptTerentoMapInstall
-                        || !installAvailability.isEnabled
-                )
+                // Only the resolved availability (server authorization, live
+                // identity, plan and scan) gates Install. The local map
+                // capability registry is information, never a veto.
+                .disabled(!installAvailability.isEnabled)
             }
             }
+        }
+        .onAppear {
+            mapEngine.recordInstallReviewBlocked(plan: plan,
+                authorization: deviceEngine.installationAuthorization, supportedInstallFlow: true)
+        }
+        .onChange(of: deviceEngine.installationAuthorization) { authorization in
+            mapEngine.recordInstallReviewBlocked(plan: plan,
+                authorization: authorization, supportedInstallFlow: true)
         }
     }
 
@@ -1814,6 +2030,20 @@ struct ConnectScreen: View {
 
                 installationJourneyView
                     .padding(.top, 10)
+
+                if mapEngine.canCancelInstallationPreparation {
+                    HStack(spacing: 12) {
+                        SecondaryButton(title: "Cancel") {
+                            mapEngine.cancelInstallationPreparation()
+                        }
+                        .accessibilityHint("Stops downloading and preparing. Nothing has been written to your watch.")
+
+                        Text("Nothing has been written to your watch yet.")
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                    }
+                    .padding(.top, 14)
+                }
             }
         }
     }
@@ -2730,6 +2960,12 @@ private struct MapLifecycleConfirmationSheet: View {
     }
 }
 
+private enum InstallationFailureFollowUp {
+    case backToDevice
+    case tryAgain
+    case manageMaps
+}
+
 private struct InstallationFailureDialog: View {
     let mapTitle: String?
     let reason: String
@@ -2737,9 +2973,20 @@ private struct InstallationFailureDialog: View {
     let reportError: String?
     let onReportIssue: () -> Void
     let onBackToDevice: () -> Void
+    /// Offered only for transient failures where nothing was written.
+    var onTryAgain: (() -> Void)? = nil
+    /// Offered when a map file may remain on the watch after the failure.
+    var onManageMaps: (() -> Void)? = nil
+
+    private var primaryAction: (label: String, action: () -> Void)? {
+        if let onTryAgain { return ("Try again", onTryAgain) }
+        if let onManageMaps { return ("Go to Manage maps", onManageMaps) }
+        return nil
+    }
 
     private var supportingMessage: String? {
-        [safetyMessage, "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting.", reportError]
+        [safetyMessage, onManageMaps == nil ? nil : InstallationFailure.leftoverMapFollowUp,
+         "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting.", reportError]
             .compactMap { value in
                 let normalized = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 return normalized.isEmpty ? nil : normalized
@@ -2760,10 +3007,12 @@ private struct InstallationFailureDialog: View {
             secondaryLabel: "Report issue",
             secondaryAssetIcon: "GitHubMark",
             secondaryUsesCancelShortcut: false,
-            primaryLabel: "Back to device",
+            tertiaryLabel: primaryAction == nil ? nil : "Back to device",
+            onTertiary: onBackToDevice,
+            primaryLabel: primaryAction?.label ?? "Back to device",
             isDestructive: false,
             onCancel: onReportIssue,
-            onConfirm: onBackToDevice
+            onConfirm: primaryAction?.action ?? onBackToDevice
         )
         .accessibilityElement(children: .contain)
     }
@@ -2789,6 +3038,8 @@ private struct TerentoConfirmationDialog: View {
     let secondaryLabel: String
     let secondaryAssetIcon: String?
     let secondaryUsesCancelShortcut: Bool
+    let tertiaryLabel: String?
+    let onTertiary: () -> Void
     let primaryLabel: String
     let isDestructive: Bool
     let onCancel: () -> Void
@@ -2805,6 +3056,8 @@ private struct TerentoConfirmationDialog: View {
         secondaryLabel: String = "Cancel",
         secondaryAssetIcon: String? = nil,
         secondaryUsesCancelShortcut: Bool = true,
+        tertiaryLabel: String? = nil,
+        onTertiary: @escaping () -> Void = {},
         primaryLabel: String,
         isDestructive: Bool,
         onCancel: @escaping () -> Void,
@@ -2820,6 +3073,8 @@ private struct TerentoConfirmationDialog: View {
         self.secondaryLabel = secondaryLabel
         self.secondaryAssetIcon = secondaryAssetIcon
         self.secondaryUsesCancelShortcut = secondaryUsesCancelShortcut
+        self.tertiaryLabel = tertiaryLabel
+        self.onTertiary = onTertiary
         self.primaryLabel = primaryLabel
         self.isDestructive = isDestructive
         self.onCancel = onCancel
@@ -2894,6 +3149,18 @@ private struct TerentoConfirmationDialog: View {
                             border: TerentoColors.border,
                             role: nil,
                             action: onCancel
+                        )
+                    }
+
+                    if let tertiaryLabel {
+                        dialogButton(
+                            tertiaryLabel,
+                            assetIcon: nil,
+                            color: TerentoColors.graphite,
+                            background: TerentoColors.canvas,
+                            border: TerentoColors.border,
+                            role: nil,
+                            action: onTertiary
                         )
                     }
 
@@ -3560,6 +3827,10 @@ struct DeviceCard: View {
     let presentation: DevicePresentation
     let canEject: Bool
     let onEject: () -> Void
+    /// Server-owned install verdict; the local capability line is only shown
+    /// as information while the verdict is not "Ready for maps".
+    var authorization: DeviceAuthorizationPresentation? = nil
+    var onRetryAuthorization: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: 20) {
@@ -3583,8 +3854,18 @@ struct DeviceCard: View {
                         .padding(.top, 12)
                 }
 
-                MapSupportView(status: presentation.mapSupport)
+                if let authorization {
+                    DeviceAuthorizationStatusView(
+                        presentation: authorization,
+                        onRetry: onRetryAuthorization
+                    )
                     .padding(.top, 9)
+                }
+
+                if authorization?.tone != .success {
+                    MapSupportView(status: presentation.mapSupport)
+                        .padding(.top, 9)
+                }
 
                 Button(action: onEject) {
                     Label("Eject device", systemImage: "eject")
@@ -3622,6 +3903,56 @@ struct DeviceCard: View {
             Spacer(minLength: 16)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension DeviceAuthorizationPresentation.Tone {
+    var color: Color {
+        switch self {
+        case .neutral: return TerentoColors.interactive
+        case .success: return TerentoColors.lichenDark
+        case .warning: return TerentoColors.warning
+        case .error: return TerentoColors.error
+        }
+    }
+}
+
+/// Text + icon verdict for map installation; colour only supports it.
+private struct DeviceAuthorizationStatusView: View {
+    let presentation: DeviceAuthorizationPresentation
+    let onRetry: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: presentation.systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(presentation.title)
+                        .font(.terentoUI(size: 13, weight: .medium))
+
+                    if let detail = presentation.detail {
+                        Text(detail)
+                            .font(.terentoUI(size: 12, weight: .regular))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .foregroundStyle(presentation.tone.color)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Map installation: \(presentation.title). \(presentation.detail ?? "")")
+
+            if presentation.canRetry, let onRetry {
+                Button("Try again", action: onRetry)
+                    .buttonStyle(.plain)
+                    .font(.terentoUI(size: 12, weight: .semibold))
+                    .foregroundStyle(TerentoColors.interactive)
+                    .padding(.leading, 18)
+                    .accessibilityHint("Checks again whether this watch can install maps.")
+            }
+        }
     }
 }
 
@@ -3761,7 +4092,7 @@ private struct ManageMapRow: View {
         guard let operation else { return false }
         switch operation.phase {
         case .removing, .updating, .verifying, .downloading, .checking,
-             .installing, .removingOld, .finishing:
+             .preparing, .installing, .removingOld, .finishing:
             return true
         case .idle, .awaitingConfirmation, .completed, .failed:
             return false
@@ -3808,7 +4139,7 @@ private struct ManageMapRow: View {
             case .failed:
                 return operation.message
             case .idle, .awaitingConfirmation, .removing, .updating, .verifying,
-                 .downloading, .checking, .installing, .removingOld, .finishing,
+                 .downloading, .preparing, .checking, .installing, .removingOld, .finishing,
                  .completed:
                 break
             }
@@ -3980,7 +4311,7 @@ private struct ManageOperationProgress: View {
 
     private var progress: SafeUpdateProgress? {
         guard let progress = operation.progress,
-              progress.totalBytes > 0 else {
+              (progress.totalBytes > 0 || progress.phaseFraction != nil) else {
             return nil
         }
         return progress
@@ -3999,7 +4330,7 @@ private struct ManageOperationProgress: View {
                     Text("\(Int(progress.fractionCompleted * 100))%")
                         .font(.terentoUI(size: 13, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
-                } else if isRemoval {
+                } else {
                     Text("0%")
                         .font(.terentoUI(size: 13, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
@@ -4013,10 +4344,15 @@ private struct ManageOperationProgress: View {
                     .frame(height: InstallationTimelineLayout.progressBarHeight)
 
                 if isRemoval {
-                    Text("Verifying map removal")
+                    Text(progress.detail ?? "Verifying map removal")
                         .font(.terentoUI(size: 10, weight: .medium))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .lineLimit(1)
+                } else if progress.phaseFraction != nil {
+                    Text(progress.detail ?? operation.message)
+                        .font(.terentoUI(size: 10, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     HStack(spacing: 8) {
                         Text("\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))")
@@ -4038,10 +4374,13 @@ private struct ManageOperationProgress: View {
                     .foregroundStyle(TerentoColors.secondaryText)
                     .lineLimit(1)
             } else {
-                ProgressView()
+                ProgressView(value: 0)
                     .progressViewStyle(.linear)
                     .tint(TerentoColors.interactive)
                     .frame(height: InstallationTimelineLayout.progressBarHeight)
+                Text(operation.message)
+                    .font(.terentoUI(size: 10, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
             }
         }
         .frame(width: InstallationTimelineLayout.manageProgressWidth, alignment: .leading)
@@ -4052,10 +4391,10 @@ private struct ManageOperationProgress: View {
 
     private var accessibilityValue: String {
         guard let progress else {
-            return isRemoval ? "0 percent" : "In progress"
+            return "0 percent, \(operation.message)"
         }
-        if isRemoval {
-            return "\(Int(progress.fractionCompleted * 100)) percent"
+        if isRemoval || progress.phaseFraction != nil {
+            return "\(Int(progress.fractionCompleted * 100)) percent, \(progress.detail ?? operation.message)"
         }
         var value = "\(Int(progress.fractionCompleted * 100)) percent, "
             + "\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))"
@@ -4191,14 +4530,20 @@ struct MapStatusRow: View {
     let detail: String
     let status: String
     let note: String?
+    /// An error row uses the error icon and colour together, never colour alone.
+    var isError: Bool = false
+    var onRetry: (() -> Void)? = nil
+
+    private var accent: Color { isError ? TerentoColors.error : TerentoColors.lichenDark }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "map")
+                Image(systemName: isError ? "exclamationmark.triangle.fill" : "map")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(TerentoColors.lichenDark)
+                    .foregroundStyle(accent)
                     .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(title)
@@ -4214,10 +4559,10 @@ struct MapStatusRow: View {
 
                 Text(status)
                     .font(.terentoUI(size: 12, weight: .semibold))
-                    .foregroundStyle(TerentoColors.lichenDark)
+                    .foregroundStyle(accent)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(TerentoColors.lichen.opacity(0.22), in: Capsule())
+                    .background((isError ? TerentoColors.error.opacity(0.12) : TerentoColors.lichen.opacity(0.22)), in: Capsule())
             }
 
             if let note, !note.isEmpty {
@@ -4225,6 +4570,11 @@ struct MapStatusRow: View {
                     .font(.terentoUI(size: 13, weight: .medium))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let onRetry {
+                SecondaryButton(title: "Try again", action: onRetry)
+                    .accessibilityHint("Reads the maps on your watch again.")
             }
         }
         .padding(22)
@@ -4930,6 +5280,9 @@ struct MapSelectionStorageSummary: View {
         if plan.selectedItems.isEmpty {
             return ""
         }
+        if plan.selectedItems.count > InstallationPlan.maximumMapsPerOperation {
+            return InstallationPlan.tooManyMapsReason
+        }
         if plan.storagePlan.hasUnresolvedInstallSize {
             return "Map size will be checked before installation."
         }
@@ -4940,6 +5293,9 @@ struct MapSelectionStorageSummary: View {
     }
 
     private var statusColor: Color {
+        if plan.selectedItems.count > InstallationPlan.maximumMapsPerOperation {
+            return TerentoColors.error
+        }
         if plan.selectedItems.isEmpty || plan.storagePlan.hasUnresolvedInstallSize {
             return TerentoColors.secondaryText
         }

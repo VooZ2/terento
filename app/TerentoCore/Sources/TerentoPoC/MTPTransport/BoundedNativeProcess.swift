@@ -194,11 +194,13 @@ extension FinishingTrace {
         "session_close_begin", "session_close_end", "native_cleanup_begin", "native_cleanup_end",
         "read_chunk_limit", "abort_close_begin", "abort_close_returned", "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
-        "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result"
+        "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result",
+        "prewrite_inventory_duplicates", "postwrite_inventory_duplicates"
     ]
     private static let numericKeys: Set<String> = [
         "t", "pid", "child", "timeout", "attempt", "delay", "status", "reason", "offset", "rc",
-        "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded"
+        "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded",
+        "duplicates"
     ]
     static func safeLine(_ line: String) -> String? {
         guard line.utf8.count < 1024 else { return nil }
@@ -218,7 +220,8 @@ extension FinishingTrace {
                 guard !value.isEmpty, value.utf8.allSatisfy({ (48...57).contains($0) || $0 == 45 || $0 == 46 }),
                       let number = Double(value), number.isFinite else { return nil }
             } else if key == "operation" {
-                guard ["samples", "cleanup", "inventory", "snapshot"].contains(value) else { return nil }
+                guard ["samples", "cleanup", "inventory", "snapshot", "deviceSnapshot",
+                       "scanInventory", "prefixes"].contains(value) else { return nil }
             } else if key == "validation" {
                 guard ["notExactValidatedArtifact", "sourceUnavailable", "sourceSizeMismatch",
                        "sourceHashMismatch", "sourceFormatMismatch", "unknown"].contains(value) else { return nil }

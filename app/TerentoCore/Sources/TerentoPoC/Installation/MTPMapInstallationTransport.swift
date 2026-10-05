@@ -345,7 +345,8 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
 
     func deleteAuthorized(targetFilename: String, expectedItemID: UInt32,
                           expectedSizeBytes: UInt64, expectedSHA256: String,
-                          purpose: MapMutationPurpose) throws {
+                          purpose: MapMutationPurpose,
+                          onProgress: (@Sendable (TransferProgress) -> Void)? = nil) throws {
         guard [.removeManaged, .removeExternal, .updateOld].contains(purpose),
               expectedSHA256.count == 64, expectedSHA256.allSatisfy({ $0.isHexDigit }),
               expectedSHA256 != String(repeating: "0", count: 64) else {
@@ -354,17 +355,24 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         try operationGate.withOperation(kind: .remove, lifecycleLease: lifecycleLease) {
             guard let operationProfile else { throw InstallationTransportError.unsupportedDevice }
             var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-            let result = try withNativeMapOperationProfile(operationProfile) { nativeProfile in
-                try targetFilename.withCString { filename in
-                    try errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                        try authorizedMutation(purpose: purpose, filename: targetFilename,
-                            size: expectedSizeBytes, sha256: expectedSHA256) { authorization, record in
-                            if purpose == .removeExternal {
-                                return terento_mtp_delete_external_map_authorized(nativeProfile, authorization, record,
-                                    filename, expectedItemID, expectedSizeBytes, errorPointer.baseAddress, errorPointer.count)
+            let progressBox = MTPProgressBox(callback: onProgress ?? { _ in })
+            let result = try withExtendedLifetime(progressBox) {
+                try withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                    try targetFilename.withCString { filename in
+                        try errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                            try authorizedMutation(purpose: purpose, filename: targetFilename,
+                                size: expectedSizeBytes, sha256: expectedSHA256) { authorization, record in
+                                if purpose == .removeExternal {
+                                    return terento_mtp_delete_external_map_authorized(nativeProfile, authorization, record,
+                                        filename, expectedItemID, expectedSizeBytes, terentoMTPProgressCallback,
+                                        UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                        errorPointer.baseAddress, errorPointer.count)
+                                }
+                                return terento_mtp_delete_managed_map_authorized(nativeProfile, authorization, record,
+                                    filename, expectedItemID, expectedSizeBytes, terentoMTPProgressCallback,
+                                        UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                        errorPointer.baseAddress, errorPointer.count)
                             }
-                            return terento_mtp_delete_managed_map_authorized(nativeProfile, authorization, record,
-                                filename, expectedItemID, expectedSizeBytes, errorPointer.baseAddress, errorPointer.count)
                         }
                     }
                 }
@@ -467,7 +475,8 @@ extension MapInstallationCoordinator {
         manifestStore: any TerentoManifestStore = LocalTerentoManifestStore(),
         recoveryStore: any TerentoFailedInstallRecoveryStore = LocalTerentoFailedInstallRecoveryStore(),
         operationGate: MTPOperationGate = .shared,
-        lifecycleLease: MTPOperationLease? = nil
+        lifecycleLease: MTPOperationLease? = nil,
+        expectedInventoryCount: Int? = nil
     ) -> MapInstallationCoordinator {
         MapInstallationCoordinator(
             transport: MTPMapInstallationTransport(
@@ -478,7 +487,8 @@ extension MapInstallationCoordinator {
             deviceReader: BoundedInstallationDeviceReader(
                 operationProfile: operationProfile,
                 operationGate: operationGate,
-                lifecycleLease: lifecycleLease
+                lifecycleLease: lifecycleLease,
+                expectedObjectCount: expectedInventoryCount
             ),
             manifestStore: manifestStore,
             recoveryStore: recoveryStore,
@@ -487,12 +497,48 @@ extension MapInstallationCoordinator {
     }
 }
 
-/// IPC is local to a fresh private temporary directory. It never contains
-/// raw XML, manifests or map bytes. Physical binding remains private local IPC.
-/// No worker can upload maps; legacy cleanup requests fail closed.
+/// IPC is local to a fresh private (0700) temporary directory that is removed
+/// when the operation ends. It never contains manifests or map bytes. Only the
+/// detection snapshot carries the Garmin device descriptor and serial the
+/// in-process read already returned, and scan prefixes carry the same 4 KiB
+/// map headers; both exist so a stalled read can be ended without wedging the
+/// operation gate. Physical binding remains private local IPC. No worker can
+/// upload maps; legacy cleanup requests fail closed.
 enum MTPFinishingWorker {
-    enum Operation: String, Codable { case samples, cleanup, inventory, snapshot }
-    private static let inventoryTimeout: TimeInterval = 60
+    enum Operation: String, Codable {
+        case samples, cleanup, inventory, snapshot
+        /// Full read-only detection snapshot, including identity fields.
+        case deviceSnapshot
+        /// Read-only map-scan inventory (initial-inventory boundary).
+        case scanInventory
+        /// Read-only map header prefixes for the map scan.
+        case prefixes
+    }
+
+    /// A full file-tree walk costs roughly one MTP round-trip per object. The
+    /// bound scales with the object count last observed for this watch:
+    /// 60 s plus 30 ms per object, at most 600 s. Without an observation (the
+    /// first scan after connect) the maximum is used, which covers the native
+    /// 16,384-object inventory limit. libmtp's own per-operation timeout is
+    /// unchanged.
+    static let inventoryBaseTimeout: TimeInterval = 60
+    static let inventoryPerObjectTimeout: TimeInterval = 0.030
+    static let inventoryMaximumTimeout: TimeInterval = 600
+    static let deviceSnapshotTimeout: TimeInterval = 90
+
+    static func inventoryTimeout(expectedObjectCount: Int?) -> TimeInterval {
+        guard let expectedObjectCount else { return inventoryMaximumTimeout }
+        let count = max(0, expectedObjectCount)
+        let scaled = inventoryBaseTimeout + Double(count) * inventoryPerObjectTimeout
+        return min(inventoryMaximumTimeout, max(inventoryBaseTimeout, scaled))
+    }
+
+    /// Prefix sessions resolve handles with the same full walk before reading
+    /// a 4 KiB header per map.
+    static func prefixTimeout(expectedObjectCount: Int?, fileCount: Int) -> TimeInterval {
+        min(inventoryMaximumTimeout,
+            inventoryTimeout(expectedObjectCount: expectedObjectCount) + 5 * Double(max(1, fileCount)))
+    }
 
     static func failure(
         for operation: Operation, kind: InstallationFailureContext.ResultKind,
@@ -505,6 +551,9 @@ enum MTPFinishingWorker {
         case .cleanup: boundary = .cleanup; contextOperation = .cleanup
         case .inventory: boundary = .prewriteInventory; contextOperation = .inventory
         case .snapshot: boundary = .postwriteSnapshot; contextOperation = .snapshot
+        case .deviceSnapshot: boundary = .initialSnapshot; contextOperation = .snapshot
+        case .scanInventory: boundary = .initialInventory; contextOperation = .inventory
+        case .prefixes: boundary = .initialInventory; contextOperation = .filePrefix
         }
         let context = InstallationFailureContext(boundary: boundary,
             classificationSource: native?.classificationSource ?? .derived,
@@ -515,18 +564,23 @@ enum MTPFinishingWorker {
             message: "The device operation could not be completed.", createdItemID: nil, context: context)
     }
 
-    private static func timeout(
-        for operation: Operation,
-        sampleTimeout: TimeInterval
-    ) -> TimeInterval {
-        switch operation {
+    static func timeout(for request: Request, sampleTimeout: TimeInterval) -> TimeInterval {
+        switch request.operation {
         case .samples:
             return min(600, sampleTimeout)
         case .inventory:
-            // libmtp's LONG_TIMEOUT is 60 seconds per native USB operation.
             // Keep the worker bound finite; do not turn this into an unbounded
-            // wait or alter any device-specific USB flags.
-            return inventoryTimeout
+            // wait or alter any device-specific USB flags. Without a baseline
+            // count the historical 60 s bound applies.
+            return request.expectedObjectCount.map { inventoryTimeout(expectedObjectCount: $0) }
+                ?? inventoryBaseTimeout
+        case .scanInventory:
+            return inventoryTimeout(expectedObjectCount: request.expectedObjectCount)
+        case .prefixes:
+            return prefixTimeout(expectedObjectCount: request.expectedObjectCount,
+                                 fileCount: request.files?.count ?? 1)
+        case .deviceSnapshot:
+            return deviceSnapshotTimeout
         case .cleanup, .snapshot:
             return 45
         }
@@ -541,13 +595,24 @@ enum MTPFinishingWorker {
         var size: UInt64? = nil
         var offsets: [UInt64]? = nil
         var length: UInt32? = nil
+        /// Objects seen by the previous inventory of this watch; scales the bound.
+        var expectedObjectCount: Int? = nil
+        /// Stable descriptors for `.prefixes`; handles are re-resolved natively.
+        var files: [DeviceFile]? = nil
+    }
+    struct PrefixResult: Codable, Equatable {
+        var index: Int
+        var bytes: Data
     }
     struct Response: Codable {
         var object: MTPReadBackMapObject? = nil
         var files: [DeviceFile]? = nil
         var snapshot: DeviceSnapshot? = nil
+        var prefixes: [PrefixResult]? = nil
         var error: InstallationTransportError? = nil
     }
+    /// Bounded request size; prefix requests carry one descriptor per map.
+    static let maximumRequestBytes = 256 * 1024
 
     static func decodeResponse(_ data: Data, operation: Operation) throws -> Response {
         let response: Response
@@ -556,8 +621,9 @@ enum MTPFinishingWorker {
         if response.error == nil {
             let valid: Bool
             switch operation {
-            case .inventory: valid = response.files != nil
-            case .snapshot: valid = response.snapshot != nil
+            case .inventory, .scanInventory: valid = response.files != nil
+            case .snapshot, .deviceSnapshot: valid = response.snapshot != nil
+            case .prefixes: valid = response.prefixes != nil
             case .samples: valid = response.object != nil
             case .cleanup: valid = true
             }
@@ -590,7 +656,7 @@ enum MTPFinishingWorker {
             try BoundedNativeProcess.run(executable: executable,
                 arguments: ["--terento-finishing-worker", output.path],
                 input: JSONEncoder().encode(request),
-                timeout: Self.timeout(for: request.operation, sampleTimeout: sampleTimeout),
+                timeout: Self.timeout(for: request, sampleTimeout: sampleTimeout),
                 inactivityTimeout: request.operation == .samples ? 120 : nil,
                 verifiedProgress: { verifiedBytes },
                 diagnosticFile: traceURL,
@@ -644,8 +710,8 @@ enum MTPFinishingWorker {
         var response = Response()
         var operation: Operation?
         do {
-            let input = try FileHandle.standardInput.read(upToCount: 8193) ?? Data()
-            guard input.count <= 8192 else { throw NativeProcessFailure.failed }
+            let input = try FileHandle.standardInput.read(upToCount: maximumRequestBytes + 1) ?? Data()
+            guard input.count <= maximumRequestBytes else { throw NativeProcessFailure.failed }
             let request = try JSONDecoder().decode(Request.self, from: input)
             operation = request.operation
             FinishingTrace.event("worker_operation_begin", "operation=\(request.operation.rawValue) trace=\(output.deletingLastPathComponent().lastPathComponent)")
@@ -674,6 +740,20 @@ enum MTPFinishingWorker {
                 response.snapshot = DeviceSnapshot(manufacturer: snapshot.manufacturer, model: snapshot.model,
                     deviceVersion: snapshot.deviceVersion, vendorID: snapshot.vendorID, productID: snapshot.productID,
                     storages: snapshot.storages)
+            case .deviceSnapshot:
+                // The same read the app performed in-process before; identity
+                // fields are required to bind the connected watch.
+                response.snapshot = try MTPTransport().readSnapshot()
+            case .scanInventory:
+                response.files = try MTPTransport().readFileInventory()
+            case .prefixes:
+                guard let files = request.files, let length = request.length, !files.isEmpty else {
+                    throw NativeProcessFailure.failed
+                }
+                let prefixes = try MTPTransport().readFilePrefixes(for: files, maxLength: Int(length))
+                response.prefixes = files.enumerated().compactMap { index, file in
+                    prefixes[file.stableIdentity].map { PrefixResult(index: index, bytes: Data($0)) }
+                }
             }
         } catch let error as InstallationTransportError {
             FinishingTrace.event("worker_operation_failed", "error=\(MTPMapInstallationTransport.traceError(error))")
@@ -696,9 +776,12 @@ private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
     let operationProfile: DeviceMapOperationProfile?
     let operationGate: MTPOperationGate
     let lifecycleLease: MTPOperationLease?
+    /// Objects in the baseline inventory; the worker bound scales with it.
+    let expectedObjectCount: Int?
     func readFileInventory() throws -> [DeviceFile] {
         try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
-            guard let files = try MTPFinishingWorker.perform(.init(operation: .inventory, profile: operationProfile)).files else {
+            guard let files = try MTPFinishingWorker.perform(.init(operation: .inventory, profile: operationProfile,
+                                                                  expectedObjectCount: expectedObjectCount)).files else {
                 throw MTPFinishingWorker.failure(for: .inventory, kind: .invalidResponse)
             }
             return files
@@ -710,6 +793,135 @@ private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
                 throw MTPFinishingWorker.failure(for: .snapshot, kind: .invalidResponse)
             }
             return snapshot
+        }
+    }
+}
+
+/// Default detection transport: USB-only probes stay in-process (libusb device
+/// list, no session); the libmtp detection snapshot runs in the bounded worker
+/// so a stalled watch cannot hold the operation gate indefinitely.
+struct BoundedDeviceTransport: DeviceSnapshotReader, DevicePresenceReader,
+    GarminUSBPresenceReader, GarminUSBDeviceCounter, Sendable {
+    typealias WorkerCall = @Sendable (MTPFinishingWorker.Request) throws -> MTPFinishingWorker.Response
+    let operationGate: MTPOperationGate
+    private let worker: WorkerCall
+
+    init(operationGate: MTPOperationGate = .shared,
+         worker: @escaping WorkerCall = { try MTPFinishingWorker.perform($0) }) {
+        self.operationGate = operationGate
+        self.worker = worker
+    }
+
+    func readSnapshot() throws -> DeviceSnapshot {
+        try operationGate.withOperation(kind: .presence) {
+            guard let snapshot = try worker(.init(operation: .deviceSnapshot)).snapshot else {
+                throw MTPFinishingWorker.failure(for: .deviceSnapshot, kind: .invalidResponse)
+            }
+            return snapshot
+        }
+    }
+
+    func readPresence() throws -> DevicePresence {
+        try MTPTransport(operationGate: operationGate).readPresence()
+    }
+
+    func hasGarminUSBDevice() throws -> Bool {
+        try MTPTransport(operationGate: operationGate).hasGarminUSBDevice()
+    }
+
+    func countGarminUSBDevices() throws -> Int {
+        try MTPTransport(operationGate: operationGate).countGarminUSBDevices()
+    }
+}
+
+/// Read-only map-scan reader. Snapshot, inventory and header reads use the
+/// bounded worker under the scan's lifecycle lease; what is read is unchanged.
+/// After one read reaches its deadline, later reads fail immediately so a
+/// stalled watch is reported once instead of retried file by file.
+final class BoundedMapScanReader: DeviceFileReader, @unchecked Sendable {
+    private let operationGate: MTPOperationGate
+    private let lifecycleLease: MTPOperationLease?
+    private let worker: BoundedDeviceTransport.WorkerCall
+    private let lock = NSLock()
+    private var expectedObjectCount: Int?
+    private var deadlineError: Error?
+
+    init(operationGate: MTPOperationGate, lifecycleLease: MTPOperationLease?, expectedObjectCount: Int?,
+         worker: @escaping BoundedDeviceTransport.WorkerCall = { try MTPFinishingWorker.perform($0) }) {
+        self.operationGate = operationGate
+        self.lifecycleLease = lifecycleLease
+        self.expectedObjectCount = expectedObjectCount
+        self.worker = worker
+    }
+
+    /// Object count observed by this scan's inventory (or the expected count).
+    var observedObjectCount: Int? { lock.withLock { expectedObjectCount } }
+
+    /// The first deadline error observed by this scan, if any.
+    var stoppedRespondingError: Error? { lock.withLock { deadlineError } }
+
+    func readSnapshot() throws -> DeviceSnapshot {
+        try perform(.init(operation: .deviceSnapshot)) { response in
+            guard let snapshot = response.snapshot else {
+                throw MTPFinishingWorker.failure(for: .deviceSnapshot, kind: .invalidResponse)
+            }
+            return snapshot
+        }
+    }
+
+    func readFileInventory() throws -> [DeviceFile] {
+        let expected = lock.withLock { expectedObjectCount }
+        let files = try perform(.init(operation: .scanInventory, expectedObjectCount: expected)) { response in
+            guard let files = response.files else {
+                throw MTPFinishingWorker.failure(for: .scanInventory, kind: .invalidResponse)
+            }
+            return files
+        }
+        lock.withLock { expectedObjectCount = files.count }
+        return files
+    }
+
+    func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8] {
+        try readFilePrefixes(for: [file], maxLength: maxLength)[file.stableIdentity] ?? []
+    }
+
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]] {
+        guard Set(files.map(\.stableIdentity)).count == files.count else {
+            throw MTPTransportError.readFailed("File prefix requests contain duplicate identities")
+        }
+        guard maxLength > 0, maxLength <= Int(UInt32.max) else {
+            throw MTPTransportError.readFailed("File prefix length is invalid")
+        }
+        guard !files.isEmpty else { return [:] }
+        let expected = lock.withLock { expectedObjectCount }
+        return try perform(.init(operation: .prefixes, length: UInt32(maxLength),
+                                 expectedObjectCount: expected, files: files)) { response in
+            guard let results = response.prefixes else {
+                throw MTPFinishingWorker.failure(for: .prefixes, kind: .invalidResponse)
+            }
+            var prefixes: [DeviceFileIdentity: [UInt8]] = [:]
+            for result in results where files.indices.contains(result.index) && !result.bytes.isEmpty {
+                guard result.bytes.count <= maxLength else {
+                    throw MTPFinishingWorker.failure(for: .prefixes, kind: .invalidResponse)
+                }
+                prefixes[files[result.index].stableIdentity] = Array(result.bytes)
+            }
+            return prefixes
+        }
+    }
+
+    private func perform<T>(_ request: MTPFinishingWorker.Request,
+                            _ decode: (MTPFinishingWorker.Response) throws -> T) throws -> T {
+        if let deadlineError = stoppedRespondingError { throw deadlineError }
+        do {
+            return try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
+                try decode(worker(request))
+            }
+        } catch {
+            if DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding {
+                lock.withLock { if deadlineError == nil { deadlineError = error } }
+            }
+            throw error
         }
     }
 }

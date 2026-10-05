@@ -54,6 +54,9 @@ private actor DelayedAuthorizationResponse {
         try await testDisconnectAndCancellation()
         try await testRetryRestartAndConsent()
         try await testOptOutDuringUpload()
+        try testInstallStatisticsFollowWriteBoundary()
+        try await testCatalogRefreshUsesSharedMergedLoad()
+        try await testInstallBlockedFunnel()
         if let output = ProcessInfo.processInfo.environment["TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT"] {
             let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
             try encoder.encode(emittedFixtures).write(to: URL(fileURLWithPath: output))
@@ -247,8 +250,9 @@ private actor DelayedAuthorizationResponse {
         engine.setDiagnosticTestIdentity(unstable)
         engine.setInstallationAuthorization(authorization)
         engine.beginInstallation(plan: plan(), operationId: operationID)
-        check(engine.mapStatisticsEvents.contains { $0.eventType == .installFailed && $0.operationId == operationID },
-              "fixture reaches the real INSTALL_FAILED branch")
+        check(engine.installationPhase == .failed && engine.evidenceFailure == .stableWatchIdentityUnavailable
+                && !engine.mapStatisticsEvents.contains { $0.eventType == .installFailed },
+              "a pre-write identity failure creates no INSTALL_FAILED map result")
         // Reset all engine/view state before the queued upload gets a main-actor turn.
         engine.resetForDisconnectedDevice()
         await engine.waitForDiagnosticDeliveryForTesting()
@@ -324,10 +328,8 @@ private actor DelayedAuthorizationResponse {
                 failure: request.artifact?.artifactKind == .contours ? .insufficientSpace : nil,
                 wrote: false, confirmation: request.artifact?.artifactKind == .main)
         }
-        let failure = engine.mapStatisticsEvents.first { $0.eventType == .installFailed }
-        check(failure?.mapResultIndex == 0 && failure?.operationId == operationID
-            && failure?.mapId == selection.installItems[0].package.id.lowercased(),
-            "engine component A preflight failure emits map A index0 rather than flattened component index1")
+        check(!engine.mapStatisticsEvents.contains { $0.eventType == .installFailed },
+            "a preflight failure never reached the device write boundary and creates no INSTALL_FAILED")
         let events = store.events().sorted { $0.mapResultIndex! < $1.mapResultIndex! }
         check(events.count == 2 && events[0].mapResultIndex == 0 && events[0].phaseOutcome == .failed
             && events[1].mapResultIndex == 1 && events[1].phaseOutcome == .notStarted,
@@ -346,6 +348,8 @@ private actor DelayedAuthorizationResponse {
         }
         operation.record(result(package: b.item.package, failure: nil, wrote: true), packageID: b.item.package.id, artifactID: b.artifactPlan.selectedArtifacts[0].id)
         operation.record(result(package: b.item.package, failure: .hashMismatch, wrote: true), packageID: b.item.package.id, artifactID: b.artifactPlan.selectedArtifacts[1].id)
+        check(controller.store.events().count == 3,
+              "finished results are durable before the delivery task runs, so a quit cannot lose them")
         await operation.waitForDeliveryForTesting()
         let events = controller.store.events().sorted { $0.mapResultIndex! < $1.mapResultIndex! }
         check(events.map(\.phaseOutcome) == [.succeeded, .succeeded, .notStarted], "main success survives context-free failed contour; later map NOT_STARTED")
@@ -720,6 +724,100 @@ private actor DelayedAuthorizationResponse {
         return planner.plan(items: items, selectedIDs: Set(items.map(\.id)), currentFreeSpace: 20_000_000_000,
             selectedOptionalArtifactIDs: contours ? Dictionary(uniqueKeysWithValues: items.map { ($0.id, Set([$0.package.regionId + "-contours"])) }) : [:])
     }
+    private actor OfflineFunnelUploader: AppFunnelEventUploading {
+        func upload(_ event: AppFunnelEvent) async throws { throw URLError(.notConnectedToInternet) }
+    }
+
+    @MainActor static func testInstallBlockedFunnel() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let funnelStore = LocalAppFunnelEventStore(rootURL: root)
+        let funnel = AppFunnelTelemetryController(store: funnelStore, uploader: OfflineFunnelUploader(),
+            sharingEnabled: { true }, retryDelays: [])
+        let engine = MapEngine(funnel: funnel)
+        engine.setDiagnosticTestIdentity(identity)
+        engine.beginInstallation(plan: plan())
+        check(funnelStore.pendingEvents().map(\.stage) == [.installBlocked]
+              && funnelStore.pendingEvents().first?.outcome == "AUTHORIZATION",
+              "an Install press refused by authorization records one INSTALL_BLOCKED=AUTHORIZATION funnel event")
+        let unstable = DeviceIdentity(manufacturer: "Garmin", model: identity.model, family: identity.family, variant: identity.variant,
+            usbVendorId: identity.usbVendorId, usbProductId: identity.usbProductId, firmware: identity.firmware,
+            storageCapacity: identity.storageCapacity, freeSpace: identity.freeSpace)
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        let policy = try JSONDecoder().decode(InstallationAuthorizationDocument.self, from: Data(contentsOf: policyURL))
+        engine.resetForDisconnectedDevice()
+        engine.setDiagnosticTestIdentity(unstable)
+        engine.setInstallationAuthorization(.approved(record: policy.devices[0], policyVersion: policy.policyVersion))
+        engine.beginInstallation(plan: plan())
+        check(funnelStore.pendingEvents().map(\.outcome) == ["AUTHORIZATION", "LOCAL_CAPABILITY"],
+              "a missing stable watch identity records INSTALL_BLOCKED=LOCAL_CAPABILITY")
+        let reviewStore = LocalAppFunnelEventStore(rootURL: root.appendingPathComponent("review"))
+        let reviewFunnel = AppFunnelTelemetryController(store: reviewStore, uploader: OfflineFunnelUploader(),
+            sharingEnabled: { true }, retryDelays: [])
+        let reviewEngine = MapEngine(funnel: reviewFunnel)
+        reviewEngine.recordInstallReviewBlocked(plan: plan(), authorization: .resolving, supportedInstallFlow: true)
+        reviewEngine.recordInstallReviewBlocked(plan: plan(), authorization: .approved(record: policy.devices[0],
+            policyVersion: policy.policyVersion), supportedInstallFlow: true)
+        check(reviewStore.pendingEvents().isEmpty, "resolving or approved review states are not install blocks")
+        reviewEngine.recordInstallReviewBlocked(plan: plan(), authorization: .blocked(.pending), supportedInstallFlow: true)
+        check(reviewStore.pendingEvents().map(\.outcome) == ["AUTHORIZATION"],
+              "a review step blocked by authorization records INSTALL_BLOCKED=AUTHORIZATION")
+    }
+
+    private final class CatalogResponse: @unchecked Sendable {
+        private let lock = NSLock()
+        private var body = Data()
+        func set(_ data: Data) { lock.lock(); body = data; lock.unlock() }
+        func get() -> Data { lock.lock(); defer { lock.unlock() }; return body }
+    }
+
+    @MainActor static func testCatalogRefreshUsesSharedMergedLoad() async throws {
+        let catalogURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../Sources/TerentoPoC/Resources/Maps/catalog.json")
+        var document = try JSONSerialization.jsonObject(with: Data(contentsOf: catalogURL)) as! [String: Any]
+        document["providers"] = (document["providers"] as! [[String: Any]]).filter { ($0["id"] as? String) == "freizeitkarte" }
+        let response = CatalogResponse()
+        response.set(try JSONSerialization.data(withJSONObject: document))
+        let loader = MapCatalogLoader(endpoint: URL(string: "https://catalog.example/refresh-\(UUID().uuidString).json")!,
+            dataLoader: { request in
+                (response.get(), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+            })
+        let engine = MapEngine(catalogLoader: loader)
+        engine.setDiagnosticTestIdentity(identity, files: [])
+        await engine.refreshCatalogAvailability()
+        let providers = Set(engine.result?.comparisons.map { MapIdentity.normalizeProvider($0.catalogMap.providerId) } ?? [])
+        check(engine.catalogSource == .remote && providers.isSuperset(of: ["freizeitkarte", "bbbike", "maprando"]),
+              "the 5-minute refresh merges bundled-only providers like the connect-time load")
+        check(engine.result?.comparisons.contains { $0.catalogMap.artifacts.contains { $0.kind == .contours } } == true,
+              "the refresh keeps bundled optional contour artifacts, so selected contours are not pruned")
+        response.set(try JSONSerialization.data(withJSONObject: ["catalogVersion": 1, "providers": "future"]))
+        await engine.refreshCatalogAvailability()
+        check(engine.catalogSource == .appUpdateRequired
+              && engine.result?.comparisons.contains { $0.catalogMap.downloadBlockReason == "APP_UPDATE_REQUIRED" } == true,
+              "an incompatible refreshed catalog asks for a Terento update instead of a connection check")
+    }
+
+    static func testInstallStatisticsFollowWriteBoundary() throws {
+        let package = plan().installItems[0].package
+        let verified = result(package: package, failure: nil, wrote: true)
+        let failedWrite = result(package: package, failure: .writeFailed, wrote: true)
+        let notStarted = result(package: package, failure: .insufficientSpace, wrote: false)
+        func type(_ components: [(MapArtifactKind, MapInstallationResult)]) -> MapStatisticsEventType? {
+            MapEngine.installStatisticsEventType(components: components.map { (kind: $0.0, result: $0.1) })
+        }
+        check(type([(.main, verified), (.contours, failedWrite)]) == .installSucceeded,
+              "main verified with failed optional contours is INSTALL_SUCCEEDED; the warning stays diagnostic")
+        check(type([(.main, verified), (.contours, verified)]) == .installSucceeded, "complete map is INSTALL_SUCCEEDED")
+        check(type([(.main, failedWrite)]) == .installFailed, "a started main-map write failure is INSTALL_FAILED")
+        check(type([(.main, notStarted)]) == nil, "a main map that never reached the write boundary has no install result")
+        check(type([]) == nil && type([(.contours, failedWrite)]) == nil, "no main result means no install result")
+        let blocked = MapInstallationResult(status: .blockedInstallationAuthorization, failure: .installationAuthorization,
+            originalFailure: nil, cleanupFailure: nil, preflight: notStarted.preflight, transaction: InstallationTransaction(),
+            verification: nil, diagnostics: notStarted.diagnostics, installedMap: nil)
+        check(type([(.main, blocked)]) == nil, "an authorization block creates no install result")
+    }
+
     static func result(package: MapPackage, failure: InstallationFailure?, wrote: Bool, confirmation: Bool = false,
                        context: InstallationFailureContext? = nil,
                        original: InstallationFailureContext? = nil,

@@ -14,6 +14,49 @@ write policy change. Strict event-type/outcome agreement also covers legacy
 requests; map result indices reject Boolean, fractional and out-of-range values.
 These are local candidate changes, not a deployed API or released app claim.
 
+## Rejected telemetry parking (unreleased app candidate)
+
+Every durable telemetry queue (map usage, compatibility/update diagnostics and
+the app funnel) treats HTTP 4xx except 408/425/429 as a rejection of that one
+event. The client parks the event locally with its rejection status, count, time
+and app build, and continues with independent later events in order. A parked
+event is offered again only by a different app build or after a 24-hour back-off,
+at most three times per build and ten times overall, and is dropped after the
+24-month telemetry retention window. Retryable failures (network, 408, 425, 429,
+5xx) never park or drop an event: they keep queue order and stop the current send
+attempt, so a rate limit is not burned by later reports. Opt-out clears parked
+events with pending ones. Parked reports keep their original event ID and kind;
+a server rollback that rejects a field therefore delays, but never blocks, other
+telemetry. Replays remain idempotent by event ID. No payload field changes.
+
+Finished compatibility/update diagnostics are written to the durable outbox
+synchronously at the operation result boundary, before delivery is scheduled,
+like map events. Acquisition phases from the download context are persisted in
+callback order from that context, so a fast terminal cannot be dropped behind its
+start and a quit cannot lose an already observed phase. Installation
+`writeStarted` becomes true immediately before the device transfer call; a local
+recovery-record failure before it is a not-started manifest failure. A Safe
+Update cancelled before it enters the transaction is not reported; a busy
+lifecycle lease reports `UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING`; only a
+disconnect or eject that invalidated the operation reports
+`UPDATE_FAILED_DEVICE_DISCONNECTED`. Existing codes and fields are unchanged.
+
+The Install plan accepts at most 100 selected maps per operation ("Select up to
+100 maps at a time."), equal to the API's `selectedMapCount <= 100` diagnostic
+bound; the native map-selection runner fails if the two constants diverge.
+
+## Catalog and installation-policy decoder tolerance (unreleased app candidate)
+
+The next app candidate accepts `/maps/catalog-v4.json` per package and tolerates
+additive installation-policy fields; both rules are owned by
+[`contracts/README.md`](README.md#responses-and-client-compatibility) and
+[`INSTALLATION_AUTHORIZATION.md`](INSTALLATION_AUTHORIZATION.md). Released
+beta.14–beta.18 clients remain strict, so the API must keep the schema-3 policy
+projection key-exact and every published catalog package strictly valid until
+those clients are retired. A breaking policy change ships as a higher
+`schemaVersion`, which the new client reports as update required (no write).
+No payload, route or schema version changes in this candidate.
+
 ## Beta.16 build 38 — provider recovery and update diagnostics
 
 Beta.16 build 38 accepts both reviewed BBBike README date forms in
@@ -54,9 +97,9 @@ identity remain unassigned instead of being backfilled by name.
 Update diagnostics send measured cleanup attempt/result facts. An unmeasured
 `transferProgressBucket` is omitted only for explicit update reports; the
 existing installation contract still requires it. If a rolled-back backend
-returns HTTP 400 for an update report, the client retains its original ID and
-kind for a later flush and continues sending supported installation reports.
-It never removes the discriminator or recasts the update as an installation.
+rejects an update report, the client parks it under its original ID and kind
+(see "Rejected telemetry parking") and continues sending supported installation
+reports. It never removes the discriminator or recasts the update as an installation.
 
 Local update reports and their pending/uploaded IDs are stored separately in
 `update-evidence.json`. The legacy `installation-evidence.json` contains only
@@ -289,7 +332,9 @@ kind; session handles are not cross-session identity. Whole-device equality is
 not an installation invariant. Existing protection booleans describe the bounded
 protected scope, not proof that every device byte stayed fixed.
 Unknown objects remain protected; only evidence-scoped runtime categories outside
-map and operation scope are diagnostic. Incomplete authorization/journal evidence,
+map and operation scope are diagnostic. Same-path duplicate plain files outside
+`/GARMIN` without a map suffix stay protected and are compared as a multiset
+instead of blocking as ambiguous. Incomplete authorization/journal evidence,
 ambiguous targets and uncertain cleanup identity fail closed. No automatic retry
 or name-plus-size cleanup authority is introduced.
 

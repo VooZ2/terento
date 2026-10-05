@@ -78,8 +78,17 @@ separate population owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md).
 
 The current beta.18 client requests `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
-Older clients can reject a complete snapshot containing an unknown installable
-provider, so these projections must remain separate. v4 additionally exposes
+Older clients (beta.18 and earlier) can reject a complete snapshot containing
+an unknown installable provider, so these projections must remain separate.
+From the next app candidate, the native client accepts the remote catalog per
+package: a package that fails its provider adapter, reviewed source host, IMG
+identity or BBBike rules (or names a required artifact of an unknown `kind`) is
+dropped and counted; an optional artifact of an unknown `kind` is ignored.
+Duplicate provider or package IDs, a missing document field, or no compatible
+package make the whole catalog incompatible, which the client reports as
+"update Terento" rather than a connection problem. Acquisition re-validates only
+the package being acquired against the current catalog. Release and deploy gates
+still require every published package to pass the strict client validator. v4 additionally exposes
 BBBike with `bbbike-latin1` and `ontrail-latin1` map types. Catalog body versions
 remain unchanged. Source activation and exact-model evidence are separate.
 MapRando/BBBike versions may include an optional day; legacy provider versions

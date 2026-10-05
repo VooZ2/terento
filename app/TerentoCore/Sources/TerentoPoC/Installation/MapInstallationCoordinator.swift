@@ -104,6 +104,17 @@ struct MapInstallationResult: Equatable, Sendable {
 
     var failureContext: InstallationFailureContext? { diagnostics.failureContext }
     var originalFailureContext: InstallationFailureContext? { diagnostics.originalFailureContext }
+
+    /// The cause shown to the user. Automatic cleanup is declined by design,
+    /// so a cleanup failure must not hide the failure that stopped the install.
+    var primaryFailure: InstallationFailure? {
+        cleanupFailure != nil ? (originalFailure ?? failure) : failure
+    }
+
+    /// A created object may remain on the watch; cleanup never removes it.
+    var mayHaveLeftMapOnWatch: Bool {
+        status == .failed && diagnostics.remoteObjectCreated && !diagnostics.cleanupSucceeded
+    }
 }
 
 enum Stage42ArtifactValidationError: String, LocalizedError, Equatable, Sendable {
@@ -620,11 +631,12 @@ struct MapInstallationCoordinator: Sendable {
             try transaction.transition(to: .writing)
             onPhase?(.installing)
             onPhaseProgress?(.installing, 0)
-            diagnostics = diagnostics.withLifecycle(writeStarted: true)
 
             do {
                 try recoveryStore.record(recoveryRecord)
             } catch {
+                // Local-only recovery bookkeeping failed before any device
+                // call: this is not a started device write.
                 return failureResult(
                     failure: .manifestFailed,
                     transaction: &transaction,
@@ -642,6 +654,9 @@ struct MapInstallationCoordinator: Sendable {
                 )
             )
             let written: MTPWrittenMapObject
+            // The real device write boundary. A transfer may still fail at
+            // zero bytes; progress callbacks do not define this boundary.
+            diagnostics = diagnostics.withLifecycle(writeStarted: true)
             do {
                 written = try transport.write(
                     sourceURL: artifact.localIMGURL,
@@ -1504,6 +1519,7 @@ struct MapInstallationCoordinator: Sendable {
               let current = try? ProtectedMapInventory(files: after, forcedLocations: baseline.protectedLocations) else {
             return ProtectionResult(existingFilesUnchanged: false, unrelatedFilesUnchanged: false)
         }
+        recordToleratedDuplicates(after, event: "postwrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: after, boundary: "postwrite")
         let beforeComparable = baseline.protected
         let afterComparable = Set(current.protected.filter { $0.path != targetPath })
@@ -1543,6 +1559,7 @@ struct MapInstallationCoordinator: Sendable {
               let current = try? ProtectedMapInventory(files: live, forcedLocations: baseline.protectedLocations) else {
             return false
         }
+        recordToleratedDuplicates(live, event: "prewrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: live, boundary: "prewrite")
         return baseline.protected == current.protected
     }
@@ -1569,20 +1586,24 @@ struct MapInstallationCoordinator: Sendable {
     }
 
     private static func inventoryIsUnambiguous(_ files: [DeviceFile]) -> Bool {
-        var locations = Set<CrossSessionInventoryLocation>()
         for file in files {
-            // A location must resolve to exactly one object even if duplicated
-            // entries disagree on size or kind and therefore have distinct keys.
             guard !file.filename.isEmpty, !file.filename.contains("/"),
                   file.path.hasPrefix("/"),
-                  file.hasMatchingPathFilename,
-                  locations.insert(CrossSessionInventoryLocation(
-                    storageID: file.storageID, path: file.path
-                  )).inserted else {
+                  file.hasMatchingPathFilename else {
                 return false
             }
         }
-        return true
+        // A location must resolve to exactly one object even if duplicated
+        // entries disagree on size or kind. The only exception is a plain
+        // non-map file outside /GARMIN, which ProtectedMapInventory keeps
+        // protected and compares as a multiset.
+        return ProtectedMapInventory.toleratedDuplicateLocations(in: files) != nil
+    }
+
+    /// Local count only: tolerated duplicate locations outside the map scope.
+    private func recordToleratedDuplicates(_ files: [DeviceFile], event: String) {
+        guard let count = ProtectedMapInventory.toleratedDuplicateLocations(in: files), count > 0 else { return }
+        diagnostic(event, "duplicates=\(count)")
     }
 
     private static func comparable(_ file: DeviceFile) -> CrossSessionInventoryKey {

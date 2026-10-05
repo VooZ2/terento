@@ -13,6 +13,16 @@ final class DeviceEngine: ObservableObject {
     @Published private(set) var readingAttempt = 0
     @Published private(set) var logLines: [String] = ["Ready for a read-only device check."]
     @Published private(set) var operationAvailabilityRevision = 0
+    /// What the Connect screen shows while detecting. A calm waiting state has
+    /// no timeout; the connection clock starts only once a Garmin is on USB.
+    @Published private(set) var detectionPhase: DeviceDetectionPhase = .waitingForWatch
+    /// Most recent connect outcome, for presentation and the first-run funnel.
+    @Published private(set) var lastConnectOutcome: DeviceConnectOutcome?
+    /// Shown on the waiting screen after an unexpected disconnect.
+    @Published private(set) var disconnectNotice: String?
+    /// Integration hook for the first-run funnel. Called on the main actor with
+    /// each distinct outcome of a detection episode; DeviceEngine sends nothing.
+    var connectOutcomeHandler: ((DeviceConnectOutcome) -> Void)?
     private(set) var invalidationDevicePresence: InstallationFailureContext.DevicePresence = .unknown
 
     private let logger = Logger(subsystem: "app.terento.native-connectivity-poc", category: "MTP")
@@ -29,11 +39,13 @@ final class DeviceEngine: ObservableObject {
     private var readingStatusTask: Task<Void, Never>?
     private var compatibilityStatusTask: Task<Void, Never>?
     private var postEjectPresenceTask: Task<Void, Never>?
+    private var replugWatchTask: Task<Void, Never>?
     private var presenceMonitoringEnabled = true
     private var lastDetectionUSBPresence = false
+    private var detectionPolicy = DeviceDetectionPolicy(now: 0)
 
     init(
-        transport: any DeviceSnapshotReader = MTPTransport(),
+        transport: any DeviceSnapshotReader = BoundedDeviceTransport(),
         operationGate: MTPOperationGate = .shared,
         compatibilityStatusClient: CompatibilityStatusClient = CompatibilityStatusClient(),
         installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient()
@@ -108,6 +120,52 @@ final class DeviceEngine: ObservableObject {
         refreshPublicCompatibilityStatus(for: compatibility)
     }
 
+    /// Catalog-timer hook: re-resolve only while blocked by an unavailable
+    /// policy, never while a decision is pending or already made.
+    func retryInstallationAuthorizationIfUnavailable() {
+        guard case .blocked(let reason) = installationAuthorization,
+              reason.isRetryable else { return }
+        retryInstallationAuthorization()
+    }
+
+    /// Replaces the storage figures of the connected watch with a newer read
+    /// of the same watch (for example the scan after an install), so the
+    /// Device page and the planner do not use the value captured at connect.
+    func refreshStorage(_ observation: DeviceStorageObservation) {
+        guard hasConnectedDevice,
+              let current = snapshot,
+              current.vendorID == observation.vendorID,
+              current.productID == observation.productID,
+              current.serialNumber == observation.serialNumber,
+              !observation.storages.isEmpty else { return }
+        snapshot = DeviceSnapshot(
+            manufacturer: current.manufacturer,
+            model: current.model,
+            deviceVersion: current.deviceVersion,
+            vendorID: current.vendorID,
+            productID: current.productID,
+            storages: observation.storages,
+            serialNumber: current.serialNumber,
+            garminDeviceXMLStatus: current.garminDeviceXMLStatus,
+            garminDeviceXML: current.garminDeviceXML
+        )
+    }
+
+    /// A fresh decision made at download time is applied here, so the Device
+    /// and review pages show the same verdict that blocked or allowed the
+    /// operation. Decisions for another watch are ignored.
+    func applyFreshInstallationAuthorization(
+        _ authorization: InstallationAuthorizationState,
+        for identity: DeviceIdentity
+    ) {
+        guard currentInstallationIdentity == identity,
+              installationAuthorization != authorization else { return }
+        installationAuthorization = authorization
+        appendLog(
+            "Installation authorization refreshed: \(authorization.canInstall ? "approved" : "blocked")"
+        )
+    }
+
     var currentInstallationIdentity: DeviceIdentity? {
         guard hasConnectedDevice, snapshot != nil else { return nil }
         return compatibility?.identity
@@ -136,79 +194,253 @@ final class DeviceEngine: ObservableObject {
         userErrorMessage = nil
         readingAttempt = 0
         lastDetectionUSBPresence = false
+        detectionPolicy = DeviceDetectionPolicy(now: Self.uptime())
+        detectionPhase = detectionPolicy.phase
         readingMessage = "Waiting for your Garmin…"
-
-        readingStatusTask = Task { [weak self] in
-            do {
-                try await Task.sleep(nanoseconds: 120_000_000_000)
-            } catch {
-                return
-            }
-
-            guard let self, self.state == .detecting else {
-                return
-            }
-
-            self.activeTask?.cancel()
-            self.activeNativeReadTask?.cancel()
-            self.stateManager.fail()
-            self.state = self.stateManager.state
-            self.userErrorMessage = UserFacingErrorMessage.forConnectionTimeout(
-                garminUSBPresent: self.lastDetectionUSBPresence
-            )
-            self.readingMessage = "Connection timed out after 2 minutes."
-            self.appendLog("Connection check timed out after 2 minutes")
-        }
         appendLog("Starting read-only MTP check")
 
         let startedAt = ContinuousClock.now
         let transport = self.transport
         activeTask = Task { [weak self] in
-            do {
-                let result = try await self?.readSnapshotWithRetries(
-                    transport: transport,
-                    maximumAttempts: .max
-                )
+            await self?.runDetection(transport: transport, startedAt: startedAt)
+        }
+    }
 
-                guard let result, !Task.isCancelled else {
-                    return
-                }
+    /// One detection episode. While no Garmin is on USB the loop only polls the
+    /// USB-only probe; libmtp is entered only after a Garmin is present, and the
+    /// 2-minute connection clock starts at that point.
+    /// Deterministic problems are shown immediately while polling continues, so
+    /// fixing the cause (unplugging a second Garmin, quitting another app)
+    /// connects without another click. Only "not yet enumerated" and transient
+    /// read failures are ordinary retries.
+    private func runDetection(
+        transport: any DeviceSnapshotReader,
+        startedAt: ContinuousClock.Instant
+    ) async {
+        let counter = transport as? any GarminUSBDeviceCounter
+        var attempt = 0
+        var loggedWaiting = false
 
-                let elapsed = startedAt.duration(to: .now)
-                guard let self else {
-                    return
-                }
-
-                let decision = self.compatibilityEngine.evaluate(snapshot: result)
-                self.readingStatusTask?.cancel()
-                self.snapshot = result
-                self.compatibility = decision
-                self.stateManager.deviceConnected()
-                self.stateManager.deviceReady()
-                self.state = self.stateManager.state
-                self.readingMessage = "Your Garmin is connected and ready."
-                self.appendLog("MTP read completed in \(Self.format(elapsed))")
-                self.appendLog(
-                    "Detected \(result.manufacturer) \(result.model) "
-                        + "(VID \(Self.hex(result.vendorID)), PID \(Self.hex(result.productID)))"
-                )
-                self.appendLog("Read \(result.storages.count) storage record(s)")
-                self.appendLog("Compatibility status: resolving canonical public status")
-                self.appendLog("Compatibility evidence: USB PASS, MTP PASS, Device info PASS, Storage PASS, Maps PENDING")
-                self.refreshPublicCompatibilityStatus(for: decision)
-                self.startPresenceMonitoring()
-            } catch {
-                guard !Task.isCancelled else {
-                    return
-                }
-
-                self?.stateManager.fail()
-                self?.state = self?.stateManager.state ?? .failed
-                self?.errorMessage = error.localizedDescription
-                self?.userErrorMessage = UserFacingErrorMessage.forDevice(error)
-                self?.readingStatusTask?.cancel()
-                self?.appendLog("MTP read failed: \(error.localizedDescription)")
+        while !Task.isCancelled, state == .detecting {
+            let usbCount: Int?
+            if let counter {
+                usbCount = try? await readNativeGarminUSBDeviceCount(transport: counter)
+            } else {
+                // Readers without a USB-only probe go straight to a snapshot.
+                usbCount = 1
             }
+            guard !Task.isCancelled, state == .detecting else { return }
+
+            if let usbCount {
+                lastDetectionUSBPresence = usbCount > 0
+                if usbCount == 0, !loggedWaiting {
+                    appendLog("Waiting for Garmin USB connection before MTP detection")
+                    loggedWaiting = true
+                } else if usbCount > 0 {
+                    loggedWaiting = false
+                }
+            }
+
+            let step = detectionPolicy.usbObserved(count: usbCount, now: Self.uptime())
+            publishDetectionProgress()
+            switch step {
+            case .wait(let seconds):
+                if detectionPhase == .waitingForWatch {
+                    readingAttempt = 0
+                    readingMessage = "Waiting for your Garmin…"
+                }
+                guard await Self.pause(seconds) else { return }
+                continue
+            case .fail(let outcome):
+                finishDetectionFailure(outcome)
+                return
+            case .settleThenRead:
+                readingMessage = "Garmin detected. Checking the device…"
+                appendLog("Garmin returned to USB; waiting for MTP enumeration")
+                do {
+                    try await Task.sleep(for: .milliseconds(750))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled, state == .detecting else { return }
+            case .read:
+                break
+            }
+
+            attempt += 1
+            readingAttempt = attempt
+            readingMessage = attempt == 1
+                ? "Waiting for your Garmin…"
+                : "Still waiting for your Garmin…"
+
+            do {
+                let result = try await readNativeSnapshot(transport: transport, presence: false)
+                guard !Task.isCancelled, state == .detecting else { return }
+                completeDetection(result, elapsed: startedAt.duration(to: .now))
+                return
+            } catch {
+                guard !Task.isCancelled, state == .detecting else { return }
+                let failure = DeviceDetectionErrorClassifier.classify(error)
+                errorMessage = error.localizedDescription
+                appendLog("Detection attempt \(attempt) did not connect: \(failure)")
+                let next = detectionPolicy.snapshotFailed(failure, now: Self.uptime())
+                publishDetectionProgress()
+                switch next {
+                case .fail(let outcome):
+                    finishDetectionFailure(outcome)
+                    return
+                case .wait(let seconds):
+                    guard await Self.pause(seconds) else { return }
+                case .read, .settleThenRead:
+                    break
+                }
+            }
+        }
+    }
+
+    private func completeDetection(_ result: DeviceSnapshot, elapsed: Duration) {
+        let decision = compatibilityEngine.evaluate(snapshot: result)
+        readingStatusTask?.cancel()
+        readingStatusTask = nil
+        snapshot = result
+        compatibility = decision
+        errorMessage = nil
+        disconnectNotice = nil
+        // The policy decision is still in flight: show "Checking…", not a
+        // connection error, until it resolves.
+        installationAuthorization = .resolving
+        stateManager.deviceConnected()
+        stateManager.deviceReady()
+        state = stateManager.state
+        readingMessage = "Your Garmin is connected and ready."
+        detectionPolicy.connected()
+        publishDetectionProgress()
+        appendLog("MTP read completed in \(Self.format(elapsed))")
+        appendLog(
+            "Detected \(result.manufacturer) \(result.model) "
+                + "(VID \(Self.hex(result.vendorID)), PID \(Self.hex(result.productID)))"
+        )
+        appendLog("Read \(result.storages.count) storage record(s)")
+        appendLog("Compatibility status: resolving canonical public status")
+        appendLog("Compatibility evidence: USB PASS, MTP PASS, Device info PASS, Storage PASS, Maps PENDING")
+        refreshPublicCompatibilityStatus(for: decision)
+        startPresenceMonitoring()
+    }
+
+    /// Ends a detection episode. The user sees the classified reason and can
+    /// press Try again; plugging the watch back in restarts discovery as well.
+    private func finishDetectionFailure(_ outcome: DeviceConnectOutcome) {
+        guard state == .detecting else { return }
+        activeTask?.cancel()
+        activeTask = nil
+        activeNativeReadTask?.cancel()
+        readingStatusTask?.cancel()
+        readingStatusTask = nil
+        stateManager.fail()
+        state = stateManager.state
+        publishDetectionProgress()
+        userErrorMessage = UserFacingErrorMessage.forDetectionFailure(
+            outcome,
+            garminUSBPresent: lastDetectionUSBPresence
+        )
+        if outcome == .failed {
+            readingMessage = "The watch stopped responding."
+            appendLog("Connection check stopped: the watch did not respond within the device read bound")
+        } else {
+            readingMessage = "Connection timed out after 2 minutes."
+            appendLog("Connection check timed out after 2 minutes (\(outcome.rawValue))")
+        }
+        startReplugWatch()
+    }
+
+    private func publishDetectionProgress() {
+        if detectionPhase != detectionPolicy.phase {
+            detectionPhase = detectionPolicy.phase
+        }
+        for outcome in detectionPolicy.takeNewOutcomes() {
+            reportConnectOutcome(outcome)
+        }
+        syncConnectionClock()
+    }
+
+    private func reportConnectOutcome(_ outcome: DeviceConnectOutcome) {
+        lastConnectOutcome = outcome
+        appendLog("Connect outcome: \(outcome.rawValue)")
+        connectOutcomeHandler?(outcome)
+    }
+
+    /// Keeps the timer that ends an in-flight read in step with the policy's
+    /// connection clock. No clock exists while no Garmin is on USB.
+    private func syncConnectionClock() {
+        guard state == .detecting, let deadline = detectionPolicy.connectionDeadline else {
+            readingStatusTask?.cancel()
+            readingStatusTask = nil
+            return
+        }
+        guard readingStatusTask == nil else { return }
+        let delay = max(0, deadline - Self.uptime())
+        readingStatusTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                return
+            }
+            guard let self,
+                  self.state == .detecting,
+                  self.detectionPolicy.connectionClockIsRunning else {
+                return
+            }
+            self.readingStatusTask = nil
+            self.finishDetectionFailure(self.detectionPolicy.connectionWindowExpired())
+        }
+    }
+
+    /// After a failed check, a physical unplug and replug restarts discovery,
+    /// matching the post-eject path. This only reads the USB device list.
+    private func startReplugWatch() {
+        replugWatchTask?.cancel()
+        replugWatchTask = nil
+        guard state == .failed,
+              let counter = transport as? any GarminUSBDeviceCounter else {
+            return
+        }
+
+        replugWatchTask = Task { [weak self] in
+            var observedAbsence = false
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                } catch {
+                    return
+                }
+                guard let self, self.state == .failed else { return }
+                guard let count = try? await self.readNativeGarminUSBDeviceCount(transport: counter),
+                      !Task.isCancelled,
+                      self.state == .failed else {
+                    continue
+                }
+                if count == 0 {
+                    observedAbsence = true
+                } else if observedAbsence {
+                    self.appendLog("Garmin reconnected after a failed check; restarting device discovery")
+                    self.replugWatchTask = nil
+                    self.readDevice()
+                    return
+                }
+            }
+        }
+    }
+
+    private static func uptime() -> TimeInterval {
+        ProcessInfo.processInfo.systemUptime
+    }
+
+    private static func pause(_ seconds: TimeInterval) async -> Bool {
+        do {
+            try await Task.sleep(nanoseconds: UInt64(max(0, seconds) * 1_000_000_000))
+            return true
+        } catch {
+            return false
         }
     }
 
@@ -317,108 +549,6 @@ final class DeviceEngine: ObservableObject {
         }
     }
 
-    private func readSnapshotWithRetries(
-        transport: any DeviceSnapshotReader,
-        maximumAttempts: Int
-    ) async throws -> DeviceSnapshot? {
-        var lastError: Error?
-        var attempt = 0
-
-        while !Task.isCancelled && attempt < maximumAttempts {
-            guard !Task.isCancelled else {
-                return nil
-            }
-
-            if let presenceTransport = transport as? any GarminUSBPresenceReader {
-                let usbReady = await waitForGarminUSBPresenceBeforeSnapshot(
-                    transport: presenceTransport
-                )
-                guard usbReady, !Task.isCancelled else {
-                    return nil
-                }
-            }
-
-            attempt += 1
-            readingAttempt = attempt
-            readingMessage = attempt == 1
-                ? "Waiting for your Garmin…"
-                : "Still waiting for your Garmin…"
-
-            do {
-                return try await readNativeSnapshot(transport: transport, presence: false)
-            } catch {
-                lastError = error
-                guard !Task.isCancelled else {
-                    return nil
-                }
-
-                try await Task.sleep(for: .milliseconds(1_200))
-            }
-        }
-
-        if let lastError {
-            throw lastError
-        }
-        return nil
-    }
-
-    /// Full libmtp discovery is attempted only after Garmin is visible on the
-    /// USB bus. This is especially important after Safe Eject: repeatedly
-    /// opening libmtp while the cable is absent can leave reconnect detection
-    /// in a noisy native retry loop. A short settle interval lets macOS finish
-    /// enumerating the returning device before the first MTP read.
-    private func waitForGarminUSBPresenceBeforeSnapshot(
-        transport: any GarminUSBPresenceReader
-    ) async -> Bool {
-        var observedAbsence = false
-
-        while !Task.isCancelled {
-            do {
-                let isPresent = try await readNativeGarminUSBPresence(
-                    transport: transport
-                )
-                guard !Task.isCancelled else { return false }
-                lastDetectionUSBPresence = isPresent
-
-                if isPresent {
-                    if observedAbsence {
-                        readingMessage = "Garmin detected. Checking the device…"
-                        appendLog("Garmin returned to USB; waiting for MTP enumeration")
-                        do {
-                            try await Task.sleep(for: .milliseconds(750))
-                        } catch {
-                            return false
-                        }
-                    }
-                    return true
-                }
-
-                if !observedAbsence {
-                    appendLog("Waiting for Garmin USB connection before MTP detection")
-                }
-                observedAbsence = true
-                readingAttempt = 0
-                readingMessage = "Waiting for your Garmin…"
-            } catch {
-                guard !Task.isCancelled else { return false }
-
-                lastDetectionUSBPresence = false
-
-                // USB enumeration and the shared operation gate can both be
-                // transient while macOS is completing disconnect/reconnect.
-                // Neither is permission to enter libmtp without presence.
-            }
-
-            do {
-                try await Task.sleep(for: .milliseconds(500))
-            } catch {
-                return false
-            }
-        }
-
-        return false
-    }
-
     private func startPresenceMonitoring() {
         presenceTask?.cancel()
         presenceTask = nil
@@ -468,7 +598,8 @@ final class DeviceEngine: ObservableObject {
                     }
 
                     self?.handleUnexpectedDisconnect(error.localizedDescription,
-                        presence: (error as? MTPTransportError)?.devicePresence ?? .unknown)
+                        presence: (error as? MTPTransportError)?.devicePresence ?? .unknown,
+                        multipleDevices: DeviceDetectionErrorClassifier.classify(error) == .multipleDevices)
                     return
                 }
             }
@@ -477,7 +608,8 @@ final class DeviceEngine: ObservableObject {
 
     private func handleUnexpectedDisconnect(
         _ reason: String,
-        presence: InstallationFailureContext.DevicePresence = .unknown
+        presence: InstallationFailureContext.DevicePresence = .unknown,
+        multipleDevices: Bool = false
     ) {
         guard stateManager.canUseDevice else {
             return
@@ -491,7 +623,19 @@ final class DeviceEngine: ObservableObject {
         errorMessage = nil
         userErrorMessage = nil
         readingMessage = "Your Garmin was disconnected. Connect it again to continue."
+        disconnectNotice = multipleDevices
+            ? nil
+            : "Your Garmin was disconnected. Connect it again to continue."
         appendLog("Device connection invalidated: \(reason)")
+        reportConnectOutcome(.disconnected)
+
+        // Return to calm discovery, as after Safe Eject. A second Garmin is
+        // then shown as its own issue instead of as a disconnect.
+        Task { [weak self] in
+            await Task.yield()
+            guard let self, self.state == .disconnected else { return }
+            self.readDevice()
+        }
     }
 
     private func cancelConnectionTasks() {
@@ -505,6 +649,8 @@ final class DeviceEngine: ObservableObject {
         activeNativePresenceTask?.cancel()
         readingStatusTask?.cancel()
         readingStatusTask = nil
+        replugWatchTask?.cancel()
+        replugWatchTask = nil
         compatibilityStatusTask?.cancel()
         compatibilityStatusTask = nil
     }
@@ -589,6 +735,28 @@ final class DeviceEngine: ObservableObject {
         }
     }
 
+    private func readNativeGarminUSBDeviceCount(
+        transport: any GarminUSBDeviceCounter
+    ) async throws -> Int {
+        let task = Task.detached(priority: .utility) {
+            try transport.countGarminUSBDevices()
+        }
+
+        activeNativePresenceTask = Task {
+            _ = try? await task.value
+        }
+
+        defer {
+            activeNativePresenceTask = nil
+        }
+
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
     private func publishOperationAvailability() {
         operationAvailabilityRevision &+= 1
     }
@@ -609,6 +777,11 @@ final class DeviceEngine: ObservableObject {
             let catalogMetadata = await client.resolveCatalogMetadata(identity: identity)
             let catalogDecision = decision.applying(catalogMetadata: catalogMetadata)
             let installationAuthorization = await authorizationClient.resolve(identity: catalogDecision.identity)
+            // Publish the verdict as soon as it is known; the public
+            // compatibility lookup below is presentation only.
+            if !Task.isCancelled, let self, self.snapshot != nil, self.compatibility?.identity == identity {
+                self.installationAuthorization = installationAuthorization
+            }
             let resolution = await client.resolve(identity: catalogDecision.identity)
             guard !Task.isCancelled,
                   let self,
@@ -688,5 +861,46 @@ final class DeviceEngine: ObservableObject {
 
     private static func hex(_ value: UInt16) -> String {
         String(format: "0x%04X", value)
+    }
+}
+
+/// Maps one failed detection read to a user-relevant class. Native result
+/// codes come from `terento_mtp_read_snapshot_diagnostic`: -2/-3 no Garmin
+/// file-transfer device yet, -4 more than one Garmin, -5 session could not be
+/// opened. A worker deadline means the watch stopped responding.
+enum DeviceDetectionErrorClassifier {
+    static func classify(_ error: Error) -> DeviceDetectionErrorClass {
+        if let transportError = error as? MTPTransportError,
+           case .multipleGarminDevices = transportError {
+            return .multipleDevices
+        }
+        if let context = (error as? any InstallationFailureContextProviding)?.failureContext {
+            if context.resultKind == .timeout {
+                return .stoppedResponding
+            }
+            if context.nativeCodeNamespace == .terentoSnapshot,
+               let code = context.nativeResultCode {
+                switch code {
+                case -2, -3: return .notYetEnumerated
+                case -4: return .multipleDevices
+                case -5: return .busy
+                default: break
+                }
+            }
+        }
+        let message = error.localizedDescription.lowercased()
+        if message.contains("more than one garmin") {
+            return .multipleDevices
+        }
+        if message.contains("libusb_error_busy")
+            || message.contains("resource busy")
+            || message.contains("already opened for exclusive access")
+            || message.contains("could not be opened") {
+            return .busy
+        }
+        if message.contains("no mtp device") || message.contains("no garmin") {
+            return .notYetEnumerated
+        }
+        return .transient
     }
 }

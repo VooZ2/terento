@@ -49,6 +49,14 @@ private actor RejectedInstallRecorder: InstallationEvidenceUploading {
     func ids() -> [UUID] { uploaded }
 }
 
+private final class EvidenceTestClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Date
+    init(_ value: Date) { self.value = value }
+    var now: Date { lock.lock(); defer { lock.unlock() }; return value }
+    func advance(_ seconds: TimeInterval) { lock.lock(); value += seconds; lock.unlock() }
+}
+
 @main
 struct InstallationEvidenceTests {
     @MainActor
@@ -64,6 +72,8 @@ struct InstallationEvidenceTests {
         try await testConsentAndUploadIsolation()
         try await testUnsupportedUpdateDoesNotBlockInstallationReports()
         try await testRejectedInstallDoesNotBlockSibling()
+        try await testParkedReportsExpireAndClearOnOptOut()
+        try testParkedUpdateSurvivesFileSplit()
         testDiagnosticSanitization()
         testPreparedInstallationIssue()
         print("PASS: installation evidence, privacy, default-on upload, report, and promotion tests")
@@ -204,17 +214,23 @@ struct InstallationEvidenceTests {
         _ = try store.append(update, queueForUpload: true)
         _ = try store.append(install, queueForUpload: true)
         let uploader = LegacyServerRecorder()
-        let controller = InstallationEvidenceController(store: store, uploader: uploader, automaticRetryDelays: [0])
+        let controller = InstallationEvidenceController(store: store, uploader: uploader,
+            automaticRetryDelays: [0], appBuild: "40")
         await controller.scheduledUploadForTesting()?.value
         let firstUploaded = await uploader.uploadedIDs()
         expect(firstUploaded == [install.id], "rejected update does not starve a supported install report")
-        expect(store.pendingUploads().map(\.id) == [update.id],
-            "unsupported update remains queued with its original kind and ID")
-        expect(store.pendingUploads().first?.operationKind == "update",
+        expect(store.pendingUploads().isEmpty && store.parkedUploads().map(\.eventID) == [update.id],
+            "unsupported update is parked with its original ID instead of being re-sent every flush")
+        expect(store.events().first { $0.id == update.id }?.operationKind == "update",
             "an update must never be downgraded into installation evidence")
         await uploader.acceptUpdates()
         await controller.flushPendingUploads()
-        expect(store.pendingUploads().isEmpty, "deferred update uploads after server acceptance returns")
+        expect(store.parkedUploads().count == 1, "the same build waits for the back-off before retrying")
+        let nextBuild = InstallationEvidenceController(store: store, uploader: uploader,
+            automaticRetryDelays: [], appBuild: "41")
+        await nextBuild.flushPendingUploads()
+        expect(store.pendingUploads().isEmpty && store.parkedUploads().isEmpty,
+            "parked update uploads after a new build once server acceptance returns")
         let uploaded = await uploader.uploadedIDs()
         expect(uploaded == [install.id, update.id], "already delivered installation is not resent")
     }
@@ -229,16 +245,71 @@ struct InstallationEvidenceTests {
         _ = try store.append(rejected, queueForUpload: true)
         _ = try store.append(sibling, queueForUpload: true)
         let uploader = RejectedInstallRecorder(rejected.id)
-        let controller = InstallationEvidenceController(store: store, uploader: uploader, automaticRetryDelays: [0])
+        let clock = EvidenceTestClock(Date())
+        let controller = InstallationEvidenceController(store: store, uploader: uploader,
+            automaticRetryDelays: [0], now: { clock.now }, appBuild: "40")
         await controller.scheduledUploadForTesting()?.value
         let delivered = await uploader.ids()
         expect(delivered == [sibling.id], "rejected install does not starve another result")
-        expect(store.pendingUploads().map(\.id) == [rejected.id], "rejected report remains with original ID")
+        let parked = store.parkedUploads()
+        expect(store.pendingUploads().isEmpty && parked.map(\.eventID) == [rejected.id]
+            && parked[0].rejection.statusCode == 400 && parked[0].rejection.rejectionCount == 1,
+            "rejected report is parked with its original ID, status and count")
         await uploader.accept()
         await controller.flushPendingUploads()
+        expect(store.parkedUploads().count == 1, "parked report does not burn the rate budget on every flush")
+        clock.advance(TelemetryDeliveryPolicy.parkedRetryInterval)
+        await controller.flushPendingUploads()
         let retried = await uploader.ids()
-        expect(retried == [sibling.id, rejected.id] && store.pendingUploads().isEmpty,
-            "manual retry uses original ID and never resends sibling")
+        expect(retried == [sibling.id, rejected.id] && store.parkedUploads().isEmpty,
+            "back-off retry uses original ID and never resends sibling")
+    }
+
+    @MainActor
+    static func testParkedReportsExpireAndClearOnOptOut() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        let start = Date(timeIntervalSince1970: 2_000_000_000)
+        let clock = EvidenceTestClock(start)
+        let rejected = makeEvent(timestamp: start)
+        _ = try store.append(rejected, queueForUpload: true)
+        let uploader = RejectedInstallRecorder(rejected.id)
+        let controller = InstallationEvidenceController(store: store, uploader: uploader,
+            automaticRetryDelays: [], now: { clock.now }, appBuild: "40")
+        await controller.flushPendingUploads()
+        expect(store.parkedUploads().count == 1, "rejected report parked")
+        clock.advance(TelemetryDeliveryPolicy.retentionInterval + 1)
+        await controller.flushPendingUploads()
+        expect(store.parkedUploads().isEmpty && store.events().map(\.id) == [rejected.id],
+            "expired parked report stops being offered while the local report remains")
+
+        let second = makeEvent(timestamp: clock.now)
+        _ = try store.append(second, queueForUpload: true)
+        try store.parkUpload(eventID: second.id, statusCode: 422, now: clock.now, appBuild: "40")
+        controller.decideConsent(.declined)
+        expect(store.parkedUploads().isEmpty && store.pendingUploads().isEmpty,
+            "opt-out clears parked and pending reports")
+        let attempts = await uploader.ids()
+        expect(attempts.isEmpty, "no rejected report was ever delivered")
+    }
+
+    static func testParkedUpdateSurvivesFileSplit() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        var update = makeEvent(outcome: .failed, finishing: .failed)
+        update.operationKind = "update"; update.oldMapPreserved = true
+        let install = makeEvent()
+        _ = try store.append(update, queueForUpload: true)
+        _ = try store.append(install, queueForUpload: true)
+        try store.parkUpload(eventID: update.id, statusCode: 400, now: Date(), appBuild: "40")
+        try store.parkUpload(eventID: install.id, statusCode: 400, now: Date(), appBuild: "40")
+        let installationFile = String(decoding: try Data(contentsOf: root.appendingPathComponent("installation-evidence.json")), as: UTF8.self)
+        expect(!installationFile.contains(update.id.uuidString), "older apps never see a parked update ID")
+        let reopened = LocalInstallationEvidenceStore(rootURL: root)
+        expect(Set(reopened.parkedUploads().map(\.eventID)) == Set([update.id, install.id])
+            && reopened.pendingUploads().isEmpty, "parking of both kinds survives the split files")
     }
 
     static func testFailureContextRoundTrip() throws {
@@ -399,7 +470,8 @@ struct InstallationEvidenceTests {
         id: UUID = UUID(), firmware: String = "20.19",
         variant: String? = nil,
         outcome: InstallationEvidenceOutcome = .succeeded,
-        finishing: AutomaticFinishingResult = .verified
+        finishing: AutomaticFinishingResult = .verified,
+        timestamp: Date = Date()
     ) -> InstallationEvidenceEvent {
         let changedIdentity = DeviceIdentity(
             manufacturer: identity.manufacturer, model: identity.model, family: identity.family,
@@ -407,7 +479,7 @@ struct InstallationEvidenceTests {
             firmware: firmware, storageCapacity: identity.storageCapacity, freeSpace: identity.freeSpace
         )
         return InstallationEvidenceEvent(
-            id: id, identity: changedIdentity, package: package, outcome: outcome,
+            id: id, timestamp: timestamp, identity: changedIdentity, package: package, outcome: outcome,
             finishingResult: finishing, errorCategory: outcome == .failed ? .transport : nil,
             terentoVersion: "test", macOSVersion: "test"
         )

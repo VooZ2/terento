@@ -106,8 +106,207 @@ struct Stage1ProviderNeutralTests {
         await testNetworkFailuresNameProvider()
         testProviderFailureMessages()
         await testFoundationDownloadTimeout()
+        testPerPackageCatalogAcceptance()
+        testTolerantDecodingOfUnknownArtifactKinds()
+        await testRemoteAcceptanceAndAcquisitionValidation()
 
-        print("PASS: 32 Stage 1 provider-neutral core tests")
+        print("PASS: 35 Stage 1 provider-neutral core tests")
+    }
+
+    private static func bundledDocument() throws -> [String: Any] {
+        let url = packageRoot.appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json")
+        return try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
+    }
+
+    private static func mutatedDocument(_ change: (inout [[String: Any]]) -> Void) throws -> Data {
+        var document = try bundledDocument()
+        var providers = document["providers"] as! [[String: Any]]
+        change(&providers)
+        document["providers"] = providers
+        return try JSONSerialization.data(withJSONObject: document)
+    }
+
+    private static func testPerPackageCatalogAcceptance() {
+        do {
+            let validator = MapCatalogClientCompatibilityValidator()
+            let catalog = try MapCatalogDocumentDecoder().decode(mutatedDocument { providers in
+                var maps = providers[0]["maps"] as! [[String: Any]]
+                maps[0]["sourceURL"] = "https://unreviewed.example/map.zip"
+                providers[0]["maps"] = maps
+                providers.append(["id": "future-provider", "name": "Future provider",
+                    "maps": [["id": "future-provider-alb", "region": "ALB", "name": "Albania",
+                              "version": ["year": 2026, "month": 5], "sizeBytes": 1,
+                              "sourceURL": "https://future.example/alb.img", "identifier": "ALB"]]])
+            })
+            let badID = "freizeitkarte-alb"
+            expect(!validator.isCompatible(catalog),
+                "the strict release gate still rejects any incompatible package")
+            guard let accepted = validator.acceptCompatiblePackages(catalog) else {
+                return expect(false, "one bad package must not reject the whole catalog")
+            }
+            expect(accepted.droppedPackageIDs == [badID, "future-provider-alb"]
+                && accepted.catalog.packages.count == 1160 - 1
+                && !accepted.catalog.packages.contains { $0.id == badID },
+                "only the incompatible package and the unknown provider's package are dropped")
+            expect(!accepted.catalog.providers.contains { $0.id == "future-provider" }
+                && accepted.catalog.providers.count == 4,
+                "a provider without an adapter in this app version is omitted with its packages")
+            expect(accepted.catalog.packages.allSatisfy(validator.isPackageCompatible),
+                "every kept package passed adapter, reviewed host and IMG identity checks")
+            expect(validator.isCompatible(accepted.catalog), "the accepted subset satisfies the strict gate")
+
+            let duplicateIDs = MapCatalog(catalogVersion: catalog.catalogVersion, updatedAt: catalog.updatedAt,
+                providers: catalog.providers, regions: catalog.regions,
+                packages: catalog.packages + [catalog.packages[1]])
+            expect(validator.acceptCompatiblePackages(duplicateIDs) == nil,
+                "duplicate package IDs remain a whole-catalog invariant failure")
+            let duplicateProviders = MapCatalog(catalogVersion: catalog.catalogVersion, updatedAt: catalog.updatedAt,
+                providers: catalog.providers + [catalog.providers[0]], regions: catalog.regions,
+                packages: catalog.packages)
+            expect(validator.acceptCompatiblePackages(duplicateProviders) == nil,
+                "duplicate providers remain a whole-catalog invariant failure")
+            let onlyBad = MapCatalog(catalogVersion: catalog.catalogVersion, updatedAt: catalog.updatedAt,
+                providers: catalog.providers, regions: catalog.regions,
+                packages: catalog.packages.filter { $0.id == badID })
+            expect(validator.acceptCompatiblePackages(onlyBad) == nil,
+                "a catalog with no compatible package is incompatible with this app version")
+            let bbbike = catalog.packages.filter { MapIdentity.normalizeProvider($0.providerId) == "bbbike" }
+            let twin = bbbike[0].withArtifacts(bbbike[0].artifacts)
+            let renamedTwin = MapPackage(id: "bbbike-duplicate-identity", providerId: twin.providerId,
+                regionId: twin.regionId, name: twin.name, version: twin.version, sizeBytes: twin.sizeBytes,
+                sourceURL: twin.sourceURL, releaseDate: twin.releaseDate, identifier: twin.identifier,
+                downloadSizeBytes: twin.downloadSizeBytes, installSizeBytes: twin.installSizeBytes,
+                providerRegionId: twin.providerRegionId, canonicalRegionId: twin.canonicalRegionId,
+                mapType: twin.mapType, artifacts: twin.artifacts)
+            let withTwin = MapCatalog(catalogVersion: catalog.catalogVersion, updatedAt: catalog.updatedAt,
+                providers: catalog.providers, regions: catalog.regions, packages: catalog.packages + [renamedTwin])
+            if let twinAccepted = validator.acceptCompatiblePackages(withTwin), renamedTwin.identity == bbbike[0].identity {
+                expect(!twinAccepted.catalog.packages.contains { $0.id == bbbike[0].id || $0.id == renamedTwin.id },
+                    "packages that share one BBBike IMG identity are both dropped")
+            }
+        } catch {
+            expect(false, "per-package acceptance fixture: \(error)")
+        }
+    }
+
+    private static func testTolerantDecodingOfUnknownArtifactKinds() {
+        do {
+            let data = try mutatedDocument { providers in
+                var maps = providers[0]["maps"] as! [[String: Any]]
+                let main: [String: Any] = ["id": "\(maps[0]["id"]!)-main", "kind": "main", "required": true,
+                    "sourceURL": maps[0]["sourceURL"]!, "validationState": "validated"]
+                maps[0]["artifacts"] = [main, ["id": "future-hillshade", "kind": "hillshade", "required": false]]
+                maps[1]["artifacts"] = [["id": "future-required", "kind": "vector-tiles", "required": true]]
+                providers[0]["maps"] = maps
+            }
+            do {
+                _ = try MapCatalogDocumentDecoder().decode(data)
+                expect(false, "strict decoding keeps rejecting unknown artifact kinds")
+            } catch {
+                expect(true, "strict decoding keeps rejecting unknown artifact kinds")
+            }
+            let report = try MapCatalogDocumentDecoder().decodeTolerant(data)
+            let first = report.catalog.packages.first { $0.id == "freizeitkarte-alb" }
+            expect(first != nil && first?.artifacts.count == 1 && first?.mainArtifact != nil,
+                "an optional artifact of an unknown kind is ignored without dropping its package")
+            expect(report.droppedPackageCount == 1 && report.droppedPackageIDs.count == 1
+                && report.catalog.packages.count == 1159,
+                "a required artifact of an unknown kind drops only its own package")
+        } catch {
+            expect(false, "tolerant decoding fixture: \(error)")
+        }
+    }
+
+    private static func testRemoteAcceptanceAndAcquisitionValidation() async {
+        func loader(_ body: Data, status: Int = 200) -> MapCatalogLoader {
+            MapCatalogLoader(endpoint: URL(string: "https://catalog.example/catalog-v4.json")!,
+                contourRolloutPolicy: MapContourRolloutPolicy(mode: .publicValidated),
+                dataLoader: { request in
+                    (body, HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil,
+                        headerFields: ["Content-Type": "application/json"])!)
+                })
+        }
+        func reason(_ error: Error) -> String? {
+            if case let MapAcquisitionError.acquisitionWithheld(.blocked(_, reason)) = error { return reason }
+            return nil
+        }
+        do {
+            let partial = try mutatedDocument { providers in
+                var maps = providers[0]["maps"] as! [[String: Any]]
+                maps[0]["sourceURL"] = "https://unreviewed.example/map.zip"
+                providers[0]["maps"] = maps
+            }
+            let catalog = try MapCatalogDocumentDecoder().decode(partial)
+            let bad = catalog.packages.first { $0.id == "freizeitkarte-alb" }!
+            let good = catalog.packages.first { $0.id == "freizeitkarte-and" }
+                ?? catalog.packages.first { $0.providerId == "freizeitkarte" && $0.id != bad.id }!
+            let remote = try await loader(partial).loadAcceptedRemote()
+            expect(remote.droppedPackageCount == 1 && remote.droppedPackageIDs == [bad.id],
+                "the runtime remote load keeps every compatible package and counts the dropped one")
+            try await loader(partial).validateCurrentAvailability(package: good)
+            expect(true, "acquiring a compatible package is not blocked by an unrelated incompatible package")
+            do {
+                try await loader(partial).validateCurrentAvailability(package: bad)
+                expect(false, "an incompatible package itself cannot be acquired")
+            } catch {
+                expect(reason(error) == "APP_UPDATE_REQUIRED",
+                    "an incompatible package asks for a Terento update instead of a connection check")
+            }
+
+            let broken = try JSONSerialization.data(withJSONObject: ["catalogVersion": 9, "providers": "future"])
+            do {
+                try await loader(broken).validateCurrentAvailability(package: good)
+                expect(false, "an incompatible document blocks acquisition")
+            } catch {
+                expect(reason(error) == "APP_UPDATE_REQUIRED",
+                    "an incompatible catalog document is reported as update required, not as offline")
+            }
+            for (body, status) in [(Data("<html>portal</html>".utf8), 200), (partial, 503)] {
+                do {
+                    try await loader(body, status: status).validateCurrentAvailability(package: good)
+                    expect(false, "an unusable response blocks acquisition")
+                } catch {
+                    expect(reason(error) == "STATUS_UNVERIFIED",
+                        "a portal page or HTTP error stays a connection problem, not an update request")
+                }
+            }
+            let message = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "APP_UPDATE_REQUIRED")
+                .detailedExplanation ?? ""
+            expect(message.contains("Update Terento") && !message.contains("connection"),
+                "the update-required message never tells the user to check the connection")
+            expect(MapCatalogSource.appUpdateRequired.userLabel.contains("Update Terento"),
+                "the catalog status label names the Terento update")
+            let remoteOnlyFZK = try mutatedDocument { providers in
+                providers = providers.filter { ($0["id"] as? String) == "freizeitkarte" }
+            }
+            let merged = try await loader(remoteOnlyFZK).loadCurrentMerged()
+            let mergedProviders = Set(merged.catalog.providers.map { MapIdentity.normalizeProvider($0.id) })
+            expect(merged.source == .remote && mergedProviders == ["freizeitkarte", "opentopomap", "bbbike", "maprando"]
+                && merged.catalog.packages.count == 1160,
+                "the shared connect/refresh load merges bundled-only providers instead of dropping them")
+            let bundledContours = try MapCatalogDocumentDecoder().decode(JSONSerialization.data(withJSONObject: bundledDocument()))
+                .packages.filter { $0.artifacts.contains { $0.kind == .contours } }.count
+            expect(merged.catalog.packages.filter { $0.artifacts.contains { $0.kind == .contours } }.count == bundledContours,
+                "the shared load keeps bundled optional contour artifacts, so refresh cannot prune them")
+            let fallback = try await MapCatalogLoader(endpoint: URL(string: "https://catalog.example/incompatible.json")!,
+                dataLoader: { request in
+                    (broken, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+                }).loadRemoteThenFallback()
+            expect(fallback.source == .appUpdateRequired
+                && fallback.catalog.packages.allSatisfy { $0.downloadBlockReason != nil }
+                && fallback.catalog.packages.contains { $0.downloadBlockReason == "APP_UPDATE_REQUIRED" },
+                "an incompatible catalog keeps maps browsable and marks installs as needing a Terento update")
+            let offline = try await MapCatalogLoader(endpoint: URL(string: "https://catalog.example/offline.json")!,
+                dataLoader: { _ in throw URLError(.notConnectedToInternet) }).loadRemoteThenFallback()
+            expect(offline.source == .bundledFallback
+                && offline.catalog.packages.contains { $0.downloadBlockReason == "STATUS_UNVERIFIED" },
+                "a real network failure keeps the bundled fallback and its connection guidance")
+            expect(good.withAppUpdateRequiredDownloadAvailability().downloadBlockReason == "APP_UPDATE_REQUIRED"
+                && MapPackageAcquisitionPolicyResolver().availability(for: good.withAppUpdateRequiredDownloadAvailability()) != .available,
+                "update-required fallback catalogs keep browsing but disable downloads")
+        } catch {
+            expect(false, "remote acceptance fixture: \(error)")
+        }
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {

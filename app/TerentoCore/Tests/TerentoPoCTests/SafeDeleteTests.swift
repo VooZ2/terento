@@ -20,6 +20,20 @@ private final class FakeSafeDeleteTransport: SafeDeleteTransport, @unchecked Sen
         return currentObject
     }
 
+    func inspectExactObject(_ target: SafeDeleteTarget,
+                            onProgress: (@Sendable (TransferProgress) -> Void)?) throws -> SafeDeleteDeviceObject {
+        onProgress?(TransferProgress(bytesTransferred: 1, totalBytes: 2))
+        return try inspectExactObject(target)
+    }
+
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
+        onProgress?(TransferProgress(bytesTransferred: 1, totalBytes: 4))
+        onProgress?(TransferProgress(bytesTransferred: 3, totalBytes: 4))
+        onProgress?(TransferProgress(bytesTransferred: 4, totalBytes: 4))
+        try deleteExactObject(target)
+    }
+
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
         events.append("delete")
         deletedObjectIDs.append(target.objectID)
@@ -397,11 +411,23 @@ private func testRemovalReportsMeasuredProgress() throws {
     let (result, _) = run(
         target: prepared.target,
         current: deviceObject(for: prepared.target),
-        scans: [ [] ],
+        scans: [ [prepared.target.sourceFile], [prepared.target.sourceFile], [] ],
         onProgress: { progress in collector.append(progress) }
     )
 
     try require(result.status == .success, "progress reporting must not change a successful removal")
+    let content = collector.values.filter { $0.state == .checkingContent }
+    try require(content.count >= 4 && content.dropFirst().allSatisfy { $0.fractionCompleted > 0.2 && $0.fractionCompleted <= 0.9 }, "final content checks must carry measured progress before deletion")
+    let confirming = collector.values.filter { $0.state == .postVerifying }
+    try require(confirming.count >= 3 && Set(confirming.map(\.fractionCompleted)).count == 1, "retry attempts must not advance the percentage")
+    try require(confirming.allSatisfy { $0.detail == "Confirming the map was removed" }, "confirmation must explain the wait")
+    let failedCollector = ProgressCollector()
+    let failedTransport = FakeSafeDeleteTransport()
+    failedTransport.deleteError = .operationFailed("content mismatch")
+    let (failed, _) = run(target: prepared.target, current: deviceObject(for: prepared.target),
+        scans: [[]], transport: failedTransport, onProgress: { failedCollector.append($0) })
+    try require(failed.status != .success && !failedCollector.values.contains { $0.state == .completed || $0.fractionCompleted == 1 }, "failed deletion proof must never report completion")
+
     try require(!collector.values.isEmpty, "removal must report progress values")
     try require(collector.values.first?.fractionCompleted == 0, "removal progress should start at zero")
     try require(collector.values.last?.fractionCompleted == 1, "removal progress should finish at one hundred percent")

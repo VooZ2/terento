@@ -34,6 +34,48 @@ The app connects a map-capable Garmin smartwatch, resolves provider metadata,
 downloads to the Mac, validates the source package and Garmin image, checks
 storage, installs, verifies the transfer, and records local ownership.
 
+Device discovery starts automatically. While no Garmin is on USB, the Device
+page shows a calm "Connect your watch" checklist and polls only the USB device
+list; libmtp is not entered and no timeout runs. The 2-minute connection window
+starts when a Garmin USB device appears. More than one Garmin, a watch held by
+another app (repeated session-open failures) and a Garmin that never appears as
+a file-transfer device are shown while discovery keeps polling; only
+not-yet-enumerated and transient read failures are silent retries. After a
+timeout, a failed check or an unexpected disconnect, unplugging and reconnecting
+the watch restarts discovery. `DeviceConnectOutcome` exposes each episode
+outcome for the first-run funnel; `DeviceEngine` itself sends no telemetry.
+
+While maps are downloaded and checked on the Mac, or the no-write preflight
+runs, the install page offers Cancel; it uses the existing task cancellation
+and workspace cleanup, and nothing has been written to the watch. Once the
+install step owns the device it is not cancellable. After a failure in which
+nothing was written, validated provider artifacts are kept for 30 minutes,
+keyed by package and artifact with their SHA-256; Try again (offered for
+download, connection, pre-write check, write-start and authorization-check
+failures) keeps the selection, rereads the watch and reuses them instead of
+downloading again. Availability is rechecked and the coordinator revalidates
+identity, version, size and SHA-256 before any write. Quitting removes retained
+artifacts. While maps are downloaded, prepared, written or verified, and during
+Update and Remove, the app holds a user-initiated activity that prevents idle
+system sleep; Quit during a device write asks for confirmation. The app has one
+main window; reopening it shares the same engines and lifecycle model.
+
+Before a download starts, Terento checks that the Mac's temporary and Caches
+volumes have about 2.5 times the download size free. A full disk before or
+during download, copy or extraction is reported as "Your Mac doesn't have
+enough free space (needs X GB)", never as a connection problem. Downloads are
+written in the chunks URLSession delivers instead of byte by byte, with the
+same 64 KiB progress cadence, reviewed redirect policy, 30-second inactivity
+bound and BBBike source-proof checks. Download files left in the temporary
+directory by a crash (`terento-map-download-*`, untouched for an hour) are
+removed at launch. Every map scan, including the one after an install, Update
+or Remove, refreshes the watch's free space for the Device page and the storage
+planner. A failed map read on a connected watch shows "Couldn't read your
+maps" with Try again. When an install fails after a map object was created,
+the original cause stays the primary message, followed by "The map file may be
+on your watch. Open Manage maps to remove it, then install it again." and a
+"Go to Manage maps" action; automatic cleanup is still declined.
+
 The review Install action starts from idle. After successful preflight, the
 engine continues automatically; its transient `awaitingConfirmation` phase is
 processing, not a second executable Install action. Authorization, device
@@ -81,19 +123,62 @@ identity; cleanup never expands into heuristic deletion. The write profile is
 bound from the live Garmin USB identity and read-only `/GARMIN` inventory; it
 does not contain a model allowlist.
 
+Manage maps shows a determinate bar, percentage and current action throughout
+Update. Downloading and Installing retain their byte counts and transfer speed.
+Preparing reports completed package checks and measured local hashing; Checking
+combines local source validation with measured read-back/hash validation of the
+installed map. Verifying separately reports validation of the newly written map.
+Removing old reports measured full-content verification before deletion, and
+Finishing advances through the existing confirmed checks. Each
+percentage belongs to its displayed stage, not the whole update or time remaining.
+Stage weights allocate work; they do not predict duration. ZIP extraction, device
+inventory and the deletion command itself do not expose intermediate completion, so
+progress holds at the last completed checkpoint with an action description until
+the call returns. Unknown download lengths remain at 0% until a total is known;
+no timer fabricates progress. Device safety checks and mutation order are unchanged.
+Remove and Update's old-map removal reserve 20–90% for the existing full SHA-256
+read immediately before deletion. The internal C bridge reports bytes read
+without changing read sizes, content/identity checks or authorization. Read
+completion is not deletion success: hash or target mismatch still prevents the
+destructive call. At 93%, the UI says “Confirming the map was removed”; repeated
+inventory checks hold that value rather than increasing it for each retry. Only
+confirmed absence completes removal. The existing settle delays and retry limits
+are unchanged. No watchdog, shortened timeout or new USB recovery is introduced.
+
+This change is a candidate for the next app release; automated tests do not replace
+a real-device large-map update acceptance check.
+
 Remote transfer verification uses the implemented bounded sampled-read policy;
 it is not a claim of a whole remote-file SHA-256. Sample workers have a
 120-second advancing-byte inactivity limit and a 600-second absolute limit.
 Only strictly increasing validated progress renews inactivity. Cancellation
-reaps the owned child before releasing its lifecycle lease. These limits do
-not impose a universal timeout on every synchronous native inventory call.
+reaps the owned child before releasing its lifecycle lease.
 Connection/inventory and readback failures may still require physical reconnect.
+
+The detection snapshot and the map scan's snapshot, inventory and map-header
+reads also run in that bounded worker, so a stalled watch can no longer hold the
+operation gate indefinitely. The detection snapshot has a 90-second bound. Scan
+inventory allows 60 seconds plus 30 ms per object seen by the previous inventory
+of the same watch, at most 600 seconds (600 seconds before the first
+observation); header reads add 5 seconds per map. When a bound is reached the
+worker child is ended, the gate is released and the user sees "The watch stopped
+responding. Unplug it, wait 5 seconds, plug it back in." Later reads of that scan
+fail immediately instead of retrying file by file. What is read is unchanged; the
+detection IPC carries the device descriptor and serial inside the private,
+per-operation worker directory, which is removed afterwards. USB presence probes
+stay in-process because they only read the USB device list.
 
 For issue #222, a local follow-up now classifies a pre-write inventory worker
 timeout as preflight MTP-read failure instead of verification failure, records
 the measured bounded wait, and never starts upload when inventory has not
-completed. Inventory has a finite 60-second worker bound matching libmtp's
-LONG_TIMEOUT; this is not a model-specific USB workaround. Local sanitized
+completed. The pre- and post-write inventory worker bound scales with the
+object count of the baseline inventory: 60 seconds (libmtp's LONG_TIMEOUT)
+plus 30 ms per object, at most 600 seconds. A heavy watch with years of
+activities and music (about 12,000 objects) therefore gets about 7 minutes
+instead of a fixed minute; this is not a model-specific USB workaround. The
+inventory still walks every storage: narrowing it to `/GARMIN` would drop the
+documented protection of map files on any storage and of unknown objects
+outside `/GARMIN`, which Update and external Remove share. Local sanitized
 trace markers separate session open, file-list read, session close and native
 cleanup. The initiating 091e:51b5 hardware stall remains unproven pending a
 controlled failing/successful-model retest.
@@ -115,6 +200,15 @@ provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
 See [shared contracts](../../contracts/README.md).
 
+The remote catalog is accepted per package: incompatible packages are omitted
+and counted (`catalogDroppedPackageCount`) while every other map stays
+installable. An incompatible catalog document keeps the local list browsable,
+shows "Update Terento to install maps from the current catalog" and blocks
+downloads with an update message instead of "check your connection"; a real
+network failure keeps the existing local-catalog fallback. Connect and the
+five-minute refresh share one load, merge and validate path, and the refresh is
+skipped while the review or install step is open, so selections are not pruned.
+
 Maps come directly from provider infrastructure. Catalog visibility is separate
 from acquisition: canonical Russia and Crimea packages are withheld before
 workspace creation or HTTP acquisition. Existing device files remain protected.
@@ -131,8 +225,26 @@ handoff, never silent application replacement.
 
 Map-use delivery drains events appended during an in-flight upload before
 reporting the queue uploaded. Retryable failures retain the queue and use the
-existing bounded retry schedule; permanent failures stop that send attempt.
-Opt-out clears pending events and stops the sender before another event is sent.
+existing bounded retry schedule. A non-retryable HTTP 4xx rejection parks only
+that event (status, count, time and build are kept locally) and later events
+continue in order; parked events are retried only by a new app build or after a
+24-hour back-off, a bounded number of times, and expire with the 24-month
+retention window. Compatibility/update diagnostics use the same parking rules.
+Opt-out clears pending and parked events and stops the sender before another event is sent.
+
+The first-run funnel producer (`Telemetry/AppFunnelTelemetry.swift`, schema v1,
+`POST /app-funnel/events`; meaning owned by `contracts/APP_FUNNEL_CONTRACT.md`)
+records pre-install outcomes under the device-compatibility reporting
+preference: device connect, resolved authorization (with the normalized base
+model), catalog load result (`REMOTE`, `REMOTE_PARTIAL` with the dropped package
+count, `BUNDLED_FALLBACK`, `UPDATE_REQUIRED`) and Install presses refused before
+any device write. The session ID is random per launch and memory-only; at most one
+event per stage, outcome and base model is queued per session in a durable outbox
+with the shared parking rules. Turning off compatibility reporting clears it.
+Connect outcomes are inferred from Device state until the connect classifier
+calls `AppFunnelTelemetryController.recordDeviceConnect` directly. The API route
+must be deployed before a release ships this producer; until then the route's
+rejection parks events without affecting other telemetry.
 A response already in flight cannot restore the opted-out status. This does not
 add cancellation/interruption events or reconstruct missing historical outcomes;
 a download start without a received outcome is not proof of a failed download.
@@ -232,7 +344,9 @@ Missing specifications are not inferred from model names. This formatting does
 not alter identity/evidence strings, catalog matching, local manifest keys or
 installation authorization. The Map Manager registry includes the officially
 documented fēnix 9 family; exact-model public evidence remains independent.
-That local registry is presentation evidence, not a native write allowlist.
+That local registry is presentation evidence, not a native write allowlist; it
+never disables a server-approved Install action and is hidden on the Device
+page once the watch is "Ready for maps".
 The install/update path requires fresh API catalog authorization before
 acquisition and again before writing. It matches a normalized base model and
 filters candidates only with reliable variant facts. Conflicting variant
@@ -240,6 +354,15 @@ evidence broadens the candidate set rather than denying authorization; the
 Maps capability of all remaining candidates determines the result. Unknown
 base models, mixed or unknown candidate capability, and unavailable policy
 remain pending/fail closed. See the [tracked authorization contract](../../contracts/INSTALLATION_AUTHORIZATION.md).
+After connect the Device page shows the verdict with text and an icon: "Checking…"
+while the policy is resolving (never a connection error), "Ready for maps",
+"Not yet enabled for this model" for PENDING/unknown/ambiguous models (browsing
+stays available and Install maps is labelled), "Not available for this model",
+or "Couldn't check" with Try again when the policy could not be fetched. The
+five-minute catalog timer re-resolves an unavailable policy. A decision fetched
+at download time is applied to `DeviceEngine`, so a rejection is shown on the
+review page instead of silently returning to it. These are presentation and
+retry changes only; the authorization rules are unchanged.
 The public beta.15 build 37 passes the connected-device authorization state into
 the map engine and shows pending or blocked authorization on the Install review
 screen. It also removes obsolete internal installation/update paths while
@@ -360,6 +483,12 @@ establish ownership of a physical watch. Scanning must not merge those records
 with a physically bound namespace or combine conflicting physical identities.
 Only the currently proven physical namespace may supply managed lifecycle records;
 unproven legacy records leave the external Remove fallback available.
+If the physical watch's manifest cannot be read when an install starts, Terento
+renames it to `manifest.corrupt-<UTC date>.json` beside the original (never
+deleting it), writes a local diagnostic and stops before downloading or writing;
+the next install starts a fresh manifest. Maps listed only in the set-aside
+record are then treated like any other unowned map (external Remove, no managed
+Update), so no authority is widened. Recording after a write still fails closed.
 
 After an authorized deletion, a fresh inventory proves removal by the old exact
 path's absence. Historical MTP handles may identify unrelated objects in that
@@ -392,8 +521,16 @@ file/folder kind; item/parent handles are session-scoped navigation and diagnost
 It conservatively protects unknown objects, all-storage IMG/GMA/UNL/SID, map and
 SID containers, explicit operation/manifest locations, and required ancestors.
 Classification grants no ownership or deletion authority. Duplicates, aliases,
-invalid paths and incoherent ancestry fail closed. Existing protected objects
-must remain stable; only explicit operation targets may change.
+invalid paths and incoherent ancestry fail closed, with one narrow exception:
+several entries listed under one path (or case alias) are tolerated when every
+entry is a plain file outside `/GARMIN` without a map suffix, for example two
+music tracks with the same name. Those entries stay protected and are compared
+as a multiset, so removing or changing any of them still fails; a local
+`*_inventory_duplicates` trace records how many such locations were seen. Folders,
+duplicate handles, map files on any storage and everything under `/GARMIN`
+(write target, map containers and runtime namespaces) keep failing closed.
+Existing protected objects must remain stable; only explicit operation targets
+may change.
 
 Diagnostic-only cases are the exact `/GARMIN/GarminDevice.xml` file, immediate
 FIT files in `/GARMIN/Monitor`, and descendant folders of `/GARMIN/TLG/PER`, based
@@ -507,8 +644,8 @@ through all phases; legacy saved events without it remain unknown. Fresh events
 also preserve the selected map result index. Download reporting starts only at
 the awaited downloader boundary, after policy, current availability, workspace
 and source checks. Pre-download failures produce no fictitious download attempt.
-Rejected HTTP 400 compatibility reports remain available under their original
-IDs while independent reports continue; consent and retry boundaries are unchanged.
+Rejected compatibility reports remain available under their original IDs and
+are parked (see map-use delivery above) while independent reports continue.
 A preflight component failure is attributed to its owning selected map, not the
 flattened component position. MapRando's standalone France contours catalog entry
 has its own main artifact; it remains a selectable independent map, distinct from

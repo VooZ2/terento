@@ -104,6 +104,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case workspaceFailed(String)
     case untrustedSourceURL(String)
     case customMapNotConfirmed(String)
+    /// The Mac's volume cannot hold the download and its extraction.
+    case insufficientMacStorage(requiredBytes: UInt64?)
 
     var userMessage: String {
         switch self {
@@ -150,6 +152,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map provider address could not be verified. Refresh the catalog and try again."
         case .customMapNotConfirmed(let message):
             return message
+        case .insufficientMacStorage(let requiredBytes):
+            return MacStorageCheck.userMessage(requiredBytes: requiredBytes)
         }
     }
 
@@ -188,7 +192,56 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map provider address is not in Terento's reviewed HTTPS source list. Refresh the catalog and try again."
         case .customMapNotConfirmed(let message):
             return message
+        case .insufficientMacStorage:
+            return userMessage
         }
+    }
+}
+
+/// Mac-side storage for downloads. A download needs room for the package,
+/// its extraction and the validated map, so about 2.5 times its size is
+/// required before the download starts.
+enum MacStorageCheck {
+    static let downloadMultiplier = 2.5
+
+    static func requiredBytes(forDownloadBytes bytes: UInt64) -> UInt64 {
+        UInt64((Double(bytes) * downloadMultiplier).rounded(.up))
+    }
+
+    static func userMessage(requiredBytes: UInt64?) -> String {
+        guard let requiredBytes, requiredBytes > 0 else {
+            return "Your Mac doesn't have enough free space. Free up space and try again."
+        }
+        let formatted = ByteCountFormatter.string(fromByteCount: Int64(clamping: requiredBytes), countStyle: .file)
+        return "Your Mac doesn't have enough free space (needs \(formatted)). Free up space and try again."
+    }
+
+    /// Space usable for important data on the volume holding `url`.
+    static func availableBytes(at url: URL) -> UInt64? {
+        let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        return values?.volumeAvailableCapacityForImportantUsage.map { UInt64(max(0, $0)) }
+    }
+
+    /// Throws before any download when a known size cannot fit.
+    static func preflight(downloadBytes: UInt64, locations: [URL],
+                          available: (URL) -> UInt64? = availableBytes(at:)) throws {
+        guard downloadBytes > 0 else { return }
+        let required = requiredBytes(forDownloadBytes: downloadBytes)
+        for location in locations {
+            if let free = available(location), free < required {
+                throw MapAcquisitionError.insufficientMacStorage(requiredBytes: required)
+            }
+        }
+    }
+
+    static func isOutOfSpace(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain, nsError.code == NSFileWriteOutOfSpaceError { return true }
+        if nsError.domain == NSPOSIXErrorDomain, nsError.code == Int(ENOSPC) { return true }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
+            return isOutOfSpace(underlying)
+        }
+        return false
     }
 }
 
@@ -448,6 +501,130 @@ private final class ReviewedProviderRedirectDelegate: NSObject, URLSessionTaskDe
     }
 }
 
+/// Session delegate for one download: applies the reviewed redirect policy,
+/// validates the response before the body is stored, writes body chunks to
+/// the local file and reports progress. It never follows an unreviewed host.
+private final class StreamingDownloadDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private let redirectDelegate: ReviewedProviderRedirectDelegate
+    private let fileHandle: FileHandle
+    private let maximumBytes: UInt64?
+    private let validateResponse: (HTTPURLResponse) throws -> Void
+    private let onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    private let lock = NSLock()
+    private var response: HTTPURLResponse?
+    private var receivedBytes: UInt64 = 0
+    private var reportedBytes: UInt64 = 0
+    private var expectedBytes: UInt64 = 0
+    private var failure: Error?
+    private var speedEstimator = TransferSpeedEstimator()
+    private var continuation: CheckedContinuation<HTTPURLResponse, Error>?
+
+    init(redirectDelegate: ReviewedProviderRedirectDelegate, fileHandle: FileHandle, maximumBytes: UInt64?,
+         validateResponse: @escaping (HTTPURLResponse) throws -> Void,
+         onProgress: (@Sendable (MapDownloadProgress) -> Void)?) {
+        self.redirectDelegate = redirectDelegate
+        self.fileHandle = fileHandle
+        self.maximumBytes = maximumBytes
+        self.validateResponse = validateResponse
+        self.onProgress = onProgress
+    }
+
+    func run(request: URLRequest, session: URLSession) async throws -> HTTPURLResponse {
+        let task = session.dataTask(with: request)
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                lock.withLock { self.continuation = continuation }
+                if Task.isCancelled { task.cancel() }
+                task.resume()
+            }
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        redirectDelegate.urlSession(session, task: task, willPerformHTTPRedirection: response,
+                                    newRequest: request, completionHandler: completionHandler)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        do {
+            if let rejectedURL = redirectDelegate.takeRejectedURL() {
+                throw MapAcquisitionError.untrustedSourceURL(rejectedURL.absoluteString)
+            }
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw MapAcquisitionError.downloadFailed("The provider returned no HTTP response.")
+            }
+            try validateResponse(httpResponse)
+            lock.withLock {
+                self.response = httpResponse
+                expectedBytes = httpResponse.expectedContentLength > 0 ? UInt64(httpResponse.expectedContentLength) : 0
+            }
+            completionHandler(.allow)
+        } catch {
+            record(error)
+            completionHandler(.cancel)
+        }
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        let progress: MapDownloadProgress? = lock.withLock {
+            guard failure == nil else { return nil }
+            if let maximumBytes, receivedBytes + UInt64(data.count) > maximumBytes {
+                failure = MapAcquisitionError.invalidPackage("The BBBike source exceeded its reviewed size.")
+                return nil
+            }
+            do {
+                try fileHandle.write(contentsOf: data)
+            } catch {
+                failure = error
+                return nil
+            }
+            receivedBytes += UInt64(data.count)
+            // Keep the previous cadence: at most one update per 64 KiB.
+            guard receivedBytes - reportedBytes >= 64 * 1024 else { return nil }
+            reportedBytes = receivedBytes
+            return MapDownloadProgress(bytesDownloaded: receivedBytes, totalBytes: expectedBytes,
+                                       bytesPerSecond: speedEstimator.update(bytes: receivedBytes))
+        }
+        if lock.withLock({ failure != nil }) {
+            dataTask.cancel()
+            return
+        }
+        if let progress { onProgress?(progress) }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        let outcome: Result<HTTPURLResponse, Error> = lock.withLock {
+            if let failure { return .failure(failure) }
+            if let error { return .failure(error) }
+            guard let response else {
+                return .failure(MapAcquisitionError.downloadFailed("The provider returned no HTTP response."))
+            }
+            return .success(response)
+        }
+        if case .success = outcome {
+            let final: MapDownloadProgress = lock.withLock {
+                MapDownloadProgress(bytesDownloaded: receivedBytes, totalBytes: expectedBytes,
+                                    bytesPerSecond: speedEstimator.update(bytes: receivedBytes))
+            }
+            onProgress?(final)
+        }
+        let continuation = lock.withLock { () -> CheckedContinuation<HTTPURLResponse, Error>? in
+            defer { self.continuation = nil }
+            return self.continuation
+        }
+        continuation?.resume(with: outcome)
+    }
+
+    private func record(_ error: Error) {
+        lock.withLock { if failure == nil { failure = error } }
+    }
+}
+
 struct MapPackageDownloadResponse: Sendable, Equatable {
     let statusCode: Int
     let temporaryFileURL: URL
@@ -554,85 +731,51 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
             request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
         }
         let redirectDelegate = ReviewedProviderRedirectDelegate(policy: sourcePolicy)
-        let session = URLSession(
-            configuration: sessionConfiguration(),
-            delegate: redirectDelegate,
-            delegateQueue: nil
-        )
-        defer { session.finishTasksAndInvalidate() }
+
+        let temporaryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(MapAcquisitionWorkspace.temporaryDownloadPrefix)\(UUID().uuidString)")
+        guard FileManager.default.createFile(atPath: temporaryURL.path, contents: nil) else {
+            throw MapAcquisitionError.downloadFailed("A local download file could not be created.")
+        }
+        var keepTemporaryFile = false
+        defer {
+            if !keepTemporaryFile {
+                try? FileManager.default.removeItem(at: temporaryURL)
+            }
+        }
 
         do {
-            let (bytes, response) = try await session.bytes(for: request)
-            if let rejectedURL = redirectDelegate.takeRejectedURL() {
-                throw MapAcquisitionError.untrustedSourceURL(rejectedURL.absoluteString)
-            }
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw MapAcquisitionError.downloadFailed("The provider returned no HTTP response.")
-            }
-            if let finalURL = httpResponse.url {
-                try sourcePolicy.validate(finalURL)
-            }
-
-            if let sourceProof {
-                guard httpResponse.statusCode == 200,
-                      httpResponse.url == sourceProof.sourceURL,
-                      httpResponse.value(forHTTPHeaderField: "ETag") == sourceProof.etag,
-                      httpResponse.value(forHTTPHeaderField: "Last-Modified") == sourceProof.lastModified,
-                      httpResponse.expectedContentLength == Int64(sourceProof.downloadSizeBytes) else {
-                    throw MapAcquisitionError.invalidPackage("The BBBike source changed. Refresh the catalog.")
-                }
-            }
-            let temporaryURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("terento-map-download-\(UUID().uuidString)")
-            guard FileManager.default.createFile(atPath: temporaryURL.path, contents: nil) else {
-                throw MapAcquisitionError.downloadFailed("A local download file could not be created.")
-            }
-
-            var keepTemporaryFile = false
-            defer {
-                if !keepTemporaryFile {
-                    try? FileManager.default.removeItem(at: temporaryURL)
-                }
-            }
-
             let handle = try FileHandle(forWritingTo: temporaryURL)
             defer { try? handle.close() }
-
-            let expectedBytes = httpResponse.expectedContentLength > 0
-                ? UInt64(httpResponse.expectedContentLength)
-                : 0
-            var speedEstimator = TransferSpeedEstimator()
-            var downloadedBytes: UInt64 = 0
-            var buffer = Data()
-            buffer.reserveCapacity(64 * 1024)
-
-            for try await byte in bytes {
-                if let sourceProof, downloadedBytes + UInt64(buffer.count) >= sourceProof.downloadSizeBytes {
-                    throw MapAcquisitionError.invalidPackage("The BBBike source exceeded its reviewed size.")
-                }
-                buffer.append(byte)
-                if buffer.count >= 64 * 1024 {
-                    try handle.write(contentsOf: buffer)
-                    downloadedBytes += UInt64(buffer.count)
-                    buffer.removeAll(keepingCapacity: true)
-                    onProgress?(Self.progress(
-                        bytesDownloaded: downloadedBytes,
-                        totalBytes: expectedBytes,
-                        speedEstimator: &speedEstimator
-                    ))
-                }
-            }
-
-            if !buffer.isEmpty {
-                try handle.write(contentsOf: buffer)
-                downloadedBytes += UInt64(buffer.count)
-            }
-
-            onProgress?(Self.progress(
-                bytesDownloaded: downloadedBytes,
-                totalBytes: expectedBytes,
-                speedEstimator: &speedEstimator
-            ))
+            // URLSession delivers the body in chunks; each chunk is written as
+            // it arrives instead of awaiting every byte.
+            let streaming = StreamingDownloadDelegate(
+                redirectDelegate: redirectDelegate,
+                fileHandle: handle,
+                maximumBytes: sourceProof?.downloadSizeBytes,
+                validateResponse: { httpResponse in
+                    if let finalURL = httpResponse.url {
+                        try sourcePolicy.validate(finalURL)
+                    }
+                    if let sourceProof {
+                        guard httpResponse.statusCode == 200,
+                              httpResponse.url == sourceProof.sourceURL,
+                              httpResponse.value(forHTTPHeaderField: "ETag") == sourceProof.etag,
+                              httpResponse.value(forHTTPHeaderField: "Last-Modified") == sourceProof.lastModified,
+                              httpResponse.expectedContentLength == Int64(sourceProof.downloadSizeBytes) else {
+                            throw MapAcquisitionError.invalidPackage("The BBBike source changed. Refresh the catalog.")
+                        }
+                    }
+                },
+                onProgress: onProgress
+            )
+            let session = URLSession(
+                configuration: sessionConfiguration(),
+                delegate: streaming,
+                delegateQueue: nil
+            )
+            defer { session.finishTasksAndInvalidate() }
+            let httpResponse = try await streaming.run(request: request, session: session)
 
             keepTemporaryFile = true
             return MapPackageDownloadResponse(
@@ -644,7 +787,12 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         } catch let error as URLError {
             // Keep structured network failures for the provider-aware acquisition boundary.
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
+            if MacStorageCheck.isOutOfSpace(error) {
+                throw MapAcquisitionError.insufficientMacStorage(requiredBytes: nil)
+            }
             throw MapAcquisitionError.downloadFailed(error.localizedDescription)
         }
     }
@@ -724,6 +872,9 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
                 data: errorPipe.fileHandleForReading.readDataToEndOfFile(),
                 encoding: .utf8
             )?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if message?.localizedCaseInsensitiveContains("No space left on device") == true {
+                throw MapAcquisitionError.insufficientMacStorage(requiredBytes: nil)
+            }
             throw MapAcquisitionError.extractionFailed(
                 message.flatMap { $0.isEmpty ? nil : $0 }
                     ?? "The ZIP archive could not be extracted."
@@ -760,6 +911,42 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
 
 struct MapAcquisitionWorkspace: Sendable {
     private static let ownerFilename = ".terento-owner"
+    /// Prefix of in-flight download files in the temporary directory.
+    static let temporaryDownloadPrefix = "terento-map-download-"
+
+    /// Removes download files left in the temporary directory by a crash or
+    /// forced quit. Only Terento's own prefix is considered, and files touched
+    /// within the last hour are kept.
+    @discardableResult
+    static func scavengeStaleTemporaryDownloads(
+        directory: URL = FileManager.default.temporaryDirectory,
+        olderThan age: TimeInterval = 60 * 60,
+        now: Date = Date()
+    ) -> Int {
+        let fileManager = FileManager.default
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey, .contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return 0
+        }
+        var removed = 0
+        for entry in entries where entry.lastPathComponent.hasPrefix(temporaryDownloadPrefix) {
+            guard let values = try? entry.resourceValues(
+                      forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .contentModificationDateKey]),
+                  values.isRegularFile == true,
+                  values.isSymbolicLink != true,
+                  let modifiedAt = values.contentModificationDate,
+                  now.timeIntervalSince(modifiedAt) > age else {
+                continue
+            }
+            if (try? fileManager.removeItem(at: entry)) != nil {
+                removed += 1
+            }
+        }
+        return removed
+    }
     private static let logger = Logger(
         subsystem: "app.terento.native-connectivity-poc",
         category: "MapAcquisition"
@@ -1245,7 +1432,8 @@ struct MapPackageAcquirer: Sendable {
         workspace requestedWorkspace: MapAcquisitionWorkspace? = nil,
         onDownloadStart: (@Sendable () async -> Void)? = nil,
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)? = nil,
-        onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)? = nil
+        onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)? = nil,
+        onValidationProgress: (@Sendable (Double) -> Void)? = nil
     ) async throws -> ValidatedMapArtifact {
         state(.resolvingPackage, onStateChange)
         let acquisitionPackage = selectedArtifact.map {
@@ -1297,7 +1485,8 @@ struct MapPackageAcquirer: Sendable {
                 workspace: acquisitionWorkspace,
                 onDownloadStart: onDownloadStart,
                 onStateChange: onStateChange,
-                onDownloadProgress: onDownloadProgress
+                onDownloadProgress: onDownloadProgress,
+                onValidationProgress: onValidationProgress
             )
             handedOff = true
             return artifact
@@ -1314,7 +1503,8 @@ struct MapPackageAcquirer: Sendable {
         workspace: MapAcquisitionWorkspace,
         onDownloadStart: (@Sendable () async -> Void)?,
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)?,
-        onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)?
+        onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)?,
+        onValidationProgress: (@Sendable (Double) -> Void)?
     ) async throws -> ValidatedMapArtifact {
         guard let sourceURL = selectedArtifact?.sourceURL ?? package.downloadURL else {
             throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
@@ -1379,6 +1569,10 @@ struct MapPackageAcquirer: Sendable {
         do {
             try fileManager.copyItem(at: response.temporaryFileURL, to: workspace.downloadURL)
         } catch {
+            if MacStorageCheck.isOutOfSpace(error) {
+                let size = (try? fileSize(of: response.temporaryFileURL)).map(MacStorageCheck.requiredBytes(forDownloadBytes:))
+                throw MapAcquisitionError.insufficientMacStorage(requiredBytes: size)
+            }
             throw MapAcquisitionError.downloadFailed("The downloaded file could not be stored safely.")
         }
 
@@ -1460,7 +1654,8 @@ struct MapPackageAcquirer: Sendable {
         do {
             validatedSource = try MapSourceValidator().validate(
                 fileURL: imgURL,
-                expectedPackage: package
+                expectedPackage: package,
+                onProgress: onValidationProgress
             )
         } catch MapSourceValidationError.identityMismatch {
             throw MapAcquisitionError.sourceIdentityMismatch(
@@ -1672,7 +1867,7 @@ struct MapPackageAcquirer: Sendable {
              .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
              .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound,
              .ambiguousIMG, .workspaceFailed, .untrustedSourceURL,
-             .customMapNotConfirmed:
+             .customMapNotConfirmed, .insufficientMacStorage:
             return false
         }
     }

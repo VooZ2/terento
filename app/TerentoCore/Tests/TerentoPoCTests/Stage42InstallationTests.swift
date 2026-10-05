@@ -339,6 +339,7 @@ struct Stage42InstallationTests {
         passed += testReadFailureDoesNotClaimDisconnect()
         passed += testPreWriteInventoryFailureIsPreflightAndNoWrite()
         passed += testWriteFailureIsNotSuccess()
+        passed += testWriteBoundaryIsTheDeviceWrite()
         passed += testDisconnectDuringWriteFails()
         passed += testPartialObjectIsCleanedAfterWriteDisconnect()
         passed += testMissingRemoteIsFailure()
@@ -368,6 +369,8 @@ struct Stage42InstallationTests {
         passed += testRuntimeChurnIsDiagnostic()
         passed += testDeclinedCleanupPreservesEvidence()
         passed += testTargetStorageMismatch()
+        passed += testDuplicateMusicPathsStayProtected()
+        passed += testHeavyWatchInventoryCompletes()
         #if TERENTO_PRODUCTION_CLEANUP_TEST
         passed += try testProductionCleanupRefusalRetainsDurableEvidence()
         #endif
@@ -653,10 +656,21 @@ struct Stage42InstallationTests {
         harness.transport.readBackMode = .hashMismatch
         harness.transport.declineCleanup = true
         let result = harness.run()
-        return expect(result.failure == .cleanupFailed && result.originalFailure != nil
+        var passed = expect(result.failure == .cleanupFailed && result.originalFailure != nil
             && !result.diagnostics.cleanupAttempted && !result.diagnostics.cleanupSucceeded
             && harness.transport.deleteCount == 0 && harness.recovery.records.count == 1,
             "unproven cleanup identity refuses mutation and retains recovery plus original failure")
+        passed += expect(result.primaryFailure == .hashMismatch && result.primaryFailure == result.originalFailure
+            && result.mayHaveLeftMapOnWatch,
+            "the user sees the original verification cause, plus a possible leftover map, not cleanup failure")
+        let clean = makeHarness().run()
+        passed += expect(clean.primaryFailure == nil && !clean.mayHaveLeftMapOnWatch,
+            "a verified install reports no failure and no leftover")
+        let prewrite = makeHarness()
+        let blocked = prewrite.run(configureReader: { $0.inventoryError = .operationFailed("stall", createdItemID: nil); $0.inventoryErrorRead = 0 })
+        passed += expect(blocked.primaryFailure == blocked.failure && !blocked.mayHaveLeftMapOnWatch,
+            "a pre-write failure keeps its own cause and cannot leave a map behind")
+        return passed
     }
 
     #if TERENTO_PRODUCTION_CLEANUP_TEST
@@ -757,6 +771,95 @@ struct Stage42InstallationTests {
                 && harness.manifest.entries.isEmpty,
                 "initial inventory \(changedSize ? "ambiguous path" : "duplicate stable identity") blocks before write")
         }
+        return passed
+    }
+
+    /// Music sync tools can list two objects under one name. Those plain files
+    /// outside /GARMIN stay protected (multiset comparison) instead of blocking
+    /// every install as ambiguous.
+    private static func testDuplicateMusicPathsStayProtected() -> Int {
+        func file(_ id: UInt32, _ path: String, folder: Bool = false, size: UInt64 = 10) -> DeviceFile {
+            DeviceFile(itemID: id, parentID: 9, storageID: 1, path: path,
+                filename: String(path.split(separator: "/").last!), sizeBytes: size, isFolder: folder)
+        }
+        let music = [file(2000, "/Music", folder: true, size: 0),
+                     file(2001, "/Music/Track.mp3", size: 5_000),
+                     file(2002, "/Music/Track.mp3", size: 5_000),
+                     file(2003, "/Music/track.MP3", size: 7_000)]
+        var passed = 0
+
+        let harness = Harness(beforeFilesTransform: { $0 + music })
+        let recorder = DiagnosticRecorder()
+        let result = harness.run(configureReader: { reader in
+            reader.files += music.map { changedFile($0, itemID: $0.itemID + 500, parentID: 77) }
+        }, diagnostic: recorder.record)
+        passed += expect(result.isSuccess && harness.transport.writeCount == 1 && harness.transport.deleteCount == 0
+            && result.diagnostics.existingFilesProtectionPassed && result.diagnostics.unrelatedFilesProtectionPassed
+            && recorder.text.contains("prewrite_inventory_duplicates") && recorder.text.contains("postwrite_inventory_duplicates")
+            && recorder.text.contains("duplicates=1"),
+            "duplicate and alias music paths do not block a verified install and are counted as a diagnostic")
+
+        let removed = Harness(beforeFilesTransform: { $0 + music })
+        let removedResult = removed.run(configureReader: { reader in
+            reader.files += music.filter { $0.itemID != 2002 }
+        })
+        passed += expect(removedResult.failure == .protectionViolation && removed.manifest.entries.isEmpty,
+            "removing one of two duplicate music entries is still a protection violation")
+
+        let resized = Harness(beforeFilesTransform: { $0 + music })
+        let resizedResult = resized.run(configureReader: { reader in
+            reader.files += music.map { $0.itemID == 2002 ? changedFile($0, sizeBytes: 6_000) : $0 }
+        })
+        passed += expect(resizedResult.failure == .protectionViolation && resized.manifest.entries.isEmpty,
+            "changing one duplicate music entry is still a protection violation")
+
+        let prewrite = Harness(beforeFilesTransform: { $0 + music })
+        let prewriteResult = prewrite.run(configureReader: { reader in
+            reader.initialFiles = Harness.makeBeforeFiles(installedFrance: false) + music.filter { $0.itemID != 2001 }
+        })
+        passed += expect(prewriteResult.failure == .protectionViolation
+            && prewriteResult.failureContext?.boundary == .prewriteProtection && prewrite.transport.writeCount == 0,
+            "a duplicate music entry disappearing before the write blocks without writing")
+
+        for (label, extra) in [
+            ("GARMIN activity", [file(3000, "/GARMIN/Activity", folder: true, size: 0),
+                                 file(3001, "/GARMIN/Activity/run.fit"), file(3002, "/GARMIN/Activity/run.fit")]),
+            ("map outside GARMIN", [file(3000, "/Map", folder: true, size: 0),
+                                    file(3001, "/Map/extra.img"), file(3002, "/Map/extra.img")]),
+            ("folder alias", [file(3000, "/Music", folder: true, size: 0), file(3001, "/music", folder: true, size: 0)])
+        ] {
+            let strict = Harness(beforeFilesTransform: { $0 + extra })
+            let strictResult = strict.run(configureReader: { reader in reader.files += extra })
+            passed += expect(strictResult.failure == .protectionViolation
+                && strictResult.failureContext?.protection?.protectionReason == .inventoryAmbiguous
+                && strict.transport.writeCount == 0,
+                "duplicate \(label) paths still fail closed before writing")
+        }
+        return passed
+    }
+
+    /// A heavy watch (activities, monitor data and music) with ~12k objects
+    /// completes protection checks; the worker bound scales with that count.
+    private static func testHeavyWatchInventoryCompletes() -> Int {
+        var extra: [DeviceFile] = [
+            DeviceFile(itemID: 10_000, parentID: 9, storageID: 1, path: "/GARMIN/Activity", filename: "Activity", sizeBytes: 0, isFolder: true),
+            DeviceFile(itemID: 10_001, parentID: 0, storageID: 1, path: "/Music", filename: "Music", sizeBytes: 0, isFolder: true)
+        ]
+        for index in 0..<6_000 {
+            extra.append(DeviceFile(itemID: UInt32(20_000 + index), parentID: 10_000, storageID: 1,
+                path: "/GARMIN/Activity/\(index).fit", filename: "\(index).fit", sizeBytes: UInt64(1_000 + index), isFolder: false))
+            extra.append(DeviceFile(itemID: UInt32(40_000 + index), parentID: 10_001, storageID: 1,
+                path: "/Music/\(index).mp3", filename: "\(index).mp3", sizeBytes: UInt64(3_000_000 + index), isFolder: false))
+        }
+        let harness = Harness(beforeFilesTransform: { $0 + extra })
+        let started = Date()
+        let result = harness.run(configureReader: { reader in reader.files += extra })
+        let elapsed = Date().timeIntervalSince(started)
+        var passed = expect(result.isSuccess && harness.transport.writeCount == 1
+            && result.diagnostics.unrelatedFilesProtectionPassed && elapsed < 20,
+            "a 12k-object watch completes protection checks without a fixed 60 s inventory ceiling")
+        passed += expect(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: harness.request.beforeDeviceFiles.count) > 60,
+            "the pre-write inventory bound grows with the baseline object count")
         return passed
     }
 
@@ -1359,6 +1462,23 @@ struct Stage42InstallationTests {
                 && harness.transport.deleteCount == 0
                 && !result.diagnostics.cleanupAttempted,
             "write failure without a new object neither reports success nor performs cleanup"
+        )
+    }
+
+    private static func testWriteBoundaryIsTheDeviceWrite() -> Int {
+        let localFailure = makeHarness()
+        localFailure.recovery.shouldFail = true
+        let local = localFailure.run()
+        let device = makeHarness()
+        device.transport.writeError = .operationFailed("write failed", createdItemID: nil)
+        let written = device.run()
+        return expect(
+            local.failure == .manifestFailed
+                && !local.diagnostics.writeStarted
+                && localFailure.transport.writeCount == 0
+                && written.diagnostics.writeStarted
+                && device.transport.writeCount == 1,
+            "a local recovery-record failure is not a started write; a failed device write at zero bytes is"
         )
     }
 

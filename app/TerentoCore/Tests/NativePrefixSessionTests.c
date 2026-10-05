@@ -48,7 +48,32 @@ static LIBMTP_file_t *entry(const char *name,uint32_t id,int folder,uint64_t siz
     f->parent_id=90; f->storage_id=1; f->filetype=folder?LIBMTP_FILETYPE_FOLDER:LIBMTP_FILETYPE_UNKNOWN;
     f->filesize=size; return f;
 }
+/* Scenario 18: a heavy watch with years of activities and a music library,
+ * including two music objects listed under one name. */
+static LIBMTP_file_t *heavy_files(uint32_t parent) {
+    LIBMTP_file_t *head=NULL, **tail=&head;
+    char name[64];
+    if(parent==LIBMTP_FILES_AND_FOLDERS_ROOT) {
+        *tail=entry("GARMIN",90,1,0); tail=&(*tail)->next;
+        *tail=entry("Music",91,1,0); return head;
+    }
+    if(parent==90) return entry("Activity",92,1,0);
+    if(parent==92) {
+        for(int i=0;i<6000;++i) { snprintf(name,sizeof(name),"%d.fit",i);
+            *tail=entry(name,1000+i,0,1000+i); tail=&(*tail)->next; }
+        return head;
+    }
+    if(parent==91) {
+        for(int i=0;i<6000;++i) { snprintf(name,sizeof(name),"track-%d.mp3",i);
+            *tail=entry(name,10000+i,0,3000000+i); tail=&(*tail)->next; }
+        *tail=entry("dup.mp3",20000,0,5000); tail=&(*tail)->next;
+        *tail=entry("dup.mp3",20001,0,5000);
+        return head;
+    }
+    return NULL;
+}
 static LIBMTP_file_t *fake_files(LIBMTP_mtpdevice_t *d,uint32_t store,uint32_t parent) {
+    if(scenario==18) return heavy_files(parent);
     if(parent==LIBMTP_FILES_AND_FOLDERS_ROOT) return entry(scenario==16?"Garmin":scenario==17?"garmin":"GARMIN",90,1,0);
     if(parent!=90) return NULL;
     LIBMTP_file_t *other=entry("unrelated.img",10,0,8);
@@ -140,6 +165,17 @@ int main(void) {
     assert(terento_mtp_read_file_inventory_bound(&p,&inventory,error,sizeof(error),&category)==0);
     assert(inventory.file_count==4 && reads==0); terento_mtp_free_file_inventory(&inventory);
     puts("PASS: bound raw inventory validates the opened physical device");
+    terento_prefix_test_reset(18);
+    assert(terento_mtp_read_file_inventory_bound(&p,&inventory,error,sizeof(error),&category)==0);
+    assert(inventory.file_count==12005 && reads==0 && opens==1 && closes==1);
+    size_t duplicates=0, activities=0;
+    for(size_t i=0;i<inventory.file_count;++i) {
+        if(!strcmp(inventory.files[i].path,"/Music/dup.mp3")) ++duplicates;
+        if(!strncmp(inventory.files[i].path,"/GARMIN/Activity/",17)) ++activities;
+    }
+    assert(duplicates==2 && activities==6000);
+    terento_mtp_free_file_inventory(&inventory);
+    puts("PASS: heavy-watch inventory walks 12,005 objects and surfaces duplicate music entries unchanged");
     return 0;
 }
 #endif

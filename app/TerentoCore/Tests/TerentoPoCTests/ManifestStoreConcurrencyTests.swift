@@ -8,7 +8,8 @@ struct ManifestStoreConcurrencyTests {
         try testUnsafeDeviceKeyIsRejected()
         try testPhysicalWatchKeysAreStableAndDistinct()
         try testCatalogIdentityPreservesLegacyKeys()
-        print("PASS: 5 manifest store tests")
+        try testUnreadableManifestIsQuarantinedNotDeleted()
+        print("PASS: 6 manifest store tests")
     }
 
     private static func testConcurrentReadModifyWritePreservesAllEntries() throws {
@@ -55,6 +56,52 @@ struct ManifestStoreConcurrencyTests {
         }
 
         print("PASS: concurrent manifest read-modify-write preserves all entries")
+    }
+
+    private static func testUnreadableManifestIsQuarantinedNotDeleted() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-manifest-quarantine-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalTerentoManifestStore(rootDirectory: root)
+        let version = try requireVersion()
+        let entry = makeEntry(version: version, installedAt: 100, suffix: "fresh")
+        let manifestURL = root.appendingPathComponent("Terento/devices/\(entry.deviceKey)/manifest.json")
+
+        guard try store.quarantineUnreadableManifest(deviceKey: entry.deviceKey) == nil else {
+            throw TestFailure(message: "an absent manifest must not be quarantined")
+        }
+        try store.record(entry)
+        guard try store.quarantineUnreadableManifest(deviceKey: entry.deviceKey) == nil,
+              try store.read(deviceKey: entry.deviceKey)?.entries.count == 1 else {
+            throw TestFailure(message: "a readable manifest must be left untouched")
+        }
+
+        let corrupt = Data("{ not json".utf8)
+        try corrupt.write(to: manifestURL)
+        do {
+            try store.record(entry)
+            throw TestFailure(message: "an unreadable manifest must still fail closed on record")
+        } catch TerentoManifestStoreError.unreadableManifest {}
+
+        let now = Date(timeIntervalSince1970: 1_790_000_000)
+        guard let quarantined = try store.quarantineUnreadableManifest(deviceKey: entry.deviceKey, now: now) else {
+            throw TestFailure(message: "an unreadable manifest must be quarantined")
+        }
+        guard quarantined.lastPathComponent.hasPrefix("manifest.corrupt-2026"),
+              try Data(contentsOf: quarantined) == corrupt,
+              !FileManager.default.fileExists(atPath: manifestURL.path) else {
+            throw TestFailure(message: "quarantine must rename with the date and keep the original bytes")
+        }
+        try corrupt.write(to: manifestURL)
+        guard let second = try store.quarantineUnreadableManifest(deviceKey: entry.deviceKey, now: now),
+              second != quarantined, FileManager.default.fileExists(atPath: quarantined.path) else {
+            throw TestFailure(message: "a second quarantine on the same date must not overwrite the first")
+        }
+        try store.record(entry)
+        guard try store.read(deviceKey: entry.deviceKey)?.entries == [entry] else {
+            throw TestFailure(message: "a fresh record works after quarantine")
+        }
+        print("PASS: an unreadable manifest is quarantined with its date, never deleted, and a fresh record works")
     }
 
     private static func testOlderEntryCannotReplaceNewerEntry() throws {

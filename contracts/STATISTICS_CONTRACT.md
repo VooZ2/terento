@@ -146,6 +146,16 @@ result, including `operationId` and `mapResultIndex`, plus optional-component
 outcomes and write-boundary facts. The two streams may describe the same result
 but are independently consented, delivered, stored, and deduplicated.
 
+Producer rule for fresh map results (app candidate after beta.18): the map stream
+emits `INSTALL_SUCCEEDED` when the selected map's main component is verified, even
+if an optional component failed; that warning remains a diagnostic fact.
+`INSTALL_FAILED` is emitted only when the main component reached its device write
+boundary and failed. Identity, preflight, acquisition and other pre-write failures
+emit no `INSTALL_*` map event; a provider download keeps its own acquisition
+terminal. Maps completed earlier in a batch keep their result when a later
+boundary read fails. Older clients' events are not reclassified, and the read
+model's write-boundary filters above still apply to them.
+
 When both streams contain a trustworthy shared operation identity, linkage also
 requires an unambiguous provider/region and map/package match. An operation ID
 alone is not enough; provider + region alone is not enough when sibling maps or

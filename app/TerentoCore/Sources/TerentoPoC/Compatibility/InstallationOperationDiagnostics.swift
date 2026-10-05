@@ -160,6 +160,9 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
     }
 
     private func enqueue(_ events: [InstallationEvidenceEvent]) {
+        // Persist synchronously at the result boundary, like map events, so a
+        // quit before the delivery task runs cannot lose the diagnostics.
+        controller.persistResults(events)
         // This task belongs to delivery, not to the screen or cancelled native task.
         let controller = controller
         let task = Task { @MainActor in

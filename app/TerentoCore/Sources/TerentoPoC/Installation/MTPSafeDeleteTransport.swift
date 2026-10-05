@@ -104,6 +104,8 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             switch error {
             case .deviceAbsent:
                 throw SafeDeleteTransportError.deviceDisconnected(error.localizedDescription)
+            case .multipleGarminDevices:
+                throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
             case .readFailed(let message), .contextual(let message, _):
                 if isMissing(message) {
                     throw SafeDeleteTransportError.objectNotFound
@@ -223,6 +225,11 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
     }
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
+        try deleteExactObject(target, onProgress: nil)
+    }
+
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
         do {
             let hash: String
             let purpose: MapMutationPurpose
@@ -250,7 +257,8 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
                 expectedItemID: target.objectID,
                 expectedSizeBytes: target.expectedSizeBytes,
                 expectedSHA256: hash,
-                purpose: purpose
+                purpose: purpose,
+                onProgress: onProgress
             )
         } catch let error as InstallationTransportError {
             if error.isConfirmedDeviceDisconnected {

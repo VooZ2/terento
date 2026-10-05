@@ -250,6 +250,7 @@ enum MapLifecycleOperationPhase: Equatable, Sendable {
     case updating
     case verifying
     case downloading
+    case preparing
     case checking
     case installing
     case removingOld
@@ -265,6 +266,7 @@ enum MapLifecycleOperationPhase: Equatable, Sendable {
         case .updating: return "Updating"
         case .verifying: return "Verifying"
         case .downloading: return "Downloading"
+        case .preparing: return "Preparing"
         case .checking: return "Checking"
         case .installing: return "Installing"
         case .removingOld: return "Removing old"
@@ -281,4 +283,48 @@ struct MapLifecycleOperationState: Equatable, Sendable {
     let phase: MapLifecycleOperationPhase
     let progress: SafeUpdateProgress?
     let message: String
+}
+
+/// Decides when the Mac must stay awake and when quitting would interrupt a
+/// device write. Pure presentation policy; it starts or stops nothing itself.
+enum DeviceOperationActivityPolicy {
+    /// Download, preparation, write, verification, Update and Remove keep the
+    /// Mac from idle-sleeping; a sleeping Mac interrupts USB transfers.
+    static func keepsMacAwake(
+        installationPhase: InstallationProcessPhase,
+        mapPreparationActive: Bool,
+        lifecyclePhases: [MapLifecycleOperationPhase]
+    ) -> Bool {
+        let installActive: Bool
+        switch installationPhase {
+        case .downloading, .preparing, .awaitingConfirmation, .installing, .finishing:
+            installActive = true
+        case .idle, .completed, .failed:
+            installActive = false
+        }
+        return installActive || mapPreparationActive || lifecyclePhases.contains { phase in
+            switch phase {
+            case .removing, .updating, .verifying, .downloading, .preparing, .checking,
+                 .installing, .removingOld, .finishing:
+                return true
+            case .idle, .awaitingConfirmation, .completed, .failed:
+                return false
+            }
+        }
+    }
+
+    /// True while quitting could leave an incomplete map on the watch.
+    static func writesToDevice(
+        mapInstallActive: Bool,
+        lifecyclePhases: [MapLifecycleOperationPhase]
+    ) -> Bool {
+        mapInstallActive || lifecyclePhases.contains { phase in
+            switch phase {
+            case .removing, .updating, .verifying, .installing, .removingOld, .finishing:
+                return true
+            case .idle, .awaitingConfirmation, .downloading, .preparing, .checking, .completed, .failed:
+                return false
+            }
+        }
+    }
 }

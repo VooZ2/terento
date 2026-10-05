@@ -38,7 +38,7 @@ struct MTPTransport: Sendable {
                 if count == 0 {
                     throw MTPTransportError.deviceAbsent
                 }
-                throw MTPTransportError.readFailed("More than one Garmin MTP device connected")
+                throw MTPTransportError.multipleGarminDevices
             }
 
             // The probe intentionally does not open an MTP session. The
@@ -57,6 +57,17 @@ struct MTPTransport: Sendable {
             lifecycleLease: lifecycleLease
         ) {
             try garminUSBDeviceCount() > 0
+        }
+    }
+
+    /// USB-only count used by device discovery. It never opens an MTP
+    /// session, so it can poll while no watch is connected.
+    func countGarminUSBDevices() throws -> Int {
+        try operationGate.withOperation(
+            kind: .presence,
+            lifecycleLease: lifecycleLease
+        ) {
+            try garminUSBDeviceCount()
         }
     }
 
@@ -423,6 +434,14 @@ protocol GarminUSBPresenceReader: Sendable {
 
 extension MTPTransport: GarminUSBPresenceReader {}
 
+/// USB-only device count used while waiting for a watch. Like
+/// `GarminUSBPresenceReader`, it does not identify, open or modify a device.
+protocol GarminUSBDeviceCounter: Sendable {
+    func countGarminUSBDevices() throws -> Int
+}
+
+extension MTPTransport: GarminUSBDeviceCounter {}
+
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
@@ -450,6 +469,7 @@ extension MTPTransport: DeviceFileReader {}
 enum MTPTransportError: LocalizedError, Sendable, InstallationFailureContextProviding {
     case readFailed(String)
     case deviceAbsent
+    case multipleGarminDevices
     case contextual(message: String, context: InstallationFailureContext)
 
     var failureContext: InstallationFailureContext? {
@@ -468,6 +488,8 @@ enum MTPTransportError: LocalizedError, Sendable, InstallationFailureContextProv
             return message
         case .deviceAbsent:
             return "No Garmin MTP device connected"
+        case .multipleGarminDevices:
+            return "More than one Garmin MTP device connected"
         case .contextual(let message, _):
             return message
         }

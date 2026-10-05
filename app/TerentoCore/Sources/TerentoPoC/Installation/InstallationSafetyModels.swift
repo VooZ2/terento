@@ -31,15 +31,15 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .existingMapConflict:
             return "This map is already on the Garmin device. No replacement was attempted."
         case .sourceArtifactInvalid:
-            return "The prepared map did not match the validated source artifact."
+            return "The downloaded map didn't pass Terento's checks, so it wasn't installed. Try installing it again."
         case .insufficientSpace:
             return "There is not enough free space for a safe installation."
         case .unknownInstallSize:
-            return "The final Garmin install size must be calculated before installation."
+            return "Terento couldn't work out how much space this map needs on the watch, so it wasn't installed."
         case .unknownInstallTarget:
             return "Terento could not verify a safe place to install maps. Reconnect your device and try again."
         case .stableWatchIdentityUnavailable:
-            return "Terento could not establish the stable local watch identity required to manage this installation safely."
+            return "Terento couldn't identify this watch reliably, so it didn't install the map. Unplug the watch, plug it back in, and try again."
         case .mapIdentityAmbiguous:
             return "An existing map could not be identified safely."
         case .downloadFailed:
@@ -75,9 +75,14 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .installationAuthorization:
             return "Map installation is not available for this device in Terento."
         case .installationAuthorizationUnavailable:
-            return "Terento could not verify this device's installation authorization right now. Check your connection and try again."
+            return "Terento couldn't check whether this watch can install maps. Check your internet connection and try again."
         }
     }
+}
+
+extension InstallationFailure {
+    /// One plain follow-up when a map file may remain after a failed install.
+    static let leftoverMapFollowUp = "The map file may be on your watch. Open Manage maps to remove it, then install it again."
 }
 
 enum InstallMapOwnership: String, Codable, Equatable, Sendable {
