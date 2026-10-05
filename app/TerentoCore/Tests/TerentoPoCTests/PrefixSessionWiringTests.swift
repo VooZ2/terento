@@ -56,5 +56,13 @@ struct PrefixSessionWiringTests {
             fatalError("ambiguous batch member accepted")
         } catch { precondition(fixtureReads() == 0) }
         print("PASS: actual Swift prefix transport uses stable descriptors, correct correlation and atomic batch resolution")
+        resetFixture(18)
+        let heavy = try MTPTransport(operationGate: MTPOperationGate()).readFileInventory()
+        precondition(heavy.count == 12_005)
+        let protected = try ProtectedMapInventory(files: heavy)
+        precondition(protected.toleratedDuplicateLocationCount == 1 && protected.protected.count == heavy.count)
+        let bound = MTPFinishingWorker.inventoryTimeout(expectedObjectCount: heavy.count)
+        precondition(bound > 60 && bound < 600)
+        print("PASS: heavy-watch inventory with duplicate music stays protected; worker bound \(Int(bound)) s scales with 12,005 objects")
     }
 }

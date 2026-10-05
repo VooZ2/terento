@@ -1858,7 +1858,8 @@ final class MapEngine: ObservableObject {
                             let result = MapInstallationCoordinator.live(
                                 operationProfile: operationProfile,
                                 operationGate: operationGate,
-                                lifecycleLease: lease
+                                lifecycleLease: lease,
+                                expectedInventoryCount: inventory.deviceFiles.count
                             ).run(
                                 request,
                                 onProgress: { progress in progressRelay.send(progress) },

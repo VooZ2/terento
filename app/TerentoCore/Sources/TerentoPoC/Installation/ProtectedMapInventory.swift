@@ -15,6 +15,9 @@ struct ProtectedMapInventory: Sendable {
         let filename: String
         let sizeBytes: UInt64
         let isFolder: Bool
+        /// 0 for a unique location. Tolerated duplicate entries of one location
+        /// are numbered in canonical order, so set equality is multiset equality.
+        var occurrence: Int = 0
 
         var location: Location { Location(storageID: storageID, path: path) }
     }
@@ -35,13 +38,47 @@ struct ProtectedMapInventory: Sendable {
 
     let protected: Set<Key>
     let diagnostic: Set<Key>
+    /// Locations holding tolerated duplicate or alias entries (see below).
+    let toleratedDuplicateLocationCount: Int
     var protectedLocations: Set<Location> { Set(protected.map(\.location)) }
+
+    /// Duplicate or case-alias entries are tolerated only for plain files that
+    /// are outside `/GARMIN` and not map-classified (for example two music
+    /// tracks listed under one name). They stay protected and are compared as a
+    /// multiset, so any change to them still fails. Folders, map files on any
+    /// storage, and everything under `/GARMIN` (the write target, map
+    /// containers and runtime namespaces) keep failing closed.
+    static func toleratesDuplicateLocation(_ file: DeviceFile) -> Bool {
+        guard !file.isFolder else { return false }
+        let lower = file.path.lowercased()
+        guard lower != "/garmin", !lower.hasPrefix("/garmin/") else { return false }
+        let suffix = (file.filename as NSString).pathExtension.lowercased()
+        return !mapSuffixes.contains(suffix)
+    }
+
+    /// Number of locations whose duplicate or alias entries are tolerated, or
+    /// nil when the inventory has an untolerated duplicate or alias.
+    static func toleratedDuplicateLocations(in files: [DeviceFile]) -> Int? {
+        // An exact duplicate is also a case alias, so alias groups cover both.
+        var aliases: [Location: [DeviceFile]] = [:]
+        for file in files {
+            aliases[Location(storageID: file.storageID, path: file.path.lowercased()), default: []].append(file)
+        }
+        var tolerated = 0
+        for group in aliases.values where group.count > 1 {
+            guard group.allSatisfy(toleratesDuplicateLocation) else { return nil }
+            tolerated += 1
+        }
+        return tolerated
+    }
+
+    private static let mapSuffixes: Set<String> = ["img", "gma", "unl", "sid"]
 
     init(files: [DeviceFile], forcedLocations: Set<Location> = []) throws {
         var locations: [Location: DeviceFile] = [:]
-        var aliases = Set<Location>()
         var handles = Set<UInt32>()
-        for file in files {
+        var duplicates: [Location: [Int]] = [:]
+        for (index, file) in files.enumerated() {
             let components = file.path.split(separator: "/", omittingEmptySubsequences: false)
             guard file.storageID != 0, file.path.hasPrefix("/"), components.count >= 2,
                   !components.dropFirst().contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }),
@@ -50,15 +87,34 @@ struct ProtectedMapInventory: Sendable {
                   file.hasMatchingPathFilename else {
                 throw Invalid.malformedLocation
             }
-            let location = Location(storageID: file.storageID, path: file.path)
-            let alias = Location(storageID: file.storageID, path: file.path.lowercased())
-            guard locations[location] == nil, aliases.insert(alias).inserted else {
-                throw Invalid.ambiguousLocation
-            }
             guard file.itemID != 0, handles.insert(file.itemID).inserted else {
                 throw Invalid.ambiguousHandle
             }
+            let location = Location(storageID: file.storageID, path: file.path)
+            if locations[location] != nil {
+                duplicates[location, default: []].append(index)
+                continue
+            }
             locations[location] = file
+        }
+        // Exact and case-alias duplicates fail closed unless every entry of the
+        // group is a tolerated plain file outside the map scope.
+        guard let toleratedCount = Self.toleratedDuplicateLocations(in: files) else {
+            throw Invalid.ambiguousLocation
+        }
+        toleratedDuplicateLocationCount = toleratedCount
+
+        var keys = files.map { Self.key($0) }
+        for location in duplicates.keys {
+            let members = files.indices.filter {
+                files[$0].storageID == location.storageID && files[$0].path == location.path
+            }.sorted { lhs, rhs in
+                let a = files[lhs], b = files[rhs]
+                return (a.filename, a.sizeBytes) < (b.filename, b.sizeBytes)
+            }
+            for (occurrence, index) in members.enumerated() {
+                keys[index] = Self.key(files[index], occurrence: occurrence)
+            }
         }
 
         // Coherence is a property of the complete inventory, including runtime
@@ -91,8 +147,8 @@ struct ProtectedMapInventory: Sendable {
                 required.insert(ancestor)
             }
         }
-        protected = Set(files.filter { required.contains(Location(storageID: $0.storageID, path: $0.path)) }.map(Self.key))
-        diagnostic = Set(files.filter { !required.contains(Location(storageID: $0.storageID, path: $0.path)) }.map(Self.key))
+        protected = Set(keys.filter { required.contains($0.location) })
+        diagnostic = Set(keys.filter { !required.contains($0.location) })
     }
 
     func difference(from baseline: ProtectedMapInventory) -> Difference {
@@ -110,9 +166,9 @@ struct ProtectedMapInventory: Sendable {
         return protected == baseline.protected.subtracting([old]).union([new])
     }
 
-    private static func key(_ file: DeviceFile) -> Key {
+    private static func key(_ file: DeviceFile, occurrence: Int = 0) -> Key {
         Key(storageID: file.storageID, path: file.path, filename: file.filename,
-            sizeBytes: file.sizeBytes, isFolder: file.isFolder)
+            sizeBytes: file.sizeBytes, isFolder: file.isFolder, occurrence: occurrence)
     }
 
     private static func isObservedRuntimeObject(_ file: DeviceFile) -> Bool {
@@ -120,7 +176,7 @@ struct ProtectedMapInventory: Sendable {
         let suffix = (file.filename as NSString).pathExtension.lowercased()
         // Map evidence wins over runtime location, including malformed folder
         // objects bearing a map filename. This is a positive protection rule.
-        if ["img", "gma", "unl", "sid"].contains(suffix)
+        if mapSuffixes.contains(suffix)
             || lower == "/garmin/map" || lower.hasPrefix("/garmin/map/")
             || lower == "/garmin/sid" || lower.hasPrefix("/garmin/sid/") { return false }
         if file.path == "/GARMIN/GarminDevice.xml", !file.isFolder { return true }

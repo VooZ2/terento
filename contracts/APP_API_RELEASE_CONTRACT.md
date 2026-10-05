@@ -282,7 +282,9 @@ kind; session handles are not cross-session identity. Whole-device equality is
 not an installation invariant. Existing protection booleans describe the bounded
 protected scope, not proof that every device byte stayed fixed.
 Unknown objects remain protected; only evidence-scoped runtime categories outside
-map and operation scope are diagnostic. Incomplete authorization/journal evidence,
+map and operation scope are diagnostic. Same-path duplicate plain files outside
+`/GARMIN` without a map suffix stay protected and are compared as a multiset
+instead of blocking as ambiguous. Incomplete authorization/journal evidence,
 ambiguous targets and uncertain cleanup identity fail closed. No automatic retry
 or name-plus-size cleanup authority is introduced.
 

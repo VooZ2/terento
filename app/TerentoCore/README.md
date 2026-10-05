@@ -140,8 +140,14 @@ stay in-process because they only read the USB device list.
 For issue #222, a local follow-up now classifies a pre-write inventory worker
 timeout as preflight MTP-read failure instead of verification failure, records
 the measured bounded wait, and never starts upload when inventory has not
-completed. Inventory has a finite 60-second worker bound matching libmtp's
-LONG_TIMEOUT; this is not a model-specific USB workaround. Local sanitized
+completed. The pre- and post-write inventory worker bound scales with the
+object count of the baseline inventory: 60 seconds (libmtp's LONG_TIMEOUT)
+plus 30 ms per object, at most 600 seconds. A heavy watch with years of
+activities and music (about 12,000 objects) therefore gets about 7 minutes
+instead of a fixed minute; this is not a model-specific USB workaround. The
+inventory still walks every storage: narrowing it to `/GARMIN` would drop the
+documented protection of map files on any storage and of unknown objects
+outside `/GARMIN`, which Update and external Remove share. Local sanitized
 trace markers separate session open, file-list read, session close and native
 cleanup. The initiating 091e:51b5 hardware stall remains unproven pending a
 controlled failing/successful-model retest.
@@ -440,8 +446,16 @@ file/folder kind; item/parent handles are session-scoped navigation and diagnost
 It conservatively protects unknown objects, all-storage IMG/GMA/UNL/SID, map and
 SID containers, explicit operation/manifest locations, and required ancestors.
 Classification grants no ownership or deletion authority. Duplicates, aliases,
-invalid paths and incoherent ancestry fail closed. Existing protected objects
-must remain stable; only explicit operation targets may change.
+invalid paths and incoherent ancestry fail closed, with one narrow exception:
+several entries listed under one path (or case alias) are tolerated when every
+entry is a plain file outside `/GARMIN` without a map suffix, for example two
+music tracks with the same name. Those entries stay protected and are compared
+as a multiset, so removing or changing any of them still fails; a local
+`*_inventory_duplicates` trace records how many such locations were seen. Folders,
+duplicate handles, map files on any storage and everything under `/GARMIN`
+(write target, map containers and runtime namespaces) keep failing closed.
+Existing protected objects must remain stable; only explicit operation targets
+may change.
 
 Diagnostic-only cases are the exact `/GARMIN/GarminDevice.xml` file, immediate
 FIT files in `/GARMIN/Monitor`, and descendant folders of `/GARMIN/TLG/PER`, based

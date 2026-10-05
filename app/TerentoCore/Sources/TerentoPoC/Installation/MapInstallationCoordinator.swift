@@ -1504,6 +1504,7 @@ struct MapInstallationCoordinator: Sendable {
               let current = try? ProtectedMapInventory(files: after, forcedLocations: baseline.protectedLocations) else {
             return ProtectionResult(existingFilesUnchanged: false, unrelatedFilesUnchanged: false)
         }
+        recordToleratedDuplicates(after, event: "postwrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: after, boundary: "postwrite")
         let beforeComparable = baseline.protected
         let afterComparable = Set(current.protected.filter { $0.path != targetPath })
@@ -1543,6 +1544,7 @@ struct MapInstallationCoordinator: Sendable {
               let current = try? ProtectedMapInventory(files: live, forcedLocations: baseline.protectedLocations) else {
             return false
         }
+        recordToleratedDuplicates(live, event: "prewrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: live, boundary: "prewrite")
         return baseline.protected == current.protected
     }
@@ -1569,20 +1571,24 @@ struct MapInstallationCoordinator: Sendable {
     }
 
     private static func inventoryIsUnambiguous(_ files: [DeviceFile]) -> Bool {
-        var locations = Set<CrossSessionInventoryLocation>()
         for file in files {
-            // A location must resolve to exactly one object even if duplicated
-            // entries disagree on size or kind and therefore have distinct keys.
             guard !file.filename.isEmpty, !file.filename.contains("/"),
                   file.path.hasPrefix("/"),
-                  file.hasMatchingPathFilename,
-                  locations.insert(CrossSessionInventoryLocation(
-                    storageID: file.storageID, path: file.path
-                  )).inserted else {
+                  file.hasMatchingPathFilename else {
                 return false
             }
         }
-        return true
+        // A location must resolve to exactly one object even if duplicated
+        // entries disagree on size or kind. The only exception is a plain
+        // non-map file outside /GARMIN, which ProtectedMapInventory keeps
+        // protected and compares as a multiset.
+        return ProtectedMapInventory.toleratedDuplicateLocations(in: files) != nil
+    }
+
+    /// Local count only: tolerated duplicate locations outside the map scope.
+    private func recordToleratedDuplicates(_ files: [DeviceFile], event: String) {
+        guard let count = ProtectedMapInventory.toleratedDuplicateLocations(in: files), count > 0 else { return }
+        diagnostic(event, "duplicates=\(count)")
     }
 
     private static func comparable(_ file: DeviceFile) -> CrossSessionInventoryKey {

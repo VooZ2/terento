@@ -475,7 +475,8 @@ extension MapInstallationCoordinator {
         manifestStore: any TerentoManifestStore = LocalTerentoManifestStore(),
         recoveryStore: any TerentoFailedInstallRecoveryStore = LocalTerentoFailedInstallRecoveryStore(),
         operationGate: MTPOperationGate = .shared,
-        lifecycleLease: MTPOperationLease? = nil
+        lifecycleLease: MTPOperationLease? = nil,
+        expectedInventoryCount: Int? = nil
     ) -> MapInstallationCoordinator {
         MapInstallationCoordinator(
             transport: MTPMapInstallationTransport(
@@ -486,7 +487,8 @@ extension MapInstallationCoordinator {
             deviceReader: BoundedInstallationDeviceReader(
                 operationProfile: operationProfile,
                 operationGate: operationGate,
-                lifecycleLease: lifecycleLease
+                lifecycleLease: lifecycleLease,
+                expectedObjectCount: expectedInventoryCount
             ),
             manifestStore: manifestStore,
             recoveryStore: recoveryStore,
@@ -774,9 +776,12 @@ private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
     let operationProfile: DeviceMapOperationProfile?
     let operationGate: MTPOperationGate
     let lifecycleLease: MTPOperationLease?
+    /// Objects in the baseline inventory; the worker bound scales with it.
+    let expectedObjectCount: Int?
     func readFileInventory() throws -> [DeviceFile] {
         try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
-            guard let files = try MTPFinishingWorker.perform(.init(operation: .inventory, profile: operationProfile)).files else {
+            guard let files = try MTPFinishingWorker.perform(.init(operation: .inventory, profile: operationProfile,
+                                                                  expectedObjectCount: expectedObjectCount)).files else {
                 throw MTPFinishingWorker.failure(for: .inventory, kind: .invalidResponse)
             }
             return files
