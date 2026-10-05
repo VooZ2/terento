@@ -42,3 +42,7 @@ compatibility claim remain separate evidence gates.
 
 Checking progress UI, physical write sequencing, releases, packaging versions,
 and public compatibility publication are outside this candidate.
+
+The native runner also bootstraps the backend test extra on clean hosts. The
+shared workflow contracts exercise that missing-dependency path under available
+POSIX, Bash and Zsh shells, including repository paths containing spaces.
