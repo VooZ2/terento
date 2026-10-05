@@ -339,6 +339,7 @@ struct Stage42InstallationTests {
         passed += testReadFailureDoesNotClaimDisconnect()
         passed += testPreWriteInventoryFailureIsPreflightAndNoWrite()
         passed += testWriteFailureIsNotSuccess()
+        passed += testWriteBoundaryIsTheDeviceWrite()
         passed += testDisconnectDuringWriteFails()
         passed += testPartialObjectIsCleanedAfterWriteDisconnect()
         passed += testMissingRemoteIsFailure()
@@ -1359,6 +1360,23 @@ struct Stage42InstallationTests {
                 && harness.transport.deleteCount == 0
                 && !result.diagnostics.cleanupAttempted,
             "write failure without a new object neither reports success nor performs cleanup"
+        )
+    }
+
+    private static func testWriteBoundaryIsTheDeviceWrite() -> Int {
+        let localFailure = makeHarness()
+        localFailure.recovery.shouldFail = true
+        let local = localFailure.run()
+        let device = makeHarness()
+        device.transport.writeError = .operationFailed("write failed", createdItemID: nil)
+        let written = device.run()
+        return expect(
+            local.failure == .manifestFailed
+                && !local.diagnostics.writeStarted
+                && localFailure.transport.writeCount == 0
+                && written.diagnostics.writeStarted
+                && device.transport.writeCount == 1,
+            "a local recovery-record failure is not a started write; a failed device write at zero bytes is"
         )
     }
 

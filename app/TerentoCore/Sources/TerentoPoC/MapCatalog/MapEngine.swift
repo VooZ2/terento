@@ -1441,7 +1441,8 @@ final class MapEngine: ObservableObject {
                                             onStateChange: { state in
                                                 stateRelay.send(state)
                                                 if state == .validatingDownload {
-                                                    Task { @MainActor in statistics?.record(start.phase(.downloadProcessing)) }
+                                                    // Durable and ordered before the terminal.
+                                                    statistics?.recordFromAnyContext(start.phase(.downloadProcessing))
                                                 }
                                             },
                                             onDownloadProgress: { progress in progressRelay.send(progress) }
@@ -2135,7 +2136,9 @@ final class MapEngine: ObservableObject {
             case .cancelled: type = .downloadCancelled
             }
             let event = start.phase(type) // Timestamp the actual boundary, not observer creation.
-            Task { @MainActor in controller?.record(event) }
+            // Persist in callback order from the download context. Separate
+            // main-actor tasks could reorder a fast terminal before its start.
+            controller?.recordFromAnyContext(event)
         }
     }
 

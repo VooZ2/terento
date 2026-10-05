@@ -346,6 +346,8 @@ private actor DelayedAuthorizationResponse {
         }
         operation.record(result(package: b.item.package, failure: nil, wrote: true), packageID: b.item.package.id, artifactID: b.artifactPlan.selectedArtifacts[0].id)
         operation.record(result(package: b.item.package, failure: .hashMismatch, wrote: true), packageID: b.item.package.id, artifactID: b.artifactPlan.selectedArtifacts[1].id)
+        check(controller.store.events().count == 3,
+              "finished results are durable before the delivery task runs, so a quit cannot lose them")
         await operation.waitForDeliveryForTesting()
         let events = controller.store.events().sorted { $0.mapResultIndex! < $1.mapResultIndex! }
         check(events.map(\.phaseOutcome) == [.succeeded, .succeeded, .notStarted], "main success survives context-free failed contour; later map NOT_STARTED")

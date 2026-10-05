@@ -619,8 +619,39 @@ struct SafeUpdateResult: Equatable, Sendable {
     var cleanupAttempted: Bool = false
     var cleanupSucceeded: Bool = false
     var acquisitionFailureStage: SafeUpdateAcquisitionStage? = nil
+    /// The operation stopped before the transaction was entered because the
+    /// user or app cancelled it. Nothing was attempted, so it is not reported.
+    var cancelledBeforeStart: Bool = false
 
     var isSuccess: Bool { status.isSuccess }
+
+    /// Classifies the only failures that can occur before the nonthrowing
+    /// transaction is entered: lifecycle lease acquisition and the pre-entry
+    /// operation-token check. A disconnect/eject invalidates the token or the
+    /// lease; a cancellation with a still-current token was not a disconnect.
+    static func preEntryInterruption(_ error: Error, lifecycleBusy: Bool,
+                                     operationStillCurrent: Bool) -> SafeUpdateResult {
+        if lifecycleBusy {
+            return SafeUpdateResult(status: .blockedTransactionAlreadyRunning, state: .failed,
+                message: "Another Garmin operation is already in progress. Nothing was changed.",
+                storagePlan: nil, newObject: nil, finalObjects: [], oldMapPreserved: true)
+        }
+        if error is CancellationError && operationStillCurrent {
+            return SafeUpdateResult(status: .blockedConfirmationRequired, state: .failed,
+                message: "The map update was cancelled before it started. Nothing was changed.",
+                storagePlan: nil, newObject: nil, finalObjects: [], oldMapPreserved: true,
+                cancelledBeforeStart: true)
+        }
+        return SafeUpdateResult(
+            status: .failedDeviceDisconnected,
+            state: .failed,
+            message: "The Garmin connection changed before the update could finish. The result must be checked again.",
+            storagePlan: nil,
+            newObject: nil,
+            finalObjects: [],
+            oldMapPreserved: true
+        )
+    }
 }
 
 struct SafeUpdateTransaction: Sendable {

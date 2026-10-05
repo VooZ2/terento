@@ -906,18 +906,12 @@ final class MapLifecycleViewModel: ObservableObject {
                 // Only lease acquisition and the pre-entry token check can throw.
                 // The nonthrowing transaction returns its measured result even if
                 // cancellation arrives after entry; CancellableDetached awaits it.
-                result = SafeUpdateResult(
-                    status: .failedDeviceDisconnected,
-                    state: .failed,
-                    message: "The Garmin connection changed before the update could finish. The result must be checked again.",
-                    storagePlan: nil,
-                    newObject: nil,
-                    finalObjects: [],
-                    oldMapPreserved: true
-                )
+                result = SafeUpdateResult.preEntryInterruption(error,
+                    lifecycleBusy: (error as? MTPOperationGateError) == .lifecycleBusy,
+                    operationStillCurrent: operationController.isCurrent(operationToken))
             }
 
-            if !result.isSuccess {
+            if !result.isSuccess && !result.cancelledBeforeStart {
                 FinishingTrace.freezeFailure()
                 TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.generate(
                     identity: context.identity,
@@ -938,7 +932,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     errorCodes: [result.status.rawValue]
                 ))
             }
-            if result.status != .blockedInstallationAuthorization {
+            if result.status != .blockedInstallationAuthorization && !result.cancelledBeforeStart {
                 reportingMapEngine.recordUpdateDiagnostic(identity: context.identity, package: selectedMap,
                     operationID: mapStatisticsOperationID, result: result)
             }

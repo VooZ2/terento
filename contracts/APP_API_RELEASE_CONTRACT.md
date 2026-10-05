@@ -29,6 +29,18 @@ events with pending ones. Parked reports keep their original event ID and kind;
 a server rollback that rejects a field therefore delays, but never blocks, other
 telemetry. Replays remain idempotent by event ID. No payload field changes.
 
+Finished compatibility/update diagnostics are written to the durable outbox
+synchronously at the operation result boundary, before delivery is scheduled,
+like map events. Acquisition phases from the download context are persisted in
+callback order from that context, so a fast terminal cannot be dropped behind its
+start and a quit cannot lose an already observed phase. Installation
+`writeStarted` becomes true immediately before the device transfer call; a local
+recovery-record failure before it is a not-started manifest failure. A Safe
+Update cancelled before it enters the transaction is not reported; a busy
+lifecycle lease reports `UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING`; only a
+disconnect or eject that invalidated the operation reports
+`UPDATE_FAILED_DEVICE_DISCONNECTED`. Existing codes and fields are unchanged.
+
 ## Beta.16 build 38 — provider recovery and update diagnostics
 
 Beta.16 build 38 accepts both reviewed BBBike README date forms in
