@@ -323,6 +323,17 @@ keeps the canonical parameter order `utm_source`, `utm_medium`,
 admin session, CSRF cookie, no-store response policy, and noindex policy as
 `GET https://api.terento.app/admin`.
 
+## `GET https://api.terento.app/admin/glossary`
+
+Returns the authenticated Tools → Glossary page: one anchored definition per
+Admin term (Attempt, Successful, Failed, Blocked before writing, Open problem,
+Provider download, Install, Installation report, Map update, Update report,
+Terento app download, Task and the review/evidence terms). Definitions follow
+`contracts/STATISTICS_CONTRACT.md`, `contracts/APP_FUNNEL_CONTRACT.md` and
+`docs/admin-behavior-contract.md`; metric labels link to `#anchor` entries. The
+page reads no data and uses the shared admin session, no-store and noindex
+policy.
+
 ## `GET https://api.terento.app/admin/devices`
 
 Returns the authenticated Garmin catalog and device-evidence workspace. `Maps`,

@@ -29,6 +29,7 @@ from .admin import (
     device_identification_page,
     diagnostics_page,
     github_issue_queue_page,
+    glossary_page,
     devices_page,
     map_statistics_page,
     local_test_data_page,
@@ -1791,6 +1792,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except Exception:
                     LOGGER.exception("admin device API failed")
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_devices_unavailable"}, send_body=send_body, cache_control="no-store")
+                return
+            if request_path in {"/admin/glossary", "/admin/glossary/"}:
+                self._send_admin_html(glossary_page(session, csrf_token), send_body=send_body)
                 return
             if request_path in {"/admin/campaign-links", "/admin/campaign-links/"}:
                 self._send_admin_html(campaign_links_page(session, csrf_token), send_body=send_body)

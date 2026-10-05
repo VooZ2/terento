@@ -957,15 +957,18 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
     test_data_class = " class='active'" if active == "test-data" else ""
-    tools_class = " class='active'" if active in {"test-data", "campaigns", "device-identification"} else ""
+    tools_class = " class='active'" if active in {"test-data", "campaigns", "device-identification", "glossary"} else ""
+    sources_class = " class='active'" if active == "device-identification" else ""
+    glossary_class = " class='active'" if active == "glossary" else ""
     account_class = " active" if active == "account" else ""
     tools_menu = f"""<details class="admin-tools-menu">
         <summary{tools_class}>Tools</summary>
         <div class="admin-tools-popover" role="group" aria-label="Admin tools">
-          <a href="/admin/device-identification">Model source review</a>
-          <a href="/admin/devices/identity-audit.json">Assignment audit</a>
+          <a{sources_class} href="/admin/device-identification">Model sources</a>
           <a{test_data_class} href="/admin/test-data">Test data</a>
           <a{campaign_class} href="/admin/campaign-links">Campaign links</a>
+          <a{glossary_class} href="/admin/glossary">Glossary</a>
+          <a href="/admin/devices/identity-audit.json" download aria-label="Download assignment log (JSON)">Assignment log (JSON) {_admin_icon('download')}</a>
         </div>
       </details>"""
     return f"""<a class="admin-skip-link" href="#main-content">Skip to content</a><header class="admin-topbar"><div class="admin-topbar-inner">
@@ -1040,6 +1043,23 @@ def local_test_data_page(
       </main>
     """
     return _layout("Test data", content, sections={"testData": summary})
+
+
+def glossary_page(user: dict[str, Any], csrf_token: str) -> bytes:
+    """Tools → Glossary: one anchor per term, generated from the contracts."""
+    entries = "".join(
+        f"<div class='admin-glossary-entry' id='{html.escape(anchor, quote=True)}'>"
+        f"<dt>{html.escape(term)}</dt><dd>{html.escape(definition)}</dd></div>"
+        for anchor, term, definition in ADMIN_GLOSSARY
+    )
+    content = f"""
+      {_admin_header(user, csrf_token, active='glossary')}
+      <main id="main-content" class="dashboard glossary-page" aria-labelledby="glossary-title">
+        <div class="heading-row"><div><h1 id="glossary-title">Glossary</h1></div></div>
+        {_section_card('Terms', f"<dl class='admin-glossary'>{entries}</dl>", card_id='glossary-terms')}
+      </main>
+    """
+    return _layout("Glossary", content)
 
 
 def setup_page(*, error: str | None = None) -> bytes:
@@ -7996,6 +8016,13 @@ ADMIN_STYLES += """
 .admin-glossary-link:hover>span{background:var(--selected-tint)}
 .admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
 .admin-card-unavailable{border-style:dashed}
+.admin-glossary{display:grid;gap:0;margin:0}
+.admin-glossary-entry{display:grid;grid-template-columns:minmax(160px,220px) minmax(0,1fr);gap:4px 20px;padding:12px 0;border-top:1px solid var(--border);scroll-margin-top:calc(var(--admin-topbar-height) + 16px)}
+.admin-glossary-entry:first-child{border-top:0}
+.admin-glossary-entry:target{background:var(--selected-tint)}
+.admin-glossary-entry dt{font-weight:600}
+.admin-glossary-entry dd{margin:0;color:var(--graphite);max-width:72ch}
+@media(max-width:560px){.admin-glossary-entry{grid-template-columns:minmax(0,1fr)}}
 .admin-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 0;padding:0;list-style:none;color:var(--secondary);font-size:12px;line-height:16px}
 .admin-legend li{display:inline-flex;align-items:center;gap:6px}
 .admin-legend i{display:inline-block;width:12px;height:12px;border:1px solid var(--border);border-radius:3px}
