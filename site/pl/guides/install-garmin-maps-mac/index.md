@@ -65,6 +65,10 @@ Potrzebujesz pomocy?
 
 Odczekaj 1–2 minuty po podłączeniu. Jeśli zegarek nadal się nie pojawia, podłącz go ponownie, sprawdź kabel do transmisji danych i zamknij inne aplikacje, które mogą z niego korzystać.
 
+### Instalacja lub aktualizacja jest niedostępna
+
+Tymczasowo niedostępne mapy pozostają widoczne. Przeczytaj powód podany obok mapy. Jeśli dostawca jest niedostępny lub pobieranie zostało wstrzymane, spróbuj później. Jeśli Terento nie może sprawdzić bieżącej dostępności, sprawdź połączenie internetowe i spróbuj ponownie. Zainstalowane mapy pozostają dostępne.
+
 ### Instalacja nie powiodła się
 
 Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.

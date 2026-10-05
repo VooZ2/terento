@@ -778,10 +778,39 @@ def merged_copy(locale: str) -> dict[str, object]:
     source_troubleshooting = base["troubleshooting"]
     base["troubleshooting"] = [
         {"title": source_troubleshooting[0]["title"], "body": refinement["detect_body"]},
+        AVAILABILITY_TROUBLESHOOTING[locale],
         {"title": source_troubleshooting[1]["title"], "body": flow["installation_failed"]},
         {"title": source_troubleshooting[3]["title"], "body": flow["not_visible"], "email_link": True},
     ]
     return base
+
+
+AVAILABILITY_TROUBLESHOOTING = {
+    "en": {
+        "title": "Install or Update is unavailable",
+        "body": "Temporarily unavailable maps stay visible. Read the reason shown beside the map. If its provider is unavailable or downloads are paused, try later. If Terento cannot check current availability, check your internet connection and try again. Your installed maps remain available."
+    },
+    "de": {
+        "title": "Installieren oder Aktualisieren ist nicht verfügbar",
+        "body": "Vorübergehend nicht verfügbare Karten bleiben sichtbar. Lies den Hinweis neben der Karte. Wenn der Kartenanbieter nicht erreichbar ist oder Downloads pausiert sind, versuche es später erneut. Kann Terento die aktuelle Verfügbarkeit nicht prüfen, überprüfe deine Internetverbindung und versuche es erneut. Bereits installierte Karten bleiben verfügbar."
+    },
+    "fr": {
+        "title": "L’installation ou la mise à jour est indisponible",
+        "body": "Les cartes temporairement indisponibles restent visibles. Lisez la raison affichée à côté de la carte. Si le fournisseur est inaccessible ou si les téléchargements sont suspendus, réessayez plus tard. Si Terento ne peut pas vérifier la disponibilité actuelle, vérifiez votre connexion Internet et réessayez. Vos cartes déjà installées restent disponibles."
+    },
+    "pl": {
+        "title": "Instalacja lub aktualizacja jest niedostępna",
+        "body": "Tymczasowo niedostępne mapy pozostają widoczne. Przeczytaj powód podany obok mapy. Jeśli dostawca jest niedostępny lub pobieranie zostało wstrzymane, spróbuj później. Jeśli Terento nie może sprawdzić bieżącej dostępności, sprawdź połączenie internetowe i spróbuj ponownie. Zainstalowane mapy pozostają dostępne."
+    },
+    "cs": {
+        "title": "Instalace nebo aktualizace není dostupná",
+        "body": "Dočasně nedostupné mapy zůstávají viditelné. Přečtěte si důvod uvedený vedle mapy. Pokud je poskytovatel nedostupný nebo je stahování pozastavené, zkuste to později. Pokud Terento nemůže ověřit aktuální dostupnost, zkontrolujte připojení k internetu a zkuste to znovu. Nainstalované mapy zůstávají dostupné."
+    },
+    "it": {
+        "title": "L’installazione o l’aggiornamento non è disponibile",
+        "body": "Le mappe temporaneamente non disponibili restano visibili. Leggi il motivo indicato accanto alla mappa. Se il provider non è raggiungibile o i download sono sospesi, riprova più tardi. Se Terento non riesce a verificare la disponibilità attuale, controlla la connessione Internet e riprova. Le mappe già installate restano disponibili."
+    }
+}
 
 
 def main() -> None:

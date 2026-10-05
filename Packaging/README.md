@@ -30,9 +30,9 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The prepared candidate is **1.0.0-beta.17 / build 39**. It is not published;
-`site/updates/macos-arm64.json` continues to identify the current public build
-until the signed and notarized artifacts have been published.
+The published release is **1.0.0-beta.17 / build 39**, from signed source
+`8a709166274359061bf0776f5b6e348d8c2e4929`. Its ZIP and DMG passed Apple
+notarization, stapling, Gatekeeper and launch validation.
 
 The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public

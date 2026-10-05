@@ -99,10 +99,13 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.16 (build 38)**. Download the notarized
+The latest public release is **beta.17 (build 39)**. Download the notarized
 macOS app below; no additional software is required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
+
+Temporarily unavailable maps remain visible with a reason. Install and Update
+are disabled until downloads are available again; installed maps remain usable.
 
 DMG, ZIP, release notes, and previous versions are available on
 [GitHub Releases](https://github.com/VooZ2/terento/releases).

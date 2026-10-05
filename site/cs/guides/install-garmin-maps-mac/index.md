@@ -65,6 +65,10 @@ Potřebujete pomoc?
 
 Po připojení počkejte 1–2 minuty. Pokud se hodinky stále nezobrazí, připojte je znovu, ověřte datový kabel a ukončete ostatní aplikace, které je mohou používat.
 
+### Instalace nebo aktualizace není dostupná
+
+Dočasně nedostupné mapy zůstávají viditelné. Přečtěte si důvod uvedený vedle mapy. Pokud je poskytovatel nedostupný nebo je stahování pozastavené, zkuste to později. Pokud Terento nemůže ověřit aktuální dostupnost, zkontrolujte připojení k internetu a zkuste to znovu. Nainstalované mapy zůstávají dostupné.
+
 ### Instalace se nezdařila
 
 Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.

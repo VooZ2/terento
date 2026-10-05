@@ -65,6 +65,10 @@ Hilfe nötig?
 
 Warte nach dem Verbinden bis zu 1–2 Minuten. Wenn die Uhr weiterhin nicht erscheint, verbinde sie erneut, prüfe das Datenkabel und schließe andere Programme, die sie verwenden könnten.
 
+### Installieren oder Aktualisieren ist nicht verfügbar
+
+Vorübergehend nicht verfügbare Karten bleiben sichtbar. Lies den Hinweis neben der Karte. Wenn der Kartenanbieter nicht erreichbar ist oder Downloads pausiert sind, versuche es später erneut. Kann Terento die aktuelle Verfügbarkeit nicht prüfen, überprüfe deine Internetverbindung und versuche es erneut. Bereits installierte Karten bleiben verfügbar.
+
 ### Installation fehlgeschlagen
 
 Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler.

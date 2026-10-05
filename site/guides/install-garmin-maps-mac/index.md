@@ -65,6 +65,10 @@ Need a hand?
 
 Wait up to 1–2 minutes after connecting. If the watch still does not appear, reconnect it, check that the cable supports data and close other apps that may be using it.
 
+### Install or Update is unavailable
+
+Temporarily unavailable maps stay visible. Read the reason shown beside the map. If its provider is unavailable or downloads are paused, try later. If Terento cannot check current availability, check your internet connection and try again. Your installed maps remain available.
+
 ### Installation failed
 
 On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.

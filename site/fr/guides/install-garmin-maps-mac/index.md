@@ -65,6 +65,10 @@ Besoin d’aide ?
 
 Attendez 1 à 2 minutes après la connexion. Si la montre n’apparaît toujours pas, reconnectez-la, vérifiez que le câble permet les données et fermez les autres apps susceptibles de l’utiliser.
 
+### L’installation ou la mise à jour est indisponible
+
+Les cartes temporairement indisponibles restent visibles. Lisez la raison affichée à côté de la carte. Si le fournisseur est inaccessible ou si les téléchargements sont suspendus, réessayez plus tard. Si Terento ne peut pas vérifier la disponibilité actuelle, vérifiez votre connexion Internet et réessayez. Vos cartes déjà installées restent disponibles.
+
 ### Échec de l’installation
 
 Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.
