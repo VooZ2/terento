@@ -188,17 +188,28 @@ duplicate Review navigation item.
 ### Dashboard and Needs attention
 
 Dashboard must answer whether anything is wrong, what happened in the selected
-period, whether activity is changing, and what to inspect next. On desktop its
-first row is `Map downloads | Map installs`. Below it, Needs attention and App
-downloads form the leading column while Activity spans the trailing column. The
-narrow order is Map downloads, Map installs, Needs attention, Activity, then App
-downloads.
+period, whether activity is changing, and what to inspect next. Its first row is
+four metric tiles: Installs, Updates and Downloads for the selected period (each
+with failed count and success rate) and Needs attention (Now). Below them, the
+Downloads and Installs chart cards share a row; each shows the period scope chip,
+a legend with the period total per series, and one secondary line with the
+all-time totals behind an `All time` chip. Tile values and legend totals use the
+same period population, so they agree. The Downloads card also breaks the period
+total down by purpose (For installs, For updates, Not recorded). Below the
+charts, Needs attention, First run and App downloads form the leading column
+while Activity spans the trailing column. The narrow order is tiles, Downloads,
+Installs, Needs attention, Activity, First run, then App downloads.
 
-The Map downloads and Map installs charts are always visible. Their Successful,
-Failed, and Success rate badges are all-time values; the period selector changes
-the chart series, not those badges. Hover/title and accessible text may expose
-the all-time scope without permanent visible copy. App downloads means Terento
-application downloads and is omitted when no usable counter or trend data exists.
+Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
+`Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
+are one or two words. App downloads means Terento application downloads (GitHub
+`.dmg` and `.zip`), carries a glossary link with that definition, shows its
+all-time totals with an `All time` chip, and is omitted when no usable counter
+or trend data exists. First run shows the separate app first-run funnel
+population for the period (sessions, connected vs not connected by reason,
+authorization outcomes and the top waiting models); it never mixes into install
+counts. A failed sub-query renders that card as `Unavailable` with a Retry link
+inside the admin chrome instead of failing the page.
 Activity is internally scrollable and must not force page height. A generic
 activity row has no Maps link unless an exact useful destination exists.
 Installation and update activity use two text rows: status, then map/region,
@@ -209,17 +220,29 @@ separate row with a blank gap. Unassigned or ambiguous models are omitted rather
 than shown as a reported guess. Long context may wrap naturally on narrow screens.
 
 Dashboard chart series use one stacked bar for each bucket: downloads are
-successful/failed, while map operations distinguish install successful, install
-failed, update successful and update failed, plus a separate custom `.img`
-install successful series with its own legend entry; optional components and
-pre-write failures remain excluded by the statistics contract. Headings that include updates say
-`Installs and updates` (Maps) or `Map installs and updates` (Dashboard).
+successful/failed, while map operations distinguish install successful, custom
+`.img` install successful, install failed, update successful and update failed,
+each with its own legend entry; optional components and pre-write failures remain
+excluded by the statistics contract. Each bucket is one keyboard stop with a
+label listing every series; segments are presentational.
 
-Needs attention covers unresolved work across all dates. Counts and Inspect links
-must lead to the corresponding work even when the preview is truncated. Failures,
-linked issue work, identity/publication review, and provider/system problems remain
-distinct work types. Empty active work does not mean there have been no failures.
-A failed query is unavailable rather than zero.
+Needs attention covers unresolved work across all dates in seven fixed category
+rows, each with an icon, label, count and arrow: Open problems, GitHub issues,
+Identity review, Publication review, Missing reports, Provider problems and
+System checks. Rows with zero stay listed (muted) so the shape is stable. Counts
+come only from the canonical review read model, the shared provider-problem
+definition and the system checks; there is no fallback from another definition.
+A failed query shows `—` with an explicit `Unavailable` message, never `0` or
+"No pending work". Each row links to its work list, and that list shows the same
+total even when it paginates. Failures, linked issue work, identity/publication
+review, and provider/system problems remain distinct work types. Empty active
+work does not mean there have been no failures.
+
+A provider problem is an active provider (not paused or retired) whose source
+health is Degraded or Failed, whose catalog collection failed or is overdue, or
+which has current package problems. Dashboard, Providers and Health use this one
+definition; System checks excludes the provider catalog checks so a provider is
+never counted twice.
 
 A failed installation diagnostic and GitHub handling linked to one operation are alternative
 states of one task; linking an issue moves the task between categories and does
@@ -230,10 +253,12 @@ remain in update diagnostics and do not enter installation issues. Resolved work
 is excluded.
 
 A map install failure without matching device diagnostic evidence is a per-map
-review task keyed by the immutable map event ID. Dismiss/reopen is authenticated,
-CSRF-protected, idempotent, and audited without changing telemetry, statistics,
-compatibility, publication, or GitHub state. Dashboard offers Undo after dismiss.
-A later matching diagnostic removes the gap independently. A retained
+review task keyed by the immutable map event ID. `/admin/review/missing-reports`
+lists every such task (50 per page, total shown) with its Inspect link and
+Dismiss. Dismiss/reopen is authenticated, CSRF-protected, idempotent, and audited
+without changing telemetry, statistics, compatibility, publication, or GitHub
+state. The list offers Undo after dismiss (the Dashboard keeps accepting the same
+notice). A later matching diagnostic removes the gap independently. A retained
 statistics-excluded diagnostic is present evidence, and an
 `OUT_OF_SCOPE_PREWRITE` diagnostic for the same result suppresses the task. An exact event action
 may open the matching collapsed Maps Event detail; aggregate statistics remain

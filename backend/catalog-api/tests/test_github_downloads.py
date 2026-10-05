@@ -498,7 +498,11 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(sum(item["dmg_count"] or 0 for item in views["24h"]), 8)
         self.assertEqual(sum(item["dmg_count"] or 0 for item in views["7d"]), 13)
         self.assertEqual(sum(item["dmg_count"] or 0 for item in views["all"]), 13)
-        self.assertEqual(views["all"][0]["dmg_count"], 13)
+        # All time uses the shared adaptive rule: a 6-day observed span is daily.
+        self.assertEqual(
+            database.github_downloads_snapshot(now=now, period="all")["bucket"], "day",
+        )
+        self.assertEqual(database.github_downloads_snapshot(now=now, period="30d")["bucket"], "week")
 
     def test_collection_failure_does_not_replace_last_successful_snapshot(self):
         database = CollectDatabase()

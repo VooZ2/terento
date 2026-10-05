@@ -507,7 +507,7 @@ def _unavailable_card(title: str, card_id: str, *, retry_href: str = "") -> str:
     """Section-level resilience: a failed sub-query keeps the admin chrome."""
     return _section_card(
         title,
-        _empty_state("unavailable", "Couldn't load this section.", action=(retry_href or "", "Retry")),
+        _empty_state("unavailable", "Could not load this section.", action=(retry_href or "", "Retry")),
         card_id=card_id, css="admin-card-unavailable",
     )
 
@@ -1120,7 +1120,7 @@ def _diagnostic_error_reason(results: list[dict[str, Any]], *, resolved: bool = 
 
 
 def _overview_missing_diagnostic_item(
-    event: dict[str, Any], csrf_token: str = "",
+    event: dict[str, Any], csrf_token: str = "", *, return_to: str = "",
 ) -> str:
     href = html.escape(_overview_map_event_href(event), quote=True)
     context = html.escape(_overview_map_event_context(event))
@@ -1131,55 +1131,26 @@ def _overview_missing_diagnostic_item(
         event_id = ""
     dismiss = ""
     if event_id:
+        return_field = (
+            f"<input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>"
+            if return_to else ""
+        )
         dismiss = (
             "<form method='post' action='/admin/review/missing-diagnostics/dismiss' "
             "class='admin-async-action overview-review-dismiss-form'>"
             f"<input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>"
-            f"<input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>"
+            f"<input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>{return_field}"
             "<button type='submit' class='overview-dismiss-button' "
             "aria-label='Dismiss review item' title='Dismiss review item'>×</button>"
             "</form>"
         )
     return (
         "<li class='overview-attention-item overview-attention-failed'>"
-        "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
-        f"<div><strong>Install failed</strong>"
-        f"<span>{context}</span>"
-        "<small>No device diagnostic report received · "
+        f"{_status_pill('danger', 'Install failed')}"
+        f"<div><strong>{context}</strong>"
+        "<small>No device report · not counted in Failed · "
         f"{_timestamp_markup(event.get('occurred_at'))}</small></div>"
         f"<div class='overview-attention-actions'><a class='overview-detail-link' href='{href}'>Inspect&nbsp;{_admin_icon('arrow-right')}</a>{dismiss}</div></li>"
-    )
-
-
-def _overview_provider_attention_item(provider: dict[str, Any]) -> str:
-    provider_id = str(provider.get("id") or "").strip()
-    name = str(provider.get("name") or provider_id or "Provider")
-    health = str(provider.get("health") or "UNKNOWN").upper()
-    health_label = {"WARNING": "Degraded", "UNKNOWN": "Evidence missing"}.get(health, health.title())
-    href = f"/admin/providers/{quote(provider_id, safe='')}"
-    return (
-        f"<li class='overview-attention-item overview-attention-provider'>"
-        f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
-        f"<div><strong>{html.escape(name)} health {html.escape(health_label)}</strong>"
-        f"<span>Provider health requires review</span>"
-        f"<small>{_timestamp_markup(provider.get('lastHealthCheck'))}</small></div>"
-        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Inspect&nbsp;{_admin_icon('arrow-right')}</a></li>"
-    )
-
-
-def _overview_system_attention_item(card: dict[str, Any]) -> str:
-    status = str(card.get("status") or "UNKNOWN").upper()
-    status_label = {
-        "WARNING": "Degraded",
-        "FAILED": "Failed",
-        "UNKNOWN": "Evidence missing",
-    }.get(status, status.title())
-    return (
-        f"<li class='overview-attention-item overview-attention-review'>"
-        f"<span aria-hidden='true'>!</span>"
-        f"<div><strong>{html.escape(str(card.get('title') or 'System check'))} · {html.escape(status_label)}</strong>"
-        f"<span>Review system check</span><small>{html.escape(str(card.get('reason') or 'System evidence needs review.'))} · {_timestamp_markup(card.get('lastChecked'))}</small></div>"
-        f"<a class='overview-detail-link' href='/admin/system-health'>Inspect&nbsp;{_admin_icon('arrow-right')}</a></li>"
     )
 
 
@@ -2111,15 +2082,165 @@ def _overview_period_script() -> str:
     })();"""
 
 
+def _provider_problem_state(provider: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
+    """The single provider-problem definition (Dashboard, Providers and Health).
+
+    Retired and paused providers are deliberate administrator states, not
+    problems. An active provider has a problem when its source health is
+    Degraded/Failed, its catalog collection failed or is stale/missing, or it
+    has current package problems. Unknown package counts stay unknown.
+    """
+    status = str(provider.get("status") or "ACTIVE").strip().upper()
+    if status in {"RETIRED", "PAUSED"}:
+        return {"tracked": False, "problem": False, "packagesKnown": True, "reasons": [], "status": "HEALTHY"}
+    reasons: list[str] = []
+    worst = "HEALTHY"
+    health = str(provider.get("health") or "UNKNOWN").strip().upper()
+    if health == "DOWN":
+        reasons.append("Health failed")
+        worst = "FAILED"
+    elif health in {"DEGRADED", "WARNING"}:
+        reasons.append("Health degraded")
+        worst = "WARNING"
+    catalog = provider_catalog_health(provider, now=now)
+    collection = str(provider.get("lastCollectionStatus") or "UNKNOWN").strip().upper()
+    if collection == "FAILED":
+        reasons.append("Catalog sync failed")
+        worst = "FAILED"
+    elif catalog["status"] in {"WARNING", "FAILED", "UNKNOWN"} and (
+        "collection" in catalog["reason"].casefold() or "snapshot" in catalog["reason"].casefold()
+    ):
+        reasons.append("Catalog sync overdue")
+        worst = worst if worst == "FAILED" else "WARNING"
+    affected = _optional_nonnegative_int(provider.get("affectedPackageCount", provider.get("brokenPackageCount")))
+    if affected:
+        reasons.append(f"{affected} package {'problem' if affected == 1 else 'problems'}")
+        worst = worst if worst == "FAILED" else "WARNING"
+    if not reasons and health == "UNKNOWN":
+        worst = "UNKNOWN"
+    return {
+        "tracked": True,
+        "problem": bool(reasons),
+        "packagesKnown": affected is not None,
+        "reasons": reasons,
+        "status": worst,
+    }
+
+
+_ATTENTION_ROWS = (
+    # (review key, label, href, icon, glossary anchor)
+    ("installationIssues", "Open problems", "/admin/installations?state=open", "x-circle", "open-problem"),
+    ("githubIssuesInProgress", "GitHub issues", "/admin/review/github-issues", "external", "task"),
+    ("identityPending", "Identity review", "/admin/installations?state=identity-pending", "question", "identity-review"),
+    ("readyToPublish", "Publication review", "/admin/devices?review=publication", "check", "publication-review"),
+    ("missingDiagnostics", "Missing reports", "/admin/review/missing-reports", "alert", "missing-report"),
+)
+
+
+def _attention_row(label: str, count: int | None, href: str, icon: str, *, unavailable: bool = False) -> str:
+    """Fixed Needs attention row: icon, label, count (or —) and an arrow."""
+    if unavailable or count is None:
+        value = "—<span class='sr-only'> unavailable</span>"
+        state = "unavailable"
+        aria = f"{label}: unavailable"
+    else:
+        value = f"{count:,}"
+        state = "active" if count else "zero"
+        aria = f"{label}: {count}"
+    return (
+        f"<li class='overview-attention-row' data-state='{state}'>"
+        f"<a href='{html.escape(href, quote=True)}' aria-label='{html.escape(aria, quote=True)}'>"
+        f"{_admin_icon(icon)}<span class='overview-attention-label'>{html.escape(label)}</span>"
+        f"<strong>{value}</strong>{_admin_icon('arrow-right')}</a></li>"
+    )
+
+
+_FUNNEL_LABELS = {
+    "CONNECTED": "Connected", "TIMEOUT_NO_USB": "No USB", "TIMEOUT_USB_PRESENT": "USB timeout",
+    "BUSY": "Device busy", "MULTIPLE_DEVICES": "Several devices", "NOT_MTP_MODE": "Not in MTP mode",
+    "DISCONNECTED": "Disconnected", "FAILED": "Failed",
+    "APPROVED": "Approved", "PENDING": "Pending", "OUT_OF_SCOPE": "Out of scope",
+    "UNKNOWN_MODEL": "Unknown model", "AMBIGUOUS": "Ambiguous", "CATALOG_UNAVAILABLE": "Catalog unavailable",
+    "UPDATE_REQUIRED": "Update required",
+}
+
+
+def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
+    """First run: connected vs failed sessions, authorization and waiting models."""
+    if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
+        return _unavailable_card("First run", "overview-funnel")
+    stages = {
+        str(stage.get("stage")): {
+            str(item.get("outcome")): _optional_nonnegative_int(item.get("sessionCount")) or 0
+            for item in stage.get("outcomes") or []
+        }
+        for stage in funnel.get("stages") or [] if isinstance(stage, dict)
+    }
+    sessions = _optional_nonnegative_int(funnel.get("sessionCount"))
+    connect = stages.get("DEVICE_CONNECT", {})
+    connected = connect.get("CONNECTED", 0)
+    not_connected = {key: value for key, value in connect.items() if key != "CONNECTED" and value}
+    authorization = {key: value for key, value in stages.get("AUTHORIZATION", {}).items() if value}
+    if not sessions:
+        body = _empty_state("empty", "No first-run sessions in this period.")
+    else:
+        tiles = _metric_row([
+            _metric_tile("Sessions", sessions, glossary="first-run"),
+            _metric_tile("Connected", connected),
+            _metric_tile("Not connected", sum(not_connected.values()), failure=True),
+        ], label="First run sessions")
+
+        def breakdown(items: dict[str, int]) -> str:
+            ordered = sorted(items.items(), key=lambda item: (-item[1], item[0]))
+            return " · ".join(
+                f"{html.escape(_FUNNEL_LABELS.get(key, key.replace('_', ' ').title()))} <strong>{value:,}</strong>"
+                for key, value in ordered
+            ) or "—"
+
+        waiting = [
+            item for item in funnel.get("modelsNeedingReview") or []
+            if isinstance(item, dict) and item.get("baseModel")
+        ][:3]
+        waiting_markup = " · ".join(
+            f"{html.escape(str(item['baseModel']))} <strong>{_optional_nonnegative_int(item.get('sessionCount')) or 0}</strong>"
+            for item in waiting
+        ) or "—"
+        body = tiles + (
+            "<dl class='overview-funnel-breakdown'>"
+            f"<div><dt>Not connected</dt><dd>{breakdown(not_connected)}</dd></div>"
+            f"<div><dt>Authorization</dt><dd>{breakdown(authorization)}</dd></div>"
+            f"<div><dt>Waiting models</dt><dd>{waiting_markup}</dd></div>"
+            "</dl>"
+        )
+    return _section_card(
+        "First run", body, card_id="overview-funnel", scope=period,
+        css="overview-panel overview-funnel-panel", glossary="first-run",
+    )
+
+
+def _rate_secondary(failed: Any, rate: Any) -> str:
+    failed_count = _optional_nonnegative_int(failed)
+    failed_markup = (
+        f"<span class='admin-metric-failed{' is-positive' if failed_count else ''}'>Failed {failed_count:,}</span>"
+        if failed_count is not None else "<span class='admin-metric-failed'>Failed —</span>"
+    )
+    return f"{failed_markup} · {html.escape(_format_rate(rate))}"
+
+
 def overview_page(
     overview: dict[str, Any], user: dict[str, Any], csrf_token: str,
     *, review_action: str = "", review_event_id: str = "",
 ) -> bytes:
-    data = overview.get("data") if isinstance(overview.get("data"), dict) else {}
+    data_raw = overview.get("data") if isinstance(overview.get("data"), dict) else {}
+    data_available = data_raw.get("available") is not False
+    data = data_raw if data_available else {}
     compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
     downloads = overview.get("downloads") if isinstance(overview.get("downloads"), dict) else {}
     providers = list(overview.get("providers") or [])
+    providers_available = overview.get("providersAvailable", True) is not False
     period = str(overview.get("period") or "24h")
+    if period not in {"24h", "7d", "30d", "all"}:
+        period = "24h"
     time_zone = str(overview.get("timeZone") or "UTC")
     period_labels = {"24h": "Last 24 hours", "7d": "Last 7 days", "30d": "Last 30 days", "all": "All time"}
     period_options = "".join(
@@ -2131,142 +2252,294 @@ def overview_page(
         if str(item.get("event_type") or "").upper()
         not in {"DOWNLOAD_STARTED", "DOWNLOAD_PROCESSING"}
     ]
-    attention_providers = [
-        provider for provider in providers
-        if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
-    ]
-    review = user.get("admin_review_summary") or {}
-    if review.get("available") is False:
-        review = {}
-    attention_item_markup: list[str] = []
-    category_rows = (
-        ("installationIssues", "Installation problems", "/admin/installations?state=open", compatibility.get("allTimeOpenErrorCount")),
-        ("githubIssuesInProgress", "GitHub issues", "/admin/review/github-issues", 0),
-        ("identityPending", "Device identity", "/admin/installations?state=identity-pending", compatibility.get("allTimeIdentityPendingCount")),
-        ("readyToPublish", "Publication review", "/admin/devices?review=publication", len(compatibility.get("reviewRequired") or [])),
-    )
-    for key, label, href, fallback in category_rows:
-        try:
-            count = max(0, int(review.get(key) if review.get(key) is not None else fallback or 0))
-        except (TypeError, ValueError):
-            count = 0
-        if count:
-            attention_item_markup.append(
-                "<li class='overview-attention-item overview-attention-review'>"
-                "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
-                f"<div><strong>{html.escape(label)} · {count}</strong></div>"
-                f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Inspect&nbsp;{_admin_icon('arrow-right')}</a></li>"
-            )
-    attention_item_markup.extend(
-        _overview_missing_diagnostic_item(item, csrf_token)
-        for item in data.get("missingDiagnosticFailures") or []
-    )
-    attention_item_markup.extend(_overview_provider_attention_item(provider) for provider in attention_providers)
-    if isinstance(overview.get("system"), dict):
-        health_cards, _, _ = _system_health_cards(overview["system"])
-        attention_item_markup.extend(
-            _overview_system_attention_item(card)
-            for card in health_cards
-            if card["status"] != "HEALTHY"
-        )
-    attention_items = "".join(attention_item_markup)
-    has_review_queue = bool(attention_item_markup)
-    if not attention_items:
-        attention_content = ""
-    else:
-        attention_content = f"<ul class='overview-attention-list'>{attention_items}</ul>"
-    recent_content = (
-        "<p class='empty'>No map activity in this period.</p>"
-        if not recent else
-        "<ul class='overview-activity-list'>" + "".join(_overview_map_activity_row(item) for item in recent) + "</ul>"
-    )
-    map_statistics_href = "/admin/map-statistics"
-    map_statistics_href += "?" + urlencode({"period": period})
-    download_has_data = bool(downloads.get("hasData")) and (downloads.get("dmgTotal") is not None or downloads.get("zipTotal") is not None or bool(downloads.get("trend")))
-    download_last_update = downloads.get("lastSuccessfulObservedAt", downloads.get("lastObservedAt"))
-    download_update_note = (
-        f"Last successful data update: {_timestamp_markup(download_last_update)}."
-        if download_has_data and download_last_update is not None
-        else "Last successful data update: —."
-    )
+    map_statistics_href = "/admin/map-statistics?" + urlencode({"period": period})
 
-    def download_total(key: str) -> str:
-        if downloads.get(key) is None:
-            return "—"
-        try:
-            return str(max(0, int(downloads[key])))
-        except (TypeError, ValueError):
-            return "—"
-
-    def map_total(key: str) -> str:
-        if key not in data or data.get(key) is None:
-            return "—"
-        try:
-            return str(max(0, int(data[key])))
-        except (TypeError, ValueError):
-            return "—"
-
-    period_statistics_href = html.escape(f"/admin/map-statistics?period={period}", quote=True)
-    all_statistics_href = html.escape("/admin/map-statistics?period=all", quote=True)
-    map_totals = (
-        "<div class='overview-map-totals' aria-label='All-time installation totals'>"
-        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Successful, all time: {map_total('allTimeSuccessCount')}'><strong>{map_total('allTimeSuccessCount')}</strong><small>Successful</small></a>"
-        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Failed, all time: {map_total('allTimeFailedCount')}'>{_admin_error_counter(data.get('allTimeFailedCount'), available='allTimeFailedCount')}<small>Failed</small></a>"
-        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Success rate, all time: {_format_rate(data.get('allTimeInstallSuccessRate'))}'><strong>{_format_rate(data.get('allTimeInstallSuccessRate'))}</strong><small>Success rate</small></a>"
-        "</div>"
+    # --- Needs attention: fixed category rows, explicit unavailable state ----
+    review = overview.get("review") if isinstance(overview.get("review"), dict) else user.get("admin_review_summary")
+    review = review if isinstance(review, dict) else {}
+    review_available = bool(review) and review.get("available") is not False
+    attention_rows: list[str] = []
+    attention_counts: list[int | None] = []
+    for key, label, href, icon, _ in _ATTENTION_ROWS:
+        count = _optional_nonnegative_int(review.get(key)) if review_available else None
+        # A failed queue query is unavailable, never a smaller fallback number
+        # from another definition (ADM-02).
+        attention_counts.append(count)
+        attention_rows.append(_attention_row(label, count, href, icon, unavailable=count is None))
+    provider_states = [_provider_problem_state(provider) for provider in providers]
+    provider_problem_count = (
+        sum(1 for state in provider_states if state["problem"]) if providers_available else None
     )
-    download_totals = (
-        "<div class='overview-map-totals' aria-label='All-time download totals'>"
-        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Successful, all time: {map_total('allTimeCompletedDownloadCount')}'><strong>{map_total('allTimeCompletedDownloadCount')}</strong><small>Successful</small></a>"
-        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Failed, all time: {map_total('allTimeFailedDownloadCount')}'>{_admin_error_counter(data.get('allTimeFailedDownloadCount'), available='allTimeFailedDownloadCount')}<small>Failed</small></a>"
-        f"<a class='overview-map-total' href='{all_statistics_href}' title='All time' aria-label='Success rate, all time: {_format_rate(data.get('allTimeDownloadSuccessRate'))}'><strong>{_format_rate(data.get('allTimeDownloadSuccessRate'))}</strong><small>Success rate</small></a>"
-        "</div>"
+    attention_counts.append(provider_problem_count)
+    attention_rows.append(_attention_row("Provider problems", provider_problem_count, "/admin/providers", "alert"))
+    system = overview.get("system") if isinstance(overview.get("system"), dict) else None
+    system_available = isinstance(system, dict) and system.get("available") is not False
+    health_cards = _system_health_cards(system)[0] if system_available else []
+    system_count = (
+        sum(1 for card in health_cards if card["status"] != "HEALTHY" and card.get("group") != "catalogs")
+        if system_available else None
     )
-    downloads_section = (
-        "<section class='overview-panel overview-download-panel' aria-labelledby='overview-downloads-title'>"
-        "<div class='section-heading overview-download-heading'><div>"
-        "<h2 id='overview-downloads-title'>App downloads</h2></div>"
-        "<div class='overview-download-totals' aria-label='Total GitHub downloads'>"
-        f"<div class='overview-download-total' aria-label='.dmg downloads total: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
-        f"<div class='overview-download-total' aria-label='.zip downloads total: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
-        "</div></div>"
-        f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
-        f"<p class='overview-chart-note'>{download_update_note}</p>"
-        "</section>"
-    ) if download_has_data else ""
+    attention_counts.append(system_count)
+    attention_rows.append(_attention_row("System checks", system_count, "/admin/system-health", "alert"))
+    attention_total = (
+        sum(attention_counts) if all(value is not None for value in attention_counts) else None
+    )
     notice_event_id = ""
     try:
         notice_event_id = str(UUID(str(review_event_id).strip()))
     except (ValueError, AttributeError):
         pass
-    review_notice = ""
-    if notice_event_id and review_action in {"dismissed", "reopened"}:
-        if review_action == "dismissed":
-            review_notice = (
-                "<div class='overview-review-notice' role='status'>Review item dismissed. "
-                "<form method='post' action='/admin/review/missing-diagnostics/undo' "
-                "class='admin-async-action'>"
-                f"<input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>"
-                f"<input type='hidden' name='event_id' value='{html.escape(notice_event_id, quote=True)}'>"
-                "<button type='submit' class='link-button'>Undo</button></form></div>"
-            )
-        else:
-            review_notice = "<div class='overview-review-notice' role='status'>Review item reopened.</div>"
-    attention_section = (
-        f"<section class='overview-panel overview-attention-panel{' overview-attention-empty' if not has_review_queue else ''}' aria-labelledby='overview-attention-title'><div class='section-heading'><div><h2 id='overview-attention-title'>Needs attention</h2></div></div>{review_notice}{attention_content}"
-        + ("<p class='empty'>No pending work.</p>" if not has_review_queue else "")
-        + "</section>"
+    review_notice = _missing_report_notice(review_action, notice_event_id, csrf_token, return_to="")
+    attention_status = ""
+    if not review_available:
+        attention_status = _empty_state("unavailable", "Review counts are unavailable.", action=("", "Retry"))
+    elif attention_total == 0:
+        attention_status = _empty_state("empty", "Nothing to review.")
+    attention_section = _section_card(
+        "Needs attention",
+        review_notice + attention_status + "<ul class='overview-attention-rows'>" + "".join(attention_rows) + "</ul>",
+        card_id="overview-attention", scope="now",
+        css="overview-panel overview-attention-panel" + (" overview-attention-empty" if attention_total == 0 else ""),
     )
+
+    # --- Period tiles ---------------------------------------------------------
+    def stat(key: str) -> Any:
+        return data.get(key) if data_available else None
+
+    tile_state = None if data_available else "unavailable"
+    updates_ok = _optional_nonnegative_int(stat("completedMapUpdateCount"))
+    updates_failed = _optional_nonnegative_int(stat("failedMapUpdateCount"))
+    update_rate = (
+        updates_ok / (updates_ok + updates_failed) * 100
+        if updates_ok is not None and updates_failed is not None and updates_ok + updates_failed else None
+    )
+    tiles = _metric_row([
+        _metric_tile(
+            "Installs", stat("completedInstallCount"), scope=period, state=tile_state,
+            secondary=_rate_secondary(stat("failedInstallCount"), stat("installSuccessRate")) if data_available else "",
+            glossary="fresh-install", data_stat="completedInstallCount",
+        ),
+        _metric_tile(
+            "Updates", stat("completedMapUpdateCount"), scope=period, state=tile_state,
+            secondary=_rate_secondary(stat("failedMapUpdateCount"), update_rate) if data_available else "",
+            glossary="map-update", data_stat="completedMapUpdateCount",
+        ),
+        _metric_tile(
+            "Downloads", stat("completedDownloadCount"), scope=period, state=tile_state,
+            secondary=_rate_secondary(stat("failedDownloadCount"), stat("downloadSuccessRate")) if data_available else "",
+            glossary="provider-download", data_stat="completedDownloadCount",
+        ),
+        _metric_tile(
+            "Needs attention", attention_total, scope="now",
+            state=None if attention_total is not None else "unavailable" if not review_available else "partial",
+            failure=True, href="#overview-attention", glossary="task",
+        ),
+    ], label="Dashboard summary", css="overview-tiles")
+
+    # --- Charts with an explicit all-time line -------------------------------
+    def all_time_line(items: list[tuple[str, Any, str]]) -> str:
+        parts = []
+        for label, value, fmt in items:
+            rendered = _metric_value_text(value, fmt)
+            parts.append(f"{html.escape(label)} <strong>{html.escape(rendered) if rendered is not None else '—'}</strong>")
+        return (
+            f"<p class='overview-all-time'>{_scope_chip('all')}<span>{' · '.join(parts)}</span>"
+            f"<a class='section-link' href='/admin/map-statistics?period=all'>Maps&nbsp;{_admin_icon('arrow-right')}</a></p>"
+        )
+
+    purposes = data.get("downloadPurposes") if isinstance(data.get("downloadPurposes"), dict) else None
+    purpose_line = ""
+    if purposes:
+        purpose_line = "<dl class='overview-purposes' aria-label='Downloads by purpose'>" + "".join(
+            f"<div><dt>{label}</dt><dd>{_optional_count_label((purposes.get(purpose) or {}).get('succeeded'))}"
+            + (f" <span class='admin-metric-failed is-positive'>· Failed {failed:,}</span>"
+               if (failed := _optional_nonnegative_int((purposes.get(purpose) or {}).get('failed'))) else "")
+            + "</dd></div>"
+            for purpose, label in (("install", "For installs"), ("update", "For updates"), ("unknown", "Not recorded"))
+        ) + "</dl>"
+    trend = list(data.get("trend") or [])
+    bucket = str(data.get("bucket") or "day")
+    if data_available:
+        downloads_chart = _section_card(
+            "Downloads",
+            _overview_trend_chart(
+                trend, bucket, time_zone, metric="downloads", chart_id="overview-downloads",
+                has_activity=bool((data.get("completedDownloadCount") or 0) + (data.get("failedDownloadCount") or 0)),
+            ) + purpose_line + all_time_line([
+                ("Successful", data.get("allTimeCompletedDownloadCount"), "count"),
+                ("Failed", data.get("allTimeFailedDownloadCount"), "count"),
+                ("Rate", data.get("allTimeDownloadSuccessRate"), "rate"),
+            ]),
+            card_id="overview-download-trend", scope=period, glossary="provider-download",
+            css="overview-panel overview-chart-panel",
+        )
+        installs_chart = _section_card(
+            "Installs",
+            _overview_trend_chart(
+                trend, bucket, time_zone, chart_id="overview-installs",
+                has_activity=bool((data.get("completedInstallCount") or 0) + (data.get("failedInstallCount") or 0) + (data.get("mapUpdateCount") or 0)),
+            ) + all_time_line([
+                ("Installs", data.get("allTimeSuccessCount"), "count"),
+                ("Failed", data.get("allTimeFailedCount"), "count"),
+                ("Rate", data.get("allTimeInstallSuccessRate"), "rate"),
+                ("Updates", data.get("allTimeMapUpdateSuccessCount"), "count"),
+                ("Failed", data.get("allTimeMapUpdateFailedCount"), "count"),
+            ]),
+            card_id="overview-trend", scope=period, glossary="fresh-install",
+            css="overview-panel overview-chart-panel",
+        )
+    else:
+        downloads_chart = _unavailable_card("Downloads", "overview-download-trend")
+        installs_chart = _unavailable_card("Installs", "overview-trend")
+
+    # --- Activity -------------------------------------------------------------
+    if not data_available:
+        recent_content = _empty_state("unavailable", "Could not load recent activity.", action=("", "Retry"))
+    elif not recent:
+        recent_content = _empty_state("empty", "No map activity in this period.")
+    else:
+        recent_content = "<ul class='overview-activity-list'>" + "".join(_overview_map_activity_row(item) for item in recent) + "</ul>"
+    activity_section = _section_card(
+        "Activity", recent_content, card_id="overview-activity", scope=period,
+        action=(map_statistics_href, "View all"), css="overview-panel overview-activity-panel",
+    )
+
+    # --- Terento app downloads (GitHub) ---------------------------------------
+    downloads_available = downloads.get("available") is not False
+    download_has_data = bool(downloads.get("hasData")) and (downloads.get("dmgTotal") is not None or downloads.get("zipTotal") is not None or bool(downloads.get("trend")))
+    download_last_update = downloads.get("lastSuccessfulObservedAt", downloads.get("lastObservedAt"))
+
+    def download_total(key: str) -> str:
+        value = _optional_nonnegative_int(downloads.get(key))
+        return f"{value:,}" if value is not None else "—"
+
+    if not downloads_available:
+        downloads_section = _unavailable_card("App downloads", "overview-downloads")
+    elif download_has_data:
+        downloads_section = _section_card(
+            "App downloads",
+            "<div class='overview-download-totals' aria-label='Terento app downloads total, all time'>"
+            f"<div class='overview-download-total' aria-label='.dmg downloads total, all time: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
+            f"<div class='overview-download-total' aria-label='.zip downloads total, all time: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
+            f"{_scope_chip('all')}</div>"
+            f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
+            f"<p class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</p>",
+            card_id="overview-downloads", scope=period, glossary="terento-app-download",
+            css="overview-panel overview-download-panel",
+        )
+    else:
+        downloads_section = ""
+
+    funnel_section = _funnel_card(overview.get("funnel"), period) if "funnel" in overview else ""
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
-        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-download-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-download-trend-title'>Map downloads</h2><span class='metric-scope'>All purposes, including updates</span></div>{download_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, metric='downloads', has_activity=bool((data.get('completedDownloadCount') or 0) + (data.get('failedDownloadCount') or 0)))}</section><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><h2 id='overview-trend-title'>Map installs and updates</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone, has_activity=bool((data.get('completedInstallCount') or 0) + (data.get('failedInstallCount') or 0) + (data.get('mapUpdateCount') or 0)))}</section></div>
-        <div class='overview-composition-grid'>{attention_section}<section class='overview-panel overview-activity-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><h2 id='overview-activity-title'>Activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{downloads_section}</div>
+        {tiles}
+        <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
+        <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
       <script>{_overview_period_script()}</script>
     """
-    return _layout("Dashboard", content, sections={"mapActivity": data, "compatibility": compatibility, "downloads": downloads, "providers": providers, "review": user.get("admin_review_summary"), "system": [(card["title"], card["status"], card["reason"]) for card in _system_health_cards(overview.get("system") or {})[0]]})
+    return _layout("Dashboard", content, sections={
+        "mapActivity": data, "compatibility": compatibility, "downloads": downloads,
+        "providers": providers, "review": review, "funnel": overview.get("funnel"),
+        "system": [(card["title"], card["status"], card["reason"]) for card in health_cards],
+    })
+
+
+def _missing_report_notice(action: str, event_id: str, csrf_token: str, *, return_to: str) -> str:
+    if not event_id or action not in {"dismissed", "reopened"}:
+        return ""
+    if action == "reopened":
+        return "<div class='overview-review-notice' role='status'>Review item reopened.</div>"
+    return_field = (
+        f"<input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>" if return_to else ""
+    )
+    return (
+        "<div class='overview-review-notice' role='status'>Review item dismissed. "
+        "<form method='post' action='/admin/review/missing-diagnostics/undo' "
+        "class='admin-async-action'>"
+        f"<input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>"
+        f"<input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>{return_field}"
+        "<button type='submit' class='link-button'>Undo</button></form></div>"
+    )
+
+
+def missing_reports_page(
+    payload: dict[str, Any] | None, user: dict[str, Any], csrf_token: str,
+    *, review_action: str = "", review_event_id: str = "",
+) -> bytes:
+    """Every install failure without a matching device report (ADM-11)."""
+    notice_event_id = ""
+    try:
+        notice_event_id = str(UUID(str(review_event_id).strip()))
+    except (ValueError, AttributeError):
+        pass
+    notice = _missing_report_notice(
+        review_action, notice_event_id, csrf_token, return_to="/admin/review/missing-reports",
+    )
+    if payload is None:
+        body = _unavailable_card("Missing reports", "missing-reports")
+    else:
+        rows = list(payload.get("rows") or [])
+        total = _optional_nonnegative_int(payload.get("total")) or 0
+        offset = _optional_nonnegative_int(payload.get("offset")) or 0
+        limit = _optional_nonnegative_int(payload.get("limit")) or 50
+        items = "".join(
+            _overview_missing_diagnostic_item(item, csrf_token, return_to="/admin/review/missing-reports")
+            for item in rows
+        )
+        pagination = ""
+        if total > limit:
+            previous = (
+                f"<a class='secondary-button' href='/admin/review/missing-reports?offset={max(0, offset - limit)}'>Previous</a>"
+                if offset else ""
+            )
+            following = (
+                f"<a class='secondary-button' href='/admin/review/missing-reports?offset={offset + limit}'>Next</a>"
+                if offset + limit < total else ""
+            )
+            pagination = (
+                "<div class='provider-pagination' aria-label='Missing report pages'>"
+                f"{previous}<span>{offset + 1}–{min(total, offset + limit)} of {total}</span>{following}</div>"
+            )
+        list_markup = (
+            f"<ul class='overview-attention-list'>{items}</ul>{pagination}" if rows
+            else _empty_state("empty", "Nothing to review.")
+        )
+        body = _metric_row([
+            _metric_tile("Missing reports", total, scope="now", glossary="missing-report"),
+        ], label="Missing report summary") + _section_card(
+            "Reports", list_markup, card_id="missing-report-list", css="overview-attention-panel",
+        )
+    content = f"""
+      {_admin_header(user, csrf_token, active='overview')}
+      <main class='dashboard missing-reports-page' id='main-content'>
+        <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
+        <div class='heading-row'><div><h1>Missing reports</h1></div></div>
+        {notice}{body}
+      </main>
+      <script>{_diagnostics_script()}</script>
+    """
+    return _layout("Missing reports", content, sections={"missingReports": payload})
+
+
+def admin_error_page(
+    status: int, message: str, user: dict[str, Any] | None = None, csrf_token: str = "",
+) -> bytes:
+    """HTML error page for HTML routes, inside the admin chrome when signed in."""
+    titles = {400: "Invalid link", 404: "Not found", 503: "Unavailable"}
+    title = titles.get(int(status), "Something went wrong")
+    header = _admin_header(user, csrf_token, active="") if user else ""
+    content = f"""
+      {header}
+      <main class='dashboard admin-error-page' id='main-content' aria-labelledby='admin-error-title'>
+        <div class='heading-row'><div><h1 id='admin-error-title'>{html.escape(title)}</h1></div></div>
+        {_section_card('Details', _empty_state('unavailable' if int(status) >= 500 else 'empty', message, action=('', 'Retry') if int(status) >= 500 else ('/admin', 'Dashboard')), card_id='admin-error')}
+      </main>
+    """
+    return _layout(title, content)
 
 
 def _health_status_badge(status: Any) -> str:
@@ -2303,6 +2576,7 @@ def _system_health_card(
     *,
     reason: str = "",
     action: str = "",
+    group: str = "service",
 ) -> dict[str, Any]:
     normalized_status = str(status or "UNKNOWN").upper()
     checked = (observation or {}).get("observed_at")
@@ -2334,7 +2608,7 @@ def _system_health_card(
             f"<span class='system-health-when'>Last checked {when}</span>"
             f"{technical}</article>"
         )
-    return {"title": title, "status": normalized_status, "html": markup, "reason": reason, "lastChecked": checked}
+    return {"title": title, "status": normalized_status, "html": markup, "reason": reason, "lastChecked": checked, "group": group}
 
 
 def _health_details(observation: dict[str, Any] | None) -> dict[str, Any]:
@@ -2603,6 +2877,7 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
         cards.append(_system_health_card(
             str(provider.get('name') or provider.get('id') or 'Provider'),
             state["status"], description, reason=state["reason"], action=state["action"],
+            group="catalogs",
         ))
     cards.append(_indexnow_card(observations.get("indexnow"), site, now=now))
     scheduler_action = "Inspect the catalog scheduler container and its next scheduled run."
@@ -7939,8 +8214,8 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .map-statistics-provider-table .admin-table th,.map-statistics-provider-table .admin-table td{padding-inline:7px}
 .map-statistics-provider-table .admin-table td{white-space:normal;overflow-wrap:anywhere}
 .map-statistics-provider-table .admin-table .column-date{width:142px;overflow-wrap:normal;white-space:nowrap}
-.overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'downloads activity';align-items:start;gap:16px;margin-top:16px}
-.overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-attention-panel{grid-area:attention}.overview-composition-grid>.overview-activity-panel{grid-area:activity}.overview-composition-grid>.overview-download-panel{grid-area:downloads}
+.overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'funnel activity' 'downloads activity';grid-template-rows:auto auto 1fr;align-items:start;gap:16px;margin-top:16px}
+.overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-attention-panel{grid-area:attention}.overview-composition-grid>.overview-activity-panel{grid-area:activity}.overview-composition-grid>.overview-funnel-panel{grid-area:funnel}.overview-composition-grid>.overview-download-panel{grid-area:downloads}
 .overview-heading+.overview-primary-grid{margin-top:0}
 .metric-scope{color:var(--secondary);font-size:11px;font-weight:650;line-height:1.3;white-space:nowrap}
 .metric-scope{margin-left:5px}
@@ -7966,7 +8241,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
   .model-evidence-history .mobile-record-table tbody td:first-child,.model-evidence-history .mobile-record-table tbody td:has(button){grid-column:1/-1}
   .model-evidence-history .mobile-record-table td button{width:100%;min-height:44px}
 }
-@media(max-width:900px){.overview-composition-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:'attention' 'activity' 'downloads'}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:900px){.overview-composition-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:'attention' 'activity' 'funnel' 'downloads';grid-template-rows:none}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:760px){
   .admin-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
   .admin-nav-group{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
@@ -8016,6 +8291,28 @@ ADMIN_STYLES += """
 .admin-glossary-link:hover>span{background:var(--selected-tint)}
 .admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
 .admin-card-unavailable{border-style:dashed}
+.admin-metric-failed{white-space:nowrap}.admin-metric-failed.is-positive{color:var(--danger);font-weight:600}
+.overview-tiles{margin:0 0 16px}
+.overview-attention-rows{display:grid;gap:2px;margin:0;padding:0;list-style:none}
+.overview-attention-row>a{display:grid;grid-template-columns:18px minmax(0,1fr) auto 14px;align-items:center;gap:10px;min-height:40px;padding:6px 8px;border-radius:var(--radius-control);color:var(--graphite);text-decoration:none}
+.overview-attention-row>a:hover{background:var(--surface-muted)}
+.overview-attention-row>a:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}
+.overview-attention-row>a>.admin-icon:first-child{width:16px;height:16px;color:var(--secondary)}
+.overview-attention-row strong{font-variant-numeric:tabular-nums;font-weight:600}
+.overview-attention-row[data-state="active"]>a>.admin-icon:first-child,.overview-attention-row[data-state="active"] strong{color:var(--danger)}
+.overview-attention-row[data-state="zero"]>a{color:var(--secondary)}
+.overview-attention-row[data-state="unavailable"] strong{color:var(--secondary)}
+.overview-attention-item .admin-pill{align-self:start}
+.overview-all-time{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0;color:var(--secondary);font-size:13px}
+.overview-all-time strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600}
+.overview-all-time>.section-link{margin-left:auto}
+.overview-purposes,.overview-funnel-breakdown{display:grid;gap:4px;margin:10px 0 0;font-size:13px}
+.overview-purposes{grid-template-columns:repeat(3,minmax(0,max-content));gap:4px 20px}
+.overview-purposes>div,.overview-funnel-breakdown>div{display:flex;flex-wrap:wrap;gap:4px 8px;min-width:0}
+.overview-purposes dt,.overview-funnel-breakdown dt{color:var(--secondary)}
+.overview-purposes dd,.overview-funnel-breakdown dd{margin:0;font-variant-numeric:tabular-nums}
+.overview-funnel-breakdown dt{min-width:110px}
+@media(max-width:560px){.overview-purposes{grid-template-columns:minmax(0,1fr)}}
 .admin-glossary{display:grid;gap:0;margin:0}
 .admin-glossary-entry{display:grid;grid-template-columns:minmax(160px,220px) minmax(0,1fr);gap:4px 20px;padding:12px 0;border-top:1px solid var(--border);scroll-margin-top:calc(var(--admin-topbar-height) + 16px)}
 .admin-glossary-entry:first-child{border-top:0}

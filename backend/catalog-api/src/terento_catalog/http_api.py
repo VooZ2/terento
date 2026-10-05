@@ -30,6 +30,8 @@ from .admin import (
     diagnostics_page,
     github_issue_queue_page,
     glossary_page,
+    admin_error_page,
+    missing_reports_page,
     devices_page,
     map_statistics_page,
     local_test_data_page,
@@ -667,15 +669,27 @@ class CatalogService:
             else datetime(1970, 1, 1, tzinfo=timezone.utc)
         )
         downloads_getter = getattr(self.database, "github_downloads_snapshot", None)
-        downloads = downloads_getter(
-            time_zone=time_zone, period=period,
-        ) if callable(downloads_getter) else {
-            "hasData": False,
-            "dmgTotal": None,
-            "zipTotal": None,
-            "lastObservedAt": None,
-            "trend": [],
-        }
+
+        def section(name: str, reader: Any, fallback: Any) -> Any:
+            # Section-level resilience (ADM-26): one failing read model marks
+            # only its card unavailable; the Dashboard keeps rendering.
+            try:
+                return reader()
+            except Exception:
+                LOGGER.exception("admin overview section %s failed", name)
+                return fallback
+
+        unavailable = {"available": False}
+        providers_payload = section("providers", self.admin_providers, None)
+        providers = (providers_payload or {}).get("providers", []) if providers_payload else []
+
+        def system_health() -> dict[str, Any]:
+            snapshot = self.database.operational_health_snapshot()
+            return {
+                "schemaVersion": 1, "api": "HEALTHY", "database": "HEALTHY",
+                **snapshot, "providers": providers,
+            }
+
         return {
             "schemaVersion": 1,
             "period": period,
@@ -684,13 +698,23 @@ class CatalogService:
             # Keep map-operation telemetry and compatibility evidence as
             # distinct stored domains. The read model may reconcile a missing
             # provider success without changing either public API payload.
-            "data": self.database.admin_overview_map_snapshot(
+            "data": section("map", lambda: self.database.admin_overview_map_snapshot(
                 since, period=period, time_zone=time_zone,
-            ),
-            "compatibility": self.database.admin_overview_snapshot(since),
-            "downloads": downloads,
-            "providers": self.admin_providers().get("providers", []),
-            "system": self.operational_health(),
+            ), dict(unavailable)),
+            "compatibility": section("compatibility", lambda: self.database.admin_overview_snapshot(since), dict(unavailable)),
+            "downloads": section("downloads", lambda: downloads_getter(
+                time_zone=time_zone, period=period,
+            ) if callable(downloads_getter) else {
+                "hasData": False,
+                "dmgTotal": None,
+                "zipTotal": None,
+                "lastObservedAt": None,
+                "trend": [],
+            }, dict(unavailable)),
+            "providers": providers,
+            "providersAvailable": providers_payload is not None,
+            "system": section("system", system_health, dict(unavailable)),
+            "funnel": section("funnel", lambda: self.app_funnel({"period": period}), dict(unavailable)),
         }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:
@@ -1442,20 +1466,43 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     noindex=True,
                 )
                 return
-            try:
-                session = {**session, "admin_review_summary": service.admin_review_summary()}
-            except Exception:
-                LOGGER.exception("admin review summary failed")
-                session = {**session, "admin_review_summary": {
-                    "available": False,
-                    "installationIssues": None,
-                    "githubIssuesInProgress": None,
-                    "identityPending": None,
-                    "readyToPublish": None,
-                    "missingDiagnostics": None,
-                    "pendingReviewTasks": None,
-                    "total": None,
-                }}
+            if request_path in {"/admin", "/admin/"}:
+                # Only the Dashboard shows Needs attention; other pages no
+                # longer pay for the review summary query (ADM-27).
+                try:
+                    session = {**session, "admin_review_summary": service.admin_review_summary()}
+                except Exception:
+                    LOGGER.exception("admin review summary failed")
+                    session = {**session, "admin_review_summary": {
+                        "available": False,
+                        "installationIssues": None,
+                        "githubIssuesInProgress": None,
+                        "identityPending": None,
+                        "readyToPublish": None,
+                        "missingDiagnostics": None,
+                        "pendingReviewTasks": None,
+                        "total": None,
+                    }}
+            if request_path in {"/admin/review/missing-reports", "/admin/review/missing-reports/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                try:
+                    offset = int(query.get("offset", ["0"])[-1] or 0)
+                    if offset < 0:
+                        raise ValueError("invalid_offset")
+                except ValueError:
+                    self._send_admin_error(HTTPStatus.BAD_REQUEST, "This page link is not valid.", session, csrf_token, send_body=send_body)
+                    return
+                try:
+                    payload = service.database.missing_diagnostic_failures(limit=50, offset=offset)
+                except Exception:
+                    LOGGER.exception("missing report list failed")
+                    payload = None
+                self._send_admin_html(missing_reports_page(
+                    payload, session, csrf_token,
+                    review_action=query.get("reviewAction", [""])[-1],
+                    review_event_id=query.get("eventId", [""])[-1],
+                ), send_body=send_body)
+                return
             if request_path in {"/admin/review/github-issues", "/admin/review/github-issues/"}:
                 try:
                     payload = service.admin_devices()
@@ -2057,8 +2104,15 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                     return
                 action = "dismissed" if is_dismiss else "reopened"
+                # The full list is the primary home of these tasks; the
+                # Dashboard keeps accepting the notice for compatibility.
+                base = (
+                    "/admin/review/missing-reports"
+                    if form.get("return_to", "").strip() == "/admin/review/missing-reports"
+                    else "/admin"
+                )
                 self._redirect(
-                    f"/admin?reviewAction={action}&eventId={quote(event_id, safe='')}",
+                    f"{base}?reviewAction={action}&eventId={quote(event_id, safe='')}",
                     send_body=True,
                 )
                 return
@@ -2503,6 +2557,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             attributes = f"Max-Age={service.admin_session_ttl_seconds}; Path=/admin; Secure; HttpOnly; SameSite=Strict"
             self.send_header("Set-Cookie", f"terento_admin_session={session_token}; {attributes}")
             self.send_header("Set-Cookie", f"terento_admin_csrf={csrf_token}; {attributes}")
+
+        def _send_admin_error(
+            self, status: HTTPStatus, message: str, session: dict[str, Any] | None = None,
+            csrf_token: str | None = None, *, send_body: bool,
+        ) -> None:
+            """HTML routes answer with an HTML page inside the admin chrome (ADM-26)."""
+            self._send_admin_html(
+                admin_error_page(int(status), message, session, csrf_token or ""),
+                send_body=send_body, status=status,
+            )
 
         def _send_admin_html(
             self, body: bytes, *, send_body: bool, status: HTTPStatus = HTTPStatus.OK

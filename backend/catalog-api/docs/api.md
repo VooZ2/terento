@@ -199,13 +199,24 @@ unavailable in authenticated diagnostics and generated issue reports.
 Returns the authenticated operator Dashboard. The default period is the last 24
 hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
 
-The first row contains always-visible Map downloads and Map installs trends. The
-Successful, Failed, and Success rate badges use all retained history; the period
-selector changes only the trend series and Activity. Needs attention covers
-unresolved work across all dates. App downloads is the separate Terento `.dmg`
-and `.zip` cumulative-counter trend and is omitted without usable data. Activity
-is bounded and internally scrollable. Generic rows have no Maps link unless an
-exact event/detail destination exists.
+The first row is four tiles: Installs, Updates and Downloads for the selected
+period (successful, failed and rate, with a visible period chip) and Needs
+attention (Now). The Downloads and Installs chart cards follow, each with a
+legend of period totals and an `All time` line with the all-time totals; the
+Downloads card adds the period purpose breakdown (`downloadPurposes`: install,
+update, unknown). Needs attention covers unresolved work across all dates in
+seven fixed rows read only from `admin_review_summary()`, the shared
+provider-problem definition and the system checks; an unavailable query shows
+`—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
+for the period. App downloads is the separate Terento `.dmg` and `.zip`
+cumulative-counter trend and is omitted without usable data. Activity is bounded
+and internally scrollable. Generic rows have no Maps link unless an exact
+event/detail destination exists.
+
+`admin_overview` reads every section independently (map snapshot,
+compatibility snapshot, GitHub downloads, providers, system health, funnel);
+one failing read model is logged and renders that card as unavailable while the
+page returns 200. The review summary query runs only for `/admin`.
 
 Activity presents installation/update status followed by one context row:
 map/region, provider (except Custom .img), and a catalog-assessed model and
@@ -230,10 +241,14 @@ and country: provider + region never establishes a package or geography, so it
 counts in fresh totals but not in Popular maps, Top countries or All maps, and a
 later catalog change cannot rewrite its history.
 
-A map install failure without a matching device diagnostic appears in Needs
-attention across all dates and is keyed by the immutable event ID. Authenticated,
+A map install failure without a matching device diagnostic is counted in Needs
+attention (Missing reports) across all dates and is keyed by the immutable event
+ID. `GET /admin/review/missing-reports?offset=N` lists every task, 50 per page,
+from `Database.missing_diagnostic_failures()` with the same predicate and total
+as the count; an invalid offset returns an HTML 400 page. Authenticated,
 CSRF-protected dismiss and undo routes change only operator review state and its
-audit. An exact event link opens collapsed Maps Event detail without changing
+audit; with `return_to=/admin/review/missing-reports` they redirect back to the
+list (any other value returns to `/admin`). An exact event link opens collapsed Maps Event detail without changing
 aggregate statistics. Compatibility evidence remains the source for exact-device
 facts and actionable diagnostic work.
 
@@ -241,7 +256,8 @@ App download counter history keeps `.dmg` and `.zip` separate. The first valid
 snapshot is a baseline; unchanged counters are observed zero; missing snapshots
 are unknown. Counter decreases or confirmed population changes are discontinuity.
 Gap and period-boundary increases are retained as uncertain intervals, and
-aggregated partial buckets stay marked partial. A failed GitHub read does not
+aggregated partial buckets stay marked partial. Buckets follow the map trend rule
+(24h hourly, 7d daily, 30d weekly, all time adaptive by observed span). A failed GitHub read does not
 erase the last successful observation or timestamp.
 
 Production `/admin*` is first protected by Cloudflare Access and the trusted

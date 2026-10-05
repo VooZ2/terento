@@ -344,6 +344,21 @@ def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, A
 
     downloads = count("DOWNLOAD_SUCCEEDED", "SUCCEEDED")
     failed_downloads = count("DOWNLOAD_FAILED", "FAILED")
+    purposes = {
+        purpose: {
+            outcome_key: sum(
+                int(row.get("operation_count") or 0)
+                for row in rows
+                if row.get("event_type") == event_type and row.get("outcome") == outcome
+                and (row.get("acquisition_purpose") or "unknown") == purpose
+            )
+            for outcome_key, event_type, outcome in (
+                ("succeeded", "DOWNLOAD_SUCCEEDED", "SUCCEEDED"),
+                ("failed", "DOWNLOAD_FAILED", "FAILED"),
+            )
+        }
+        for purpose in ("install", "update", "unknown")
+    }
     installs = count("INSTALL_SUCCEEDED", "SUCCEEDED")
     failed_installs = count("INSTALL_FAILED", "FAILED")
     successful_updates = count("MAP_UPDATE_SUCCEEDED", "SUCCEEDED")
@@ -361,6 +376,9 @@ def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, A
             downloads / (downloads + failed_downloads) * 100
             if downloads + failed_downloads else None
         ),
+        # Downloads include every purpose; this breakdown keeps install,
+        # update and unrecorded acquisitions separate (never inferred).
+        "downloadPurposes": purposes,
         "completedMapUpdateCount": successful_updates,
         "failedMapUpdateCount": failed_updates,
         "mapUpdateCount": successful_updates + failed_updates,
@@ -746,10 +764,12 @@ class Database:
         }
         if period not in periods:
             period = "24h"
+        # One bucket rule for every Admin trend (map charts use the same grid):
+        # 24h hourly, 7d daily, 30d weekly, all time adaptive by observed span.
         bucket = {
             "24h": "hour",
             "7d": "day",
-            "30d": "day",
+            "30d": "week",
             "all": "month",
         }[period]
         now = now or datetime.now(timezone.utc)
@@ -810,6 +830,13 @@ class Database:
             if isinstance(row.get("observed_at"), datetime)
         ]
         authoritative_markers = [dict(row) for row in release_markers]
+        if period == "all" and observations:
+            observed_span = now - observations[0]["observed_at"].astimezone(timezone.utc)
+            bucket = (
+                "day" if observed_span <= timedelta(days=14)
+                else "week" if observed_span <= timedelta(days=60)
+                else "month"
+            )
         period_observations = [row for row in observations if row["observed_at"] >= start]
         first_period_index = observations.index(period_observations[0]) if period_observations else len(observations)
         raw_trend: list[dict[str, Any]] = []
@@ -1482,6 +1509,45 @@ class Database:
             for row in rows if row.get("identity_key")
         }
         return {"total": sum(by_identity.values()), "byIdentity": by_identity}
+
+    def missing_diagnostic_failures(self, *, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+        """Every active install failure without a matching device report (newest first).
+
+        Same population as the Needs attention ``missingDiagnostics`` count, so
+        the list total equals the Dashboard row. Read-only and paginated.
+        """
+        limit = max(1, min(int(limit), 200))
+        offset = max(0, int(offset))
+        with self.connection() as connection:
+            rows = list(connection.execute(
+                """
+                SELECT e.*, p.name AS provider_name, mp.name AS map_package_name,
+                       count(*) OVER () AS total_missing_diagnostics
+                FROM map_download_event AS e
+                LEFT JOIN map_provider AS p ON p.id = e.provider_id
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
+                LEFT JOIN admin_map_review_task AS review_task
+                  ON review_task.event_id = e.event_id
+                 AND review_task.task_type = 'MISSING_DIAGNOSTIC'
+                WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE + """
+                ORDER BY e.occurred_at DESC, e.event_id
+                LIMIT %s OFFSET %s
+                """, (limit, offset),
+            ).fetchall())
+            total = int(rows[0].get("total_missing_diagnostics") or 0) if rows else None
+            if total is None:
+                count_row = connection.execute(
+                    """
+                    SELECT count(*) AS total
+                    FROM map_download_event AS e
+                    LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
+                    LEFT JOIN admin_map_review_task AS review_task
+                      ON review_task.event_id = e.event_id
+                     AND review_task.task_type = 'MISSING_DIAGNOSTIC'
+                    WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE,
+                ).fetchone()
+                total = int((count_row or {}).get("total") or 0)
+        return {"rows": [dict(row) for row in rows], "total": total, "limit": limit, "offset": offset}
 
     def set_missing_diagnostic_review(
         self,
@@ -2218,6 +2284,7 @@ class Database:
             "completedDownloadCount": completed_downloads,
             "failedDownloadCount": failed_downloads,
             "downloadSuccessRate": period_metrics["downloadSuccessRate"],
+            "downloadPurposes": period_metrics["downloadPurposes"],
             "completedMapUpdateCount": completed_updates,
             "failedMapUpdateCount": failed_updates,
             "mapUpdateCount": completed_updates + failed_updates,
@@ -2233,6 +2300,10 @@ class Database:
                 if row.get("event_type") == "INSTALL_SUCCEEDED"
                 and row.get("outcome") == "SUCCEEDED"
                 and row.get("provider_id") == "custom"
+            ),
+            "allTimeMapUpdateSuccessRate": (
+                all_time_update_successes / (all_time_update_successes + all_time_update_failures) * 100
+                if all_time_update_successes + all_time_update_failures else None
             ),
             "allTimeMapUpdateCount": all_time_update_successes + all_time_update_failures,
             "allTimeMapUpdateSuccessCount": all_time_update_successes,

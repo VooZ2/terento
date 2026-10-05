@@ -28,19 +28,15 @@ const {chromium}=require(process.argv[2]);
     assert.equal(await page.locator('[data-health-name]').first().locator('.system-health-cause').count(),1,'other health card keeps its summary issue');
    }
    if(name==='overview'){
-    const metrics=await page.locator('.overview-map-total').evaluateAll(es=>es.map(e=>({height:e.getBoundingClientRect().height,font:getComputedStyle(e.querySelector('strong')).fontSize,weight:getComputedStyle(e.querySelector('strong')).fontWeight})));
-    assert.equal(new Set(metrics.map(m=>m.height)).size,1,'Chart totals share height');
-    assert.equal(new Set(metrics.map(m=>m.font)).size,1,'Chart totals share numeric size');
-    assert.equal(new Set(metrics.map(m=>m.weight)).size,1,'Chart totals share numeric weight');
+    const tiles=await page.locator('.overview-tiles .admin-metric').evaluateAll(es=>es.map(e=>({height:Math.round(e.getBoundingClientRect().height),font:getComputedStyle(e.querySelector('.admin-metric-value')).fontSize})));
+    assert.equal(tiles.length,4,'Dashboard keeps four summary tiles');
+    assert.equal(new Set(tiles.map(t=>t.font)).size,1,'Tiles share numeric size');
     assert.equal(await page.locator('.overview-download-panel').count(),1,'App downloads chart remains visible');
     assert.equal(await page.locator('.overview-download-panel h2').innerText(),'App downloads');
-    assert.equal(await page.getByText('Observed GitHub .dmg and .zip counter increases.').count(),0,'App download explanation is removed');
     assert.deepEqual(await page.locator('main>.overview-primary-grid, main>.overview-composition-grid').evaluateAll(es=>es.map(e=>e.className)),['overview-primary-grid','overview-composition-grid']);
-    assert.equal(await page.locator('.overview-map-total-scope').count(),0,'All-time scope is removed from visible badge copy');
-    const mapBadges=page.locator('.overview-map-total');
-    assert.equal(await mapBadges.count(),6,'Both map charts keep three summary badges');
-    assert.equal(await mapBadges.evaluateAll(es=>es.every(e=>e.title==='All time')),true,'Every badge exposes all-time scope on hover');
-    assert.equal(await mapBadges.evaluateAll(es=>es.every(e=>/all time/i.test(e.getAttribute('aria-label')||''))),true,'Every badge exposes all-time scope to assistive technology');
+    assert.equal(await page.locator('.overview-tiles .admin-scope-chip').count(),4,'Every tile shows a visible scope chip');
+    assert.equal(await page.locator('.overview-all-time .admin-scope-chip').count(),2,'All-time chart totals are labelled All time');
+    assert.equal(await page.locator('.overview-attention-row').count(),7,'Needs attention keeps seven fixed rows');
     const visibleTrendCharts=page.locator('.overview-primary-grid .overview-trend-chart:visible');
     assert.equal(await visibleTrendCharts.count(),2,'Both current trend charts remain visible');
     for(const chart of await visibleTrendCharts.all()){
@@ -61,7 +57,7 @@ const {chromium}=require(process.argv[2]);
     const appChart=await page.locator('.overview-download-panel .overview-trend-chart:visible').evaluate(svg=>{const panel=svg.closest('.overview-download-panel'),panelRect=panel.getBoundingClientRect(),rect=svg.getBoundingClientRect(),style=getComputedStyle(panel),viewBox=svg.viewBox.baseVal,innerWidth=panelRect.width-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),scale=Math.min(rect.width/viewBox.width,rect.height/viewBox.height),offset=(rect.width-viewBox.width*scale)/2;return {innerWidth,renderedWidth:rect.width,leftUnused:offset+38*scale,rightUnused:innerWidth-(offset+(viewBox.width-12)*scale)}});
     assert(Math.abs(appChart.renderedWidth-appChart.innerWidth)<=3,'App downloads chart uses the card inner width');
     assert(appChart.leftUnused<55&&appChart.rightUnused<25,'App downloads chart keeps only axis and clipping margins');
-    if(width>900){assert(Math.abs(charts[0].y-charts[1].y)<=1,'Dashboard charts share a row');assert(Math.abs(attention.y-activity.y)<=1,'Attention and Activity share a row');assert(app.y>=attention.y+attention.height+15,'App downloads follows Needs attention');assert(Math.abs(app.x-attention.x)<=1&&Math.abs(app.width-attention.width)<=1,'Left-column cards align');assert(Math.abs(activity.width-attention.width)<=1,'Dashboard composition columns match');assert(app.width<width*.6,'App downloads occupies half row');}
+    if(width>900){assert(Math.abs(charts[0].y-charts[1].y)<=1,'Dashboard charts share a row');assert(Math.abs(attention.y-activity.y)<=1,'Attention and Activity share a row');assert(app.y>=attention.y+attention.height+15,'App downloads follows Needs attention and First run');assert(Math.abs(app.x-attention.x)<=1&&Math.abs(app.width-attention.width)<=1,'Left-column cards align');assert(Math.abs(activity.width-attention.width)<=1,'Dashboard composition columns match');assert(app.width<width*.6,'App downloads occupies half row');}
     else {assert(charts[1].y>charts[0].y,'Dashboard charts stack narrow');assert(activity.y>attention.y,'Activity follows Needs attention');assert(app.y>activity.y,'App downloads follows Activity');}
     assert.equal(await page.locator('.map-activity-row>a:not(.overview-activity-device)').count(),0,'Generic activity destinations are removed');
     if(width<=760){

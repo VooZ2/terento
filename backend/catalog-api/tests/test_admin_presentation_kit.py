@@ -129,7 +129,7 @@ class AdminComponentKitTests(unittest.TestCase):
 
     def test_empty_states_distinguish_measured_nothing_from_unavailable(self):
         self.assertIn("data-state='empty'", _empty_state("empty", "No installs in this period."))
-        unavailable = _empty_state("unavailable", "Couldn't load this section.", action=("", "Retry"))
+        unavailable = _empty_state("unavailable", "Could not load this section.", action=("", "Retry"))
         self.assertIn("role='status'", unavailable)
         self.assertIn("<span>Unavailable</span>", unavailable)
         self.assertIn(">Retry</a>", unavailable)

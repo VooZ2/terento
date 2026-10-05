@@ -350,6 +350,11 @@ unattributed boundaries.
 
 The GitHub read model uses these meanings:
 
+GitHub download trends use the same bucket rule as the map trends, so one
+Dashboard period selects one grid for every chart: 24 hours hourly, seven days
+daily, 30 days weekly, and all time adaptive by the observed span since the first
+retained snapshot (up to 14 days daily, 15–60 days weekly, longer monthly).
+
 For the 24-hour trend read model, `hour_start` is the canonical hourly floor of
 an observation. The exact `observed_at` remains available as factual interval
 metadata. This changes display bucketing only: deltas, baselines, gaps,

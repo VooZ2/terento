@@ -32,8 +32,10 @@ class AdminAuditTests(unittest.TestCase):
         from terento_catalog.admin import ADMIN_STYLES, overview_page
         body = overview_page({}, {"username": "operator"}, "csrf").decode()
         panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split("</section>", 1)[0]
-        self.assertTrue(panel.startswith("<div class='section-heading'>"))
+        self.assertTrue(panel.startswith("<header class='admin-card-head'>"))
         self.assertIn("Needs attention</h2>", panel)
+        # No review summary means unavailable, never an empty zero queue.
+        self.assertIn("Review counts are unavailable.", panel)
         self.assertNotIn("attention-shortcuts", panel)
         self.assertNotIn(".overview-attention-empty h2", ADMIN_STYLES)
         self.assertNotIn(".overview-attention-empty{display:grid", ADMIN_STYLES)
@@ -58,7 +60,7 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn('.overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
         self.assertIn('.overview-primary-grid{align-items:start}', ADMIN_STYLES)
         self.assertIn('.overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}', ADMIN_STYLES)
-        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'downloads activity';", ADMIN_STYLES)
+        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'funnel activity' 'downloads activity';", ADMIN_STYLES)
         self.assertNotIn('.overview-tertiary-grid', ADMIN_STYLES)
 
     def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):
