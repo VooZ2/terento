@@ -480,8 +480,8 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn("evidence.diagnostic_result_count = 1", query)
         self.assertIn("evidence.has_confirmed_failure IS TRUE", query)
         self.assertIn("e.component_kind = 'contours'", query)
-        self.assertIn("maprando-france-courbes-ign", query)
-        self.assertIn("FRANCECOURBESIGN", query)
+        self.assertNotIn("maprando-france-courbes-ign", query)
+        self.assertNotIn("FRANCECOURBESIGN", query)
         self.assertIn("count(*) AS event_count", query)
         self.assertIn(
             "count(DISTINCT operation_key) FILTER (WHERE canonical_result)", query,

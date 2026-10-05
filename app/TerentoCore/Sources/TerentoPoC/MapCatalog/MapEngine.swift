@@ -294,6 +294,23 @@ final class MapEngine: ObservableObject {
     }
 
     #if TERENTO_TESTING
+    private var preflightRunForTesting: (@Sendable (MapInstallationRequest) -> MapInstallationResult)?
+    func preparePreflightForTesting(plan: InstallationPlan, identity: DeviceIdentity,
+        artifacts: [String: [String: ValidatedMapArtifact]],
+        run: @escaping @Sendable (MapInstallationRequest) -> MapInstallationResult) async {
+        currentIdentity = identity
+        currentAvailableStorage = 20_000_000_000
+        selectedInstallationPlan = plan
+        validatedArtifactSets = artifacts
+        result = MapInventoryResult(scan: MapScanResult(files: [], installedMaps: [], otherMaps: [],
+            parsingFailures: 0, skippedUnrecognizedProviderFiles: 0), deviceFiles: [],
+            comparisons: plan.installItems.map { $0.comparison })
+        preflightRunForTesting = run
+        if let operationDiagnostics { mapStatisticsOperationID = operationDiagnostics.operationID }
+        prepareInstallationConfirmation()
+        await activeTask?.value
+        await waitForDiagnosticDeliveryForTesting()
+    }
     /// Seed read-only inventory state without scanning or touching a device.
     func waitForDiagnosticDeliveryForTesting() async {
         await operationDiagnostics?.waitForDeliveryForTesting()
@@ -1404,16 +1421,23 @@ final class MapEngine: ObservableObject {
                             } else {
                                 let start = MapStatisticsEvent(operationId: self?.mapStatisticsOperationID ?? UUID(),
                                     package: package, eventType: .downloadStarted, outcome: .unknown,
-                                    acquisitionId: UUID(), componentKind: selectedArtifact.kind)
-                                self?.activeAcquisition = start
-                                self?.statisticsController?.record(start)
+                                    acquisitionId: UUID(), acquisitionPurpose: .install, componentKind: selectedArtifact.kind,
+                                    mapResultIndex: index)
                                 let statistics = self?.statisticsController
+                                let downloadStart: @Sendable () async -> Void = { [weak self] in
+                                    guard let self else { return }
+                                    await MainActor.run {
+                                        self.activeAcquisition = start
+                                        statistics?.record(start.phase(.downloadStarted))
+                                    }
+                                }
                                 do {
                                     artifact = try await CancellableDetached.run(priority: .userInitiated) {
                                         try await acquirer.acquire(
                                             package: package,
                                             artifact: selectedArtifact,
                                             canonicalRegion: package.canonicalRegionId,
+                                            onDownloadStart: downloadStart,
                                             onStateChange: { state in
                                                 stateRelay.send(state)
                                                 if state == .validatingDownload {
@@ -1426,8 +1450,8 @@ final class MapEngine: ObservableObject {
                                     try Task.checkCancellation()
                                     statistics?.record(start.phase(.downloadSucceeded))
                                 } catch {
-                                    statistics?.record(start.phase(Task.isCancelled ? .downloadCancelled : .downloadFailed))
                                     if self?.activeAcquisition?.acquisitionId == start.acquisitionId {
+                                        statistics?.record(start.phase(Task.isCancelled || error is CancellationError ? .downloadCancelled : .downloadFailed))
                                         self?.activeAcquisition = nil
                                     }
                                     throw error
@@ -1526,6 +1550,11 @@ final class MapEngine: ObservableObject {
             deviceFiles: inventory.deviceFiles
         )
         let coordinator = MapInstallationCoordinator.live()
+        #if TERENTO_TESTING
+        let runPreflight = preflightRunForTesting ?? { coordinator.run($0) }
+        #else
+        let runPreflight: @Sendable (MapInstallationRequest) -> MapInstallationResult = { coordinator.run($0) }
+        #endif
         let installationAuthorization = deviceInstallationAuthorization
         let activeMapIndex = InstallationMapIndexState()
         activeTask?.cancel()
@@ -1569,7 +1598,7 @@ final class MapEngine: ObservableObject {
                                 userConfirmed: false,
                                 installationAuthorization: installationAuthorization
                             )
-                            let result = coordinator.run(request)
+                            let result = runPreflight(request)
                             diagnostics?.record(result, packageID: item.package.id, artifactID: selectedArtifact.id)
                             results.append(result)
                             guard result.status == .confirmationRequired else {
@@ -1615,9 +1644,7 @@ final class MapEngine: ObservableObject {
                 self?.state = .scanned
 
                 if !allReady {
-                    let failureIndex = results.firstIndex {
-                        $0.status != .confirmationRequired
-                    } ?? activeMapIndex.value
+                    let failureIndex = activeMapIndex.value
                     self?.evidencePrimaryFailureMapIndex = failureIndex
                     if finalResult.status != .blockedInstallationAuthorization,
                        plan.installItems.indices.contains(failureIndex) {
@@ -2096,7 +2123,7 @@ final class MapEngine: ObservableObject {
         -> @Sendable (SafeUpdateAcquisitionEvent) -> Void {
         let start = MapStatisticsEvent(operationId: operationID, package: package,
             eventType: .downloadStarted, outcome: .unknown,
-            acquisitionId: UUID(), componentKind: .main)
+            acquisitionId: UUID(), acquisitionPurpose: .update, componentKind: .main)
         let controller = statisticsController
         return { phase in
             let type: MapStatisticsEventType

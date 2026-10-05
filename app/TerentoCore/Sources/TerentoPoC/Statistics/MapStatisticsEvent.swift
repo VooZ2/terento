@@ -22,6 +22,10 @@ enum MapStatisticsEventType: String, Codable, Sendable {
     case mapUpdateFailed = "MAP_UPDATE_FAILED"
 }
 
+enum MapAcquisitionPurpose: String, Codable, Sendable {
+    case install, update
+}
+
 enum MapStatisticsEventOutcome: String, Codable, Sendable {
     case succeeded = "SUCCEEDED"
     case failed = "FAILED"
@@ -41,6 +45,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
     let mapId: String
     let region: String?
     let acquisitionId: UUID?
+    let acquisitionPurpose: MapAcquisitionPurpose?
     let componentKind: MapArtifactKind?
     let mapResultIndex: Int?
     let eventType: MapStatisticsEventType
@@ -57,6 +62,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         outcome: MapStatisticsEventOutcome,
         timestamp: Date = Date(),
         acquisitionId: UUID? = nil,
+        acquisitionPurpose: MapAcquisitionPurpose? = nil,
         componentKind: MapArtifactKind? = nil,
         mapResultIndex: Int? = nil,
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
@@ -66,6 +72,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         self.id = id
         self.operationId = operationId
         self.acquisitionId = acquisitionId
+        self.acquisitionPurpose = acquisitionPurpose
         self.componentKind = componentKind
         self.mapResultIndex = mapResultIndex
 
@@ -101,6 +108,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         mapId = start.mapId
         region = start.region
         acquisitionId = start.acquisitionId
+        acquisitionPurpose = start.acquisitionPurpose
         componentKind = start.componentKind
         mapResultIndex = start.mapResultIndex
         eventType = type

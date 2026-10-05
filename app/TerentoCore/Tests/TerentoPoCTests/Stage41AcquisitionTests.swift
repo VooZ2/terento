@@ -49,6 +49,7 @@ struct Stage41AcquisitionTests {
         testBundledCatalogPolicyCounts()
         testAcquisitionErrorsHaveSafeUserCopy()
         await testDownloadBlocksBeforeSideEffects()
+        await testDownloadStartBoundary()
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
@@ -1140,13 +1141,36 @@ struct Stage41AcquisitionTests {
                     availabilityCheck: { _ in throw MapAcquisitionError.acquisitionWithheld(.blocked(provider: "Freizeitkarte", reason: "PROVIDER_DOWN")) },
                     downloadClient: CountingDownloadClient(counter: counter),
                     workspaceFactory: { counter.workspaceCreations += 1; return try makeWorkspace() }
-                ).acquire(package: package)
+                ).acquire(package: package, onDownloadStart: { counter.starts += 1 })
                 expect(false, "blocked download must fail")
             } catch let error as MapAcquisitionError {
-                expect(error.userMessage.contains("Freizeitkarte") && counter.workspaceCreations == 0 && counter.downloads == 0,
+                expect(error.userMessage.contains("Freizeitkarte") && counter.workspaceCreations == 0 && counter.downloads == 0 && counter.starts == 0,
                     "\(remote ? "remote" : "catalog") block fails before workspace and provider HTTP")
             } catch { expect(false, "unexpected block error") }
         }
+    }
+
+    private static func testDownloadStartBoundary() async {
+        let counter = AcquisitionSideEffectCounter()
+        do {
+            _ = try await MapPackageAcquirer(
+                downloadClient: CountingDownloadClient(counter: counter),
+                workspaceFactory: { throw MapAcquisitionError.workspaceFailed("test") }
+            ).acquire(package: makePackage(), onDownloadStart: { counter.starts += 1 })
+        } catch {}
+        expect(counter.starts == 0 && counter.downloads == 0,
+            "workspace failure does not announce a download")
+        do {
+            _ = try await MapPackageAcquirer(
+                downloadClient: CountingDownloadClient(counter: counter),
+                workspaceFactory: { try makeWorkspace() }
+            ).acquire(package: makePackage(), onDownloadStart: {
+                expect(counter.downloads == 0, "download start is awaited before downloader")
+                counter.starts += 1
+            })
+        } catch {}
+        expect(counter.starts == 1 && counter.downloads == 1,
+            "real downloader failure still announces exactly one acquisition")
     }
 
     private static func testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP() async {
@@ -1355,6 +1379,7 @@ final class URLRecorder: @unchecked Sendable {
 }
 
 final class AcquisitionSideEffectCounter: @unchecked Sendable {
+    var starts = 0
     var workspaceCreations = 0
     var downloads = 0
 }

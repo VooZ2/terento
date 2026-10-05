@@ -50,6 +50,7 @@ private actor DelayedAuthorizationResponse {
         try await testContextualContours()
         try await testResultsAndPrivacy()
         try await testPartialBatchAndPreflight()
+        try await testEngineContourPreflightAttribution()
         try await testDisconnectAndCancellation()
         try await testRetryRestartAndConsent()
         try await testOptOutDuringUpload()
@@ -291,6 +292,48 @@ private actor DelayedAuthorizationResponse {
         // Optional transport to the backend regression: actual encoded Swift reports.
         emittedFixtures += fixtures
     }
+    @MainActor static func testEngineContourPreflightAttribution() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        let controller = InstallationEvidenceController(store: store, uploader: DiagnosticUploadRecorder(), automaticRetryDelays: [0])
+        let selection = plan(regions: ["FRA", "LTU"], contours: true)
+        let operationID = UUID()
+        let operation = InstallationOperationDiagnostics(operationID: operationID, identity: identity,
+            plan: selection, controller: controller)
+        let engine = MapEngine(evidenceController: controller)
+        engine.setOperationDiagnosticsForTesting(operation)
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        let policy = try JSONDecoder().decode(InstallationAuthorizationDocument.self, from: Data(contentsOf: policyURL))
+        engine.setInstallationAuthorization(.approved(record: policy.devices[0], policyVersion: policy.policyVersion))
+        let artifacts = Dictionary(uniqueKeysWithValues: selection.selectedPackagePlans.map { entry in
+            (entry.item.package.id, Dictionary(uniqueKeysWithValues: entry.artifactPlan.selectedArtifacts.map { artifact in
+                (artifact.id, ValidatedMapArtifact(artifactID: artifact.id, artifactKind: artifact.kind,
+                    provider: entry.item.package.providerId, region: entry.item.package.regionId,
+                    canonicalRegion: entry.item.package.canonicalRegionId, rawRelease: "2026-09",
+                    version: entry.item.package.version, localIMGURL: root.appendingPathComponent(artifact.id),
+                    installSizeBytes: 100, sha256: "fixture", sourcePackageURL: URL(string: "https://example.invalid/map.img")!,
+                    catalogPackageID: entry.item.package.id, targetFilename: "terento-fixture.img",
+                    downloadSizeBytes: 100, catalogDownloadSizeBytes: 100, downloadSizeMatchesCatalog: true,
+                    packageFormat: .rawIMG))
+            }))
+        })
+        await engine.preparePreflightForTesting(plan: selection, identity: identity, artifacts: artifacts) { request in
+            result(package: request.selectedMap,
+                failure: request.artifact?.artifactKind == .contours ? .insufficientSpace : nil,
+                wrote: false, confirmation: request.artifact?.artifactKind == .main)
+        }
+        let failure = engine.mapStatisticsEvents.first { $0.eventType == .installFailed }
+        check(failure?.mapResultIndex == 0 && failure?.operationId == operationID
+            && failure?.mapId == selection.installItems[0].package.id.lowercased(),
+            "engine component A preflight failure emits map A index0 rather than flattened component index1")
+        let events = store.events().sorted { $0.mapResultIndex! < $1.mapResultIndex! }
+        check(events.count == 2 && events[0].mapResultIndex == 0 && events[0].phaseOutcome == .failed
+            && events[1].mapResultIndex == 1 && events[1].phaseOutcome == .notStarted,
+            "actual engine diagnostics attribute contour preparation failure to A and leave B not started")
+    }
+
     @MainActor static func testPartialBatchAndPreflight() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

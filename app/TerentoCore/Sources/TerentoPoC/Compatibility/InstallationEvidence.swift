@@ -892,7 +892,7 @@ final class InstallationEvidenceController: ObservableObject {
         }
 
         uploadStatus = .uploading(count: pending.count)
-        var deferredUpdate = false
+        var deferredReport = false
         for event in pending {
             // Opt-out during an in-flight upload must stop the remaining snapshot.
             guard uploadEnabled else { return .empty }
@@ -909,12 +909,11 @@ final class InstallationEvidenceController: ObservableObject {
                     willRetry: willRetry,
                     pendingCount: remaining
                 )
-                if event.operationKind == "update",
-                   case InstallationEvidenceUploadError.httpStatus(let code, _) = error,
+                if case InstallationEvidenceUploadError.httpStatus(let code, _) = error,
                    code == 400 {
-                    // A backend rollback may reject additive update fields. Retain the
-                    // exact report for a later attempt without blocking older installs.
-                    deferredUpdate = true
+                    // Retain the exact rejected report for retry without blocking
+                    // independent reports. Authentication/service errors still stop the batch.
+                    deferredReport = true
                     continue
                 }
                 uploadStatus = .waiting(count: remaining, reason: reason, willRetry: willRetry)
@@ -922,9 +921,9 @@ final class InstallationEvidenceController: ObservableObject {
             }
         }
 
-        if deferredUpdate {
+        if deferredReport {
             uploadStatus = .waiting(count: store.pendingUploads().count,
-                reason: "Update reports are waiting for a compatible server.", willRetry: false)
+                reason: "Some reports were rejected by the server and remain saved for retry.", willRetry: false)
             return .permanentFailure
         }
         uploadStatus = .uploaded

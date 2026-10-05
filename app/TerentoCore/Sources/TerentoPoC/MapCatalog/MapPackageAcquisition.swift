@@ -1243,6 +1243,7 @@ struct MapPackageAcquirer: Sendable {
         artifact selectedArtifact: MapArtifact? = nil,
         canonicalRegion: String? = nil,
         workspace requestedWorkspace: MapAcquisitionWorkspace? = nil,
+        onDownloadStart: (@Sendable () async -> Void)? = nil,
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)? = nil,
         onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)? = nil
     ) async throws -> ValidatedMapArtifact {
@@ -1294,6 +1295,7 @@ struct MapPackageAcquirer: Sendable {
                 artifact: selectedArtifact,
                 canonicalRegion: canonicalRegion,
                 workspace: acquisitionWorkspace,
+                onDownloadStart: onDownloadStart,
                 onStateChange: onStateChange,
                 onDownloadProgress: onDownloadProgress
             )
@@ -1310,6 +1312,7 @@ struct MapPackageAcquirer: Sendable {
         artifact selectedArtifact: MapArtifact?,
         canonicalRegion: String?,
         workspace: MapAcquisitionWorkspace,
+        onDownloadStart: (@Sendable () async -> Void)?,
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)?,
         onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)?
     ) async throws -> ValidatedMapArtifact {
@@ -1317,6 +1320,8 @@ struct MapPackageAcquirer: Sendable {
             throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
         }
 
+        try Task.checkCancellation()
+        await onDownloadStart?()
         state(.downloading, onStateChange)
         let response: MapPackageDownloadResponse
         do {

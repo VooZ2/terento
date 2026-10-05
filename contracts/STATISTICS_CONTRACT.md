@@ -46,7 +46,10 @@ Terento keeps four related but separate populations:
   `DOWNLOAD_SUCCEEDED` and `DOWNLOAD_FAILED` events count. `STARTED`,
   `PROCESSING`, `CANCELLED`, `INTERRUPTED`, missing, and unknown terminal
   states are excluded. A custom `.img` import is not an external provider
-  acquisition.
+  acquisition. `acquisitionPurpose` records `install` or `update` independently
+  of the eventual device outcome. Missing historical purpose stays unknown.
+  Downloads totals and charts include all purposes; their breakdown explicitly
+  separates install, update and unknown acquisitions. A download is not an install.
 - **Fresh main-map installs** are independent main-map results. One result is
   identified by `operationId + mapResultIndex` and retains provider, region,
   package/map, and component/acquisition correlations where available. An
@@ -57,7 +60,9 @@ Terento keeps four related but separate populations:
 - **Optional components** (for example OpenTopoMap contours) belong to the
   selected main map. They are never another fresh install. Their selected,
   verified, failed, not-started, and unknown state remains visible as an
-  addon/component warning or diagnostic fact.
+  addon/component warning or diagnostic fact. An independently selectable catalog
+  package with a main artifact (including MapRando France IGN contours) is its
+  own main-map result; a provider/name heuristic must not exclude it.
 - **Updates** are a separate population. Only confirmed terminal
   `MAP_UPDATE_SUCCEEDED` and `MAP_UPDATE_FAILED` results count, and only an
   update that reached its write boundary can be a failed update. An update
@@ -108,6 +113,11 @@ fresh results; a provider map plus contours produces one; a provider map plus a
 custom `.img` produces two; a fresh install plus an update produces one fresh
 result and one update result; two updates produce no fresh result.
 
+Administrative Resolve/Reopen changes review work, never historical verified
+successes, started failures or model coverage. Classify conflicts at the logical
+result level before aggregating by exact model, so a conflicting identity cannot
+create two attempts.
+
 Replay of the same event ID is zero additional work. A real retry must carry a
 new operation/result identity and counts as a new result. The read model never
 guesses a missing identity, provider, region, country, or device identifier,
@@ -126,7 +136,9 @@ but are independently consented, delivered, stored, and deduplicated.
 When both streams contain a trustworthy shared operation identity, linkage also
 requires an unambiguous provider/region and map/package match. An operation ID
 alone is not enough; provider + region alone is not enough when sibling maps or
-custom images are possible. A missing or delayed stream preserves the received
+custom images are possible. A legacy map terminal with multiple possible diagnostic results remains ambiguous;
+it does not add another completed result on top of those retained diagnostics.
+A missing or delayed stream preserves the received
 map-only or device-only fact and does not synthesize the missing side. A custom
 import can contribute a common fresh result without becoming an external
 provider acquisition or receiving guessed catalog geography.
@@ -255,6 +267,16 @@ The map-statistics read model keeps fresh-install outcomes, acquisition
 outcomes, and update outcomes separate. Period views use the selected period;
 all-time views say so explicitly. Period boundaries use the server/read-model
 timezone supplied by the request, and timestamps remain immutable source facts.
+The read model selects one representative terminal result before bucketing:
+acquisitions use their acquisition ID, current installs operation/result index,
+and legacy records without that identity retain their event identity. Contradictory
+terminal facts stay inspectable but do not enter completed totals. Repeated
+identical reports use the earliest terminal time. For a reliably matched fresh
+map/diagnostic pair the earliest of their terminal times is the canonical result
+time, so a later matching map report cannot move a diagnostic result out of its
+original period. Ambiguous matches cannot supply another result's timestamp.
+An explicit dateTo bounds both bucket selection and display filling. Repeated
+local hours at DST rollback retain distinct real-hour bucket identities.
 The 24-hour trend is hourly, seven-day trends are daily, and 30-day trends are
 weekly. All-time trends use the observed span: up to 14 days is daily, 15–60
 days is weekly, and longer spans are monthly. Missing display buckets keep the
@@ -351,6 +373,13 @@ observed interval, retaining the previous observation time, the actual ending
 `observed_at`, both deltas, and the continuity state; no individual download
 time is invented. Failed collection leaves the last successful snapshot and
 its timestamp unchanged.
+
+Provider comparison reports separate last successful install and update dates.
+Popularity dates remain fresh-install-only. Diagnostic-only update NOT_STARTED
+outcomes appear in Activity as stopped before writing with a retained report
+link/reason when reports agree. They do not fabricate map telemetry, write
+failures, or additional successful/failed update totals. Missing, disabled or
+unassigned diagnostics cannot be reconstructed from acquisition completion.
 
 Recent map activity remains mixed and may show provider downloads, fresh
 install outcomes, optional-component warnings, and updates. Map history keeps

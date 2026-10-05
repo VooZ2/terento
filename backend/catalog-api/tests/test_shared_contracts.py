@@ -158,6 +158,21 @@ class SharedContractTests(unittest.TestCase):
             validator('compatibility-event').validate(value)
             validate_event(json.dumps(value).encode())
 
+    def test_map_event_purpose_and_terminal_contract(self):
+        base = fixture('map-event.valid-acquisition-purpose')
+        for purpose in ('install', 'update', None):
+            event = dict(base, acquisitionPurpose=purpose)
+            validator('map-event').validate(event)
+            validate_map_event(json.dumps(event).encode())
+        for changes in ({'acquisitionPurpose': 'unknown'}, {'acquisitionPurpose': True},
+                        {'eventType': 'INSTALL_SUCCEEDED'}, {'outcome': 'FAILED'},
+                        {'mapResultIndex': True}, {'mapResultIndex': 2147483648}):
+            event = dict(base, **changes)
+            with self.subTest(changes=changes):
+                self.assertFalse(validator('map-event').is_valid(event))
+                with self.assertRaises(MapEventValidationError):
+                    validate_map_event(json.dumps(event).encode())
+
     def test_existing_privacy_and_diagnostic_rejections(self):
         for changes in (
             {'model': '/Users/synthetic/watch'}, {'usbVendorID': 70000},

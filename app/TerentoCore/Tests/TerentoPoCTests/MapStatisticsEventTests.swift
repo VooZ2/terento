@@ -74,6 +74,7 @@ struct MapStatisticsEventTests {
         try await testQueuedEventsRespectRetryPolicy()
         try await testOptOutDuringUpload()
         try await testJournalWriteRecovery()
+        try testAcquisitionPurposeCompatibility()
         try testAcquisitionJournal()
         try testPayloadAndOperationIdentity()
         try testCustomMapPrivacyBoundary()
@@ -81,6 +82,34 @@ struct MapStatisticsEventTests {
         try testQueueAndIdempotency()
         await testSeparateOptInAndRetry()
         print("PASS: map usage diagnostics payload, privacy, default-on queue, retry, and idempotency tests")
+    }
+
+    static func testAcquisitionPurposeCompatibility() throws {
+        var fixtures: [MapStatisticsEvent] = []
+        for purpose in [MapAcquisitionPurpose.install, .update] {
+            let start = MapStatisticsEvent(operationId: UUID(), package: package,
+                eventType: .downloadStarted, outcome: .unknown,
+                acquisitionId: UUID(), acquisitionPurpose: purpose, componentKind: .main,
+                mapResultIndex: 2)
+            let phase = start.phase(.downloadSucceeded)
+            fixtures += [start, start.phase(.downloadProcessing), phase]
+            expect(phase.acquisitionPurpose == purpose && phase.mapResultIndex == 2,
+                "terminal keeps acquisition purpose and result identity")
+            let data = try JSONEncoder().encode(phase)
+            let decoded = try JSONDecoder().decode(MapStatisticsEvent.self, from: data)
+            expect(decoded == phase,
+                "new acquisition purpose round trips")
+            var old = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+            old.removeValue(forKey: "acquisitionPurpose")
+            let legacy = try JSONDecoder().decode(MapStatisticsEvent.self,
+                from: JSONSerialization.data(withJSONObject: old))
+            expect(legacy.acquisitionPurpose == nil && legacy.phase(.downloadInterrupted).acquisitionPurpose == nil,
+                "legacy acquisition purpose stays unknown rather than guessed install")
+        }
+        if let path = ProcessInfo.processInfo.environment["TERENTO_MAP_EVENT_FIXTURES"] {
+            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+            try encoder.encode(fixtures).write(to: URL(fileURLWithPath: path))
+        }
     }
 
     @MainActor

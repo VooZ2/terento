@@ -13,7 +13,7 @@ from .telemetry import validate_release_label
 
 MAX_EVENT_BYTES = 8 * 1024
 ALLOWED_EVENT_KEYS = {
-    "acquisitionId", "componentKind",
+    "acquisitionId", "componentKind", "acquisitionPurpose",
     "schemaVersion", "mapResultIndex",
     "id",
     "operationId",
@@ -64,7 +64,7 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
     if not isinstance(event.get("eventType"), str):
         raise MapEventValidationError("invalid_event_type")
     if event.get("mapResultIndex") is not None and (
-        not isinstance(event["mapResultIndex"], int) or event["mapResultIndex"] < 0
+        type(event["mapResultIndex"]) is not int or not 0 <= event["mapResultIndex"] <= 2147483647
     ):
         raise MapEventValidationError("invalid_mapResultIndex")
     has_acquisition = event.get("acquisitionId") is not None
@@ -73,6 +73,12 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
     if has_acquisition and (event.get("componentKind") not in ("main", "contours")
                             or not str(event.get("eventType", "")).startswith("DOWNLOAD_")):
         raise MapEventValidationError("invalid_acquisition_component")
+    if event.get("acquisitionPurpose") is not None and (
+        event["acquisitionPurpose"] not in ("install", "update")
+        or not has_acquisition
+        or not event["eventType"].startswith("DOWNLOAD_")
+    ):
+        raise MapEventValidationError("invalid_acquisition_purpose")
     if event.get("eventType") in {"DOWNLOAD_PROCESSING", "DOWNLOAD_CANCELLED", "DOWNLOAD_INTERRUPTED"}:
         if not has_acquisition or event.get("outcome") != "UNKNOWN":
             raise MapEventValidationError("invalid_acquisition_outcome")
@@ -80,6 +86,10 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         expected = {"DOWNLOAD_SUCCEEDED": "SUCCEEDED", "DOWNLOAD_FAILED": "FAILED"}.get(event.get("eventType"), "UNKNOWN")
         if event.get("outcome") != expected:
             raise MapEventValidationError("invalid_acquisition_outcome")
+    expected_outcome = ("SUCCEEDED" if event["eventType"].endswith("_SUCCEEDED")
+                        else "FAILED" if event["eventType"].endswith("_FAILED") else "UNKNOWN")
+    if event.get("outcome") != expected_outcome:
+        raise MapEventValidationError("invalid_event_outcome")
     for key in ("id", "operationId") + (("acquisitionId",) if has_acquisition else ()) :
         if not isinstance(event[key], str):
             raise MapEventValidationError(f"invalid_{key}")

@@ -34,6 +34,21 @@ private actor LegacyServerRecorder: InstallationEvidenceUploading {
     func uploadedIDs() -> [UUID] { uploaded }
 }
 
+private actor RejectedInstallRecorder: InstallationEvidenceUploading {
+    let rejectedID: UUID
+    var accepts = false
+    var uploaded: [UUID] = []
+    init(_ rejectedID: UUID) { self.rejectedID = rejectedID }
+    func upload(_ event: InstallationEvidenceEvent) async throws {
+        if event.id == rejectedID && !accepts {
+            throw InstallationEvidenceUploadError.httpStatus(code: 400, body: "invalid_install")
+        }
+        uploaded.append(event.id)
+    }
+    func accept() { accepts = true }
+    func ids() -> [UUID] { uploaded }
+}
+
 @main
 struct InstallationEvidenceTests {
     @MainActor
@@ -48,6 +63,7 @@ struct InstallationEvidenceTests {
         testStatisticsAndPromotionThresholds()
         try await testConsentAndUploadIsolation()
         try await testUnsupportedUpdateDoesNotBlockInstallationReports()
+        try await testRejectedInstallDoesNotBlockSibling()
         testDiagnosticSanitization()
         testPreparedInstallationIssue()
         print("PASS: installation evidence, privacy, default-on upload, report, and promotion tests")
@@ -201,6 +217,28 @@ struct InstallationEvidenceTests {
         expect(store.pendingUploads().isEmpty, "deferred update uploads after server acceptance returns")
         let uploaded = await uploader.uploadedIDs()
         expect(uploaded == [install.id, update.id], "already delivered installation is not resent")
+    }
+
+    @MainActor
+    static func testRejectedInstallDoesNotBlockSibling() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        let rejected = makeEvent()
+        let sibling = makeEvent()
+        _ = try store.append(rejected, queueForUpload: true)
+        _ = try store.append(sibling, queueForUpload: true)
+        let uploader = RejectedInstallRecorder(rejected.id)
+        let controller = InstallationEvidenceController(store: store, uploader: uploader, automaticRetryDelays: [0])
+        await controller.scheduledUploadForTesting()?.value
+        let delivered = await uploader.ids()
+        expect(delivered == [sibling.id], "rejected install does not starve another result")
+        expect(store.pendingUploads().map(\.id) == [rejected.id], "rejected report remains with original ID")
+        await uploader.accept()
+        await controller.flushPendingUploads()
+        let retried = await uploader.ids()
+        expect(retried == [sibling.id, rejected.id] && store.pendingUploads().isEmpty,
+            "manual retry uses original ID and never resends sibling")
     }
 
     static func testFailureContextRoundTrip() throws {

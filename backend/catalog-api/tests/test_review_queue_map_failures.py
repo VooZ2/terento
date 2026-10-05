@@ -112,7 +112,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
             CREATE TABLE map_download_event(event_id TEXT, operation_id TEXT,
                 provider_id TEXT, map_package_id TEXT, region TEXT, event_type TEXT,
                 outcome TEXT, occurred_at TEXT, is_local_test BOOLEAN,
-                statistics_exclusion_code TEXT);
+                statistics_exclusion_code TEXT, map_result_index INTEGER);
             CREATE TABLE map_provider(id TEXT, name TEXT);
             CREATE TABLE map_package(id TEXT, provider_id TEXT, name TEXT,
                 provider_region_id TEXT, canonical_region_id TEXT, region TEXT);
@@ -125,7 +125,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
             INSERT INTO map_package VALUES ('fr', 'fzk', 'France', 'FRA', 'FR', 'France');
         ''')
         def event(key, region='FR', event_type='INSTALL_FAILED', local=False):
-            db.execute('INSERT INTO map_download_event VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            db.execute('INSERT INTO map_download_event(event_id,operation_id,provider_id,map_package_id,region,event_type,outcome,occurred_at,is_local_test,statistics_exclusion_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                        (key, key, 'fzk', 'fr', region, event_type, 'FAILED', '2020-01-01', local, None))
         def diagnostic(key, region='FR', status='ACTIVE', provider='fzk', local=False,
                        map_result_index=0):

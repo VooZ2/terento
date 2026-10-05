@@ -317,10 +317,27 @@ observed days, weekly through 60, then monthly. Missing buckets keep the
 statistics contract's existing zero-fill and timezone rules.
 
 Provider comparison keeps Downloads, Installs, and Updates independent, each
-with Successful, Failed, and Rate, plus Last install. A zero denominator displays
-`—`. Download failures include only terminal `DOWNLOAD_FAILED`. Last install is
-the latest successful fresh main-map install in scope. The interface does not
-synthesize one telemetry stream from another.
+with Successful, Failed, and Rate, plus separate Last successful install and
+Last successful update dates. Both dates require a positive eligible operation
+count for a known catalog main map; excluded or zero-count rows cannot advance
+them. Download failures include only terminal `DOWNLOAD_FAILED`. A zero
+denominator displays `—`. Downloads totals and trends explicitly include all
+purposes, including updates and components. The Maps summary additionally shows
+Install downloads, Update downloads, and Unknown purpose, each with successful
+and failed counts. Unknown historical purpose is never inferred from the absence
+of an update report. The interface does not synthesize one telemetry stream
+from another.
+
+Top countries, the world map, and Maps by provider share the eligible positive
+fresh-install population: known provider, identified catalog package, and main
+component (or historical absent component). Optional contour components do not
+rank; an independently selectable contours package whose component is main does.
+Unknown or zero counts cannot create ranking entries or advance their dates.
+
+When retained update diagnostics establish a terminal prewrite outcome, Activity
+shows “Update stopped before writing”, its reason and a link to the report. This
+is separate from failed writes and never increments Update failed. A completed
+acquisition remains a completed acquisition even if the later update stops.
 
 The App downloads chart shows observed public GitHub `.dmg` and `.zip` counter
 increases. Its baseline, zero, legacy, partial, gap, counter-reset, and population
@@ -394,6 +411,8 @@ history and outside the attempt denominator. Summary totals are independent of
 history pagination and diagnostic resolution. Conflicting logical reports remain
 visible with an ambiguity notice and are excluded from completed counts.
 Updates never change installation metrics or public compatibility evidence.
+The installation panel labels its timestamp “Last installation report” under
+“Install activity”; it is not a combined installation/update activity timestamp.
 The broad Devices listing keeps its existing compact columns.
 
 ### Model source review

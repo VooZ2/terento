@@ -211,6 +211,12 @@ map/region, provider (except Custom .img), and a catalog-assessed model and
 variant when an exact diagnostic relationship exists. Missing or ambiguous
 identity is omitted. This display enrichment does not alter event populations,
 installation/update counters or compatibility evidence.
+Retained, agreeing update diagnostics with `NOT_STARTED` and `writeStarted=false`
+also appear as “Update stopped before writing”, with the authored reason and an
+exact diagnostic-detail link. Their history remains visible after review is
+resolved. Conflicting outcome, model, write or reason reports remain unclassified;
+no device identity is guessed. These read-only Activity rows do not increment
+update failures or fresh-install counters and do not manufacture map events.
 
 Map/package reconciliation requires shared operation, provider, and exact or
 unambiguous package-region identity. Operation ID alone is not a unique map.
@@ -669,7 +675,7 @@ address. This is deliberately separate from `/compatibility/events` and does
 not accept compatibility, device, manifest, path, serial, Unit ID, raw log, or
 raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
 `providerId`, `releaseLabel`, optional `mapId`/`region`, `eventType`, `outcome`,
-and optional `appBuild`. `releaseLabel` must be a strict SemVer app identity;
+optional `appBuild`/`mapResultIndex`, and the download acquisition fields described below. `releaseLabel` must be a strict SemVer app identity;
 the exact `-local` suffix classifies the row server-side as local test data.
 Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
 `DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, `INSTALL_FAILED`,
@@ -1111,7 +1117,16 @@ Schema1 additionally accepts paired optional `acquisitionId` (random UUID) and
 `componentKind` (`main` or `contours`) for download events. Earlier client
 requests remain valid. `DOWNLOAD_PROCESSING`, `DOWNLOAD_CANCELLED`, and `DOWNLOAD_INTERRUPTED`
 require this pair and outcome `UNKNOWN`; new successes/failures require the
-corresponding outcome. These are metadata only, never filenames or device IDs.
+corresponding outcome. Every event type must agree with its outcome, including
+legacy payloads without acquisition identity. `mapResultIndex` is an optional
+non-Boolean integer from 0 through 2147483647.
+
+Download events with the acquisition pair may also carry optional
+`acquisitionPurpose` (`install` or `update`). Omitted or null means unknown;
+historical purpose is never inferred from missing install/update results.
+Migration 068 stores this nullable value without rewriting old rows. An update
+may download successfully and stop before device writing; the download outcome
+and update outcome remain separate facts. These are metadata only, never filenames or device IDs.
 A repeated event/phase is idempotent and one acquisition admits one terminal.
 Recent activity groups the new acquisition phases with component and history;
 non-terminal observations are explicitly labelled `Outcome not received`.

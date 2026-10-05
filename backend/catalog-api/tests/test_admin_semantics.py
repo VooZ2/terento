@@ -391,7 +391,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("<span>Attempts</span>", detail_panel)
         self.assertIn("<span>Failed</span>", detail_panel)
         self.assertIn("<span>Open errors</span>", detail_panel)
-        self.assertIn("<span>Last activity</span><strong>—</strong>", detail_panel)
+        self.assertIn("<span>Last installation report</span><strong>—</strong>", detail_panel)
         self.assertIn(".admin-kpi-panel.model-statistics .timestamp-metric>strong", detail)
         self.assertIn("class='model-evidence-grid'", detail)
         self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", detail)
@@ -2941,7 +2941,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         for provider, (successful, failed) in fixture.items():
             rows.extend((
                 {"provider_id": provider, "event_type": event_type, "outcome": outcome,
-                 "operation_count": count, "component_kind": "main",
+                 "operation_count": count, "component_kind": "main", "map_package_id": "test-main",
                  "last_occurred_at": "2026-09-18T09:39:00Z"}
                 for event_type, outcome, count in (
                     ("INSTALL_SUCCEEDED", "SUCCEEDED", successful),
@@ -2953,7 +2953,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_FAILED", "outcome": "FAILED", "operation_count": 4},
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_INTERRUPTED", "outcome": "UNKNOWN", "operation_count": 7},
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_STARTED", "outcome": "STARTED", "operation_count": 3},
-            {"provider_id": "maprando", "event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1, "last_occurred_at": "2026-09-19T09:39:00Z"},
+            {"provider_id": "maprando", "event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1, "map_package_id": "test-main", "last_occurred_at": "2026-09-19T09:39:00Z"},
             {"provider_id": "maprando", "event_type": "MAP_UPDATE_FAILED", "outcome": "FAILED", "operation_count": 1},
         ])
         summary = _map_statistics_summary(rows)
@@ -3057,9 +3057,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
     def test_map_statistics_linkage_query_joins_only_shared_operation_ids(self):
         source = inspect.getsource(Database.map_statistics_linkage)
-        self.assertIn("FROM map_download_event AS e", source)
+        self.assertIn("FROM dated_map_events AS e", source)
         self.assertIn("FROM compatibility_evidence_event AS e", source)
-        self.assertIn("ON c.operation_id = m.operation_id", source)
+        self.assertIn("WHERE c.operation_id = m.operation_id", source)
+        self.assertIn("c.map_result_index = m.reported_result_index", source)
+        self.assertIn("candidate_count = 1", source)
+        self.assertIn("e.statistics_exclusion_code IS NULL", source)
         self.assertIn("AND c.provider_id = m.provider_id", source)
         self.assertIn("GROUP BY e.operation_id", source)
         self.assertIn("map_only_installation_count", source)
@@ -3261,7 +3264,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open errors", "0")):
             self.assertIn(f"<span>{label}</span>", statistics)
             self.assertIn(f">{value}</strong>", statistics)
-        self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
+        self.assertIn("<span>Last installation report</span><strong>—</strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
         self.assertIn("diagnostic-state-resolved", body)
         self.assertIn("data-diagnostic-result='failed'", body)
@@ -3322,7 +3325,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open errors", "1")):
             self.assertIn(f"<span>{label}</span>", statistics)
             self.assertIn(f">{value}</strong>", statistics)
-        self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
+        self.assertIn("<span>Last installation report</span><strong>—</strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
 
     def test_github_issue_report_uses_an_allowlist_and_redacts_sensitive_values(self):

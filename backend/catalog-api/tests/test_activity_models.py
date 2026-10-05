@@ -34,9 +34,10 @@ class ActivityModelTests(unittest.TestCase):
 
     def test_one_batch_enrichment_preserves_event_and_population(self):
         connection=Capture([dict(index=0,canonical_device_model_id='exact',model='Catalog name',variant='47 mm',case_size_mm=47,screen_technology='AMOLED')])
-        rows=[activity(event_id='event-id'),activity(2,event_type='DOWNLOAD_SUCCEEDED')]
+        rows=[activity(event_id='event-id',map_result_index=0),activity(2,event_type='DOWNLOAD_SUCCEEDED')]
         result=_enrich_activity_models(connection,rows)
         self.assertEqual(len(connection.calls),1)
+        self.assertEqual(json.loads(connection.calls[0][1][0])[0]['map_result_index'],0)
         self.assertEqual(len(result),2)
         self.assertEqual(result[0]['event_id'],'event-id')
         self.assertEqual(result[0]['model'],'Catalog name')

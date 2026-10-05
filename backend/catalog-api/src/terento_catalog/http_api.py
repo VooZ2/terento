@@ -496,6 +496,8 @@ class CatalogService:
         detail_rows = [
             {
                 **row,
+                "first_occurred_at": row.get("first_event_at", row.get("first_occurred_at")),
+                "last_occurred_at": row.get("last_event_at", row.get("last_occurred_at")),
                 "display_name": _admin_map_display_name(
                     row.get("map_package_name"),
                     row.get("region"),

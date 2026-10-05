@@ -20,4 +20,7 @@ swiftc -D TERENTO_TESTING -parse-as-library -module-name TerentoMapStatisticsEve
   "$project_root/Tests/TerentoPoCTests/MapStatisticsEventTests.swift" \
   -o "$build_dir/tests"
 
+export TERENTO_MAP_EVENT_FIXTURES="${TERENTO_MAP_EVENT_FIXTURES:-$build_dir/native-map-events.json}"
 "$build_dir/tests"
+source "$project_root/../../Tests/backend-python-runtime.sh"
+PYTHONPATH="$project_root/../../backend/catalog-api/src:$project_root/../../backend/catalog-api/tests" "$TERENTO_PYTHON_BIN" -m unittest test_map_event_delivery.MapEventDeliveryTests.test_fresh_swift_download_payloads_reach_storage

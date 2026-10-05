@@ -499,3 +499,18 @@ release documentation checks and `git diff --check` PASS. These initial results 
 the candidate based on integrated beta `0febd192`. Packaged source `e0f0e704`
 subsequently passed the full 83-runner release suite, signing, notarization,
 Gatekeeper and both ZIP/DMG launch checks before beta.18 publication.
+
+### Local statistics reconciliation candidate
+
+Acquisition events carry an optional `acquisitionPurpose` (`install` or `update`)
+through all phases; legacy saved events without it remain unknown. Fresh events
+also preserve the selected map result index. Download reporting starts only at
+the awaited downloader boundary, after policy, current availability, workspace
+and source checks. Pre-download failures produce no fictitious download attempt.
+Rejected HTTP 400 compatibility reports remain available under their original
+IDs while independent reports continue; consent and retry boundaries are unchanged.
+A preflight component failure is attributed to its owning selected map, not the
+flattened component position. MapRando's standalone France contours catalog entry
+has its own main artifact; it remains a selectable independent map, distinct from
+attached optional component downloads. These are local changes, not release or
+hardware evidence. No Checking UI or device-write sequencing changes are included.

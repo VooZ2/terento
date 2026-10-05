@@ -1,5 +1,19 @@
 # App–API compatibility and release contract
 
+## Unreleased statistics integrity and acquisition purpose
+
+Schema-1 download map events add optional `acquisitionPurpose=install|update`
+with the existing acquisition ID/component pair. Absent/null historical values
+remain unknown; no missing terminal event implies a fresh installation.
+Migration 068 adds only a nullable constrained column and preserves old writers.
+Deploy migration and API acceptance, then verify old-client intake and freshly
+encoded install/update downloads before distributing the native producer.
+An API rollback must retain acceptance of the field after client distribution.
+There is no schema-version, device identifier, compatibility authority or map
+write policy change. Strict event-type/outcome agreement also covers legacy
+requests; map result indices reject Boolean, fractional and out-of-range values.
+These are local candidate changes, not a deployed API or released app claim.
+
 ## Beta.16 build 38 — provider recovery and update diagnostics
 
 Beta.16 build 38 accepts both reviewed BBBike README date forms in
