@@ -35,12 +35,30 @@ cannot establish the France failure's cause.
 
 Install successes/failures and update successes/failures have distinct chart
 series and labels. Chart colours follow the single rule in the statistics
-contract (owner decision 2026-10-05): provider fresh install successful uses the
-existing slate/sky series, custom `.img` fresh install successful its own green
-(Lichen family) series and legend entry, install failed solid red, update
-successful Warm Stone (ochre), and update failed red diagonal stripes in bars and
-legends. Fresh-install KPI denominators exclude every update. Not-started updates are diagnostics, not failed device-write
-attempts. Charts and legends must preserve these distinctions at supported widths.
+contract (owner decision 2026-10-05): provider fresh install successful uses
+Interactive Primary (slate), custom `.img` fresh install successful its own
+Lichen-dark series and legend entry, install failed solid red (destructive
+text), update successful Warm Stone with a stone-dark outline (Warm Stone alone
+is 2.69:1 on white), and update failed red diagonal stripes in bars and legends.
+Stacked segments are separated by a 1 px surface line, every series has a legend
+entry with its period total, and each bucket is one keyboard stop whose label
+lists every series. Fresh-install KPI denominators exclude every update.
+Not-started updates are diagnostics, not failed device-write attempts. Charts
+and legends must preserve these distinctions at supported widths.
+
+### Shared component kit
+
+Every Admin page renders numbers, statuses, cards, tables, empty states and
+legends through one kit: a metric tile (label of one or two words, value,
+visible scope chip, at most one secondary line, measured/unknown/unavailable/
+partial states, danger tone only for a positive failure count), a section card
+(one- or two-word title, optional scope chip, at most one action link, no
+explanatory paragraph), a status pill (icon plus sentence-case text; colour
+supports but never replaces the text), table conventions (identity first,
+numbers and dates trailing, `—` for unknown), empty states (empty, filtered,
+unavailable with Retry) and chart legends. Metric labels link to the Tools →
+Glossary entry for their term. Colours, radii and focus rings come only from the
+generated brand tokens; the focus ring is Interactive Primary (≥3:1).
 
 This is the canonical behavioral contract for the private Terento admin surface
 and its diagnostic data dependencies. It complements `api.md` (routes and current
@@ -612,13 +630,9 @@ Recent map activity uses semantic icons and color while retaining visible
 status text. Expanded download history retains its start, finish, and duration
 facts; historical in-progress icons remain static.
 
-Provider recovery respects HTTP 429 Retry-After cooldown across package rechecks, catalog collection and health checks. A matching active request reuses its job; a different scope waits for the active provider job. Sources display artifact validation state, separately from provider enablement. Failed update counters link to update reports.
+Provider recovery respects HTTP 429 Retry-After cooldown across package rechecks, catalog collection and health checks. A matching active request reuses its job; a different scope waits for the active provider job. Sources display artifact validation state, separately from provider enablement.
 
-### Failure presentation correction — 2026-10-03
-
-Chart colours are defined once above and in the statistics contract. Activity
-keeps the failure status as plain text and provides
-`View failure` as an inline text link without a button border or padding. The
-Updates failed total uses the same direct error-counter markup and size as the
-Installs failed total, without a link. The dedicated Update failures navigation
-continues to provide access to the failure list.
+Activity keeps the failure status as plain text and provides `View failure` as
+an inline text link without a button border or padding. The Maps Updates failed
+count uses the shared failure counter without a link; the `Update reports` link
+on Maps opens the update report list.

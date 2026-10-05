@@ -278,8 +278,9 @@ brand tokens only, and every series also has a text label and legend entry):
 provider fresh install successful uses the existing slate/sky series; custom
 `.img` fresh install successful is its own green (Lichen family) series and
 legend entry; install failed is solid red; update successful is Warm Stone
-(ochre); update failed uses red diagonal stripes in bars and legends. This
-supersedes every earlier chart colour rule. Fresh attempt totals are
+(ochre, drawn with a stone-dark outline because Warm Stone alone is below 3:1);
+update failed uses red diagonal stripes in bars and legends. This supersedes
+every earlier chart colour rule. Fresh attempt totals are
 `F_success + F_failed`; download, pre-install, device-check, not-started,
 cancelled, and unknown events are not chart series.
 

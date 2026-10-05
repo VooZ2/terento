@@ -77,16 +77,14 @@ const {chromium}=require(process.argv[2]);
    if(name==='installations'){
     const fonts=await page.locator('#evidence-rows tr').first().evaluate(e=>[3,4,5,6].map(i=>getComputedStyle(e.children[i].querySelector('.admin-error-counter')||e.children[i].querySelector('a')||e.children[i]).fontSize));
     assert.equal(new Set(fonts).size,1,'Installation numbers share size');
-    assert.equal(await page.locator('.installation-kpis .map-statistics-kpi-value').count(),5,'Installation summary has five operational metrics');
-    assert.deepEqual(await page.locator('.installation-kpis .map-statistics-kpi-value').evaluateAll(es=>[...new Set(es.map(e=>getComputedStyle(e).borderTopWidth))]),['0px']);
-    const danger=await page.locator('.installation-failed-value').evaluateAll(es=>es.map(e=>getComputedStyle(e).color));
-    assert.equal(new Set(danger).size,1,'Failed summary and record numbers share danger color');
+    assert.equal(await page.locator('.installation-kpis .admin-metric').count(),5,'Installation summary has five operational metrics');
+    assert.deepEqual(await page.locator('.installation-kpis .admin-metric').evaluateAll(es=>[...new Set(es.map(e=>getComputedStyle(e).borderTopWidth))]),['0px']);
+    assert.equal(await page.locator('.installation-kpis .admin-scope-chip').count(),5,'Every installation tile shows its scope');
     assert.match(await page.locator('.page-meta').innerText(),/All time · Model evidence/);
-    assert.equal(await page.locator('.installation-failed-value').first().innerText(),'10','Model evidence keeps ten failed results');
+    assert.equal(await page.locator("[data-stat='failed']").first().innerText(),'10','Model evidence keeps ten failed results');
    }
    if(name==='device'){
-    assert.equal(await page.locator('.attempts-metric>span').evaluate(e=>getComputedStyle(e,'::after').content),'none');
-    assert.equal(await page.locator('.map-statistics-kpi-secondary').evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
+    assert.equal(await page.locator('.model-statistics .admin-metric').count(),5,'Installs card has five tiles');
     const metrics=await page.locator('.model-statistics').boundingBox(), alert=await page.locator('.model-review-alert').boundingBox();
     if(metrics&&alert) assert(alert.y-(metrics.y+metrics.height)>=16,'Device summary and alert keep a section gap');
     const columns=await page.locator('.model-evidence-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns);
@@ -150,7 +148,7 @@ const {chromium}=require(process.argv[2]);
     }
    }
    if(['installations','device','statistics'].includes(name)){
-    const selector=name==='statistics'?'.map-statistics-metrics .admin-metric-value':'.admin-kpi-panel .map-statistics-kpi-value:not(.failed):not(.timestamp-metric)>strong';
+    const selector=name==='statistics'?'.map-statistics-metrics .admin-metric-value':'.admin-kpi-panel .admin-metric:not([data-kind]) .admin-metric-value';
     assert.equal(await page.locator(selector).first().evaluate(e=>getComputedStyle(e).fontSize),'24px',`${name}: shared KPI size`);
    }
 
