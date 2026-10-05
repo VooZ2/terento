@@ -655,7 +655,7 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
     private func writeUnlocked(_ file: InstallationEvidenceFile, to url: URL) throws {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try encoder.encode(file).write(to: url, options: [.atomic, .completeFileProtection])
+        try encoder.encode(file).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
 }

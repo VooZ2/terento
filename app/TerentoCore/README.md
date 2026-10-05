@@ -231,6 +231,10 @@ continue in order; parked events are retried only by a new app build or after a
 24-hour back-off, a bounded number of times, and expire with the 24-month
 retention window. Compatibility/update diagnostics use the same parking rules.
 Opt-out clears pending and parked events and stops the sender before another event is sent.
+Telemetry queues, diagnostic stores and the compatibility-status cache are written with
+`completeFileProtectionUntilFirstUserAuthentication`: still encrypted at rest, but writable
+while the screen is locked, so a long operation that finishes on a locked Mac keeps its
+results instead of failing the write.
 
 The first-run funnel producer (`Telemetry/AppFunnelTelemetry.swift`, schema v1,
 `POST /app-funnel/events`; meaning owned by `contracts/APP_FUNNEL_CONTRACT.md`)
