@@ -1110,9 +1110,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Last 24 hours", body)
         self.assertLess(body.index("id='map-statistics-coverage'"), body.index("id='map-statistics-provider-table'"))
         self.assertIn("Top countries", body)
-        self.assertIn("Maps by provider", body)
+        self.assertIn(">Top maps</h2>", body)
         self.assertIn(">Downloads</h2>", body)
-        self.assertIn(">Installs and updates</h2>", body)
+        self.assertIn(">Installs</h2>", body)
         self.assertNotIn("Popular maps", body)
         self.assertNotIn("id='regions-view'", body)
 
@@ -2860,7 +2860,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("Diagnostic coverage", body)
         self.assertIn("id='map-download-trend-title'", body)
 
-    def test_map_statistics_keeps_all_time_badges_when_period_has_no_rows(self):
+    def test_map_statistics_tiles_follow_the_period_and_keep_an_all_time_line(self):
         historical = _map_statistics_summary([
             {"event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 4},
             {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3},
@@ -2876,8 +2876,13 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             selected_filters={"period": "24h"},
         ).decode()
         self.assertIn("id='map-statistics-metrics'", body)
-        self.assertIn("data-stat='completedDownloads'>4</strong>", body)
-        self.assertIn("data-stat='completedInstalls'>3</strong>", body)
+        # Tiles follow the selected period (measured zero) and say so (ADM-04);
+        # all-time totals stay visible on a labelled All time line.
+        self.assertIn("data-stat='completedDownloads'>0</strong>", body)
+        self.assertIn("data-stat='completedInstalls'>0</strong>", body)
+        self.assertIn("data-scope='period'>Last 24 hours</span>", body)
+        self.assertIn("Downloads <strong>4</strong> · Installs <strong>3</strong>", body)
+        self.assertIn("data-scope='all'>All time</span>", body)
         self.assertIn("No map activity for this scope", body)
         self.assertIn("id='map-download-trend-title'", body)
 
@@ -2939,7 +2944,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "csrf",
             selected_filters={"eventType": "DOWNLOAD_FAILED"},
         ).decode()
-        self.assertIn("<strong data-stat='completedInstalls'>9</strong>", body)
+        self.assertIn("data-stat='completedInstalls'>9</strong>", body)
         self.assertIn("<strong data-stat='installSuccessRate'>90%</strong>", body)
         self.assertNotIn("Diagnostic coverage", body)
         self.assertIn("No matching event groups", body)
@@ -2951,7 +2956,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertEqual(summary["failedInstalls"], 2)
         body = map_statistics_page({"rows":rows,"summary":summary}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
         self.assertIn("data-stat='failedInstalls'>2</strong>", body)
-        self.assertIn("Provider comparison", body)
+        self.assertIn(">Providers</h2>", body)
+        self.assertIn("data-provider-stream='installs' aria-pressed='true'", body)
 
     def test_download_only_failure_has_no_install_statistics(self):
         rows = [{"provider_id":"p","event_type":"DOWNLOAD_FAILED","outcome":"FAILED","operation_count":1}]
@@ -3012,16 +3018,25 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         global.window = {terentoAdminProviders:payload.providers,terentoMapStatisticsFilters:{},
           terentoWorldMapCountryAliases:{},terentoMapStatistics:payload.statistics,addEventListener(){}};
         eval(process.argv[1]);
-        const html = nodes['#provider-statistic-rows'].innerHTML;
-        const byProvider = Object.fromEntries([...html.matchAll(/<tr><td>(.*?)<\/td>(.*?)<\/tr>/g)].map(match => [
-          match[1], [...match[2].matchAll(/<td[^>]*>(.*?)<\/td>/g)].map(cell => cell[1].replace(/<[^>]*>/g,''))
-        ]));
-        assert.deepEqual(byProvider.OpenTopoMap.slice(0,9), ['84','4','95.5%','14','6','70%','0','0','—']);
-        assert.deepEqual(byProvider.MapRando.slice(3,9), ['23','2','92%','1','1','50%']);
-        assert.deepEqual(byProvider.Freizeitkarte.slice(3,6), ['19','6','76%']);
-        assert.deepEqual(byProvider.BBBike.slice(3,6), ['8','1','88.9%']);
-        assert.deepEqual(byProvider.custom.slice(0,9), ['0','0','—','20','3','87.0%','0','0','—']);
-        assert.equal(byProvider.MapRando[9].includes('2026-09-18'),true,'updates do not advance Last install');
+        const read = (stream) => {
+          window.terentoRenderProviderStream(stream);
+          const html = nodes['#provider-statistic-rows'].innerHTML;
+          return Object.fromEntries([...html.matchAll(/<tr><td>(.*?)<\/td>(.*?)<\/tr>/g)].map(match => [
+            match[1], [...match[2].matchAll(/<td[^>]*>(.*?)<\/td>/g)].map(cell => cell[1].replace(/<[^>]*>/g,''))
+          ]));
+        };
+        // One stream at a time; each keeps its own Successful, Failed and Rate.
+        const downloads = read('downloads'), installs = read('installs'), updates = read('updates');
+        assert.deepEqual(downloads.OpenTopoMap.slice(0,3), ['84','4','95.5%']);
+        assert.deepEqual(installs.OpenTopoMap.slice(0,3), ['14','6','70%']);
+        assert.deepEqual(updates.OpenTopoMap.slice(0,3), ['0','0','—']);
+        assert.deepEqual(installs.MapRando.slice(0,3), ['23','2','92%']);
+        assert.deepEqual(updates.MapRando.slice(0,3), ['1','1','50%']);
+        assert.deepEqual(installs.Freizeitkarte.slice(0,3), ['19','6','76%']);
+        assert.deepEqual(installs.BBBike.slice(0,3), ['8','1','88.9%']);
+        assert.deepEqual(downloads.custom.slice(0,3), ['0','0','—']);
+        assert.deepEqual(installs.custom.slice(0,3), ['20','3','87.0%']);
+        assert.equal(installs.MapRando[3].includes('2026-09-18'),true,'updates do not advance Last install');
         """
         providers = [{"id": key, "name": name} for key, name in (
             ("opentopomap", "OpenTopoMap"), ("maprando", "MapRando"),
@@ -3065,8 +3080,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         rows = [{"provider_id":"p","map_package_id":"m","region":"LT","region_country":"LT","event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":3}]
         body = map_statistics_page({"rows":rows,"summary":_map_statistics_summary(rows),"trend":[]}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
         main = body.split("<main",1)[1]
-        for text in ("Downloads", "Installs", "Updates", "Provider comparison", "Top countries", "Maps by provider", "Event detail"):
+        for text in ("Downloads", "Installs", "Updates", ">Providers</h2>", "Top countries", ">Top maps</h2>", ">Countries</h2>", ">Events <"):
             self.assertIn(text, main)
+        # Reading order: tiles, charts, countries, providers, top maps, events.
+        order = [main.index(marker) for marker in (
+            "id='map-statistics-metrics'", "id='map-download-trend-title'", "id='map-statistics-coverage'",
+            "id='map-statistics-provider-table'", "id='maps-by-provider'", "id='map-statistics-event-detail'",
+        )]
+        self.assertEqual(order, sorted(order))
         self.assertNotIn("Map downloads", main)
         self.assertNotIn("Map installs", main)
         event_detail = main.split("id='map-statistics-event-detail'", 1)[1].split("</details>", 1)[0]

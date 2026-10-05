@@ -181,9 +181,9 @@ class AdminAuditTests(unittest.TestCase):
         rows = [{"provider_id": "p", "map_package_id": "m", "region": "LT", "region_country": "LT",
                  "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1}]
         body = map_statistics_page({"rows": rows}, [{"id": "p", "name": "Provider"}], {"username": "audit"}, "csrf").decode()
-        for text in ("Downloads", "Successful", "Success rate", "Installs",
-                     "Top countries", "Maps by provider",
-                     "min-width:880px"):
+        for text in ("Downloads", "Successful", "Failed", "Installs",
+                     "Top countries", "Top maps",
+                     "min-width:560px"):
             self.assertIn(text, body)
         self.assertNotIn("Diagnostic coverage", body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)

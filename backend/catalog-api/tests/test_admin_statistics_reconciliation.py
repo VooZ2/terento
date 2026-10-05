@@ -27,7 +27,7 @@ class AdminStatisticsReconciliationTests(unittest.TestCase):
         self.assertEqual(summary['completedDownloads'], 9)
         self.assertEqual(summary['downloadPurposes'], {'install': {'succeeded': 2, 'failed': 0}, 'update': {'succeeded': 3, 'failed': 1}, 'unknown': {'succeeded': 4, 'failed': 0}})
         body = map_statistics_page({'rows': rows, 'summary': summary}, [], {'username': 'operator'}, 'csrf').decode()
-        for text in ['All downloads, including updates and components.', 'Install downloads', 'Update downloads', 'Unknown purpose']:
+        for text in ["aria-label='Downloads by purpose'", '<dt>For installs</dt><dd>2', '<dt>For updates</dt><dd>3', '<dt>Not recorded</dt><dd>4', 'Failed 1']:
             self.assertIn(text, body)
 
     def test_prewrite_update_is_visible_but_not_failed(self):
@@ -51,10 +51,12 @@ const nodes=Object.fromEntries(['#provider-statistic-rows','#map-rows','#all-map
 global.document={querySelector:key=>nodes[key]||null,querySelectorAll:()=>[]};
 global.window={terentoAdminProviders:[{id:'freizeitkarte',name:'Freizeitkarte'}],terentoMapStatistics:{rows:JSON.parse(process.argv[2])},addEventListener(){}};
 eval(process.argv[1]);
+window.terentoRenderProviderStream('installs');
 const provider=nodes['#provider-statistic-rows'].innerHTML;
-assert.match(provider,/Last successful install[^>]*>2026-10-01 10:00/);
-assert.match(provider,/Last successful update[^>]*>2026-10-03 10:00/);
+assert.match(provider,/Last install[^>]*>2026-10-01 10:00/);
 assert.doesNotMatch(provider,/2026-10-05/);
+window.terentoRenderProviderStream('updates');
+assert.match(nodes['#provider-statistic-rows'].innerHTML,/Last update[^>]*>2026-10-03 10:00/);
 const countries=nodes['#map-rows'].innerHTML;
 assert.match(countries,/data-map-country="lt"/);
 assert.doesNotMatch(countries,/data-map-country="(fr|de|es)"/);

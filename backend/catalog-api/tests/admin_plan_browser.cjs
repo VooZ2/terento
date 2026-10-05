@@ -106,11 +106,12 @@ const {chromium}=require(process.argv[2]);
      assert.equal(new Set(ticks.slice(1).map((value,index)=>Math.round((ticks[index]-value)*10)/10)).size,1,'Maps grid bands are evenly spaced');
     }
     const coverage=await page.locator('.map-statistics-coverage-layout').boundingBox(), providers=await page.locator('#map-statistics-provider-table').boundingBox();
-    if(coverage&&providers) assert(providers.y>=coverage.y+coverage.height,'Provider comparison does not overlap coverage');
+    if(coverage&&providers) assert(providers.y>=coverage.y+coverage.height,'Providers does not overlap coverage');
     assert.equal(await page.getByText('Diagnostic coverage',{exact:true}).count(),0,'Non-actionable diagnostic coverage is removed');
     assert.equal(await page.locator('#map-rows tr').count(),10,'Top countries shows up to ten ranked countries');
     assert.equal(await page.locator("[data-stat='failedInstalls']").innerText(),'10','Maps excludes non-canonical fresh failures');
-    assert.match(await page.locator('.map-statistics-trends').innerText(),/Week of/,'Current one-month fixture uses weekly buckets');
+    assert.equal(await page.locator('.map-statistics-metrics .admin-scope-chip').count()>=3,true,'Maps tiles show their period scope');
+    assert.equal(await page.locator('[data-provider-stream]').count(),3,'Providers switches one stream at a time');
     if(width>760){const date=page.locator('#provider-statistic-rows td.column-date').first();assert.equal(await date.evaluate(e=>getComputedStyle(e).whiteSpace),'nowrap','Last install stays one line');}
    }
    if(name.startsWith('identification')){
@@ -149,7 +150,7 @@ const {chromium}=require(process.argv[2]);
     }
    }
    if(['installations','device','statistics'].includes(name)){
-    const selector=name==='statistics'?'.map-statistics-kpi-value:not(.failed)>strong':'.admin-kpi-panel .map-statistics-kpi-value:not(.failed):not(.timestamp-metric)>strong';
+    const selector=name==='statistics'?'.map-statistics-metrics .admin-metric-value':'.admin-kpi-panel .map-statistics-kpi-value:not(.failed):not(.timestamp-metric)>strong';
     assert.equal(await page.locator(selector).first().evaluate(e=>getComputedStyle(e).fontSize),'24px',`${name}: shared KPI size`);
    }
 

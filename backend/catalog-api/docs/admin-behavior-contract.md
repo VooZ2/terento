@@ -337,34 +337,43 @@ Map acquisition, fresh installation, and update populations remain separate.
 Missing terminal activity is unknown, not success. Lifecycle phases must not
 multiply attempts. Provider, map, region, and date filters define the summary
 population; event type, outcome, exact event, and detail pagination scope only
-the collapsed Event detail. Initial HTML and asynchronous JSON use the same
+the collapsed Events disclosure. Initial HTML and asynchronous JSON use the same
 server summary.
 
-The world map remains visible. Top countries shows up to 10 rows from the
-existing country ranking. Primary visible analytics are Top countries,
-Provider comparison, Maps by provider, Map downloads trend, Map installs trend,
-and Updates. They are not placed in disclosures. Diagnostic linkage coverage
-may remain in the private API contract but is not shown as an Admin block. Raw
-Event detail is secondary and collapsed.
+Maps reads top to bottom: Downloads, Installs and Updates tiles for the selected
+period (each with failed count, rate and a visible period chip) with the download
+purpose breakdown and, unless the period is All time, one `All time` line with
+the all-time totals; then the Downloads and Installs trend cards; then Countries
+(world map) and Top countries; then Providers; then Top maps; then the collapsed
+Events disclosure. These analytics are not placed in disclosures. The world map
+remains visible and Top countries shows up to 10 rows from the existing country
+ranking. A period without rows shows measured zero tiles and an empty-scope note;
+it never shows populated all-time numbers as if they were the period. Diagnostic
+linkage coverage may remain in the private API contract but is not shown as an
+Admin block. Events uses human labels (event type, provider, map name) with the
+raw code in the title, and shows Results (counted) and Events (raw records)
+separately. The Maps page carries the selected time zone in its form so chart
+buckets and period boundaries use it; changing the zone reloads them. An
+`Update reports` link opens the update report list.
 
 Maps trends use hourly buckets for 24 hours, daily buckets for seven days,
 weekly buckets for 30 days, and adaptive all-time buckets: daily through 14
 observed days, weekly through 60, then monthly. Missing buckets keep the
 statistics contract's existing zero-fill and timezone rules.
 
-Provider comparison keeps Downloads, Installs, and Updates independent, each
-with Successful, Failed, and Rate, plus separate Last successful install and
-Last successful update dates. Both dates require a positive eligible operation
-count for a known catalog main map; excluded or zero-count rows cannot advance
-them. Download failures include only terminal `DOWNLOAD_FAILED`. A zero
-denominator displays `—`. Downloads totals and trends explicitly include all
-purposes, including updates and components. The Maps summary additionally shows
-Install downloads, Update downloads, and Unknown purpose, each with successful
-and failed counts. Unknown historical purpose is never inferred from the absence
+Providers shows one stream at a time through a segmented control (Installs,
+Updates, Downloads); each stream keeps its own Successful, Failed and Rate, and
+Installs and Updates show their own Last install / Last update date. Both dates
+require a positive eligible operation count for a known catalog main map;
+excluded or zero-count rows cannot advance them. Download failures include only
+terminal `DOWNLOAD_FAILED`. A zero denominator displays `—`. Downloads totals
+and trends explicitly include all purposes, including updates and components.
+The purpose breakdown shows For installs, For updates and Not recorded, each with
+successful and failed counts. Unknown historical purpose is never inferred from the absence
 of an update report. The interface does not synthesize one telemetry stream
 from another.
 
-Top countries, the world map, and Maps by provider share the eligible positive
+Top countries, the world map, and Top maps share the eligible positive
 fresh-install population: known provider, identified catalog package, and main
 component (or historical absent component). Optional contour components do not
 rank; an independently selectable contours package whose component is main does.

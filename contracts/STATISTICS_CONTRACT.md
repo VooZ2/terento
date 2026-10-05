@@ -404,7 +404,7 @@ observed interval, retaining the previous observation time, the actual ending
 time is invented. Failed collection leaves the last successful snapshot and
 its timestamp unchanged.
 
-Provider comparison reports separate last successful install and update dates.
+The Providers view reports separate last successful install and update dates.
 Popularity dates remain fresh-install-only. Diagnostic-only update NOT_STARTED
 outcomes appear in Activity as stopped before writing with a retained report
 link/reason when reports agree. They do not fabricate map telemetry, write

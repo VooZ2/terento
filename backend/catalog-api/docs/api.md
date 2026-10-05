@@ -830,10 +830,9 @@ provider-table columns, and chart presentation are defined in
 [`admin-behavior-contract.md`](admin-behavior-contract.md); statistical
 populations and formulas are defined in
 [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-In the current HTML runtime, Provider comparison groups Downloads, Installs,
-and Updates under Successful, Failed, and Rate subcolumns, with Provider and
-Last install outside those groups. The API populations and payload are
-unchanged.
+In the current HTML runtime, Providers shows one stream at a time (Installs,
+Updates or Downloads) with Successful, Failed, Rate and the stream's last
+success date. The API populations and payload are unchanged.
 Popular-map grouping still uses only the eligible successful fresh main-map
 population, and the response searches the complete eligible set before any
 All maps pagination. Provider activity is an independent projection and does
@@ -854,11 +853,14 @@ Returns the authenticated, no-store/noindex Maps page for the aggregate read
 model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time, plus
 provider, map, region, event-type, outcome, and exact `eventId` detail filters.
 
-The visible primary order is summary, world map with Top countries, Provider
-comparison, Maps by provider, Map downloads trend, Map installs trend, and
-Updates. These analytics remain visible. Diagnostic linkage coverage is retained
-in the private JSON contract but is not rendered as an Admin block. Raw Event
-detail remains collapsed and secondary.
+The visible order is the period tiles (Downloads, Installs, Updates from
+`summary`, with the purpose breakdown and an `All time` line from
+`allTimeSummary`), the Downloads and Installs trend cards, Countries and Top
+countries, Providers (one stream at a time), Top maps and the collapsed Events
+disclosure. These analytics remain visible. Diagnostic linkage coverage is
+retained in the private JSON contract but is not rendered as an Admin block.
+The filter form sends `timeZone`; the page reloads with the browser-selected zone
+so trend buckets and period boundaries match the Dashboard.
 
 Provider, map, region, and date filters define the summary population. Event
 type, outcome, exact event, and detail pagination affect Event detail only.

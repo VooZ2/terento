@@ -263,6 +263,9 @@ class CatalogAPITests(unittest.TestCase):
         provider_b = service.map_statistics({"period": "24h", "provider": "b"})
 
         self.assertNotEqual(today["trend"], month["trend"])
+        # KPI tiles use the period summary; the all-time summary feeds only the
+        # labelled All time line and stays independent of the period.
+        self.assertEqual(today["summary"]["completedInstalls"], 1)
         self.assertEqual(today["allTimeSummary"], month["allTimeSummary"])
         self.assertEqual(today["allTimeSummary"]["completedInstalls"], 9)
         self.assertEqual(provider_b["allTimeSummary"]["completedInstalls"], 18)
@@ -387,7 +390,8 @@ class CatalogAPITests(unittest.TestCase):
             self.assertEqual(statistics.status, 200)
             self.assertIn(b">Maps</h1>", statistics_body)
             self.assertIn(b"7 days", statistics_body)
-            self.assertIn(b"id='map-statistics-installs-title'>Installs", statistics_body)
+            self.assertIn(b"id='map-install-trend-title'>Installs", statistics_body)
+            self.assertIn(b"name='timeZone' id='map-statistics-timezone'", statistics_body)
         finally:
             server.shutdown()
             server.server_close()

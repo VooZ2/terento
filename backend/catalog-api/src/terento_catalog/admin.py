@@ -3776,19 +3776,33 @@ def _map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _map_statistics_rows(rows: list[dict[str, Any]]) -> str:
+_EVENT_TYPE_LABELS = {
+    "DOWNLOAD_STARTED": "Download started",
+    "DOWNLOAD_PROCESSING": "Checking / unpacking",
+    "DOWNLOAD_CANCELLED": "Download cancelled",
+    "DOWNLOAD_INTERRUPTED": "Download interrupted",
+    "DOWNLOAD_SUCCEEDED": "Download succeeded",
+    "DOWNLOAD_FAILED": "Download failed",
+    "INSTALL_SUCCEEDED": "Install succeeded",
+    "INSTALL_FAILED": "Install failed",
+    "MAP_UPDATE_SUCCEEDED": "Map update succeeded",
+    "MAP_UPDATE_FAILED": "Map update failed",
+}
+_PROVIDER_LABELS = {
+    "freizeitkarte": "Freizeitkarte", "opentopomap": "OpenTopoMap", "maprando": "MapRando",
+    "bbbike": "BBBike", "custom": "Custom .img",
+}
+
+
+def _map_statistics_rows(rows: list[dict[str, Any]], providers: dict[str, str] | None = None) -> str:
+    """Event detail rows with human labels; raw codes stay in title attributes."""
     if not rows:
-        return "<tr><td colspan='7' class='muted-value'>No map events in this period.</td></tr>"
+        return "<tr><td colspan='8' class='muted-value'>No map events in this period.</td></tr>"
+    names = {**_PROVIDER_LABELS, **(providers or {})}
     markup: list[str] = []
     for row in rows:
-        operation_count = row.get("operation_count")
-        if operation_count is None:
-            operation_label = "—"
-        else:
-            try:
-                operation_label = str(int(operation_count))
-            except (TypeError, ValueError):
-                operation_label = "—"
+        operation_label = _optional_count_label(row.get("operation_count"))
+        event_label = _optional_count_label(row.get("event_count"))
         region_name = str(row.get("region_display_name") or "").strip()
         if not region_name:
             region_name = _admin_region_display_name(
@@ -3797,11 +3811,18 @@ def _map_statistics_rows(rows: list[dict[str, Any]]) -> str:
                 row.get("region"),
                 row.get("map_package_name"),
             )
+        provider_id = str(row.get("provider_id") or "")
+        event_type = str(row.get("event_type") or "")
+        map_id = str(row.get("map_package_id") or "")
+        map_name = str(row.get("display_name") or "").strip() or (map_id or "—")
         markup.append(
-            f"<tr><td>{html.escape(str(row.get('provider_id') or '—'))}</td>"
-            f"<td><code>{html.escape(str(row.get('map_package_id') or '—'))}</code></td>"
-            f"<td>{html.escape(region_name)}</td><td>{html.escape(str(row.get('event_type') or '—'))}</td>"
-            f"<td class='column-status'>{html.escape(_admin_event_outcome_label(row.get('outcome')))}</td><td class='column-number numeric'>{operation_label}</td>"
+            f"<tr><td title='{html.escape(provider_id, quote=True)}'>{html.escape(names.get(provider_id, provider_id or '—'))}</td>"
+            f"<td title='{html.escape(map_id, quote=True)}'>{html.escape(map_name)}</td>"
+            f"<td>{html.escape(region_name)}</td>"
+            f"<td title='{html.escape(event_type, quote=True)}'>{html.escape(_EVENT_TYPE_LABELS.get(event_type, event_type.replace('_', ' ').title() or '—'))}</td>"
+            f"<td class='column-status'>{html.escape(_admin_event_outcome_label(row.get('outcome')))}</td>"
+            f"<td class='column-number numeric' title='Counted results'>{operation_label}</td>"
+            f"<td class='column-number numeric' title='Raw event records'>{event_label}</td>"
             f"<td class='column-date'>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
         )
     return "".join(markup)
@@ -3822,10 +3843,16 @@ def map_statistics_page(
     selected = selected_filters or {}
     event_detail_open = " open" if selected.get("eventId") else ""
     has_event_data = bool(rows)
-    has_all_time_data = bool(all_time_summary.get("hasEventData", has_event_data))
-    def event_value(source: dict[str, Any], key: str) -> str:
-        return "—" if source.get(key) is None else str(source[key])
+    has_all_time_data = bool(all_time_summary.get("hasEventData", has_event_data)) or has_event_data
+    selected_period = str(
+        selected.get("period")
+        or (statistics.get("filters") or {}).get("period")
+        or "all"
+    ).strip().lower()
+    if selected_period not in {"24h", "7d", "30d", "all"}:
+        selected_period = "all"
     event_status = "No matching event groups"
+    provider_names = {str(provider.get("id") or ""): str(provider.get("name") or provider.get("id") or "") for provider in providers}
     provider_options = "".join(
         f"<option value='{html.escape(str(provider.get('id') or ''), quote=True)}'>{html.escape(str(provider.get('name') or provider.get('id') or ''))}</option>"
         for provider in providers
@@ -3837,75 +3864,70 @@ def map_statistics_page(
     detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
     detail_start = min(detail_total, (detail_page - 1) * detail_page_size + 1) if detail_total else 0
     detail_end = min(detail_total, detail_page * detail_page_size)
-    detail_event_counts = [
-        _optional_nonnegative_int(row.get("event_count"))
-        for row in detail_rows
-    ]
+    detail_event_counts = [_optional_nonnegative_int(row.get("event_count")) for row in detail_rows]
     detail_event_count = (
         sum(count for count in detail_event_counts if count is not None)
-        if all(count is not None for count in detail_event_counts)
-        else None
+        if all(count is not None for count in detail_event_counts) else None
     )
     if detail_rows:
         detail_event_label = (
             f"{detail_event_count} event record{'s' if detail_event_count != 1 else ''}"
-            if detail_event_count is not None
-            else "— event records"
+            if detail_event_count is not None else "— event records"
         )
         event_status = (
             f"{len(detail_rows)} event group{'s' if len(detail_rows) != 1 else ''} · "
             f"{detail_event_label}"
         )
-    def failed_metric_markup(source: dict[str, Any], key: str) -> str:
-        value = source.get(key)
-        return _admin_error_counter(value, data_stat=key)
 
-    updates_section = (
-        "<section class='map-statistics-kpi-group' id='map-statistics-updates' aria-labelledby='map-statistics-updates-title'><h2 id='map-statistics-updates-title'>Updates <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
-        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedMapUpdates'>{event_value(all_time_summary, 'completedMapUpdates')}</strong></div>"
-        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(all_time_summary.get('mapUpdateSuccessRate'))}</strong></div>"
-        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedMapUpdates')}</div>"
-        "</div></section>"
-    )
+    # --- Tiles: the selected period, with all time as a labelled line -------
+    def tile(label: str, value_key: str, failed_key: str, rate_key: str, tile_id: str, glossary: str) -> str:
+        rate = summary.get(rate_key)
+        secondary = (
+            f"Failed {_admin_error_counter(summary.get(failed_key), data_stat=failed_key)} · "
+            f"<strong data-stat='{rate_key}'>{html.escape(_format_rate(rate))}</strong>"
+        )
+        return (
+            f"<div class='map-statistics-tile' id='{tile_id}'>"
+            + _metric_tile(label, summary.get(value_key), scope=selected_period, secondary=secondary,
+                           glossary=glossary, data_stat=value_key)
+            + "</div>"
+        )
+
     def purpose_value(purpose: str, outcome: str) -> str:
-        value = (all_time_summary.get("downloadPurposes") or {}).get(purpose, {}).get(outcome)
-        return "—" if value is None else html.escape(str(value))
+        value = (summary.get("downloadPurposes") or {}).get(purpose, {}).get(outcome)
+        return "—" if value is None else f"{int(value):,}"
 
-    download_breakdown = "<div class='download-purpose-breakdown'><p class='muted-value'>All downloads, including updates and components.</p>" + "".join(
-        f"<p><span>{label}</span>: {purpose_value(purpose, 'succeeded')} successful · "
-        f"{purpose_value(purpose, 'failed')} failed</p>"
-        for purpose, label in (("install", "Install downloads"), ("update", "Update downloads"), ("unknown", "Unknown purpose"))
-    ) + "</div>"
-    metrics_section = (
-        "<section class='map-statistics-kpi-panel provider-card' id='map-statistics-metrics' aria-label='Map statistics summary'>"
-        "<div class='map-statistics-kpi-groups'>"
-        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-downloads-title'><h2 id='map-statistics-downloads-title'>Downloads <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
-        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedDownloads'>{event_value(all_time_summary, 'completedDownloads')}</strong></div>"
-        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='downloadSuccessRate'>{_format_rate(all_time_summary.get('downloadSuccessRate'))}</strong></div>"
-        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedDownloads')}</div>"
-        f"</div>{download_breakdown}</section>"
-        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-installs-title'><h2 id='map-statistics-installs-title'>Installs <span class='metric-scope'>All time</span></h2><div class='map-statistics-kpi-values'>"
-        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedInstalls'>{event_value(all_time_summary, 'completedInstalls')}</strong></div>"
-        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='installSuccessRate'>{_format_rate(all_time_summary.get('installSuccessRate'))}</strong></div>"
-        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup(all_time_summary, 'failedInstalls')}</div>"
-        "</div></section>"
-        f"{updates_section}"
-        "</div></section>"
+    purpose_line = "<dl class='overview-purposes download-purpose-breakdown' aria-label='Downloads by purpose'>" + "".join(
+        f"<div><dt>{label}</dt><dd>{purpose_value(purpose, 'succeeded')}"
+        + (f" <span class='admin-metric-failed is-positive'>· Failed {purpose_value(purpose, 'failed')}</span>"
+           if purpose_value(purpose, 'failed') not in {'0', '—'} else "")
+        + "</dd></div>"
+        for purpose, label in (("install", "For installs"), ("update", "For updates"), ("unknown", "Not recorded"))
+    ) + "</dl>"
+
+    def all_time_value(key: str) -> str:
+        value = _optional_nonnegative_int(all_time_summary.get(key))
+        return f"{value:,}" if value is not None else "—"
+
+    all_time_line = "" if selected_period == "all" else (
+        f"<p class='overview-all-time'>{_scope_chip('all')}<span>"
+        f"Downloads <strong>{all_time_value('completedDownloads')}</strong> · "
+        f"Installs <strong>{all_time_value('completedInstalls')}</strong> · "
+        f"Updates <strong>{all_time_value('completedMapUpdates')}</strong></span></p>"
     )
-    selected_period = str(
-        selected.get("period")
-        or (statistics.get("filters") or {}).get("period")
-        or "all"
-    ).strip().lower()
-    if selected_period not in {"24h", "7d", "30d", "all"}:
-        selected_period = "all"
+    metrics_section = (
+        "<section class='admin-card map-statistics-metrics' id='map-statistics-metrics' aria-label='Map statistics summary'>"
+        + _metric_row([
+            tile("Downloads", "completedDownloads", "failedDownloads", "downloadSuccessRate", "map-statistics-downloads", "provider-download"),
+            tile("Installs", "completedInstalls", "failedInstalls", "installSuccessRate", "map-statistics-installs", "fresh-install"),
+            tile("Updates", "completedMapUpdates", "failedMapUpdates", "mapUpdateSuccessRate", "map-statistics-updates", "map-update"),
+        ], label="Map statistics for the selected period")
+        + purpose_line + all_time_line + "</section>"
+    )
     statistics_period_options = "".join(
         f"<option value='{value}'{' selected' if value == selected_period else ''}>{label}</option>"
         for value, label in (
-            ("24h", "Last 24 hours"),
-            ("7d", "Last 7 days"),
-            ("30d", "Last 30 days"),
-            ("all", "All time"),
+            ("24h", "Last 24 hours"), ("7d", "Last 7 days"), ("30d", "Last 30 days"), ("all", "All time"),
         )
     )
     detail_query = {
@@ -3913,8 +3935,10 @@ def map_statistics_page(
         if key not in {"detailPage", "detailPageSize"} and value
     }
     detail_query["detailPageSize"] = str(detail_page_size)
+
     def detail_page_url(page: int) -> str:
         return "/admin/map-statistics?" + urlencode({**detail_query, "detailPage": page})
+
     event_pagination = ""
     if detail_pages > 1:
         previous = (
@@ -3929,7 +3953,7 @@ def map_statistics_page(
             "<div class='provider-pagination' aria-label='Event pages'>"
             f"{previous}<span>Showing {detail_start}–{detail_end} of {detail_total}</span>{following}</div>"
         )
-    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col' class='column-status'>Outcome</th><th scope='col' class='column-number'>Operations</th><th scope='col' class='column-date'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(detail_rows)}</tbody></table></div>{event_pagination}"""
+    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col' class='column-status'>Outcome</th><th scope='col' class='column-number'>Results</th><th scope='col' class='column-number'>Events</th><th scope='col' class='column-date'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(detail_rows, provider_names)}</tbody></table></div>{event_pagination}"""
     has_active_filters = any(
         selected.get(key) for key in ("provider", "map", "region", "eventType", "outcome", "eventId")
     ) or selected_period != "all"
@@ -3938,28 +3962,63 @@ def map_statistics_page(
     chart_time_zone = str(statistics.get("timeZone") or "UTC")
     trends = (
         "<section class='overview-primary-grid map-statistics-trends' aria-label='Activity trends'>"
-        "<section class='overview-panel overview-chart-panel' aria-labelledby='map-download-trend-title'>"
-        "<div class='section-heading'><h2 id='map-download-trend-title'>Downloads</h2><span class='metric-scope'>All purposes, including updates</span></div>"
-        f"{_overview_trend_chart(trend, bucket, chart_time_zone, metric='downloads', has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0)))}"
-        "</section><section class='overview-panel overview-chart-panel' aria-labelledby='map-install-trend-title'>"
-        "<div class='section-heading'><h2 id='map-install-trend-title'>Installs and updates</h2></div>"
-        f"{_overview_trend_chart(trend, bucket, chart_time_zone, has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0)))}"
-        "</section></section>"
+        + _section_card(
+            "Downloads",
+            _overview_trend_chart(trend, bucket, chart_time_zone, metric='downloads', chart_id='maps-downloads',
+                                  has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0))),
+            card_id="map-download-trend", scope=selected_period, glossary="provider-download",
+            css="overview-panel overview-chart-panel",
+        )
+        + _section_card(
+            "Installs",
+            _overview_trend_chart(trend, bucket, chart_time_zone, chart_id='maps-installs',
+                                  has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0))),
+            card_id="map-install-trend", scope=selected_period, glossary="fresh-install",
+            css="overview-panel overview-chart-panel",
+        )
+        + "</section>"
+    )
+    coverage = f"""
+        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installs by country'>
+          {_section_card('Countries', "<p class='table-help' id='map-statistics-world-map-status'>Successful installs</p><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', scope=selected_period, css='provider-card map-statistics-world-map-card')}
+          {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', scope=selected_period, css='provider-card map-statistics-popularity')}
+        </section>"""
+    stream_buttons = "".join(
+        f"<button type='button' class='quick-filter{' active' if value == 'installs' else ''}' data-provider-stream='{value}' aria-pressed='{'true' if value == 'installs' else 'false'}'>{label}</button>"
+        for value, label in (("installs", "Installs"), ("updates", "Updates"), ("downloads", "Downloads"))
+    )
+    provider_table = _section_card(
+        "Providers",
+        f"<div class='quick-filter-group' role='group' aria-label='Provider stream'>{stream_buttons}</div>"
+        "<div class='table-wrap provider-table-wrap' tabindex='0' role='region' aria-label='Provider table'><table class='admin-table mobile-record-table'><caption class='sr-only'>Providers for the selected stream</caption>"
+        "<thead><tr><th scope='col'>Provider</th><th scope='col' class='column-number'>Successful</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-date' id='provider-stream-date'>Last success</th></tr></thead>"
+        "<tbody id='provider-statistic-rows'></tbody></table></div>",
+        card_id="map-statistics-provider-table", scope=selected_period,
+        css="provider-card map-statistics-provider-table",
+    )
+    ranking = _section_card(
+        "Top maps",
+        "<label class='popularity-search-label' for='all-maps-search'>Search</label><input type='search' id='all-maps-search' placeholder='Map or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top maps</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' id='all-maps-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div>",
+        card_id="maps-by-provider", scope=selected_period, css="provider-card map-statistics-ranking",
+    )
+    events = (
+        f"<section class='admin-card provider-card map-events-card'><details class='admin-disclosure' id='map-statistics-event-detail'{event_detail_open}>"
+        f"<summary id='map-statistics-event-summary'>Events <span class='disclosure-meta'>· {event_status}</span></summary>"
+        f"<div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>"
+    )
+    empty_notice = "" if has_event_data else _section_card(
+        "No activity", _empty_state("empty", "No map activity for this scope."),
+        card_id="map-statistics-empty", css="map-statistics-empty",
     )
     content = f"""
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
-        <div class='heading-row'><div><h1>Maps</h1><a class='secondary-button' href='/admin/update-diagnostics?outcome=failed'>Update failures</a></div></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><label><span class='sr-only'>Time range</span><select id='map-statistics-range' name='period'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider' name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' name='eventType'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='MAP_UPDATE_SUCCEEDED'>Map update succeeded</option><option value='MAP_UPDATE_FAILED'>Map update failed</option><option value='DOWNLOAD_STARTED'>Download started</option><option value='DOWNLOAD_PROCESSING'>Checking / unpacking</option><option value='DOWNLOAD_CANCELLED'>Download cancelled</option><option value='DOWNLOAD_INTERRUPTED'>Download interrupted</option></select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
+        <div class='heading-row'><div><h1>Maps</h1></div><a class='section-link' href='/admin/update-diagnostics'>Update reports&nbsp;{_admin_icon('arrow-right')}</a></div>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'><label><span class='sr-only'>Time range</span><select id='map-statistics-range' name='period'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider' name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
         {metrics_section if has_all_time_data else ""}
-        {"" if has_event_data else "<section class='map-statistics-empty' aria-live='polite'><h2>No map activity for this scope</h2></section>"}
-        {"" if not has_event_data else f"""
-        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' aria-labelledby='top-countries-title'><div class='section-heading'><h2 id='top-countries-title'>Top countries</h2></div><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div></section></section>
-        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' aria-labelledby='provider-statistics-title'><div class='section-heading'><div><h2 id='provider-statistics-title'>Provider comparison</h2></div></div><div class='table-wrap provider-table-wrap' tabindex='0' role='region' aria-label='Provider comparison table'><table class='admin-table mobile-record-table'><caption class='sr-only'>Provider comparison</caption><colgroup span='1'></colgroup><colgroup span='3'></colgroup><colgroup span='3'></colgroup><colgroup span='3'></colgroup><colgroup span='2'></colgroup><thead><tr><th scope='col' rowspan='2'>Provider</th><th scope='colgroup' colspan='3'>Downloads</th><th scope='colgroup' colspan='3'>Installs</th><th scope='colgroup' colspan='3'>Updates</th><th scope='col' rowspan='2' class='column-date'>Last successful install</th><th scope='col' rowspan='2' class='column-date'>Last successful update</th></tr><tr><th scope='col' class='column-number'>Success</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-number'>Success</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-number'>Success</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
-        <section class='provider-card map-statistics-ranking' aria-labelledby='maps-by-provider-title'><div class='section-heading'><h2 id='maps-by-provider-title'>Maps by provider</h2></div><label class='popularity-search-label' for='all-maps-search'>Search</label><input type='search' id='all-maps-search' placeholder='Map or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Maps by provider</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' id='all-maps-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></section>
-        <section class='provider-card map-events-card'><details class='admin-disclosure' id='map-statistics-event-detail'{event_detail_open}><summary id='map-statistics-event-summary'>Event detail <span class='disclosure-meta'>· {event_status}</span></summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
-        """}
         {trends}
+        {empty_notice}
+        {"" if not has_event_data else coverage + provider_table + ranking + events}
       </main>
       <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
@@ -4168,6 +4227,13 @@ def _map_statistics_script() -> str:
         if (worldMap) worldMap.dataset.countryCount = String(items.length);
       };
       document.querySelectorAll('[data-map-zoom]').forEach((button) => button.addEventListener('click', () => coverageMap?.zoom(button.dataset.mapZoom)));
+      const providerStreams = {
+        installs: {success: 'installs', failed: 'failedInstalls', last: 'lastInstall', date: 'Last install'},
+        updates: {success: 'completedUpdates', failed: 'failedUpdates', last: 'lastUpdate', date: 'Last update'},
+        downloads: {success: 'downloads', failed: 'failedDownloads', last: null, date: 'Last success'},
+      };
+      let providerStream = 'installs';
+      try { const saved = sessionStorage.getItem('terento.admin.maps.providerStream'); if (providerStreams[saved]) providerStream = saved; } catch (_) { /* optional */ }
       const renderProviders = () => {
         const selected = String(filters.provider || '').toLowerCase();
         const scoped = selected ? providers.filter((item) => String(item.id || '').toLowerCase() === selected) : providers;
@@ -4183,22 +4249,32 @@ def _map_statistics_script() -> str:
           if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedUpdates', row);
         });
         const rate = (success, failed) => success !== null && failed !== null && success + failed ? success / (success + failed) * 100 : null;
-        const labels = ['Provider','Downloads · Success','Downloads · Failed','Downloads · Rate','Installs · Success','Installs · Failed','Installs · Rate','Updates · Success','Updates · Failed','Updates · Rate','Last successful install','Last successful update'];
+        const stream = providerStreams[providerStream];
+        const labels = ['Provider','Successful','Failed','Rate',stream.date];
         const body = document.querySelector('#provider-statistic-rows');
+        const dateHeader = document.querySelector('#provider-stream-date');
+        if (dateHeader) dateHeader.textContent = stream.date;
+        document.querySelectorAll('[data-provider-stream]').forEach((button) => {
+          const active = button.dataset.providerStream === providerStream;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
         if (!body) return;
+        // Downloads · Failed, Installs · Failed and Updates · Failed stay independent;
+        // one stream is shown at a time.
         body.innerHTML = Object.entries(byProvider).map(([id, item]) => {
-          const values = [providerName[id] || id,item.downloads,item.failedDownloads,formatRate(rate(item.downloads,item.failedDownloads)),item.installs,item.failedInstalls,formatRate(rate(item.installs,item.failedInstalls)),item.completedUpdates,item.failedUpdates,formatRate(rate(item.completedUpdates,item.failedUpdates)),formatTimestamp(item.lastInstall),formatTimestamp(item.lastUpdate)];
-          const emptyGroups = {
-            downloads: item.downloads === 0 && item.failedDownloads === 0,
-            installs: item.installs === 0 && item.failedInstalls === 0,
-            updates: item.completedUpdates === 0 && item.failedUpdates === 0,
-          };
-          return `<tr>${values.map((value, index) => index === 0
-            ? `<td>${escapeHtml(countValue(value))}</td>`
-            : `<td data-label="${labels[index]}"${index < 10 ? ` data-empty-group="${index <= 3 ? emptyGroups.downloads : index <= 6 ? emptyGroups.installs : emptyGroups.updates}"` : ''} class="${index >= 10 ? 'column-date' : 'column-number numeric'}">${escapeHtml(countValue(value))}</td>`
-          ).join('')}</tr>`;
+          const success = item[stream.success], failed = item[stream.failed];
+          const values = [providerName[id] || id, success, failed, formatRate(rate(success, failed)), stream.last ? formatTimestamp(item[stream.last]) : '—'];
+          const empty = success === 0 && failed === 0;
+          return `<tr><td>${escapeHtml(countValue(values[0]))}</td>${values.slice(1).map((value, index) => `<td data-label="${labels[index + 1]}"${index < 3 ? ` data-empty-group="${empty}"` : ''} class="${index === 3 ? 'column-date' : 'column-number numeric'}">${escapeHtml(countValue(value))}</td>`).join('')}</tr>`;
         }).join('');
       };
+      window.terentoRenderProviderStream = (stream) => { if (providerStreams[stream]) { providerStream = stream; renderProviders(); } };
+      document.querySelectorAll('[data-provider-stream]').forEach((button) => button.addEventListener('click', () => {
+        providerStream = providerStreams[button.dataset.providerStream] ? button.dataset.providerStream : 'installs';
+        try { sessionStorage.setItem('terento.admin.maps.providerStream', providerStream); } catch (_) { /* optional */ }
+        renderProviders();
+      }));
       const byMap = {};
       installRows.forEach((row) => {
         const providerId = String(row.provider_id || '');
@@ -4244,8 +4320,20 @@ def _map_statistics_script() -> str:
       if (outcome) outcome.value = filters.outcome || '';
       if (moreFilters && (filters.map || filters.region || filters.eventType || filters.outcome || filters.eventId)) moreFilters.open = true;
       [range, provider].forEach((control) => control?.addEventListener('change', () => form?.requestSubmit()));
-      window.addEventListener('terento-admin-timezone-ready', () => { renderProviders(); renderRanking(); });
-      window.addEventListener('terento-admin-timezone-change', () => { renderProviders(); renderRanking(); });
+      // Charts and period boundaries use the selected time zone (ADM-08): the
+      // form carries it and a different zone reloads the server-side buckets.
+      const zoneInput = document.querySelector('#map-statistics-timezone');
+      const syncZone = () => {
+        const zone = window.TerentoAdminTime?.timeZone?.();
+        if (!zone || !zoneInput) return;
+        zoneInput.value = zone;
+        const current = new URL(window.location.href);
+        if ((current.searchParams.get('timeZone') || 'UTC') === zone) return;
+        current.searchParams.set('timeZone', zone);
+        window.location.replace(current.toString());
+      };
+      window.addEventListener('terento-admin-timezone-ready', () => { syncZone(); renderProviders(); renderRanking(); });
+      window.addEventListener('terento-admin-timezone-change', () => { syncZone(); renderProviders(); renderRanking(); });
       renderProviders(); renderWorldMap(); renderRanking();
       if (filters.eventId && eventDetail) { eventDetail.open = true; eventDetail.scrollIntoView?.({block:'start'}); eventDetail.querySelector('summary')?.focus({preventScroll:true}); }
     })();"""
@@ -8208,7 +8296,7 @@ details.provider-card.admin-disclosure{padding:0}
 details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .system-health-row[hidden]{display:none}
 .model-administration>.administration-grid{padding:0 14px 14px}
-.map-statistics-provider-table .admin-table{table-layout:fixed;width:100%;min-width:880px}
+.map-statistics-provider-table .admin-table{table-layout:fixed;width:100%;min-width:560px}
 .map-statistics-provider-table .admin-table th{white-space:normal;overflow-wrap:normal}
 .map-statistics-provider-table .admin-table th:first-child{width:15%}
 .map-statistics-provider-table .admin-table th,.map-statistics-provider-table .admin-table td{padding-inline:7px}
