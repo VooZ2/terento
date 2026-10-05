@@ -41,6 +41,7 @@ private actor DelayedAuthorizationResponse {
     @MainActor static func main() async throws {
         try await testDelayedAuthorizationThroughConnectScreen()
         try testAwaitingConfirmationActionParity()
+        try await testInvalidWriteProfileBeforeAcquisition()
         try await testEngineWithoutScreen()
         try await testReadBoundaryAndPresence()
         try await testObservedReadSurvivesCancellation()
@@ -119,7 +120,7 @@ private actor DelayedAuthorizationResponse {
             device.setPresenceMonitoringEnabled(false)
         }
         try await Task.sleep(for: .milliseconds(100))
-        engine.setDiagnosticTestIdentity(identity)
+        engine.setDiagnosticTestIdentity(identity, files: [garminRoot])
         let selection = plan()
         func availability() -> InstallReviewAvailability {
             InstallReviewAvailabilityResolver().resolve(plan: selection,
@@ -179,6 +180,38 @@ private actor DelayedAuthorizationResponse {
             "review's beginInstallation route silently rejects the already-started phase without mutation or statistics")
         check(!availability.isEnabled && availability.userReason?.isEmpty == false,
             "REGRESSION: awaitingConfirmation cannot expose an executable CTA to the silently rejecting beginInstallation route")
+    }
+
+    static let garminRoot = DeviceFile(itemID: 1, parentID: 0, storageID: 7,
+        path: "/GARMIN", filename: "Garmin", sizeBytes: 0, isFolder: true)
+
+    @MainActor static func testInvalidWriteProfileBeforeAcquisition() async throws {
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        let policy = try JSONDecoder().decode(InstallationAuthorizationDocument.self, from: Data(contentsOf: policyURL))
+        let authorization = InstallationAuthorizationState.approved(record: policy.devices[0], policyVersion: policy.policyVersion)
+        let zeroStorage = DeviceFile(itemID: 1, parentID: 0, storageID: 0,
+            path: "/GARMIN", filename: "GARMIN", sizeBytes: 0, isFolder: true)
+        for files in [[], [zeroStorage], [garminRoot, garminRoot]] as [[DeviceFile]] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let store = LocalInstallationEvidenceStore(rootURL: root)
+            let evidence = InstallationEvidenceController(store: store, uploader: DiagnosticUploadRecorder(), automaticRetryDelays: [0])
+            let stats = MapStatisticsEventController(store: LocalMapStatisticsEventStore(rootURL: root),
+                uploader: NoNetworkStatisticsUploader(), retryDelays: [0])
+            let engine = MapEngine(statisticsController: stats, evidenceController: evidence)
+            engine.setDiagnosticTestIdentity(identity, files: files)
+            engine.setInstallationAuthorization(authorization)
+            engine.beginInstallation(plan: plan())
+            check(engine.state == .failed && engine.installationPhase == .failed && engine.acquisitionState == .idle,
+                "invalid target stops the actual engine before acquisition")
+            await engine.waitForDiagnosticDeliveryForTesting()
+            check(store.events().count == 1 && store.events()[0].writeStarted == false
+                && store.events()[0].failureStage == .preflight
+                && store.events()[0].failureCode == InstallationFailure.unknownInstallTarget.rawValue,
+                "invalid profile reports preparation failure with no write using the existing schema")
+            emittedFixtures += store.events()
+        }
     }
 
     @MainActor static func testEngineWithoutScreen() async throws {

@@ -310,6 +310,7 @@ enum InstallationTransportError: Codable, LocalizedError, Equatable, Sendable, I
 }
 
 protocol MapInstallationTransport: Sendable {
+    func validateWriteTarget(identity: DeviceIdentity, files: [DeviceFile]) throws
     func write(
         sourceURL: URL,
         targetFilename: String,
@@ -336,6 +337,8 @@ protocol MapInstallationTransport: Sendable {
 }
 
 extension MapInstallationTransport {
+    // Injected transports may have no native binding. Production overrides this.
+    func validateWriteTarget(identity: DeviceIdentity, files: [DeviceFile]) throws {}
     func deleteExact(
         targetFilename: String,
         expectedItemID: UInt32,

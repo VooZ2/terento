@@ -47,7 +47,7 @@ struct ProtectedMapInventory: Sendable {
                   !components.dropFirst().contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }),
                   !file.filename.isEmpty, !file.filename.contains("/"),
                   !file.filename.contains("\0"), !file.path.contains("\0"),
-                  components.last.map(String.init) == file.filename else {
+                  file.hasMatchingPathFilename else {
                 throw Invalid.malformedLocation
             }
             let location = Location(storageID: file.storageID, path: file.path)

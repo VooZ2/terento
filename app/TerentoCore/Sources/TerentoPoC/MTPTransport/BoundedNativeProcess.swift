@@ -185,7 +185,7 @@ extension FinishingTrace {
     }
 
     private static let allowedEvents: Set<String> = [
-        "installation_begin", "source_validation", "preflight_inventory_begin", "preflight_inventory_end",
+        "installation_begin", "source_validation", "target_resolution", "preflight_inventory_begin", "preflight_inventory_end",
         "preflight_inventory_failed", "operation_begin", "operation_worker_failed", "operation_failed",
         "operation_complete", "worker_operation_begin", "worker_operation_failed", "worker_started",
         "worker_exited", "worker_deadline", "worker_cancelled", "readback_attempt", "readback_failed",
@@ -210,6 +210,10 @@ extension FinishingTrace {
             guard pair.count == 2 else { return nil }
             let key = pair[0], value = pair[1]
             if key == "event" { guard allowedEvents.contains(value) else { return nil }; hasEvent = true }
+            else if key == "target_reason" {
+                guard ["root_missing", "root_ambiguous", "storage_invalid", "root_invalid",
+                       "identity_invalid", "profile_mismatch"].contains(value) else { return nil }
+            }
             else if numericKeys.contains(key) {
                 guard !value.isEmpty, value.utf8.allSatisfy({ (48...57).contains($0) || $0 == 45 || $0 == 46 }),
                       let number = Double(value), number.isFinite else { return nil }

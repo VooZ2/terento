@@ -79,6 +79,13 @@ struct BoundedNativeProcessTests {
                                     arguments: [], input: Data(), timeout: 1)
         let native = "FINISH_TRACE native t=1.25 pid=12 event=read_failed offset=182108160 rc=-1 detail=0 last_verified_end=182108160 verified_bytes=29229056"
         precondition(FinishingTrace.safeLine(native) == native)
+        for reason in ["root_missing", "root_ambiguous", "storage_invalid", "root_invalid", "identity_invalid", "profile_mismatch"] {
+            let line = "FINISH_TRACE swift event=target_resolution target_reason=\(reason)"
+            precondition(FinishingTrace.safeLine(line) == line)
+        }
+        precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=target_resolution target_reason=PRIVATE-SERIAL") == nil)
+        precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=target_resolution target_reason=/Garmin") == nil)
+
         let sourceFailure = "FINISH_TRACE swift event=source_validation validation=sourceFormatMismatch"
         precondition(FinishingTrace.safeLine(sourceFailure) == sourceFailure)
         for unsafe in [native + " path=/Users/private/map.img", native + " serial=1234",

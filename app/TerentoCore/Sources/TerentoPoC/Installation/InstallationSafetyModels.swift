@@ -37,7 +37,7 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .unknownInstallSize:
             return "The final Garmin install size must be calculated before installation."
         case .unknownInstallTarget:
-            return "This device does not have a validated map installation target."
+            return "Terento could not verify a safe place to install maps. Reconnect your device and try again."
         case .stableWatchIdentityUnavailable:
             return "Terento could not establish the stable local watch identity required to manage this installation safely."
         case .mapIdentityAmbiguous:

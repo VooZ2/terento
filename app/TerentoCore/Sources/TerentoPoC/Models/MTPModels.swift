@@ -80,6 +80,14 @@ struct DeviceFile: Codable, Identifiable, Equatable, Sendable {
     let sizeBytes: UInt64
     let isFolder: Bool
 
+    /// Native inventory canonicalizes only the unique Garmin root path, retaining
+    /// its observed name for protection comparisons. No other filename is folded.
+    var hasMatchingPathFilename: Bool {
+        path.split(separator: "/").last.map(String.init) == filename
+            || (isFolder && path == "/GARMIN" && filename.utf8.count == 6
+                && filename.utf8.allSatisfy { $0 < 128 } && filename.uppercased() == "GARMIN")
+    }
+
     var stableIdentity: DeviceFileIdentity {
         DeviceFileIdentity(storageID: storageID, path: path, filename: filename, sizeBytes: sizeBytes, isFolder: isFolder)
     }

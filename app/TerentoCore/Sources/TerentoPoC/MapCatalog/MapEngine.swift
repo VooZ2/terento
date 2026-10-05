@@ -298,7 +298,11 @@ final class MapEngine: ObservableObject {
     func waitForDiagnosticDeliveryForTesting() async {
         await operationDiagnostics?.waitForDeliveryForTesting()
     }
-    func setDiagnosticTestIdentity(_ identity: DeviceIdentity, phase: InstallationProcessPhase? = nil) {
+    func setDiagnosticTestIdentity(_ identity: DeviceIdentity, phase: InstallationProcessPhase? = nil, files: [DeviceFile]? = nil) {
+        if let files {
+            result = MapInventoryResult(scan: MapScanResult(files: [], installedMaps: [], otherMaps: [],
+                parsingFailures: 0, skippedUnrecognizedProviderFiles: 0), deviceFiles: files, comparisons: [])
+        }
         currentIdentity = identity
         state = .scanned
         if let phase { installationPhase = phase }
@@ -520,6 +524,16 @@ final class MapEngine: ObservableObject {
         guard state == .scanned,
               installationPhase == .idle,
               !isBusy else {
+            return
+        }
+
+        do {
+            guard let identity = currentIdentity, let inventory = result else {
+                throw MapTargetResolutionError.missingRoot
+            }
+            _ = try Self.resolveWriteProfile(identity: identity, files: inventory.deviceFiles)
+        } catch {
+            customMapImportErrorMessage = MapTargetResolutionError.missingRoot.localizedDescription
             return
         }
 
@@ -982,21 +996,21 @@ final class MapEngine: ObservableObject {
             return (objectID, recoveryRecord.sha256)
         })
 
+        guard let resolved = try? Self.resolveWriteProfile(identity: identity, files: result.deviceFiles) else {
+            return nil
+        }
         return MapLifecycleContext(
             item: item,
             comparison: inventory.allEntries.first(where: { $0.key == itemID })?.comparison,
             selectedMap: inventory.allEntries.first(where: { $0.key == itemID })?.catalogPackage,
             identity: identity,
             availableStorage: availableStorage,
-            profile: DeviceInstallProfileRegistry.local.profile(
-                for: identity,
-                deviceFiles: result.deviceFiles
-            ),
+            profile: resolved.installProfile,
             deviceKey: itemDeviceKey,
             expectedSHA256ByItemID: hashes,
             mapIdentity: itemMapIdentity ?? manifestMapIdentity,
             failedInstallRecovery: item.failedInstallRecovery,
-            expectedStorageID: result.deviceFiles.first(where: { $0.path == "/GARMIN" && $0.isFolder })?.storageID ?? 0
+            expectedStorageID: resolved.target.root.storageID
         )
     }
 
@@ -1271,7 +1285,36 @@ final class MapEngine: ObservableObject {
             discardCustomMapImport()
             return
         }
+        guard validateAcquisitionTarget() else { return }
         prepareInstallationArtifacts()
+    }
+
+    private func validateAcquisitionTarget() -> Bool {
+        do {
+            guard let identity = currentIdentity, let inventory = result else {
+                throw MapTargetResolutionError.missingRoot
+            }
+            _ = try Self.resolveWriteProfile(identity: identity, files: inventory.deviceFiles)
+            return true
+        } catch {
+            evidenceFailureStage = .preflight
+            evidenceFailure = .unknownInstallTarget
+            evidenceNativeFailureCode = nil
+            installationErrorMessage = MapTargetResolutionError.missingRoot.localizedDescription
+            installationPhase = .failed
+            state = .failed
+            operationDiagnostics?.failed(index: 0, stage: .preflight, failure: .unknownInstallTarget)
+            recordInstallationFailure(installationErrorMessage)
+            return false
+        }
+    }
+
+    nonisolated private static func resolveWriteProfile(identity: DeviceIdentity, files: [DeviceFile]) throws -> ResolvedMapWriteProfile {
+        do { return try ResolvedMapWriteProfile.resolve(identity: identity, files: files) }
+        catch let reason as MapTargetResolutionError {
+            FinishingTrace.event("target_resolution", "target_reason=\(reason.rawValue)")
+            throw reason
+        }
     }
 
     private func prepareInstallationArtifacts() {
@@ -1442,6 +1485,7 @@ final class MapEngine: ObservableObject {
                 }
                 self?.acquisitionState = .failed
                 let userMessage = (error as? MapAcquisitionError)?.userMessage
+                    ?? (error as? MapTargetResolutionError)?.errorDescription
                     ?? UserFacingErrorMessage.forInstallation(error)
                 self?.acquisitionErrorMessage = userMessage
                 self?.installationErrorMessage = userMessage
@@ -1630,7 +1674,8 @@ final class MapEngine: ObservableObject {
                     self?.evidenceFailure = readFailure?.failure
                 }
                 self?.evidenceNativeFailureCode = readFailure?.native
-                self?.installationErrorMessage = readFailure?.failure.userLabel
+                self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
+                    ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
                 self?.installationPhase = .failed
@@ -1664,7 +1709,7 @@ final class MapEngine: ObservableObject {
 
         state = .installing
         installationBatchResults = []
-        installationPhase = .installing
+        installationPhase = .preparing
         installationPhaseProgress = nil
         installationSpeedEstimator.reset()
         installationProgress = TransferProgress(
@@ -1749,16 +1794,10 @@ final class MapEngine: ObservableObject {
                                 )
                             }
 
-                            let installProfile = DeviceInstallProfileRegistry.local.profile(
-                                for: identity,
-                                deviceFiles: inventory.deviceFiles
-                            )
                             let liveAuthorization = await authorizationClient.resolve(identity: identity)
-                            let operationProfile = DeviceMapOperationProfile(
-                                identity: identity,
-                                installProfile: installProfile,
-                                expectedStorageID: inventory.deviceFiles.first(where: { $0.path == "/GARMIN" && $0.isFolder })?.storageID ?? 0
-                            )
+                            let resolved = try Self.resolveWriteProfile(identity: identity, files: inventory.deviceFiles)
+                            let installProfile = resolved.installProfile
+                            let operationProfile = resolved.operationProfile
 
                             let request = MapInstallationRequest(
                                 identity: identity,
@@ -1919,7 +1958,8 @@ final class MapEngine: ObservableObject {
                 self?.evidenceFailureStage = known?.stage ?? .preflight
                 self?.evidenceFailure = readFailure?.failure ?? known?.failure
                 self?.evidenceNativeFailureCode = readFailure?.native
-                self?.installationErrorMessage = readFailure?.failure.userLabel
+                self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
+                    ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
                 self?.installationPhase = .failed
@@ -1976,9 +2016,14 @@ final class MapEngine: ObservableObject {
     }
 
     nonisolated static func readFailureDiagnostic(_ error: Error) -> (
-        failure: InstallationFailure, native: EvidenceNativeFailureCode,
+        failure: InstallationFailure, native: EvidenceNativeFailureCode?,
         context: InstallationFailureContext
     )? {
+        if error is MapTargetResolutionError {
+            return (.unknownInstallTarget, nil, InstallationFailureContext(
+                boundary: .prewriteInventory, classificationSource: .derived,
+                devicePresence: .unknown, operation: .inventory, resultKind: .appError))
+        }
         guard let transport = error as? InstallationTransportError,
               let context = transport.failureContext,
               [.initialSnapshot, .initialInventory, .prewriteInventory].contains(context.boundary)

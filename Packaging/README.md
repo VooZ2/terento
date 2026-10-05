@@ -30,6 +30,12 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.0.0-beta.18 / build 40**, staging the shared Garmin
+write-target/profile correction. Public metadata continues to identify beta.17
+until signed, notarized artifacts exist. Automated native/app checks pass; no new
+hardware evidence is claimed. Release notes require the owner's review before
+publication. No API payload, schema or backend deployment change is required.
+
 The published release is **1.0.0-beta.17 / build 39**, from signed source
 `8a709166274359061bf0776f5b6e348d8c2e4929`. Its ZIP and DMG passed Apple
 notarization, stapling, Gatekeeper and launch validation.

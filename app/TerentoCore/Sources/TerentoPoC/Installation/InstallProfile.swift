@@ -98,7 +98,7 @@ struct DeviceMapOperationProfile: Codable, Equatable, Sendable {
         self.targetDirectory = installProfile.targetDirectory
     }
 
-    private static func validPhysicalIdentifier(
+    fileprivate static func validPhysicalIdentifier(
         _ value: String,
         source: DeviceIdentity.LocalIdentityResolution
     ) -> Bool {
@@ -180,16 +180,64 @@ struct DeviceInstallProfileRegistry: Sendable {
     }
 
     static func hasSingleGarminRootFolder(in deviceFiles: [DeviceFile]) -> Bool {
-        deviceFiles.filter { file in
-            file.isFolder
-                && file.path.compare(
-                    "/GARMIN",
-                    options: [.caseInsensitive, .diacriticInsensitive]
-                ) == .orderedSame
-                && file.filename.compare(
-                    "GARMIN",
-                    options: [.caseInsensitive, .diacriticInsensitive]
-                ) == .orderedSame
-        }.count == 1
+        (try? GarminMapTarget.resolve(in: deviceFiles)) != nil
+    }
+}
+
+/// Fixed local-only reasons; error values contain no device identifiers or paths.
+enum MapTargetResolutionError: String, Error, LocalizedError, Sendable {
+    case missingRoot = "root_missing"
+    case ambiguousRoot = "root_ambiguous"
+    case invalidStorage = "storage_invalid"
+    case invalidRoot = "root_invalid"
+    case invalidIdentity = "identity_invalid"
+    case profileMismatch = "profile_mismatch"
+
+    var errorDescription: String? {
+        "Terento could not verify a safe place to install maps. Reconnect your device and try again."
+    }
+}
+
+/// A unique root, not a model allowlist. The native inventory exposes a canonical
+/// path for this root's storage only; filename and all other object facts stay exact.
+struct GarminMapTarget: Equatable, Sendable {
+    let root: DeviceFile
+
+    static func resolve(in files: [DeviceFile]) throws -> Self {
+        let candidates = files.filter {
+            $0.isFolder && asciiGarmin($0.filename)
+                && $0.path.first == "/" && asciiGarmin(String($0.path.dropFirst()))
+        }
+        guard !candidates.isEmpty else { throw MapTargetResolutionError.missingRoot }
+        guard candidates.count == 1 else { throw MapTargetResolutionError.ambiguousRoot }
+        let root = candidates[0]
+        guard root.storageID != 0 else { throw MapTargetResolutionError.invalidStorage }
+        guard root.itemID != 0 else { throw MapTargetResolutionError.invalidRoot }
+        return Self(root: root)
+    }
+
+    private static func asciiGarmin(_ text: String) -> Bool {
+        let bytes = Array(text.utf8)
+        return bytes.count == 6 && zip(bytes, "GARMIN".utf8).allSatisfy {
+            ($0.0 >= 97 && $0.0 <= 122 ? $0.0 - 32 : $0.0) == $0.1
+        }
+    }
+}
+
+struct ResolvedMapWriteProfile: Sendable {
+    let target: GarminMapTarget
+    let installProfile: DeviceInstallProfile
+    let operationProfile: DeviceMapOperationProfile
+
+    static func resolve(identity: DeviceIdentity, files: [DeviceFile]) throws -> Self {
+        let target = try GarminMapTarget.resolve(in: files)
+        guard let identifier = identity.localHardwareIdentifier,
+              DeviceMapOperationProfile.validPhysicalIdentifier(identifier, source: identity.localIdentityResolution)
+        else { throw MapTargetResolutionError.invalidIdentity }
+        guard let install = DeviceInstallProfileRegistry.local.profile(for: identity, deviceFiles: files),
+              let operation = DeviceMapOperationProfile(identity: identity, installProfile: install,
+                  expectedStorageID: target.root.storageID)
+        else { throw MapTargetResolutionError.profileMismatch }
+        return Self(target: target, installProfile: install, operationProfile: operation)
     }
 }

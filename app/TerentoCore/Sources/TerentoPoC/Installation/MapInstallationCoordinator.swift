@@ -563,6 +563,13 @@ struct MapInstallationCoordinator: Sendable {
                     ))
                 )
             }
+            try transport.validateWriteTarget(identity: request.identity, files: liveBeforeWrite)
+        } catch let reason as MapTargetResolutionError {
+            diagnostic("target_resolution", "target_reason=\(reason.rawValue)")
+            return blocked(status: .blockedUnknownTarget, failure: .unknownInstallTarget,
+                preflight: preflight, transaction: transaction,
+                diagnostics: diagnostics.withFailureContexts(Self.failureContext(
+                    boundary: .prewriteInventory, operation: .inventory)))
         } catch {
             let elapsed = elapsedMilliseconds(since: preWriteInventoryStartedAt)
             diagnostic("preflight_inventory_failed", "elapsed=\(elapsed)")
@@ -1568,7 +1575,7 @@ struct MapInstallationCoordinator: Sendable {
             // entries disagree on size or kind and therefore have distinct keys.
             guard !file.filename.isEmpty, !file.filename.contains("/"),
                   file.path.hasPrefix("/"),
-                  file.path.split(separator: "/").last.map(String.init) == file.filename,
+                  file.hasMatchingPathFilename,
                   locations.insert(CrossSessionInventoryLocation(
                     storageID: file.storageID, path: file.path
                   )).inserted else {

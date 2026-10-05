@@ -7,6 +7,23 @@ extension Bundle { static var module: Bundle { .main } }
 @main
 struct PrefixSessionWiringTests {
     static func main() throws {
+        let identity = DeviceIdentity(manufacturer: "Garmin", model: "fenix 8", family: "fēnix", variant: nil,
+            usbVendorId: 0x091e, usbProductId: 0x51b8, firmware: nil, storageCapacity: 1_000_000,
+            freeSpace: 900_000, localHardwareIdentifier: "TEST-SERIAL-A", localIdentityResolution: .mtpSerial)
+        let root = DeviceFile(itemID: 1, parentID: 0, storageID: 7,
+            path: "/GARMIN", filename: "Garmin", sizeBytes: 0, isFolder: true)
+        let resolved = try ResolvedMapWriteProfile.resolve(identity: identity, files: [root])
+        try MTPMapInstallationTransport(operationProfile: resolved.operationProfile)
+            .validateWriteTarget(identity: identity, files: [root])
+        let changedStorage = DeviceFile(itemID: 1, parentID: 0, storageID: 8,
+            path: root.path, filename: root.filename, sizeBytes: 0, isFolder: true)
+        for (profile, files) in [(nil, [root]), (resolved.operationProfile, [changedStorage])] as [(DeviceMapOperationProfile?, [DeviceFile])] {
+            do {
+                try MTPMapInstallationTransport(operationProfile: profile).validateWriteTarget(identity: identity, files: files)
+                fatalError("missing or stale production write profile accepted")
+            } catch { precondition(error as? MapTargetResolutionError == .profileMismatch) }
+        }
+        print("PASS: actual write adapter rejects missing/stale profiles before native mutation")
         let first = DeviceFile(itemID: 10, parentID: 1, storageID: 1,
             path: "/GARMIN/expected.img", filename: "expected.img", sizeBytes: 8, isFolder: false)
         // Deliberately collide historical handles: results must correlate by descriptor.

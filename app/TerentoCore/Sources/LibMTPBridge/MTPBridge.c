@@ -547,6 +547,35 @@ static int append_file(
     return 0;
 }
 
+/* Logical map paths keep the legacy /GARMIN spelling. Only a proven unique
+ * root on one storage is projected; filenames, suffix case, IDs, sizes and kind
+ * remain untouched. No device object is renamed. Ambiguity stays visible. */
+static void canonicalize_garmin_inventory_root(TerentoMTPFileInventory *inventory) {
+    TerentoMTPFile *root = NULL;
+    for (size_t i = 0; i < inventory->file_count; ++i) {
+        TerentoMTPFile *file = &inventory->files[i];
+        if (file->is_folder && file->path && file->filename
+            && strlen(file->path) == 7 && file->path[0] == '/'
+            && strlen(file->filename) == 6
+            && strcasecmp(file->path + 1, "GARMIN") == 0
+            && strcasecmp(file->filename, "GARMIN") == 0) {
+            if (root != NULL) return;
+            root = file;
+        }
+    }
+    if (root == NULL || root->storage_id == 0 || root->item_id == 0) return;
+    char observed[8];
+    memcpy(observed, root->path, sizeof(observed));
+    for (size_t i = 0; i < inventory->file_count; ++i) {
+        TerentoMTPFile *file = &inventory->files[i];
+        if (file->storage_id == root->storage_id && file->path
+            && strncmp(file->path, observed, 7) == 0
+            && (file->path[7] == '\0' || file->path[7] == '/')) {
+            memcpy(file->path, "/GARMIN", 7);
+        }
+    }
+}
+
 static int walk_file_tree(
     LIBMTP_mtpdevice_t *device,
     uint32_t storage_id,
@@ -703,6 +732,8 @@ int terento_mtp_read_file_inventory_bound(
         }
     }
 
+    if (result == 0) canonicalize_garmin_inventory_root(inventory);
+
 cleanup:
     if (list_started) {
         terento_trace_event(&trace, "file_list_end", 0, result, inventory->file_count);
@@ -774,6 +805,7 @@ static int read_prefixes_in_session(
             &inventory, error_message, error_message_capacity, category);
         if (result != 0) goto cleanup;
     }
+    canonicalize_garmin_inventory_root(&inventory);
     for (size_t i = 0; i < count; ++i) {
         const TerentoMTPFileDescriptor *target = &targets[i];
         const TerentoMTPFile *match = NULL;
@@ -918,6 +950,7 @@ static int find_existing_file_by_stable_identity(
     }
 
     if (result == 0) {
+        canonicalize_garmin_inventory_root(&inventory);
         for (size_t index = 0; index < inventory.file_count; index += 1) {
             const TerentoMTPFile *file = &inventory.files[index];
             if (file->is_folder != 0

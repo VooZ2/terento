@@ -5,6 +5,8 @@ import Foundation
 // Ledger outcomes below describe injected I/O, not native authorization evidence.
 extension Bundle { static var module: Bundle { .main } }
 @_silgen_name("terento_cleanup_forbidden_calls") private func forbiddenNativeCalls() -> Int32
+@_silgen_name("terento_test_project_garmin_path")
+private func projectRoot(_ root: UnsafePointer<CChar>, _ path: UnsafePointer<CChar>, _ output: UnsafeMutablePointer<CChar>, _ capacity: Int) -> Int32
 private enum SimulationError: Error { case refused(String) }
 private func check(_ value: @autoclosure () -> Bool, _ message: String) throws {
     if !value() { throw SimulationError.refused(message) }
@@ -63,6 +65,7 @@ private func artifact(_ month: Int, root: URL) throws -> ValidatedMapArtifact {
 }
 
 private final class LocalDevice: InstallationDeviceReader, @unchecked Sendable {
+    var rootSpelling = "GARMIN"
     var serial = "SIMULATED-WATCH-A"
     var bytes: [String: Data] = ["/GARMIN/D123.img": Data(repeating: 7, count: 64)]
     var handles: [String: UInt32] = ["/GARMIN": 1, "/GARMIN/D123.img": 2]
@@ -72,8 +75,16 @@ private final class LocalDevice: InstallationDeviceReader, @unchecked Sendable {
     }
     func readFileInventory() throws -> [DeviceFile] {
         handles.keys.sorted().map { path in
-            DeviceFile(itemID: handles[path]!, parentID: path == "/GARMIN" ? 0 : handles["/GARMIN"]!,
-                storageID: 1, path: path, filename: String(path.split(separator: "/").last!),
+            let rawRoot = "/" + rootSpelling
+            let rawPath = rawRoot + path.dropFirst("/GARMIN".count)
+            var buffer = [CChar](repeating: 0, count: 1024)
+            let ok = rawRoot.withCString { root in rawPath.withCString { raw in
+                projectRoot(root, raw, &buffer, buffer.count)
+            } }
+            precondition(ok == 1)
+            let canonical = String(cString: buffer)
+            return DeviceFile(itemID: handles[path]!, parentID: path == "/GARMIN" ? 0 : handles["/GARMIN"]!,
+                storageID: 1, path: canonical, filename: path == "/GARMIN" ? rootSpelling : String(path.split(separator: "/").last!),
                 sizeBytes: UInt64(bytes[path]?.count ?? 0), isFolder: path == "/GARMIN")
         }
     }
@@ -215,22 +226,27 @@ struct LocalManagedUpdateSimulationTests {
               FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?.resolvingSymlinksInPath().path.hasPrefix(URL(fileURLWithPath: home).resolvingSymlinksInPath().path + "/") == true else {
             throw SimulationError.refused("runner must isolate all default application-support state")
         }
+        for rootSpelling in ["GARMIN", "Garmin", "garmin"] {
         for scenario in ["success", "no-manifest", "state-loss", "legacy", "wrong-device", "live-substitution", "target-changed", "source-changed",
                          "new-verification", "protected-delta", "incomplete-ledger"] {
-            try await run(scenario)
+            try await run(scenario, rootSpelling: rootSpelling)
             try check(forbiddenNativeCalls() == 0, "local fixture must never enter native device I/O")
+        }
         }
         print("PASS: local managed update production coordinators; injected I/O + real ledger evidence (native authorization tested separately)")
     }
-    private static func run(_ scenario: String) async throws {
+    private static func run(_ scenario: String, rootSpelling: String) async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-local-update-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let manifestRoot = root.appendingPathComponent("manifests"), ledgerRoot = root.appendingPathComponent("ledger")
         let store = LocalTerentoManifestStore(rootDirectory: manifestRoot)
         let device = LocalDevice(), initialProtected = device.bytes["/GARMIN/D123.img"]!
+        device.rootSpelling = rootSpelling
         let v1 = try artifact(5, root: root), v2 = try artifact(6, root: root)
-        let id = identity(), profile = DeviceInstallProfileRegistry.local.profile(for: id)
+        let id = identity()
+        let resolved = try ResolvedMapWriteProfile.resolve(identity: id, files: device.readFileInventory())
+        let profile = resolved.installProfile
         try check(id.physicalManifestDeviceKey?.hasPrefix("watch-v2-") == true, "fixture physical namespace must be available")
         let installer = LocalInstallIO(device, mode: .install, root: ledgerRoot)
         let initialComparison = MapComparisonEngine().compare(installedMaps: [], provider: provider, region: region, catalogMap: package(5))
@@ -242,6 +258,8 @@ struct LocalManagedUpdateSimulationTests {
                 installationAuthorization: approvedAuthorization(for: id)))
         try check(result.isSuccess && installer.sends == 1 && installer.deletes == 0, "real v1 install failed: \(result.status)")
         device.reconnect()
+        let reconnected = try ResolvedMapWriteProfile.resolve(identity: id, files: device.readFileInventory())
+        try check(reconnected.operationProfile == resolved.operationProfile, "reconnect must preserve storage/physical binding, not handles")
         // Reopened store models a new app process/version; ownership has no app-version dependency.
         let reopened = LocalTerentoManifestStore(rootDirectory: manifestRoot)
         let durable = try reopened.read(deviceKey: id.localManifestDeviceKey)!.entries
@@ -315,6 +333,6 @@ struct LocalManagedUpdateSimulationTests {
             try check(updater.sends == expectedSend && updater.deletes == expectedDelete, "negative counters: " + scenario)
             if expectedDelete == 0 { try check(device.bytes[oldPath] != nil, "old remains on precommit failure") }
         }
-        print("PASS: local update \(scenario) installSend=\(installer.sends) updateSend=\(updater.sends) updateDelete=\(updater.deletes) status=\(update.status.rawValue)")
+        print("PASS: local update root=\(rootSpelling) \(scenario) installSend=\(installer.sends) updateSend=\(updater.sends) updateDelete=\(updater.deletes) status=\(update.status.rawValue)")
     }
 }

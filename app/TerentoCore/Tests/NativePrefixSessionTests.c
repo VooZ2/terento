@@ -49,7 +49,7 @@ static LIBMTP_file_t *entry(const char *name,uint32_t id,int folder,uint64_t siz
     f->filesize=size; return f;
 }
 static LIBMTP_file_t *fake_files(LIBMTP_mtpdevice_t *d,uint32_t store,uint32_t parent) {
-    if(parent==LIBMTP_FILES_AND_FOLDERS_ROOT) return entry("GARMIN",90,1,0);
+    if(parent==LIBMTP_FILES_AND_FOLDERS_ROOT) return entry(scenario==16?"Garmin":scenario==17?"garmin":"GARMIN",90,1,0);
     if(parent!=90) return NULL;
     LIBMTP_file_t *other=entry("unrelated.img",10,0,8);
     if(scenario==3) return other;
@@ -71,18 +71,49 @@ static int fake_partial(LIBMTP_mtpdevice_t *d,uint32_t id,uint64_t offset,uint32
 static TerentoMTPMapOperationProfile profile(void) {
     return (TerentoMTPMapOperationProfile){2,0x091e,0x51b8,"Garmin","Test Watch","/GARMIN","TEST-WATCH",1,1};
 }
+static void test_root_projection(void) {
+    for (int variant=0; variant<6; ++variant) {
+        TerentoMTPFileInventory inv={0};
+        inv.file_count=4; inv.files=calloc(inv.file_count,sizeof(*inv.files));
+        const char *paths[]={"/Garmin","/Garmin/MyMap.IMG","/GarminElse/keep.img","/Garmin/other-store.img"};
+        const char *names[]={"Garmin","MyMap.IMG","keep.img","other-store.img"};
+        for(size_t i=0;i<inv.file_count;++i) {
+            inv.files[i]=(TerentoMTPFile){0}; inv.files[i].item_id=i+10;
+            inv.files[i].storage_id=i==3?2:1; inv.files[i].is_folder=i==0;
+            inv.files[i].path=strdup(paths[i]); inv.files[i].filename=strdup(names[i]);
+        }
+        if(variant==1) inv.files[0].storage_id=0;
+        if(variant==2) inv.files[0].item_id=0;
+        if(variant==3 || variant==4) { // a second root: same or different storage
+            free(inv.files[3].path); free(inv.files[3].filename);
+            inv.files[3].path=strdup("/GARMIN"); inv.files[3].filename=strdup("GARMIN");
+            inv.files[3].is_folder=1; inv.files[3].storage_id=variant==3?1:2;
+        }
+        if(variant==5) inv.files[0].is_folder=0;
+        canonicalize_garmin_inventory_root(&inv);
+        assert(!strcmp(inv.files[1].path,variant==0?"/GARMIN/MyMap.IMG":"/Garmin/MyMap.IMG"));
+        assert(!strcmp(inv.files[0].filename,"Garmin"));
+        assert(!strcmp(inv.files[1].filename,"MyMap.IMG"));
+        assert(!strcmp(inv.files[2].path,"/GarminElse/keep.img"));
+        if(variant!=3 && variant!=4) assert(!strcmp(inv.files[3].path,"/Garmin/other-store.img"));
+        clear_file_inventory(&inv);
+    }
+    puts("PASS: native root projection is storage-bound, preserves suffix case and refuses ambiguity/invalid roots");
+}
+
 #ifndef TERENTO_PREFIX_SWIFT_DRIVER
 int main(void) {
+    test_root_projection();
     TerentoMTPMapOperationProfile p=profile();
     TerentoMTPFileDescriptor targets[2]={{1,8,0,"/GARMIN/expected.img","expected.img"},
         {1,8,0,"/GARMIN/second.img","second.img"}};
-    for(int test=1;test<=15;++test) {
+    for(int test=1;test<=17;++test) {
         terento_prefix_test_reset(test);
         TerentoMTPByteBuffer buffers[2]={{0}}; char error[256]={0}; int category=0;
-        int batch=(test>=9 && test<=11) || test>=14;
+        int batch=(test>=9 && test<=11) || (test>=14 && test<=15);
         int result=batch ? terento_mtp_read_file_prefixes(&p,targets,2,8,buffers,error,sizeof(error))
             : terento_mtp_read_file_prefix_diagnostic(&p,targets,0,8,buffers,error,sizeof(error),&category);
-        int success=test==1 || test==2 || test==9 || test==11;
+        int success=test==1 || test==2 || test==9 || test==11 || test==16 || test==17;
         if ((result==0)!=success) fprintf(stderr,"scenario=%d result=%d error=%s category=%d\n",test,result,error,category);
         assert((result==0)==success);
         assert(opens==1 && closes==1);
