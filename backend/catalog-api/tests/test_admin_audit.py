@@ -411,7 +411,8 @@ class AdminAuditTests(unittest.TestCase):
         class Result:
             def fetchall(self): return []
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query.startswith('SET LOCAL'): return Result()
                 calls.append((query, parameters)); return Result()
         class QueryDatabase(Database):
             @contextmanager
@@ -440,7 +441,8 @@ class AdminAuditTests(unittest.TestCase):
         class Result:
             def fetchall(self): return []
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query.startswith('SET LOCAL'): return Result()
                 calls.append((query, parameters)); return Result()
         class QueryDatabase(Database):
             @contextmanager
@@ -464,7 +466,8 @@ class AdminAuditTests(unittest.TestCase):
             def fetchall(self): return []
 
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query.startswith('SET LOCAL'): return Result()
                 calls.append((query, parameters)); return Result()
 
         class QueryDatabase(Database):
@@ -563,7 +566,8 @@ class AdminAuditTests(unittest.TestCase):
         class Result:
             def fetchall(self): return []
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query.startswith('SET LOCAL'): return Result()
                 calls.append((query, parameters)); return Result()
         class QueryDatabase(Database):
             @contextmanager

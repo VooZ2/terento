@@ -86,6 +86,9 @@ MISSING_DIAGNOSTIC_GAP_WHERE = """
             WHERE sibling.is_local_test IS NOT TRUE
               AND sibling.statistics_exclusion_code IS NULL
               AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+              -- Install terminals never carry an acquisition ID (intake rejects
+              -- it); stating it lets PostgreSQL use the operation index.
+              AND sibling.acquisition_id IS NULL
               AND sibling.operation_id = e.operation_id
               AND sibling.provider_id = e.provider_id
               AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
@@ -361,6 +364,17 @@ def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, A
         "failedMapUpdateCount": failed_updates,
         "mapUpdateCount": successful_updates + failed_updates,
     }
+
+
+def _prefer_hash_joins(connection: Any) -> None:
+    """Steer full-history statistics queries away from nested loops.
+
+    The read models aggregate materialized CTEs whose row counts PostgreSQL
+    cannot estimate (it assumes about 200 groups), so it picks nested loops that
+    rescan a whole CTE per outer row and grow quadratically with history. This
+    transaction-local planner setting changes only the plan, never the result.
+    """
+    connection.execute("SET LOCAL enable_nestloop = off")
 
 
 def _enrich_activity_models(connection, rows):
@@ -4535,20 +4549,26 @@ class Database:
                 FROM classified_compatibility AS c
                 JOIN result_flags AS f USING (result_key)
                 ORDER BY c.result_key, c.occurred_at ASC NULLS LAST, c.event_id
+            ), map_peer_counts AS (
+                -- Legacy map terminals without a result index: how many main-map
+                -- install terminals share their operation, provider and region.
+                SELECT peer.operation_id, peer.provider_id,
+                       COALESCE(peer_package.canonical_region_id, peer.region) AS region_key,
+                       count(*) AS peer_count
+                FROM normalized_map_events peer
+                LEFT JOIN map_package peer_package ON peer_package.id = peer.map_package_id
+                WHERE peer.event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
+                  AND peer.component_kind IS DISTINCT FROM 'contours'
+                GROUP BY peer.operation_id, peer.provider_id,
+                         COALESCE(peer_package.canonical_region_id, peer.region)
             ), map_event_evidence AS (
                 -- A direct failed map event enters the fresh denominator only
                 -- when exactly one compatible diagnostic proves a started
                 -- failure. Raw map events remain in Event detail regardless.
                 SELECT
                     installed.event_id,
-                    CASE WHEN installed.map_result_index IS NOT NULL THEN 1 ELSE
-                      (SELECT count(*) FROM normalized_map_events peer
-                       LEFT JOIN map_package peer_package ON peer_package.id=peer.map_package_id
-                       WHERE peer.operation_id=installed.operation_id AND peer.provider_id=installed.provider_id
-                         AND peer.event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
-                         AND peer.component_kind IS DISTINCT FROM 'contours'
-                         AND COALESCE(peer_package.canonical_region_id,peer.region) IS NOT DISTINCT FROM
-                             COALESCE(installed_package.canonical_region_id,installed.region))
+                    CASE WHEN installed.map_result_index IS NOT NULL THEN 1
+                         ELSE COALESCE(max(peer_counts.peer_count), 0)
                     END AS map_candidate_count,
                     count(DISTINCT evidence.result_key) FILTER (
                         WHERE evidence.result_key IS NOT NULL
@@ -4585,10 +4605,21 @@ class Database:
                          )
                      )
                  )
+                LEFT JOIN map_peer_counts AS peer_counts
+                  ON installed.map_result_index IS NULL
+                 AND peer_counts.operation_id = installed.operation_id
+                 AND peer_counts.provider_id = installed.provider_id
+                 AND peer_counts.region_key IS NOT DISTINCT FROM
+                     COALESCE(installed_package.canonical_region_id, installed.region)
                 WHERE installed.is_local_test IS NOT TRUE
                   AND installed.statistics_exclusion_code IS NULL
                   AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                 GROUP BY installed.event_id, installed_package.canonical_region_id
+            ), compatibility_sibling_counts AS (
+                SELECT operation_id, provider, region, count(*) AS sibling_count
+                FROM deduplicated_compatibility
+                WHERE operation_id IS NOT NULL
+                GROUP BY operation_id, provider, region
             ), complete_compatibility_operations AS (
                 SELECT
                     e.operation_key,
@@ -4596,20 +4627,24 @@ class Database:
                     e.provider, e.region,
                     e.result_classification_effective
                 FROM deduplicated_compatibility AS e
+                LEFT JOIN compatibility_sibling_counts AS siblings
+                  ON siblings.operation_id = e.operation_id
+                 AND siblings.provider = e.provider
+                 AND siblings.region IS NOT DISTINCT FROM e.region
                 WHERE e.result_classification_effective IN ('SUCCESS', 'FAILURE')
                 AND NOT EXISTS (
                     SELECT 1
                     FROM map_download_event AS installed
                     LEFT JOIN map_package AS installed_package
                       ON installed_package.id = installed.map_package_id
+                    LEFT JOIN map_event_evidence AS installed_evidence
+                      ON installed_evidence.event_id = installed.event_id
                     WHERE installed.operation_id = e.operation_id
                       AND installed.provider_id = e.provider
                       AND (installed.map_result_index = e.map_result_index OR (
                           installed.map_result_index IS NULL AND
-                          (SELECT map_candidate_count FROM map_event_evidence me WHERE me.event_id=installed.event_id)=1 AND
-                          (SELECT count(*) FROM deduplicated_compatibility sibling
-                           WHERE sibling.operation_id = e.operation_id AND sibling.provider = e.provider
-                             AND sibling.region IS NOT DISTINCT FROM e.region) = 1
+                          installed_evidence.map_candidate_count = 1 AND
+                          COALESCE(siblings.sibling_count, 0) = 1
                       ))
                       AND installed.statistics_exclusion_code IS NULL
                       AND installed.component_kind IS DISTINCT FROM 'contours'
@@ -4794,6 +4829,7 @@ class Database:
             """
             values = compatibility_values + values + ([time_zone] if trend_bucket == "hour" else [time_zone, time_zone])
             with self.connection() as connection:
+                _prefer_hash_joins(connection)
                 return list(connection.execute(query, values).fetchall())
 
         query += """
@@ -4824,6 +4860,7 @@ class Database:
         """
         values = compatibility_values + values
         with self.connection() as connection:
+            _prefer_hash_joins(connection)
             return list(connection.execute(query, values).fetchall())
 
     def map_statistics_trend(
@@ -5022,6 +5059,39 @@ class Database:
                 JOIN compatibility_result_identities AS i
                   ON i.operation_id = a.operation_id
                  AND i.map_result_index = a.map_result_index
+            ), numbered_map_operations AS (
+                SELECT m.*, row_number() OVER () AS map_operation_row
+                FROM map_operations AS m
+            ), linkage_candidates AS (
+                -- Exactly one compatible diagnostic result may link a map result.
+                SELECT m.map_operation_row, c.*,
+                       count(*) OVER (PARTITION BY m.map_operation_row) AS candidate_count
+                FROM numbered_map_operations AS m
+                JOIN compatibility_operations AS c
+                  ON c.operation_id = m.operation_id
+                 AND c.provider_id = m.provider_id
+                LEFT JOIN map_region_counts AS region_counts
+                  ON region_counts.operation_id = m.operation_id
+                 AND region_counts.provider_id = m.provider_id
+                 AND region_counts.map_region_key = m.map_region_key
+                WHERE (m.reported_result_index IS NULL OR c.map_result_index = m.reported_result_index)
+                  AND (
+                      c.region = ANY(COALESCE(m.map_reported_regions, ARRAY[]::text[]))
+                      OR (
+                          m.map_package_id IS NOT NULL
+                          AND c.region IN (
+                              m.map_provider_region,
+                              m.map_canonical_region,
+                              m.map_package_region
+                          )
+                          AND m.map_region_key IN (
+                              m.map_provider_region,
+                              m.map_canonical_region,
+                              m.map_package_region
+                          )
+                      )
+                  )
+                  AND (m.reported_result_index IS NOT NULL OR region_counts.map_count = 1)
             ), linked_operations AS (
                 SELECT
                     m.*,
@@ -5036,36 +5106,10 @@ class Database:
                         AND NOT c.has_unknown) AS operation_succeeded,
                     (c.has_failure AND NOT c.has_success AND NOT c.has_not_started
                         AND NOT c.has_unknown) AS fresh_failure
-                FROM map_operations AS m
-                LEFT JOIN LATERAL (
-                   SELECT candidate.* FROM (
-                     SELECT c.*, count(*) OVER () AS candidate_count
-                     FROM compatibility_operations c
-                     WHERE c.operation_id = m.operation_id
-                     AND (m.reported_result_index IS NULL OR c.map_result_index = m.reported_result_index)
-                   AND c.provider_id = m.provider_id
-                   AND (
-                       c.region = ANY(COALESCE(m.map_reported_regions, ARRAY[]::text[]))
-                       OR (
-                           m.map_package_id IS NOT NULL
-                           AND c.region IN (
-                               m.map_provider_region,
-                               m.map_canonical_region,
-                               m.map_package_region
-                           )
-                           AND m.map_region_key IN (
-                               m.map_provider_region,
-                               m.map_canonical_region,
-                               m.map_package_region
-                           )
-                       )
-                   )
-                   AND (m.reported_result_index IS NOT NULL OR (SELECT map_count FROM map_region_counts
-                        WHERE operation_id = m.operation_id
-                          AND provider_id = m.provider_id
-                          AND map_region_key = m.map_region_key) = 1)
-                   ) candidate WHERE candidate_count = 1
-                ) c ON TRUE
+                FROM numbered_map_operations AS m
+                LEFT JOIN linkage_candidates AS c
+                  ON c.map_operation_row = m.map_operation_row
+                 AND c.candidate_count = 1
             )
             SELECT
                 count(DISTINCT map_operation_key) AS map_operation_count,
@@ -5144,6 +5188,7 @@ class Database:
             FROM linked_operations
         """
         with self.connection() as connection:
+            _prefer_hash_joins(connection)
             row = connection.execute(query, values).fetchone() or {}
 
         def integer(key: str) -> int:
