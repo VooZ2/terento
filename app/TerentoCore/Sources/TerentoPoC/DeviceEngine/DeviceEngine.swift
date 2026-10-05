@@ -45,7 +45,7 @@ final class DeviceEngine: ObservableObject {
     private var detectionPolicy = DeviceDetectionPolicy(now: 0)
 
     init(
-        transport: any DeviceSnapshotReader = MTPTransport(),
+        transport: any DeviceSnapshotReader = BoundedDeviceTransport(),
         operationGate: MTPOperationGate = .shared,
         compatibilityStatusClient: CompatibilityStatusClient = CompatibilityStatusClient(),
         installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient()

@@ -218,7 +218,8 @@ extension FinishingTrace {
                 guard !value.isEmpty, value.utf8.allSatisfy({ (48...57).contains($0) || $0 == 45 || $0 == 46 }),
                       let number = Double(value), number.isFinite else { return nil }
             } else if key == "operation" {
-                guard ["samples", "cleanup", "inventory", "snapshot"].contains(value) else { return nil }
+                guard ["samples", "cleanup", "inventory", "snapshot", "deviceSnapshot",
+                       "scanInventory", "prefixes"].contains(value) else { return nil }
             } else if key == "validation" {
                 guard ["notExactValidatedArtifact", "sourceUnavailable", "sourceSizeMismatch",
                        "sourceHashMismatch", "sourceFormatMismatch", "unknown"].contains(value) else { return nil }

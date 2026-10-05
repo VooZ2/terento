@@ -255,6 +255,8 @@ final class MapEngine: ObservableObject {
     private var loadedCatalog: MapCatalog?
     private var currentIdentity: DeviceIdentity?
     private var currentAvailableStorage: UInt64?
+    /// Object count of the last inventory of the connected watch; scales worker bounds.
+    private(set) var lastObservedInventoryCount: Int?
     private var ownershipManifestDeviceKeys: Set<String> = []
     private var preferredOwnershipManifestDeviceKey: String?
     private var installationSpeedEstimator = TransferSpeedEstimator()
@@ -369,6 +371,7 @@ final class MapEngine: ObservableObject {
         loadedCatalog = nil
         currentIdentity = nil
         currentAvailableStorage = nil
+        lastObservedInventoryCount = nil
         ownershipManifestDeviceKeys.removeAll()
         preferredOwnershipManifestDeviceKey = nil
         installationSpeedEstimator.reset()
@@ -467,19 +470,25 @@ final class MapEngine: ObservableObject {
                 self?.catalogUpdatedAt = loaded.catalog.updatedAt
                 self?.state = .scanning
 
+                let expectedObjectCount = self?.lastObservedInventoryCount
                 let scanOutput = try await CancellableDetached.run(priority: .userInitiated) {
                     let lease = try await operationGate.beginLifecycleAsync()
                     defer { operationGate.endLifecycle(lease) }
 
-                    let lifecycleReader = MTPTransport(
+                    // Bounded worker reads: a stalled watch ends this scan with
+                    // a recovery message instead of holding the gate forever.
+                    let lifecycleReader = BoundedMapScanReader(
                         operationGate: operationGate,
-                        lifecycleLease: lease
+                        lifecycleLease: lease,
+                        expectedObjectCount: expectedObjectCount
                     )
 
                     // Automatic ownership requires one physical namespace across
                     // both observations. Missing live identity or a changed watch
                     // cannot widen lookup into a model-only legacy manifest.
-                    let liveIdentity = (try? lifecycleReader.readSnapshot())
+                    let liveSnapshot = try? lifecycleReader.readSnapshot()
+                    if let stalled = lifecycleReader.stoppedRespondingError { throw stalled }
+                    let liveIdentity = liveSnapshot
                         .map { CompatibilityEngine().evaluate(snapshot: $0).identity }
                     let manifestKeys = Self.manifestDeviceKeys(
                         for: [deviceIdentity, liveIdentity]
@@ -493,6 +502,9 @@ final class MapEngine: ObservableObject {
                         catalog: loaded.catalog,
                         ownershipRecords: ownershipRecords
                     ).scan()
+                    // Header reads are best-effort inside the scanner; a stalled
+                    // watch must not turn into a silently incomplete map list.
+                    if let stalled = lifecycleReader.stoppedRespondingError { throw stalled }
                     return MapInventoryScanOutput(
                         inventory: inventory,
                         ownershipManifestDeviceKeys: manifestKeys,
@@ -502,6 +514,7 @@ final class MapEngine: ObservableObject {
 
                 guard !Task.isCancelled else { return }
 
+                self?.lastObservedInventoryCount = scanOutput.inventory.deviceFiles.count
                 self?.ownershipManifestDeviceKeys = scanOutput.ownershipManifestDeviceKeys
                 self?.preferredOwnershipManifestDeviceKey = scanOutput.preferredOwnershipManifestDeviceKey
                 self?.result = scanOutput.inventory
@@ -523,7 +536,9 @@ final class MapEngine: ObservableObject {
 
                 self?.state = .failed
                 self?.errorMessage = error.localizedDescription
-                self?.userErrorMessage = UserFacingErrorMessage.forMapScan(error)
+                self?.userErrorMessage = DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding
+                    ? UserFacingErrorMessage.stoppedResponding
+                    : UserFacingErrorMessage.forMapScan(error)
             }
         }
     }

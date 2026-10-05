@@ -121,9 +121,21 @@ Remote transfer verification uses the implemented bounded sampled-read policy;
 it is not a claim of a whole remote-file SHA-256. Sample workers have a
 120-second advancing-byte inactivity limit and a 600-second absolute limit.
 Only strictly increasing validated progress renews inactivity. Cancellation
-reaps the owned child before releasing its lifecycle lease. These limits do
-not impose a universal timeout on every synchronous native inventory call.
+reaps the owned child before releasing its lifecycle lease.
 Connection/inventory and readback failures may still require physical reconnect.
+
+The detection snapshot and the map scan's snapshot, inventory and map-header
+reads also run in that bounded worker, so a stalled watch can no longer hold the
+operation gate indefinitely. The detection snapshot has a 90-second bound. Scan
+inventory allows 60 seconds plus 30 ms per object seen by the previous inventory
+of the same watch, at most 600 seconds (600 seconds before the first
+observation); header reads add 5 seconds per map. When a bound is reached the
+worker child is ended, the gate is released and the user sees "The watch stopped
+responding. Unplug it, wait 5 seconds, plug it back in." Later reads of that scan
+fail immediately instead of retrying file by file. What is read is unchanged; the
+detection IPC carries the device descriptor and serial inside the private,
+per-operation worker directory, which is removed afterwards. USB presence probes
+stay in-process because they only read the USB device list.
 
 For issue #222, a local follow-up now classifies a pre-write inventory worker
 timeout as preflight MTP-read failure instead of verification failure, records

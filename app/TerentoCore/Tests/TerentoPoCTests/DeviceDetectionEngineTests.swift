@@ -87,6 +87,20 @@ private func waitUntil(_ seconds: Double, _ condition: () -> Bool) async -> Bool
     return condition()
 }
 
+private final class CallCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func increment() { lock.withLock { count += 1 } }
+    var value: Int { lock.withLock { count } }
+}
+
+private final class RequestRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [MTPFinishingWorker.Request] = []
+    func record(_ request: MTPFinishingWorker.Request) { lock.withLock { stored.append(request) } }
+    var requests: [MTPFinishingWorker.Request] { lock.withLock { stored } }
+}
+
 @main
 struct DeviceDetectionEngineTests {
     static func check(_ condition: Bool, _ message: String) {
@@ -105,6 +119,10 @@ struct DeviceDetectionEngineTests {
         await testStoppedRespondingThenReplug()
         await testUnexpectedDisconnectRestartsDiscovery()
         testClassifier()
+        testBoundedReadDeadlines()
+        testBoundedScanReaderStopsAfterDeadline()
+        testBoundedScanReaderPrefixes()
+        testBoundedDetectionSnapshotKeepsIdentity()
         print("PASS: device detection engine")
     }
 
@@ -200,6 +218,92 @@ struct DeviceDetectionEngineTests {
         transport.setUSBCount(1)
         check(await waitUntil(5) { engine.hasConnectedDevice }, "the remaining watch reconnects automatically")
         engine.setPresenceMonitoringEnabled(false)
+    }
+
+    static func testBoundedReadDeadlines() {
+        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 0) == 60, "an empty watch keeps the 60 s inventory floor")
+        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 1_000) == 90, "inventory bound adds 30 ms per observed object")
+        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 12_000) == 420, "a heavy 12k-object watch gets 7 minutes")
+        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 100_000) == 600, "inventory bound is capped at 10 minutes")
+        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: nil) == 600, "an unobserved watch assumes the native maximum")
+        check(MTPFinishingWorker.prefixTimeout(expectedObjectCount: 1_000, fileCount: 4) == 110, "prefix bound covers the walk plus each header")
+        check(MTPFinishingWorker.timeout(for: .init(operation: .deviceSnapshot), sampleTimeout: 600) == 90, "detection snapshot has a finite bound")
+        check(MTPFinishingWorker.timeout(for: .init(operation: .scanInventory, expectedObjectCount: 2_000), sampleTimeout: 600) == 120, "scan inventory uses the scaled bound")
+        check(MTPFinishingWorker.timeout(for: .init(operation: .cleanup), sampleTimeout: 600) == 45, "existing cleanup bound is unchanged")
+        check(MTPFinishingWorker.timeout(for: .init(operation: .inventory), sampleTimeout: 600) == 60, "pre-write inventory without a baseline keeps 60 s")
+        check(MTPFinishingWorker.timeout(for: .init(operation: .samples), sampleTimeout: 900) == 600, "existing sample bound is unchanged")
+        for operation in ["deviceSnapshot", "scanInventory", "prefixes"] {
+            check(FinishingTrace.safeLine("FINISH_TRACE swift event=operation_begin operation=\(operation)") != nil,
+                  "trace accepts the \(operation) worker operation")
+        }
+        let empty = try? JSONEncoder().encode(MTPFinishingWorker.Response())
+        for operation in [MTPFinishingWorker.Operation.deviceSnapshot, .scanInventory, .prefixes] {
+            check((try? MTPFinishingWorker.decodeResponse(empty!, operation: operation)) == nil,
+                  "\(operation) rejects a response without its payload")
+        }
+    }
+
+    static func timeoutError(_ operation: MTPFinishingWorker.Operation) -> Error {
+        MTPFinishingWorker.failure(for: operation, kind: .timeout)
+    }
+
+    static func testBoundedScanReaderStopsAfterDeadline() {
+        let calls = CallCounter()
+        let reader = BoundedMapScanReader(operationGate: MTPOperationGate(), lifecycleLease: nil, expectedObjectCount: nil,
+            worker: { request in
+                calls.increment()
+                if request.operation == .scanInventory { throw timeoutError(.scanInventory) }
+                return MTPFinishingWorker.Response(files: [])
+            })
+        check((try? reader.readFileInventory()) == nil, "a stalled inventory read fails")
+        check(reader.stoppedRespondingError != nil, "the scan remembers that the watch stopped responding")
+        let file = DeviceFile(itemID: 2, parentID: 1, storageID: 1, path: "/GARMIN/a.img", filename: "a.img", sizeBytes: 9, isFolder: false)
+        check((try? reader.readFilePrefix(for: file, maxLength: 4096)) == nil && calls.value == 1,
+              "later reads fail immediately instead of starting another bounded worker")
+    }
+
+    static func testBoundedScanReaderPrefixes() {
+        let files = (0..<3).map { DeviceFile(itemID: UInt32($0 + 2), parentID: 1, storageID: 1,
+            path: "/GARMIN/m\($0).img", filename: "m\($0).img", sizeBytes: 9_000, isFolder: false) }
+        let observed = RequestRecorder()
+        let reader = BoundedMapScanReader(operationGate: MTPOperationGate(), lifecycleLease: nil, expectedObjectCount: nil,
+            worker: { request in
+                observed.record(request)
+                if request.operation == .scanInventory {
+                    return MTPFinishingWorker.Response(files: Array(repeating: files[0], count: 2_000))
+                }
+                return MTPFinishingWorker.Response(prefixes: [.init(index: 0, bytes: Data([1, 2])), .init(index: 2, bytes: Data([3]))])
+            })
+        _ = try? reader.readFileInventory()
+        let prefixes = try? reader.readFilePrefixes(for: files, maxLength: 4096)
+        check(prefixes?[files[0].stableIdentity] == [1, 2] && prefixes?[files[2].stableIdentity] == [3]
+              && prefixes?[files[1].stableIdentity] == nil, "prefix results map back by stable identity")
+        let prefixRequest = observed.requests.last
+        check(prefixRequest?.operation == .prefixes && prefixRequest?.files == files && prefixRequest?.length == 4096,
+              "prefix requests carry the same stable descriptors and header length")
+        check(prefixRequest?.expectedObjectCount == 2_000, "the observed object count scales the prefix bound")
+        let oversized = BoundedMapScanReader(operationGate: MTPOperationGate(), lifecycleLease: nil, expectedObjectCount: 10,
+            worker: { _ in MTPFinishingWorker.Response(prefixes: [.init(index: 0, bytes: Data(count: 5_000))]) })
+        check((try? oversized.readFilePrefixes(for: [files[0]], maxLength: 4096)) == nil, "an oversized header is rejected")
+    }
+
+    static func testBoundedDetectionSnapshotKeepsIdentity() {
+        let transport = BoundedDeviceTransport(operationGate: MTPOperationGate(), worker: { request in
+            precondition(request.operation == .deviceSnapshot)
+            return MTPFinishingWorker.Response(snapshot: DeviceSnapshot(manufacturer: "Garmin", model: "fenix 8 - 47mm",
+                deviceVersion: "1", vendorID: 0x091e, productID: 0x51b8, storages: [], serialNumber: "1234567890",
+                garminDeviceXMLStatus: .available, garminDeviceXML: Data("<Device/>".utf8)))
+        })
+        let snapshot = try? transport.readSnapshot()
+        check(snapshot?.serialNumber == "1234567890" && snapshot?.garminDeviceXMLStatus == .available
+              && snapshot?.garminDeviceXML == Data("<Device/>".utf8), "the bounded detection snapshot keeps every identity field")
+        let stalled = BoundedDeviceTransport(operationGate: MTPOperationGate(), worker: { _ in throw timeoutError(.deviceSnapshot) })
+        do {
+            _ = try stalled.readSnapshot()
+            check(false, "a stalled detection snapshot must fail")
+        } catch {
+            check(DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding, "a detection deadline is classified as stopped responding")
+        }
     }
 
     static func testClassifier() {
