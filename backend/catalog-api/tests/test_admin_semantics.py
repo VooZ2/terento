@@ -75,6 +75,7 @@ from terento_catalog.db import (
     _overview_bucket_floor,
 )
 from terento_catalog.failure_reasons import normalize_failure_reason
+from admin_test_utils import metric_tone, metric_value
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -365,15 +366,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"}, "csrf",
         ).decode()
         installation_panel = installations.split(
-            "class=\"map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis\"",
-            1,
+            'class="admin-card installation-kpis"', 1,
         )[1].split("\n        </section>", 1)[0]
-        self.assertEqual(
-            installation_panel.count('class="map-statistics-kpi-value"')
-            + installation_panel.count('class="map-statistics-kpi-value '),
-            5,
-        )
-        self.assertIn("<span>Open problems</span>", installation_panel)
+        self.assertEqual(installation_panel.count("<div class='admin-metric'") + installation_panel.count("<a class='admin-metric "), 5)
+        self.assertIn(">Open problems<", installation_panel)
+        self.assertIn("data-scope='all'>All time</span>", installation_panel)
 
         device = _admin_device_payload([{
             "device_id": "garmin-fenix-8-47-amoled", "model": "fēnix 8",
@@ -384,20 +381,18 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         }], None)["devices"][0]
         detail = device_detail_page(device, {"username": "operator"}, "csrf").decode()
         detail_panel = detail.split(
-            "class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'",
+            "class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics'",
             1,
         )[1].split("<section class='diagnostics-detail-section'", 1)[0]
-        self.assertIn("Installation outcomes", detail_panel)
-        self.assertIn("<span>Attempts</span>", detail_panel)
-        self.assertIn("<span>Failed</span>", detail_panel)
-        self.assertIn("<span>Open problems</span>", detail_panel)
-        self.assertIn("<span>Last installation report</span><strong>—</strong>", detail_panel)
-        self.assertIn(".admin-kpi-panel.model-statistics .timestamp-metric>strong", detail)
+        self.assertIn(">Installs</h2>", detail_panel)
+        for label in ("Attempts", "Failed", "Open problems", "Last report"):
+            self.assertIn(f"<span class='admin-metric-label'>{label}", detail_panel)
+        self.assertIn("data-stat='lastReport'>—<span class='sr-only'>Unknown</span>", detail_panel)
         self.assertIn("class='model-evidence-grid'", detail)
         self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", detail)
         detail_grid = detail.split("class='model-evidence-grid'", 1)[1].split("{''.join", 1)[0]
         positions = [detail_grid.index(label) for label in (
-            "Installation outcomes", "Administration", "Device information",
+            "model-installation-kpis-title", "Administration", "Device information",
             "Technical details", "Installation history",
         )]
         self.assertEqual(positions, sorted(positions))
@@ -2387,7 +2382,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             identity=result["compatibility_identity"], operations=[result],
         ).decode()
         table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
-        for label in ("Region", "Result", "Issue", "Review", "Action"):
+        for label in ("Map", "Result", "GitHub issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
         self.assertNotIn(">Stage<", table)
         self.assertNotIn(">Code<", table)
@@ -2447,11 +2442,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             }],
         ).decode()
         self.assertNotIn("class='metric'", body)
-        self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
-        self.assertIn("<span>Attempts</span><strong>3</strong>", body)
-        self.assertIn("<span>Successful</span><strong>1</strong>", body)
-        self.assertIn("<span>Failed</span><strong class=\"installation-failed-value\">2</strong>", body)
-        self.assertIn("<span>Success rate</span><strong>33.3%</strong>", body)
+        self.assertIn('class="admin-card installation-kpis"', body)
+        self.assertEqual(metric_value(body, "Attempts"), "3")
+        self.assertEqual(metric_value(body, "Successful"), "1")
+        self.assertEqual(metric_value(body, "Failed"), "2")
+        self.assertEqual(metric_value(body, "Success rate"), "33.3%")
         self.assertNotIn("Historical failures: 1", body)
         self.assertNotIn('id="evidence-title"', body)
         self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
@@ -2523,7 +2518,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Identity review", evidence_row)
         self.assertNotIn("class='error-count'", evidence_row)
         self.assertNotIn("historical-number", evidence_row)
-        self.assertIn("<td class='column-number numeric installation-failed-value'>0</td>", evidence_row)
+        self.assertIn("<td class='column-number numeric'><strong class='admin-error-counter'>0</strong></td>", evidence_row)
         self.assertIn("class='admin-error-counter'>0</strong>", evidence_row)
 
     def test_pending_and_canonical_rows_with_the_same_text_keep_distinct_destinations(self):
@@ -2698,7 +2693,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             }],
         ).decode()
         table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
-        for label in ("Date", "Region", "Result", "Issue", "Review", "Action"):
+        for label in ("Date", "Map", "Result", "GitHub issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
         self.assertNotIn(">Stage<", table)
         self.assertNotIn(">Code<", table)
@@ -2781,9 +2776,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         one_main = one.split('<main data-admin-revisions=', 1)[1].split("</main>", 1)[0]
         self.assertIn('id="evidence-filters" role="search" hidden', one_main)
         self.assertNotIn("installation-pagination", one_main)
-        self.assertNotIn('data-installation-filter="identity-pending"', one_main)
+        # Identity review is a working quick filter (ADM-06); Dashboard links to it.
+        self.assertIn('data-installation-filter="identity-pending"', one_main)
+        self.assertIn("selectedQuickFilter === 'identity-pending' && Number(row.dataset.identityPending || 0) > 0", one)
         evidence_row = one_main.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
-        self.assertIn("<td class='column-number numeric installation-failed-value'>1</td>", evidence_row)
+        self.assertIn("<td class='column-number numeric'><strong class='admin-error-counter is-positive'>1</strong></td>", evidence_row)
         self.assertNotIn("historical-number", evidence_row)
 
         rows = [dict(row, model=f"Model {index}", compatibility_identity=f"model-{index}") for index in range(26)]
@@ -2809,15 +2806,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("<h1>Installations</h1>", body)
         self.assertIn("All time · Model evidence", body)
-        self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
+        self.assertIn('class="admin-card installation-kpis"', body)
         labels = ("Attempts", "Successful", "Failed", "Success rate", "Open problems")
         for label in labels:
-            self.assertIn(f"<span>{label}</span>", body)
-        self.assertNotIn("<span>Variants</span>", body)
-        self.assertIn("<span>Successful</span><strong>2</strong>", body)
-        self.assertIn("<span>Failed</span><strong class=\"installation-failed-value\">2</strong>", body)
-        self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
-        positions = [body.index(f"<span>{label}</span>") for label in labels]
+            self.assertIsNotNone(metric_value(body, label), label)
+        self.assertIsNone(metric_value(body, "Variants"))
+        self.assertEqual(metric_value(body, "Successful"), "2")
+        self.assertEqual(metric_value(body, "Failed"), "2")
+        self.assertEqual(metric_value(body, "Success rate"), "66.7%")
+        positions = [body.index(f"<span class='admin-metric-label'>{label}") for label in labels]
         self.assertEqual(positions, sorted(positions))
         self.assertNotIn("Historical failures: 2", body)
         self.assertIn('data-installation-sort="attempts"', body)
@@ -2842,11 +2839,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
         self.assertIn("data-stat='completedInstalls'>95</strong>", maps)
         self.assertIn("data-stat='failedInstalls'>10</strong>", maps)
-        self.assertIn(
-            '<span>Failed</span><strong class="installation-failed-value">10</strong>',
-            installations,
-        )
-        self.assertIn("<span>Successful</span><strong>98</strong>", installations)
+        self.assertEqual(metric_value(installations, "Failed"), "10")
+        self.assertEqual(metric_value(installations, "Successful"), "98")
         self.assertIn("All time · Model evidence", installations)
         # Three valid device-side successes have model attribution but no
         # eligible map-stream result, so the population label remains needed.
@@ -3318,15 +3312,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             device, {"username": "operator"}, "csrf",
             operations=active, resolved_operations=resolved,
         ).decode()
-        statistics = body.split("class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
+        statistics = body.split("class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
         for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open problems", "0")):
-            self.assertIn(f"<span>{label}</span>", statistics)
-            self.assertIn(f">{value}</strong>", statistics)
-        self.assertIn("<span>Last installation report</span><strong>—</strong>", statistics)
+            self.assertEqual(metric_value(statistics, label), value)
+        self.assertIn("<span class='admin-metric-label'>Last report</span><strong class='admin-metric-value' data-stat='lastReport'>—<span class='sr-only'>Unknown</span></strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
-        self.assertIn("diagnostic-state-resolved", body)
-        self.assertIn("data-diagnostic-result='failed'", body)
-        self.assertIn("data-review-resolved='true'", body)
+        self.assertIn("data-status='RESOLVED'", body)
+        # A resolved pre-write record is "Blocked before writing", not Failed (ADM-13).
+        self.assertIn("data-diagnostic-result='not_started'", body)
+        self.assertIn("<span>Blocked before writing</span>", body)
         self.assertNotIn("USB identity</dt>", body)
         self.assertNotIn("Firmware</dt>", body)
         self.assertIn("Write failed", body)
@@ -3379,11 +3373,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             device, {"username": "operator"}, "csrf",
             operations=successful + open_failed, resolved_operations=resolved_failed,
         ).decode()
-        statistics = body.split("class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
+        statistics = body.split("class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
         for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open problems", "1")):
-            self.assertIn(f"<span>{label}</span>", statistics)
-            self.assertIn(f">{value}</strong>", statistics)
-        self.assertIn("<span>Last installation report</span><strong>—</strong>", statistics)
+            self.assertEqual(metric_value(statistics, label), value)
+        self.assertIn("<span class='admin-metric-label'>Last report</span><strong class='admin-metric-value' data-stat='lastReport'>—<span class='sr-only'>Unknown</span></strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
 
     def test_github_issue_report_uses_an_allowlist_and_redacts_sensitive_values(self):

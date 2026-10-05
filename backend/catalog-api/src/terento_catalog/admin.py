@@ -410,6 +410,7 @@ def _metric_tile(
     state: str | None = None, failure: bool = False, secondary: str = "",
     href: str | None = None, glossary: str | None = None,
     data_stat: str | None = None, hint: str | None = None,
+    value_html: str | None = None,
 ) -> str:
     """One metric: label, value, visible scope chip and one optional secondary line.
 
@@ -424,9 +425,10 @@ def _metric_tile(
     tone = "neutral"
     if failure and state in {"measured", "partial"} and (_optional_nonnegative_int(value) or 0) > 0:
         tone = "danger"
-    value_markup = html.escape(rendered) if rendered is not None else (
+    value_markup = (value_html if value_html is not None and rendered is not None else
+                    html.escape(rendered) if rendered is not None else (
         "—<span class='sr-only'>" + ("Unavailable" if state == "unavailable" else "Unknown") + "</span>"
-    )
+    ))
     if tone == "danger":
         value_markup = _admin_icon("x-circle") + value_markup
     stat = f" data-stat='{html.escape(data_stat, quote=True)}'" if data_stat else ""
@@ -448,7 +450,7 @@ def _metric_tile(
         f"<strong class='admin-metric-value'{stat}>{value_markup}</strong>"
         + (f"<span class='admin-metric-meta'>{meta}</span>" if meta else "")
     )
-    attributes = f"data-state='{state}' data-tone='{tone}'{title}"
+    attributes = f"data-state='{state}' data-tone='{tone}'{' data-kind=' + chr(39) + 'text' + chr(39) if fmt == 'text' else ''}{title}"
     if href:
         return (
             f"<a class='admin-metric admin-metric-link' {attributes} href='{html.escape(href, quote=True)}' "
@@ -3077,27 +3079,29 @@ def dashboard_page(
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
         <div class="heading-row installation-heading"><div><h1>Installations</h1></div><p class="page-meta">{latest_copy}</p></div>
-        <section class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis" aria-label="Installation summary">
-          <div class="map-statistics-kpi-groups installation-kpi-groups"><section class="map-statistics-kpi-group" aria-labelledby="installation-kpis-title"><h2 id="installation-kpis-title" class="sr-only">Installation summary</h2><div class="map-statistics-kpi-values installation-kpi-values">
-            <div class="map-statistics-kpi-value"><span>Attempts</span><strong>{attempts}</strong></div>
-            <div class="map-statistics-kpi-value"><span>Successful</span><strong>{successes}</strong></div>
-            <div class="map-statistics-kpi-value"><span>Failed</span><strong class="installation-failed-value">{failures}</strong></div>
-            <div class="map-statistics-kpi-value"><span>Success rate</span><strong>{_format_rate(success_rate)}</strong></div>
-            <div class="map-statistics-kpi-value error-counter-kpi" title="Installs (operations) with an unresolved failure and no linked GitHub issue"><span>Open problems</span>{_admin_error_counter(open_errors)}</div>
-          </div></section></div>
+        <section class="admin-card installation-kpis" aria-label="Installation summary">
+          {_metric_row([
+              _metric_tile("Attempts", attempts, scope="all", glossary="attempt", data_stat="attempts"),
+              _metric_tile("Successful", successes, scope="all", glossary="successful", data_stat="successful"),
+              _metric_tile("Failed", failures, scope="all", failure=True, glossary="failed", data_stat="failed"),
+              _metric_tile("Success rate", success_rate, fmt="rate", scope="all", glossary="success-rate", data_stat="successRate"),
+              _metric_tile("Open problems", open_errors, scope="now", failure=True, glossary="open-problem",
+                           href="/admin/installations?state=open" if open_errors else None, data_stat="openProblems",
+                           hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
+          ], label="Installation summary")}
         </section>
         <section class="evidence-section" aria-label="Installation evidence table">
           <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search"{' hidden' if len(rows) <= 1 else ''}>
-            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open problems</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>
+            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open problems</button><button type="button" class="quick-filter" data-installation-filter="identity-pending" aria-pressed="false">Identity review</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <details class="admin-disclosure filter-disclosure" id="installation-more-filters"><summary>More filters</summary><div class="disclosure-body">
-              <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
-            </div></details><label class="device-mobile-sort"><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="latest" selected>Latest activity</option><option value="model:ascending">Model ↑</option><option value="model:descending">Model ↓</option><option value="variant:ascending">Variant ↑</option><option value="variant:descending">Variant ↓</option><option value="status:ascending">Status ↑</option><option value="status:descending">Status ↓</option><option value="attempts:ascending">Attempts ↑</option><option value="attempts:descending">Attempts ↓</option><option value="successfulCount:ascending">Successful ↑</option><option value="successfulCount:descending">Successful ↓</option><option value="failedCount:ascending">Failed ↑</option><option value="failedCount:descending">Failed ↓</option><option value="errors:ascending">Open problems ↑</option><option value="errors:descending">Open problems ↓</option><option value="lastSuccess:ascending">Last success ↑</option><option value="lastSuccess:descending">Last success ↓</option></select></label>
+              <label><span class="sr-only">Filter by evidence</span><select id="evidence-status"><option value="all">All evidence</option>{status_options}</select></label>
+            </div></details><label class="device-mobile-sort"><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="latest" selected>Latest activity</option><option value="model:ascending">Model ↑</option><option value="model:descending">Model ↓</option><option value="variant:ascending">Variant ↑</option><option value="variant:descending">Variant ↓</option><option value="status:ascending">Evidence ↑</option><option value="status:descending">Evidence ↓</option><option value="attempts:ascending">Attempts ↑</option><option value="attempts:descending">Attempts ↓</option><option value="successfulCount:ascending">Successful ↑</option><option value="successfulCount:descending">Successful ↓</option><option value="failedCount:ascending">Failed ↑</option><option value="failedCount:descending">Failed ↓</option><option value="errors:ascending">Open problems ↑</option><option value="errors:descending">Open problems ↓</option><option value="lastSuccess:ascending">Last success ↑</option><option value="lastSuccess:descending">Last success ↓</option></select></label>
             <p class="results-count" id="results-count" aria-live="polite">{_count_label(len(rows), 'variant')}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters" hidden>Clear</button>
           </form>
           <p id="installation-empty" class="table-help" role="status" hidden>No matching models.</p>
-          <div class="table-wrap evidence-table-wrap" id="installation-table" tabindex="0" role="region" aria-label="Installation evidence table"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="model" aria-label="Model">Model <span aria-hidden="true">↕</span></button></th><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="status" aria-label="Status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="attempts" aria-label="Attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="successfulCount" aria-label="Successful">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="failedCount" aria-label="Failed">Failed <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="errors" aria-label="Open problems">Open problems <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="lastSuccess" aria-label="Last success">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <div class="table-wrap evidence-table-wrap" id="installation-table" tabindex="0" role="region" aria-label="Installation evidence table"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="model" aria-label="Model">Model <span aria-hidden="true">↕</span></button></th><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="status" aria-label="Evidence">Evidence <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="attempts" aria-label="Attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="successfulCount" aria-label="Successful">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="failedCount" aria-label="Failed">Failed <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="errors" aria-label="Open problems">Open problems <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="lastSuccess" aria-label="Last success">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
           {pagination}
         </section>
       </main>
@@ -4862,6 +4866,12 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
     return "".join(options), current_label
 
 
+
+def _identity_picker_template(devices: list[dict[str, Any]] | None) -> str:
+    """The full catalog picker, rendered once per page for every dialog."""
+    options, _ = _identity_device_options(devices)
+    return f"<template id='identity-picker-catalog'>{options}</template>" if options else ""
+
 def _operation_state(results: list[dict[str, Any]], *, resolved: bool) -> str:
     if resolved:
         return "resolved"
@@ -4912,13 +4922,9 @@ def _operation_result(results: list[dict[str, Any]]) -> str:
     if len(classifications) != 1:
         return "UNKNOWN"
     classification = next(iter(classifications))
-    if classification == "NOT_STARTED" and all(
-        str(result.get("phase_outcome") or "").strip().upper() == "FAILED"
-        for result in results
-    ) and not all(_is_preinstall_download_failure(result) for result in results):
-        # Preserve the existing display for non-download preflight failures.
-        # Provider acquisition failures are the explicit PRE-INSTALL exception.
-        return "FAILED"
+    # A pre-write (writeStarted=false) result is "Blocked before writing", never
+    # a failed installation attempt, for preflight and download stages alike
+    # (ADM-13). It can still be an open problem that needs review.
     return {
         "SUCCESS": "SUCCEEDED",
         "FAILURE": "FAILED",
@@ -4986,7 +4992,7 @@ def _operation_map_label(results: list[dict[str, Any]]) -> str:
 
 def _diagnostic_heading(outcome: Any, *, update: bool = False) -> str:
     operation = 'Map update' if update else 'Installation'
-    suffix = {'FAILED': 'failed', 'SUCCEEDED': 'succeeded', 'NOT_STARTED': 'not started',
+    suffix = {'FAILED': 'failed', 'SUCCEEDED': 'succeeded', 'NOT_STARTED': 'blocked before writing',
               'BLOCKED': 'blocked', 'INCOMPLETE': 'incomplete'}.get(str(outcome or '').upper(), 'result unknown')
     return operation + ' ' + suffix
 
@@ -5281,6 +5287,7 @@ def _diagnostic_detail_dialog(
     identity_devices: list[dict[str, Any]] | None,
     canonical_device_model_id: str | None = None,
     return_to: str | None = None,
+    catalog_template: bool = False,
 ) -> str:
     first = results[0]
     dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
@@ -5299,7 +5306,7 @@ def _diagnostic_detail_dialog(
     })
     recommendation = _identity_recommendation(results)
     selection_id = str(first.get("canonical_device_model_id") or (recommendation or {}).get("deviceId") or "").strip()
-    picker_devices = list(identity_devices or [])
+    picker_devices = identity_devices or []
     if not selection_id:
         candidate_ids = {
             str(candidate.get("deviceId") or "").strip()
@@ -5312,7 +5319,18 @@ def _diagnostic_detail_dialog(
                 device for device in picker_devices
                 if str(device.get("id") or device.get("device_id") or "").strip() in candidate_ids
             ]
-    options, current_label = _identity_device_options(picker_devices, selection_id)
+    # When the picker would list the whole catalog, the page renders it once in
+    # a <template> and the dialog clones it on open (DES-01 interim fix).
+    use_page_catalog = catalog_template and picker_devices is identity_devices
+    options, current_label = _identity_device_options(
+        [] if use_page_catalog else picker_devices, selection_id,
+    )
+    if use_page_catalog and selection_id:
+        _, current_label = _identity_device_options(
+            [device for device in identity_devices or []
+             if str(device.get("device_id") or device.get("id") or "").strip() == selection_id],
+            selection_id,
+        )
     selected_candidate = _identity_candidate(results, selection_id or None)
     conflict_lines = _identity_conflict_lines(results, selection_id, identity_devices)
     selection_conflict = bool(conflict_lines) or bool(selected_candidate and (selected_candidate.get("conflict") or any(
@@ -5366,7 +5384,7 @@ def _diagnostic_detail_dialog(
         <div class='identity-picker' data-canonical-device-wrap{' hidden' if picker_hidden else ''}>
           <label for='{search_id}'>Find a catalog model<input id='{search_id}' type='search' data-identity-search role='combobox' aria-expanded='{'false' if picker_hidden else 'true'}' aria-controls='{canonical_id}-options' placeholder='Search model, size or variant' autocomplete='off' value='{html.escape(current_label if selection_id else '', quote=True)}'></label>
           <input type='hidden' name='canonical_device_model_id' id='{canonical_id}' value='{html.escape(selection_id, quote=True)}'>
-          <div class='identity-search-results' id='{canonical_id}-options' data-identity-results role='listbox' aria-label='Matching Garmin catalog models'>{options}</div>
+          <div class='identity-search-results' id='{canonical_id}-options' data-identity-results{" data-identity-catalog='page'" if use_page_catalog else ""} role='listbox' aria-label='Matching Garmin catalog models'>{options}</div>
         </div>
         <p class='identity-selection' data-identity-selection>{'Selected model: ' + html.escape(current_label) if selection_id else 'Model not assigned.'}</p>
         {f"<p class='identity-conflict-warning' data-identity-conflict role='alert'>{html.escape(conflict_detail)} Use the explicit manual assignment action if this is the intended correction.</p>" if conflict_detail else ""}
@@ -5564,7 +5582,7 @@ def device_detail_page(
     authorization_label, authorization_kind, _ = _admin_installation_authorization_code(
         device.get("installationAuthorization")
     )
-    provenance = "<span class='admin-state'>Historical catalog entry</span>" if _is_historical_catalog(device) else ""
+    provenance = _status_pill("neutral", "Historical catalog entry") if _is_historical_catalog(device) else ""
     if variant == "Historical":
         variant = "—"
     status_line = (
@@ -5612,7 +5630,7 @@ def device_detail_page(
             map_copy = f"<a href='{html.escape(href, quote=True)}' title='View map statistics'>{map_copy}</a>"
         if map_release:
             map_copy += f"<small>{html.escape(region)} · {html.escape(map_release)}</small>"
-        if result == "FAILED":
+        if result in {"FAILED", "NOT_STARTED"} and (resolved or is_open_error or result == "FAILED"):
             error_state = _diagnostic_state_badge(
                 "RESOLVED" if resolved else _operation_state(results, resolved=False).replace("-", "_")
             )
@@ -5640,6 +5658,7 @@ def device_detail_page(
             identity, operation_key, results, resolved=resolved,
             csrf_token=csrf_token, identity_devices=identity_devices,
             canonical_device_model_id=device_id, return_to=detail_url + "#installations",
+            catalog_template=True,
         ))
     history_rows = "".join(rows_markup) or "<tr><td colspan='7' class='empty'>No installation history for this device.</td></tr>"
     history_pagination = "" if len(history) <= 25 else f"""
@@ -5695,13 +5714,28 @@ def device_detail_page(
     if not technical_rows:
         technical_rows = "<p class='diagnostic-technical-empty'>Detailed technical data is not available for this record.</p>"
 
-    statistics_section = "" if not history and not attempts and not failed else f"""
-        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><div class='map-statistics-kpi-groups model-kpi-groups'><section class='map-statistics-kpi-group' aria-labelledby='model-installation-kpis-title'><h2 id='model-installation-kpis-title' class='sr-only'>Installation outcomes</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.'><span>Attempts</span><strong>{attempts}</strong></div><div class='map-statistics-kpi-value'><span>Successful</span><strong>{successful}</strong></div><div class='map-statistics-kpi-secondary'><div class='map-statistics-kpi-value error-counter-kpi'><span>Failed</span>{_admin_error_counter(failed)}</div><div class='map-statistics-kpi-value error-counter-kpi' title='Installs (operations) with an unresolved failure and no linked GitHub issue'><span>Open problems</span>{_admin_error_counter(open_errors)}</div></div></div></section><section class='map-statistics-kpi-group model-activity-kpi-group' aria-labelledby='model-activity-kpis-title'><h2 id='model-activity-kpis-title'>Install activity</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value timestamp-metric'><span>Last installation report</span><strong>{last_activity}</strong></div></div></section></div></section>
-    """
+    last_report = stats.get("lastEvidenceAt")
+    statistics_section = "" if not history and not attempts and not failed else (
+        "<section class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-labelledby='model-installation-kpis-title'>"
+        "<header class='admin-card-head'><h2 id='model-installation-kpis-title'>Installs</h2>"
+        f"{_glossary_link('installation-report')}{_scope_chip('all')}</header>"
+        + _metric_row([
+            _metric_tile("Attempts", attempts, glossary="attempt", data_stat="attempts",
+                         hint="Each map result counts once, including custom .img."),
+            _metric_tile("Successful", successful, glossary="successful", data_stat="successful"),
+            _metric_tile("Failed", failed, failure=True, glossary="failed", data_stat="failed"),
+            _metric_tile("Open problems", open_errors, failure=True, glossary="open-problem", data_stat="openProblems",
+                         hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
+            _metric_tile("Last report", format_timestamp(last_report) if last_report else None, fmt="text",
+                         value_html=_timestamp_markup(last_report) if last_report else None,
+                         data_stat="lastReport"),
+        ], label="Model installation statistics")
+        + "</section>"
+    )
     history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not history else f"""
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
-          <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
+          <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div>{_glossary_link('failed')}</div>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false'>Blocked before writing</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked before writing</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table mobile-record-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
           {history_pagination}
@@ -5709,7 +5743,7 @@ def device_detail_page(
     """
     administration_section = f"""
         <details class='model-page-section model-administration admin-disclosure'><summary id='administration-title'>Administration</summary><div class='administration-grid'>
-          <article><h3>Install policy</h3><p class='table-help'>Catalog Maps is the stored value used for write authorization. Observed map capability is separate evidence and cannot grant installation.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>This operator field is retained for review and evidence workflow only. Changing it cannot grant or revoke native map-write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
+          <article><h3>Install policy {_glossary_link('install-policy')}</h3><p class='table-help'>Install policy follows catalog Maps.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>Review metadata only; it never changes write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
         </div></details>
     """
     information_sections = f"""
@@ -5728,7 +5762,7 @@ def device_detail_page(
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1>{status_line}</div>{public_link}</header>
         <div class='model-evidence-grid'><div class='model-evidence-summary'>{statistics_section}{update_summary}{alert}{administration_section}{information_sections}</div><div class='model-evidence-history'>{history_section}{updates}</div></div>
-        {''.join(dialogs)}
+        {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
       </main>
       <script>{_diagnostics_script()}</script>
     """
@@ -5824,6 +5858,7 @@ def diagnostics_page(
             identity, operation_key, results, resolved=resolved,
             csrf_token=csrf_token, identity_devices=identity_devices,
             canonical_device_model_id=canonical_device_model_id,
+            catalog_template=True,
         ))
     rows_body = "".join(rows_markup) or "<tr><td colspan='6' class='empty'>No installation history for this model.</td></tr>"
     content = f"""
@@ -5831,14 +5866,20 @@ def diagnostics_page(
       <main class='dashboard diagnostics-page' id='main-content'>
         <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
         <div class='heading-row'><div><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1></div></div>
-        <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Open problems</span>{_admin_error_counter(errors)}</article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
+        <section class='admin-card diagnostic-model-metrics' aria-label='Model diagnostic summary'>{_metric_row([
+            _metric_tile("Attempts", attempts, scope="all", glossary="attempt", data_stat="attempts"),
+            _metric_tile("Successful", successes, scope="all", glossary="successful", data_stat="successful"),
+            _metric_tile("Open problems", errors, scope="now", failure=True, glossary="open-problem", data_stat="openProblems"),
+            _metric_tile("Evidence", status.value.title() if status else "Unavailable", fmt="text", glossary="evidence",
+                         value_html=_status_badge(status.value if status else ''), data_stat="evidence"),
+        ], label="Model diagnostic summary")}</section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
           <div class='section-heading'><div><h2 id='diagnostic-list-title'>Installations</h2></div></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'{' hidden' if len(diagnostic_groups) <= 1 else ''}>{filters}</form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(diagnostic_groups)} records</p>
-          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Region</th><th scope='col' class='column-status'>Result</th><th scope='col'>Issue</th><th scope='col' class='column-status'>Review</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
+          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>GitHub issue</th><th scope='col' class='column-status'>Review</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
         </section>
-        {''.join(dialogs)}
+        {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
       </main>
       <script>{_diagnostics_script()}</script>
     """
@@ -5896,6 +5937,7 @@ def github_issue_queue_page(
             identity_devices=identity_devices,
             canonical_device_model_id=first.get("canonical_device_model_id"),
             return_to="/admin/review/github-issues",
+            catalog_template=True,
         ))
     from .update_diagnostics import _update_identity
     update_queue = [row for row in (update_diagnostics or []) if has_valid_issue(row) and row.get('diagnostic_status') != 'RESOLVED']
@@ -5915,7 +5957,7 @@ def github_issue_queue_page(
           <div class='section-heading'><div><h2 id='github-issue-queue-title'>Linked diagnostics</h2><span class='table-help'>{len(queue) + len(update_queue)} tasks</span></div></div>
           <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>Workflow</th><th scope='col' class='column-date'>Last activity</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
         </section>
-        {''.join(dialogs)}
+        {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
       </main>
       <script>{_diagnostics_script()}</script>
     """
@@ -5978,9 +6020,12 @@ def _admin_device_payload(
             # A verified successful installation is model/variant-specific
             # evidence that the catalog classifier has not learned yet.
             map_capable = True
+        # Evidence follows the stored catalog Maps fact and observed verified
+        # successes only; the model-name classifier never sets it (ADM-12).
+        evidence_successes = int(row.get("compatibility_successful_install_count", successful) or 0)
         evidence_status = calculate_compatibility_status(
-            successful_install_count=int(row.get("compatibility_successful_install_count", successful) or 0),
-            recognized_map_capable_evidence=map_capable is True,
+            successful_install_count=evidence_successes,
+            recognized_map_capable_evidence=stored_map_capable is True or evidence_successes > 0,
         )
         authorization_label, _, authorization_code = _admin_installation_authorization(
             row.get("map_capable"),
@@ -6193,13 +6238,23 @@ def devices_page(
     )
     table_header = _device_table_header()
     table_columns = _device_table_columns()
+    devices = payload["devices"]
+    verified_models = sum(device.get("evidenceStatus") == "VERIFIED" for device in devices)
+    pending_policy = sum(device.get("installationAuthorization") == "PENDING" and device.get("active") is not False for device in devices)
     device_list = "<section class='compact-empty-state' aria-labelledby='device-list-title'><h2 id='device-list-title'>No devices</h2><p>No Garmin device records are available. Run or check the latest catalog sync.</p></section>" if not rows_html else f"""
-        <section class="admin-summary-strip device-summary-strip" aria-label="Device catalog summary and sync">
-          <p class="device-summary-metrics"><strong>{summary['mapModelsWithSuccess']} of {summary['eligibleMapModels']}</strong><span> models covered · {_format_rate(summary['mapModelCoverageRate'])}</span></p>
+        <section class="admin-card device-summary-strip" aria-label="Device catalog summary and sync">
+          {_metric_row([
+              _metric_tile("Models", summary['models'], scope="now"),
+              _metric_tile("Maps: Yes", summary['mapCapable'], scope="now", glossary="install-policy"),
+              _metric_tile("Verified", verified_models, scope="all", glossary="evidence"),
+              _metric_tile("Covered", summary['mapModelsWithSuccess'], scope="all", glossary="evidence",
+                           secondary=f"of {summary['eligibleMapModels']} · {html.escape(_format_rate(summary['mapModelCoverageRate']))}",
+                           hint="Active Maps: Yes models with at least one verified installation"),
+              _metric_tile("Pending policy", pending_policy, scope="now", glossary="install-policy"),
+          ], label="Device catalog summary")}
           <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {sync_line}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
         <section class="evidence-section" aria-label="Device catalog">
-          <p class="sr-only">Compatibility status and installation counts remain backend-derived.</p>
           <form class="filter-bar admin-filter-bar device-filter-bar" id="device-filters" role="search">
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
             <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
@@ -6212,7 +6267,7 @@ def devices_page(
             <p class="results-count" id="device-results-count" aria-live="polite">{_count_label(summary['mapCapable'], 'result')}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear device filters">Clear</button>
           </form>
-          <div class="device-sticky-header" id="device-sticky-header"><div class="device-sticky-header-scroll"><table class="admin-table"><caption class="sr-only">Device catalog columns</caption>{table_columns}{table_header}</table></div></div>
+          <div class="device-sticky-header" id="device-sticky-header" aria-hidden="true"><div class="device-sticky-header-scroll"><table class="admin-table" role="presentation">{table_columns}{table_header.replace('<button type="button"', '<button type="button" tabindex="-1"')}</table></div></div>
           <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption>{table_columns}{table_header}<tbody id="device-rows">{rows_html}</tbody></table></div>
           <div class="device-pagination" id="device-pagination" hidden><button type="button" id="device-previous">Previous</button><span id="device-page-status"></span><button type="button" id="device-next">Next</button></div>
         </section>
@@ -6381,12 +6436,12 @@ def _statistics_row(
         ("column-status", _status_badge(status)),
         ("column-number numeric", html.escape(str(attempted))),
         ("column-number numeric", html.escape(str(successful))),
-        ("column-number numeric installation-failed-value", html.escape(str(failed))),
+        ("column-number numeric", _admin_error_counter(failed)),
         ("column-number numeric", open_errors_markup),
         ("column-date", _timestamp_markup(row.get("last_success"))),
     )
     return (
-        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-model='{html.escape(model, quote=True)}' data-variant='{html.escape(variant if variant != '—' else '', quote=True)}' data-identity='{html.escape(_identity_group_key(row), quote=True)}' data-successful-count='{successful}' data-failed-count='{failed}' data-last-success='{_timestamp_iso(row.get('last_success'))}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}'>"
+        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-model='{html.escape(model, quote=True)}' data-variant='{html.escape(variant if variant != '—' else '', quote=True)}' data-identity='{html.escape(_identity_group_key(row), quote=True)}' data-successful-count='{successful}' data-failed-count='{failed}' data-last-success='{_timestamp_iso(row.get('last_success'))}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-identity-pending='{pending_count}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}'>"
         + "".join(f"<td class='{css_class}'>{cell}</td>" if css_class else f"<td>{cell}</td>" for css_class, cell in cells)
         + f"</tr>"
     )
@@ -6845,6 +6900,7 @@ def _dashboard_script() -> str:
           const matchesQuick = selectedQuickFilter === 'all'
             || (selectedQuickFilter === 'failed' && row.dataset.failed === 'true')
             || (selectedQuickFilter === 'open' && Number(row.dataset.errors || 0) > 0)
+            || (selectedQuickFilter === 'identity-pending' && Number(row.dataset.identityPending || 0) > 0)
             || (selectedQuickFilter === 'successful' && row.dataset.successful === 'true');
           return matchesSearch && matchesStatus && matchesQuick;
         });
@@ -6983,6 +7039,7 @@ def _diagnostics_script() -> str:
             || (selected === 'resolved-errors' && row.dataset.reviewResolved === 'true' && row.dataset.diagnosticResult === 'failed')
             || (selected === 'identity-pending' && row.dataset.identityPending === 'true')
             || (selected === 'failed' && row.dataset.diagnosticResult === 'failed')
+            || (selected === 'blocked' && row.dataset.diagnosticResult === 'not_started')
             || (selected === 'with-issue' && row.dataset.hasIssue === 'true');
           return matches;
         });
@@ -7016,6 +7073,7 @@ def _diagnostics_script() -> str:
       const open = (dialog, trigger) => {
         if (!dialog) return;
         lastFocused = trigger;
+        dialog.dispatchEvent(new Event('terento-dialog-open'));
         if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
         dialog.querySelector('button, input, select, textarea')?.focus();
       };
@@ -7236,10 +7294,14 @@ def _diagnostics_script() -> str:
           const results = form.querySelector('[data-identity-results]');
           const edit = form.querySelector('[data-identity-edit]');
           const confirm = form.querySelector('[data-identity-confirm]');
-          const choices = results ? [...results.querySelectorAll('[data-identity-device-id]')].map((option) => ({
+          const pageCatalog = results?.dataset.identityCatalog === 'page';
+          const optionSource = pageCatalog
+            ? [...(document.getElementById('identity-picker-catalog')?.content.querySelectorAll('[data-identity-device-id]') || [])]
+            : (results ? [...results.querySelectorAll('[data-identity-device-id]')] : []);
+          const choices = optionSource.map((option) => ({
             id: option.dataset.identityDeviceId,
             label: option.dataset.identityDeviceLabel || option.textContent.trim(),
-          })) : [];
+          }));
           const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
           const clearStaleSelectionState = () => {
             form.querySelector('[data-identity-conflict]')?.setAttribute('hidden', '');
@@ -7311,7 +7373,13 @@ def _diagnostics_script() -> str:
             if (event.key === 'Escape' && wrap) { wrap.hidden = Boolean(canonical?.value); if (results) results.hidden = true; sync(); }
           });
           // Bind the initial choices too, before any search input or Edit action.
-          render('');
+          // A page-level catalog is cloned only when its dialog first opens.
+          if (pageCatalog) {
+            let rendered = false;
+            dialog.addEventListener('terento-dialog-open', () => { if (!rendered) { rendered = true; render(search?.value || ''); if (wrap?.hidden && results) results.hidden = true; } });
+          } else {
+            render('');
+          }
           sync();
         });
       });
@@ -8307,7 +8375,6 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .overview-heading+.overview-primary-grid{margin-top:0}
 .metric-scope{color:var(--secondary);font-size:11px;font-weight:650;line-height:1.3;white-space:nowrap}
 .metric-scope{margin-left:5px}
-.installation-failed-value{color:var(--danger)!important}
 .overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}
 .map-activity-row>time{grid-row:1}
 @media(max-width:500px){.overview-activity-item{grid-template-columns:minmax(0,1fr)}.overview-activity-item>time{grid-column:1;grid-row:auto;margin-left:21px}}
@@ -8368,6 +8435,7 @@ ADMIN_STYLES += """
 .admin-metric-label{display:flex;align-items:center;gap:6px;color:var(--secondary);font:500 14px/20px var(--font-ui)}
 .admin-metric-value{display:flex;align-items:center;gap:6px;color:var(--graphite);font:600 24px/32px var(--font-ui);font-variant-numeric:tabular-nums}
 .admin-metric-value .admin-icon{width:18px;height:18px}
+.admin-metric[data-kind="text"] .admin-metric-value{font-size:15px;line-height:22px;font-weight:600}
 .admin-metric[data-tone="danger"] .admin-metric-value{color:var(--danger)}
 .admin-metric[data-state="unknown"] .admin-metric-value,.admin-metric[data-state="unavailable"] .admin-metric-value{color:var(--secondary)}
 .admin-metric-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--secondary);font-size:12px;line-height:16px}

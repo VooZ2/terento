@@ -24,7 +24,7 @@ class DeviceInformationLayoutTests(unittest.TestCase):
                 evidence = _statistics_row({'model':'fēnix 7 Pro'}, catalog_device=device)
                 self.assertIn('catalog-archive-icon', evidence)
                 detail = device_detail_page(device, {'username':'operator'}, 'csrf').decode()
-                self.assertIn("admin-state'>Historical catalog entry", detail)
+                self.assertIn("<span>Historical catalog entry</span>", detail)
                 if variant != 'Historical':
                     label = '47 mm' if variant == '47 mm' else 'no Wi-Fi'
                     for markup in (row, evidence, detail): self.assertIn(label, markup)
@@ -504,7 +504,7 @@ class AdminDevicesTests(unittest.TestCase):
             "Maps: Unknown", "Approved", "Blocked", "Pending", "Last success",
             "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
-            "admin-summary-strip device-summary-strip", "position:sticky",
+            "admin-card device-summary-strip", "position:sticky",
             "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
             "table-layout:fixed", "overflow-y:visible",
             "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
@@ -600,7 +600,7 @@ class AdminDevicesTests(unittest.TestCase):
         for value in (
             "Installation history", "Administration", "Device information",
             "Technical details", "Install policy", "Public compatibility",
-            "Failed results remain historical", "Open problems", "Prepare GitHub issue",
+            "/admin/glossary#failed", "Open problems", "Prepare GitHub issue",
             "Copy issue report", "Copy diagnostic ID", "Copy technical report",
             "/admin/devices/authorization", "/admin/devices/public-compatibility",
         ):

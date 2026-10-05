@@ -257,14 +257,27 @@ def _update_review_controls(row: dict[str, Any], csrf_token: str, return_to: str
 
 
 def update_summary_markup(summary: dict[str, Any], device_id: str) -> str:
-    def count(field: str, outcome: str, label: str) -> str:
+    """Update reports for one model: diagnostic stream, all time, linked counts."""
+    from .admin import _glossary_link, _metric_row, _metric_tile, _scope_chip
+
+    def count(field: str, outcome: str, label: str, *, failure: bool = False, glossary: str | None = None) -> str:
         href = '/admin/update-diagnostics?' + urlencode({'deviceId': device_id, 'outcome': outcome})
         value = int(summary.get(field) or 0)
-        return f"<div class='map-statistics-kpi-value'><span>{label}</span><strong><a href='{html.escape(href, quote=True)}'>{value}</a></strong></div>"
-    values = count('successfulUpdateCount', 'succeeded', 'Successful') + count('failedUpdateCount', 'failed', 'Failed') + count('notStartedCount', 'not_started', 'Not started')
+        return _metric_tile(label, value, failure=failure, glossary=glossary,
+                            value_html=f"<a href='{html.escape(href, quote=True)}'>{value}</a>", data_stat=field)
+
+    values = _metric_row([
+        count('successfulUpdateCount', 'succeeded', 'Successful', glossary='successful'),
+        count('failedUpdateCount', 'failed', 'Failed', failure=True, glossary='failed'),
+        count('notStartedCount', 'not_started', 'Blocked before writing', glossary='blocked-before-writing'),
+    ], label='Update reports for this model')
     conflicts = int(summary.get('ambiguousUpdateCount') or 0)
     note = f"<p class='table-help'>{conflicts} conflicting reported results excluded from attempt totals. Inspect update history.</p>" if conflicts else ''
-    return f"<section class='provider-card map-statistics-kpi-panel admin-kpi-panel' aria-labelledby='model-update-kpis-title'><h2 id='model-update-kpis-title'>Map updates</h2><p class='table-help'>Reported results · All time</p><div class='map-statistics-kpi-values'>{values}</div>{note}</section>"
+    return (
+        "<section class='admin-card admin-kpi-panel model-update-statistics' aria-labelledby='model-update-kpis-title'>"
+        f"<header class='admin-card-head'><h2 id='model-update-kpis-title'>Update reports</h2>{_glossary_link('update-report')}{_scope_chip('all')}</header>"
+        f"{values}{note}</section>"
+    )
 
 
 def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/update-diagnostics', embedded: bool = False) -> str:

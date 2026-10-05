@@ -272,8 +272,10 @@ another report or nearby timestamp.
 ### Installations
 
 Installations is all-time model evidence and is visibly labelled `All time ·
-Model evidence`. Its primary summary order is Attempts, Successful, Failed,
-Success rate, and Open problems. A positive Failed value uses the danger color.
+Model evidence`. Its summary tiles, in order, are Attempts, Successful, Failed,
+Success rate (each with an `All time` chip) and Open problems (`Now`). A positive
+Failed value uses the danger color; a measured zero stays neutral. The status
+column is named Evidence.
 Open problems, the per-identity Open problems column and model detail Open
 problems use the operation-level Needs attention installation predicate, so
 Dashboard `Installation problems` equals Installations `Open problems`. Each
@@ -287,8 +289,9 @@ install denominator. Maps and Installations can still differ because their
 independently delivered telemetry populations are attributed differently;
 neither view invents the missing stream or a model identity.
 
-All, Failed, Open problems, Successful, and Identity review filters retain their
-separate meanings. Failed includes resolved historical failures; Open problems does
+All, Failed, Open problems, Identity review and Successful quick filters retain
+their separate meanings; Identity review shows identities with a pending
+identity decision and is the Dashboard Identity review destination. Failed includes resolved historical failures; Open problems does
 not. A true no-evidence state omits metrics, filters, table, and pagination. A
 filtered-empty state keeps the active filters and a clear action. Pagination
 appears only when multiple pages exist.
@@ -309,11 +312,21 @@ The policy values are Pending, Approved, and Blocked. Active stored Maps=Yes is
 Approved, Maps=No is Blocked, and unknown capability is Pending. The native
 resolver still evaluates every plausible active variant. Support metadata,
 observed capability, success counts, identity review, and public compatibility
-never grant write permission.
+never grant write permission. Evidence is computed only from the stored catalog
+Maps fact and verified successes; a model-name classifier never sets it.
+
+The Devices list opens with tiles (Models, Maps: Yes, Verified, Covered, Pending
+policy) and the last sync line. The narrow-width sticky column header is a
+visual copy hidden from assistive technology; the table's own header keeps the
+caption and sortable controls.
 
 Empty installation history omits unusable filters, table, and pagination. Above
-900px, installation summary, Administration, Device information, and Technical
+900px, the Installs card (Attempts, Successful, Failed, Open problems, Last
+report), Update reports, Administration, Device information, and Technical
 details form the left column while Installation history uses the right column.
+A pre-write result (`writeStarted=false`) shows `Blocked before writing`, is not
+in the Failed filter, has its own Blocked before writing filter, and stays an
+open problem when the canonical predicate says so.
 Narrow layouts stack that same reading order. Historical catalog provenance
 remains accessible and does not change Maps, Install policy, support, or public
 compatibility.
@@ -407,7 +420,9 @@ Cards use content-driven heights and stack when space requires it.
 
 Assign model is an operator-assisted exact-catalog selection. Initial candidate
 buttons are immediately usable by pointer and keyboard without
-typing into the search field. Confirm stays disabled until a specific catalog
+typing into the search field. When a dialog would list the whole catalog, the
+page renders the catalog once in a template and each dialog clones it when it
+first opens; candidate-restricted pickers keep their own options. Confirm stays disabled until a specific catalog
 model is selected; changing the search clears a stale selection. Reported facts and
 missing facts stay distinct; catalog facts may enrich only a consistent exact
 target. A conflicting normal assignment requires the separate explicit manual
@@ -449,15 +464,16 @@ rows without an assessment remain unassigned; no adjacent installation or time
 match supplies identity. The cards describe model-and-variant history; no unique
 physical-watch identifier is collected.
 
-The model detail adds a separate Map updates summary and Update history, scoped
-to all retained nonlocal reports for that exact identity. Successful and Failed
-values link to the corresponding update records. Not-started results stay in
+The model detail adds a separate Update reports card and Update history, scoped
+to all retained nonlocal reports for that exact identity, labelled as the update
+report stream with an `All time` chip. Successful, Failed and Blocked before
+writing values link to the corresponding update records. Blocked results stay in
 history and outside the attempt denominator. Summary totals are independent of
 history pagination and diagnostic resolution. Conflicting logical reports remain
 visible with an ambiguity notice and are excluded from completed counts.
 Updates never change installation metrics or public compatibility evidence.
-The installation panel labels its timestamp “Last installation report” under
-“Install activity”; it is not a combined installation/update activity timestamp.
+The Installs card labels its timestamp `Last report` (the last installation
+report); it is not a combined installation/update activity timestamp.
 The broad Devices listing keeps its existing compact columns.
 
 ### Model source review

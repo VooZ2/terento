@@ -272,7 +272,8 @@ noindex.
 ## `GET https://api.terento.app/admin/installations`
 
 Returns the authenticated all-time model installation evidence view. Its summary
-order is Attempts, Successful, Failed, Success rate, and Open problems. `Failed`
+tiles are Attempts, Successful, Failed, Success rate (All time) and Open problems
+(Now). `Failed`
 includes resolved historical failures. `Open problems` counts installs
 (operations) with an active, nonlocal, non-excluded failed diagnostic that is not a
 provider download/pre-install failure and has no linked GitHub issue — the
@@ -282,8 +283,8 @@ identity, the KPI is the sum of the rendered rows, and an identity with an open
 problem stays listed even with zero attempts. Positive Failed values use the
 shared danger styling.
 
-The page supports All, Failed, Open problems, Successful, and Identity review
-filters plus sorting and search. True no-evidence omits metrics, filters, table,
+The page supports All, Failed, Open problems, Identity review and Successful
+quick filters (also as `?state=identity-pending`) plus sorting and search. True no-evidence omits metrics, filters, table,
 and pagination. Filtered-empty preserves the active controls and clear action.
 Pagination appears only for multiple pages. Known exact models group by canonical
 ID; unresolved identities remain visible. Historical catalog provenance is

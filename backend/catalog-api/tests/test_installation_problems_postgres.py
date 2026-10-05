@@ -12,7 +12,7 @@ from statistics_fixtures import FENIX_8, StatisticsRows
 from terento_catalog.admin import dashboard_page, device_detail_page, diagnostics_page
 from terento_catalog.http_api import CatalogService
 
-KPI = re.compile(r"<span>Open problems</span><strong class='admin-error-counter[^']*'>(\d+)</strong>")
+KPI = re.compile(r"data-stat='openProblems'>(?:<svg.*?</svg>)?(\d+)</strong>")
 ROW = re.compile(r"data-identity='([^']+)'[^>]*data-errors='(\d+)'")
 
 
@@ -89,7 +89,8 @@ class InstallationProblemParityTests(PGliteTestCase):
             resolved_operations=[], unresolved_only=True,
             open_problem_count=self.service.installation_problem_count("identity:Venu X1"),
         ).decode()
-        self.assertRegex(body, r"<span>Open problems</span><strong class='admin-error-counter is-positive'>1</strong>")
+        self.assertEqual(int(KPI.search(body).group(1)), 1)
+        self.assertIn("data-tone='danger'", body.split("data-stat='openProblems'", 1)[0].rsplit("<div class='admin-metric'", 1)[1])
 
     def test_operation_spanning_identities_counts_once(self):
         operation = self.rows.uuid()
