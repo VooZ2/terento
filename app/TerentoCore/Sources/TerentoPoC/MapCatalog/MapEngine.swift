@@ -100,6 +100,22 @@ private final class MapEngineDownloadProgressRelay: @unchecked Sendable {
     }
 }
 
+/// Component results observed inside one installation batch, kept outside
+/// the detached closure so a thrown boundary read cannot discard results of
+/// maps that were already written in the same batch.
+private final class InstallationComponentLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var components: [Int: [(kind: MapArtifactKind, result: MapInstallationResult)]] = [:]
+
+    func record(index: Int, kind: MapArtifactKind, result: MapInstallationResult) {
+        lock.withLock { components[index, default: []].append((kind, result)) }
+    }
+
+    func snapshot() -> [Int: [(kind: MapArtifactKind, result: MapInstallationResult)]] {
+        lock.withLock { components }
+    }
+}
+
 private final class InstallationMapIndexState: @unchecked Sendable {
     private let lock = NSLock()
     private var storedValue = 0
@@ -1288,14 +1304,8 @@ final class MapEngine: ObservableObject {
             installationPhase = .failed
             installationPhaseProgress = nil
             state = .failed
-            if let package = plan.installItems.first?.package {
-                emitMapStatisticsEvent(
-                    package: package,
-                    type: .installFailed,
-                    outcome: .failed,
-                    mapResultIndex: 0
-                )
-            }
+            // No device write was reached: the map stream records no
+            // INSTALL_FAILED result (STATISTICS_CONTRACT pre-install rule).
             operationDiagnostics?.failed(index: 0, stage: .preflight,
                 failure: evidenceFailure, native: evidenceNativeFailureCode)
             recordInstallationFailure(installationErrorMessage)
@@ -1645,17 +1655,9 @@ final class MapEngine: ObservableObject {
                 self?.state = .scanned
 
                 if !allReady {
+                    // Preflight never writes, so it creates no INSTALL_FAILED map result.
                     let failureIndex = activeMapIndex.value
                     self?.evidencePrimaryFailureMapIndex = failureIndex
-                    if finalResult.status != .blockedInstallationAuthorization,
-                       plan.installItems.indices.contains(failureIndex) {
-                        self?.emitMapStatisticsEvent(
-                            package: plan.installItems[failureIndex].package,
-                            type: .installFailed,
-                            outcome: .failed,
-                            mapResultIndex: failureIndex
-                        )
-                    }
                     self?.evidenceFailureStage = InstallationFailureStageResolver.stage(
                         for: finalResult.failure, context: finalResult.failureContext,
                         writeStarted: finalResult.diagnostics.writeStarted)
@@ -1683,16 +1685,9 @@ final class MapEngine: ObservableObject {
                     cancelled: Self.isObservedCancellation(error),
                     context: readFailure?.context)
                 guard !Task.isCancelled else { return }
+                // A preflight failure is before the device write boundary.
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
-                if plan.installItems.indices.contains(failureIndex) {
-                    self?.emitMapStatisticsEvent(
-                        package: plan.installItems[failureIndex].package,
-                        type: .installFailed,
-                        outcome: .failed,
-                        mapResultIndex: failureIndex
-                    )
-                }
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
                     self?.evidenceFailureStage = diagnostic.stage
@@ -1763,6 +1758,7 @@ final class MapEngine: ObservableObject {
         let phaseRelay = MapEnginePhaseRelay(engine: self)
         let phaseProgressRelay = MapEnginePhaseProgressRelay(engine: self)
         let activeMapIndex = InstallationMapIndexState()
+        let componentLog = InstallationComponentLog()
         activeTask?.cancel()
         let diagnostics = operationDiagnostics
         activeTask = Task { [weak self] in
@@ -1854,6 +1850,7 @@ final class MapEngine: ObservableObject {
                                 }
                             )
                             diagnostics?.record(result, packageID: packagePlan.item.package.id, artifactID: selectedArtifact.id)
+                            componentLog.record(index: index, kind: selectedArtifact.kind, result: result)
                             packageResults.append(result)
                             componentResults.append(result)
                             packageComponents.append(
@@ -1911,20 +1908,7 @@ final class MapEngine: ObservableObject {
                 let batchSucceeded = batch.packageOutcomes.count == packagePlans.count
                     && batch.packageOutcomes.allSatisfy { $0.status == .completed }
                 let hasPartialSuccess = batch.packageOutcomes.contains { $0.hasWarnings }
-                for (index, outcome) in batch.packageOutcomes.enumerated()
-                where plan.installItems.indices.contains(index) {
-                    let componentOffset = packagePlans[..<index]
-                        .reduce(0) { $0 + $1.artifactPlan.selectedArtifacts.count }
-                    let authorizationBlocked = batch.componentResults.indices.contains(componentOffset)
-                        && batch.componentResults[componentOffset].status == .blockedInstallationAuthorization
-                    guard !authorizationBlocked else { continue }
-                    self?.emitMapStatisticsEvent(
-                        package: plan.installItems[index].package,
-                        type: outcome.isComplete ? .installSucceeded : .installFailed,
-                        outcome: outcome.isComplete ? .succeeded : .failed,
-                        mapResultIndex: index
-                    )
-                }
+                self?.emitInstallStatistics(componentLog.snapshot(), plan: plan)
                 self?.installationResult = finalResult
                 self?.evidenceFailureContext = finalResult.failureContext
                 self?.evidenceOriginalFailureContext = finalResult.originalFailureContext
@@ -1972,17 +1956,14 @@ final class MapEngine: ObservableObject {
                     native: readFailure?.native,
                     cancelled: Self.isObservedCancellation(error),
                     context: readFailure?.context)
+                // A thrown boundary read is before the current component's
+                // write. Report every map result that reached its own write
+                // boundary, including maps completed earlier in this batch,
+                // also when a disconnect cancelled the remaining work.
+                self?.emitInstallStatistics(componentLog.snapshot(), plan: plan)
                 guard !Task.isCancelled else { return }
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
-                if plan.installItems.indices.contains(failureIndex) {
-                    self?.emitMapStatisticsEvent(
-                        package: plan.installItems[failureIndex].package,
-                        type: .installFailed,
-                        outcome: .failed,
-                        mapResultIndex: failureIndex
-                    )
-                }
                 self?.evidenceFailureStage = known?.stage ?? .preflight
                 self?.evidenceFailure = readFailure?.failure ?? known?.failure
                 self?.evidenceNativeFailureCode = readFailure?.native
@@ -2076,6 +2057,35 @@ final class MapEngine: ObservableObject {
             return (.sourceValidation, .sourceValidationFailed)
         case .customMapNotConfirmed:
             return (.sourceValidation, .sourceValidationFailed)
+        }
+    }
+
+    /// The map-stream result for one selected map, per STATISTICS_CONTRACT:
+    /// a verified main map is INSTALL_SUCCEEDED even when an optional
+    /// component failed (that stays a diagnostic fact); a main map that
+    /// reached its device write boundary and failed is INSTALL_FAILED; a map
+    /// that never reached the write boundary has no install result.
+    nonisolated static func installStatisticsEventType(
+        components: [(kind: MapArtifactKind, result: MapInstallationResult)]
+    ) -> MapStatisticsEventType? {
+        guard let main = components.first(where: { $0.kind == .main })?.result,
+              main.status != .blockedInstallationAuthorization else { return nil }
+        if main.isSuccess { return .installSucceeded }
+        return main.diagnostics.writeStarted ? .installFailed : nil
+    }
+
+    private func emitInstallStatistics(
+        _ components: [Int: [(kind: MapArtifactKind, result: MapInstallationResult)]],
+        plan: InstallationPlan
+    ) {
+        for index in components.keys.sorted() where plan.installItems.indices.contains(index) {
+            guard let type = Self.installStatisticsEventType(components: components[index] ?? []) else { continue }
+            emitMapStatisticsEvent(
+                package: plan.installItems[index].package,
+                type: type,
+                outcome: type == .installSucceeded ? .succeeded : .failed,
+                mapResultIndex: index
+            )
         }
     }
 

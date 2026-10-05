@@ -54,6 +54,7 @@ private actor DelayedAuthorizationResponse {
         try await testDisconnectAndCancellation()
         try await testRetryRestartAndConsent()
         try await testOptOutDuringUpload()
+        try testInstallStatisticsFollowWriteBoundary()
         if let output = ProcessInfo.processInfo.environment["TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT"] {
             let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
             try encoder.encode(emittedFixtures).write(to: URL(fileURLWithPath: output))
@@ -247,8 +248,9 @@ private actor DelayedAuthorizationResponse {
         engine.setDiagnosticTestIdentity(unstable)
         engine.setInstallationAuthorization(authorization)
         engine.beginInstallation(plan: plan(), operationId: operationID)
-        check(engine.mapStatisticsEvents.contains { $0.eventType == .installFailed && $0.operationId == operationID },
-              "fixture reaches the real INSTALL_FAILED branch")
+        check(engine.installationPhase == .failed && engine.evidenceFailure == .stableWatchIdentityUnavailable
+                && !engine.mapStatisticsEvents.contains { $0.eventType == .installFailed },
+              "a pre-write identity failure creates no INSTALL_FAILED map result")
         // Reset all engine/view state before the queued upload gets a main-actor turn.
         engine.resetForDisconnectedDevice()
         await engine.waitForDiagnosticDeliveryForTesting()
@@ -324,10 +326,8 @@ private actor DelayedAuthorizationResponse {
                 failure: request.artifact?.artifactKind == .contours ? .insufficientSpace : nil,
                 wrote: false, confirmation: request.artifact?.artifactKind == .main)
         }
-        let failure = engine.mapStatisticsEvents.first { $0.eventType == .installFailed }
-        check(failure?.mapResultIndex == 0 && failure?.operationId == operationID
-            && failure?.mapId == selection.installItems[0].package.id.lowercased(),
-            "engine component A preflight failure emits map A index0 rather than flattened component index1")
+        check(!engine.mapStatisticsEvents.contains { $0.eventType == .installFailed },
+            "a preflight failure never reached the device write boundary and creates no INSTALL_FAILED")
         let events = store.events().sorted { $0.mapResultIndex! < $1.mapResultIndex! }
         check(events.count == 2 && events[0].mapResultIndex == 0 && events[0].phaseOutcome == .failed
             && events[1].mapResultIndex == 1 && events[1].phaseOutcome == .notStarted,
@@ -722,6 +722,26 @@ private actor DelayedAuthorizationResponse {
         return planner.plan(items: items, selectedIDs: Set(items.map(\.id)), currentFreeSpace: 20_000_000_000,
             selectedOptionalArtifactIDs: contours ? Dictionary(uniqueKeysWithValues: items.map { ($0.id, Set([$0.package.regionId + "-contours"])) }) : [:])
     }
+    static func testInstallStatisticsFollowWriteBoundary() throws {
+        let package = plan().installItems[0].package
+        let verified = result(package: package, failure: nil, wrote: true)
+        let failedWrite = result(package: package, failure: .writeFailed, wrote: true)
+        let notStarted = result(package: package, failure: .insufficientSpace, wrote: false)
+        func type(_ components: [(MapArtifactKind, MapInstallationResult)]) -> MapStatisticsEventType? {
+            MapEngine.installStatisticsEventType(components: components.map { (kind: $0.0, result: $0.1) })
+        }
+        check(type([(.main, verified), (.contours, failedWrite)]) == .installSucceeded,
+              "main verified with failed optional contours is INSTALL_SUCCEEDED; the warning stays diagnostic")
+        check(type([(.main, verified), (.contours, verified)]) == .installSucceeded, "complete map is INSTALL_SUCCEEDED")
+        check(type([(.main, failedWrite)]) == .installFailed, "a started main-map write failure is INSTALL_FAILED")
+        check(type([(.main, notStarted)]) == nil, "a main map that never reached the write boundary has no install result")
+        check(type([]) == nil && type([(.contours, failedWrite)]) == nil, "no main result means no install result")
+        let blocked = MapInstallationResult(status: .blockedInstallationAuthorization, failure: .installationAuthorization,
+            originalFailure: nil, cleanupFailure: nil, preflight: notStarted.preflight, transaction: InstallationTransaction(),
+            verification: nil, diagnostics: notStarted.diagnostics, installedMap: nil)
+        check(type([(.main, blocked)]) == nil, "an authorization block creates no install result")
+    }
+
     static func result(package: MapPackage, failure: InstallationFailure?, wrote: Bool, confirmation: Bool = false,
                        context: InstallationFailureContext? = nil,
                        original: InstallationFailureContext? = nil,
