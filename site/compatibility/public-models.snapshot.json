@@ -26,8 +26,8 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-00/g/cf-lg.jpg",
-      "successfulInstallations": 12,
-      "lastSuccessfulInstallation": "2026-10-04T11:33:39+00:00"
+      "successfulInstallations": 13,
+      "lastSuccessfulInstallation": "2026-10-04T22:03:29+00:00"
     },
     {
       "model": "fēnix 9 Pro · 51 mm",
@@ -72,6 +72,20 @@
       "lastSuccessfulInstallation": "2026-09-29T18:47:22+00:00"
     },
     {
+      "model": "fēnix 7X Pro · Historical",
+      "variant": "Historical",
+      "caseSizeMm": null,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
+      "successfulInstallations": 7,
+      "lastSuccessfulInstallation": "2026-10-05T11:16:25+00:00"
+    },
+    {
       "model": "fēnix 8 · 51 mm, AMOLED",
       "variant": "51 mm, AMOLED",
       "caseSizeMm": 51,
@@ -98,20 +112,6 @@
       "imageUrl": "https://res.garmin.com/en/products/010-02638-10/v/cf-lg-d0a186df-582c-4f80-aeef-7eb37b60471b.jpg",
       "successfulInstallations": 6,
       "lastSuccessfulInstallation": "2026-10-03T07:25:56+00:00"
-    },
-    {
-      "model": "fēnix 7X Pro · Historical",
-      "variant": "Historical",
-      "caseSizeMm": null,
-      "displayType": "Solar",
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
-      "successfulInstallations": 6,
-      "lastSuccessfulInstallation": "2026-09-21T15:04:45+00:00"
     },
     {
       "model": "fēnix 8 Pro · 51 mm, AMOLED",
@@ -338,5 +338,5 @@
       "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
     }
   ],
-  "generatedAt": "2026-10-04T20:33:53.817452+00:00"
+  "generatedAt": "2026-10-05T12:51:14.228794+00:00"
 }
