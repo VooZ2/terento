@@ -41,6 +41,18 @@ lifecycle lease reports `UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING`; only a
 disconnect or eject that invalidated the operation reports
 `UPDATE_FAILED_DEVICE_DISCONNECTED`. Existing codes and fields are unchanged.
 
+## Catalog and installation-policy decoder tolerance (unreleased app candidate)
+
+The next app candidate accepts `/maps/catalog-v4.json` per package and tolerates
+additive installation-policy fields; both rules are owned by
+[`contracts/README.md`](README.md#responses-and-client-compatibility) and
+[`INSTALLATION_AUTHORIZATION.md`](INSTALLATION_AUTHORIZATION.md). Released
+beta.14–beta.18 clients remain strict, so the API must keep the schema-3 policy
+projection key-exact and every published catalog package strictly valid until
+those clients are retired. A breaking policy change ships as a higher
+`schemaVersion`, which the new client reports as update required (no write).
+No payload, route or schema version changes in this candidate.
+
 ## Beta.16 build 38 — provider recovery and update diagnostics
 
 Beta.16 build 38 accepts both reviewed BBBike README date forms in
