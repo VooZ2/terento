@@ -360,7 +360,7 @@ final class LocalAppFunnelEventStore: @unchecked Sendable {
     private func saveUnlocked(_ file: AppFunnelQueueFile) throws {
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(),
                                                 withIntermediateDirectories: true)
-        try encoder.encode(file).write(to: fileURL, options: [.atomic, .completeFileProtection])
+        try encoder.encode(file).write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 }
 

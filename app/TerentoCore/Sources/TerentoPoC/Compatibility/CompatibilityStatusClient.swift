@@ -119,7 +119,7 @@ actor CompatibilityStatusCache {
                 at: fileURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+            try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         } catch {
             // Compatibility metadata is best-effort and must never block the
             // device read or any map safety operation.

@@ -355,7 +355,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
             at: fileURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        try encoder.encode(file).write(to: fileURL, options: [.atomic, .completeFileProtection])
+        try encoder.encode(file).write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 }
 
