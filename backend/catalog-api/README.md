@@ -114,7 +114,10 @@ terento-catalog-api
 
 The API listens on `http://127.0.0.1:8000` by default when `CATALOG_HOST` is
 set to `127.0.0.1`. The production Compose file binds the service only to the
-private Docker network and lets Traefik provide HTTPS.
+private Docker network and lets Traefik provide HTTPS. `CATALOG_TRUSTED_PROXIES`
+controls which direct peers may supply `X-Forwarded-For` for per-client rate
+limits (default: loopback and private networks; `none` disables it); see
+[operations](docs/operations.md#client-address-and-intake-limits).
 
 Run the offline tests from the repository root after installing the test extra:
 

@@ -13,6 +13,7 @@ from email.utils import format_datetime, parsedate_to_datetime
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import ipaddress
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 from uuid import UUID, uuid4
@@ -54,6 +55,7 @@ from .admin import (
 from .asset_storage import AssetStorage
 from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
+from .config import DEFAULT_TRUSTED_PROXIES
 from .db import Database, IdentityResolutionError
 from .device_catalog import (
     CONTROLLED_ASSET_PREFIX,
@@ -92,6 +94,18 @@ from .provider_health import check_provider as run_provider_health_check
 
 LOGGER = logging.getLogger(__name__)
 
+# Per-client anonymous intake limits (requests per 60 s). One multi-map install
+# with optional contours emits about seven map events and one diagnostic per
+# map, and a selection may contain up to 100 maps; sequential client uploads
+# take tens of milliseconds each. These limits absorb such a burst, plus
+# retries and users sharing one NAT address, while still bounding abuse.
+MAP_EVENT_RATE_LIMIT = 600
+COMPATIBILITY_EVENT_RATE_LIMIT = 300
+RATE_LIMIT_WINDOW_SECONDS = 60
+# Idle keys are swept periodically so the in-memory limiter cannot grow without bound.
+RATE_LIMIT_SWEEP_INTERVAL = 1000
+RATE_LIMIT_MAX_WINDOW_SECONDS = 900
+
 
 def _admin_time_zone(value: Any) -> str:
     candidate = str(value or "UTC").strip()
@@ -121,8 +135,12 @@ class CatalogService:
         operations_ingest_secret: str | None = None,
         opentopomap_contour_mode: str = "off",
         opentopomap_contour_allowlist: tuple[str, ...] = (),
+        trusted_proxies: tuple[str, ...] = DEFAULT_TRUSTED_PROXIES,
     ) -> None:
         self.database = database
+        self.trusted_proxy_networks = tuple(
+            ipaddress.ip_network(item, strict=False) for item in trusted_proxies
+        )
         self.asset_storage = asset_storage
         self.admin_bootstrap_secret = admin_bootstrap_secret
         self.admin_session_ttl_seconds = admin_session_ttl_seconds
@@ -133,6 +151,32 @@ class CatalogService:
 
     def health(self) -> bool:
         return self.database.health()
+
+    def trusts_proxy(self, address: str) -> bool:
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError:
+            return False
+        return any(ip in network for network in self.trusted_proxy_networks)
+
+    def client_address_for(self, peer: str, forwarded_for: list[str]) -> str:
+        """Return the rate-limit client address behind a trusted proxy.
+
+        The rightmost X-Forwarded-For hop that is not itself a trusted proxy is
+        the client the proxy saw. Headers from an untrusted peer, or malformed
+        hops, are never trusted.
+        """
+        if not self.trusts_proxy(peer):
+            return peer
+        hops = [hop.strip() for value in forwarded_for for hop in value.split(",") if hop.strip()]
+        for hop in reversed(hops):
+            try:
+                address = str(ipaddress.ip_address(hop))
+            except ValueError:
+                return peer
+            if not self.trusts_proxy(address):
+                return address
+        return peer
 
     def receive_operational_observation(self, document: dict[str, Any]) -> bool:
         return self.database.record_operational_observation(validate_observation(document))
@@ -882,10 +926,16 @@ class CatalogService:
 
 def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
     request_times: dict[str, deque[float]] = defaultdict(deque)
+    sweep_counter = [0]
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "TerentoCatalog"
         sys_version = ""
+
+        def _client_ip(self) -> str:
+            return service.client_address_for(
+                self.client_address[0], self.headers.get_all("X-Forwarded-For") or [],
+            )
 
         def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
             self._handle_request(send_body=True)
@@ -913,7 +963,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 
         def _handle_operational_observation(self) -> None:
-            client = f"operational-observation:{self.client_address[0]}"
+            client = f"operational-observation:{self._client_ip()}"
             if self._rate_limited(client, limit=30, window=60):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store", noindex=True)
                 return
@@ -952,8 +1002,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             )
 
         def _handle_map_event(self) -> None:
-            client = f"map-event:{self.client_address[0]}"
-            if self._rate_limited(client, limit=60, window=60):
+            client = f"map-event:{self._client_ip()}"
+            if self._rate_limited(client, limit=MAP_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
                 self._send_json(
                     HTTPStatus.TOO_MANY_REQUESTS,
                     {"error": "rate_limited"},
@@ -1089,15 +1139,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             )
 
         def _handle_compatibility_event(self) -> None:
-            client = self.client_address[0]
-            now = time.monotonic()
-            recent = request_times[client]
-            while recent and recent[0] < now - 60:
-                recent.popleft()
-            if len(recent) >= 30:
+            client = self._client_ip()
+            if self._rate_limited(client, limit=COMPATIBILITY_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
-            recent.append(now)
+            request_times[client].append(time.monotonic())
             try:
                 length = int(self.headers.get("Content-Length", "0"))
             except ValueError:
@@ -1696,7 +1742,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     noindex=True,
                 )
                 return
-            rate_key = f"admin-provider:{action}:{provider_id}:{self.client_address[0]}"
+            rate_key = f"admin-provider:{action}:{provider_id}:{self._client_ip()}"
             if action in {"check", "collect"} and self._rate_limited(
                 rate_key, limit=5, window=60
             ):
@@ -2127,7 +2173,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             return default
 
         def _admin_setup(self, form: dict[str, str]) -> None:
-            client = f"admin-setup:{self.client_address[0]}"
+            client = f"admin-setup:{self._client_ip()}"
             if self._rate_limited(client, limit=10, window=900):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
@@ -2144,7 +2190,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self._redirect("/admin/login", send_body=True)
 
         def _admin_login(self, form: dict[str, str]) -> None:
-            client = f"admin-login:{self.client_address[0]}"
+            client = f"admin-login:{self._client_ip()}"
             if self._rate_limited(client, limit=10, window=900):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
@@ -2397,6 +2443,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _rate_limited(self, key: str, *, limit: int, window: int) -> bool:
             now = time.monotonic()
+            sweep_counter[0] += 1
+            if sweep_counter[0] % RATE_LIMIT_SWEEP_INTERVAL == 0:
+                for stale_key, stale in list(request_times.items()):
+                    if not stale or stale[-1] < now - RATE_LIMIT_MAX_WINDOW_SECONDS:
+                        request_times.pop(stale_key, None)
             recent = request_times[key]
             while recent and recent[0] < now - window:
                 recent.popleft()

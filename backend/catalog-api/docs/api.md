@@ -100,7 +100,8 @@ normal review before its compatibility events are accepted. `custom` is a
 fixed local-IMG source label, not a provider, and only accepts literal
 `custom` region and release values. New schema-version-4 clients do not send
 deletion credentials; schema versions 1–3 remain readable for backward
-compatibility. The endpoint is rate limited and stores allowlisted columns in
+compatibility. The endpoint is rate limited to 300 reports per client address
+per minute (derived behind the trusted reverse proxy) and stores allowlisted columns in
 the separate compatibility table. The original JSON body is not retained.
 New clients do not send a post-install
 confirmation signal; legacy `userConfirmed` fields are tolerated only for
@@ -676,8 +677,9 @@ Retiring a provider does not delete its historical metadata.
 
 ## `POST /map-events`
 
-Accepts at most 8 KiB of schema-version-1 JSON and is rate limited per source
-address. This is deliberately separate from `/compatibility/events` and does
+Accepts at most 8 KiB of schema-version-1 JSON and is rate limited to 600
+events per client address per minute (the client address is derived behind the
+trusted reverse proxy; see `operations.md`). This is deliberately separate from `/compatibility/events` and does
 not accept compatibility, device, manifest, path, serial, Unit ID, raw log, or
 raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
 `providerId`, `releaseLabel`, optional `mapId`/`region`, `eventType`, `outcome`,

@@ -70,6 +70,27 @@ so historical markers and multiple releases in one chart bucket are not
 guessed from counter discontinuities. Counter decreases and other unexplained
 population changes remain independent Data boundary or unattributed evidence.
 
+## Client address and intake limits
+
+The API binds only to the private Docker network and Traefik terminates HTTPS,
+so the direct TCP peer of every public request is the proxy. Per-client limits
+therefore derive the client from `X-Forwarded-For` only when the direct peer is a
+trusted proxy: the rightmost hop that is not itself a trusted proxy is the
+client the proxy saw; a malformed hop falls back to the peer address, and a
+header from an untrusted peer is ignored. `CATALOG_TRUSTED_PROXIES` lists the
+trusted proxy addresses or CIDR networks (comma-separated); the default is
+loopback plus the private ranges `10.0.0.0/8`, `172.16.0.0/12`,
+`192.168.0.0/16` and `fc00::/7`, which covers the Docker network Traefik uses.
+Set it to the exact Traefik address to narrow trust, or to `none` to disable
+forwarded-header trust. Without this, every user shared one limit bucket.
+
+Anonymous intake allows 600 map events and 300 compatibility reports per client
+address per minute. One install of up to 100 maps with optional contours emits
+about seven map events and one diagnostic per map, uploaded sequentially by the
+app with short retries, so the earlier 60/30 limits rejected a single large
+batch. The higher limits still bound abuse; `429` responses remain retryable for
+clients. Idle limiter keys are swept so memory stays bounded.
+
 ## Authorization and exceptional migrations
 
 The deployment workflow runs backend tests and publishes the immutable image
