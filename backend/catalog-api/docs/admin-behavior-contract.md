@@ -20,8 +20,12 @@ Activity failures link to `/admin/update-diagnostics?eventId=...`. The detail
 requires one exact operation/provider/region match with the same outcome. Region
 casing is normalized to lowercase in both streams; names and aliases are not
 guessed. Missing,
-ambiguous or conflicting evidence is shown explicitly. The list can filter failed
-and not-started updates. Detail reports show a closed failure-code explanation,
+ambiguous or conflicting evidence is shown explicitly. The list is titled
+`Update reports` and shows Reports, Successful, Failed, Blocked and Open tiles
+(`All time`) for the list scope, counted as raw update report rows of the
+diagnostic stream and independent of the outcome filter and pagination, so it is
+never presented as the Maps update total. The list can filter successful, failed
+and blocked-before-writing reports. Detail reports show a closed failure-code explanation,
 stage, next action, app version/build and known write/old-map-preservation facts.
 An unconfirmed preservation result is not proof of absence; failed updates say
 “Not confirmed — inspect device.” Acquisition/source-validation failures link

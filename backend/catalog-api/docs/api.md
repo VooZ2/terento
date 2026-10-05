@@ -25,8 +25,12 @@ This describes the local implementation, not deployed route availability.
   `lifecycle=ACTIVE|RESOLVED` and nonnegative `offset` paginate 50 reports.
   `eventId` accepts a map-update statistics UUID; `diagnosticId` accepts a
   diagnostic UUID. These identifiers are mutually exclusive and cannot be
-  combined with list filters or pagination.
-  Invalid filters return 400; unavailable storage returns 503. No matching
+  combined with list filters or pagination. The list page (`Update reports`)
+  adds report totals for the list scope (`total`, `succeeded`, `failed`,
+  `not_started`, `open_failed` raw report rows for the `deviceId`/`lifecycle`
+  scope, independent of `outcome` and `offset`); a failed totals query leaves
+  the list usable with unavailable tiles.
+  Invalid filters return 400 as an HTML page; unavailable storage returns 503. No matching
   or ambiguous diagnostic renders an explicit availability message.
 - `POST /admin/update-diagnostics/issue|resolve|reopen|workflow`: authenticated,
   CSRF-protected form actions targeting one `diagnostic_id` UUID. Issue actions

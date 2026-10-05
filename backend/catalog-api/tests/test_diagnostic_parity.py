@@ -117,11 +117,13 @@ class DiagnosticParityTests(unittest.TestCase):
         body = device_detail_page(device, {'username': 'admin'}, 'csrf',
             update_history={'rows': [self.report()], 'device_id': MODEL, 'offset': 50, 'has_more': True}).decode()
         self.assertIn('Installation history', body); self.assertIn('Update history', body)
-        self.assertIn('Reported results · All time', body)
+        self.assertIn('>Update reports</h2>', body)
+        self.assertIn("href='/admin/glossary#update-report'", body)
         self.assertIn('outcome=succeeded', body); self.assertIn('outcome=failed', body)
         self.assertIn('updateOffset=100', body); self.assertIn('updateOffset=0', body)
         self.assertIn('diagnosticId=' + EVENT, body)
-        self.assertIn('Updates do not change installation totals', body)
+        from terento_catalog.admin import ADMIN_GLOSSARY
+        self.assertIn('never change installation totals', dict((a, d) for a, _, d in ADMIN_GLOSSARY)['update-report'])
 
     def test_unknown_reason_and_update_queue_do_not_guess_or_reuse_install(self):
         reason, action = _installation_explanation([{'phase_outcome': 'FAILED', 'failure_code': 'UNRECOGNIZED'}])

@@ -343,7 +343,8 @@ ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
      "counted as an install."),
     ("update-report", "Update report",
      "A device report about one map update, sent only when diagnostic sharing is on. "
-     "Report counts can differ from map activity updates."),
+     "Report counts can differ from map activity updates; reports never change installation "
+     "totals or public compatibility."),
     ("terento-app-download", "Terento app download",
      "An observed increase of the public GitHub .dmg and .zip download counters for the "
      "Terento macOS app. Not a map download."),
