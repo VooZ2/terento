@@ -67,7 +67,7 @@ endpoint. Live route validation is independent of app packaging and publication;
 a separate validated app build and publication decision remain required.
 
 
-## Local write target resolution (2026-10-05 candidate)
+## Write target resolution — beta.18/build40 (2026-10-05)
 
 Server approval does not replace live target validation. Install, custom import
 and managed lifecycle operations resolve one root folder and its nonzero storage
@@ -98,10 +98,11 @@ write boundary. Local finishing diagnostics accept only fixed `target_reason`
 codes: `root_missing`, `root_ambiguous`, `storage_invalid`, `root_invalid`,
 `identity_invalid`, `profile_mismatch`. They never log the profile, observed root
 path, serial or Unit ID. Uploaded diagnostics keep the existing schema and error
-classification; no API or database migration is part of this candidate.
+classification; no API or database migration is part of this correction.
 
-This is a local patch candidate, not a release or new hardware compatibility
-claim. The beta.12/beta.16 comparison and #340/#342/#343/#344/#345 reports support
+This correction is published in beta.18/build40 from verified source `e0f0e704`.
+It does not establish a new hardware compatibility claim. The beta.12/beta.16 comparison and #340/#342/#343/#344/#345 reports support
 inconsistent root/storage resolution as a strong hypothesis; historical reports
 do not contain the raw root/storage facts needed to prove that all eight failed
-attempts had this cause. Historical reports, counters and issue states are unchanged.
+attempts had this cause. Historical reports and counters remain unchanged. Issue closure requests retesting;
+it never converts a recorded failure into successful installation evidence.

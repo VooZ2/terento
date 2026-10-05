@@ -4,15 +4,15 @@
   "platform": "macOS",
   "architecture": "arm64",
   "version": "1.0.0",
-  "build": 39,
-  "releaseLabel": "1.0.0-beta.17",
-  "releaseTag": "v1.0.0-beta.17-build39",
-  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.17-build39/Terento-1.0.0-beta.17-macOS-arm64.dmg",
-  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.17-build39",
-  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.17-build39",
-  "summary": "Explains provider outages before downloading, keeps unavailable maps visible with Install and Update disabled, and adds automatic provider checks and per-map download controls in Admin.",
+  "build": 40,
+  "releaseLabel": "1.0.0-beta.18",
+  "releaseTag": "v1.0.0-beta.18-build40",
+  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.dmg",
+  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.18-build40",
+  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.18-build40",
+  "summary": "Fixes an installation preparation failure on supported Garmin watches and improves target checks and diagnostics. If an earlier attempt stopped before transfer, update, reconnect your watch and try again.",
   "channel": "beta",
   "minimumMacOS": "13.0",
   "publishedAt": "2026-10-05",
-  "sha256": "3fd52d6c23177f7d20354f9ef298be8306f086f0e1e3f60ebdf5f22ded8cd745"
+  "sha256": "17dc52b1c213add8217ad6f2bee4e392e1264fb1ecccc62477c52ca5c9270755"
 }

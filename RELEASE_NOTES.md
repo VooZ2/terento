@@ -1,18 +1,18 @@
-# Terento v1.0.0-beta.17 (build 39)
+# Terento v1.0.0-beta.18 (build 40)
 
 Terento is a free, open-source Public beta for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Compatibility is evaluated model by model.
 
 ## App improvements
 
-- Keeps temporarily unavailable maps visible and explains which provider is unavailable. Install and Update remain disabled until downloads are available; existing maps and Remove remain available.
-- Checks current download availability before starting a provider download and refreshes status while the app is idle.
-- Explains provider timeouts, rate limits and connection problems. If current availability cannot be checked, the app asks you to check your connection and try again.
+- Fixed a map-folder detection inconsistency that could block installation before the transfer started on supported Garmin watches.
+- Applied consistent target checks to map installation, custom map import and managed map updates, while preserving existing map and device safety checks.
+- Improved preparation failure messages and local diagnostics when Terento cannot verify a safe installation target.
 
-## Admin improvements
+## Please test again
 
-- Adds automatic provider checks with 1, 6 or 24 hour intervals and shows the last check, next check and current download status.
-- Allows administrators to pause downloads for individual maps with a reason while keeping those maps in the catalog.
-- Shows the current detailed provider check separately from compact, bounded history.
+If an earlier version stopped before transferring your map, update to beta.18, reconnect your watch and retry the installation. If it still fails, report the new result with the app version and diagnostic report.
+
+The fix passes automated regression tests, including installation and update simulations. Confirmation on the affected watches is still needed; this release does not claim that every previously reported failure is resolved.
 
 ## Known issues and beta limits
 
@@ -24,4 +24,4 @@ Terento is a free, open-source Public beta for installing community maps on map-
 
 Existing protected-map, ownership, safe Update and explicit Remove safeguards remain in place.
 
-<!-- DMG SHA-256: 3fd52d6c23177f7d20354f9ef298be8306f086f0e1e3f60ebdf5f22ded8cd745 -->
+<!-- DMG SHA-256: 17dc52b1c213add8217ad6f2bee4e392e1264fb1ecccc62477c52ca5c9270755 -->
