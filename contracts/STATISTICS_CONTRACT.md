@@ -278,6 +278,11 @@ The map-statistics read model keeps fresh-install outcomes, acquisition
 outcomes, and update outcomes separate. Period views use the selected period;
 all-time views say so explicitly. Period boundaries use the server/read-model
 timezone supplied by the request, and timestamps remain immutable source facts.
+Client clocks can run ahead: when a reported time is more than 10 minutes after
+the server receipt time, the map-statistics read model uses the receipt time for
+that event (map events and diagnostics alike) in period filters, KPIs, canonical
+result time and chart buckets, so a KPI never counts an event that no chart bucket
+shows. Smaller skew keeps the reported time, and the stored fact is unchanged.
 The read model selects one representative terminal result before bucketing:
 acquisitions use their acquisition ID, current installs operation/result index,
 and legacy records without that identity retain their event identity. Contradictory

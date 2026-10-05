@@ -367,6 +367,21 @@ def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, A
     }
 
 
+# Client clocks can run ahead. A reported time more than this tolerance after
+# the server received the event is replaced by the receipt time in the
+# statistics read model, so KPIs, charts and period filters agree (an event can
+# never land in a future chart bucket that the zero-filled trend does not show).
+# The stored occurred_at fact is unchanged.
+FUTURE_TIMESTAMP_TOLERANCE = "10 minutes"
+
+
+def _effective_occurred_at_sql(alias: str) -> str:
+    return (
+        f"CASE WHEN {alias}.occurred_at > {alias}.received_at + interval '{FUTURE_TIMESTAMP_TOLERANCE}' "
+        f"THEN {alias}.received_at ELSE {alias}.occurred_at END"
+    )
+
+
 def _prefer_hash_joins(connection: Any) -> None:
     """Steer full-history statistics queries away from nested loops.
 
@@ -4461,9 +4476,13 @@ class Database:
     ) -> list[dict[str, Any]]:
         clauses, values = self._map_statistics_filter(filters)
         compatibility_clauses, compatibility_values = self._compatibility_map_statistics_filter(filters)
+        effective = _effective_occurred_at_sql
+        compatibility_clauses = [
+            clause.replace("e.occurred_at", effective("e")) for clause in compatibility_clauses
+        ]
         query = f"""
             WITH identified_map_events AS (
-                SELECT e.*,
+                SELECT e.*, {effective("e")} AS effective_occurred_at,
                     CASE
                         WHEN e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED') AND e.acquisition_id IS NOT NULL
                             THEN 'acquisition:' || e.acquisition_id::text
@@ -4480,11 +4499,12 @@ class Database:
                 FROM identified_map_events GROUP BY logical_key
             ), normalized_map_events AS (
                 SELECT e.*, f.conflict AS map_conflict,
-                       row_number() OVER (PARTITION BY e.logical_key ORDER BY e.occurred_at, e.event_id) AS result_rank
+                       row_number() OVER (PARTITION BY e.logical_key ORDER BY e.effective_occurred_at, e.event_id) AS result_rank
                 FROM identified_map_events e JOIN map_result_flags f USING (logical_key)
             ), classified_compatibility AS (
                 SELECT
                     e.*,
+                    {effective("e")} AS effective_occurred_at,
                     CASE
                         WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
                             THEN e.operation_id::text || ':' || e.map_result_index::text
@@ -4521,7 +4541,7 @@ class Database:
                     END AS result_classification_effective
                 FROM classified_compatibility AS c
                 JOIN result_flags AS f USING (result_key)
-                ORDER BY c.result_key, c.occurred_at ASC NULLS LAST, c.event_id
+                ORDER BY c.result_key, c.effective_occurred_at ASC NULLS LAST, c.event_id
             ), map_peer_counts AS (
                 -- Legacy map terminals without a result index: how many main-map
                 -- install terminals share their operation, provider and region.
@@ -4550,7 +4570,7 @@ class Database:
                         evidence.result_classification_effective = 'FAILURE'
                     ) AS has_confirmed_failure,
                     bool_or(evidence.result_classification_effective <> 'SUCCESS') AS contradicts_success,
-                    min(evidence.occurred_at) AS diagnostic_occurred_at
+                    min(evidence.effective_occurred_at) AS diagnostic_occurred_at
                 FROM map_download_event AS installed
                 LEFT JOIN map_package AS installed_package
                   ON installed_package.id = COALESCE(installed.map_package_id, installed.reported_map_id)
@@ -4649,8 +4669,8 @@ class Database:
                 SELECT c.operation_key, c.provider AS provider_id, c.region,
                        CASE WHEN c.result_classification_effective = 'FAILURE'
                             THEN 'FAILED' ELSE 'SUCCEEDED' END AS outcome,
-                       min(e.occurred_at) AS first_occurred_at,
-                       max(e.occurred_at) AS last_occurred_at
+                       min({effective("e")}) AS first_occurred_at,
+                       max({effective("e")}) AS last_occurred_at
                 FROM complete_compatibility_operations AS c
                 JOIN compatibility_evidence_event AS e
                   ON e.event_id = c.event_id
@@ -4673,7 +4693,7 @@ class Database:
                     e.event_type,
                     e.outcome,
                     CASE WHEN evidence.diagnostic_result_count=1 AND evidence.map_candidate_count=1
-                         THEN LEAST(e.occurred_at, evidence.diagnostic_occurred_at) ELSE e.occurred_at END AS occurred_at,
+                         THEN LEAST(e.effective_occurred_at, evidence.diagnostic_occurred_at) ELSE e.effective_occurred_at END AS occurred_at,
                     CASE
                         WHEN e.map_conflict OR e.result_rank <> 1 THEN FALSE
                         WHEN e.event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
@@ -4697,7 +4717,7 @@ class Database:
                 LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
                 LEFT JOIN map_provider AS p ON p.id = e.provider_id
                 LEFT JOIN map_event_evidence AS evidence ON evidence.event_id = e.event_id
-                WHERE {' AND '.join(clauses).replace('e.occurred_at', 'CASE WHEN evidence.diagnostic_result_count=1 AND evidence.map_candidate_count=1 THEN LEAST(e.occurred_at, evidence.diagnostic_occurred_at) ELSE e.occurred_at END')}
+                WHERE {' AND '.join(clauses).replace('e.occurred_at', 'CASE WHEN evidence.diagnostic_result_count=1 AND evidence.map_candidate_count=1 THEN LEAST(e.effective_occurred_at, evidence.diagnostic_occurred_at) ELSE e.effective_occurred_at END')}
                 UNION ALL
                 SELECT
                     c.operation_key,
