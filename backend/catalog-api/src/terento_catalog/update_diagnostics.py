@@ -308,8 +308,8 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
     from .admin import _glossary_link, _operation_map_label, _scope_chip
     title = 'Update history' if embedded else 'Reports'
     result = (
-        f"<section class='model-page-section admin-card' id='updates' aria-labelledby='update-history-title'><div class='section-heading'><h2 id='update-history-title'>{title}</h2>"
-        f"{_glossary_link('update-report')}{_scope_chip('all')}</div>"
+        f"<section class='model-page-section admin-card' id='updates' aria-labelledby='update-history-title'><header class='admin-card-head'><h2 id='update-history-title'>{title}</h2>"
+        f"{_glossary_link('update-report')}{_scope_chip('all')}</header>"
     )
     result += "<nav class='quick-filter-group' aria-label='Filter update reports'>"
     for value, label in (('', 'All'), ('succeeded', 'Successful'), ('failed', 'Failed'), ('not_started', 'Blocked before writing')):

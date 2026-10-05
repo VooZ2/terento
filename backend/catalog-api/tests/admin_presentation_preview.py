@@ -11,6 +11,8 @@ from terento_catalog.admin import (
     _map_statistics_summary,
     dashboard_page,
     device_detail_page,
+    glossary_page,
+    missing_reports_page,
     device_identification_page,
     devices_page,
     diagnostics_page,
@@ -326,6 +328,16 @@ def create(root: Path) -> None:
         [], user, "fixture", identity="fēnix 8 · 51 mm, AMOLED",
         operations=[operation], identity_devices=[device_row],
     ))
+    (root / "glossary.html").write_bytes(glossary_page(user, "fixture"))
+    (root / "missing-reports.html").write_bytes(missing_reports_page({
+        "rows": [{
+            "event_type": "INSTALL_FAILED", "outcome": "FAILED",
+            "event_id": f"a8098c1a-f86e-11da-bd1a-0011244{index:05d}", "provider_id": "freizeitkarte",
+            "provider_name": "Freizeitkarte", "region": region, "map_package_name": region,
+            "occurred_at": f"2026-09-{20 - index:02d}T19:47:00Z",
+        } for index, region in enumerate(("France", "Lithuania", "Germany"))],
+        "total": 3, "limit": 50, "offset": 0,
+    }, user, "fixture"))
     site_assets = Path(__file__).parents[3] / "site"
     shutil.copytree(site_assets / "assets" / "fonts", root / "fonts", dirs_exist_ok=True)
     shutil.copy2(site_assets / "favicon.ico", root / "favicon.ico")
