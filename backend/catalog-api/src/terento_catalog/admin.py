@@ -467,6 +467,13 @@ def _operation_is_problematic(results: list[dict[str, Any]]) -> bool:
 def _diagnostic_summary_by_identity(
     events: list[dict[str, Any]], resolved_events: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, int]]:
+    """Summarise per-map results by identity with view-067 semantics.
+
+    ``ACTIVE``/``RESOLVED`` is operator workflow only: a resolved verified
+    success or started failure keeps its historical outcome in attempts,
+    successes and failures. Only ``open_errors`` and ``identity_pending`` are
+    workflow-scoped and therefore read active results alone.
+    """
     by_identity: dict[str, dict[str, int]] = {}
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in events:
@@ -483,30 +490,26 @@ def _diagnostic_summary_by_identity(
     for identity in set(grouped) | set(resolved_grouped):
         operations = grouped.get(identity, {})
         historical = resolved_grouped.get(identity, {})
-        historical_failures = sum(
-            1 for results in historical.values()
-            if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "FAILED"
-        )
-        attempts = (
-            sum(1 for results in operations.values() if _operation_counts_as_installation_attempt(results))
-            + historical_failures
-        )
-        successful = sum(
-            1 for results in operations.values()
-            if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "SUCCEEDED"
-        )
+        results: dict[str, list[dict[str, Any]]] = {}
+        for source in (operations, historical):
+            for key, rows in source.items():
+                results.setdefault(key, []).extend(rows)
+        attempted = {
+            key: _operation_result(rows) for key, rows in results.items()
+            if _operation_counts_as_installation_attempt(rows)
+        }
         open_errors = sum(
-            1 for results in operations.values()
-            if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "FAILED"
+            1 for results_for_key in operations.values()
+            if _operation_counts_as_installation_attempt(results_for_key)
+            and _operation_result(results_for_key) == "FAILED"
         )
-        failed = open_errors + historical_failures
-        pending = sum(1 for results in operations.values() if _identity_is_pending(results))
+        pending = sum(1 for results_for_key in operations.values() if _identity_is_pending(results_for_key))
         by_identity[identity] = {
             "errors": open_errors,
             "open_errors": open_errors,
-            "failed": failed,
-            "attempts": attempts,
-            "successful": successful,
+            "failed": sum(1 for result in attempted.values() if result == "FAILED"),
+            "attempts": len(attempted),
+            "successful": sum(1 for result in attempted.values() if result == "SUCCEEDED"),
             "identity_pending": pending,
         }
     return by_identity

@@ -1022,7 +1022,12 @@ class Database:
             return list(connection.execute(query).fetchall())
 
     def compatibility_diagnostic_population(self) -> list[dict[str, Any]]:
-        """Full narrow diagnostic population; aggregated on server, never sent to clients."""
+        """Full narrow diagnostic population; aggregated on server, never sent to clients.
+
+        Uses the same population as the compatibility statistics view:
+        local-test and statistics-excluded (for example OUT_OF_SCOPE_PREWRITE)
+        evidence never enters attempts, failures or identity-pending counts.
+        """
         with self.connection() as connection:
             return list(connection.execute("""
                 SELECT event_id, operation_id, map_result_index,
@@ -1031,9 +1036,11 @@ class Database:
                             ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text) END AS operation_key,
                        canonical_device_model_id, compatibility_identity, model,
                        diagnostic_status, identity_resolution_state, phase_outcome,
-                       automatic_finishing_result, write_started, app_build, release_label
+                       automatic_finishing_result, write_started, app_build, release_label,
+                       failure_stage, failure_code
                 FROM compatibility_evidence_event
                 WHERE is_local_test IS NOT TRUE
+                  AND statistics_exclusion_code IS NULL
             """).fetchall())
 
     def compatibility_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
