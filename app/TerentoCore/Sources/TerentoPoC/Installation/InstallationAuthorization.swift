@@ -99,6 +99,14 @@ struct InstallationAuthorizationClient: Sendable {
     /// means the server may express write rules this client cannot evaluate.
     static let supportedSchemaVersion = 3
 
+    /// The normalized base model used for policy matching (for example
+    /// `fenix 8`), for privacy-minimised funnel telemetry. Never a raw MTP
+    /// label, serial, Unit ID or catalog hint.
+    static func funnelBaseModel(for identity: DeviceIdentity) -> String? {
+        guard observedIdentityIsConsistent(identity) else { return nil }
+        return authorizationBaseModel(identity)
+    }
+
     private let endpoint: URL
     private let dataLoader: @Sendable (URLRequest) async throws -> (Data, URLResponse)
 

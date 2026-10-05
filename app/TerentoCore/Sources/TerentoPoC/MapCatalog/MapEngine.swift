@@ -263,6 +263,7 @@ final class MapEngine: ObservableObject {
 
     private let statisticsController: MapStatisticsEventController?
     private let evidenceController: InstallationEvidenceController?
+    private let funnel: AppFunnelTelemetryController?
     private var operationDiagnostics: InstallationOperationDiagnostics?
     private var activeAcquisition: MapStatisticsEvent?
     private let reader: MTPTransport
@@ -301,11 +302,13 @@ final class MapEngine: ObservableObject {
         operationGate: MTPOperationGate = .shared,
         statisticsController: MapStatisticsEventController? = nil,
         evidenceController: InstallationEvidenceController? = nil,
-        installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient()
+        installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient(),
+        funnel: AppFunnelTelemetryController? = nil
     ) {
         self.reader = reader
         self.statisticsController = statisticsController
         self.evidenceController = evidenceController
+        self.funnel = funnel
         self.catalogLoader = catalogLoader
         self.operationGate = operationGate
         self.installationAuthorizationClient = installationAuthorizationClient
@@ -482,8 +485,10 @@ final class MapEngine: ObservableObject {
                 guard !Task.isCancelled else { return }
 
                 self?.loadedCatalog = loaded.catalog
-                self?.catalogSource = loaded.source
+                // The dropped count precedes the source: observers of the
+                // source read both (first-run funnel CATALOG stage).
                 self?.catalogDroppedPackageCount = loaded.droppedPackageCount
+                self?.catalogSource = loaded.source
                 self?.catalogUpdatedAt = loaded.catalog.updatedAt
                 self?.state = .scanning
 
@@ -1263,6 +1268,7 @@ final class MapEngine: ObservableObject {
             installationErrorMessage = deviceInstallationAuthorization.userMessage
                 ?? "Map installation is not available for this device in Terento."
             installationPhase = .failed
+            funnel?.recordInstallBlocked(.authorization)
             return
         }
         guard state == .scanned,
@@ -1293,6 +1299,7 @@ final class MapEngine: ObservableObject {
             installationPhase = .failed
             state = .failed
             operationDiagnostics?.failed(index: 0, stage: .preflight, failure: .existingMapConflict)
+            funnel?.recordInstallBlocked(.other)
             return
         }
         installationAuthorizationGranted = true
@@ -1334,6 +1341,7 @@ final class MapEngine: ObservableObject {
             // INSTALL_FAILED result (STATISTICS_CONTRACT pre-install rule).
             operationDiagnostics?.failed(index: 0, stage: .preflight,
                 failure: evidenceFailure, native: evidenceNativeFailureCode)
+            funnel?.recordInstallBlocked(.localCapability)
             recordInstallationFailure(installationErrorMessage)
             discardCustomMapImport()
             return
@@ -1357,6 +1365,7 @@ final class MapEngine: ObservableObject {
             installationPhase = .failed
             state = .failed
             operationDiagnostics?.failed(index: 0, stage: .preflight, failure: .unknownInstallTarget)
+            funnel?.recordInstallBlocked(.localCapability)
             recordInstallationFailure(installationErrorMessage)
             return false
         }
@@ -1519,6 +1528,7 @@ final class MapEngine: ObservableObject {
                 }
             } catch let authorizationError as InstallationAuthorizationAcquisitionError {
                 guard !Task.isCancelled, let self else { return }
+                self.funnel?.recordInstallBlocked(.authorization)
                 self.setInstallationAuthorization(authorizationError.authorization)
                 let userMessage = authorizationError.authorization.userMessage
                     ?? "Terento could not verify this device's installation authorization right now."
@@ -1535,6 +1545,13 @@ final class MapEngine: ObservableObject {
                     failure: known?.failure ?? (error is URLError ? .downloadFailed : nil),
                     cancelled: Task.isCancelled || error is CancellationError)
                 guard !Task.isCancelled else { return }
+                // Provider download errors are acquisition facts, not install
+                // blocks; only availability/catalog and Mac workspace refusals are.
+                if case .acquisitionWithheld = error as? MapAcquisitionError {
+                    self?.funnel?.recordInstallBlocked(AppFunnelInstallBlockedReason.forAcquisition(error))
+                } else if case .workspaceFailed = error as? MapAcquisitionError {
+                    self?.funnel?.recordInstallBlocked(.macStorage)
+                }
                 self?.evidencePrimaryFailureMapIndex = activePackageIndex
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
@@ -1682,6 +1699,7 @@ final class MapEngine: ObservableObject {
 
                 if !allReady {
                     // Preflight never writes, so it creates no INSTALL_FAILED map result.
+                    self?.funnel?.recordInstallBlocked(AppFunnelInstallBlockedReason.forPreflight(finalResult.failure))
                     let failureIndex = activeMapIndex.value
                     self?.evidencePrimaryFailureMapIndex = failureIndex
                     self?.evidenceFailureStage = InstallationFailureStageResolver.stage(
@@ -1712,6 +1730,7 @@ final class MapEngine: ObservableObject {
                     context: readFailure?.context)
                 guard !Task.isCancelled else { return }
                 // A preflight failure is before the device write boundary.
+                self?.funnel?.recordInstallBlocked(error is MapTargetResolutionError ? .localCapability : .other)
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
                 if let acquisitionError = error as? MapAcquisitionError {

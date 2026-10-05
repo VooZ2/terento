@@ -795,12 +795,17 @@ final class InstallationEvidenceController: ObservableObject {
         currentConsentChoice != .declined
     }
 
+    /// Notified when device-compatibility reporting is turned off, so other
+    /// streams governed by the same preference (the app funnel) clear too.
+    var onSharingDeclined: (() -> Void)?
+
     func decideConsent(_ choice: EvidenceConsentChoice) {
         objectWillChange.send()
         try? store.setConsent(choice)
         if choice == .accepted {
             schedulePendingUploadFlush()
         } else {
+            onSharingDeclined?()
             uploadTask?.cancel()
             uploadTask = nil
             uploadTaskGeneration = nil

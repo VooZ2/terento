@@ -39,7 +39,8 @@
     "app/TerentoCore/Tests/run-app-navigation-tests.sh",
     "app/TerentoCore/Tests/run-app-user-facing-error-message-tests.sh",
     "app/TerentoCore/Tests/run-app-map-selection-wiring-tests.sh",
-    "app/TerentoCore/Tests/run-app-installation-operation-diagnostics-tests.sh"
+    "app/TerentoCore/Tests/run-app-installation-operation-diagnostics-tests.sh",
+    "app/TerentoCore/Tests/run-app-funnel-telemetry-tests.sh"
   ],
   "native": [
     "app/TerentoCore/Tests/run-native-compatibility-status-client-tests.sh",

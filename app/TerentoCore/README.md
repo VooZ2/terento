@@ -171,6 +171,20 @@ continue in order; parked events are retried only by a new app build or after a
 24-hour back-off, a bounded number of times, and expire with the 24-month
 retention window. Compatibility/update diagnostics use the same parking rules.
 Opt-out clears pending and parked events and stops the sender before another event is sent.
+
+The first-run funnel producer (`Telemetry/AppFunnelTelemetry.swift`, schema v1,
+`POST /app-funnel/events`; meaning owned by `contracts/APP_FUNNEL_CONTRACT.md`)
+records pre-install outcomes under the device-compatibility reporting
+preference: device connect, resolved authorization (with the normalized base
+model), catalog load result (`REMOTE`, `REMOTE_PARTIAL` with the dropped package
+count, `BUNDLED_FALLBACK`, `UPDATE_REQUIRED`) and Install presses refused before
+any device write. The session ID is random per launch and memory-only; at most one
+event per stage, outcome and base model is queued per session in a durable outbox
+with the shared parking rules. Turning off compatibility reporting clears it.
+Connect outcomes are inferred from Device state until the connect classifier
+calls `AppFunnelTelemetryController.recordDeviceConnect` directly. The API route
+must be deployed before a release ships this producer; until then the route's
+rejection parks events without affecting other telemetry.
 A response already in flight cannot restore the opted-out status. This does not
 add cancellation/interruption events or reconstruct missing historical outcomes;
 a download start without a received outcome is not proof of a failed download.

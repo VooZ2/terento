@@ -18,12 +18,23 @@ struct TerentoPoCApp: App {
     @StateObject private var mapStatisticsController: MapStatisticsEventController
     @Environment(\.openWindow) private var openWindow
 
+    @State private var funnelObserver: AppFunnelStateObserver?
+    private let funnel: AppFunnelTelemetryController
+
     init() {
         let statistics = MapStatisticsEventController()
         let evidence = InstallationEvidenceController()
+        // The funnel shares the device-compatibility reporting preference.
+        let evidenceStore = evidence.store
+        let funnel = AppFunnelTelemetryController(sharingEnabled: {
+            evidenceStore.consent()?.choice != .declined
+        })
+        evidence.onSharingDeclined = { [weak funnel] in funnel?.sharingDeclined() }
+        self.funnel = funnel
         _evidenceController = StateObject(wrappedValue: evidence)
         _mapStatisticsController = StateObject(wrappedValue: statistics)
-        _mapEngine = StateObject(wrappedValue: MapEngine(statisticsController: statistics, evidenceController: evidence))
+        _mapEngine = StateObject(wrappedValue: MapEngine(statisticsController: statistics,
+            evidenceController: evidence, funnel: funnel))
     }
 
     var body: some Scene {
@@ -38,6 +49,10 @@ struct TerentoPoCApp: App {
             .background(TerentoWindowConfigurator())
             .task {
                 appUpdateController.startAutomaticCheck()
+                if funnelObserver == nil {
+                    funnelObserver = AppFunnelStateObserver(funnel: funnel,
+                        deviceEngine: deviceEngine, mapEngine: mapEngine)
+                }
             }
         }
         .defaultSize(

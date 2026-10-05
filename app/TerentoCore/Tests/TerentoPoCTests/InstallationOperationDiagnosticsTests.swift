@@ -56,6 +56,7 @@ private actor DelayedAuthorizationResponse {
         try await testOptOutDuringUpload()
         try testInstallStatisticsFollowWriteBoundary()
         try await testCatalogRefreshUsesSharedMergedLoad()
+        try await testInstallBlockedFunnel()
         if let output = ProcessInfo.processInfo.environment["TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT"] {
             let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
             try encoder.encode(emittedFixtures).write(to: URL(fileURLWithPath: output))
@@ -723,6 +724,36 @@ private actor DelayedAuthorizationResponse {
         return planner.plan(items: items, selectedIDs: Set(items.map(\.id)), currentFreeSpace: 20_000_000_000,
             selectedOptionalArtifactIDs: contours ? Dictionary(uniqueKeysWithValues: items.map { ($0.id, Set([$0.package.regionId + "-contours"])) }) : [:])
     }
+    private actor OfflineFunnelUploader: AppFunnelEventUploading {
+        func upload(_ event: AppFunnelEvent) async throws { throw URLError(.notConnectedToInternet) }
+    }
+
+    @MainActor static func testInstallBlockedFunnel() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let funnelStore = LocalAppFunnelEventStore(rootURL: root)
+        let funnel = AppFunnelTelemetryController(store: funnelStore, uploader: OfflineFunnelUploader(),
+            sharingEnabled: { true }, retryDelays: [])
+        let engine = MapEngine(funnel: funnel)
+        engine.setDiagnosticTestIdentity(identity)
+        engine.beginInstallation(plan: plan())
+        check(funnelStore.pendingEvents().map(\.stage) == [.installBlocked]
+              && funnelStore.pendingEvents().first?.outcome == "AUTHORIZATION",
+              "an Install press refused by authorization records one INSTALL_BLOCKED=AUTHORIZATION funnel event")
+        let unstable = DeviceIdentity(manufacturer: "Garmin", model: identity.model, family: identity.family, variant: identity.variant,
+            usbVendorId: identity.usbVendorId, usbProductId: identity.usbProductId, firmware: identity.firmware,
+            storageCapacity: identity.storageCapacity, freeSpace: identity.freeSpace)
+        let policyURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../contracts/fixtures/installation-policy.valid.json")
+        let policy = try JSONDecoder().decode(InstallationAuthorizationDocument.self, from: Data(contentsOf: policyURL))
+        engine.resetForDisconnectedDevice()
+        engine.setDiagnosticTestIdentity(unstable)
+        engine.setInstallationAuthorization(.approved(record: policy.devices[0], policyVersion: policy.policyVersion))
+        engine.beginInstallation(plan: plan())
+        check(funnelStore.pendingEvents().map(\.outcome) == ["AUTHORIZATION", "LOCAL_CAPABILITY"],
+              "a missing stable watch identity records INSTALL_BLOCKED=LOCAL_CAPABILITY")
+    }
+
     private final class CatalogResponse: @unchecked Sendable {
         private let lock = NSLock()
         private var body = Data()
