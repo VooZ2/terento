@@ -44,6 +44,23 @@ def build(root):
     for item in overview_trend:
         item.setdefault('map_update_success_count', 1 if item['bucket'].endswith('24T00:00:00Z') else 0)
         item['custom_count'] = 1 if item['bucket'].endswith(('20T00:00:00Z','23T00:00:00Z')) else 0
+    # Period tiles describe the same population as the chart beside them.
+    def _trend_total(*fields):
+        return sum(int(item.get(field) or 0) for item in overview_trend for field in fields)
+    installs, failed_installs = _trend_total('success_count', 'custom_count'), _trend_total('failed_count')
+    updates, failed_updates = _trend_total('map_update_success_count'), _trend_total('map_update_failed_count')
+    downloads, failed_downloads = _trend_total('download_success_count'), _trend_total('download_failed_count')
+    overview['data'].update({
+        'completedInstallCount': installs, 'failedInstallCount': failed_installs,
+        'installSuccessRate': installs / (installs + failed_installs) * 100,
+        'completedMapUpdateCount': updates, 'failedMapUpdateCount': failed_updates,
+        'mapUpdateCount': updates + failed_updates,
+        'completedDownloadCount': downloads, 'failedDownloadCount': failed_downloads,
+        'downloadSuccessRate': downloads / (downloads + failed_downloads) * 100,
+        'downloadPurposes': {'install': {'succeeded': downloads - 6 - 12, 'failed': failed_downloads - 1},
+                             'update': {'succeeded': 12, 'failed': 1},
+                             'unknown': {'succeeded': 6, 'failed': 0}},
+    })
     overview['funnel']={'sessionCount':42,'stages':[
         {'stage':'DEVICE_CONNECT','outcomes':[{'outcome':'CONNECTED','sessionCount':38},{'outcome':'TIMEOUT_NO_USB','sessionCount':2},{'outcome':'NOT_MTP_MODE','sessionCount':1},{'outcome':'BUSY','sessionCount':1}]},
         {'stage':'AUTHORIZATION','outcomes':[{'outcome':'APPROVED','sessionCount':30},{'outcome':'PENDING','sessionCount':5},{'outcome':'UNKNOWN_MODEL','sessionCount':2},{'outcome':'AMBIGUOUS','sessionCount':1}]}],

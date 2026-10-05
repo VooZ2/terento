@@ -4185,7 +4185,7 @@ def _provider_detail_script() -> str:
           progress.textContent = `Last check: ${job.state}. ${(job.results || []).length} artifacts checked. ` + (job.results || []).map(r => `${r.packageId}: ${r.message}`).join(' ');
           if (active) { sawActiveRecheck = true; recheckTimer = setTimeout(pollRechecks, 3000); }
           else if (sawActiveRecheck) window.location.reload();
-        } catch (error) { progress.textContent = error.message; }
+        } catch (error) { progress.textContent = error instanceof SyntaxError ? 'Check status unavailable. Refresh this page to retry.' : error.message; }
       }
       pollRechecks();
       document.querySelectorAll('[data-show-problems]').forEach((link) => link.addEventListener('click', () => {

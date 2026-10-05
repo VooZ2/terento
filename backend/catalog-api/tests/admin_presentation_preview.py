@@ -69,6 +69,39 @@ def _monthly_trend() -> list[dict[str, object]]:
     ]
 
 
+def _reconciled_trend(
+    rows: list[dict[str, object]], trend: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Keep the chart shape but make bucket totals equal the tile totals."""
+    def total(event_type: str, outcome: str, custom: bool | None = None) -> int:
+        return sum(
+            int(row.get("operation_count") or 0) for row in rows
+            if row.get("event_type") == event_type and row.get("outcome") == outcome
+            and (custom is None or (row.get("provider_id") == "custom") == custom)
+        )
+
+    targets = {
+        "download_success_count": total("DOWNLOAD_SUCCEEDED", "SUCCEEDED"),
+        "download_failed_count": total("DOWNLOAD_FAILED", "FAILED"),
+        "success_count": total("INSTALL_SUCCEEDED", "SUCCEEDED", custom=False),
+        "custom_count": total("INSTALL_SUCCEEDED", "SUCCEEDED", custom=True),
+        "failed_count": total("INSTALL_FAILED", "FAILED"),
+        "map_update_success_count": total("MAP_UPDATE_SUCCEEDED", "SUCCEEDED"),
+        "map_update_failed_count": total("MAP_UPDATE_FAILED", "FAILED"),
+    }
+    buckets = [dict(item) for item in trend]
+    for field, target in targets.items():
+        weights = [max(1, int(item.get(field) or 0)) for item in buckets]
+        shares = [target * weight // sum(weights) for weight in weights]
+        for index in range(target - sum(shares)):
+            shares[-1 - index % len(shares)] += 1
+        for item, share in zip(buckets, shares):
+            item[field] = share
+    for item in buckets:
+        item["map_update_count"] = item["map_update_success_count"] + item["map_update_failed_count"]
+    return buckets
+
+
 def _statistics(
     rows: list[dict[str, object]], *, trend: list[dict[str, object]] | None = None,
     bucket: str = "week",
@@ -77,7 +110,7 @@ def _statistics(
         "rows": rows,
         "summary": _map_statistics_summary(rows),
         "allTimeSummary": _map_statistics_summary(rows),
-        "trend": _weekly_trend() if trend is None else trend,
+        "trend": _reconciled_trend(rows, _weekly_trend() if trend is None else trend) if rows else (trend or []),
         "bucket": bucket,
         "timeZone": "UTC",
         "linkage": {
