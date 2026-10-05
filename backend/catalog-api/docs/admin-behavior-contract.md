@@ -415,7 +415,7 @@ rank; an independently selectable contours package whose component is main does.
 Unknown or zero counts cannot create ranking entries or advance their dates.
 
 When retained update diagnostics establish a terminal prewrite outcome, Activity
-shows “Update stopped before writing”, its reason and a link to the report. This
+shows “Update blocked before writing”, its reason and a link to the report. This
 is separate from failed writes and never increments Update failed. A completed
 acquisition remains a completed acquisition even if the later update stops.
 

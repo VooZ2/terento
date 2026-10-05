@@ -314,7 +314,7 @@ ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
     # contracts/APP_FUNNEL_CONTRACT.md and docs/admin-behavior-contract.md.
     ("attempt", "Attempt",
      "A successful result plus a failed result where writing to the watch started. "
-     "Results stopped before writing are not attempts."),
+     "Results blocked before writing are not attempts."),
     ("successful", "Successful",
      "The map was written and the app verified it (SUCCEEDED with VERIFIED finishing). "
      "No success is inferred from a completed download or a missing error."),
@@ -335,7 +335,7 @@ ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
      "update or an unrecorded purpose. A download is not an install."),
     ("fresh-install", "Install (fresh install)",
      "A new main-map install reported by the app's map activity. Updates, optional "
-     "contours and results stopped before writing are excluded. Custom .img installs "
+     "contours and results blocked before writing are excluded. Custom .img installs "
      "are their own chart series."),
     ("installation-report", "Installation report",
      "A per-map device report with model identity, sent only when diagnostic sharing is "
@@ -1164,13 +1164,15 @@ _MAP_ACTIVITY_STATES = {
     "DOWNLOAD_PROCESSING": ("Checking / unpacking · Outcome not received", "started", "info"),
     "DOWNLOAD_CANCELLED": ("Download cancelled", "unknown", "neutral"),
     "DOWNLOAD_INTERRUPTED": ("Download interrupted", "unknown", "warning"),
-    "DOWNLOAD_SUCCEEDED": ("Download completed", "succeeded", "success"),
+    # One vocabulary with the charts and tiles (Successful / Failed /
+    # Blocked before writing).
+    "DOWNLOAD_SUCCEEDED": ("Download successful", "succeeded", "success"),
     "DOWNLOAD_FAILED": ("Download failed", "failed", "error"),
-    "INSTALL_SUCCEEDED": ("Install succeeded", "succeeded", "success"),
+    "INSTALL_SUCCEEDED": ("Install successful", "succeeded", "success"),
     "INSTALL_FAILED": ("Install failed", "failed", "error"),
-    "MAP_UPDATE_SUCCEEDED": ("Map update succeeded", "succeeded", "success"),
-    "MAP_UPDATE_FAILED": ("Map update failed", "failed", "error"),
-    "MAP_UPDATE_NOT_STARTED": ("Update stopped before writing", "unknown", "warning"),
+    "MAP_UPDATE_SUCCEEDED": ("Update successful", "succeeded", "success"),
+    "MAP_UPDATE_FAILED": ("Update failed", "failed", "error"),
+    "MAP_UPDATE_NOT_STARTED": ("Update blocked before writing", "unknown", "warning"),
 }
 
 

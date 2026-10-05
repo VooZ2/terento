@@ -407,7 +407,7 @@ its timestamp unchanged.
 
 The Providers view reports separate last successful install and update dates.
 Popularity dates remain fresh-install-only. Diagnostic-only update NOT_STARTED
-outcomes appear in Activity as stopped before writing with a retained report
+outcomes appear in Activity as blocked before writing with a retained report
 link/reason when reports agree. They do not fabricate map telemetry, write
 failures, or additional successful/failed update totals. Missing, disabled or
 unassigned diagnostics cannot be reconstructed from acquisition completion.

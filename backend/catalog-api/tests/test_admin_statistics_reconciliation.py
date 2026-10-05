@@ -33,7 +33,7 @@ class AdminStatisticsReconciliationTests(unittest.TestCase):
 
     def test_prewrite_update_is_visible_but_not_failed(self):
         body = _overview_map_activity_row(dict(event_type='MAP_UPDATE_NOT_STARTED', diagnostic_report_id='test-report', provider_id='freizeitkarte', region='LTU'))
-        self.assertIn('Update stopped before writing', body)
+        self.assertIn('Update blocked before writing', body)
         self.assertIn('/admin/update-diagnostics?diagnosticId=test-report', body)
         self.assertNotIn('Map update failed', body)
         self.assertEqual(_map_statistics_summary([dict(event_type='MAP_UPDATE_NOT_STARTED', outcome='NOT_STARTED', operation_count=1)])['failedMapUpdates'], 0)

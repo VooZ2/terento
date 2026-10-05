@@ -228,7 +228,7 @@ variant when an exact diagnostic relationship exists. Missing or ambiguous
 identity is omitted. This display enrichment does not alter event populations,
 installation/update counters or compatibility evidence.
 Retained, agreeing update diagnostics with `NOT_STARTED` and `writeStarted=false`
-also appear as “Update stopped before writing”, with the authored reason and an
+also appear as “Update blocked before writing”, with the authored reason and an
 exact diagnostic-detail link. Their history remains visible after review is
 resolved. Conflicting outcome, model, write or reason reports remain unclassified;
 no device identity is guessed. These read-only Activity rows do not increment
