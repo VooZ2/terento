@@ -2105,6 +2105,17 @@ final class MapEngine: ObservableObject {
         }
     }
 
+    /// First-run funnel: the review step shows a blocked Install action.
+    /// An authorization that is still resolving is not reported.
+    func recordInstallReviewBlocked(plan: InstallationPlan, authorization: InstallationAuthorizationState,
+                                    supportedInstallFlow: Bool) {
+        guard authorization != .resolving,
+              let reason = AppFunnelInstallBlockedReason.forReview(plan: plan,
+                  installationAuthorization: authorization,
+                  supportedInstallFlow: supportedInstallFlow) else { return }
+        funnel?.recordInstallBlocked(reason)
+    }
+
     /// The map-stream result for one selected map, per STATISTICS_CONTRACT:
     /// a verified main map is INSTALL_SUCCEEDED even when an optional
     /// component failed (that stays a diagnostic fact); a main map that

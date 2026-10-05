@@ -1801,6 +1801,14 @@ struct ConnectScreen: View {
             }
             }
         }
+        .onAppear {
+            mapEngine.recordInstallReviewBlocked(plan: plan,
+                authorization: deviceEngine.installationAuthorization, supportedInstallFlow: supportedInstallFlow)
+        }
+        .onChange(of: deviceEngine.installationAuthorization) { authorization in
+            mapEngine.recordInstallReviewBlocked(plan: plan,
+                authorization: authorization, supportedInstallFlow: supportedInstallFlow)
+        }
     }
 
     private func activeInstallationContent(_ plan: InstallationPlan) -> some View {

@@ -752,6 +752,17 @@ private actor DelayedAuthorizationResponse {
         engine.beginInstallation(plan: plan())
         check(funnelStore.pendingEvents().map(\.outcome) == ["AUTHORIZATION", "LOCAL_CAPABILITY"],
               "a missing stable watch identity records INSTALL_BLOCKED=LOCAL_CAPABILITY")
+        let reviewStore = LocalAppFunnelEventStore(rootURL: root.appendingPathComponent("review"))
+        let reviewFunnel = AppFunnelTelemetryController(store: reviewStore, uploader: OfflineFunnelUploader(),
+            sharingEnabled: { true }, retryDelays: [])
+        let reviewEngine = MapEngine(funnel: reviewFunnel)
+        reviewEngine.recordInstallReviewBlocked(plan: plan(), authorization: .resolving, supportedInstallFlow: true)
+        reviewEngine.recordInstallReviewBlocked(plan: plan(), authorization: .approved(record: policy.devices[0],
+            policyVersion: policy.policyVersion), supportedInstallFlow: true)
+        check(reviewStore.pendingEvents().isEmpty, "resolving or approved review states are not install blocks")
+        reviewEngine.recordInstallReviewBlocked(plan: plan(), authorization: .blocked(.pending), supportedInstallFlow: true)
+        check(reviewStore.pendingEvents().map(\.outcome) == ["AUTHORIZATION"],
+              "a review step blocked by authorization records INSTALL_BLOCKED=AUTHORIZATION")
     }
 
     private final class CatalogResponse: @unchecked Sendable {
