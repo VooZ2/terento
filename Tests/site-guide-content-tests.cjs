@@ -31,6 +31,15 @@ const downloadLabels = {
   it: "Scarica",
 };
 
+const availabilityHelp = {
+  "en": "Install or Update is unavailable",
+  "de": "Installieren oder Aktualisieren ist nicht verfügbar",
+  "fr": "L’installation ou la mise à jour est indisponible",
+  "pl": "Instalacja lub aktualizacja jest niedostępna",
+  "cs": "Instalace nebo aktualizace není dostupná",
+  "it": "L’installazione o l’aggiornamento non è disponibile"
+};
+
 function visibleText(fragment) {
   return fragment.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'").replace(/\s+/g, " ").trim();
 }
@@ -50,6 +59,7 @@ function oneEntity(data, type, file) {
 for (const locale of locales) {
   const file = guideFile(locale);
   const source = read(file);
+  assert.ok(source.includes(availabilityHelp[locale]), `${locale}: availability troubleshooting`);
   const publicPath = localePath(locale, slug);
   const page = metadataByPath.get(publicPath);
   assert.ok(page, locale + ": metadata entry");

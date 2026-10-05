@@ -326,26 +326,37 @@ After the immutable source is recorded, later API/admin work must preserve the
 released-client acceptance contract; it does not change the artifact's source.
 
 
-## Beta.17 build 39 — provider availability candidate (PR 336)
+## Beta.17 build 39 — provider availability (PR 336)
 
-The owner authorized publication of beta.17 build 39 on 2026-10-04.
-Packaging/release-candidate.json and Xcode identify this candidate; public
-metadata continues to identify beta.16 build 38 until verified artifacts exist.
+Published on 2026-10-05, tag `v1.0.0-beta.17-build39` points to signed source
+`8a709166274359061bf0776f5b6e348d8c2e4929`. Apple notarization submission
+`b20e8c57-eeab-4811-92d0-9bb55c1de408` was accepted without issues. Stapling,
+Gatekeeper and launch validation passed for the ZIP and DMG.
 
-The candidate adds migration 066 (default-safe provider monitoring/cooldown
-and package download overrides), an hourly scheduler worker with per-provider
+The DMG is 6,901,952 bytes, SHA-256
+`3fd52d6c23177f7d20354f9ef298be8306f086f0e1e3f60ebdf5f22ded8cd745`;
+the ZIP is 6,226,377 bytes, SHA-256
+`4ed5db9c5e0b35349279c5091e52252f588f5c8c87dff3e2d3ca8c827442eafd`.
+GitHub asset digests match these packaged artifacts. Publication metadata and
+the site deployment follow the real artifact publication; a GitHub release
+alone is not evidence that the site's manifest has updated.
+
+The release adds migration 066 (default-safe provider monitoring/cooldown and
+package download overrides), an hourly scheduler worker with per-provider
 1/6/24-hour intervals, and additive nullable `downloadBlockReason` in the map
-catalog. Schema and catalog versions remain unchanged. Deploy the backend via
-the normal immutable-image migration path before distributing the native build
-that requires a current eligibility response. Validate live health scheduling,
-Admin CSRF controls, catalog `no-store`, and enabled/disabled package responses
-before the native release gate. No production rollout or hardware PASS is
-established by local tests.
+catalog. Schema and catalog versions remain unchanged. Backend revision
+`f81eab2ef7ae41825fc0312ee7652d34041c6439` was deployed before distribution via
+the normal immutable-image migration path; deployment
+[37231790220](https://github.com/VooZ2/terento/actions/runs/37231790220) passed,
+including live catalog and released-client checks. The scheduler and catalog
+`no-store` response were verified. This release establishes no new hardware
+PASS or broader model compatibility claim.
 
 Released older clients ignore the new restriction fields; this rollout does
-not retroactively enforce manual map controls in those binaries. The new
+not retroactively enforce manual map controls in those binaries. The beta.17
 native client keeps restricted maps visible, disables Install/Update, and
 checks current remote eligibility before acquisition. Removal and device
 ownership rules are unchanged. If the API is unreachable or its health evidence
 is stale, new acquisition waits for a current response. An in-flight transfer
-is not cancelled when monitoring changes.
+is not cancelled when monitoring changes. The released-client registry pins
+beta.17 build 39 as the representative decoder for this behavior.

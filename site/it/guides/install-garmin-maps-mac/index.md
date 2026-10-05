@@ -65,6 +65,10 @@ Serve aiuto?
 
 Attendi 1–2 minuti dopo il collegamento. Se lo smartwatch non appare, ricollegalo, controlla il cavo dati e chiudi le altre app che potrebbero usarlo.
 
+### L’installazione o l’aggiornamento non è disponibile
+
+Le mappe temporaneamente non disponibili restano visibili. Leggi il motivo indicato accanto alla mappa. Se il provider non è raggiungibile o i download sono sospesi, riprova più tardi. Se Terento non riesce a verificare la disponibilità attuale, controlla la connessione Internet e riprova. Le mappe già installate restano disponibili.
+
 ### Installazione non riuscita
 
 Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo.
