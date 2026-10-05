@@ -15,8 +15,8 @@ class InstallationResultCountsTests(unittest.TestCase):
         markup = _statistics_row({'model': 'Watch', 'compatibility_identity': 'Watch',
                                   'successful_install_count': 2, 'map_capable': True},
                                  {'attempts': 3, 'successful': 3, 'failed': 0})
-        self.assertIn('Tested:', markup)
-        self.assertNotIn('Supported:', markup)
+        self.assertIn("data-status='TESTED'", markup)
+        self.assertNotIn("data-status='SUPPORTED'", markup)
 
     def test_dashboard_full_history_is_not_limited_by_diagnostic_rows(self):
         from terento_catalog.admin import dashboard_page

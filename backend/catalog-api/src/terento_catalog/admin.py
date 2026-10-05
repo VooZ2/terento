@@ -246,6 +246,12 @@ def _admin_icon(name: str) -> str:
         "check": "<path d='m3 8 3 3 7-7'/>",
         "clock": "<circle cx='8' cy='8' r='6'/><path d='M8 4v4l3 2'/>",
         "close": "<path d='m3.5 3.5 9 9'/><path d='m12.5 3.5-9 9'/>",
+        "x-circle": "<circle cx='8' cy='8' r='6'/><path d='m5.75 5.75 4.5 4.5'/><path d='m10.25 5.75-4.5 4.5'/>",
+        "alert": "<path d='M8 2.5 14.5 13.5h-13z'/><path d='M8 6.5v3'/><path d='M8 11.6h.01'/>",
+        "info": "<circle cx='8' cy='8' r='6'/><path d='M8 7.5V11'/><path d='M8 5h.01'/>",
+        "question": "<circle cx='8' cy='8' r='6'/><path d='M6.3 6.3a1.8 1.8 0 1 1 2.5 1.6c-.5.2-.8.6-.8 1.1v.3'/><path d='M8 11.4h.01'/>",
+        "minus": "<circle cx='8' cy='8' r='6'/><path d='M5.5 8h5'/>",
+        "download": "<path d='M8 2.5v8'/><path d='m4.5 7 3.5 3.5L11.5 7'/><path d='M3 13.5h10'/>",
     }
     path = paths.get(name, "")
     if not path:
@@ -254,6 +260,255 @@ def _admin_icon(name: str) -> str:
     return (
         f"<svg class='admin-icon admin-icon-{css_name}' viewBox='0 0 16 16' "
         f"fill='none' aria-hidden='true' focusable='false'>{path}</svg>"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Shared presentation kit (docs/admin-behavior-contract.md, "Shared component
+# kit"). Every page renders numbers, statuses, cards, empty states and legends
+# through these helpers so one concept looks the same everywhere.
+# ---------------------------------------------------------------------------
+
+ADMIN_SCOPE_LABELS = {
+    "24h": "Last 24 hours",
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+    "all": "All time",
+    "now": "Now",
+}
+
+
+def _scope_chip(scope: str) -> str:
+    """Visible scope for a number: a period, ``All time`` or ``Now``."""
+    label = ADMIN_SCOPE_LABELS.get(scope, scope)
+    kind = "period" if scope in {"24h", "7d", "30d"} else "now" if scope == "now" else "all"
+    return f"<span class='admin-scope-chip' data-scope='{kind}'>{html.escape(label)}</span>"
+
+
+_PILL_ICONS = {
+    "success": "check",
+    "danger": "x-circle",
+    "warning": "alert",
+    "info": "info",
+    "progress": "clock",
+    "neutral": "minus",
+    "unknown": "question",
+}
+
+
+def _status_pill(kind: str, label: str, *, title: str | None = None, value: str | None = None) -> str:
+    """One status family: icon plus text; colour only supports the text."""
+    kind = kind if kind in _PILL_ICONS else "neutral"
+    title_attribute = f" title='{html.escape(title, quote=True)}'" if title else ""
+    value_attribute = f" data-status='{html.escape(value, quote=True)}'" if value else ""
+    return (
+        f"<span class='admin-pill admin-pill-{kind}'{value_attribute}{title_attribute}>"
+        f"{_admin_icon(_PILL_ICONS[kind])}<span>{html.escape(label)}</span></span>"
+    )
+
+
+ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
+    # (anchor, term, definition). Generated from contracts/STATISTICS_CONTRACT.md,
+    # contracts/APP_FUNNEL_CONTRACT.md and docs/admin-behavior-contract.md.
+    ("attempt", "Attempt",
+     "A successful result plus a failed result where writing to the watch started. "
+     "Results stopped before writing are not attempts."),
+    ("successful", "Successful",
+     "The map was written and the app verified it (SUCCEEDED with VERIFIED finishing). "
+     "No success is inferred from a completed download or a missing error."),
+    ("failed", "Failed",
+     "A recorded final failure after writing started. Failed results stay in history "
+     "after their review is resolved."),
+    ("success-rate", "Success rate",
+     "Successful ÷ (Successful + Failed). With no attempts the rate is shown as —, not 0%."),
+    ("blocked-before-writing", "Blocked before writing",
+     "The operation stopped before anything was written to the watch (pre-write check, "
+     "storage, authorization or download). It is not a failed install or update."),
+    ("open-problem", "Open problem",
+     "One install operation with an active failed device report that is not a provider "
+     "download failure and has no linked GitHub issue. Resolving or linking an issue "
+     "removes it from open work, never from Failed."),
+    ("provider-download", "Provider download",
+     "A terminal map download from a provider (successful or failed) for an install, an "
+     "update or an unrecorded purpose. A download is not an install."),
+    ("fresh-install", "Install (fresh install)",
+     "A new main-map install reported by the app's map activity. Updates, optional "
+     "contours and results stopped before writing are excluded. Custom .img installs "
+     "are their own chart series."),
+    ("installation-report", "Installation report",
+     "A per-map device report with model identity, sent only when diagnostic sharing is "
+     "on. Used for model evidence; its counts can differ from map activity installs."),
+    ("map-update", "Map update",
+     "A replacement of an already installed Terento map, from map activity. Never "
+     "counted as an install."),
+    ("update-report", "Update report",
+     "A device report about one map update, sent only when diagnostic sharing is on. "
+     "Report counts can differ from map activity updates."),
+    ("terento-app-download", "Terento app download",
+     "An observed increase of the public GitHub .dmg and .zip download counters for the "
+     "Terento macOS app. Not a map download."),
+    ("task", "Task",
+     "One unit of Needs attention work: an open problem, an identity review, a "
+     "publication review, a linked GitHub issue or a missing device report."),
+    ("identity-review", "Identity review",
+     "A device report whose exact watch model is not assigned yet."),
+    ("publication-review", "Publication review",
+     "A catalog model with enough verified installs to be shown publicly, waiting for "
+     "an administrator decision."),
+    ("missing-report", "Missing report",
+     "An install failure in map activity without a matching device report. It is not "
+     "counted in Failed."),
+    ("model-sources", "Model sources",
+     "Imported Garmin codes waiting for confirmation against a catalog model. Decisions "
+     "never reassign historical installations."),
+    ("evidence", "Evidence",
+     "Observed install history for a model: Testing, Tested, Supported, Verified or "
+     "Unavailable. It never grants write permission."),
+    ("install-policy", "Install policy",
+     "Approved, Pending or Blocked from the stored catalog Maps value; it decides whether "
+     "the app may write maps."),
+    ("package-problem", "Package problem",
+     "A current provider package with at least one failed or unavailable map file."),
+    ("health-states", "Health states",
+     "Healthy, Degraded, Failed or No data. No data means the check has no evidence yet."),
+    ("first-run", "First run session",
+     "One app launch that reported a first-run stage (connect, authorization, catalog or "
+     "a blocked install). A separate population, never mixed into install counts."),
+    ("scope", "Scope chip",
+     "Every number shows its scope: Last 24 hours, Last 7 days, Last 30 days, All time or Now."),
+    ("unknown-value", "— (em dash)",
+     "Not measured or unavailable. 0 is a measured zero."),
+)
+_GLOSSARY_TERMS = {anchor: term for anchor, term, _ in ADMIN_GLOSSARY}
+
+
+def _glossary_link(anchor: str) -> str:
+    term = _GLOSSARY_TERMS.get(anchor)
+    if not term:
+        return ""
+    return (
+        f"<a class='admin-glossary-link' href='/admin/glossary#{html.escape(anchor, quote=True)}' "
+        f"title='About {html.escape(term, quote=True)}' aria-label='About {html.escape(term, quote=True)}'>"
+        "<span aria-hidden='true'>?</span></a>"
+    )
+
+
+def _metric_value_text(value: Any, fmt: str) -> str | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if fmt == "rate":
+        text = _format_rate(value)
+        return None if text == "—" else text
+    if fmt == "text":
+        return str(value)
+    number = _optional_nonnegative_int(value)
+    return f"{number:,}" if number is not None else None
+
+
+def _metric_tile(
+    label: str, value: Any, *, fmt: str = "count", scope: str | None = None,
+    state: str | None = None, failure: bool = False, secondary: str = "",
+    href: str | None = None, glossary: str | None = None,
+    data_stat: str | None = None, hint: str | None = None,
+) -> str:
+    """One metric: label, value, visible scope chip and one optional secondary line.
+
+    ``state`` is measured, unknown, unavailable or partial. A failure count uses
+    the danger tone only when it is a measured value above zero.
+    """
+    rendered = _metric_value_text(value, fmt)
+    if state is None:
+        state = "measured" if rendered is not None else "unknown"
+    if state in {"unknown", "unavailable"}:
+        rendered = None
+    tone = "neutral"
+    if failure and state in {"measured", "partial"} and (_optional_nonnegative_int(value) or 0) > 0:
+        tone = "danger"
+    value_markup = html.escape(rendered) if rendered is not None else (
+        "—<span class='sr-only'>" + ("Unavailable" if state == "unavailable" else "Unknown") + "</span>"
+    )
+    if tone == "danger":
+        value_markup = _admin_icon("x-circle") + value_markup
+    stat = f" data-stat='{html.escape(data_stat, quote=True)}'" if data_stat else ""
+    state_pill = ""
+    if state == "unavailable":
+        state_pill = _status_pill("unknown", "Unavailable")
+    elif state == "partial":
+        state_pill = _status_pill("warning", "Partial", title=hint or "Some values were not recorded.")
+    meta = "".join(part for part in (_scope_chip(scope) if scope else "", state_pill, (
+        f"<span class='admin-metric-secondary'>{secondary}</span>" if secondary else ""
+    )) if part)
+    scope_text = f", {ADMIN_SCOPE_LABELS.get(scope, scope).lower()}" if scope else ""
+    plain_value = rendered if rendered is not None else ("unavailable" if state == "unavailable" else "unknown")
+    title = f" title='{html.escape(hint, quote=True)}'" if hint and state != "partial" else ""
+    inner = (
+        f"<span class='admin-metric-label'>{html.escape(label)}"
+        + (_glossary_link(glossary) if glossary and not href else "")
+        + "</span>"
+        f"<strong class='admin-metric-value'{stat}>{value_markup}</strong>"
+        + (f"<span class='admin-metric-meta'>{meta}</span>" if meta else "")
+    )
+    attributes = f"data-state='{state}' data-tone='{tone}'{title}"
+    if href:
+        return (
+            f"<a class='admin-metric admin-metric-link' {attributes} href='{html.escape(href, quote=True)}' "
+            f"aria-label='{html.escape(label + scope_text + ': ' + plain_value, quote=True)}'>{inner}</a>"
+        )
+    return f"<div class='admin-metric' {attributes}>{inner}</div>"
+
+
+def _metric_row(tiles: list[str], *, label: str, css: str = "") -> str:
+    return (
+        f"<div class='admin-metric-row{(' ' + css) if css else ''}' role='group' "
+        f"aria-label='{html.escape(label, quote=True)}'>{''.join(tiles)}</div>"
+    )
+
+
+def _section_card(
+    title: str, body: str, *, card_id: str, action: tuple[str, str] | None = None,
+    scope: str | None = None, css: str = "", glossary: str | None = None,
+    heading_tag: str = "h2", extra_attributes: str = "",
+) -> str:
+    """A card with a 1–2 word title, an optional scope chip and one action link."""
+    action_markup = (
+        f"<a class='admin-card-action section-link' href='{html.escape(action[0], quote=True)}'>"
+        f"{html.escape(action[1])}&nbsp;{_admin_icon('arrow-right')}</a>"
+        if action else ""
+    )
+    head = (
+        f"<header class='admin-card-head'><{heading_tag} id='{html.escape(card_id, quote=True)}-title'>"
+        f"{html.escape(title)}</{heading_tag}>"
+        + (_glossary_link(glossary) if glossary else "")
+        + (_scope_chip(scope) if scope else "")
+        + action_markup + "</header>"
+    )
+    return (
+        f"<section class='admin-card{(' ' + css) if css else ''}' id='{html.escape(card_id, quote=True)}' "
+        f"aria-labelledby='{html.escape(card_id, quote=True)}-title'{extra_attributes}>{head}{body}</section>"
+    )
+
+
+def _empty_state(kind: str, text: str, *, action: tuple[str, str] | None = None, css: str = "") -> str:
+    """empty (measured nothing), filtered, or unavailable (query failed)."""
+    kind = kind if kind in {"empty", "filtered", "unavailable"} else "empty"
+    pill = _status_pill("unknown", "Unavailable") + " " if kind == "unavailable" else ""
+    action_markup = (
+        f" <a class='section-link' href='{html.escape(action[0], quote=True)}'>{html.escape(action[1])}</a>"
+        if action else ""
+    )
+    role = " role='status'" if kind == "unavailable" else ""
+    return (
+        f"<p class='admin-empty{(' ' + css) if css else ''}' data-state='{kind}'{role}>"
+        f"{pill}<span>{html.escape(text)}</span>{action_markup}</p>"
+    )
+
+
+def _unavailable_card(title: str, card_id: str, *, retry_href: str = "") -> str:
+    """Section-level resilience: a failed sub-query keeps the admin chrome."""
+    return _section_card(
+        title,
+        _empty_state("unavailable", "Couldn't load this section.", action=(retry_href or "", "Retry")),
+        card_id=card_id, css="admin-card-unavailable",
     )
 
 
@@ -552,16 +807,14 @@ def _diagnostic_state_badge(value: str) -> str:
     if normalized == "NONE":
         return "<span class='muted-value'>—</span>"
     if normalized == "RESOLVED":
-        state, label = "RESOLVED", "Resolved"
-    elif normalized in {"IN_PROGRESS", "IN-PROGRESS"}:
-        state, label = "IN_PROGRESS", "In progress"
-    elif normalized in {"UNDER_REVIEW", "UNDER-REVIEW"}:
-        state, label = "UNDER_REVIEW", "Under review"
-    elif normalized in {"IDENTITY_PENDING", "UNRESOLVED", "PENDING"}:
-        state, label = "IDENTITY_PENDING", "Identity review"
-    else:
-        state, label = "OPEN", "Open"
-    return f"<span class='diagnostic-state diagnostic-state-{state.lower()}'>{label}</span>"
+        return _status_pill("success", "Resolved", value="RESOLVED")
+    if normalized in {"IN_PROGRESS", "IN-PROGRESS"}:
+        return _status_pill("progress", "In progress", value="IN_PROGRESS")
+    if normalized in {"UNDER_REVIEW", "UNDER-REVIEW"}:
+        return _status_pill("info", "Under review", value="UNDER_REVIEW")
+    if normalized in {"IDENTITY_PENDING", "UNRESOLVED", "PENDING"}:
+        return _status_pill("unknown", "Identity review", value="IDENTITY_PENDING")
+    return _status_pill("danger", "Open", value="OPEN")
 
 
 def _diagnostic_value(value: Any) -> str:
@@ -585,24 +838,15 @@ def _diagnostic_boolean(value: Any) -> str:
 def _diagnostic_result(value: Any) -> str:
     raw = str(value or "").strip().upper()
     labels = {
-        "SUCCEEDED": "Successful",
-        "FAILED": "Failed",
-        "NOT_STARTED": "Not started",
-        "INCOMPLETE": "Incomplete",
-        "BLOCKED": "Blocked",
+        "SUCCEEDED": ("success", "Successful"),
+        "FAILED": ("danger", "Failed"),
+        # A pre-write result is not a failed attempt (ADM-13).
+        "NOT_STARTED": ("warning", "Blocked before writing"),
+        "INCOMPLETE": ("warning", "Incomplete"),
+        "BLOCKED": ("warning", "Blocked"),
     }
-    label = labels.get(raw, raw.title() if raw else "—")
-    kind = {
-        "SUCCEEDED": "succeeded",
-        "FAILED": "failed",
-        "NOT_STARTED": "not-started",
-        "INCOMPLETE": "failed",
-        "BLOCKED": "failed",
-    }.get(raw, "unknown")
-    return (
-        f"<span class='diagnostic-result diagnostic-result-{kind}' "
-        f"aria-label='Result: {html.escape(label)}'>{html.escape(label)}</span>"
-    )
+    kind, label = labels.get(raw, ("unknown", raw.title() if raw else "—"))
+    return _status_pill(kind, label, value=raw or "UNKNOWN")
 
 
 def _failure_context_fields(result: dict[str, Any], key: str, *, technical: bool = False) -> list[tuple[str, Any]]:
@@ -1387,39 +1631,53 @@ def _overview_stacked_segments(
     return segments
 
 
+_INSTALL_CHART_SERIES = (
+    # (css name, label, payload field). Order is the stacking order from the
+    # baseline and the legend order (owner colour decision 2026-10-05).
+    ("success", "Install successful", "success_count"),
+    ("custom", "Custom .img install", "custom_count"),
+    ("failed", "Install failed", "failed_count"),
+    ("update", "Update successful", "map_update_success_count"),
+    ("update-failed", "Update failed", "map_update_failed_count"),
+)
+_DOWNLOAD_CHART_SERIES = (
+    ("download-success", "Download successful", "download_success_count"),
+    ("download-failed", "Download failed", "download_failed_count"),
+)
+
+
+def _chart_legend(items: list[tuple[str, str, int | None]], *, label: str) -> str:
+    """One legend for every chart: swatch, noun and the period count."""
+    entries = "".join(
+        f"<li><i class='overview-chart-{html.escape(name, quote=True)}' aria-hidden='true'></i>"
+        f"<span>{html.escape(text)}</span>"
+        + (f"<strong>{count:,}</strong>" if count is not None else "<strong>—</strong>")
+        + "</li>"
+        for name, text, count in items
+    )
+    return (
+        f"<ul class='overview-chart-legend admin-legend' aria-label='{html.escape(label, quote=True)}'>"
+        f"{entries}</ul>"
+    )
+
+
 def _overview_trend_chart(
     trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
     *, metric: str = "installs", has_activity: bool = False,
-    _compact: bool = False,
+    chart_id: str = "", _compact: bool = False,
 ) -> str:
     if not trend:
         if has_activity:
-            return "<p class='overview-empty-state'>Trend data is unavailable for this period.</p>"
+            return _empty_state("unavailable", "Trend data is unavailable for this period.", css="overview-empty-state")
         empty_label = "downloads" if metric == "downloads" else "map installations"
-        return f"<p class='overview-empty-state'>No {empty_label} in this period.</p>"
-    if metric == "downloads":
-        series = (
-            ("download-success", "Download succeeded", "download_success_count"),
-            ("download-failed", "Download failed", "download_failed_count"),
-        )
-        chart_label = "Map download trend"
-    else:
-        series = (
-            ("success", "Install succeeded", "success_count"),
-            ("failed", "Install failed", "failed_count"),
-            ("update", "Update succeeded", "map_update_success_count"),
-            ("update-failed", "Update failed", "map_update_failed_count"),
-        )
-        chart_label = "Map installation trend"
+        return f"<p class='overview-empty-state admin-empty' data-state='empty'>No {empty_label} in this period.</p>"
+    series = _DOWNLOAD_CHART_SERIES if metric == "downloads" else _INSTALL_CHART_SERIES
+    chart_label = "Map download trend" if metric == "downloads" else "Map installation and update trend"
+    chart_key = re.sub(r"[^a-z0-9-]", "-", (chart_id or metric).lower()) + ("-mobile" if _compact else "-desktop")
+    pattern_id = f"update-failed-{chart_key}"
     values = []
     for item in trend:
-        counts = []
-        for name, _, field in series:
-            value = max(0, int(item.get(field) or 0))
-            if name == "success":
-                value += max(0, int(item.get("custom_count") or 0))
-            counts.append(value)
-        values.append(tuple(counts))
+        values.append(tuple(max(0, int(item.get(field) or 0)) for _, _, field in series))
     # Each bucket is one stacked bar.  Scale against the bucket total so the
     # full bar represents every event, while the segments retain their
     # canonical outcome composition.
@@ -1455,27 +1713,28 @@ def _overview_trend_chart(
         )
         for series_index, (count, (name, label, field)) in enumerate(zip(counts, series)):
             timestamps = list(item.get(f"{field.removesuffix('_count')}_times") or [])
-            if name == "success":
-                timestamps += list(item.get("custom_times") or [])
             title = f"{label}: {count} · {bucket_label} · {time_zone}"
             if timestamps:
                 title = f"{label}: {count} · " + ", ".join(str(value) for value in timestamps) + f" · {time_zone}"
-            series_titles.append(title)
+            series_titles.append(f"{label}: {count}")
             geometry = segments.get(series_index)
             if geometry is None:
                 continue
             segment_x, segment_width, y, height = geometry
+            style = f" style='fill:url(#{pattern_id})'" if name == "update-failed" else ""
             group_bars.append(
-                f"<rect class='overview-chart-{name}' style='{'fill:url(#update-failed-' + ('mobile' if _compact else 'desktop') + ')' if name == 'update-failed' else ''}' data-stack-index='{series_index}' "
+                f"<rect class='overview-chart-{name}'{style} data-stack-index='{series_index}' "
                 f"data-stack-total='{stack_total}' x='{segment_x:.1f}' y='{y:.2f}' "
-                f"width='{segment_width:.1f}' height='{height:.2f}' tabindex='0' role='img' "
-                f"aria-label='{html.escape(title, quote=True)}'><title>{html.escape(title)}</title></rect>"
+                f"width='{segment_width:.1f}' height='{height:.2f}' aria-hidden='true'>"
+                f"<title>{html.escape(title)}</title></rect>"
             )
-        group_title = f"{bucket_label} · Total operations: {stack_total}"
+        group_title = f"{bucket_label} · Total: {stack_total}"
         if series_titles:
             group_title += " · " + " · ".join(series_titles)
+        group_title += f" · {time_zone}"
+        # One keyboard stop per bucket; the segments are presentational.
         bars.append(
-            f"<g class='overview-chart-group' role='group' aria-label='{html.escape(group_title, quote=True)}'>"
+            f"<g class='overview-chart-group' role='img' tabindex='0' aria-label='{html.escape(group_title, quote=True)}'>"
             f"<title>{html.escape(group_title)}</title>{''.join(group_bars)}</g>"
         )
     if _compact:
@@ -1489,27 +1748,28 @@ def _overview_trend_chart(
         item = trend[index]
         anchor = 'start' if index == 0 else 'end' if index == len(values) - 1 else 'middle'
         labels.append(
-            f"<text x='{x_positions[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>"
+            f"<text x='{x_positions[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}' aria-hidden='true'>"
             f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>"
         )
     svg = (
-        f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='{chart_label}'>"
-        f"<defs><pattern id='update-failed-{'mobile' if _compact else 'desktop'}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--danger)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='group' aria-label='{chart_label}'>"
+        f"<defs><pattern id='{pattern_id}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--danger)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
+    totals = [sum(counts[index] for counts in values) for index in range(len(series))]
+    legend = _chart_legend(
+        [(name, label, total) for (name, label, _), total in zip(series, totals)],
+        label=f"{chart_label} legend and period totals",
+    )
     return (
         "<div class='overview-chart-wrap'>"
         + svg
         + _overview_trend_chart(
             trend, bucket, time_zone, metric=metric,
-            has_activity=has_activity, _compact=True,
+            has_activity=has_activity, chart_id=chart_id, _compact=True,
         )
-        + (
-            "<div class='overview-chart-legend'><span><i class='overview-chart-download-success'></i>Successful</span><span><i class='overview-chart-download-failed'></i>Failed</span></div></div>"
-            if metric == "downloads"
-            else "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Install successful</span><span><i class='overview-chart-failed'></i>Install failed</span><span><i class='overview-chart-update'></i>Update successful</span><span><i class='overview-chart-update-failed'></i>Update failed</span></div></div>"
-        )
+        + legend + "</div>"
     )
 
 
@@ -1568,6 +1828,11 @@ def _overview_download_marker(
         f"aria-label='{html.escape(' · '.join(labels), quote=True)}'>"
         f"<title>{html.escape(' · '.join(labels))}</title>{''.join(parts)}</g>"
     )
+
+
+def _sum_known(values: list[tuple[int | None, ...]], index: int) -> int | None:
+    known = [row[index] for row in values if row[index] is not None]
+    return sum(known) if known else None
 
 
 def _overview_downloads_chart(
@@ -1677,13 +1942,17 @@ def _overview_downloads_chart(
             zero_titles.append(zero_title + legacy_note + partial_note)
         group_title = (
             f"{_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone)}"
-            f" · Total operations: {stack_total}"
+            f" · Observed increase: {stack_total}"
+            + "".join(
+                f" · {label}: {count}" for (label, _), count in zip(series, counts) if count
+            )
         )
         if zero_titles:
             interval_title = "Download interval: " + " · ".join(zero_titles)
             group_title += " · " + interval_title
+        # One keyboard stop per bucket; the segments are presentational.
         group_accessibility = (
-            " role='group' aria-label='"
+            " class='overview-chart-group' role='img' tabindex='0' aria-label='"
             + html.escape(group_title, quote=True)
             + "'"
         )
@@ -1714,8 +1983,7 @@ def _overview_downloads_chart(
             bars.append(
                 f"<rect class='{css_class}' data-stack-index='{series_index}' "
                 f"data-stack-total='{stack_total}' x='{segment_x:.1f}' y='{y:.2f}' "
-                f"width='{segment_width:.1f}' height='{height:.2f}' tabindex='0' role='img' "
-                f"aria-label='{html.escape(title, quote=True)}'>"
+                f"width='{segment_width:.1f}' height='{height:.2f}' aria-hidden='true'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
         bars.append("</g>")
@@ -1741,9 +2009,9 @@ def _overview_downloads_chart(
             )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
-        f"viewBox='0 0 {chart_width} {chart_height}' role='img' "
-        f"aria-label='Observed download increases between checks over {period_label}'>"
-        f"<defs><pattern id='update-failed-{'mobile' if _compact else 'desktop'}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--danger)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        f"viewBox='0 0 {chart_width} {chart_height}' role='group' "
+        f"aria-label='Terento app downloads: observed counter increases between checks over {period_label}'>"
+        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
@@ -1751,10 +2019,11 @@ def _overview_downloads_chart(
         "<div class='overview-chart-wrap'>"
         + svg
         + _overview_downloads_chart(downloads, time_zone, period=period, _compact=True)
-        + "<div class='overview-chart-legend'>"
-        "<span><i class='overview-chart-download-dmg'></i>.dmg</span>"
-        "<span><i class='overview-chart-download-zip'></i>.zip</span>"
-        "</div></div>"
+        + _chart_legend(
+            [("download-dmg", ".dmg", _sum_known(values, 0)), ("download-zip", ".zip", _sum_known(values, 1))],
+            label="Terento app download legend and period increases",
+        )
+        + "</div>"
     )
 
 
@@ -1983,12 +2252,13 @@ def overview_page(
 def _health_status_badge(status: Any) -> str:
     normalized = str(status or "UNKNOWN").strip().upper()
     labels = {
-        "HEALTHY": "Healthy", "WARNING": "Degraded",
-        "FAILED": "Failed", "UNKNOWN": "Evidence missing",
+        "HEALTHY": ("success", "Healthy"), "WARNING": ("warning", "Degraded"),
+        "FAILED": ("danger", "Failed"), "UNKNOWN": ("unknown", "No data"),
     }
     if normalized not in labels:
         normalized = "UNKNOWN"
-    return f"<span class='system-health-badge system-health-{normalized.lower()}'>{labels[normalized]}</span>"
+    kind, label = labels[normalized]
+    return _status_pill(kind, label, value=normalized)
 
 
 def _health_run_link(observation: dict[str, Any] | None, *, label: str = "GitHub Actions") -> str:
@@ -2568,20 +2838,25 @@ def _admin_json_default(value: Any) -> Any:
 def _provider_status_badge(value: Any, *, kind: str = "status") -> str:
     normalized = str(value or "UNKNOWN").strip().upper()
     labels = {
-        "ACTIVE": "Active",
-        "PAUSED": "Paused",
-        "RETIRED": "Retired",
-        "HEALTHY": "Healthy",
-        "DEGRADED": "Degraded",
-        "DOWN": "Down",
-        "UNKNOWN": "Unknown",
-        "RUNNING": "Running",
-        "SUCCEEDED": "Successful",
-        "FAILED": "Failed",
+        "ACTIVE": ("success", "Active"),
+        "PAUSED": ("neutral", "Paused"),
+        "RETIRED": ("neutral", "Retired"),
+        "HEALTHY": ("success", "Healthy"),
+        "DEGRADED": ("warning", "Degraded"),
+        "WARNING": ("warning", "Degraded"),
+        # One health vocabulary everywhere: Healthy · Degraded · Failed · No data.
+        "DOWN": ("danger", "Failed"),
+        "UNKNOWN": ("unknown", "No data" if kind == "health" else "Unknown"),
+        "RUNNING": ("progress", "Running"),
+        "QUEUED": ("progress", "Queued"),
+        "SUCCEEDED": ("success", "Successful"),
+        "FAILED": ("danger", "Failed"),
+        "AVAILABLE": ("success", "Available"),
+        "UNAVAILABLE": ("danger", "Unavailable"),
+        "NONE": ("neutral", "None"),
     }
-    css_value = re.sub(r"[^a-z0-9_-]", "-", normalized.lower()) or "unknown"
-    label = labels.get(normalized, normalized.title())
-    return f"<span class='provider-status provider-status-{html.escape(css_value)}'>{html.escape(label)}</span>"
+    pill_kind, label = labels.get(normalized, ("neutral", normalized.replace("_", " ").title()))
+    return _status_pill(pill_kind, label, value=normalized)
 
 
 def _provider_url(value: Any, *, label: str | None = None) -> str:
@@ -2612,10 +2887,7 @@ def _provider_source_type_label(value: Any) -> str:
 
 
 def _provider_check_badge(value: Any) -> str:
-    normalized = str(value or "UNKNOWN").strip().upper()
-    if normalized == "UNKNOWN":
-        return "<span class='provider-status provider-status-unknown' title='Evidence missing'>Evidence missing</span>"
-    return _provider_status_badge(normalized, kind="health")
+    return _provider_status_badge(value, kind="health")
 
 
 def _provider_health_counts(health: dict[str, Any] | None) -> tuple[int, int]:
@@ -3709,8 +3981,8 @@ def _identification_label(device: dict) -> str:
 
 
 def _identification_badge(state: str, label: str) -> str:
-    icon = {'approved': '✓', 'rejected': '✕', 'pending': '!', 'missing': '?', 'shared': '↔'}[state]
-    return f"<span class='identification-badge identification-{state}'><span aria-hidden='true'>{icon}</span> {html.escape(label)}</span>"
+    kind = {'approved': 'success', 'rejected': 'danger', 'pending': 'warning', 'missing': 'unknown', 'shared': 'info'}[state]
+    return _status_pill(kind, label, value=state.upper())
 
 
 def _identification_summary(mappings: list[dict]) -> str:
@@ -5455,7 +5727,14 @@ def _admin_device_payload(
 
 
 def _admin_status_badge(label: str, kind: str) -> str:
-    return f"<span class='admin-state admin-state-{html.escape(kind)}'>{html.escape(label)}</span>"
+    pill_kind = {
+        "map-yes": "success", "map-no": "danger", "map-unknown": "unknown",
+        "authorization-approved": "success", "authorization-blocked": "danger",
+        "authorization-pending": "warning",
+        "publication-published": "success", "publication-pending": "warning",
+        "publication-unavailable": "neutral",
+    }.get(kind, "neutral")
+    return _status_pill(pill_kind, label, value=kind)
 
 
 def _admin_device_row(device: dict[str, Any], index: int) -> str:
@@ -5731,16 +6010,13 @@ def _statistics_row(
 
 
 def _status_badge(value: str) -> str:
+    """Evidence pill: Testing neutral, Tested/Supported info, Verified success."""
     try:
         status = CompatibilityStatus(str(value).upper())
     except ValueError:
-        return "<span class='status-badge status-unavailable' role='img' aria-label='Compatibility status unavailable'>Unavailable</span>"
-    label = status.value.title()
-    return (
-        f"<span class='status-badge status-{status.value.lower()}' role='img' "
-        f"aria-label='{html.escape(label)}: {html.escape(STATUS_PUBLIC_COPY[status])}'>"
-        f"{html.escape(label)}</span>"
-    )
+        return _status_pill("neutral", "Unavailable", value="UNAVAILABLE", title="Compatibility evidence unavailable")
+    kind = {"TESTING": "neutral", "TESTED": "info", "SUPPORTED": "info", "VERIFIED": "success"}.get(status.value, "neutral")
+    return _status_pill(kind, status.value.title(), value=status.value, title=STATUS_PUBLIC_COPY[status])
 
 
 def _device_last_success_comparator_script() -> str:
@@ -7024,8 +7300,8 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .quick-filter-group{display:flex;align-items:center;gap:4px;flex:0 0 auto;flex-wrap:wrap}.quick-filter{min-height:var(--admin-control-height);padding:8px 10px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:transparent;color:var(--secondary);font-weight:650}.quick-filter:hover{border-color:var(--border);color:var(--interactive)}.quick-filter.active{border-color:color-mix(in srgb,var(--sky) 45%,var(--border));background:var(--surface);color:var(--interactive);box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 5%,transparent)}
 .map-statistics-coverage-layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(280px,1fr);gap:16px;margin-top:16px}.map-statistics-coverage-layout>.provider-card{min-width:0;margin-top:0}.map-statistics-popularity{grid-template-columns:minmax(0,1fr)}.map-statistics-popularity .provider-card{margin-top:0}.table-secondary{display:block;margin-top:3px;color:var(--secondary);font-size:11px;font-weight:500}
 .map-statistics-world-map{position:relative;min-height:300px;padding:8px 0 0;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.world-map-svg{width:100%;padding:0 8px}.world-map-svg svg{display:block;width:100%;height:auto;overflow:visible}.world-map-country{stroke:color-mix(in srgb,var(--interactive) 42%,var(--border));stroke-width:.65;vector-effect:non-scaling-stroke;cursor:help;outline:none;transition:filter .12s ease,stroke-width .12s ease}.world-map-country:hover,.world-map-country:focus{filter:brightness(.86);stroke:var(--interactive);stroke-width:1.5}.world-map-tooltip{position:absolute;z-index:2;top:12px;right:12px;min-width:170px;max-width:240px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--interactive) 28%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 8px 24px color-mix(in srgb,var(--graphite) 14%,transparent);font-size:12px;pointer-events:none}.world-map-tooltip strong,.world-map-tooltip-total,.world-map-tooltip-empty{display:block}.world-map-tooltip-total{margin-top:2px;color:var(--secondary)}.world-map-tooltip-empty{margin-top:5px;color:var(--secondary);font-style:italic}.world-map-provider-line{display:flex;justify-content:space-between;gap:16px;margin-top:7px;padding-top:6px;border-top:1px solid var(--border)}.world-map-provider-line+ .world-map-provider-line{margin-top:5px;padding-top:5px}.world-map-provider-line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.world-map-provider-line strong{font-variant-numeric:tabular-nums}.world-map-legend{display:flex;align-items:center;gap:8px;margin:8px 2px 0;color:var(--secondary);font-size:11px;font-variant-numeric:tabular-nums}.world-map-legend-gradient{display:block;flex:1;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--surface),color-mix(in srgb,var(--sky) 50%,var(--interactive)));border:1px solid var(--border)}.world-map-note{margin:8px 2px 0}.map-statistics-world-map-card .section-heading{align-items:flex-start}.map-statistics-world-map-card .section-heading .table-help{padding-top:3px;text-align:right}
-.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:7px;color:var(--secondary);font-size:11px}.overview-chart-note{font-size:12px;color:var(--secondary);margin:10px 0 0}.overview-chart-legend span{display:inline-flex;align-items:center;gap:5px}.overview-chart-legend i{display:inline-block;width:9px;height:9px;border-radius:2px}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}
-.overview-chart-update{fill:var(--stone);background:var(--stone)}@media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item>time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item .map-activity-copy{grid-column:1;grid-row:2}}
+.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-note{font-size:12px;color:var(--secondary);margin:10px 0 0}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}
+@media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item>time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item .map-activity-copy{grid-column:1;grid-row:2}}
 @media(max-width:560px){.overview-panel{padding:16px}.overview-attention-item{grid-template-columns:auto minmax(0,1fr)}.overview-detail-link{grid-column:2}}
 @media(max-width:700px){.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}.overview-primary-grid .overview-panel{min-width:0}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item>time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item .map-activity-copy>span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
@@ -7186,7 +7462,7 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
 .diagnostic-action-form button[type='submit']{min-height:var(--admin-control-height);padding:8px 12px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:600}
 .diagnostic-action-form button[type='submit']:hover{background:var(--interactive-hover)}
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
-.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-update{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend .overview-chart-update-failed{background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px);border:1px solid var(--danger)}
+
 .model-status-line{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-top:8px}.model-status-line>span{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.model-status-line strong{color:var(--graphite);font-size:12px}.compact-empty-state{margin-top:20px;padding:18px 20px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.compact-empty-state h2{margin:0 0 4px}.compact-empty-state p{margin:0;color:var(--secondary)}.diagnostic-identity-state{margin:12px 0;padding:10px 12px;border-left:3px solid var(--warning);background:var(--surface-muted);font-size:13px}
 .timestamp-metric strong{font-size:var(--admin-type-subsection-size)!important;line-height:var(--admin-type-subsection-line)!important}
 .overview-primary-grid{align-items:start}.overview-primary-grid>.overview-panel{min-height:0}
@@ -7552,8 +7828,6 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .overview-activity-panel{margin-top:16px}
 .overview-activity-device{display:inline;overflow-wrap:anywhere;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px}
 .overview-activity-device:hover{text-decoration:underline;text-underline-offset:3px}
-.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}
-.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
 .admin-kpi-panel .installation-kpi-groups{grid-template-columns:minmax(0,1fr)}
 .admin-kpi-panel .provider-kpi-values{grid-template-columns:repeat(3,minmax(0,1fr))}
 .admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(5,minmax(0,1fr))}
@@ -7688,6 +7962,58 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .provider-problem h3{margin:0;font-size:16px}.provider-card>.section-heading button[data-provider-action]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}.provider-problem{padding-block:16px;border-block-end:1px solid var(--border)}.provider-problem p{margin-block:6px}.provider-problem-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-block-start:14px}.provider-state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
 .provider-state-grid>.provider-card{min-width:0}
 @media(max-width:700px){.provider-state-grid{grid-template-columns:minmax(0,1fr)}.mobile-record-table td[colspan]{display:block!important;width:100%}}
+"""
+
+ADMIN_STYLES += """
+/* Shared component kit (docs/admin-behavior-contract.md). Tokens only. */
+.admin-scope-chip{display:inline-flex;align-items:center;min-height:20px;padding:1px 8px;border:1px solid var(--status-neutral-border);border-radius:999px;background:var(--status-neutral-surface);color:var(--status-neutral-text);font:600 12px/16px var(--font-ui);white-space:nowrap}
+.admin-scope-chip[data-scope="period"]{border-color:var(--status-supported-border);background:var(--selected-tint);color:var(--status-supported-text)}
+.admin-pill{display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:3px 8px;border:1px solid var(--status-neutral-border);border-radius:999px;background:var(--status-neutral-surface);color:var(--status-neutral-text);font:600 12px/16px var(--font-ui);letter-spacing:0;text-transform:none;white-space:nowrap;vertical-align:middle}
+.admin-pill .admin-icon{width:14px;height:14px;stroke-width:1.75}
+.admin-pill-success{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}
+.admin-pill-danger{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}
+.admin-pill-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-warning-text)}
+.admin-pill-info,.admin-pill-progress{border-color:var(--status-supported-border);background:var(--status-supported-surface);color:var(--status-supported-text)}
+.admin-card{min-width:0;margin-top:16px;padding:16px 20px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}
+.admin-card-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+.admin-card-head>h2,.admin-card-head>h3{margin:0;color:var(--graphite);font:600 17px/24px var(--font-ui)}
+.admin-card-head>.admin-card-action{margin-left:auto}
+.admin-metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:16px}
+.admin-card .admin-metric-row,.heading-row+.admin-metric-row{margin-top:0}
+.admin-metric{display:flex;flex-direction:column;gap:4px;min-width:0;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);color:var(--graphite);text-decoration:none}
+.admin-card .admin-metric{padding:4px 0;border:0;border-radius:0;background:transparent}
+.admin-metric-label{display:flex;align-items:center;gap:6px;color:var(--secondary);font:500 14px/20px var(--font-ui)}
+.admin-metric-value{display:flex;align-items:center;gap:6px;color:var(--graphite);font:600 24px/32px var(--font-ui);font-variant-numeric:tabular-nums}
+.admin-metric-value .admin-icon{width:18px;height:18px}
+.admin-metric[data-tone="danger"] .admin-metric-value{color:var(--danger)}
+.admin-metric[data-state="unknown"] .admin-metric-value,.admin-metric[data-state="unavailable"] .admin-metric-value{color:var(--secondary)}
+.admin-metric-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--secondary);font-size:12px;line-height:16px}
+.admin-metric-secondary{font-variant-numeric:tabular-nums}
+.admin-metric-link:hover{background:var(--surface-muted)}
+.admin-metric-link:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}
+.admin-glossary-link{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;color:var(--interactive);font:700 11px/1 var(--font-ui);text-decoration:none}
+.admin-glossary-link>span{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid currentColor;border-radius:999px}
+.admin-glossary-link:hover>span{background:var(--selected-tint)}
+.admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
+.admin-card-unavailable{border-style:dashed}
+.admin-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 0;padding:0;list-style:none;color:var(--secondary);font-size:12px;line-height:16px}
+.admin-legend li{display:inline-flex;align-items:center;gap:6px}
+.admin-legend i{display:inline-block;width:12px;height:12px;border:1px solid var(--border);border-radius:3px}
+.admin-legend strong{color:var(--graphite);font-weight:600;font-variant-numeric:tabular-nums}
+/* Chart palette (owner decision 2026-10-05): one definition. */
+.overview-chart-success{fill:var(--interactive);background:var(--interactive)}
+.overview-chart-custom{fill:var(--lichen-dark);background:var(--lichen-dark)}
+.overview-chart-failed{fill:var(--danger);background:var(--danger)}
+.overview-chart-update{fill:var(--stone);background:var(--stone)}
+.overview-chart-update-failed{fill:var(--danger)}
+.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}
+.overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
+.admin-legend i.overview-chart-update{border-color:var(--stone-dark)}
+.admin-legend i.overview-chart-update-failed{border-color:var(--danger);background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px)}
+.overview-trend-chart .overview-chart-group rect{stroke:var(--surface);stroke-width:1}
+.overview-trend-chart .overview-chart-group rect.overview-chart-update{stroke:var(--stone-dark)}
+.overview-chart-group:focus{outline:none}
+.overview-chart-group:focus-visible rect{stroke:var(--graphite);stroke-width:2}
 """
 
 def _error(message: str | None) -> str:

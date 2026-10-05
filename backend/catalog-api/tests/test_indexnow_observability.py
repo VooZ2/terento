@@ -146,7 +146,7 @@ class IndexNowObservationTests(unittest.TestCase):
             self.assertIn(expected_text, card["html"])
             visible = card["html"].split("<details class='admin-disclosure system-health-technical'>", 1)[0]
             self.assertIn("<h2>IndexNow submissions</h2>", visible)
-            self.assertEqual(visible.count("system-health-badge"), 1)
+            self.assertEqual(visible.count("admin-pill "), 1)
             self.assertIn("class='system-health-action'", visible)
             self.assertIn("Last checked", visible)
             self.assertNotIn("Result:", visible)

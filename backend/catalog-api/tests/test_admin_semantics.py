@@ -542,7 +542,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 recognized_map_capable_evidence=False,
             )
         )
-        self.assertIn("status-unavailable", _status_badge(""))
+        unavailable = _status_badge("")
+        self.assertIn("data-status='UNAVAILABLE'", unavailable)
+        self.assertIn("<span>Unavailable</span>", unavailable)
+        self.assertIn("admin-icon", unavailable)
+        self.assertNotIn("role='img'", unavailable)
         self.assertIsNone(calculate_compatibility_status(successful_install_count=0))
 
     def test_dashboard_recomputes_status_and_does_not_trust_stale_view_status(self):
@@ -1112,8 +1116,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         body = _overview_trend_chart([{
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
-        self.assertIn("Install succeeded: 3", body)
-        self.assertIn("class='overview-chart-success'", body)
+        self.assertIn("Custom .img install: 3", body)
+        self.assertIn("class='overview-chart-custom'", body)
         self.assertIn("<rect", body)
         self.assertNotIn("<polyline", body)
         self.assertNotIn("<circle", body)
@@ -1258,7 +1262,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 {"bucket": "2026-09-10T00:00:00Z", "dmg_count": 2, "zip_count": 1},
             ],
         }, "UTC", period="7d")
-        self.assertIn("Observed download increases between checks over the last 7 days", body)
+        self.assertIn("Terento app downloads: observed counter increases between checks over the last 7 days", body)
         self.assertIn(".dmg downloads: 2 · observed increase ending 10 Sep · UTC", body)
         self.assertNotIn("10:00", body)
 
@@ -1314,7 +1318,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         for chart in charts:
             self.assertEqual(len(chart.findall("g/rect")), 1)
             self.assertEqual(
-                len([group for group in chart.findall("g") if group.attrib.get("role") == "group"]),
+                len([group for group in chart.findall("g") if group.attrib.get("role") == "img" and group.attrib.get("tabindex") == "0"]),
                 2,
             )
         self.assertNotIn("<circle", body)
@@ -1495,7 +1499,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             body,
         )
 
-    def test_time_chart_uses_stacked_bars_and_combines_custom_successes(self):
+    def test_time_chart_stacks_custom_img_as_its_own_series(self):
         import xml.etree.ElementTree as ET
         from terento_catalog.admin import _overview_trend_chart
         body = _overview_trend_chart([{
@@ -1504,8 +1508,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         }], "hour")
         svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
         bars = svg.findall("g/rect")
-        self.assertEqual(len(bars), 2)
-        self.assertEqual(bars[0].attrib["x"], bars[1].attrib["x"])
+        self.assertEqual(
+            [bar.attrib["class"] for bar in bars],
+            ["overview-chart-success", "overview-chart-custom", "overview-chart-failed"],
+        )
+        self.assertEqual({bar.attrib["x"] for bar in bars}, {bars[0].attrib["x"]})
         self.assertAlmostEqual(
             float(bars[1].attrib["y"]) + float(bars[1].attrib["height"]),
             float(bars[0].attrib["y"]),
@@ -1514,8 +1521,13 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertAlmostEqual(sum(float(bar.attrib["height"]) for bar in bars), 202 * 6 / 8, places=1)
         self.assertNotIn("<polyline", body)
         self.assertNotIn("<circle", body)
-        self.assertIn("Install succeeded: 5", body)
+        self.assertIn("Install successful: 2", body)
+        self.assertIn("Custom .img install: 3", body)
         self.assertIn("Install failed: 1", body)
+        # The legend names every series, including custom .img, with period totals.
+        legend = body[body.index("<ul class='overview-chart-legend"):]
+        self.assertIn("<span>Custom .img install</span><strong>3</strong>", legend)
+        self.assertIn("<i class='overview-chart-custom'", legend)
 
     def test_install_chart_stacks_all_segments_at_one_x_position(self):
         import re
@@ -1553,7 +1565,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             202,
             places=1,
         )
-        self.assertIn("Total operations: 8", body)
+        self.assertIn("Total: 8", body)
         self.assertNotIn("<polyline", body)
         for chart in charts:
             mobile_bars = chart.findall("g/rect")
@@ -1588,7 +1600,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             202 * 9 / 12,
             places=1,
         )
-        self.assertIn("Total operations: 9", body)
+        self.assertIn("Total: 9", body)
 
     def test_stacked_chart_zero_cases_do_not_create_placeholder_bars(self):
         import xml.etree.ElementTree as ET
@@ -1759,7 +1771,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("data-stat='completedInstalls'>96</strong>", maps_body)
         self.assertIn("data-stat='failedInstalls'", maps_body)
         self.assertIn("data-stat='installSuccessRate'>90.6%</strong>", maps_body)
-        self.assertIn("Install succeeded: 96", dashboard_body)
+        self.assertIn("Install successful: 96", dashboard_body)
         self.assertIn("Install failed: 10", dashboard_body)
 
     def test_map_overview_fallback_excludes_final_prewrite_failures(self):
@@ -2367,7 +2379,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("SEND_OBJECT_FAILED", table)
         self.assertIn("SEND_OBJECT_FAILED", dialog)
         self.assertIn("action='/admin/diagnostics/resolve'", dialog)
-        self.assertIn("diagnostic-state-in_progress", dialog)
+        self.assertIn("data-status='IN_PROGRESS'", dialog)
         self.assertIn("GitHub issue workflow", dialog)
 
     def test_dashboard_is_model_summary_only_and_errors_link_to_exact_drilldown(self):
@@ -3134,7 +3146,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         })
         self.assertIn("Download: — bytes · IMG: 0 bytes", package)
         self.assertIn("<td class='column-number numeric'>—</td>", package)
-        self.assertIn("><span class='provider-status", health)
+        self.assertIn("><span class='admin-pill admin-pill-success' data-status='HEALTHY'", health)
         self.assertIn(">—</td>", health)
         self.assertIn(">0</td>", health)
         self.assertIn(">0 ms</td>", health)
@@ -3820,7 +3832,8 @@ class SystemHealthPageTests(unittest.TestCase):
         self.assertIn("data-health-status='HEALTHY'", body)
         self.assertIn("data-admin-timestamp", body)
         release_card = body.split("<h2>Release / manifest</h2>", 1)[1].split("</div>", 1)[0]
-        self.assertIn("system-health-healthy", release_card)
+        self.assertIn("data-status='HEALTHY'", release_card)
+        self.assertIn("<span>Healthy</span>", release_card)
 
 
 if __name__ == "__main__":

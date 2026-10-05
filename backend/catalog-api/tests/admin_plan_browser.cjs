@@ -18,7 +18,7 @@ const {chromium}=require(process.argv[2]);
     assert.equal(await indexnow.count(),1,'one IndexNow card');
     const indexnowSummary=indexnow.locator('.system-health-issue-heading');
     assert.equal(await indexnowSummary.locator('h2').innerText(),'IndexNow submissions');
-    assert.equal(await indexnowSummary.locator('.system-health-badge').count(),1,'IndexNow summary has one health badge');
+    assert.equal(await indexnowSummary.locator('.admin-pill').count(),1,'IndexNow summary has one health pill');
     assert.equal(await indexnowSummary.locator('.health-issue').count(),0,'IndexNow summary has no result detail');
     assert(!/Last check|Pending URLs|Validation pending/i.test(await indexnowSummary.innerText()),'IndexNow summary has no expanded details');
     const indexnowTechnical=indexnow.locator('details.system-health-technical');

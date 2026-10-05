@@ -129,10 +129,17 @@ class AdminAuditTests(unittest.TestCase):
         ids = [node.attrib['id'] for chart in charts for node in chart.iter() if 'id' in node.attrib]
         self.assertEqual(len(ids), len(set(ids)))
         for chart in charts:
-            bars = [node for node in chart.iter('rect') if node.attrib.get('class') == 'overview-chart-success']
+            bars = [node for node in chart.iter('rect') if node.attrib.get('class') == 'overview-chart-custom']
             self.assertEqual(len(bars), 1)
-            self.assertIn('Install succeeded: 1', bars[-1].attrib['aria-label'])
-            self.assertIn('23:00', bars[-1].attrib['aria-label'])
+            # Segments are presentational; the bucket group is the one focusable,
+            # labelled element (ADM-22).
+            self.assertEqual(bars[-1].attrib.get('aria-hidden'), 'true')
+            self.assertNotIn('tabindex', bars[-1].attrib)
+            groups = [node for node in chart.iter('g') if node.attrib.get('class') == 'overview-chart-group']
+            self.assertEqual(len(groups), 24)
+            self.assertTrue(all(group.attrib.get('tabindex') == '0' for group in groups))
+            self.assertIn('Custom .img install: 1', groups[-1].attrib['aria-label'])
+            self.assertIn('23:00', groups[-1].attrib['aria-label'])
             self.assertFalse(any(node.tag in {'circle', 'polyline'} for node in chart.iter()))
         self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
         self.assertIn('No map installations', _overview_trend_chart([], 'hour'))
