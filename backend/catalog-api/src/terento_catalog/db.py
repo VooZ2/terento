@@ -82,7 +82,7 @@ MISSING_DIAGNOSTIC_GAP_WHERE = """
             SELECT 1
             FROM map_download_event AS sibling
             LEFT JOIN map_package AS sibling_package
-              ON sibling_package.id = sibling.map_package_id
+              ON sibling_package.id = COALESCE(sibling.map_package_id, sibling.reported_map_id)
             WHERE sibling.is_local_test IS NOT TRUE
               AND sibling.statistics_exclusion_code IS NULL
               AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
@@ -91,7 +91,8 @@ MISSING_DIAGNOSTIC_GAP_WHERE = """
               AND sibling.acquisition_id IS NULL
               AND sibling.operation_id = e.operation_id
               AND sibling.provider_id = e.provider_id
-              AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
+              AND COALESCE(sibling.map_package_id, sibling.reported_map_id)
+                  IS DISTINCT FROM COALESCE(e.map_package_id, e.reported_map_id)
               AND COALESCE(
                   sibling_package.canonical_region_id,
                   sibling_package.provider_region_id,
@@ -1002,7 +1003,8 @@ class Database:
                 raw_mtp_model, identity_resolution_code, is_local_test,
                 garmin_model_description, garmin_model_part_number, identity_assessment,
                 failure_context, original_failure_context,
-                statistics_exclusion_code, statistics_exclusion_reason, security_issue_code
+                statistics_exclusion_code, statistics_exclusion_reason, security_issue_code,
+                schema_version
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
                 %(displayType)s, %(canonicalDeviceId)s, %(identityResolutionState)s,
@@ -1017,7 +1019,8 @@ class Database:
                 %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s,
                 %(isLocalTest)s, %(garminModelDescription)s, %(garminModelPartNumber)s, %(identityAssessment)s::jsonb,
                 %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb,
-                %(statisticsExclusionCode)s, %(statisticsExclusionReason)s, %(securityIssueCode)s
+                %(statisticsExclusionCode)s, %(statisticsExclusionReason)s, %(securityIssueCode)s,
+                %(schemaVersion)s
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -1079,6 +1082,7 @@ class Database:
             "statisticsExclusionCode": None,
             "statisticsExclusionReason": None,
             "securityIssueCode": None,
+            "schemaVersion": event.get("schemaVersion"),
         }
         with self.connection() as connection:
             devices = list(connection.execute("SELECT * FROM device_model").fetchall())
@@ -1176,7 +1180,7 @@ class Database:
                        canonical_device_model_id, compatibility_identity, model,
                        diagnostic_status, identity_resolution_state, phase_outcome,
                        automatic_finishing_result, write_started, app_build, release_label,
-                       failure_stage, failure_code
+                       failure_stage, failure_code, schema_version
                 FROM compatibility_evidence_event
                 WHERE is_local_test IS NOT TRUE
                   AND statistics_exclusion_code IS NULL
@@ -1220,7 +1224,7 @@ class Database:
                 END AS operation_key,
                 operation_id, event_id, occurred_at, model, compatibility_identity,
                 variant, firmware_version, provider, region, map_release, terento_version,
-                app_build, release_label, map_result_index, selected_map_count,
+                app_build, release_label, schema_version, map_result_index, selected_map_count,
                 phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
                 failure_context, original_failure_context,
                 write_started,
@@ -1396,7 +1400,7 @@ class Database:
             ), missing_diagnostic_reviews AS (
                 SELECT count(*) AS missing_diagnostics
                 FROM map_download_event AS e
-                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
                 LEFT JOIN admin_map_review_task AS review_task
                   ON review_task.event_id = e.event_id
                  AND review_task.task_type = 'MISSING_DIAGNOSTIC'
@@ -1586,22 +1590,10 @@ class Database:
                             THEN e.operation_id::text || ':' || e.map_result_index::text
                         ELSE 'event:' || e.event_id::text
                     END AS result_key,
-                    CASE
-                        WHEN e.phase_outcome = 'SUCCEEDED'
-                             AND e.automatic_finishing_result = 'VERIFIED'
-                            THEN 'SUCCESS'
-                        WHEN e.phase_outcome = 'FAILED'
-                             AND (e.write_started IS TRUE OR (
-                                 e.write_started IS NULL
-                                 AND e.app_build IS NULL
-                                 AND e.release_label IS NULL
-                             ))
-                            THEN 'FAILURE'
-                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                             AND e.write_started IS FALSE
-                            THEN 'NOT_STARTED'
-                        ELSE 'UNKNOWN'
-                    END AS result_classification
+                    terento_fresh_result_classification(
+                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
+                        e.schema_version, e.app_build, e.release_label
+                    ) AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.statistics_exclusion_code IS NULL
@@ -1946,7 +1938,7 @@ class Database:
         event_scope = """
             FROM map_download_event AS e
             LEFT JOIN map_provider AS p ON p.id = e.provider_id
-            LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+            LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
             WHERE e.occurred_at >= %s
               AND e.is_local_test IS NOT TRUE
               AND e.statistics_exclusion_code IS NULL
@@ -1965,22 +1957,10 @@ class Database:
                             THEN e.operation_id::text || ':' || e.map_result_index::text
                         ELSE 'event:' || e.event_id::text
                     END AS operation_key,
-                    CASE
-                        WHEN e.phase_outcome = 'SUCCEEDED'
-                             AND e.automatic_finishing_result = 'VERIFIED'
-                            THEN 'SUCCESS'
-                        WHEN e.phase_outcome = 'FAILED'
-                             AND (e.write_started IS TRUE OR (
-                                 e.write_started IS NULL
-                                 AND e.app_build IS NULL
-                                 AND e.release_label IS NULL
-                             ))
-                            THEN 'FAILURE'
-                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                             AND e.write_started IS FALSE
-                            THEN 'NOT_STARTED'
-                        ELSE 'UNKNOWN'
-                    END AS result_classification
+                    terento_fresh_result_classification(
+                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
+                        e.schema_version, e.app_build, e.release_label
+                    ) AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.statistics_exclusion_code IS NULL
@@ -2028,7 +2008,7 @@ class Database:
                        SELECT 1
                        FROM map_download_event AS installed
                        LEFT JOIN map_package AS installed_package
-                         ON installed_package.id = installed.map_package_id
+                         ON installed_package.id = COALESCE(installed.map_package_id, installed.reported_map_id)
                        WHERE installed.operation_id = e.operation_id
                          AND installed.provider_id = e.provider
                          AND (installed.map_result_index=e.map_result_index OR (
@@ -2112,8 +2092,8 @@ class Database:
                     e.provider_id,
                     p.name AS provider_name,
                     e.map_package_id,
-                    COALESCE(mp.name, e.map_package_id) AS map_package_name,
-                    COALESCE(mp.name, e.region, e.map_package_id) AS display_name,
+                    COALESCE(mp.name, e.map_package_id, e.reported_map_id) AS map_package_name,
+                    COALESCE(mp.name, e.region, e.map_package_id, e.reported_map_id) AS display_name,
                     COALESCE(e.region, mp.region) AS region,
                     mp.country AS region_country,
                     e.event_type,
@@ -2179,7 +2159,7 @@ class Database:
                        count(*) OVER () AS total_missing_diagnostics
                 FROM map_download_event AS e
                 LEFT JOIN map_provider AS p ON p.id = e.provider_id
-                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
                 LEFT JOIN admin_map_review_task AS review_task
                   ON review_task.event_id = e.event_id
                  AND review_task.task_type = 'MISSING_DIAGNOSTIC'
@@ -4216,14 +4196,17 @@ class Database:
                     (event["mapId"],),
                 ).fetchone()
                 map_package_id = package["id"] if package else None
+            # Keep the exact reported map ID when the catalog does not know it
+            # yet, so a later-published package can be attributed by identity.
+            reported_map_id = event.get("mapId") if event.get("mapId") and map_package_id is None else None
             row = connection.execute(
                 """
                 INSERT INTO map_download_event (
                     event_id, operation_id, provider_id, map_package_id,
                     region, event_type, outcome, occurred_at, app_build,
                     release_label, is_local_test, acquisition_id, component_kind,
-                    map_result_index, acquisition_purpose
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    map_result_index, acquisition_purpose, reported_map_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 RETURNING event_id
                 """,
@@ -4234,6 +4217,7 @@ class Database:
                     event.get("releaseLabel"), is_local_release_label(event.get("releaseLabel")),
                     event.get("acquisitionId"), event.get("componentKind"),
                     event.get("mapResultIndex"), event.get("acquisitionPurpose"),
+                    reported_map_id,
                 ),
             ).fetchone()
         return row is not None
@@ -4399,7 +4383,7 @@ class Database:
             clauses.append(f"{alias}.provider_id = %s")
             values.append(filters["provider"])
         if filters.get("map"):
-            clauses.append(f"{alias}.map_package_id = %s")
+            clauses.append(f"COALESCE({alias}.map_package_id, {alias}.reported_map_id) = %s")
             values.append(filters["map"])
         if filters.get("region"):
             clauses.append(f"{alias}.region = %s")
@@ -4490,7 +4474,7 @@ class Database:
                 WHERE e.is_local_test IS NOT TRUE AND e.statistics_exclusion_code IS NULL
             ), map_result_flags AS (
                 SELECT logical_key,
-                    count(DISTINCT (provider_id, map_package_id, region, component_kind,
+                    count(DISTINCT (provider_id, COALESCE(map_package_id, reported_map_id), region, component_kind,
                                     acquisition_purpose, event_type, outcome)) > 1 AS conflict
                 FROM identified_map_events GROUP BY logical_key
             ), normalized_map_events AS (
@@ -4510,22 +4494,10 @@ class Database:
                             THEN e.operation_id::text || ':' || e.map_result_index::text
                         ELSE 'event:' || e.event_id::text
                     END AS operation_key,
-                    CASE
-                        WHEN e.phase_outcome = 'SUCCEEDED'
-                             AND e.automatic_finishing_result = 'VERIFIED'
-                            THEN 'SUCCESS'
-                        WHEN e.phase_outcome = 'FAILED'
-                             AND (e.write_started IS TRUE OR (
-                                 e.write_started IS NULL
-                                 AND e.app_build IS NULL
-                                 AND e.release_label IS NULL
-                             ))
-                            THEN 'FAILURE'
-                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                             AND e.write_started IS FALSE
-                            THEN 'NOT_STARTED'
-                        ELSE 'UNKNOWN'
-                    END AS result_classification
+                    terento_fresh_result_classification(
+                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
+                        e.schema_version, e.app_build, e.release_label
+                    ) AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.statistics_exclusion_code IS NULL
@@ -4556,7 +4528,7 @@ class Database:
                        COALESCE(peer_package.canonical_region_id, peer.region) AS region_key,
                        count(*) AS peer_count
                 FROM normalized_map_events peer
-                LEFT JOIN map_package peer_package ON peer_package.id = peer.map_package_id
+                LEFT JOIN map_package peer_package ON peer_package.id = COALESCE(peer.map_package_id, peer.reported_map_id)
                 WHERE peer.event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
                   AND peer.component_kind IS DISTINCT FROM 'contours'
                 GROUP BY peer.operation_id, peer.provider_id,
@@ -4580,7 +4552,7 @@ class Database:
                     min(evidence.occurred_at) AS diagnostic_occurred_at
                 FROM map_download_event AS installed
                 LEFT JOIN map_package AS installed_package
-                  ON installed_package.id = installed.map_package_id
+                  ON installed_package.id = COALESCE(installed.map_package_id, installed.reported_map_id)
                 LEFT JOIN deduplicated_compatibility AS evidence
                   ON evidence.operation_id = installed.operation_id
                  AND evidence.provider = installed.provider_id
@@ -4636,7 +4608,7 @@ class Database:
                     SELECT 1
                     FROM map_download_event AS installed
                     LEFT JOIN map_package AS installed_package
-                      ON installed_package.id = installed.map_package_id
+                      ON installed_package.id = COALESCE(installed.map_package_id, installed.reported_map_id)
                     LEFT JOIN map_event_evidence AS installed_evidence
                       ON installed_evidence.event_id = installed.event_id
                     WHERE installed.operation_id = e.operation_id
@@ -4689,7 +4661,7 @@ class Database:
                     e.occurred_at AS source_occurred_at,
                     e.provider_id,
                     p.name AS provider_name,
-                    e.map_package_id,
+                    COALESCE(e.map_package_id, mp.id) AS map_package_id,
                     mp.name AS map_package_name,
                     mp.map_type,
                     COALESCE(e.region, mp.region) AS region,
@@ -4721,7 +4693,7 @@ class Database:
                         ELSE FALSE
                     END AS canonical_result
                 FROM normalized_map_events AS e
-                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
                 LEFT JOIN map_provider AS p ON p.id = e.provider_id
                 LEFT JOIN map_event_evidence AS evidence ON evidence.event_id = e.event_id
                 WHERE {' AND '.join(clauses).replace('e.occurred_at', 'CASE WHEN evidence.diagnostic_result_count=1 AND evidence.map_candidate_count=1 THEN LEAST(e.occurred_at, evidence.diagnostic_occurred_at) ELSE e.occurred_at END')}
@@ -4931,7 +4903,7 @@ class Database:
                   AND map_result_index IS NOT NULL AND component_kind IS DISTINCT FROM 'contours'
                   AND event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
                 GROUP BY operation_id,map_result_index
-                HAVING count(DISTINCT (provider_id,map_package_id,region,event_type,outcome)) > 1
+                HAVING count(DISTINCT (provider_id,COALESCE(map_package_id,reported_map_id),region,event_type,outcome)) > 1
             ), dated_map_events AS (
                 SELECT e.*, LEAST(e.occurred_at,
                     min(e.occurred_at) OVER (PARTITION BY
@@ -4942,7 +4914,7 @@ class Database:
                                          THEN d.operation_id::text || ':' || d.map_result_index::text
                                          ELSE 'event:' || d.event_id::text END)=1 THEN min(d.occurred_at) END
                      FROM compatibility_evidence_event d
-                     LEFT JOIN map_package package ON package.id=e.map_package_id
+                     LEFT JOIN map_package package ON package.id=COALESCE(e.map_package_id,e.reported_map_id)
                      WHERE d.operation_id=e.operation_id AND d.provider=e.provider_id
                        AND d.is_local_test IS NOT TRUE AND d.statistics_exclusion_code IS NULL
                        AND (e.map_result_index IS NULL OR d.map_result_index=e.map_result_index)
@@ -4963,7 +4935,7 @@ class Database:
                          THEN 'event:' || e.event_id::text ELSE 'acquisition' END AS result_identity,
                     COALESCE(e.operation_id::text, 'event:' || e.event_id::text) AS map_operation_key,
                     e.provider_id,
-                    e.map_package_id,
+                    COALESCE(e.map_package_id, e.reported_map_id) AS map_package_id,
                     mp.provider_region_id AS map_provider_region,
                     mp.canonical_region_id AS map_canonical_region,
                     mp.region AS map_package_region,
@@ -4980,7 +4952,7 @@ class Database:
                     bool_or(e.event_type = 'INSTALL_FAILED' AND e.outcome = 'FAILED') AS map_failed,
                     count(DISTINCT (e.event_type, e.outcome)) FILTER (WHERE e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')) > 1 AS map_conflict
                 FROM dated_map_events AS e
-                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
                 WHERE {' AND '.join(clauses).replace('e.occurred_at', 'e.canonical_occurred_at')}
                   AND (e.event_type NOT IN ('INSTALL_SUCCEEDED','INSTALL_FAILED') OR e.component_kind IS DISTINCT FROM 'contours')
                   AND NOT EXISTS (SELECT 1 FROM conflicting_map_results conflict
@@ -4990,7 +4962,7 @@ class Database:
                               WHEN e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                               THEN 'event:' || e.event_id::text ELSE 'acquisition' END,
                          COALESCE(e.operation_id::text, 'event:' || e.event_id::text),
-                         e.provider_id, e.map_package_id, mp.provider_region_id,
+                         e.provider_id, COALESCE(e.map_package_id, e.reported_map_id), mp.provider_region_id,
                          mp.canonical_region_id, mp.region,
                          COALESCE(
                              mp.canonical_region_id,
@@ -5006,22 +4978,10 @@ class Database:
             ), classified_compatibility AS (
                 SELECT
                     e.*,
-                    CASE
-                        WHEN e.phase_outcome = 'SUCCEEDED'
-                             AND e.automatic_finishing_result = 'VERIFIED'
-                            THEN 'SUCCESS'
-                        WHEN e.phase_outcome = 'FAILED'
-                             AND (e.write_started IS TRUE OR (
-                                 e.write_started IS NULL
-                                 AND e.app_build IS NULL
-                                 AND e.release_label IS NULL
-                             ))
-                            THEN 'FAILURE'
-                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                             AND e.write_started IS FALSE
-                            THEN 'NOT_STARTED'
-                        ELSE 'UNKNOWN'
-                    END AS result_classification
+                    terento_fresh_result_classification(
+                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
+                        e.schema_version, e.app_build, e.release_label
+                    ) AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.operation_id IS NOT NULL
                   AND e.map_result_index IS NOT NULL

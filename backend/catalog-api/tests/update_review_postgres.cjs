@@ -13,7 +13,7 @@ const input=JSON.parse(require('node:fs').readFileSync(0,'utf8'));
  CREATE TABLE compatibility_model_statistics(canonical_device_model_id TEXT,calculated_status TEXT,successful_install_count INT,
  review_status TEXT,public_statistics_enabled BOOLEAN);
  CREATE TABLE map_download_event(event_id UUID,operation_id UUID,is_local_test BOOLEAN,statistics_exclusion_code TEXT,
- event_type TEXT,outcome TEXT,map_package_id TEXT,provider_id TEXT,region TEXT,map_result_index INT,acquisition_id UUID);
+ event_type TEXT,outcome TEXT,map_package_id TEXT,provider_id TEXT,region TEXT,map_result_index INT,acquisition_id UUID,reported_map_id TEXT);
  CREATE TABLE map_package(id TEXT,provider_id TEXT,provider_region_id TEXT,canonical_region_id TEXT,region TEXT);
  CREATE TABLE admin_map_review_task(event_id UUID,task_type TEXT,status TEXT);
  INSERT INTO compatibility_evidence_event(event_id,operation_id,phase_outcome,write_started,canonical_device_model_id,diagnostic_status,is_local_test)

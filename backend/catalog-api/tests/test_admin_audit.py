@@ -429,8 +429,11 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn('e.region = %s', complete)
         self.assertIn('e.region = %s', filtered)
         self.assertIn('GROUP BY c.operation_key, c.provider, c.region, c.result_classification_effective', filtered)
-        self.assertIn("e.phase_outcome = 'SUCCEEDED'", complete)
-        self.assertIn("e.write_started IS TRUE", complete)
+        self.assertIn("terento_fresh_result_classification(", complete)
+        self.assertIn("e.schema_version, e.app_build, e.release_label", complete)
+        classifier = (Path(__file__).resolve().parents[1] / "src/terento_catalog/migrations/069_reported_identity_facts.sql").read_text()
+        self.assertIn("write_started IS TRUE", classifier)
+        self.assertNotIn("write_started IS NOT FALSE", classifier)
         self.assertNotIn("e.write_started IS NOT FALSE", complete)
         self.assertNotIn("e.phase_outcome = 'NOT_STARTED'", complete)
         self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", complete)
@@ -476,10 +479,11 @@ class AdminAuditTests(unittest.TestCase):
 
         QueryDatabase('unused').map_statistics({})
         query, _ = calls[0]
-        self.assertIn("e.write_started IS TRUE", query)
-        self.assertIn("e.write_started IS FALSE", query)
-        self.assertIn("e.app_build IS NULL", query)
-        self.assertIn("e.release_label IS NULL", query)
+        self.assertIn("terento_fresh_result_classification(", query)
+        classifier = (Path(__file__).resolve().parents[1] / "src/terento_catalog/migrations/069_reported_identity_facts.sql").read_text()
+        for predicate in ("write_started IS TRUE", "write_started IS FALSE", "app_build IS NULL",
+                          "release_label IS NULL", "schema_version IN (1, 2)"):
+            self.assertIn(predicate, classifier)
         self.assertIn("evidence.diagnostic_result_count = 1", query)
         self.assertIn("evidence.has_confirmed_failure IS TRUE", query)
         self.assertIn("e.component_kind = 'contours'", query)

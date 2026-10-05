@@ -1769,7 +1769,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         database.admin_overview_map_snapshot(since, period="24h")
 
         raw_queries = "\n".join(query for query, _ in database.calls)
-        self.assertIn("e.phase_outcome = 'FAILED'", raw_queries)
+        self.assertIn("terento_fresh_result_classification(", raw_queries)
         self.assertNotIn("e.write_started IS NOT FALSE", raw_queries)
         self.assertIn("A final compatibility failure is an installation", inspect.getsource(Database.admin_overview_map_snapshot))
 

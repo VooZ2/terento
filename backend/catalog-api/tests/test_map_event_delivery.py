@@ -25,7 +25,7 @@ class MapIntakeDatabase(FakeProviderDatabase):
         self.sql = sqlite3.connect(':memory:', check_same_thread=False)
         self.sql.row_factory = sqlite3.Row
         self.sql.execute('CREATE TABLE map_package (id TEXT PRIMARY KEY)')
-        self.sql.execute('CREATE TABLE map_download_event (event_id TEXT PRIMARY KEY, operation_id TEXT, provider_id TEXT, map_package_id TEXT, region TEXT, event_type TEXT, outcome TEXT, occurred_at TEXT, app_build TEXT, release_label TEXT, is_local_test BOOLEAN, acquisition_id TEXT, component_kind TEXT, map_result_index INTEGER, acquisition_purpose TEXT)')
+        self.sql.execute('CREATE TABLE map_download_event (event_id TEXT PRIMARY KEY, operation_id TEXT, provider_id TEXT, map_package_id TEXT, region TEXT, event_type TEXT, outcome TEXT, occurred_at TEXT, app_build TEXT, release_label TEXT, is_local_test BOOLEAN, acquisition_id TEXT, component_kind TEXT, map_result_index INTEGER, acquisition_purpose TEXT, reported_map_id TEXT)')
 
     @contextmanager
     def connection(self):

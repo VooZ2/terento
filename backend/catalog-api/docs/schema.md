@@ -523,3 +523,18 @@ acquisition/event phases and at most one terminal phase. Existing rows are not
 rewritten. Accepted additional phases are DOWNLOAD_PROCESSING,
 DOWNLOAD_CANCELLED and DOWNLOAD_INTERRUPTED. All retain the existing telemetry
 privacy, retention and local-test exclusion boundaries.
+
+### Migration069: reported identity facts and one fresh-result classifier
+
+Additive and rollback-compatible. `map_download_event.reported_map_id` (nullable,
+safe-identifier text) keeps the exact `mapId` of a map event whose package was not
+in the catalog at ingest; known packages keep only the `map_package_id` foreign
+key. Read models resolve a package by `COALESCE(map_package_id, reported_map_id)`,
+so a later-published package is attributed by exact identity, never by provider +
+region. `compatibility_evidence_event.schema_version` (nullable SMALLINT) stores
+the evidence payload version for new rows; earlier rows stay NULL and are not
+backfilled. `terento_fresh_result_classification(...)` is the single SQL fresh
+result classifier used by `compatibility_model_statistics` (same 29 columns) and
+the map-statistics, Dashboard and linkage read models. Its legacy write rule
+applies only when `write_started` is NULL and either the stored schema version is
+1 or 2, or (no stored version) both app build and release label are NULL.

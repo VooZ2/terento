@@ -96,7 +96,11 @@ identity, cancellation, or unknown failures do not create a fresh attempt or a
 fresh failure. They remain available in diagnostics and acquisition/activity
 history. An unambiguous legacy record with no write field may retain its
 historical attempted-write interpretation; current missing or conflicting
-facts are excluded from the fresh denominator.
+facts are excluded from the fresh denominator. A record is an unambiguous legacy
+record when it has no write fact and its stored evidence schema version is 1 or 2;
+rows received before the schema version was stored (NULL) qualify only when they
+also carry no app build and no release label. One SQL function,
+`terento_fresh_result_classification`, implements this for every read model.
 
 For every read model:
 
@@ -387,6 +391,10 @@ outcomes appear in Activity as stopped before writing with a retained report
 link/reason when reports agree. They do not fabricate map telemetry, write
 failures, or additional successful/failed update totals. Missing, disabled or
 unassigned diagnostics cannot be reconstructed from acquisition completion.
+
+A map event whose `mapId` was not yet in the catalog keeps that exact reported ID;
+when the package is published later, read models attribute the event to it by
+exact identity. This is not a provider + region guess.
 
 Recent map activity remains mixed and may show provider downloads, fresh
 install outcomes, optional-component warnings, and updates. Map history keeps

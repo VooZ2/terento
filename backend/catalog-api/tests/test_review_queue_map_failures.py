@@ -113,7 +113,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
                 provider_id TEXT, map_package_id TEXT, region TEXT, event_type TEXT,
                 outcome TEXT, occurred_at TEXT, is_local_test BOOLEAN,
                 statistics_exclusion_code TEXT, map_result_index INTEGER,
-                acquisition_id TEXT);
+                acquisition_id TEXT, reported_map_id TEXT);
             CREATE TABLE map_provider(id TEXT, name TEXT);
             CREATE TABLE map_package(id TEXT, provider_id TEXT, name TEXT,
                 provider_region_id TEXT, canonical_region_id TEXT, region TEXT);

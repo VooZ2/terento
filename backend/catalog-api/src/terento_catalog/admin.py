@@ -4225,6 +4225,16 @@ def _operation_state(results: list[dict[str, Any]], *, resolved: bool) -> str:
     return "history"
 
 
+def _is_unambiguous_legacy_result(result: dict[str, Any]) -> bool:
+    """Mirror terento_fresh_result_classification's legacy write rule (migration 069)."""
+    if result.get("write_started") is not None:
+        return False
+    schema_version = result.get("schema_version")
+    if schema_version is not None:
+        return schema_version in (1, 2)
+    return result.get("app_build") is None and result.get("release_label") is None
+
+
 def _result_classification(result: dict[str, Any]) -> str:
     outcome = str(result.get("phase_outcome") or "").strip().upper()
     finishing = str(result.get("automatic_finishing_result") or "").strip().upper()
@@ -4232,11 +4242,7 @@ def _result_classification(result: dict[str, Any]) -> str:
         return "SUCCESS"
     if outcome == "FAILED":
         write_started = result.get("write_started")
-        if write_started is True or write_started == 1 or (
-            write_started is None
-            and result.get("app_build") is None
-            and result.get("release_label") is None
-        ):
+        if write_started is True or write_started == 1 or _is_unambiguous_legacy_result(result):
             return "FAILURE"
         if write_started is False or write_started == 0:
             return "NOT_STARTED"
@@ -4280,10 +4286,7 @@ def _operation_counts_as_installation_attempt(results: list[dict[str, Any]]) -> 
         return True
     if result == "FAILED":
         return _operation_write_started(results) or all(
-            item.get("write_started") is None
-            and item.get("app_build") is None
-            and item.get("release_label") is None
-            for item in results
+            _is_unambiguous_legacy_result(item) for item in results
         )
     return False
 

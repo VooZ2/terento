@@ -10,6 +10,7 @@ CREATE TABLE map_update_diagnostic(event_id uuid,operation_id uuid,provider text
 INSERT INTO map_provider VALUES('maprando','MapRando');
 INSERT INTO map_package VALUES('map-a','maprando','Map A','main','FRANCE','france','FRANCE','FR','FR'),('map-b','maprando','Map B','main','FRANCE','france','FRANCE','FR','FR'),('maprando-france-courbes-ign','maprando','Contours','main','FRANCECOURBESIGN','france-courbes-ign','FRANCECOURBESIGN','FR','FR');
 INSERT INTO device_model VALUES('model-a',true),('model-b',true);`);
+for(const s of q.migration069||[]) await db.exec(s);
 await db.exec(q.previousView);
 const previousColumns=(await db.query("SELECT column_name,data_type FROM information_schema.columns WHERE table_name='compatibility_model_statistics' ORDER BY ordinal_position")).rows;
 await db.exec(q.view);

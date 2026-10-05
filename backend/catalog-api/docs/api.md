@@ -695,7 +695,9 @@ Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
 `DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, `INSTALL_FAILED`,
 `MAP_UPDATE_SUCCEEDED`, and `MAP_UPDATE_FAILED`; event IDs are
 UUIDs and are idempotent. The server stores only the normalized columns in
-`map_download_event`; it does not retain the raw JSON body. A successful
+`map_download_event`; it does not retain the raw JSON body. A `mapId` that is
+not yet a catalog package is kept as `reported_map_id` so the event can be
+attributed exactly once the package is published. A successful
 insert returns `201`, a duplicate returns `200`, and both return the
 `operationId`. Local rows are excluded from production map statistics and can
 be removed only by an authenticated, CSRF-protected admin action at

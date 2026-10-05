@@ -43,7 +43,9 @@ class StatisticsIntegrityTests(unittest.TestCase):
         root=Path(__file__).parent
         queries['schema']=(root/'migration_062_postgres.cjs').read_text().split('await db.exec(`',1)[1].split('`);',1)[0]
         queries['previousView']=next(s for s in _statements((root.parent/'src/terento_catalog/migrations/062_reconcile_installation_statistics_schema.sql').read_text()) if 'CREATE OR REPLACE VIEW' in s)
-        queries['view']=next(s for s in _statements((root.parent/'src/terento_catalog/migrations/067_statistics_integrity.sql').read_text()) if 'CREATE OR REPLACE VIEW' in s)
+        latest=_statements((root.parent/'src/terento_catalog/migrations/069_reported_identity_facts.sql').read_text())
+        queries['migration069']=[s for s in latest if 'CREATE OR REPLACE VIEW' not in s]
+        queries['view']=next(s for s in latest if 'CREATE OR REPLACE VIEW' in s)
         run=subprocess.run(['node',str(root/'statistics_integrity_postgres.cjs'),module],input=json.dumps(queries,default=lambda d:d.isoformat()),text=True,capture_output=True)
         self.assertEqual(run.returncode,0,run.stdout+'\n'+run.stderr)
         self.assertIn('statistics integrity PASS',run.stdout)
