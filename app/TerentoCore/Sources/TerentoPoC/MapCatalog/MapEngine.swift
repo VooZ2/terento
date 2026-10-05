@@ -1511,7 +1511,33 @@ final class MapEngine: ObservableObject {
             return
         }
         guard validateAcquisitionTarget() else { return }
+        guard manifestIsUsableBeforeInstall(identity: identity) else { return }
         prepareInstallationArtifacts()
+    }
+
+    /// Fails before any download or write when the local ownership record for
+    /// this watch cannot be read; the record is set aside so a retry starts a
+    /// fresh one. Ownership of earlier maps then falls back to the external
+    /// (unowned) lifecycle, which never widens removal or update authority.
+    private func manifestIsUsableBeforeInstall(identity: DeviceIdentity) -> Bool {
+        let store = LocalTerentoManifestStore()
+        let message: String
+        do {
+            guard let quarantined = try store.quarantineUnreadableManifest(deviceKey: identity.localManifestDeviceKey) else {
+                return true
+            }
+            message = "Terento couldn't read its record of maps on this watch, so it set the record aside. Nothing was written. Install the map again."
+            recordInstallationFailure(message, technicalError: "Unreadable local manifest quarantined as \(quarantined.lastPathComponent)")
+        } catch {
+            message = "Terento couldn't read its record of maps on this watch. Nothing was written."
+            recordInstallationFailure(message, technicalError: String(reflecting: error))
+        }
+        installationErrorMessage = message
+        installationPhase = .failed
+        installationPhaseProgress = nil
+        state = .failed
+        discardCustomMapImport()
+        return false
     }
 
     private func validateAcquisitionTarget() -> Bool {

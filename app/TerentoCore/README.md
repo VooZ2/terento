@@ -456,6 +456,12 @@ establish ownership of a physical watch. Scanning must not merge those records
 with a physically bound namespace or combine conflicting physical identities.
 Only the currently proven physical namespace may supply managed lifecycle records;
 unproven legacy records leave the external Remove fallback available.
+If the physical watch's manifest cannot be read when an install starts, Terento
+renames it to `manifest.corrupt-<UTC date>.json` beside the original (never
+deleting it), writes a local diagnostic and stops before downloading or writing;
+the next install starts a fresh manifest. Maps listed only in the set-aside
+record are then treated like any other unowned map (external Remove, no managed
+Update), so no authority is widened. Recording after a write still fails closed.
 
 After an authorized deletion, a fresh inventory proves removal by the old exact
 path's absence. Historical MTP handles may identify unrelated objects in that

@@ -835,7 +835,7 @@ struct SafeUpdateTransaction: Sendable {
         guard storagePlan.isAllowed else {
             return failure(
                 .blockedInsufficientSpace,
-                "There is not enough free space to keep the old map while the new one is verified.",
+                "There isn't enough free space on the watch to keep the old map while the new one is checked. Free up space, or remove the old map in Manage maps and then install the new version. Nothing was changed.",
                 storagePlan: storagePlan
             )
         }

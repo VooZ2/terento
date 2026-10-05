@@ -504,7 +504,7 @@ struct SafeDeleteAdapter: Sendable {
         case .deviceDisconnected:
             return "The Garmin device was disconnected. Nothing else was changed."
         case .deviceBusy:
-            return "The Garmin watch is busy or another app is using its USB connection. Close Garmin Finder and Garmin Express, eject the watch from Finder, reconnect it, and choose Refresh. Nothing was removed."
+            return "The watch is busy or another app is using it. Quit Garmin Express and other apps that connect to your watch, unplug the watch and plug it back in, then choose Refresh. Nothing was removed."
         case .objectNotFound:
             return "The map was not found on the Garmin device. Nothing was removed."
         case .operationFailed:

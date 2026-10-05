@@ -227,6 +227,42 @@ struct LocalTerentoManifestStore: TerentoManifestStore, TerentoManifestCleanupSt
         }
     }
 
+    /// An unreadable ownership record would make every later install write a
+    /// map and then fail to record it. Before writing, such a manifest is set
+    /// aside (renamed with the date, never deleted) under the manifest lock so
+    /// the next install starts a fresh record. Returns the quarantine URL, or
+    /// nil when the manifest is absent or readable.
+    @discardableResult
+    func quarantineUnreadableManifest(deviceKey: String, now: Date = Date()) throws -> URL? {
+        let manifestURL = try manifestURL(for: deviceKey)
+        return try withManifestLock(at: manifestURL, exclusive: true) {
+            guard FileManager.default.fileExists(atPath: manifestURL.path) else { return nil }
+            do {
+                _ = try readUnlocked(manifestURL)
+                return nil
+            } catch TerentoManifestStoreError.unreadableManifest {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                formatter.timeZone = TimeZone(secondsFromGMT: 0)
+                formatter.dateFormat = "yyyyMMdd-HHmmss"
+                var destination = manifestURL.deletingLastPathComponent()
+                    .appendingPathComponent("manifest.corrupt-\(formatter.string(from: now)).json")
+                var suffix = 1
+                while FileManager.default.fileExists(atPath: destination.path) {
+                    destination = manifestURL.deletingLastPathComponent()
+                        .appendingPathComponent("manifest.corrupt-\(formatter.string(from: now))-\(suffix).json")
+                    suffix += 1
+                }
+                do {
+                    try FileManager.default.moveItem(at: manifestURL, to: destination)
+                } catch {
+                    throw TerentoManifestStoreError.writeFailed
+                }
+                return destination
+            }
+        }
+    }
+
     private func manifestURL(for deviceKey: String) throws -> URL {
         guard !deviceKey.isEmpty,
               !deviceKey.contains("/"),
