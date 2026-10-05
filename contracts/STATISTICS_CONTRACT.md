@@ -429,7 +429,11 @@ audited with administrator, time, transition and exact target; it never edits
 map telemetry, install outcomes, coverage, or compatibility evidence. The
 Dashboard dismiss action is idempotent, requires no reason, and offers Undo.
 Dismissed gaps are excluded from the active queue, while a later matching
-diagnostic independently removes the gap through normal reconciliation. A
+diagnostic independently removes the gap through normal reconciliation. Any
+retained nonlocal diagnostic for the result is present evidence, including a
+statistics-excluded one; an `OUT_OF_SCOPE_PREWRITE` diagnostic for the same
+operation result (or the same operation when the map event has no result index)
+is a policy block and suppresses the gap instead of creating a review task. A
 statistics link for a gap carries the exact `eventId` and opens Event detail;
 aggregate population KPIs remain unchanged.
 

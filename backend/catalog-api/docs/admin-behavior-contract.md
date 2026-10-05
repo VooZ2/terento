@@ -230,7 +230,9 @@ A map install failure without matching device diagnostic evidence is a per-map
 review task keyed by the immutable map event ID. Dismiss/reopen is authenticated,
 CSRF-protected, idempotent, and audited without changing telemetry, statistics,
 compatibility, publication, or GitHub state. Dashboard offers Undo after dismiss.
-A later matching diagnostic removes the gap independently. An exact event action
+A later matching diagnostic removes the gap independently. A retained
+statistics-excluded diagnostic is present evidence, and an
+`OUT_OF_SCOPE_PREWRITE` diagnostic for the same result suppresses the task. An exact event action
 may open the matching collapsed Maps Event detail; aggregate statistics remain
 unchanged. A received device failure instead opens its actionable diagnostic
 context and is not redirected to aggregate Maps as a substitute.

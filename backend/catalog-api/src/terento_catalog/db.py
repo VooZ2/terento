@@ -33,6 +33,77 @@ from .statistics_exclusions import classify_compatibility_event
 OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
 ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS = 4
 
+# One predicate for the "install failed · no device diagnostic" review task,
+# shared by the Needs attention count and the Dashboard item list. Expects the
+# aliases e (map_download_event), mp (its package) and review_task.
+MISSING_DIAGNOSTIC_GAP_WHERE = """
+    e.is_local_test IS NOT TRUE
+    AND e.statistics_exclusion_code IS NULL
+    AND e.event_type = 'INSTALL_FAILED'
+    AND e.outcome = 'FAILED'
+    AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
+    -- An OUT_OF_SCOPE_PREWRITE diagnostic for this result is a policy block:
+    -- it contributes no review task (STATISTICS_CONTRACT), so it suppresses
+    -- the gap instead of counting as a missing diagnostic.
+    AND NOT EXISTS (
+        SELECT 1 FROM compatibility_evidence_event AS excluded
+        WHERE excluded.is_local_test IS NOT TRUE
+          AND excluded.statistics_exclusion_code = 'OUT_OF_SCOPE_PREWRITE'
+          AND excluded.operation_id = e.operation_id
+          AND (e.map_result_index IS NULL OR excluded.map_result_index = e.map_result_index)
+    )
+    AND (
+        NOT EXISTS (
+            -- Any retained nonlocal diagnostic for the result is present
+            -- evidence, including a statistics-excluded one.
+            SELECT 1 FROM compatibility_evidence_event AS diagnostic
+            WHERE diagnostic.is_local_test IS NOT TRUE
+              AND diagnostic.operation_id = e.operation_id
+              AND diagnostic.map_result_index IS NOT NULL
+              AND (e.map_result_index IS NULL OR diagnostic.map_result_index=e.map_result_index)
+              AND diagnostic.provider = e.provider_id
+              AND (
+                  diagnostic.region IS NOT DISTINCT FROM e.region
+                  OR (
+                      mp.provider_id = e.provider_id
+                      AND diagnostic.region IN (
+                          mp.provider_region_id, mp.canonical_region_id, mp.region
+                      )
+                      AND e.region IN (
+                          mp.provider_region_id, mp.canonical_region_id, mp.region
+                      )
+                  )
+              )
+        )
+        OR EXISTS (
+            -- A sibling package in the same region makes a region-only
+            -- diagnostic match ambiguous. Surface the gap instead of
+            -- claiming either sibling.
+            SELECT 1
+            FROM map_download_event AS sibling
+            LEFT JOIN map_package AS sibling_package
+              ON sibling_package.id = sibling.map_package_id
+            WHERE sibling.is_local_test IS NOT TRUE
+              AND sibling.statistics_exclusion_code IS NULL
+              AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+              AND sibling.operation_id = e.operation_id
+              AND sibling.provider_id = e.provider_id
+              AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
+              AND COALESCE(
+                  sibling_package.canonical_region_id,
+                  sibling_package.provider_region_id,
+                  sibling_package.region,
+                  sibling.region
+              ) IS NOT DISTINCT FROM COALESCE(
+                  mp.canonical_region_id,
+                  mp.provider_region_id,
+                  mp.region,
+                  e.region
+              )
+        )
+    )
+"""
+
 # The single canonical "open installation problem" population (STATISTICS_CONTRACT,
 # Needs attention). Unit: one operation (batch). An operation is an open problem
 # when it has an ACTIVE, nonlocal, non-excluded diagnostic with phase FAILED that
@@ -1315,58 +1386,7 @@ class Database:
                 LEFT JOIN admin_map_review_task AS review_task
                   ON review_task.event_id = e.event_id
                  AND review_task.task_type = 'MISSING_DIAGNOSTIC'
-                WHERE e.is_local_test IS NOT TRUE
-                  AND e.statistics_exclusion_code IS NULL
-                  AND e.event_type = 'INSTALL_FAILED'
-                  AND e.outcome = 'FAILED'
-                  AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
-                  AND (
-                      NOT EXISTS (
-                          SELECT 1
-                          FROM compatibility_evidence_event AS diagnostic
-                          WHERE diagnostic.is_local_test IS NOT TRUE
-                            AND diagnostic.statistics_exclusion_code IS NULL
-                            AND diagnostic.operation_id = e.operation_id
-                            AND diagnostic.map_result_index IS NOT NULL
-                            AND (e.map_result_index IS NULL OR diagnostic.map_result_index=e.map_result_index)
-                            AND diagnostic.provider = e.provider_id
-                            AND (
-                                diagnostic.region IS NOT DISTINCT FROM e.region
-                                OR (
-                                    mp.provider_id = e.provider_id
-                                    AND diagnostic.region IN (
-                                        mp.provider_region_id, mp.canonical_region_id, mp.region
-                                    )
-                                    AND e.region IN (
-                                        mp.provider_region_id, mp.canonical_region_id, mp.region
-                                    )
-                                )
-                            )
-                      )
-                      OR EXISTS (
-                          SELECT 1
-                          FROM map_download_event AS sibling
-                          LEFT JOIN map_package AS sibling_package
-                            ON sibling_package.id = sibling.map_package_id
-                          WHERE sibling.is_local_test IS NOT TRUE
-                            AND sibling.statistics_exclusion_code IS NULL
-                            AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
-                            AND sibling.operation_id = e.operation_id
-                            AND sibling.provider_id = e.provider_id
-                            AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
-                            AND COALESCE(
-                                sibling_package.canonical_region_id,
-                                sibling_package.provider_region_id,
-                                sibling_package.region,
-                                sibling.region
-                            ) IS NOT DISTINCT FROM COALESCE(
-                                mp.canonical_region_id,
-                                mp.provider_region_id,
-                                mp.region,
-                                e.region
-                            )
-                      )
-                  )
+                WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE + """
             )
             SELECT
                 count(*) FILTER (WHERE has_failure AND NOT has_github_issue)
@@ -2149,59 +2169,7 @@ class Database:
                 LEFT JOIN admin_map_review_task AS review_task
                   ON review_task.event_id = e.event_id
                  AND review_task.task_type = 'MISSING_DIAGNOSTIC'
-                WHERE e.is_local_test IS NOT TRUE
-                  AND e.statistics_exclusion_code IS NULL
-                  AND e.event_type = 'INSTALL_FAILED' AND e.outcome = 'FAILED'
-                  AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
-                  AND (
-                      NOT EXISTS (
-                          SELECT 1 FROM compatibility_evidence_event AS diagnostic
-                          WHERE diagnostic.is_local_test IS NOT TRUE
-                            AND diagnostic.statistics_exclusion_code IS NULL
-                            AND diagnostic.operation_id = e.operation_id
-                            AND diagnostic.map_result_index IS NOT NULL
-                            AND (e.map_result_index IS NULL OR diagnostic.map_result_index=e.map_result_index)
-                            AND diagnostic.provider = e.provider_id
-                            AND (
-                                diagnostic.region IS NOT DISTINCT FROM e.region
-                                OR (
-                                    mp.provider_id = e.provider_id
-                                    AND diagnostic.region IN (
-                                        mp.provider_region_id, mp.canonical_region_id, mp.region
-                                    )
-                                    AND e.region IN (
-                                        mp.provider_region_id, mp.canonical_region_id, mp.region
-                                    )
-                                )
-                            )
-                      )
-                      OR EXISTS (
-                          -- A sibling package in the same region makes a
-                          -- region-only diagnostic match ambiguous. Surface
-                          -- the gap instead of claiming either sibling.
-                          SELECT 1
-                          FROM map_download_event AS sibling
-                          LEFT JOIN map_package AS sibling_package
-                            ON sibling_package.id = sibling.map_package_id
-                          WHERE sibling.is_local_test IS NOT TRUE
-                            AND sibling.statistics_exclusion_code IS NULL
-                            AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
-                            AND sibling.operation_id = e.operation_id
-                            AND sibling.provider_id = e.provider_id
-                            AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
-                            AND COALESCE(
-                                sibling_package.canonical_region_id,
-                                sibling_package.provider_region_id,
-                                sibling_package.region,
-                                sibling.region
-                            ) IS NOT DISTINCT FROM COALESCE(
-                                mp.canonical_region_id,
-                                mp.provider_region_id,
-                                mp.region,
-                                e.region
-                            )
-                      )
-                  )
+                WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE + """
                 ORDER BY e.occurred_at DESC, e.event_id
                 LIMIT %s
                 """, (attention_limit,),
