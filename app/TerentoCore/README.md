@@ -286,7 +286,9 @@ Missing specifications are not inferred from model names. This formatting does
 not alter identity/evidence strings, catalog matching, local manifest keys or
 installation authorization. The Map Manager registry includes the officially
 documented fēnix 9 family; exact-model public evidence remains independent.
-That local registry is presentation evidence, not a native write allowlist.
+That local registry is presentation evidence, not a native write allowlist; it
+never disables a server-approved Install action and is hidden on the Device
+page once the watch is "Ready for maps".
 The install/update path requires fresh API catalog authorization before
 acquisition and again before writing. It matches a normalized base model and
 filters candidates only with reliable variant facts. Conflicting variant

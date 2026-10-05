@@ -34,8 +34,10 @@ require_review_text 'TerentoInstallFooterPageShell(bodyScrolls: true)' 'Review b
 require_review_text 'VStack(spacing: TerentoPageLayout.sectionSpacing + 18)' 'Storage-to-button spacing no longer matches Install maps'
 require_review_text 'if let reason = installAvailability.userReason' 'Review hides the resolved blocked-install reason'
 require_review_text 'beginInstallationAfterConsent(plan)' 'Install maps bypasses the existing authorized path'
-require_review_text '!mapSupport.canAttemptTerentoMapInstall' 'map capability guard is missing'
-require_review_text '|| !installAvailability.isEnabled' 'resolved install availability guard is missing'
+# Support/capability status never grants or revokes write permission (AGENTS):
+# the local map capability registry must not veto a server-approved install.
+reject_review_text 'canAttemptTerentoMapInstall' 'local map capability registry vetoes the install action'
+require_review_text '.disabled(!installAvailability.isEnabled)' 'resolved install availability guard is missing'
 require_review_text 'selectedInstallationPlan = nil' 'Back no longer clears the selected plan'
 require_review_text 'localInstallStep = .choose' 'Back no longer returns to selection'
 # Assert placement, not merely presence: Storage belongs to the fixed footer

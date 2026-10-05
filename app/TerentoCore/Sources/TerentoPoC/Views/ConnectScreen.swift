@@ -86,11 +86,6 @@ struct ConnectScreen: View {
         DeviceAuthorizationPresentation(deviceEngine.installationAuthorization)
     }
 
-    private var mapSupport: GarminMapSupportStatus {
-        guard let identity else { return .unknown }
-        return GarminMapCapabilityRegistry.local.evaluate(identity: identity)
-    }
-
     /// Map lifecycle access is determined from the live MTP scan, not from a
     /// model allowlist. This keeps Manage maps available for every Garmin
     /// watch that has a Terento-owned map; the lifecycle resolver remains
@@ -1886,10 +1881,10 @@ struct ConnectScreen: View {
                         return
                     }
                 }
-                .disabled(
-                    !mapSupport.canAttemptTerentoMapInstall
-                        || !installAvailability.isEnabled
-                )
+                // Only the resolved availability (server authorization, live
+                // identity, plan and scan) gates Install. The local map
+                // capability registry is information, never a veto.
+                .disabled(!installAvailability.isEnabled)
             }
             }
         }
