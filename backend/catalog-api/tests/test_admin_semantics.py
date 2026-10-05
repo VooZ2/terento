@@ -3135,8 +3135,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Packages", body)
         problem = [{**healthy[0],"health":"DEGRADED","affectedPackageCount":1}]
         problem_body = providers_page(problem, {"username":"operator"}, "csrf").decode()
-        self.assertIn("Needs attention", problem_body)
-        self.assertIn("1 health exceptions", problem_body)
+        # Tiles use the shared provider-problem definition (ADM-10).
+        self.assertEqual(metric_value(problem_body, "Provider problems"), "1")
+        self.assertEqual(metric_value(problem_body, "Package problems"), "1")
+        self.assertEqual(metric_value(problem_body, "Healthy"), "0")
+        unknown = providers_page([{**healthy[0], "affectedPackageCount": None, "problematicSourceCount": None}],
+                                 {"username":"operator"}, "csrf").decode()
+        # Unknown problem counts render as —, never 0 (ADM-15).
+        self.assertIn("—<span class='sr-only'> Unknown</span>", unknown)
+        self.assertEqual(metric_value(unknown, "Package problems"), "—")
 
     def test_provider_problems_keep_packages_sources_and_health_separate(self):
         body = providers_page(
@@ -3239,8 +3246,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"},
             "csrf",
         ).decode()
-        for text in ("Packages", "Broken", "Catalog sync", "Health", "Check provider health", "Refresh catalog", "More", "Retire provider", "Metadata and attribution", "Original links", "Download source URLs", "Regions and packages", "Health", "View check details", "Collection history", "Provider history"):
+        for text in (">Packages</h2>", "Catalog sync", ">Health<", "Check provider health", "Refresh catalog", "More", "Retire provider", "<summary>Attribution</summary>", "Original links", "<summary>Sources ", ">Checks</h2>", ">Syncs</h2>", "View check details", "Collection history", "<summary>History "):
             self.assertIn(text, body)
+        # Summary tiles and one Problems card replace the attention sentence.
+        self.assertIsNotNone(metric_value(body, "Package problems"))
+        self.assertIn(">Problems</h2>", body)
+        self.assertNotIn("map files need attention", body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)
         self.assertIn("id='provider-source-page-size'", body)
@@ -3281,7 +3292,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("2026-08-30", history)
         self.assertNotIn("2026-08-31", history)
         self.assertNotIn("Download source URLs", body)
-        self.assertIn("Collection <span class='table-help'>No runs yet</span>", body)
+        self.assertIn("No collection run recorded yet.", body)
 
     def test_shared_model_page_keeps_resolved_failures_historical_and_open_errors_active_only(self):
         device = _admin_device_payload([{

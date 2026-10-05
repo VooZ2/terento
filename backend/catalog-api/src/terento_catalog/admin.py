@@ -3249,29 +3249,24 @@ def _provider_summary_row(provider: dict[str, Any]) -> str:
     name = str(provider.get("name") or provider_id or "Unknown provider")
     status = str(provider.get("status") or "UNKNOWN")
     health = str(provider.get("health") or "UNKNOWN")
-    affected_packages = provider.get("affectedPackageCount")
-    if affected_packages is None and "brokenPackageCount" in provider:
-        affected_packages = provider.get("brokenPackageCount")
-    problematic_sources = provider.get("problematicSourceCount")
-    if problematic_sources is None and "brokenUrlCount" in provider:
-        problematic_sources = provider.get("brokenUrlCount")
-    def count_label(value: Any, singular: str, plural: str) -> str:
-        try:
-            return f"{int(value)} {singular if int(value) == 1 else plural}" if value is not None else "—"
-        except (TypeError, ValueError):
-            return "—"
+    affected_packages = _optional_nonnegative_int(provider.get("affectedPackageCount", provider.get("brokenPackageCount")))
+    problematic_sources = _optional_nonnegative_int(provider.get("problematicSourceCount", provider.get("brokenUrlCount")))
     provider_href = html.escape(quote(provider_id, safe=""), quote=True)
-    problem_label = f"{count_label(affected_packages, 'package', 'packages')} · {count_label(problematic_sources, 'source', 'sources')}"
-    has_problems = any(isinstance(value, (int, float)) and value > 0 for value in (affected_packages, problematic_sources))
-    issue_markup = (
-        f"<span class='provider-issue-count is-positive' title='Current catalog problems: {html.escape(problem_label, quote=True)}' aria-label='Current catalog problems: {html.escape(problem_label, quote=True)}'>{html.escape(problem_label)}</span>"
-        if has_problems else "<span class='muted-value'>0</span>"
-    )
-    package_value = count_label(provider.get("packageCount"), "package", "packages")
+    # Problems shows affected packages; unknown stays — (ADM-15), never 0.
+    if affected_packages is None:
+        issue_markup = "<span class='muted-value' title='Package problems not measured'>—<span class='sr-only'> Unknown</span></span>"
+    elif affected_packages:
+        sources = f" · {_count_label(problematic_sources, 'source')}" if problematic_sources is not None else ""
+        label = f"{_count_label(affected_packages, 'package')}{sources}"
+        issue_markup = (
+            f"<span class='provider-issue-count is-positive' title='Current package problems: {html.escape(label, quote=True)}'>"
+            f"{_admin_icon('x-circle')}{html.escape(label)}</span>"
+        )
+    else:
+        issue_markup = "<span class='muted-value'>0</span>"
+    package_value = _optional_count_label(provider.get("packageCount"))
     health_error = str(provider.get("lastHealthError") or "").strip()
-    health_title = (
-        f" title='{html.escape(health_error, quote=True)}'" if health_error else ""
-    )
+    health_title = f" title='{html.escape(health_error, quote=True)}'" if health_error else ""
     latest_release = provider.get("latestRelease")
     latest_markup = (
         f"<small class='table-secondary'>Newest package: {html.escape(str(latest_release))}</small>"
@@ -3281,7 +3276,9 @@ def _provider_summary_row(provider: dict[str, Any]) -> str:
         "<tr>"
         f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong></a>{latest_markup}</td>"
         f"<td class='column-status'>{_provider_status_badge(status)}</td>"
-        f"<td class='column-status'{health_title}>{_provider_status_badge(health, kind='health')}</td>"
+        f"<td class='column-status'{health_title}>{_provider_status_badge(health, kind='health')}"
+        + (f"<small class='table-secondary'>{html.escape(health_error)}</small>" if health_error else "")
+        + "</td>"
         f"<td class='column-number numeric'>{html.escape(package_value)}</td>"
         f"<td class='column-number numeric'>{issue_markup}</td>"
         f"<td class='column-date'>{_timestamp_markup(provider.get('lastCatalogSync'))}</td>"
@@ -3295,32 +3292,32 @@ def providers_page(
     provider_rows = providers.get("providers", []) if isinstance(providers, dict) else providers
     provider_rows = list(provider_rows or [])
     rows = "".join(_provider_summary_row(provider) for provider in provider_rows)
-    empty = "<p class='empty'>No known providers are registered.</p>" if not provider_rows else ""
+    empty = _empty_state("empty", "No known providers are registered.") if not provider_rows else ""
+    states = [_provider_problem_state(provider) for provider in provider_rows]
+    tracked = [state for state in states if state["tracked"]]
     active = sum(1 for provider in provider_rows if str(provider.get("status")).upper() == "ACTIVE")
     healthy = sum(1 for provider in provider_rows if str(provider.get("health")).upper() == "HEALTHY")
-    affected_packages = [provider.get("affectedPackageCount", provider.get("brokenPackageCount")) for provider in provider_rows]
-    problematic_sources = [provider.get("problematicSourceCount", provider.get("brokenUrlCount")) for provider in provider_rows]
-    affected_package_total = sum(int(value) for value in affected_packages) if all(value is not None for value in affected_packages) else None
-    problematic_source_total = sum(int(value) for value in problematic_sources) if all(value is not None for value in problematic_sources) else None
-    exceptions = []
-    if active != len(provider_rows):
-        exceptions.append(f"{len(provider_rows) - active} inactive")
-    if healthy != len(provider_rows):
-        exceptions.append(f"{len(provider_rows) - healthy} health exceptions")
-    if affected_package_total:
-        exceptions.append(f"{affected_package_total} affected packages")
-    if problematic_source_total:
-        exceptions.append(f"{problematic_source_total} problematic sources")
-    provider_summary = (
-        "<section class='admin-summary-strip' aria-label='Provider problems'>"
-        f"<p class='admin-summary-metrics'><strong>Needs attention</strong><span> · {html.escape(' · '.join(exceptions))}</span></p></section>"
-        if exceptions else ""
+    affected = [_optional_nonnegative_int(provider.get("affectedPackageCount", provider.get("brokenPackageCount"))) for provider in provider_rows]
+    affected_total = sum(value for value in affected if value is not None) if affected and all(value is not None for value in affected) else None
+    latest_sync = max(
+        (parsed for parsed in (_parse_timestamp(provider.get("lastCatalogSync")) for provider in provider_rows) if parsed),
+        default=None,
     )
+    summary = "" if not provider_rows else _metric_row([
+        _metric_tile("Active", active, scope="now", secondary=f"of {len(provider_rows)}"),
+        _metric_tile("Healthy", healthy, scope="now", secondary=f"of {len(provider_rows)}", glossary="health-states"),
+        _metric_tile("Package problems", affected_total, scope="now", failure=True, glossary="package-problem",
+                     state=None if affected_total is not None else "unknown"),
+        _metric_tile("Provider problems", sum(1 for state in tracked if state["problem"]), scope="now", failure=True,
+                     hint="Active providers with degraded or failed health, a failed or overdue catalog sync, or package problems"),
+        _metric_tile("Last sync", format_timestamp(latest_sync) if latest_sync else None, fmt="text",
+                     value_html=_timestamp_markup(latest_sync) if latest_sync else None),
+    ], label="Provider summary")
     content = f"""
       {_admin_header(user, csrf_token, active='providers')}
       <main class='dashboard providers-page' id='main-content'>
         <div class='heading-row'><div><h1>Providers</h1></div></div>
-        {provider_summary}
+        {summary}
         {empty}
         <section class='provider-section' aria-label='Provider list'>
           <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-number'>Packages</th><th scope='col' class='column-number'>Problems</th><th scope='col' class='column-date'>Last sync</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
@@ -3330,19 +3327,36 @@ def providers_page(
     return _layout("Providers", content, sections={"providers": provider_rows})
 
 
-def _provider_problem(package, provider_id):
-    problems = []
-    for artifact in package.get('artifacts') or []:
-        if artifact.get('validation_status') not in {'UNAVAILABLE', 'FAILED'}:
-            continue
-        check = artifact.get('last_check') or {}
-        message = check.get('message') or 'The previous check did not record a reason. Check this package again.'
-        action = check.get('nextAction') or 'Recheck to get current validation evidence.'
-        url = str(artifact.get('source_url') or '')
-        diagnostic = {'package': package.get('id'), 'source': url, **check}
-        source = _provider_url(url, label='Open source')
-        problems.append(f"<article class='provider-problem'><h3>{html.escape(_admin_map_display_name(package.get('country'),package.get('name'),package.get('region'),package.get('id')))}</h3><p>{'Ontrail' if 'ontrail' in str(package.get('id')) else html.escape(provider_id.title())} · {html.escape(str(artifact.get('kind') or 'main'))}</p><p><strong>{html.escape(str(message))}</strong></p><p>Installation availability: {html.escape(str(package.get('availability') or 'Unknown'))}. {html.escape(str(action))}</p><p>Last check: {_timestamp_markup(check.get('checkedAt'))}</p><div class='provider-problem-actions'><button class='secondary-button' data-provider-action='rechecks' data-provider-id='{html.escape(provider_id,quote=True)}' data-package-id='{html.escape(str(package.get('id')),quote=True)}'>Recheck</button>{source}<button class='secondary-button' data-copy-diagnostic='{html.escape(json.dumps(diagnostic),quote=True)}'>Copy diagnostic details</button></div></article>")
-    return ''.join(problems)
+def _provider_problem_groups(packages: list[dict[str, Any]]) -> dict[str, list[tuple[dict[str, Any], dict[str, Any]]]]:
+    """Group failed/unavailable artifacts by their recorded reason."""
+    groups: dict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = {}
+    for package in packages:
+        for artifact in package.get('artifacts') or []:
+            if artifact.get('validation_status') not in {'UNAVAILABLE', 'FAILED'}:
+                continue
+            check = artifact.get('last_check') or {}
+            reason = str(check.get('message') or 'No reason recorded. Check this package again.')
+            groups.setdefault(reason, []).append((package, artifact))
+    return dict(sorted(groups.items(), key=lambda item: (-len({p.get('id') for p, _ in item[1]}), item[0])))
+
+
+def _provider_problem(package: dict[str, Any], artifact: dict[str, Any], provider_id: str, provider_name: str) -> str:
+    check = artifact.get('last_check') or {}
+    url = str(artifact.get('source_url') or '')
+    diagnostic = {'package': package.get('id'), 'source': url, **check}
+    name = _admin_map_display_name(package.get('country'), package.get('name'), package.get('region'), package.get('id'))
+    kind = {'main': 'Main map', 'contours': 'Contours'}.get(str(artifact.get('kind') or 'main'), str(artifact.get('kind') or 'Main map'))
+    action = str(check.get('nextAction') or 'Recheck to get current validation evidence.')
+    return (
+        "<li class='provider-problem'>"
+        f"<div><strong>{html.escape(name)}</strong><small>{html.escape(provider_name)} · {html.escape(kind)} · {_timestamp_markup(check.get('checkedAt'))}</small>"
+        f"<small>{html.escape(action)}</small></div>"
+        "<div class='provider-problem-actions'>"
+        f"<button type='button' class='secondary-button' data-provider-action='rechecks' data-provider-id='{html.escape(provider_id, quote=True)}' data-package-id='{html.escape(str(package.get('id')), quote=True)}'>Recheck</button>"
+        f"{_provider_url(url, label='Open source')}"
+        f"<button type='button' class='link-button' data-copy-diagnostic='{html.escape(json.dumps(diagnostic), quote=True)}'>Copy details</button>"
+        "</div></li>"
+    )
 
 
 def _provider_package_row(package: dict[str, Any], provider_id: str = "") -> str:
@@ -3359,8 +3373,10 @@ def _provider_package_row(package: dict[str, Any], provider_id: str = "") -> str
     region = str(package.get("region") or "").strip()
     search = " ".join((package_id, package_name, region, str(package.get("release") or ""))).casefold()
     artifact_details = ""
+    first_source = ""
     for artifact in package.get("artifacts") or []:
         url = str(artifact.get("source_url") or "")
+        first_source = first_source or url
         source = html.escape(url)
         if url.startswith("https://"):
             source = f"<a href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>{source}</a>"
@@ -3370,22 +3386,40 @@ def _provider_package_row(package: dict[str, Any], provider_id: str = "") -> str
             f"Download: {_optional_count_label(artifact.get('size_bytes'), ' bytes')} · IMG: {_optional_count_label(artifact.get('install_size_bytes'), ' bytes')}<br>"
             f"Source date: {html.escape(str(artifact.get('source_updated_at') or 'Unknown'))}<br>{source}</p>"
         )
-    download_control = ""
-    if provider_id and availability != "RETIRED":
-        disabled = bool(package.get("downloads_disabled"))
-        note = str(package.get("downloads_disabled_reason") or "").strip()
-        download_control = (
+    disabled = bool(package.get("downloads_disabled"))
+    note = str(package.get("downloads_disabled_reason") or "").strip()
+    download_state = ""
+    if disabled:
+        download_state = (
             "<div class='provider-download-control'>"
-            f"<strong>{'Downloads disabled by admin' if disabled else 'Downloads enabled by admin'}</strong>"
-            + (f"<small>{html.escape(note)}</small>" if disabled and note else "")
-            + f"<button type='button' class='secondary-button' data-provider-action='downloads' data-provider-id='{html.escape(provider_id, quote=True)}' data-package-id='{html.escape(package_id, quote=True)}' data-downloads-enabled='{str(disabled).lower()}'>{'Enable downloads' if disabled else 'Disable downloads'}</button></div>"
+            + _status_pill("warning", "Downloads disabled by admin", title=note or None)
+            + (f"<small>{html.escape(note)}</small>" if note else "") + "</div>"
         )
+    menu_items: list[str] = []
+    if provider_id:
+        menu_items.append(
+            f"<button type='button' class='secondary-button' data-provider-action='rechecks' data-provider-id='{html.escape(provider_id, quote=True)}' data-package-id='{html.escape(package_id, quote=True)}'>Recheck</button>"
+        )
+        if availability != "RETIRED":
+            menu_items.append(
+                f"<button type='button' class='secondary-button' data-provider-action='downloads' data-provider-id='{html.escape(provider_id, quote=True)}' data-package-id='{html.escape(package_id, quote=True)}' data-downloads-enabled='{str(disabled).lower()}'>{'Enable downloads' if disabled else 'Disable downloads'}</button>"
+            )
+    if first_source.startswith(("https://", "http://")):
+        menu_items.append(_provider_url(first_source, label="Open source"))
     if artifact_details:
-        artifact_details = f"<details class='admin-disclosure' style='text-align:start;overflow-wrap:anywhere'><summary>Artifact details</summary>{artifact_details}</details>"
+        menu_items.append(
+            f"<details class='admin-disclosure provider-artifact-details'><summary>Artifact details</summary>{artifact_details}</details>"
+        )
+    menu = (
+        f"<details class='provider-row-menu'><summary aria-label='Actions for {html.escape(package_name, quote=True)}'>⋯<span class='sr-only'> Actions</span></summary>"
+        f"<div class='provider-row-menu-body'>{''.join(menu_items)}</div></details>"
+        if menu_items else ""
+    )
     return (
-        f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-state='{html.escape(availability,quote=True)}' data-package-broken='{str(is_broken).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}{artifact_details}</td>"
+        f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-state='{html.escape(availability,quote=True)}' data-package-broken='{str(is_broken).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}</td>"
         f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='column-number numeric'>{_optional_count_label(package.get('artifact_count'))}</td>"
-        f"<td class='column-status'>{broken_markup}{f' <small>{broken_count} need attention</small>' if is_broken else ''}{download_control}</td></tr>"
+        f"<td class='column-status'>{broken_markup}{f' <small>{broken_count} need attention</small>' if is_broken else ''}{download_state}</td>"
+        f"<td class='column-status provider-row-actions'>{menu}</td></tr>"
     )
 
 
@@ -3538,45 +3572,16 @@ def provider_detail_page(
         if str(package.get("availability") or "").upper() != "RETIRED"
     ]
     sources = list(provider.get("sources") or [])
-    provider_sources = [
-        source for source in sources
-        if str(source.get("source_type") or "").upper() != "DOWNLOAD"
-    ]
-    download_sources = [
-        source for source in sources
-        if str(source.get("source_type") or "").upper() == "DOWNLOAD"
-    ]
+    provider_sources = [source for source in sources if str(source.get("source_type") or "").upper() != "DOWNLOAD"]
+    download_sources = [source for source in sources if str(source.get("source_type") or "").upper() == "DOWNLOAD"]
     health_history = list(provider.get("healthHistory") or [])
-    broken_artifact_counts = [
-        _optional_nonnegative_int(package.get("broken_artifact_count"))
-        for package in packages
-    ]
-    broken_packages = (
-        sum(count for count in broken_artifact_counts if count is not None)
-        if all(count is not None for count in broken_artifact_counts)
-        else None
-    )
-    affected_package_count = provider.get("affectedPackageCount")
+    affected_package_count = _optional_nonnegative_int(provider.get("affectedPackageCount"))
     if affected_package_count is None:
-        affected_values = [
-            _optional_nonnegative_int(package.get("broken_artifact_count"))
-            for package in packages
-        ]
+        affected_values = [_optional_nonnegative_int(package.get("broken_artifact_count")) for package in packages]
         affected_package_count = (
             sum(value > 0 for value in affected_values if value is not None)
-            if all(value is not None for value in affected_values)
-            else None
+            if all(value is not None for value in affected_values) else None
         )
-    problematic_source_count = provider.get("problematicSourceCount")
-    if problematic_source_count is None:
-        problematic_source_count = len({
-            str(artifact.get("source_url"))
-            for package in packages
-            for artifact in package.get("artifacts") or []
-            if str(artifact.get("validation_status") or "").upper() in {"FAILED", "UNAVAILABLE"}
-            and artifact.get("source_url")
-        })
-    package_count = int(provider["packageCount"]) if provider.get("packageCount") is not None else sum(p.get("availability") == "AVAILABLE" for p in packages)
     release_counts: dict[str, int] = {}
     for package in packages:
         release = str(package.get('release') or 'Not recorded')
@@ -3608,12 +3613,8 @@ def provider_detail_page(
     if status != "RETIRED":
         next_status = "PAUSED" if status == "ACTIVE" else "ACTIVE"
         state_button = _provider_action_button(
-            provider_id,
-            "state",
-            "Pause" if next_status == "PAUSED" else "Activate",
-            status=next_status,
-            secondary=True,
-            disabled=next_status == "ACTIVE" and not can_activate,
+            provider_id, "state", "Pause" if next_status == "PAUSED" else "Activate",
+            status=next_status, secondary=True, disabled=next_status == "ACTIVE" and not can_activate,
         )
     activation_note = ""
     if status != "ACTIVE" and status != "RETIRED" and not can_activate:
@@ -3621,38 +3622,36 @@ def provider_detail_page(
             activation_blockers = ["Activation checks are not available."]
         activation_note = (
             "<p class='provider-activation-note' role='status'><strong>Activation blocked.</strong> "
-            + html.escape(" ".join(activation_blockers))
-            + "</p>"
+            + html.escape(" ".join(activation_blockers)) + "</p>"
         )
-    rows_packages = "".join(_provider_package_row(package, provider_id if status != "RETIRED" else "") for package in packages)
+    action_provider = provider_id if status != "RETIRED" else ""
+    rows_packages = "".join(_provider_package_row(package, action_provider) for package in packages)
     rows_sources = "".join(_provider_source_row(source) for source in provider_sources)
     artifact_kinds = {str(a.get("source_url") or ""): str(a.get("kind") or "main")
                       for package in packages for a in package.get("artifacts") or []}
     typed_sources = [dict(source, artifact_kind=artifact_kinds.get(str(source.get("source_url") or ""), "unknown")) for source in download_sources]
     contour_sources = sum(source["artifact_kind"] == "contours" for source in typed_sources)
     main_sources = sum(source["artifact_kind"] == "main" for source in typed_sources)
-    source_counts = f"<span class='status-badge'>Main maps · {main_sources}</span> <span class='status-badge'>Contours · {contour_sources}</span>"
+    source_counts = f"{_status_pill('neutral', f'Main maps · {main_sources}')} {_status_pill('neutral', f'Contours · {contour_sources}')}"
     rows_download_sources = "".join(_provider_source_row(source) for source in typed_sources)
     rows_health = "".join(_provider_health_history_item(item) for item in previous_health)
     rows_runs = "".join(_provider_run_row(run) for run in runs)
     rows_audits = "".join(_provider_audit_row(audit) for audit in audits)
-    empty_packages = "<p class='empty'>No catalog packages collected yet.</p>" if not packages else ""
+    empty_packages = _empty_state("empty", "No catalog packages collected yet.") if not packages else ""
     empty_sources = "<p class='empty'>No provider source links recorded.</p>" if not provider_sources else ""
-    empty_download_sources = "<p class='empty'>No download source URLs recorded.</p>" if not download_sources else ""
-    empty_health = "<p class='empty'>No health checks recorded yet.</p>" if not health_history else ""
     empty_previous_health = "<p class='empty'>No previous health checks recorded.</p>" if not previous_health else ""
     empty_runs = "<p class='empty'>No catalog collection runs recorded yet.</p>" if not runs else ""
     empty_audits = "<p class='empty'>No provider audit entries recorded yet.</p>" if not audits else ""
     source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Provider-level original sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div>" if provider_sources else ""
     download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Download source URLs</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
-    download_source_section = f"<details class='admin-disclosure' id='provider-download-sources'><summary>Download source URLs <span class='disclosure-meta'>· {len(download_sources)}</span></summary><div class='disclosure-body'><p>{source_counts}</p><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details>" if download_sources else ""
-    package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-package-table'><caption class='sr-only'>Regions and packages</caption><thead><tr><th scope='col'>Region / package</th><th scope='col'>Release</th><th scope='col' class='column-number'>Artifacts</th><th scope='col' class='column-status'>State</th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
+    download_source_section = f"<details class='admin-card admin-disclosure provider-technical-section' id='provider-download-sources'><summary>Sources <span class='disclosure-meta'>· {len(download_sources)} download links</span></summary><div class='disclosure-body'><p>{source_counts}</p><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details>" if download_sources else ""
+    package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-package-table'><caption class='sr-only'>Packages</caption><thead><tr><th scope='col'>Map</th><th scope='col'>Release</th><th scope='col' class='column-number'>Files</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-status'><span class='sr-only'>Actions</span></th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
     latest_health_table = _provider_current_health(latest_health, provider)
     health_history_table = f"<p class='table-help'>Up to 10 previous checks from the last 30 days.</p><ol class='provider-health-history'>{rows_health}</ol>" if previous_health else ""
     monitoring = provider.get("monitoring") or {}
     schedule_options = "".join(f"<option value='{hours}'{' selected' if monitoring.get('intervalHours', 1) == hours else ''}>Every {hours} {'hour' if hours == 1 else 'hours'}</option>" for hours in (1, 6, 24))
     schedule = f"<div class='provider-health-schedule'><label for='provider-health-interval'>Automatic health checks</label><select id='provider-health-interval'{ ' disabled' if status == 'RETIRED' else ''}>{schedule_options}</select>{_provider_action_button(provider_id, 'health-schedule', 'Save interval', secondary=True, disabled=status == 'RETIRED')}</div>"
-    run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-run-table'><thead><tr><th scope='col'>Run</th><th scope='col' class='column-date'>Started</th><th scope='col' class='column-date'>Finished</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-number'>Updates</th><th scope='col' class='column-number'>Packages</th><th scope='col' class='column-number'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
+    run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-run-table'><thead><tr><th scope='col'>Run</th><th scope='col' class='column-date'>Started</th><th scope='col' class='column-date'>Finished</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-number' title='New and changed packages; — means not recorded'>Updates</th><th scope='col' class='column-number'>Packages</th><th scope='col' class='column-number'>Files</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
     audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Action</th><th scope='col' class='column-status'>Old status</th><th scope='col' class='column-status'>New status</th><th scope='col'>Reason</th><th scope='col' class='column-date'>Timestamp</th><th scope='col'>Details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
     health_summary = (
         f"{_provider_status_badge(latest_health_status, kind='health')} "
@@ -3660,39 +3659,91 @@ def provider_detail_page(
         if latest_health else "<span class='muted-value'>No health check recorded yet.</span>"
     )
     if monitoring.get("stale"):
-        health_summary += " <span class='provider-status provider-status-unknown'>Check overdue</span>"
-    health_transport = (
-        f"HTTP {html.escape(str(latest_health.get('http_status') or '—'))} · "
-        f"{html.escape(str(latest_health.get('duration_ms') or '—'))} ms"
-        if latest_health else "—"
+        health_summary += " " + _status_pill("warning", "Check overdue")
+
+    # --- Summary tiles --------------------------------------------------------
+    disabled_maps = sum(1 for package in packages if package.get("downloads_disabled"))
+    block = str(provider.get("downloadBlockReason") or "")
+    tiles = _metric_row([
+        _metric_tile("Health", latest_health_status.title(), fmt="text", glossary="health-states",
+                     value_html=_provider_status_badge(latest_health_status if latest_health else "UNKNOWN", kind="health"),
+                     secondary=f"Last check {_timestamp_markup(latest_health.get('checked_at') or provider.get('lastHealthCheck'))}"),
+        _metric_tile("Catalog", latest_run_status.title(), fmt="text",
+                     value_html=_provider_status_badge(latest_run_status) if latest_run else _status_pill("unknown", "No runs"),
+                     secondary=f"Sync {_timestamp_markup(provider.get('lastCatalogSync'))}"),
+        _metric_tile("Package problems", affected_package_count, failure=True, glossary="package-problem",
+                     secondary=f"of {_optional_count_label(len(packages))} packages"),
+        _metric_tile("Downloads", "Blocked" if block else "Allowed", fmt="text",
+                     value_html=_status_pill("danger", "Blocked", title=block) if block else _status_pill("success", "Allowed"),
+                     secondary=_count_label(disabled_maps, "map disabled", "maps disabled") if disabled_maps else "No maps disabled"),
+    ], label="Provider summary")
+
+    # --- Problems grouped by reason (preview five per group) -------------------
+    groups = _provider_problem_groups(packages)
+    group_markup: list[str] = []
+    for reason, items in groups.items():
+        package_ids = list(dict.fromkeys(str(package.get("id")) for package, _ in items))
+        preview = "".join(_provider_problem(package, artifact, provider_id, name) for package, artifact in items[:5])
+        more = (
+            f"<p class='provider-problem-more'><a href='#provider-packages' data-show-problems>Show all {len(items)} in Packages</a></p>"
+            if len(items) > 5 else ""
+        )
+        recheck = (
+            f"<button type='button' class='secondary-button' data-provider-action='rechecks' data-provider-id='{html.escape(provider_id, quote=True)}' data-package-id='{html.escape(package_ids[0], quote=True)}'>Recheck</button>"
+            if len(package_ids) == 1 else
+            f"<button type='button' class='secondary-button' data-provider-action='rechecks' data-provider-id='{html.escape(provider_id, quote=True)}' title='Rechecks every affected package of this provider'>Recheck affected</button>"
+        )
+        group_markup.append(
+            "<details class='provider-problem-group' open"
+            + f"><summary>{_status_pill('danger', _count_label(len(package_ids), 'package'))}<span class='provider-problem-reason'>{html.escape(reason)}</span></summary>"
+            f"<div class='provider-problem-group-body'><div class='provider-problem-group-actions'>{recheck if status != 'RETIRED' else ''}</div><ul class='provider-problem-list'>{preview}</ul>{more}</div></details>"
+        )
+    if affected_package_count is None and not groups:
+        problems_body = _empty_state("unavailable", "Problem count unavailable.", action=("#provider-packages", "Review packages"))
+    elif not groups:
+        problems_body = _empty_state("empty", "No known package problems.")
+    else:
+        problems_body = "".join(group_markup)
+    problems_section = _section_card(
+        "Problems",
+        f"<p id='provider-recheck-progress' role='status'></p>{problems_body}",
+        card_id="provider-problems", glossary="package-problem",
+        css="provider-card provider-problems-card",
+    ).replace(
+        "</header>",
+        (_provider_action_button(provider_id, 'rechecks', 'Recheck affected packages', disabled=status == 'RETIRED') if groups else "") + "</header>",
+        1,
     )
     collection_summary = (
         f"{_provider_status_badge(latest_run_status)} "
         f"<span>{_optional_count_label(latest_run.get('package_count'), ' packages')} · "
-        f"{_optional_count_label(latest_run.get('artifact_count'), ' artifacts')} · "
+        f"{_optional_count_label(latest_run.get('artifact_count'), ' files')} · "
         f"{_timestamp_markup(latest_run.get('finished_at') or latest_run.get('started_at'))}</span>"
         if latest_run else "<span class='muted-value'>No collection run recorded yet.</span>"
     )
-    collection_section = (
-        f"<section class='provider-card'><div class='section-heading'><div><h2>Collection</h2></div></div><div class='provider-latest-summary'>{collection_summary}</div><details class='admin-disclosure' id='provider-collection-history'><summary>Collection history <span class='disclosure-meta'>· {len(runs)} runs</span></summary><div class='disclosure-body'><p class='table-help'>Latest 10 collection runs. Updates counts new maps and maps with a changed release or source date. — means the count was not recorded.</p><p class='table-help'>Catalog sync: {_timestamp_markup(provider.get('lastCatalogSync'))}</p>{empty_runs}{run_table}</div></details></section>"
-        if latest_run or runs else
-        f"<section class='provider-card provider-empty-disclosure'><details class='admin-disclosure' id='provider-collection-history'><summary>Collection <span class='table-help'>No runs yet</span></summary><div class='disclosure-body'><p class='empty'>No catalog collection runs recorded yet.</p><p>Catalog sync: {_timestamp_markup(provider.get('lastCatalogSync'))}</p></div></details></section>"
+    checks_section = _section_card(
+        "Checks",
+        f"<div class='provider-latest-summary'><div>{health_summary}</div><span>{_timestamp_markup(latest_health.get('checked_at') or provider.get('lastHealthCheck'))}</span></div>"
+        f"<details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{latest_health_table}</div></details>"
+        f"{schedule}"
+        f"<details class='admin-disclosure' id='provider-health-history'><summary>Health check history <span class='disclosure-meta'>· {len(previous_health)} previous {'check' if len(previous_health) == 1 else 'checks'}</span></summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details>",
+        card_id="provider-checks", css="provider-card",
     )
-    provider_attention = ""
-    if broken_packages is None:
-        provider_attention = (
-            "<p class='provider-attention'><strong>Problem count unavailable.</strong> "
-            "<a href='#provider-packages'>Review packages</a></p>"
-        )
-    elif broken_packages > 0:
-        provider_attention = (
-            f"<p class='provider-attention'><strong>{broken_packages} map files "
-            "need attention.</strong> <a href='#provider-packages'>Review packages</a></p>"
-        )
+    syncs_section = _section_card(
+        "Syncs",
+        f"<div class='provider-latest-summary'>{collection_summary}</div>"
+        f"<details class='admin-disclosure' id='provider-collection-history'><summary>Collection history <span class='disclosure-meta'>· {len(runs)} runs</span></summary><div class='disclosure-body'><p class='table-help'>Last 10 runs · Catalog sync {_timestamp_markup(provider.get('lastCatalogSync'))}</p>{empty_runs}{run_table}</div></details>",
+        card_id="provider-syncs", css="provider-card",
+    )
+    packages_section = _section_card(
+        "Packages",
+        f"<div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'{' selected' if groups else ''}>Problems</option><option value='available'>Available</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label><span class='disclosure-meta'>{len(packages)} catalog entries</span></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div>",
+        card_id="provider-packages", css="provider-card",
+    )
     content = f"""
       {_admin_header(user, csrf_token, active='providers')}
       <main class='dashboard provider-detail' id='main-content'>
-        <p class='back-link'><a href='/admin/providers'>{_admin_icon('arrow-left')} Back to providers</a></p>
+        <p class='back-link'><a href='/admin/providers'>{_admin_icon('arrow-left')} Providers</a></p>
         <div class='heading-row'><div><h1>{html.escape(name)}</h1></div><div class='provider-heading-status'>{_provider_status_badge(status)}</div></div>
         <section class='provider-action-bar' data-provider-id='{html.escape(provider_id, quote=True)}' aria-label='Provider actions'>
           {_provider_action_button(provider_id, 'check', 'Check provider health')}
@@ -3702,19 +3753,17 @@ def provider_detail_page(
           {activation_note}
           <p class='admin-action-status' id='provider-action-status' aria-live='polite'></p>
         </section>
-        {provider_attention}
-        <section class='provider-card' aria-label='Package problems'><div class='section-heading'><h2>Package problems</h2>{_provider_action_button(provider_id, 'rechecks', 'Recheck affected packages', disabled=status == 'RETIRED')}</div><p id='provider-recheck-progress' role='status'></p>{''.join(_provider_problem(p, provider_id) for p in packages) or '<p>No known package validation problems.</p>'}</section>
-        <div class='provider-state-grid'>
-        <section class='provider-card'><div class='section-heading'><div><h2>Health</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{_timestamp_markup(latest_health.get('checked_at') or provider.get('lastHealthCheck'))}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{latest_health_table}</div></details>{schedule}<details class='admin-disclosure' id='provider-health-history'><summary>Health check history <span class='disclosure-meta'>· {len(previous_health)} previous {'check' if len(previous_health) == 1 else 'checks'}</span></summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
-        {collection_section}</div>
-        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages <span class='disclosure-meta'>· {len(packages)} catalog entries · {_optional_count_label(broken_packages)} artifacts needing attention</span></summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Needs attention</option><option value='available'>Available</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
-        <details class='provider-card admin-disclosure' id='provider-technical-details'><summary>Technical details</summary><div class='disclosure-body'>
-        <details class='admin-disclosure'><summary>Package releases</summary><div class='disclosure-body'><p>{release_summary}</p><p class='table-help'>Each region keeps its own provider release.</p></div></details>
+        {tiles}
+        {problems_section}
+        {packages_section}
+        <div class='provider-state-grid'>{checks_section}{syncs_section}</div>
+        <div class='provider-technical-grid' id='provider-technical-details'>
+        <details class='admin-card admin-disclosure provider-technical-section' id='provider-history'><summary>History <span class='disclosure-meta'>· {len(audits)} events</span></summary><div class='disclosure-body'><p class='table-help'>Last 10 actions; older audit records are retained.</p>{empty_audits}{audit_table}</div></details>
         {download_source_section}
-        <details class='admin-disclosure'><summary>Metadata and attribution</summary><dl class='provider-information-list'><div><dt>Provider ID</dt><dd><code>{html.escape(provider_id)}</code></dd></div><div><dt>Adapter</dt><dd><code>{html.escape(str(provider.get('adapterId') or '—'))}</code></dd></div><div><dt>Website</dt><dd>{_provider_url(provider.get('website'))}</dd></div><div><dt>License</dt><dd>{html.escape(str(provider.get('license') or '—'))}</dd></div><div><dt>Attribution</dt><dd>{html.escape(str(provider.get('attribution') or '—'))}</dd></div><div><dt>License URL</dt><dd>{_provider_url(provider.get('licenseUrl'))}</dd></div></dl></details>
-        <details class='admin-disclosure'><summary>Original links</summary>{empty_sources}{source_table}</details>
-        <details class='admin-disclosure' id='provider-history'><summary>Provider history <span class='disclosure-meta'>· {len(audits)} events</span></summary><div class='disclosure-body'><p class='table-help'>Latest 10 administrative actions. Earlier audit records remain retained.</p>{empty_audits}{audit_table}</div></details>
-        </div></details>
+        <details class='admin-card admin-disclosure provider-technical-section'><summary>Releases</summary><div class='disclosure-body'><p>{release_summary}</p><p class='table-help'>Each region keeps its own provider release.</p></div></details>
+        <details class='admin-card admin-disclosure provider-technical-section'><summary>Attribution</summary><dl class='provider-information-list'><div><dt>Provider ID</dt><dd><code>{html.escape(provider_id)}</code></dd></div><div><dt>Adapter</dt><dd><code>{html.escape(str(provider.get('adapterId') or '—'))}</code></dd></div><div><dt>Website</dt><dd>{_provider_url(provider.get('website'))}</dd></div><div><dt>License</dt><dd>{html.escape(str(provider.get('license') or '—'))}</dd></div><div><dt>Attribution</dt><dd>{html.escape(str(provider.get('attribution') or '—'))}</dd></div><div><dt>License URL</dt><dd>{_provider_url(provider.get('licenseUrl'))}</dd></div></dl></details>
+        <details class='admin-card admin-disclosure provider-technical-section'><summary>Original links</summary>{empty_sources}{source_table}</details>
+        </div>
       </main>
       <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_provider_detail_script()}</script>
     """
@@ -4081,6 +4130,10 @@ def _provider_detail_script() -> str:
         } catch (error) { progress.textContent = error.message; }
       }
       pollRechecks();
+      document.querySelectorAll('[data-show-problems]').forEach((link) => link.addEventListener('click', () => {
+        const filter = document.querySelector('#provider-package-filter');
+        if (filter) { filter.value = 'broken'; filter.dispatchEvent(new Event('change')); }
+      }));
       document.querySelectorAll('[data-copy-diagnostic]').forEach(button => button.addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(button.dataset.copyDiagnostic); button.textContent = 'Copied'; }
         catch { button.textContent = 'Copy unavailable'; }
@@ -8447,6 +8500,23 @@ ADMIN_STYLES += """
 .admin-glossary-link:hover>span{background:var(--selected-tint)}
 .admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
 .admin-card-unavailable{border-style:dashed}
+.provider-problem-group{border-top:1px solid var(--border)}
+.provider-problem-group:first-of-type{border-top:0}
+.provider-problem-group>summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-height:44px;cursor:pointer}
+.provider-problem-reason{font-weight:600}
+.provider-problem-group-body{padding:0 0 12px}
+.provider-problem-group-actions{display:flex;gap:8px;margin:0 0 8px}
+.provider-problem-list{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.provider-problem-list>.provider-problem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;align-items:center;padding:10px 0;border-top:1px solid var(--border)}
+.provider-problem-list>.provider-problem small{display:block;color:var(--secondary);font-size:12px}
+.provider-problem-list .provider-problem-actions{margin:0}
+.provider-row-menu{position:relative}
+.provider-row-menu>summary{display:inline-flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;border:1px solid var(--border);border-radius:var(--radius-control);list-style:none;cursor:pointer}
+.provider-row-menu>summary::-webkit-details-marker{display:none}
+.provider-row-menu-body{position:absolute;z-index:5;right:0;display:grid;gap:6px;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);box-shadow:0 4px 16px color-mix(in srgb,var(--graphite) 14%,transparent);text-align:start}
+.provider-technical-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;margin-top:16px}
+.provider-technical-grid>.provider-technical-section{margin:0;padding:0}
+@media(max-width:760px){.provider-technical-grid{grid-template-columns:minmax(0,1fr)}.provider-problem-list>.provider-problem{grid-template-columns:minmax(0,1fr)}}
 .admin-metric-failed{white-space:nowrap}.admin-metric-failed.is-positive{color:var(--danger);font-weight:600}
 .overview-tiles{margin:0 0 16px}
 .overview-attention-rows{display:grid;gap:2px;margin:0;padding:0;list-style:none}

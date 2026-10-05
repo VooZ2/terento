@@ -492,10 +492,25 @@ remain separate. Updates count newly discovered plus changed packages for that
 run; they do not count every artifact. Unknown historical counts remain unknown.
 Technical source/review controls remain available behind disclosure.
 
-Provider Problems distinguishes unique current affected packages, unique
-problematic source identities, and the latest health state/error. Retired or
+Providers opens with tiles (Active, Healthy, Package problems, Provider problems,
+Last sync) using the shared provider-problem definition. The Problems column
+counts affected packages (with problematic sources as secondary text); an
+unknown count shows `—` with `Unknown` accessible text, never `0`. Retired or
 resolved historical entries do not enter current counts. Measured zero,
 unknown/unavailable, stale, and partial remain distinct.
+
+Provider detail keeps its action bar, then shows tiles (Health, Catalog, Package
+problems, Downloads) and one Problems card grouped by recorded reason. Each group
+shows its package count, one Recheck (a single-package group rechecks that
+package; a larger group's `Recheck affected` and the card's `Recheck affected
+packages` recheck every affected package) and at most five rows with Recheck,
+Open source and Copy details, plus `Show all N in Packages`. Packages is the one
+package list: search, Problems/Available filter (Problems is preselected when
+problems exist), pagination, and a per-row `⋯` menu with Recheck, Disable or
+Enable downloads, Open source and artifact details. Checks and Syncs cards keep
+their latest summary visible and their history collapsed; History, Sources,
+Releases, Attribution and Original links are sibling disclosures. Provider
+names come from the catalog provider name, never from the provider ID.
 
 Provider **View check details** shows only the latest observation as labelled
 check/status pairs, its reason, observation time, next scheduled check and stale

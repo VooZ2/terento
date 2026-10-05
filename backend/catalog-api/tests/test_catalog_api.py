@@ -371,7 +371,7 @@ class CatalogAPITests(unittest.TestCase):
 
             detail, detail_body = self._request(server, "GET", "/admin/providers/freizeitkarte", headers={"Cookie": cookie})
             self.assertEqual(detail.status, 200)
-            self.assertIn(b"Metadata and attribution", detail_body)
+            self.assertIn(b"<summary>Attribution</summary>", detail_body)
             self.assertIn(b"Health check history", detail_body)
             self.assertIn(b"Refresh catalog", detail_body)
 

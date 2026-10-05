@@ -591,21 +591,20 @@ provider binaries or executable adapter configuration.
 ## `GET /admin/providers` and `GET /admin/providers/{id}`
 
 These authenticated, no-store/noindex HTML pages provide the operator views
-for the provider registry and each registered provider. The list shows provider name and
-secondary ID, lifecycle/health state, package count, current problems and catalog sync,
-and current Problems (affected packages · problematic sources), with a compact
-total/active/healthy/package/problem summary. The
-detail page shows metadata, license/attribution, provider-level original
-source links, and progressive-disclosure sections for download sources,
-regions/packages, health details/history, collection history, and retained
-provider history. Large source and package lists have client-side search,
-broken-only filters, 25/50-row pagination, and no zero-item package-source
-disclosure. An empty collection uses a compact `Collection · No runs yet`
-state. It also provides `Check provider health`, `Refresh catalog`,
-`Recheck affected packages`, targeted package rechecks, `Pause`/`Activate`,
-and an overflow `Retire` control. A request
-without a valid admin session redirects to `/admin/login`; the page never
-serves map binaries.
+for the provider registry and each registered provider. The list opens with
+Active, Healthy, Package problems, Provider problems and Last sync tiles, then a
+table of provider name, lifecycle/health state, package count, Problems
+(affected packages · problematic sources; unknown is `—`) and catalog sync. The
+detail page shows Health, Catalog, Package problems and Downloads tiles, one
+Problems card grouped by recorded reason (five rows per group and `Show all N in
+Packages`), one Packages list with search, Problems/Available filter, 25/50-row
+pagination and a per-row actions menu, Checks and Syncs cards with collapsed
+history, and sibling disclosures for History, Sources (download links with
+search, broken-only filter and pagination), Releases, Attribution and Original
+links. It provides `Check provider health`, `Refresh catalog`, `Recheck affected
+packages`, targeted package rechecks, Disable/Enable downloads, `Pause`/`Activate`,
+and an overflow `Retire` control. A request without a valid admin session
+redirects to `/admin/login`; the page never serves map binaries.
 
 `GET /admin/providers/{id}.json` and `GET /admin/providers/{id}/audit` are
 private JSON projections for operator tooling and carry the same session gate.
