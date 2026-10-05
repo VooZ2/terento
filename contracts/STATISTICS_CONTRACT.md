@@ -403,7 +403,10 @@ Fresh popularity and country coverage use only successful main-map fresh
 installs. Custom fresh results may be included in common fresh totals but do
 not acquire a guessed provider, region, country, or map package. Unknown and
 unmapped results remain visible as unknown/unmapped rather than being silently
-discarded or assigned by provider + region heuristics.
+discarded or assigned by provider + region heuristics. In particular a
+diagnostic-only fresh result (no matching map event) keeps an unknown package and
+geography even when exactly one catalog package currently has its region; it
+counts in fresh totals but never in popularity or country coverage.
 
 Provider problems are three separate current-state populations: affected
 packages (unique current package IDs with at least one failed or unavailable

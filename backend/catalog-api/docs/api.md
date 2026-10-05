@@ -224,7 +224,11 @@ unambiguous package-region identity. Operation ID alone is not a unique map.
 Historical acquisition failures remain activity and Maps evidence. A failure
 with `write_started=false` is not projected as `INSTALL_FAILED` or a fresh
 installation attempt. Existing explicit map events and eligible fallback rows
-are deduplicated by logical map result.
+are deduplicated by logical map result. A diagnostic-only fallback result keeps
+its reported region but an unknown package, map name, map type, canonical region
+and country: provider + region never establishes a package or geography, so it
+counts in fresh totals but not in Popular maps, Top countries or All maps, and a
+later catalog change cannot rewrite its history.
 
 A map install failure without a matching device diagnostic appears in Needs
 attention across all dates and is keyed by the immutable event ID. Authenticated,

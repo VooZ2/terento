@@ -1904,8 +1904,9 @@ class Database:
         random operation ID when both are available. Match provider and region
         within that session before suppressing a compatibility result. Custom
         IMG results count in Overview totals and their own success chart series.
-        Map statistics keeps custom results visible with unknown catalog
-        geography when no unambiguous package match exists. No records are changed.
+        Map statistics keeps diagnostic-only and custom results visible with
+        unknown package and geography; provider + region is never a package
+        identity. No records are changed.
         """
         # Dashboard metrics and trends are projections of the same canonical
         # map-statistics read model used by the Maps page. Keep raw map-event
@@ -4703,12 +4704,16 @@ class Database:
                     c.last_occurred_at AS source_occurred_at,
                     c.provider_id,
                     p.name AS provider_name,
-                    mp.id AS map_package_id,
-                    COALESCE(mp.name, geography.name) AS map_package_name,
-                    mp.map_type,
-                    COALESCE(c.region, mp.region) AS region,
-                    COALESCE(mp.geographic_region_id, mp.canonical_region_id, geography.geographic_region_id) AS canonical_region_id,
-                    COALESCE(mp.country, geography.country) AS region_country,
+                    -- Diagnostic-only results carry no map identity. Provider +
+                    -- region is never a package or geography identity, so the
+                    -- package, name, type, canonical region and country stay
+                    -- unknown; only the reported region is retained.
+                    NULL::text AS map_package_id,
+                    NULL::text AS map_package_name,
+                    NULL::text AS map_type,
+                    c.region AS region,
+                    NULL::text AS canonical_region_id,
+                    NULL::text AS region_country,
                     NULL AS component_kind,
                     NULL::text AS acquisition_purpose,
                     CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
@@ -4718,35 +4723,6 @@ class Database:
                     TRUE AS canonical_result
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
-                LEFT JOIN LATERAL (
-                    SELECT min(package.id) AS id, min(package.name) AS name,
-                           min(package.region) AS region, min(package.map_type) AS map_type,
-                           min(package.canonical_region_id) AS canonical_region_id,
-                           min(package.geographic_region_id) AS geographic_region_id,
-                           min(package.country) AS country
-                    FROM map_package AS package
-                    WHERE package.provider_id = c.provider_id
-                      AND (
-                          package.canonical_region_id = c.region
-                          OR package.provider_region_id = c.region
-                          OR package.region = c.region
-                      )
-                      AND (package.provider_id <> 'bbbike'
-                           OR package.canonical_region_id = c.region
-                           OR package.region = c.region)
-                    HAVING count(*) = 1
-                ) AS mp ON TRUE
-                LEFT JOIN LATERAL (
-                    -- Untyped BBBike evidence may establish geography but cannot
-                    -- establish which of two independent map types was installed.
-                    SELECT min(package.name) AS name, min(package.country) AS country,
-                           min(package.geographic_region_id) AS geographic_region_id
-                    FROM map_package AS package
-                    WHERE c.provider_id = 'bbbike' AND package.provider_id = c.provider_id
-                      AND (package.geographic_region_id = c.region
-                           OR package.provider_region_id = c.region)
-                    HAVING count(DISTINCT package.geographic_region_id) = 1
-                ) AS geography ON TRUE
             )
         """
         if trend_bucket is not None:
