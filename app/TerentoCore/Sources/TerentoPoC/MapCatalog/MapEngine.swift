@@ -200,6 +200,26 @@ private struct MapInventoryScanOutput: Sendable {
     let inventory: MapInventoryResult
     let ownershipManifestDeviceKeys: Set<String>
     let preferredOwnershipManifestDeviceKey: String?
+    /// Storage read by this scan's snapshot of the same watch.
+    var liveStorage: DeviceStorageObservation?
+}
+
+/// Storage observed by a map scan, tied to the watch it was read from.
+struct DeviceStorageObservation: Equatable, Sendable {
+    let id = UUID()
+    let vendorID: UInt16
+    let productID: UInt16
+    let serialNumber: String?
+    let storages: [StorageInfo]
+
+    var freeSpace: UInt64 {
+        storages.reduce(UInt64(0)) { total, storage in
+            let sum = total.addingReportingOverflow(storage.freeSpace)
+            return sum.overflow ? UInt64.max : sum.partialValue
+        }
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
 }
 
 private struct InstallationRunBatch: Sendable {
@@ -251,6 +271,10 @@ final class MapEngine: ObservableObject {
     /// Latest authorization decision fetched at download time. The device
     /// engine applies it so one source of truth drives every page.
     @Published private(set) var freshInstallationAuthorization: FreshInstallationAuthorization?
+    /// Free space read after each scan (including post-operation refreshes);
+    /// the device engine and the storage planner use it instead of the value
+    /// captured at connect.
+    @Published private(set) var latestDeviceStorage: DeviceStorageObservation?
 
     private let statisticsController: MapStatisticsEventController?
     private let evidenceController: InstallationEvidenceController?
@@ -405,6 +429,7 @@ final class MapEngine: ObservableObject {
         currentIdentity = nil
         currentAvailableStorage = nil
         lastObservedInventoryCount = nil
+        latestDeviceStorage = nil
         ownershipManifestDeviceKeys.removeAll()
         preferredOwnershipManifestDeviceKey = nil
         installationSpeedEstimator.reset()
@@ -541,13 +566,21 @@ final class MapEngine: ObservableObject {
                     return MapInventoryScanOutput(
                         inventory: inventory,
                         ownershipManifestDeviceKeys: manifestKeys,
-                        preferredOwnershipManifestDeviceKey: manifestKeys.first
+                        preferredOwnershipManifestDeviceKey: manifestKeys.first,
+                        liveStorage: liveSnapshot.map {
+                            DeviceStorageObservation(vendorID: $0.vendorID, productID: $0.productID,
+                                serialNumber: $0.serialNumber, storages: $0.storages)
+                        }
                     )
                 }
 
                 guard !Task.isCancelled else { return }
 
                 self?.lastObservedInventoryCount = scanOutput.inventory.deviceFiles.count
+                if let liveStorage = scanOutput.liveStorage, !liveStorage.storages.isEmpty {
+                    self?.currentAvailableStorage = liveStorage.freeSpace
+                    self?.latestDeviceStorage = liveStorage
+                }
                 self?.ownershipManifestDeviceKeys = scanOutput.ownershipManifestDeviceKeys
                 self?.preferredOwnershipManifestDeviceKey = scanOutput.preferredOwnershipManifestDeviceKey
                 self?.result = scanOutput.inventory
@@ -1137,6 +1170,12 @@ final class MapEngine: ObservableObject {
         state == .acquiringArtifact
     }
 
+    /// The device inventory could not be read (as opposed to a failed install,
+    /// which keeps the last inventory).
+    var mapScanFailed: Bool {
+        state == .failed && result == nil
+    }
+
     /// Cancel is offered only while maps are downloaded and checked on the Mac
     /// or the no-write preflight runs. The install step itself is never
     /// cancellable here: once `installSelectedMaps` owns the device, it runs
@@ -1217,6 +1256,16 @@ final class MapEngine: ObservableObject {
             }
             retainedArtifacts[key] = (artifact, expiresAt)
         }
+    }
+
+    fileprivate func hasRetainedArtifact(packageID: String, artifactID: String) -> Bool {
+        retainedArtifacts[RetainedArtifactKey(packageID: packageID, artifactID: artifactID)] != nil
+    }
+
+    /// Volumes that hold downloads (temporary directory) and workspaces (Caches).
+    nonisolated static var acquisitionStorageLocations: [URL] {
+        [FileManager.default.temporaryDirectory]
+            + (FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first.map { [$0] } ?? [])
     }
 
     fileprivate func takeRetainedArtifact(packageID: String, artifactID: String, version: MapVersion) -> ValidatedMapArtifact? {
@@ -1529,6 +1578,16 @@ final class MapEngine: ObservableObject {
             availabilityCheck: { try await MapCatalogLoader().validateCurrentAvailability(package: $0) },
             providerHealthChecker: FoundationMapProviderHealthChecker()
         )
+        // Only artifacts that must be downloaded need Mac storage; retained
+        // ones are already on disk.
+        let downloadBytes = packagePlans.reduce(UInt64(0)) { total, packagePlan in
+            guard packagePlan.item.package.sourceKind == .provider else { return total }
+            return packagePlan.artifactPlan.selectedArtifacts.reduce(total) { subtotal, artifact in
+                hasRetainedArtifact(packageID: packagePlan.item.package.id, artifactID: artifact.id)
+                    ? subtotal
+                    : subtotal + (artifact.downloadSizeBytes ?? artifact.sizeBytes ?? 0)
+            }
+        }
         let customAcquirer = CustomMapSourceAcquirer()
         let customCandidate = customMapImportCandidate
         let authorizationClient = installationAuthorizationClient
@@ -1554,6 +1613,10 @@ final class MapEngine: ObservableObject {
             }
             var activePackageIndex = 0
             do {
+                try MacStorageCheck.preflight(
+                    downloadBytes: downloadBytes,
+                    locations: Self.acquisitionStorageLocations
+                )
                 try await InstallationAuthorizationAcquisitionGate.run(
                     identity: authorizationIdentity,
                     client: authorizationClient,
@@ -2136,7 +2199,7 @@ final class MapEngine: ObservableObject {
                     totalBytes: finalResult.diagnostics.transferTotalBytes,
                     bytesPerSecond: 0
                 )
-                self?.installationErrorMessage = finalResult.failure?.userLabel
+                self?.installationErrorMessage = finalResult.primaryFailure?.userLabel
                 self?.installationPhase = (batchSucceeded || hasPartialSuccess) ? .completed : .failed
                 self?.installationPhaseProgress = (batchSucceeded || hasPartialSuccess) ? 1 : nil
                 self?.state = (batchSucceeded || hasPartialSuccess) ? .scanned : .failed
@@ -2265,7 +2328,7 @@ final class MapEngine: ObservableObject {
             return (.preflight, .sourceArtifactInvalid)
         case .downloadFailed, .providerUnavailable, .providerConnectionFailed, .downloadIncomplete, .untrustedSourceURL:
             return (.download, .downloadFailed)
-        case .workspaceFailed, .unsafeArchivePath, .extractionFailed:
+        case .workspaceFailed, .unsafeArchivePath, .extractionFailed, .insufficientMacStorage:
             return (.extract, .sourceValidationFailed)
         case .unsupportedPackageFormat, .invalidPackage, .sourceIdentityMismatch,
              .sourceVersionMismatch, .noIMGFound, .ambiguousIMG:

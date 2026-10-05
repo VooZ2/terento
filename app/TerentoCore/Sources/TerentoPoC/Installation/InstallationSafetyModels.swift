@@ -80,6 +80,11 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
     }
 }
 
+extension InstallationFailure {
+    /// One plain follow-up when a map file may remain after a failed install.
+    static let leftoverMapFollowUp = "The map file may be on your watch. Open Manage maps to remove it, then install it again."
+}
+
 enum InstallMapOwnership: String, Codable, Equatable, Sendable {
     case terentoManaged = "TERENTO_MANAGED"
     case externalRecognized = "EXTERNAL_RECOGNIZED"

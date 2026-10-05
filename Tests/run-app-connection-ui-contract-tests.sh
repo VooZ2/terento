@@ -56,6 +56,13 @@ assert_contains 'Use a USB data cable, not a charge-only cable' "$connect_screen
 assert_contains 'Quit Garmin Express' "$connect_screen"
 assert_contains 'case .needsAttention(let outcome):' "$connect_screen"
 assert_contains 'private var connectionStatusIcon: (name: String, color: Color)?' "$connect_screen"
+# A failed map read on a connected watch says so, shows an error icon and offers Try again.
+if [[ "$(rg -Fc "title: \"Couldn't read your maps\"" "$connect_screen")" -ne 2 \
+    || "$(rg -Fc 'onRetry: refreshMapInventory' "$connect_screen")" -ne 2 ]]; then
+    print -u2 "FAIL: Install and Manage maps must both present scan failure with Try again"
+    exit 1
+fi
+assert_contains 'Image(systemName: isError ? "exclamationmark.triangle.fill" : "map")' "$connect_screen"
 assert_contains 'externalMapsExpanded = false' "$connect_screen"
 assert_contains 'topPadding: TerentoPageLayout.primaryTopPadding' "$connect_screen"
 assert_contains 'bottomPadding: TerentoPageLayout.primaryBottomPadding' "$connect_screen"

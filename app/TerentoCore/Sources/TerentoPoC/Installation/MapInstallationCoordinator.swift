@@ -104,6 +104,17 @@ struct MapInstallationResult: Equatable, Sendable {
 
     var failureContext: InstallationFailureContext? { diagnostics.failureContext }
     var originalFailureContext: InstallationFailureContext? { diagnostics.originalFailureContext }
+
+    /// The cause shown to the user. Automatic cleanup is declined by design,
+    /// so a cleanup failure must not hide the failure that stopped the install.
+    var primaryFailure: InstallationFailure? {
+        cleanupFailure != nil ? (originalFailure ?? failure) : failure
+    }
+
+    /// A created object may remain on the watch; cleanup never removes it.
+    var mayHaveLeftMapOnWatch: Bool {
+        status == .failed && diagnostics.remoteObjectCreated && !diagnostics.cleanupSucceeded
+    }
 }
 
 enum Stage42ArtifactValidationError: String, LocalizedError, Equatable, Sendable {

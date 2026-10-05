@@ -365,6 +365,16 @@ struct DeviceDetectionEngineTests {
             usbVendorId: 0x091e, usbProductId: 0x1, firmware: nil, storageCapacity: 0, freeSpace: 0)
         engine.applyFreshInstallationAuthorization(.blocked(.outOfScope), for: other)
         check(engine.installationAuthorization == .blocked(.pending), "a decision for another watch is ignored")
+
+        let fresh = [StorageInfo(id: 1, description: "Internal", volumeIdentifier: "", maximumCapacity: 32_000, freeSpace: 7_000)]
+        engine.refreshStorage(DeviceStorageObservation(vendorID: 0x091e, productID: 0x51b8,
+            serialNumber: "1234567890", storages: fresh))
+        check(engine.snapshot?.freeSpace == 7_000 && engine.snapshot?.serialNumber == "1234567890",
+              "free space read after an operation replaces the value captured at connect")
+        engine.refreshStorage(DeviceStorageObservation(vendorID: 0x091e, productID: 0x51b8,
+            serialNumber: "OTHER", storages: [StorageInfo(id: 1, description: "", volumeIdentifier: "",
+                maximumCapacity: 1, freeSpace: 1)]))
+        check(engine.snapshot?.freeSpace == 7_000, "storage read from another watch is ignored")
     }
 
     static func testClassifier() {

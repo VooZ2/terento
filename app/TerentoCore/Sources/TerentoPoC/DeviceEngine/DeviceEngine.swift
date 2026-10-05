@@ -128,6 +128,29 @@ final class DeviceEngine: ObservableObject {
         retryInstallationAuthorization()
     }
 
+    /// Replaces the storage figures of the connected watch with a newer read
+    /// of the same watch (for example the scan after an install), so the
+    /// Device page and the planner do not use the value captured at connect.
+    func refreshStorage(_ observation: DeviceStorageObservation) {
+        guard hasConnectedDevice,
+              let current = snapshot,
+              current.vendorID == observation.vendorID,
+              current.productID == observation.productID,
+              current.serialNumber == observation.serialNumber,
+              !observation.storages.isEmpty else { return }
+        snapshot = DeviceSnapshot(
+            manufacturer: current.manufacturer,
+            model: current.model,
+            deviceVersion: current.deviceVersion,
+            vendorID: current.vendorID,
+            productID: current.productID,
+            storages: observation.storages,
+            serialNumber: current.serialNumber,
+            garminDeviceXMLStatus: current.garminDeviceXMLStatus,
+            garminDeviceXML: current.garminDeviceXML
+        )
+    }
+
     /// A fresh decision made at download time is applied here, so the Device
     /// and review pages show the same verdict that blocked or allowed the
     /// operation. Decisions for another watch are ignored.

@@ -288,6 +288,10 @@ struct ConnectScreen: View {
         .onChange(of: deviceEngine.installationAuthorization) { authorization in
             mapEngine.setInstallationAuthorization(authorization)
         }
+        .onChange(of: mapEngine.latestDeviceStorage) { storage in
+            guard let storage else { return }
+            deviceEngine.refreshStorage(storage)
+        }
         .onChange(of: mapEngine.freshInstallationAuthorization) { fresh in
             guard let fresh else { return }
             deviceEngine.applyFreshInstallationAuthorization(fresh.state, for: fresh.identity)
@@ -393,6 +397,10 @@ struct ConnectScreen: View {
                 },
                 onTryAgain: mapEngine.canRetryFailedInstallation && selectedInstallationPlan != nil ? {
                     installationFailureFollowUp = .tryAgain
+                    isShowingInstallationFailure = false
+                } : nil,
+                onManageMaps: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true ? {
+                    installationFailureFollowUp = .manageMaps
                     isShowingInstallationFailure = false
                 } : nil
             )
@@ -540,6 +548,11 @@ struct ConnectScreen: View {
             returnToDeviceAfterFailure()
         case .tryAgain:
             retryInstallationAfterFailure()
+        case .manageMaps:
+            selectedInstallationPlan = nil
+            selectedOptionalArtifactIDs.removeAll()
+            localInstallStep = .choose
+            navigate(to: .manageMaps)
         }
     }
 
@@ -1004,6 +1017,16 @@ struct ConnectScreen: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 .scrollIndicators(.automatic)
+            } else if mapEngine.mapScanFailed && deviceEngine.hasConnectedDevice {
+                MapStatusRow(
+                    title: "Couldn't read your maps",
+                    detail: "Your watch is connected, but its maps couldn't be read.",
+                    status: "Error",
+                    note: mapEngine.userErrorMessage,
+                    isError: true,
+                    onRetry: refreshMapInventory
+                )
+                .padding(.top, 30)
             } else {
                 MapStatusRow(
                     title: mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
@@ -1498,6 +1521,16 @@ struct ConnectScreen: View {
                             detail: "Checking your Garmin watch…",
                             status: "Checking",
                             note: "Map information will appear here when your watch is ready."
+                        )
+                        .padding(.top, 18)
+                    } else if mapEngine.mapScanFailed && deviceEngine.hasConnectedDevice {
+                        MapStatusRow(
+                            title: "Couldn't read your maps",
+                            detail: "Your watch is connected, but its maps couldn't be read.",
+                            status: "Error",
+                            note: mapEngine.userErrorMessage,
+                            isError: true,
+                            onRetry: refreshMapInventory
                         )
                         .padding(.top, 18)
                     } else if mapEngine.state != .scanned {
@@ -2912,6 +2945,7 @@ private struct MapLifecycleConfirmationSheet: View {
 private enum InstallationFailureFollowUp {
     case backToDevice
     case tryAgain
+    case manageMaps
 }
 
 private struct InstallationFailureDialog: View {
@@ -2923,9 +2957,18 @@ private struct InstallationFailureDialog: View {
     let onBackToDevice: () -> Void
     /// Offered only for transient failures where nothing was written.
     var onTryAgain: (() -> Void)? = nil
+    /// Offered when a map file may remain on the watch after the failure.
+    var onManageMaps: (() -> Void)? = nil
+
+    private var primaryAction: (label: String, action: () -> Void)? {
+        if let onTryAgain { return ("Try again", onTryAgain) }
+        if let onManageMaps { return ("Go to Manage maps", onManageMaps) }
+        return nil
+    }
 
     private var supportingMessage: String? {
-        [safetyMessage, "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting.", reportError]
+        [safetyMessage, onManageMaps == nil ? nil : InstallationFailure.leftoverMapFollowUp,
+         "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting.", reportError]
             .compactMap { value in
                 let normalized = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 return normalized.isEmpty ? nil : normalized
@@ -2946,12 +2989,12 @@ private struct InstallationFailureDialog: View {
             secondaryLabel: "Report issue",
             secondaryAssetIcon: "GitHubMark",
             secondaryUsesCancelShortcut: false,
-            tertiaryLabel: onTryAgain == nil ? nil : "Back to device",
+            tertiaryLabel: primaryAction == nil ? nil : "Back to device",
             onTertiary: onBackToDevice,
-            primaryLabel: onTryAgain == nil ? "Back to device" : "Try again",
+            primaryLabel: primaryAction?.label ?? "Back to device",
             isDestructive: false,
             onCancel: onReportIssue,
-            onConfirm: onTryAgain ?? onBackToDevice
+            onConfirm: primaryAction?.action ?? onBackToDevice
         )
         .accessibilityElement(children: .contain)
     }
@@ -4469,14 +4512,20 @@ struct MapStatusRow: View {
     let detail: String
     let status: String
     let note: String?
+    /// An error row uses the error icon and colour together, never colour alone.
+    var isError: Bool = false
+    var onRetry: (() -> Void)? = nil
+
+    private var accent: Color { isError ? TerentoColors.error : TerentoColors.lichenDark }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "map")
+                Image(systemName: isError ? "exclamationmark.triangle.fill" : "map")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(TerentoColors.lichenDark)
+                    .foregroundStyle(accent)
                     .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(title)
@@ -4492,10 +4541,10 @@ struct MapStatusRow: View {
 
                 Text(status)
                     .font(.terentoUI(size: 12, weight: .semibold))
-                    .foregroundStyle(TerentoColors.lichenDark)
+                    .foregroundStyle(accent)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(TerentoColors.lichen.opacity(0.22), in: Capsule())
+                    .background((isError ? TerentoColors.error.opacity(0.12) : TerentoColors.lichen.opacity(0.22)), in: Capsule())
             }
 
             if let note, !note.isEmpty {
@@ -4503,6 +4552,11 @@ struct MapStatusRow: View {
                     .font(.terentoUI(size: 13, weight: .medium))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let onRetry {
+                SecondaryButton(title: "Try again", action: onRetry)
+                    .accessibilityHint("Reads the maps on your watch again.")
             }
         }
         .padding(22)

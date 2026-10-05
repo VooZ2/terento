@@ -655,10 +655,21 @@ struct Stage42InstallationTests {
         harness.transport.readBackMode = .hashMismatch
         harness.transport.declineCleanup = true
         let result = harness.run()
-        return expect(result.failure == .cleanupFailed && result.originalFailure != nil
+        var passed = expect(result.failure == .cleanupFailed && result.originalFailure != nil
             && !result.diagnostics.cleanupAttempted && !result.diagnostics.cleanupSucceeded
             && harness.transport.deleteCount == 0 && harness.recovery.records.count == 1,
             "unproven cleanup identity refuses mutation and retains recovery plus original failure")
+        passed += expect(result.primaryFailure == .hashMismatch && result.primaryFailure == result.originalFailure
+            && result.mayHaveLeftMapOnWatch,
+            "the user sees the original verification cause, plus a possible leftover map, not cleanup failure")
+        let clean = makeHarness().run()
+        passed += expect(clean.primaryFailure == nil && !clean.mayHaveLeftMapOnWatch,
+            "a verified install reports no failure and no leftover")
+        let prewrite = makeHarness()
+        let blocked = prewrite.run(configureReader: { $0.inventoryError = .operationFailed("stall", createdItemID: nil); $0.inventoryErrorRead = 0 })
+        passed += expect(blocked.primaryFailure == blocked.failure && !blocked.mayHaveLeftMapOnWatch,
+            "a pre-write failure keeps its own cause and cannot leave a map behind")
+        return passed
     }
 
     #if TERENTO_PRODUCTION_CLEANUP_TEST

@@ -60,6 +60,22 @@ Update and Remove, the app holds a user-initiated activity that prevents idle
 system sleep; Quit during a device write asks for confirmation. The app has one
 main window; reopening it shares the same engines and lifecycle model.
 
+Before a download starts, Terento checks that the Mac's temporary and Caches
+volumes have about 2.5 times the download size free. A full disk before or
+during download, copy or extraction is reported as "Your Mac doesn't have
+enough free space (needs X GB)", never as a connection problem. Downloads are
+written in the chunks URLSession delivers instead of byte by byte, with the
+same 64 KiB progress cadence, reviewed redirect policy, 30-second inactivity
+bound and BBBike source-proof checks. Download files left in the temporary
+directory by a crash (`terento-map-download-*`, untouched for an hour) are
+removed at launch. Every map scan, including the one after an install, Update
+or Remove, refreshes the watch's free space for the Device page and the storage
+planner. A failed map read on a connected watch shows "Couldn't read your
+maps" with Try again. When an install fails after a map object was created,
+the original cause stays the primary message, followed by "The map file may be
+on your watch. Open Manage maps to remove it, then install it again." and a
+"Go to Manage maps" action; automatic cleanup is still declined.
+
 The review Install action starts from idle. After successful preflight, the
 engine continues automatically; its transient `awaitingConfirmation` phase is
 processing, not a second executable Install action. Authorization, device
