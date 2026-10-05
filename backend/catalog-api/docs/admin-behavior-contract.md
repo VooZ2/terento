@@ -536,10 +536,17 @@ Retired maps/providers have no usable download control.
 
 ### Health
 
-Health uses compact rows with the check name, status, and relative time.
-Healthy checks stay collapsed. Problems expose the cause and next action before
-Technical details. IndexNow submission state is one independent check and does
-not imply that a submitted URL was indexed.
+Health opens with four count tiles (Failed, Degraded, No data, Healthy) that also
+filter the checks; the status filter uses the same labels as the pills. One
+Problems card lists every non-healthy check as a compact row with its short name,
+status, cause, next action, last check time and collapsed Technical details.
+Healthy checks stay collapsed in four groups: Service (API, Database, Scheduler,
+Issue sync), Releases (Website deploy, API deploy, Release match, Weekly tests,
+Email report), Catalogs and Search. Provider catalogs are one Catalogs check
+(worst provider state, each provider linked) that links to Providers instead of
+one card per provider. Vendor and pipeline names (SMTP2GO, IndexNow, manifest)
+stay in Technical details. Search indexing reports IndexNow submission state as
+one independent check and does not imply that a submitted URL was indexed.
 
 ### Responsive and layout invariants
 

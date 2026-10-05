@@ -715,10 +715,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "githubSync":{"overdue":1,"errors":1}}, {"username":"operator"}, "csrf").decode()
         cards = body.split("id='main-content'", 1)[1]
         self.assertLess(cards.index("<h2>Database</h2>"), cards.index("<h2>API</h2>"))
-        self.assertIn("GitHub issue sync", cards)
+        self.assertIn("<h2>Issue sync</h2>", cards)
         self.assertNotIn("class='admin-health-summary'", body)
         self.assertNotIn("Healthy checks stay collapsed; expand a check for its evidence and next action.", body)
-        self.assertIn("<details class='overview-panel admin-disclosure'><summary>Weekly results", body)
+        self.assertIn("<details class='admin-card admin-disclosure system-health-weekly'><summary>Weekly results", body)
 
     def test_overview_does_not_turn_missing_evidence_into_zero(self):
         body = overview_page(
@@ -3823,9 +3823,12 @@ class SystemHealthPageTests(unittest.TestCase):
         ).decode()
         self.assertIn("<h1>Health</h1>", body)
         self.assertIn("Search checks", body)
-        self.assertIn("Freizeitkarte</h2>", body)
+        # Provider catalogs collapse into one Catalogs row linking to Providers.
+        self.assertIn("<h2>Catalogs</h2>", body)
+        self.assertIn(">Freizeitkarte</a>", body)
+        self.assertIn("href='/admin/providers'", body)
         self.assertIn("No weekly test report received yet", body)
-        self.assertIn("system-health-unknown", body)
+        self.assertIn("data-status='UNKNOWN'", body)
         self.assertIn("class='system-health-cause'", body)
         self.assertIn("class='system-health-action'>", body)
         self.assertNotIn("<strong>Inspect:</strong>", body)
@@ -3874,10 +3877,10 @@ class SystemHealthPageTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<h2>Release / manifest</h2>", body)
+        self.assertIn("<h2>Release match</h2>", body)
         self.assertIn("data-health-status='HEALTHY'", body)
         self.assertIn("data-admin-timestamp", body)
-        release_card = body.split("<h2>Release / manifest</h2>", 1)[1].split("</div>", 1)[0]
+        release_card = body.split("<h2>Release match</h2>", 1)[1].split("</div>", 1)[0]
         self.assertIn("data-status='HEALTHY'", release_card)
         self.assertIn("<span>Healthy</span>", release_card)
 

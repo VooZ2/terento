@@ -14,10 +14,10 @@ const {chromium}=require(process.argv[2]);
    assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
    assert(!/\bFresh\b/i.test(await page.locator('main').innerText()), `${name}: no Fresh labels`);
    if(name==='health'){
-    const indexnow=page.locator("[data-health-name='indexnow submissions']");
+    const indexnow=page.locator("[data-health-name*='indexnow']");
     assert.equal(await indexnow.count(),1,'one IndexNow card');
     const indexnowSummary=indexnow.locator('.system-health-issue-heading');
-    assert.equal(await indexnowSummary.locator('h2').innerText(),'IndexNow submissions');
+    assert.equal(await indexnowSummary.locator('h2').innerText(),'Search indexing');
     assert.equal(await indexnowSummary.locator('.admin-pill').count(),1,'IndexNow summary has one health pill');
     assert.equal(await indexnowSummary.locator('.health-issue').count(),0,'IndexNow summary has no result detail');
     assert(!/Last check|Pending URLs|Validation pending/i.test(await indexnowSummary.innerText()),'IndexNow summary has no expanded details');

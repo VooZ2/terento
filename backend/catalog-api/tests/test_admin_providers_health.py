@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 
 from admin_test_utils import metric_value
-from terento_catalog.admin import provider_detail_page, providers_page
+from terento_catalog.admin import _system_health_cards, overview_page, provider_detail_page, providers_page, system_health_page
 
 
 def _package(index: int, *, reason: str = "Download unavailable", broken: bool = True) -> dict:
@@ -92,6 +92,58 @@ class ProvidersListTests(unittest.TestCase):
         # Retired providers are not problems; the degraded active one is.
         self.assertEqual(metric_value(body, "Provider problems"), "1")
         self.assertIn("<span>Failed</span>", body)  # DOWN reads as Failed in one vocabulary
+
+
+
+HEALTH = {
+    "api": "HEALTHY", "database": "FAILED", "scheduler": None, "weekly": None, "observations": [],
+    "providers": [
+        {"id": "freizeitkarte", "name": "Freizeitkarte", "status": "ACTIVE", "health": "HEALTHY",
+         "lastCollectionStatus": "SUCCEEDED", "lastCollectionSuccess": "2099-01-01T00:00:00Z", "latestRelease": "x"},
+        {"id": "bbbike", "name": "BBBike", "status": "ACTIVE", "health": "DOWN",
+         "lastCollectionStatus": "SUCCEEDED", "lastCollectionSuccess": "2099-01-01T00:00:00Z", "latestRelease": "x"},
+    ],
+}
+
+
+class HealthPageTests(unittest.TestCase):
+    def test_provider_catalogs_collapse_into_one_catalogs_row(self):
+        cards, _, _ = _system_health_cards(HEALTH)
+        titles = [card["title"] for card in cards]
+        self.assertIn("Catalogs", titles)
+        self.assertNotIn("Freizeitkarte", titles)
+        self.assertNotIn("BBBike", titles)
+        catalogs = next(card for card in cards if card["title"] == "Catalogs")
+        self.assertEqual(catalogs["group"], "catalogs")
+        self.assertEqual(catalogs["status"], "FAILED")
+        self.assertIn("BBBike", catalogs["reason"])
+
+    def test_count_tiles_filter_with_the_pill_vocabulary_and_problems_come_first(self):
+        body = system_health_page(HEALTH, {"username": "operator"}, "csrf").decode()
+        tiles = body.split("aria-label='Filter checks by status'", 1)[1].split("</div>", 1)[0]
+        for state, label in (("FAILED", "Failed"), ("WARNING", "Degraded"), ("UNKNOWN", "No data"), ("HEALTHY", "Healthy")):
+            self.assertIn(f"data-health-filter='{state}'", tiles)
+            self.assertIn(f">{label}</span>", tiles)
+        options = body.split("id='health-status'", 1)[1].split("</select>", 1)[0]
+        self.assertIn(">Degraded · ", options)
+        self.assertIn(">No data · ", options)
+        self.assertNotIn("Warning", options)
+        main = body.split("<main", 1)[1]
+        self.assertLess(main.index("id='health-attention-title'"), main.index("data-health-group-card='service'"))
+        problems = main.split("id='health-attention-title'", 1)[1].split("</section>", 1)[0]
+        self.assertIn("<h2>Database</h2>", problems)
+        self.assertIn("<h2>Catalogs</h2>", problems)
+        for group in ("service", "releases", "catalogs", "search"):
+            self.assertIn(f"data-health-group-card='{group}'", main)
+        self.assertIn("status.value = status.value === tile.dataset.healthFilter ? 'all' : tile.dataset.healthFilter", body)
+
+    def test_dashboard_system_checks_exclude_catalogs(self):
+        body = overview_page({"period": "24h", "data": {"hasData": False}, "providers": HEALTH["providers"],
+                              "system": HEALTH}, {"username": "operator"}, "csrf").decode()
+        cards, _, _ = _system_health_cards(HEALTH)
+        expected = sum(1 for card in cards if card["status"] != "HEALTHY" and card["group"] != "catalogs")
+        self.assertIn(f"aria-label='System checks: {expected}'", body)
+        self.assertIn("aria-label='Provider problems: 1'", body)
 
 
 if __name__ == "__main__":

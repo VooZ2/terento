@@ -2585,7 +2585,8 @@ def _system_health_card(
     when = _timestamp_markup(checked) if checked else "—"
     attrs = (
         f"data-health-status='{html.escape(normalized_status, quote=True)}' "
-        f"data-health-name='{html.escape(title.casefold(), quote=True)}'"
+        f"data-health-name='{html.escape(title.casefold(), quote=True)}' "
+        f"data-health-group='{html.escape(group, quote=True)}'"
     )
     heading = f"<h2>{html.escape(title)}</h2>{_health_status_badge(normalized_status)}"
     technical = ""
@@ -2743,7 +2744,7 @@ def _indexnow_card(
     technical = (
         "<details class='admin-disclosure system-health-technical'>"
         "<summary>Technical details</summary><div class='disclosure-body'>"
-        f"<p class='indexnow-status-note'>Submission status only. This does not confirm search indexing.</p>"
+        f"<p class='indexnow-status-note'>IndexNow submission status only. This does not confirm search indexing.</p>"
         f"<p class='sr-only'>Result: {html.escape(short_result)}</p>"
         "<dl class='indexnow-details'>"
         f"<div><dt>Last check</dt><dd>{_timestamp_markup(checked)}</dd></div>"
@@ -2760,19 +2761,20 @@ def _indexnow_card(
     markup = (
         "<article class='system-health-row system-health-issue' "
         f"data-health-status='{html.escape(status, quote=True)}' "
-        f"data-health-name='indexnow submissions'>"
-        f"<div class='system-health-issue-heading'><h2>IndexNow submissions</h2>{_health_status_badge(status)}</div>"
+        f"data-health-name='search indexing indexnow submissions' data-health-group='search'>"
+        f"<div class='system-health-issue-heading'><h2>Search indexing</h2>{_health_status_badge(status)}</div>"
         f"<p class='system-health-cause'>{html.escape(reason)}</p>"
         f"<p class='system-health-action'>{html.escape(action)}</p>"
         f"<span class='system-health-when'>Last checked {_timestamp_markup(checked)}</span>"
         f"{technical}</article>"
     )
     return {
-        "title": "IndexNow submissions",
+        "title": "Search indexing",
         "status": status,
         "html": markup,
         "reason": reason,
         "lastChecked": checked,
+        "group": "search",
     }
 
 
@@ -2861,77 +2863,81 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
             action="Inspect the database connection and migration state.",
         ),
     ]
-    for provider in providers:
-        state = provider_catalog_health(provider, now=now)
-        releases = ', '.join(str(value) for value in provider.get('packageReleases', []))
-        description = (
-            f"<p>Newest package release <strong>{html.escape(str(provider.get('latestRelease') or '—'))}</strong>; "
-            f"{_optional_count_label(provider.get('packageCount'))} packages.</p>"
-            ""
-            f"<p>Catalog releases: {html.escape(releases or str(provider.get('latestRelease') or 'Not recorded'))}.</p>"
-            f"<p>Latest collection attempt: {_timestamp_markup(provider.get('lastCollectionAttempt'))}. "
-            f"Result: {html.escape(str(provider.get('lastCollectionStatus') or 'Not recorded'))}.</p>"
-            f"<p>Last successful collection: {_timestamp_markup(provider.get('lastCollectionSuccess') or provider.get('lastCatalogSync'))}. "
-            f"Last detected release change: {_timestamp_markup(provider.get('latestReleaseDetectedAt'))}.</p>"
-            f"<a class='section-link' href='/admin/providers/{quote(str(provider.get('id')), safe='')}#provider-collection-history'>Collection results and history →</a> "
-            f"<a class='section-link' href='/admin/providers/{quote(str(provider.get('id')), safe='')}#provider-packages'>Package releases →</a>"
-        )
+    # Provider catalogs collapse into one Catalogs row that links to Providers;
+    # Providers owns the per-provider detail (no duplicate provider cards).
+    provider_states = [(provider, provider_catalog_health(provider, now=now)) for provider in providers]
+    if provider_states:
+        rank_order = {"FAILED": 0, "WARNING": 1, "UNKNOWN": 2, "HEALTHY": 3}
+        worst = min((state["status"] for _, state in provider_states), key=lambda value: rank_order.get(value, 2))
+        affected = [provider for provider, state in provider_states if state["status"] != "HEALTHY"]
+        names = ", ".join(str(provider.get("name") or provider.get("id")) for provider in affected)
+        description = "<ul class='system-health-catalogs'>" + "".join(
+            f"<li><a href='/admin/providers/{quote(str(provider.get('id')), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id')))}</a> "
+            f"{_health_status_badge(state['status'])} <span>{html.escape(state['reason'])}</span></li>"
+            for provider, state in provider_states
+        ) + "</ul><a class='section-link' href='/admin/providers'>Open Providers →</a>"
         cards.append(_system_health_card(
-            str(provider.get('name') or provider.get('id') or 'Provider'),
-            state["status"], description, reason=state["reason"], action=state["action"],
+            "Catalogs", worst, description,
+            reason=(f"{names}: " + "; ".join(state["reason"] for _, state in provider_states if state["status"] != "HEALTHY")) if affected else "All provider catalogs are current.",
+            action="Open Providers and review the affected provider." if affected else "No action required.",
             group="catalogs",
         ))
     cards.append(_indexnow_card(observations.get("indexnow"), site, now=now))
     scheduler_action = "Inspect the catalog scheduler container and its next scheduled run."
     cards.extend([
         _system_health_card(
-            "Catalog scheduler", scheduler_status,
+            "Scheduler", scheduler_status,
             f"<p>Last completed: {_timestamp_markup((scheduler or {}).get('completed_at'))}.</p>"
             + (f"<p>Next check: {_timestamp_markup(scheduler['next_run_at'])}.</p>" if (scheduler or {}).get('next_run_at') else ''),
             reason=scheduler_reason, action=scheduler_action,
         ),
         _system_health_card(
-            "Weekly quality gates", weekly_status,
+            "Weekly tests", weekly_status,
             f"<p>{html.escape(str((weekly or {}).get('summary') or 'No weekly test report received yet.'))}</p><p>Observed: {_timestamp_markup((weekly or {}).get('observed_at'))}.</p>",
             weekly,
             reason=weekly_reason,
             action="Open the linked workflow and rerun the complete weekly matrix.",
+            group="releases",
         ),
         _system_health_card(
-            "Weekly email delivery", email_status,
+            "Email report", email_status,
             f"<p>Latest SMTP2GO delivery step: <strong>{html.escape(email_result)}</strong>.</p>",
             weekly,
             reason=(
                 "No weekly email-delivery result is retained."
                 if email_result == "unknown"
-                else f"The latest SMTP2GO delivery step ended as {email_result}."
+                else f"The latest weekly email report step ended as {email_result}."
             ),
             action="Check the SMTP2GO step and credentials, then resend the weekly report.",
+            group="releases",
         ),
         _system_health_card(
-            "Website deployment", (site or {}).get("status"),
+            "Website deploy", (site or {}).get("status"),
             f"<p>Commit {html.escape(str((site or {}).get('commit_sha') or '—')[:12])}; deployed {_timestamp_markup((site or {}).get('observed_at'))}.</p>",
             site,
             reason=str((site or {}).get("summary") or "No website deployment observation has been received."),
             action="Run the public-site deployment workflow and verify the live manifest.",
+            group="releases",
         ),
         _system_health_card(
-            "API deployment", (api or {}).get("status"),
+            "API deploy", (api or {}).get("status"),
             f"<p>Commit {html.escape(str((api or {}).get('commit_sha') or '—')[:12])}; deployed {_timestamp_markup((api or {}).get('observed_at'))}.</p>",
             api,
             reason=str((api or {}).get("summary") or "No catalog API deployment observation has been received."),
             action="Run the catalog API deployment workflow and confirm its retained observation.",
+            group="releases",
         ),
         _system_health_card(
-            "Release / manifest", drift_status, f"<p>{html.escape(drift_text)}</p>", release or site,
+            "Release match", drift_status, f"<p>{html.escape(drift_text)}</p>", release or site,
             reason=drift_text,
             action="Deploy the website manifest again or run the release gate so both observations can be compared.",
+            group="releases",
         ),
     ])
     sync = health.get("githubSync")
     sync_status = "UNKNOWN" if sync is None else "WARNING" if sync.get("overdue") or sync.get("errors") else "HEALTHY"
     cards.append(_system_health_card(
-        "GitHub issue sync", sync_status,
+        "Issue sync", sync_status,
         f"<p>Closed linked issues resolve diagnostics automatically. Checks run every 15 minutes.</p><p>Last check: {_timestamp_markup((sync or {}).get('checked_at'))}.</p>",
         reason="Linked issue checks are overdue or could not be verified.",
         action="Check the API worker and GitHub availability. Existing diagnostic states are preserved on errors.",
@@ -2941,19 +2947,59 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
     return cards, weekly, weekly_details
 
 
+_HEALTH_GROUPS = (
+    ("service", "Service"),
+    ("releases", "Releases"),
+    ("catalogs", "Catalogs"),
+    ("search", "Search"),
+)
+_HEALTH_FILTERS = (
+    ("FAILED", "Failed", "danger"),
+    ("WARNING", "Degraded", "warning"),
+    ("UNKNOWN", "No data", "unknown"),
+    ("HEALTHY", "Healthy", "success"),
+)
+
+
 def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token: str) -> bytes:
     cards, weekly, weekly_details = _system_health_cards(health)
-    counts = {state: sum(card['status'] == state for card in cards) for state in ('FAILED', 'WARNING', 'UNKNOWN', 'HEALTHY')}
-    health_options = "".join(f"<option value='{state}'>{state.title()} · {count}</option>" for state, count in counts.items())
-    health_summary = " · ".join(f"{count} {state.lower()}" for state, count in counts.items() if count)
-    issue_cards = [card for card in cards if card["status"] != "HEALTHY"]
-    healthy_cards = [card for card in cards if card["status"] == "HEALTHY"]
-    issue_markup = "".join(card["html"] for card in issue_cards)
-    healthy_markup = "".join(card["html"] for card in healthy_cards)
-    attention_section = (
-        f"<section aria-labelledby='health-attention-title'><div class='section-heading'><h2 id='health-attention-title'>Needs attention</h2></div><div class='system-health-list' aria-label='System checks needing attention'>{issue_markup}</div></section>"
-        if issue_cards else ""
+    counts = {state: sum(card['status'] == state for card in cards) for state, _, _ in _HEALTH_FILTERS}
+    labels = {state: label for state, label, _ in _HEALTH_FILTERS}
+    health_options = "".join(
+        f"<option value='{state}'>{labels[state]} · {counts[state]}</option>" for state, _, _ in _HEALTH_FILTERS
     )
+    # Count tiles double as status filters, labelled like the pills.
+    tiles = "".join(
+        f"<button type='button' class='admin-metric admin-metric-link health-filter-tile' data-health-filter='{state}' aria-pressed='false' "
+        f"data-state='measured' data-tone='{'danger' if state == 'FAILED' and counts[state] else 'neutral'}'>"
+        f"<span class='admin-metric-label'>{label}</span>"
+        f"<strong class='admin-metric-value'>{_admin_icon(_PILL_ICONS[kind])}{counts[state]}</strong>"
+        f"<span class='admin-metric-meta'>{_scope_chip('now')}</span></button>"
+        for state, label, kind in _HEALTH_FILTERS
+    )
+    issue_cards = [card for card in cards if card["status"] != "HEALTHY"]
+    problems = _section_card(
+        "Problems",
+        f"<div class='system-health-list' aria-label='System checks needing attention'>{''.join(card['html'] for card in issue_cards)}</div>"
+        if issue_cards else _empty_state("empty", "Nothing needs attention."),
+        card_id="health-attention", scope="now", css="system-health-problems",
+    )
+    groups = []
+    for group, title in _HEALTH_GROUPS:
+        members = [card for card in cards if card.get("group", "service") == group]
+        if not members:
+            continue
+        healthy = [card for card in members if card["status"] == "HEALTHY"]
+        summary_kind = "success" if len(healthy) == len(members) else "warning"
+        groups.append(
+            f"<details class='admin-card admin-disclosure system-health-group system-health-healthy' data-health-group-card='{group}'>"
+            f"<summary>{html.escape(title)} {_status_pill(summary_kind, f'{len(healthy)}/{len(members)} healthy')}"
+            + (" <a class='section-link' href='/admin/providers'>Providers →</a>" if group == "catalogs" else "")
+            + "</summary><div class='disclosure-body system-health-list' aria-label='"
+            + html.escape(title, quote=True) + " checks'>"
+            + ("".join(card["html"] for card in healthy) or "<p class='table-help'>Every check in this group is listed under Problems.</p>")
+            + "</div></details>"
+        )
     suite_labels = {
         "selection": "Test-suite selection",
         "site": "Public website",
@@ -2972,18 +3018,20 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
     content = f"""
       {_admin_header(user, csrf_token, active='system-health')}
       <main class='dashboard system-health-page' id='main-content'>
-        <div class='heading-row'><div><h1>Health</h1></div></div>
-        <form class='filter-bar' id='health-filters' role='search'><label class='filter-search'><span class='sr-only'>Search checks</span><input type='search' id='health-search' placeholder='Search checks'></label><label><span class='sr-only'>Check status</span><select id='health-status'><option value='all'>All statuses</option>{health_options}</select></label><p class='results-count'>{health_summary}</p></form>
+        <div class='heading-row'><div><h1>Health</h1></div>{_glossary_link('health-states')}</div>
+        <div class='admin-metric-row health-filter-tiles' role='group' aria-label='Filter checks by status'>{tiles}</div>
+        <form class='filter-bar' id='health-filters' role='search'><label class='filter-search'><span class='sr-only'>Search checks</span><input type='search' id='health-search' placeholder='Search checks'></label><label><span class='sr-only'>Check status</span><select id='health-status'><option value='all'>All statuses</option>{health_options}</select></label></form>
         <p class='empty' id='health-empty' hidden>No checks match your filters.</p>
-        {attention_section}
-        <details class='overview-panel admin-disclosure system-health-healthy'><summary>Healthy checks <span class='disclosure-meta'>· {len(healthy_cards)}</span></summary><div class='disclosure-body system-health-list' aria-label='Healthy system checks'>{healthy_markup}</div></details>
-        <details class='overview-panel admin-disclosure'><summary>Weekly results</summary>{_health_run_link(weekly)}<div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Check</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-status'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></details>
+        {problems}
+        {''.join(groups)}
+        <details class='admin-card admin-disclosure system-health-weekly'><summary>Weekly results</summary>{_health_run_link(weekly)}<div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Check</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-status'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></details>
       </main>
       <script>(() => {{
         const form = document.querySelector('#health-filters');
         const search = document.querySelector('#health-search');
         const status = document.querySelector('#health-status');
-        const healthy = document.querySelector('.system-health-healthy');
+        const groups = [...document.querySelectorAll('.system-health-group')];
+        const tiles = [...document.querySelectorAll('[data-health-filter]')];
         form.addEventListener('submit', event => event.preventDefault());
         const filter = () => {{
           let visible = 0;
@@ -2992,8 +3040,13 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
             if (!row.hidden) visible++;
           }});
           document.querySelector('#health-empty').hidden = visible > 0;
-          if (healthy && (search.value.trim() || status.value === 'HEALTHY')) healthy.open = true;
+          tiles.forEach(tile => tile.setAttribute('aria-pressed', tile.dataset.healthFilter === status.value ? 'true' : 'false'));
+          if (search.value.trim() || status.value === 'HEALTHY') groups.forEach(group => {{ if (group.querySelector('[data-health-status]:not([hidden])')) group.open = true; }});
         }};
+        tiles.forEach(tile => tile.addEventListener('click', () => {{
+          status.value = status.value === tile.dataset.healthFilter ? 'all' : tile.dataset.healthFilter;
+          filter();
+        }}));
         search.addEventListener('input', filter); status.addEventListener('change', filter);
       }})();</script>
     """
@@ -8500,6 +8553,12 @@ ADMIN_STYLES += """
 .admin-glossary-link:hover>span{background:var(--selected-tint)}
 .admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
 .admin-card-unavailable{border-style:dashed}
+.health-filter-tiles{margin:0 0 16px}
+button.admin-metric{font:inherit;text-align:start;cursor:pointer}
+button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);background:var(--selected-tint)}
+.system-health-group>summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.system-health-group>summary .section-link{margin-left:auto}
+.system-health-catalogs{display:grid;gap:6px;margin:0 0 8px;padding:0;list-style:none}
 .provider-problem-group{border-top:1px solid var(--border)}
 .provider-problem-group:first-of-type{border-top:0}
 .provider-problem-group>summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-height:44px;cursor:pointer}
