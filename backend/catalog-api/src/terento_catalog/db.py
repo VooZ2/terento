@@ -1163,6 +1163,8 @@ class Database:
     def prune_compatibility_events(self) -> int:
         with self.connection() as connection:
             connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
+            # App funnel events follow the same 24-month receipt-time retention.
+            connection.execute("DELETE FROM app_funnel_event WHERE received_at < now() - interval '24 months'")
             result = connection.execute(
                 "DELETE FROM compatibility_evidence_event WHERE received_at < now() - interval '24 months'"
             )
@@ -4238,6 +4240,86 @@ class Database:
                 ),
             ).fetchone()
         return row is not None
+
+    def insert_app_funnel_event(self, event: dict[str, Any]) -> bool:
+        """Store one validated funnel event; a replayed event ID is a no-op."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                INSERT INTO app_funnel_event (
+                    event_id, session_id, occurred_at, app_build, release_label,
+                    is_local_test, stage, outcome, base_model, dropped_package_count
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (event_id) DO NOTHING
+                RETURNING event_id
+                """,
+                (
+                    event["id"], event["sessionId"], event["occurredAt"], event["appBuild"],
+                    event["releaseLabel"], event["isLocalTest"], event["stage"], event["outcome"],
+                    event.get("baseModel"), event.get("droppedPackageCount"),
+                ),
+            ).fetchone()
+        return row is not None
+
+    def app_funnel_summary(
+        self, since: datetime | None, until: datetime | None = None, *, model_limit: int = 10,
+    ) -> dict[str, Any]:
+        """Distinct-session funnel counts for a period (local test builds excluded).
+
+        A separate population: it never enters install, update, download or
+        compatibility counts. Period membership uses the same receipt-time rule
+        for far-future client clocks as the map-statistics read model.
+        """
+        effective = _effective_occurred_at_sql("e")
+        clauses = ["e.is_local_test IS NOT TRUE"]
+        values: list[Any] = []
+        if since is not None:
+            clauses.append(f"{effective} >= %s")
+            values.append(since)
+        if until is not None:
+            clauses.append(f"{effective} <= %s")
+            values.append(until)
+        where = " AND ".join(clauses)
+        with self.connection() as connection:
+            totals = connection.execute(
+                f"SELECT count(DISTINCT e.session_id) AS session_count FROM app_funnel_event AS e WHERE {where}",
+                values,
+            ).fetchone() or {}
+            stages = list(connection.execute(
+                f"""
+                SELECT e.stage, e.outcome, count(DISTINCT e.session_id) AS session_count
+                FROM app_funnel_event AS e
+                WHERE {where}
+                GROUP BY e.stage, e.outcome
+                """,
+                values,
+            ).fetchall())
+            models = list(connection.execute(
+                f"""
+                SELECT e.base_model, e.outcome, count(DISTINCT e.session_id) AS session_count
+                FROM app_funnel_event AS e
+                WHERE {where}
+                  AND e.stage = 'AUTHORIZATION'
+                  AND e.outcome IN ('PENDING', 'UNKNOWN_MODEL', 'AMBIGUOUS')
+                  AND e.base_model IS NOT NULL
+                GROUP BY e.base_model, e.outcome
+                ORDER BY session_count DESC, e.base_model, e.outcome
+                LIMIT %s
+                """,
+                values + [model_limit],
+            ).fetchall())
+        return {
+            "sessionCount": int(totals.get("session_count") or 0),
+            "stages": [
+                {"stage": row["stage"], "outcome": row["outcome"], "sessionCount": int(row["session_count"] or 0)}
+                for row in stages
+            ],
+            "modelsNeedingReview": [
+                {"baseModel": row["base_model"], "outcome": row["outcome"],
+                 "sessionCount": int(row["session_count"] or 0)}
+                for row in models
+            ],
+        }
 
     def local_test_telemetry_summary(self) -> dict[str, Any]:
         """Return only purgeable local-test telemetry for the admin screen."""

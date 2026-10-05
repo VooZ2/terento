@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "app-funnel-event.schema.json",
+  "title": "App first-run funnel event request",
+  "description": "POST /app-funnel/events body (schema version 1). Meaning is owned by contracts/APP_FUNNEL_CONTRACT.md. Max 4 KiB; unknown fields are rejected; the event id is idempotent. No serial, Unit ID, account, path, IP or persistent user/device identifier.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "Random event UUID; replay is idempotent."
+    },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "Random UUID per app launch, held in memory only and never persisted."
+    },
+    "occurredAt": {
+      "type": "string",
+      "pattern": "(Z|\\+00:00)$",
+      "description": "RFC 3339 UTC timestamp."
+    },
+    "appBuild": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "\\S"
+    },
+    "releaseLabel": {
+      "$ref": "#/$defs/releaseLabel",
+      "description": "SemVer app release. A label ending in -local marks local test telemetry, excluded from statistics."
+    },
+    "stage": {
+      "enum": [
+        "DEVICE_CONNECT",
+        "AUTHORIZATION",
+        "CATALOG",
+        "INSTALL_BLOCKED"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "AMBIGUOUS",
+        "APPROVED",
+        "AUTHORIZATION",
+        "BUNDLED_FALLBACK",
+        "BUSY",
+        "CATALOG_UNAVAILABLE",
+        "CATALOG_UNVERIFIED",
+        "CONNECTED",
+        "DEVICE_STORAGE",
+        "DISCONNECTED",
+        "FAILED",
+        "LOCAL_CAPABILITY",
+        "MAC_STORAGE",
+        "MULTIPLE_DEVICES",
+        "NOT_MTP_MODE",
+        "OTHER",
+        "OUT_OF_SCOPE",
+        "PENDING",
+        "REMOTE",
+        "REMOTE_PARTIAL",
+        "TIMEOUT_NO_USB",
+        "TIMEOUT_USB_PRESENT",
+        "UNKNOWN_MODEL",
+        "UPDATE_REQUIRED"
+      ]
+    },
+    "baseModel": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 80,
+      "description": "Normalized Garmin base model (for example fenix 8). Allowed only for DEVICE_CONNECT=CONNECTED and AUTHORIZATION."
+    },
+    "droppedPackageCount": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647,
+      "description": "Allowed only for CATALOG=REMOTE_PARTIAL."
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "sessionId",
+    "occurredAt",
+    "appBuild",
+    "releaseLabel",
+    "stage",
+    "outcome"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "releaseLabel": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "stage": {
+            "const": "DEVICE_CONNECT"
+          }
+        },
+        "required": [
+          "stage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "BUSY",
+              "CONNECTED",
+              "DISCONNECTED",
+              "FAILED",
+              "MULTIPLE_DEVICES",
+              "NOT_MTP_MODE",
+              "TIMEOUT_NO_USB",
+              "TIMEOUT_USB_PRESENT"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stage": {
+            "const": "AUTHORIZATION"
+          }
+        },
+        "required": [
+          "stage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "AMBIGUOUS",
+              "APPROVED",
+              "CATALOG_UNAVAILABLE",
+              "OUT_OF_SCOPE",
+              "PENDING",
+              "UNKNOWN_MODEL",
+              "UPDATE_REQUIRED"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stage": {
+            "const": "CATALOG"
+          }
+        },
+        "required": [
+          "stage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "BUNDLED_FALLBACK",
+              "REMOTE",
+              "REMOTE_PARTIAL",
+              "UPDATE_REQUIRED"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stage": {
+            "const": "INSTALL_BLOCKED"
+          }
+        },
+        "required": [
+          "stage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "AUTHORIZATION",
+              "CATALOG_UNVERIFIED",
+              "DEVICE_STORAGE",
+              "LOCAL_CAPABILITY",
+              "MAC_STORAGE",
+              "OTHER"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "baseModel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseModel"
+        ]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "properties": {
+              "stage": {
+                "const": "AUTHORIZATION"
+              }
+            }
+          },
+          {
+            "properties": {
+              "stage": {
+                "const": "DEVICE_CONNECT"
+              },
+              "outcome": {
+                "const": "CONNECTED"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "droppedPackageCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "droppedPackageCount"
+        ]
+      },
+      "then": {
+        "properties": {
+          "stage": {
+            "const": "CATALOG"
+          },
+          "outcome": {
+            "const": "REMOTE_PARTIAL"
+          }
+        }
+      }
+    }
+  ]
+}

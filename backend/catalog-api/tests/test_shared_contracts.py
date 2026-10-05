@@ -27,6 +27,7 @@ NAMES = (
     'installation-policy',
     'compatibility-event',
     'map-event',
+    'app-funnel-event',
 )
 
 
@@ -49,6 +50,8 @@ class SharedContractTests(unittest.TestCase):
             'compatibility-event.invalid-inconsistent-success': ('enum', ['automaticFinishingResult'], 'VERIFIED'),
             'map-event.invalid-disallowed-field': ('additionalProperties', [], 'serialNumber'),
             'map-event.invalid-custom-provider': ('not', ['providerId'], 'custom'),
+            'app-funnel-event.invalid-disallowed-field': ('additionalProperties', [], 'serialNumber'),
+            'app-funnel-event.invalid-stage-outcome': ('enum', ['outcome'], 'CONNECTED'),
         }
         for name in NAMES:
             v = validator(name)

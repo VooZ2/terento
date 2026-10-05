@@ -75,6 +75,12 @@ from .compatibility_evidence import (
 )
 from .compatibility_status import calculate_compatibility_status
 from .collect import collect_provider_once
+from .app_funnel import (
+    FUNNEL_OUTCOMES,
+    MAX_FUNNEL_EVENT_BYTES,
+    FunnelValidationError,
+    validate_funnel_event,
+)
 from .map_events import (
     MapEventValidationError,
     validate_map_event,
@@ -101,6 +107,9 @@ LOGGER = logging.getLogger(__name__)
 # retries and users sharing one NAT address, while still bounding abuse.
 MAP_EVENT_RATE_LIMIT = 600
 COMPATIBILITY_EVENT_RATE_LIMIT = 300
+# A session sends at most one event per (stage, outcome, baseModel).
+APP_FUNNEL_EVENT_RATE_LIMIT = 120
+APP_FUNNEL_PERIODS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30), "all": None}
 RATE_LIMIT_WINDOW_SECONDS = 60
 # Socket timeout for one blocking read or write. A stalled or slow-loris client
 # cannot pin a server thread indefinitely; large bodies and responses still
@@ -460,6 +469,42 @@ class CatalogService:
         ):
             return None
         return {"id": provider_id, "status": status}
+
+    def receive_app_funnel_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
+        event = validate_funnel_event(body)
+        return event, self.database.insert_app_funnel_event(event)
+
+    def app_funnel(self, query: dict[str, str]) -> dict[str, Any]:
+        """Admin JSON read model for the app first-run funnel (distinct sessions)."""
+        if set(query) - {"period"}:
+            raise FunnelValidationError("unknown_filter")
+        period = query.get("period") or "7d"
+        if period not in APP_FUNNEL_PERIODS:
+            raise FunnelValidationError("invalid_period")
+        until = datetime.now(timezone.utc)
+        delta = APP_FUNNEL_PERIODS[period]
+        since = until - delta if delta is not None else None
+        summary = self.database.app_funnel_summary(since, until)
+        counts = {(row["stage"], row["outcome"]): row["sessionCount"] for row in summary["stages"]}
+        return {
+            "schemaVersion": 1,
+            "period": period,
+            "since": since.isoformat() if since else None,
+            "until": until.isoformat(),
+            "population": "distinct app sessions; local test builds excluded; separate from install, update and download statistics",
+            "sessionCount": summary["sessionCount"],
+            "stages": [
+                {
+                    "stage": stage,
+                    "outcomes": [
+                        {"outcome": outcome, "sessionCount": counts.get((stage, outcome), 0)}
+                        for outcome in sorted(outcomes)
+                    ],
+                }
+                for stage, outcomes in FUNNEL_OUTCOMES.items()
+            ],
+            "modelsNeedingReview": summary["modelsNeedingReview"],
+        }
 
     def receive_map_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
         event = validate_map_event(body)
@@ -956,6 +1001,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/map-events":
                 self._handle_map_event()
                 return
+            if request_path == "/app-funnel/events":
+                self._handle_app_funnel_event()
+                return
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
                 return
@@ -1143,6 +1191,39 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 cache_control="no-store",
             )
 
+        def _handle_app_funnel_event(self) -> None:
+            client = f"app-funnel:{self._client_ip()}"
+            if self._rate_limited(client, limit=APP_FUNNEL_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_FUNNEL_EVENT_BYTES:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
+                return
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type != "application/json":
+                self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"}, send_body=True, cache_control="no-store")
+                return
+            request_times[client].append(time.monotonic())
+            try:
+                _, inserted = service.receive_app_funnel_event(self.rfile.read(length))
+            except FunnelValidationError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
+                return
+            except Exception:
+                LOGGER.exception("app funnel event storage failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "funnel_unavailable"}, send_body=True, cache_control="no-store")
+                return
+            self._send_json(
+                HTTPStatus.CREATED if inserted else HTTPStatus.OK,
+                {"status": "stored" if inserted else "duplicate"},
+                send_body=True,
+                cache_control="no-store",
+            )
+
         def _handle_compatibility_event(self) -> None:
             client = self._client_ip()
             if self._rate_limited(client, limit=COMPATIBILITY_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
@@ -1236,6 +1317,21 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     cache_control="no-store",
                     noindex=True,
                 )
+                return
+            if request_path in {"/admin/app-funnel.json", "/admin/app-funnel.json/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                try:
+                    payload = service.app_funnel({key: values[-1] for key, values in query.items()})
+                except FunnelValidationError as exc:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=send_body,
+                                    cache_control="no-store", noindex=True)
+                    return
+                except Exception:
+                    LOGGER.exception("admin app funnel failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "app_funnel_unavailable"},
+                                    send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                self._send_json(HTTPStatus.OK, payload, send_body=send_body, cache_control="no-store", noindex=True)
                 return
             if request_path in {"/admin/map-statistics.json", "/admin/map-statistics.json/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)

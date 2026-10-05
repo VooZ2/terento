@@ -227,6 +227,10 @@ them. Live semantic behavior still needs the separate read-only review above.
    exact legacy shape and stores the release as unknown (NULL), never local.
    `contracts/fixtures/map-event.valid-beta9-legacy.json` guards it.
 
+App first-run funnel events (`POST /app-funnel/events`, migration 070,
+[`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md)) follow the same order: deploy
+the API that accepts schema version 1 before any client build emits them.
+
 For build31, `INSTALL_FAILED_UNKNOWN` is the additive compatibility-event code;
 existing schema versions and fields remain unchanged. `MAP_UPDATE_SUCCEEDED` and
 `MAP_UPDATE_FAILED` are additive map-event types for the local Update candidate;

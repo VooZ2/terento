@@ -679,6 +679,18 @@ Equivalent to a CSRF-protected state change to `RETIRED`; it accepts an empty
 JSON body or an optional bounded `reason`, and writes an audit record.
 Retiring a provider does not delete its historical metadata.
 
+## `POST /app-funnel/events` and `GET /admin/app-funnel.json`
+
+First-run funnel telemetry; meaning, fields and limits are owned by
+[`APP_FUNNEL_CONTRACT.md`](../../../contracts/APP_FUNNEL_CONTRACT.md). Intake
+accepts at most 4 KiB of schema-version-1 JSON, rejects unknown fields (`400`),
+is idempotent by event `id` (`201` stored, `200` duplicate), and allows 120 events
+per client address per minute. `GET /admin/app-funnel.json?period=24h|7d|30d|all`
+requires an admin session and returns distinct non-local session counts per
+stage/outcome (zero-filled) plus the top base models with authorization outcome
+`PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`. The visual Admin presentation is not
+part of this route.
+
 ## `POST /map-events`
 
 Accepts at most 8 KiB of schema-version-1 JSON and is rate limited to 600

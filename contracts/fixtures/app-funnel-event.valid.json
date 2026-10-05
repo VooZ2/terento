@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "5B1E7C2A-3D4F-4A6B-8C9D-0E1F2A3B4C5D",
+  "sessionId": "9A8B7C6D-5E4F-4A3B-9C2D-1E0F9A8B7C6D",
+  "occurredAt": "2026-10-05T12:00:00Z",
+  "appBuild": "41",
+  "releaseLabel": "1.0.0-beta.19",
+  "stage": "AUTHORIZATION",
+  "outcome": "PENDING",
+  "baseModel": "Forerunner 965"
+}

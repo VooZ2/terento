@@ -538,3 +538,14 @@ result classifier used by `compatibility_model_statistics` (same 29 columns) and
 the map-statistics, Dashboard and linkage read models. Its legacy write rule
 applies only when `write_started` is NULL and either the stored schema version is
 1 or 2, or (no stored version) both app build and release label are NULL.
+
+### Migration070: app first-run funnel events
+
+Adds the independent `app_funnel_event` table (event UUID primary key, random
+per-launch `session_id`, `occurred_at`, `received_at`, `app_build`,
+`release_label`, `is_local_test`, `stage`, `outcome`, optional `base_model` and
+`dropped_package_count`) with checks for the stage/outcome pairs and field
+placement, plus occurred/received indexes. It holds no device, account, path or
+address identifiers, is pruned 24 months after receipt, and never feeds install,
+update, download or compatibility read models. Meaning:
+`contracts/APP_FUNNEL_CONTRACT.md`.

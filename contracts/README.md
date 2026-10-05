@@ -13,6 +13,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
+| `app-funnel-event.schema.json` | `POST /app-funnel/events` request body | `schemaVersion: 1`; meaning owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md) |
 
 The installation policy contract contains exact Garmin catalog rows and
 `active`, normalized `baseModel` from the catalog model label, nullable
@@ -70,7 +71,8 @@ Statistics populations, formulas, deduplication and historical interpretation
 are canonical in [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md). The
 contract distinguishes terminal provider acquisitions, fresh main-map results,
 optional components and updates; it does not authorize a production migration
-or claim complete telemetry coverage.
+or claim complete telemetry coverage. App first-run funnel sessions are a
+separate population owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md).
 
 ## Responses and client compatibility
 
