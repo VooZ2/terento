@@ -200,6 +200,15 @@ provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
 See [shared contracts](../../contracts/README.md).
 
+The remote catalog is accepted per package: incompatible packages are omitted
+and counted (`catalogDroppedPackageCount`) while every other map stays
+installable. An incompatible catalog document keeps the local list browsable,
+shows "Update Terento to install maps from the current catalog" and blocks
+downloads with an update message instead of "check your connection"; a real
+network failure keeps the existing local-catalog fallback. Connect and the
+five-minute refresh share one load, merge and validate path, and the refresh is
+skipped while the review or install step is open, so selections are not pruned.
+
 Maps come directly from provider infrastructure. Catalog visibility is separate
 from acquisition: canonical Russia and Crimea packages are withheld before
 workspace creation or HTTP acquisition. Existing device files remain protected.
@@ -216,8 +225,26 @@ handoff, never silent application replacement.
 
 Map-use delivery drains events appended during an in-flight upload before
 reporting the queue uploaded. Retryable failures retain the queue and use the
-existing bounded retry schedule; permanent failures stop that send attempt.
-Opt-out clears pending events and stops the sender before another event is sent.
+existing bounded retry schedule. A non-retryable HTTP 4xx rejection parks only
+that event (status, count, time and build are kept locally) and later events
+continue in order; parked events are retried only by a new app build or after a
+24-hour back-off, a bounded number of times, and expire with the 24-month
+retention window. Compatibility/update diagnostics use the same parking rules.
+Opt-out clears pending and parked events and stops the sender before another event is sent.
+
+The first-run funnel producer (`Telemetry/AppFunnelTelemetry.swift`, schema v1,
+`POST /app-funnel/events`; meaning owned by `contracts/APP_FUNNEL_CONTRACT.md`)
+records pre-install outcomes under the device-compatibility reporting
+preference: device connect, resolved authorization (with the normalized base
+model), catalog load result (`REMOTE`, `REMOTE_PARTIAL` with the dropped package
+count, `BUNDLED_FALLBACK`, `UPDATE_REQUIRED`) and Install presses refused before
+any device write. The session ID is random per launch and memory-only; at most one
+event per stage, outcome and base model is queued per session in a durable outbox
+with the shared parking rules. Turning off compatibility reporting clears it.
+Connect outcomes are inferred from Device state until the connect classifier
+calls `AppFunnelTelemetryController.recordDeviceConnect` directly. The API route
+must be deployed before a release ships this producer; until then the route's
+rejection parks events without affecting other telemetry.
 A response already in flight cannot restore the opted-out status. This does not
 add cancellation/interruption events or reconstruct missing historical outcomes;
 a download start without a received outcome is not proof of a failed download.
@@ -617,8 +644,8 @@ through all phases; legacy saved events without it remain unknown. Fresh events
 also preserve the selected map result index. Download reporting starts only at
 the awaited downloader boundary, after policy, current availability, workspace
 and source checks. Pre-download failures produce no fictitious download attempt.
-Rejected HTTP 400 compatibility reports remain available under their original
-IDs while independent reports continue; consent and retry boundaries are unchanged.
+Rejected compatibility reports remain available under their original IDs and
+are parked (see map-use delivery above) while independent reports continue.
 A preflight component failure is attributed to its owning selected map, not the
 flattened component position. MapRando's standalone France contours catalog entry
 has its own main artifact; it remains a selectable independent map, distinct from

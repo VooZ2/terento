@@ -49,6 +49,8 @@ swiftc -D TERENTO_TESTING -target "${swiftpm_arch}-apple-macosx13.0" \
   "${sources[@]}" \
   "$project_root/Tests/TerentoPoCTests/InstallationOperationDiagnosticsTests.swift" \
   -o "$binary_path"
+# MapCatalogLoader resolves its bundled supplement next to the executable.
+cp "$project_root/Sources/TerentoPoC/Resources/Maps/catalog.json" "$build_dir/catalog.json"
 
 python3 - "$project_root/../../Terento.xcodeproj/project.pbxproj" <<'PYPROJECT'
 import json, subprocess, sys

@@ -631,11 +631,12 @@ struct MapInstallationCoordinator: Sendable {
             try transaction.transition(to: .writing)
             onPhase?(.installing)
             onPhaseProgress?(.installing, 0)
-            diagnostics = diagnostics.withLifecycle(writeStarted: true)
 
             do {
                 try recoveryStore.record(recoveryRecord)
             } catch {
+                // Local-only recovery bookkeeping failed before any device
+                // call: this is not a started device write.
                 return failureResult(
                     failure: .manifestFailed,
                     transaction: &transaction,
@@ -653,6 +654,9 @@ struct MapInstallationCoordinator: Sendable {
                 )
             )
             let written: MTPWrittenMapObject
+            // The real device write boundary. A transfer may still fail at
+            // zero bytes; progress callbacks do not define this boundary.
+            diagnostics = diagnostics.withLifecycle(writeStarted: true)
             do {
                 written = try transport.write(
                     sourceURL: artifact.localIMGURL,

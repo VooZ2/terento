@@ -100,6 +100,22 @@ private final class MapEngineDownloadProgressRelay: @unchecked Sendable {
     }
 }
 
+/// Component results observed inside one installation batch, kept outside
+/// the detached closure so a thrown boundary read cannot discard results of
+/// maps that were already written in the same batch.
+private final class InstallationComponentLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var components: [Int: [(kind: MapArtifactKind, result: MapInstallationResult)]] = [:]
+
+    func record(index: Int, kind: MapArtifactKind, result: MapInstallationResult) {
+        lock.withLock { components[index, default: []].append((kind, result)) }
+    }
+
+    func snapshot() -> [Int: [(kind: MapArtifactKind, result: MapInstallationResult)]] {
+        lock.withLock { components }
+    }
+}
+
 private final class InstallationMapIndexState: @unchecked Sendable {
     private let lock = NSLock()
     private var storedValue = 0
@@ -265,6 +281,8 @@ final class MapEngine: ObservableObject {
     @Published private(set) var evidencePrimaryFailureMapIndex: Int?
     @Published private(set) var catalogSource: MapCatalogSource?
     @Published private(set) var catalogUpdatedAt: Date?
+    /// Remote packages this app version could not accept and omitted.
+    @Published private(set) var catalogDroppedPackageCount = 0
     @Published private(set) var errorMessage: String?
     @Published private(set) var userErrorMessage: String?
     @Published private(set) var mapStatisticsEvents: [MapStatisticsEvent] = []
@@ -278,6 +296,7 @@ final class MapEngine: ObservableObject {
 
     private let statisticsController: MapStatisticsEventController?
     private let evidenceController: InstallationEvidenceController?
+    private let funnel: AppFunnelTelemetryController?
     private var operationDiagnostics: InstallationOperationDiagnostics?
     private var activeAcquisition: MapStatisticsEvent?
     private let reader: MTPTransport
@@ -318,11 +337,13 @@ final class MapEngine: ObservableObject {
         operationGate: MTPOperationGate = .shared,
         statisticsController: MapStatisticsEventController? = nil,
         evidenceController: InstallationEvidenceController? = nil,
-        installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient()
+        installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient(),
+        funnel: AppFunnelTelemetryController? = nil
     ) {
         self.reader = reader
         self.statisticsController = statisticsController
         self.evidenceController = evidenceController
+        self.funnel = funnel
         self.catalogLoader = catalogLoader
         self.operationGate = operationGate
         self.installationAuthorizationClient = installationAuthorizationClient
@@ -423,6 +444,7 @@ final class MapEngine: ObservableObject {
         installationErrorMessage = nil
         catalogSource = nil
         catalogUpdatedAt = nil
+        catalogDroppedPackageCount = 0
         errorMessage = nil
         userErrorMessage = nil
         loadedCatalog = nil
@@ -524,6 +546,9 @@ final class MapEngine: ObservableObject {
                 guard !Task.isCancelled else { return }
 
                 self?.loadedCatalog = loaded.catalog
+                // The dropped count precedes the source: observers of the
+                // source read both (first-run funnel CATALOG stage).
+                self?.catalogDroppedPackageCount = loaded.droppedPackageCount
                 self?.catalogSource = loaded.source
                 self?.catalogUpdatedAt = loaded.catalog.updatedAt
                 self?.state = .scanning
@@ -1134,11 +1159,33 @@ final class MapEngine: ObservableObject {
     }
 
     /// Refresh metadata without touching or rescanning the connected device.
+    /// Uses the connect-time load path (per-package acceptance plus the
+    /// bundled supplement), so a refresh never drops bundled-only providers
+    /// or optional contour artifacts.
     func refreshCatalogAvailability() async {
         guard !isBusy, !operationGate.isBusy, let original = result else { return }
-        let refreshed = try? await catalogLoader.loadCurrentRemote()
-        guard !isBusy, !operationGate.isBusy, result == original,
-              let catalog = refreshed ?? loadedCatalog?.withUnverifiedDownloadAvailability() else { return }
+        let refreshed: Result<MapCatalogLoadResult, Error>
+        do { refreshed = .success(try await catalogLoader.loadCurrentMerged()) }
+        catch { refreshed = .failure(error) }
+        guard !Task.isCancelled, !isBusy, !operationGate.isBusy, result == original else { return }
+        let catalog: MapCatalog
+        let source: MapCatalogSource
+        switch refreshed {
+        case .success(let loaded):
+            catalog = loaded.catalog
+            source = .remote
+            catalogDroppedPackageCount = loaded.droppedPackageCount
+        case .failure(let error):
+            guard let loadedCatalog else { return }
+            if (error as? MapCatalogRemoteFailure) == .incompatible {
+                catalog = loadedCatalog.withAppUpdateRequiredDownloadAvailability()
+                source = .appUpdateRequired
+            } else {
+                catalog = loadedCatalog.withUnverifiedDownloadAvailability()
+                source = catalogSource == .bundledFallback || catalogSource == .appUpdateRequired
+                    ? (catalogSource ?? .cachedRemote) : .cachedRemote
+            }
+        }
         let comparisons = catalog.packages.compactMap { package -> MapComparison? in
             guard let provider = catalog.provider(for: package.providerId),
                   let region = catalog.region(for: package.regionId, providerId: package.providerId) else { return nil }
@@ -1146,7 +1193,7 @@ final class MapEngine: ObservableObject {
                 provider: provider, region: region, catalogMap: package)
         }
         loadedCatalog = catalog
-        catalogSource = refreshed == nil ? .cachedRemote : .remote
+        catalogSource = source
         catalogUpdatedAt = catalog.updatedAt
         result = MapInventoryResult(scan: original.scan, deviceFiles: original.deviceFiles,
             comparisons: comparisons + original.comparisons.filter { $0.catalogMap.sourceKind == .custom })
@@ -1429,6 +1476,7 @@ final class MapEngine: ObservableObject {
             installationErrorMessage = deviceInstallationAuthorization.userMessage
                 ?? "Map installation is not available for this device in Terento."
             installationPhase = .failed
+            funnel?.recordInstallBlocked(.authorization)
             return
         }
         guard state == .scanned,
@@ -1459,6 +1507,7 @@ final class MapEngine: ObservableObject {
             installationPhase = .failed
             state = .failed
             operationDiagnostics?.failed(index: 0, stage: .preflight, failure: .existingMapConflict)
+            funnel?.recordInstallBlocked(.other)
             return
         }
         installationAuthorizationGranted = true
@@ -1496,16 +1545,11 @@ final class MapEngine: ObservableObject {
             installationPhase = .failed
             installationPhaseProgress = nil
             state = .failed
-            if let package = plan.installItems.first?.package {
-                emitMapStatisticsEvent(
-                    package: package,
-                    type: .installFailed,
-                    outcome: .failed,
-                    mapResultIndex: 0
-                )
-            }
+            // No device write was reached: the map stream records no
+            // INSTALL_FAILED result (STATISTICS_CONTRACT pre-install rule).
             operationDiagnostics?.failed(index: 0, stage: .preflight,
                 failure: evidenceFailure, native: evidenceNativeFailureCode)
+            funnel?.recordInstallBlocked(.localCapability)
             recordInstallationFailure(installationErrorMessage)
             discardCustomMapImport()
             return
@@ -1555,6 +1599,7 @@ final class MapEngine: ObservableObject {
             installationPhase = .failed
             state = .failed
             operationDiagnostics?.failed(index: 0, stage: .preflight, failure: .unknownInstallTarget)
+            funnel?.recordInstallBlocked(.localCapability)
             recordInstallationFailure(installationErrorMessage)
             return false
         }
@@ -1707,7 +1752,8 @@ final class MapEngine: ObservableObject {
                                             onStateChange: { state in
                                                 stateRelay.send(state)
                                                 if state == .validatingDownload {
-                                                    Task { @MainActor in statistics?.record(start.phase(.downloadProcessing)) }
+                                                    // Durable and ordered before the terminal.
+                                                    statistics?.recordFromAnyContext(start.phase(.downloadProcessing))
                                                 }
                                             },
                                             onDownloadProgress: { progress in progressRelay.send(progress) }
@@ -1749,6 +1795,7 @@ final class MapEngine: ObservableObject {
             } catch let authorizationError as InstallationAuthorizationAcquisitionError {
                 guard !Task.isCancelled, let self else { return }
                 retainForRetry = authorizationError.authorization.blockReason?.isRetryable == true
+                self.funnel?.recordInstallBlocked(.authorization)
                 self.setInstallationAuthorization(authorizationError.authorization)
                 self.freshInstallationAuthorization = FreshInstallationAuthorization(
                     identity: authorizationIdentity, state: authorizationError.authorization)
@@ -1767,6 +1814,13 @@ final class MapEngine: ObservableObject {
                     failure: known?.failure ?? (error is URLError ? .downloadFailed : nil),
                     cancelled: Task.isCancelled || error is CancellationError)
                 guard !Task.isCancelled else { return }
+                // Provider download errors are acquisition facts, not install
+                // blocks; only availability/catalog and Mac workspace refusals are.
+                if case .acquisitionWithheld = error as? MapAcquisitionError {
+                    self?.funnel?.recordInstallBlocked(AppFunnelInstallBlockedReason.forAcquisition(error))
+                } else if case .workspaceFailed = error as? MapAcquisitionError {
+                    self?.funnel?.recordInstallBlocked(.macStorage)
+                }
                 self?.evidencePrimaryFailureMapIndex = activePackageIndex
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
@@ -1919,17 +1973,10 @@ final class MapEngine: ObservableObject {
                 self?.state = .scanned
 
                 if !allReady {
+                    // Preflight never writes, so it creates no INSTALL_FAILED map result.
+                    self?.funnel?.recordInstallBlocked(AppFunnelInstallBlockedReason.forPreflight(finalResult.failure))
                     let failureIndex = activeMapIndex.value
                     self?.evidencePrimaryFailureMapIndex = failureIndex
-                    if finalResult.status != .blockedInstallationAuthorization,
-                       plan.installItems.indices.contains(failureIndex) {
-                        self?.emitMapStatisticsEvent(
-                            package: plan.installItems[failureIndex].package,
-                            type: .installFailed,
-                            outcome: .failed,
-                            mapResultIndex: failureIndex
-                        )
-                    }
                     self?.evidenceFailureStage = InstallationFailureStageResolver.stage(
                         for: finalResult.failure, context: finalResult.failureContext,
                         writeStarted: finalResult.diagnostics.writeStarted)
@@ -1958,16 +2005,10 @@ final class MapEngine: ObservableObject {
                     cancelled: Self.isObservedCancellation(error),
                     context: readFailure?.context)
                 guard !Task.isCancelled else { return }
+                // A preflight failure is before the device write boundary.
+                self?.funnel?.recordInstallBlocked(error is MapTargetResolutionError ? .localCapability : .other)
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
-                if plan.installItems.indices.contains(failureIndex) {
-                    self?.emitMapStatisticsEvent(
-                        package: plan.installItems[failureIndex].package,
-                        type: .installFailed,
-                        outcome: .failed,
-                        mapResultIndex: failureIndex
-                    )
-                }
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
                     self?.evidenceFailureStage = diagnostic.stage
@@ -2038,6 +2079,7 @@ final class MapEngine: ObservableObject {
         let phaseRelay = MapEnginePhaseRelay(engine: self)
         let phaseProgressRelay = MapEnginePhaseProgressRelay(engine: self)
         let activeMapIndex = InstallationMapIndexState()
+        let componentLog = InstallationComponentLog()
         activeTask?.cancel()
         let diagnostics = operationDiagnostics
         activeTask = Task { [weak self] in
@@ -2135,6 +2177,7 @@ final class MapEngine: ObservableObject {
                                 }
                             )
                             diagnostics?.record(result, packageID: packagePlan.item.package.id, artifactID: selectedArtifact.id)
+                            componentLog.record(index: index, kind: selectedArtifact.kind, result: result)
                             packageResults.append(result)
                             componentResults.append(result)
                             packageComponents.append(
@@ -2192,20 +2235,7 @@ final class MapEngine: ObservableObject {
                 let batchSucceeded = batch.packageOutcomes.count == packagePlans.count
                     && batch.packageOutcomes.allSatisfy { $0.status == .completed }
                 let hasPartialSuccess = batch.packageOutcomes.contains { $0.hasWarnings }
-                for (index, outcome) in batch.packageOutcomes.enumerated()
-                where plan.installItems.indices.contains(index) {
-                    let componentOffset = packagePlans[..<index]
-                        .reduce(0) { $0 + $1.artifactPlan.selectedArtifacts.count }
-                    let authorizationBlocked = batch.componentResults.indices.contains(componentOffset)
-                        && batch.componentResults[componentOffset].status == .blockedInstallationAuthorization
-                    guard !authorizationBlocked else { continue }
-                    self?.emitMapStatisticsEvent(
-                        package: plan.installItems[index].package,
-                        type: outcome.isComplete ? .installSucceeded : .installFailed,
-                        outcome: outcome.isComplete ? .succeeded : .failed,
-                        mapResultIndex: index
-                    )
-                }
+                self?.emitInstallStatistics(componentLog.snapshot(), plan: plan)
                 self?.installationResult = finalResult
                 self?.evidenceFailureContext = finalResult.failureContext
                 self?.evidenceOriginalFailureContext = finalResult.originalFailureContext
@@ -2255,17 +2285,14 @@ final class MapEngine: ObservableObject {
                     native: readFailure?.native,
                     cancelled: Self.isObservedCancellation(error),
                     context: readFailure?.context)
+                // A thrown boundary read is before the current component's
+                // write. Report every map result that reached its own write
+                // boundary, including maps completed earlier in this batch,
+                // also when a disconnect cancelled the remaining work.
+                self?.emitInstallStatistics(componentLog.snapshot(), plan: plan)
                 guard !Task.isCancelled else { return }
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
-                if plan.installItems.indices.contains(failureIndex) {
-                    self?.emitMapStatisticsEvent(
-                        package: plan.installItems[failureIndex].package,
-                        type: .installFailed,
-                        outcome: .failed,
-                        mapResultIndex: failureIndex
-                    )
-                }
                 self?.evidenceFailureStage = known?.stage ?? .preflight
                 self?.evidenceFailure = readFailure?.failure ?? known?.failure
                 self?.evidenceNativeFailureCode = readFailure?.native
@@ -2364,6 +2391,46 @@ final class MapEngine: ObservableObject {
         }
     }
 
+    /// First-run funnel: the review step shows a blocked Install action.
+    /// An authorization that is still resolving is not reported.
+    func recordInstallReviewBlocked(plan: InstallationPlan, authorization: InstallationAuthorizationState,
+                                    supportedInstallFlow: Bool) {
+        guard authorization != .resolving,
+              let reason = AppFunnelInstallBlockedReason.forReview(plan: plan,
+                  installationAuthorization: authorization,
+                  supportedInstallFlow: supportedInstallFlow) else { return }
+        funnel?.recordInstallBlocked(reason)
+    }
+
+    /// The map-stream result for one selected map, per STATISTICS_CONTRACT:
+    /// a verified main map is INSTALL_SUCCEEDED even when an optional
+    /// component failed (that stays a diagnostic fact); a main map that
+    /// reached its device write boundary and failed is INSTALL_FAILED; a map
+    /// that never reached the write boundary has no install result.
+    nonisolated static func installStatisticsEventType(
+        components: [(kind: MapArtifactKind, result: MapInstallationResult)]
+    ) -> MapStatisticsEventType? {
+        guard let main = components.first(where: { $0.kind == .main })?.result,
+              main.status != .blockedInstallationAuthorization else { return nil }
+        if main.isSuccess { return .installSucceeded }
+        return main.diagnostics.writeStarted ? .installFailed : nil
+    }
+
+    private func emitInstallStatistics(
+        _ components: [Int: [(kind: MapArtifactKind, result: MapInstallationResult)]],
+        plan: InstallationPlan
+    ) {
+        for index in components.keys.sorted() where plan.installItems.indices.contains(index) {
+            guard let type = Self.installStatisticsEventType(components: components[index] ?? []) else { continue }
+            emitMapStatisticsEvent(
+                package: plan.installItems[index].package,
+                type: type,
+                outcome: type == .installSucceeded ? .succeeded : .failed,
+                mapResultIndex: index
+            )
+        }
+    }
+
     private func emitMapStatisticsEvent(
         package: MapPackage,
         type: MapStatisticsEventType,
@@ -2421,7 +2488,9 @@ final class MapEngine: ObservableObject {
             case .cancelled: type = .downloadCancelled
             }
             let event = start.phase(type) // Timestamp the actual boundary, not observer creation.
-            Task { @MainActor in controller?.record(event) }
+            // Persist in callback order from the download context. Separate
+            // main-actor tasks could reorder a fast terminal before its start.
+            controller?.recordFromAnyContext(event)
         }
     }
 

@@ -448,6 +448,8 @@ enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
         switch self {
         case .available:
             return nil
+        case .blocked(_, let reason) where reason == "APP_UPDATE_REQUIRED":
+            return "Update Terento to download this map"
         case .blocked:
             return "Downloads temporarily unavailable"
         case .withheldRussia, .withheldCrimea:
@@ -465,6 +467,7 @@ enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
             case "PROVIDER_RATE_LIMITED": return "\(provider) is limiting downloads. Try again later."
             case "PROVIDER_PAUSED": return "\(provider) downloads are temporarily paused. Try again later."
             case "STATUS_UNVERIFIED": return "Could not check current download availability for \(provider). Check your connection and try again."
+            case "APP_UPDATE_REQUIRED": return "This Terento version can't download maps from the current catalog. Update Terento, then try again."
             case "STATUS_STALE": return "\(provider) server status needs to be checked. Try again later."
             case "ADMIN_DISABLED": return "Downloads for this \(provider) map are temporarily disabled. Try again later."
             default: return "This \(provider) map is currently unavailable. Try again later."
@@ -731,9 +734,18 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     }
 
     func withUnverifiedDownloadAvailability() -> MapPackage {
+        withLocalDownloadBlock("STATUS_UNVERIFIED")
+    }
+
+    /// The current remote catalog is incompatible with this app version.
+    func withAppUpdateRequiredDownloadAvailability() -> MapPackage {
+        withLocalDownloadBlock("APP_UPDATE_REQUIRED")
+    }
+
+    private func withLocalDownloadBlock(_ reason: String) -> MapPackage {
         var copy = self
         if copy.sourceKind == .provider && copy.downloadBlockReason == nil {
-            copy.downloadBlockReason = "STATUS_UNVERIFIED"
+            copy.downloadBlockReason = reason
         }
         return copy
     }
@@ -1055,6 +1067,12 @@ struct MapCatalog: Equatable, Sendable {
         MapCatalog(catalogVersion: catalogVersion, updatedAt: updatedAt,
             providers: providers, regions: regions,
             packages: packages.map { $0.withUnverifiedDownloadAvailability() })
+    }
+
+    func withAppUpdateRequiredDownloadAvailability() -> MapCatalog {
+        MapCatalog(catalogVersion: catalogVersion, updatedAt: updatedAt,
+            providers: providers, regions: regions,
+            packages: packages.map { $0.withAppUpdateRequiredDownloadAvailability() })
     }
 
     func provider(for id: String) -> MapProvider? {

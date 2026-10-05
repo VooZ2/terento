@@ -699,6 +699,23 @@ private func testPreviouslyVersionedMapCanBeUpdated() async throws {
     try require(harness.transport.events.contains("deleteExactObject"), "the verified versioned old object should be removable")
 }
 
+private func testPreEntryInterruptionClassification() async throws {
+    let cancelled = SafeUpdateResult.preEntryInterruption(CancellationError(),
+        lifecycleBusy: false, operationStillCurrent: true)
+    try require(cancelled.cancelledBeforeStart && !cancelled.writeStarted
+        && cancelled.status != .failedDeviceDisconnected
+        && cancelled.message == "The map update was cancelled before it started. Nothing was changed.",
+        "a cancelled update that never started is not a device disconnect")
+    let invalidated = SafeUpdateResult.preEntryInterruption(CancellationError(),
+        lifecycleBusy: false, operationStillCurrent: false)
+    try require(invalidated.status == .failedDeviceDisconnected && !invalidated.cancelledBeforeStart,
+        "a disconnect/eject that invalidated the operation keeps the disconnect classification")
+    let busy = SafeUpdateResult.preEntryInterruption(CancellationError(),
+        lifecycleBusy: true, operationStillCurrent: true)
+    try require(busy.status == .blockedTransactionAlreadyRunning && !busy.cancelledBeforeStart
+        && !busy.writeStarted, "a busy lifecycle lease is reported as not started, not disconnected")
+}
+
 private func testBusyGateAndNoDowngrade() async throws {
     let busy = makeHarness()
     let heldID = UUID()
@@ -1259,7 +1276,8 @@ struct Stage53SafeUpdateTests {
             ("verification cleanup", testVerificationFailureCleansOnlyNewObject),
             ("commit and manifest failures", testCommitAndManifestFailuresAreNotSuccess),
             ("previously versioned target", testPreviouslyVersionedMapCanBeUpdated),
-            ("busy gate and no downgrade", testBusyGateAndNoDowngrade)
+            ("busy gate and no downgrade", testBusyGateAndNoDowngrade),
+            ("pre-entry cancellation is not a disconnect", testPreEntryInterruptionClassification)
         ]
         var passed = 0
         for (name, test) in tests {

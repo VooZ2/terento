@@ -23,6 +23,8 @@ swiftc \
     "$project_root/Tests/TerentoPoCTests/Stage1ProviderNeutralTests.swift" \
     -o "$binary_path"
 
+# The loader's bundled supplement is resolved next to the test executable.
+cp "$project_root/Sources/TerentoPoC/Resources/Maps/catalog.json" "$build_dir/catalog.json"
 "$binary_path"
 
 if grep -Eq 'freizeitkarte|Freizeitkarte' \

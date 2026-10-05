@@ -60,7 +60,21 @@ hardware evidence for the tested model and behavior.
 
 `installation-policy.schema.json` defines the response shape. The backend
 code serves a public-read, metadata-only `GET /devices/installation-policy.json`
-projection with `schemaVersion: 3`. The implementation requires a fresh
+projection with `schemaVersion: 3`.
+
+Client schema tolerance: beta.14–beta.18 clients require the exact schema-3
+document and record key sets, so the server must not add fields to the
+schema-3 projection while those clients are supported. From the next app
+candidate, the client still requires every known document and record field to
+be present (nullable fields as explicit null) and valid, keeps the exact
+`manufacturer: "Garmin"` and unique-ID checks, and tolerates additive unknown
+fields at both levels. A field that can narrow or revoke write authority must
+never be added to schema 3; it requires a new `schemaVersion`. A client that
+receives a higher `schemaVersion` reports the distinct `UPDATE_REQUIRED` block
+("This Terento version needs an update before it can install maps.") and never
+writes; a malformed, older-schema or unreachable response remains
+`CATALOG_UNAVAILABLE`. Mid-operation re-checks keep their existing failure
+codes; the visible review and acquisition messages use the update text. The implementation requires a fresh
 response and uses `Cache-Control: no-store`; conditional requests return a
 new 200 policy rather than 304. The deploy smoke check now includes this
 endpoint. Live route validation is independent of app packaging and publication;

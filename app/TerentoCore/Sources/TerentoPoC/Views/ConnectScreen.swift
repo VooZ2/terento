@@ -298,7 +298,8 @@ struct ConnectScreen: View {
         }
         .onReceive(Timer.publish(every: 300, on: .main, in: .common).autoconnect()) { _ in
             deviceEngine.retryInstallationAuthorizationIfUnavailable()
-            guard !lifecycleViewModel.isBusy else { return }
+            // Never refresh (and prune selections) during review or install.
+            guard !lifecycleViewModel.isBusy, selectedInstallationPlan == nil else { return }
             Task { await mapEngine.refreshCatalogAvailability() }
         }
         .onChange(of: mapEngine.result) { _ in refreshMapSelectionPresentation() }
@@ -1513,6 +1514,15 @@ struct ConnectScreen: View {
                         .foregroundStyle(TerentoColors.secondaryText)
                         .padding(.top, 10)
                         .accessibilityHint("Terento is using its bundled local map list. It may be out of date.")
+                    } else if mapEngine.catalogSource == .appUpdateRequired {
+                        Label(
+                            MapCatalogSource.appUpdateRequired.userLabel,
+                            systemImage: "arrow.down.circle"
+                        )
+                        .font(.terentoUI(size: 12, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .padding(.top, 10)
+                        .accessibilityHint("This Terento version can't use the current map catalog. Maps can be browsed; installing needs a Terento update.")
                     }
 
                     if mapEngine.state == .loadingCatalog || mapEngine.state == .scanning {
@@ -1988,6 +1998,14 @@ struct ConnectScreen: View {
                 .disabled(!installAvailability.isEnabled)
             }
             }
+        }
+        .onAppear {
+            mapEngine.recordInstallReviewBlocked(plan: plan,
+                authorization: deviceEngine.installationAuthorization, supportedInstallFlow: supportedInstallFlow)
+        }
+        .onChange(of: deviceEngine.installationAuthorization) { authorization in
+            mapEngine.recordInstallReviewBlocked(plan: plan,
+                authorization: authorization, supportedInstallFlow: supportedInstallFlow)
         }
     }
 
@@ -5262,6 +5280,9 @@ struct MapSelectionStorageSummary: View {
         if plan.selectedItems.isEmpty {
             return ""
         }
+        if plan.selectedItems.count > InstallationPlan.maximumMapsPerOperation {
+            return InstallationPlan.tooManyMapsReason
+        }
         if plan.storagePlan.hasUnresolvedInstallSize {
             return "Map size will be checked before installation."
         }
@@ -5272,6 +5293,9 @@ struct MapSelectionStorageSummary: View {
     }
 
     private var statusColor: Color {
+        if plan.selectedItems.count > InstallationPlan.maximumMapsPerOperation {
+            return TerentoColors.error
+        }
         if plan.selectedItems.isEmpty || plan.storagePlan.hasUnresolvedInstallSize {
             return TerentoColors.secondaryText
         }
