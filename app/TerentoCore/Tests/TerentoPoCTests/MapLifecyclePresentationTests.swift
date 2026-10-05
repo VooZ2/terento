@@ -489,6 +489,8 @@ func runMapLifecyclePresentationTests() throws {
         bytesPerSecond: 10
     )
     try require(progress.fractionCompleted == 0.5, "lifecycle progress reports a fraction")
+    try require(MapLifecycleOperationPhase.preparing.userLabel == "Preparing", "preparation has its own visible stage")
+
     try require(
         MapLifecycleAction.allCases.count == 4,
         "only transfer, recover, remove, and update actions are exposed"

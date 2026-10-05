@@ -1244,7 +1244,8 @@ struct MapPackageAcquirer: Sendable {
         canonicalRegion: String? = nil,
         workspace requestedWorkspace: MapAcquisitionWorkspace? = nil,
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)? = nil,
-        onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)? = nil
+        onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)? = nil,
+        onValidationProgress: (@Sendable (Double) -> Void)? = nil
     ) async throws -> ValidatedMapArtifact {
         state(.resolvingPackage, onStateChange)
         let acquisitionPackage = selectedArtifact.map {
@@ -1295,7 +1296,8 @@ struct MapPackageAcquirer: Sendable {
                 canonicalRegion: canonicalRegion,
                 workspace: acquisitionWorkspace,
                 onStateChange: onStateChange,
-                onDownloadProgress: onDownloadProgress
+                onDownloadProgress: onDownloadProgress,
+                onValidationProgress: onValidationProgress
             )
             handedOff = true
             return artifact
@@ -1311,7 +1313,8 @@ struct MapPackageAcquirer: Sendable {
         canonicalRegion: String?,
         workspace: MapAcquisitionWorkspace,
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)?,
-        onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)?
+        onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)?,
+        onValidationProgress: (@Sendable (Double) -> Void)?
     ) async throws -> ValidatedMapArtifact {
         guard let sourceURL = selectedArtifact?.sourceURL ?? package.downloadURL else {
             throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
@@ -1455,7 +1458,8 @@ struct MapPackageAcquirer: Sendable {
         do {
             validatedSource = try MapSourceValidator().validate(
                 fileURL: imgURL,
-                expectedPackage: package
+                expectedPackage: package,
+                onProgress: onValidationProgress
             )
         } catch MapSourceValidationError.identityMismatch {
             throw MapAcquisitionError.sourceIdentityMismatch(

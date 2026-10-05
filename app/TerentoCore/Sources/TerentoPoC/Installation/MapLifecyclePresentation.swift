@@ -250,6 +250,7 @@ enum MapLifecycleOperationPhase: Equatable, Sendable {
     case updating
     case verifying
     case downloading
+    case preparing
     case checking
     case installing
     case removingOld
@@ -265,6 +266,7 @@ enum MapLifecycleOperationPhase: Equatable, Sendable {
         case .updating: return "Updating"
         case .verifying: return "Verifying"
         case .downloading: return "Downloading"
+        case .preparing: return "Preparing"
         case .checking: return "Checking"
         case .installing: return "Installing"
         case .removingOld: return "Removing old"

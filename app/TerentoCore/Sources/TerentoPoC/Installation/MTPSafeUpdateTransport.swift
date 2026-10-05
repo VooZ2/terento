@@ -78,6 +78,11 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
     }
 
     func inspectCurrentObject(_ expected: SafeUpdateRemoteObject) throws -> SafeUpdateRemoteObject {
+        try inspectCurrentObject(expected, onProgress: nil)
+    }
+
+    func inspectCurrentObject(_ expected: SafeUpdateRemoteObject,
+                              onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
         guard let itemID = expected.file.itemID, itemID != 0 else {
             throw SafeUpdateTransportError.operationFailed(
                 "The installed map does not have an exact device object identity."
@@ -92,7 +97,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             let transfer = try readExistingFile(
                 file: expected.file,
                 to: temporaryURL,
-                onProgress: nil
+                onProgress: { onProgress?($0.fractionCompleted * 0.85) }
             )
             guard transfer.itemID != 0,
                   transfer.sourcePath == expected.file.path,
@@ -106,7 +111,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             guard let identity = MapIdentity(provider: metadata.provider, region: metadata.region) else {
                 throw SafeUpdateTransportError.metadataMismatch
             }
-            let hash = try sha256(of: temporaryURL)
+            let hash = try sha256(of: temporaryURL, onProgress: { onProgress?(0.85 + 0.14 * $0) })
             guard MapIdentityMatcher.matches(
                       actual: identity,
                       expected: expected.identity
@@ -124,6 +129,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                     size: expected.file.sizeBytes, sha256: expectedHash
                 )
             }
+            onProgress?(1)
             return SafeUpdateRemoteObject(
                 file: expected.file,
                 identity: identity,
@@ -193,6 +199,11 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         _ object: SafeUpdateRemoteObject,
         expected: SafeUpdateSourceArtifact
     ) throws -> SafeUpdateRemoteObject {
+        try verifyTransactionObject(object, expected: expected, onProgress: nil)
+    }
+
+    func verifyTransactionObject(_ object: SafeUpdateRemoteObject, expected: SafeUpdateSourceArtifact,
+                                 onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
         guard let expectedIdentity = MapIdentity(
             provider: expected.provider,
             region: expected.region
@@ -207,7 +218,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                 version: expected.version,
                 ownership: .managedByTerento,
                 sha256: nil
-            )
+            ),
+            onProgress: onProgress
         )
 
         guard inspected.file.sizeBytes == expected.installSizeBytes,
@@ -403,15 +415,19 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         }
     }
 
-    private func sha256(of url: URL) throws -> String {
+    private func sha256(of url: URL, onProgress: (@Sendable (Double) -> Void)? = nil) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
 
+        let size = (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        var completed = 0
         var hasher = SHA256()
         while true {
             let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
             if data.isEmpty { break }
             hasher.update(data: data)
+            completed += data.count
+            if size > 0 { onProgress?(min(1, Double(completed) / Double(size))) }
         }
 
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
