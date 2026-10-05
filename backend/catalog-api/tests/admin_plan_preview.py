@@ -18,7 +18,7 @@ def build(root):
         'provider':'custom' if i%5==0 else 'freizeitkarte', 'region':'custom' if i%5==0 else 'LT'} for i in range(3000)]
     summary=_diagnostic_summary_by_identity(events)
     providers=[{'id':k,'name':n,'status':'ACTIVE','health':'HEALTHY','packageCount':180,'affectedPackageCount':0,'problematicSourceCount':0,
-        'lastHealthCheck':'2026-09-17T10:30:00Z','lastCatalogSync':'2026-09-16T10:30:00Z'} for k,n in [('freizeitkarte','Freizeitkarte'),('opentopomap','OpenTopoMap'),('long','Provider With A Very Long Real Name')]]
+        'lastHealthCheck':'2026-09-17T10:30:00Z','lastCatalogSync':'2026-09-16T10:30:00Z','lastCollectionStatus':'SUCCEEDED','lastCollectionSuccess':'2099-01-01T00:00:00Z','latestRelease':'2026-09-15'} for k,n in [('freizeitkarte','Freizeitkarte'),('opentopomap','OpenTopoMap'),('long','Provider With A Very Long Real Name')]]
     stats={'rows':[{'provider_id':'freizeitkarte','map_package_id':'lt','region':'LT','region_country':'LT','region_identity':'lt','display_name':'Lithuania',
         'component_kind':'main','event_type':'INSTALL_SUCCEEDED','outcome':'SUCCEEDED','operation_count':3000,'event_count':3000,'last_occurred_at':'2026-09-17T10:30:00Z'}], 'summary':{'hasEventData':True,'completedDownloads':3000,'completedInstalls':3000,'failedInstalls':0,'downloadSuccessRate':100,'installSuccessRate':100}}
     stats['rows'] += [{'provider_id':'custom','event_type':'INSTALL_SUCCEEDED','outcome':'SUCCEEDED','operation_count':15,'event_count':15},

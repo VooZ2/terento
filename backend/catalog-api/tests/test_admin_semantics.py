@@ -3859,7 +3859,7 @@ class SystemHealthPageTests(unittest.TestCase):
         self.assertIn("website reports 1.0.0-beta.9", body)
         self.assertIn("One suite failed", body)
         self.assertIn(">macOS application<", body)
-        self.assertIn("system-health-failed", body)
+        self.assertIn("data-status='FAILED'", body)
         self.assertIn("GitHub Actions", body)
 
     def test_page_accepts_verified_deployed_manifest_without_release_observation(self):
