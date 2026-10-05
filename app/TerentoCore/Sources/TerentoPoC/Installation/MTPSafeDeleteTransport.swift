@@ -104,6 +104,8 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             switch error {
             case .deviceAbsent:
                 throw SafeDeleteTransportError.deviceDisconnected(error.localizedDescription)
+            case .multipleGarminDevices:
+                throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
             case .readFailed(let message), .contextual(let message, _):
                 if isMissing(message) {
                     throw SafeDeleteTransportError.objectNotFound

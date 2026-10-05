@@ -553,6 +553,12 @@ struct ConnectScreen: View {
                     connectionStatusView
                         .padding(.top, 14)
 
+                    if showsConnectChecklist {
+                        connectChecklist
+                            .padding(.top, 14)
+                            .frame(maxWidth: 420, alignment: .center)
+                    }
+
                     if deviceEngine.state == .disconnected || deviceEngine.state == .failed {
                         PrimaryButton(
                             title: deviceEngine.state == .failed ? "Try again" : "Connect device",
@@ -602,6 +608,13 @@ struct ConnectScreen: View {
 
     private var connectionStatusView: some View {
         VStack(alignment: .center, spacing: TerentoPageLayout.titleSubtitleSpacing) {
+            if let statusIcon = connectionStatusIcon {
+                Image(systemName: statusIcon.name)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(statusIcon.color)
+                    .accessibilityHidden(true)
+            }
+
             Text(connectionStatusTitle)
                 .font(.terentoHeading(size: 42, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
@@ -630,10 +643,46 @@ struct ConnectScreen: View {
     }
 
     private var connectionIllustrationMaxHeight: CGFloat {
+        if showsConnectChecklist {
+            return 240
+        }
         if deviceEngine.state == .failed {
             return troubleshootingExpanded ? 180 : 220
         }
         return troubleshootingExpanded ? 220 : 300
+    }
+
+    /// Every connect status pairs its text with an icon; colour only supports it.
+    private var connectionStatusIcon: (name: String, color: Color)? {
+        switch deviceEngine.state {
+        case .detecting:
+            switch deviceEngine.detectionPhase {
+            case .waitingForWatch:
+                return ("cable.connector", TerentoColors.secondaryText)
+            case .connecting:
+                return ("arrow.triangle.2.circlepath", TerentoColors.interactive)
+            case .needsAttention:
+                return ("exclamationmark.circle.fill", TerentoColors.warning)
+            }
+        case .failed:
+            return ("exclamationmark.triangle.fill", TerentoColors.error)
+        case .disconnected, .connected, .ready, .ejecting, .safeToDisconnect:
+            return nil
+        }
+    }
+
+    private var showsConnectChecklist: Bool {
+        deviceEngine.state == .detecting && deviceEngine.detectionPhase == .waitingForWatch
+    }
+
+    private var connectChecklist: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            troubleshootingRow("Use a USB data cable, not a charge-only cable", icon: "cable.connector")
+            troubleshootingRow("Unlock your watch", icon: "lock.open")
+            troubleshootingRow("Quit Garmin Express", icon: "xmark.app")
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Before you connect: use a USB data cable, unlock your watch, and quit Garmin Express.")
     }
 
     private var connectionStatusTitle: String {
@@ -641,7 +690,15 @@ struct ConnectScreen: View {
         case .disconnected:
             return "Ready when you are."
         case .detecting:
-            return "Waiting for your Garmin…"
+            switch deviceEngine.detectionPhase {
+            case .waitingForWatch:
+                return "Connect your watch"
+            case .connecting:
+                return "Waiting for your Garmin…"
+            case .needsAttention(let outcome):
+                return UserFacingErrorMessage.detectionAttention(outcome)?.title
+                    ?? "Waiting for your Garmin…"
+            }
         case .connected, .ready:
             return "Garmin \(deviceEngine.compatibility?.displayName ?? "watch") connected"
         case .ejecting:
@@ -658,7 +715,16 @@ struct ConnectScreen: View {
         case .disconnected:
             return "Connect your watch to this Mac."
         case .detecting:
-            return "This may take up to 2 minutes."
+            switch deviceEngine.detectionPhase {
+            case .waitingForWatch:
+                return deviceEngine.disconnectNotice
+                    ?? "Plug your Garmin into this Mac. Terento finds it automatically."
+            case .connecting:
+                return "This may take up to 2 minutes."
+            case .needsAttention(let outcome):
+                return UserFacingErrorMessage.detectionAttention(outcome)?.description
+                    ?? "This may take up to 2 minutes."
+            }
         case .connected, .ready:
             return "Your Garmin is ready."
         case .ejecting:

@@ -34,6 +34,17 @@ The app connects a map-capable Garmin smartwatch, resolves provider metadata,
 downloads to the Mac, validates the source package and Garmin image, checks
 storage, installs, verifies the transfer, and records local ownership.
 
+Device discovery starts automatically. While no Garmin is on USB, the Device
+page shows a calm "Connect your watch" checklist and polls only the USB device
+list; libmtp is not entered and no timeout runs. The 2-minute connection window
+starts when a Garmin USB device appears. More than one Garmin, a watch held by
+another app (repeated session-open failures) and a Garmin that never appears as
+a file-transfer device are shown while discovery keeps polling; only
+not-yet-enumerated and transient read failures are silent retries. After a
+timeout, a failed check or an unexpected disconnect, unplugging and reconnecting
+the watch restarts discovery. `DeviceConnectOutcome` exposes each episode
+outcome for the first-run funnel; `DeviceEngine` itself sends no telemetry.
+
 The review Install action starts from idle. After successful preflight, the
 engine continues automatically; its transient `awaitingConfirmation` phase is
 processing, not a second executable Install action. Authorization, device

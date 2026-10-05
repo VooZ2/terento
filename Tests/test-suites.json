@@ -44,6 +44,7 @@
   "native": [
     "app/TerentoCore/Tests/run-native-compatibility-status-client-tests.sh",
     "app/TerentoCore/Tests/run-native-connection-lifecycle-tests.sh",
+    "app/TerentoCore/Tests/run-native-device-detection-tests.sh",
     "app/TerentoCore/Tests/run-native-device-asset-matching-tests.sh",
     "app/TerentoCore/Tests/run-native-installation-evidence-tests.sh",
     "app/TerentoCore/Tests/run-native-installation-authorization-tests.sh",

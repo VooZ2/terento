@@ -161,6 +161,98 @@ private func testSafeEjectPolicyAcrossOperations() throws {
     )
 }
 
+
+private func testNoWatchStaysCalmWithoutClock() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    for second in stride(from: 0.0, through: 600.0, by: 0.5) {
+        let step = policy.usbObserved(count: 0, now: second)
+        try require(step == .wait(DeviceDetectionPolicy.presencePollInterval), "no Garmin on USB only polls")
+        try require(policy.phase == .waitingForWatch, "no Garmin keeps the calm waiting phase")
+        try require(!policy.connectionClockIsRunning, "no connection clock runs without a Garmin")
+    }
+    let outcomes = policy.takeNewOutcomes()
+    try require(outcomes == [.timeoutNoUSB], "a long USB-absent wait is a funnel signal only, reported once")
+}
+
+private func testClockStartsOnlyWhenGarminAppears() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    _ = policy.usbObserved(count: 0, now: 0)
+    _ = policy.usbObserved(count: 0, now: 500)
+    try require(policy.takeNewOutcomes() == [.timeoutNoUSB], "the long absent wait was reported before the watch appeared")
+    let first = policy.usbObserved(count: 1, now: 500)
+    try require(first == .settleThenRead(DeviceDetectionPolicy.enumerationSettle), "a newly present Garmin settles before libmtp")
+    try require(policy.connectionDeadline == 620, "the 2-minute clock starts when the Garmin appears")
+    try require(policy.phase == .connecting, "a present Garmin enters the connecting phase")
+    try require(policy.usbObserved(count: 1, now: 501) == .read, "later attempts read without another settle")
+    _ = policy.snapshotFailed(.notYetEnumerated, now: 502)
+    try require(policy.phase == .connecting, "one not-yet-enumerated attempt is an ordinary retry")
+    try require(policy.usbObserved(count: 1, now: 619) == .read, "the clock has not expired yet")
+    try require(policy.usbObserved(count: 1, now: 620) == .fail(.timeoutUSBPresent), "an expired clock with a Garmin present times out")
+    try require(policy.takeNewOutcomes() == [.timeoutUSBPresent], "USB-present timeout is reported")
+}
+
+private func testUnplugStopsClock() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    _ = policy.usbObserved(count: 1, now: 10)
+    try require(policy.connectionClockIsRunning, "clock runs with a Garmin present")
+    _ = policy.usbObserved(count: 0, now: 50)
+    try require(!policy.connectionClockIsRunning && policy.phase == .waitingForWatch, "unplug returns to calm waiting without a clock")
+    try require(policy.usbObserved(count: 1, now: 300) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle), "replug settles again")
+    try require(policy.connectionDeadline == 420, "replug starts a fresh 2-minute clock")
+}
+
+private func testMultipleDevicesShownImmediately() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    try require(policy.usbObserved(count: 2, now: 1) == .wait(DeviceDetectionPolicy.attentionPollInterval), "two Garmins keep polling")
+    try require(policy.phase == .needsAttention(.multipleDevices), "two Garmins are shown on the first observation")
+    try require(!policy.connectionClockIsRunning, "no timeout runs while two Garmins are shown")
+    try require(policy.takeNewOutcomes() == [.multipleDevices], "multiple devices is reported once")
+    _ = policy.usbObserved(count: 2, now: 2)
+    try require(policy.takeNewOutcomes().isEmpty, "multiple devices is not reported twice")
+    try require(policy.usbObserved(count: 1, now: 3) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle), "one Garmin remaining continues automatically")
+    try require(policy.phase == .connecting, "attention clears when one Garmin remains")
+    _ = policy.snapshotFailed(.multipleDevices, now: 4)
+    try require(policy.phase == .needsAttention(.multipleDevices), "native multiple-device result is shown immediately")
+}
+
+private func testBusyNeedsConfirmationThenShows() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    _ = policy.usbObserved(count: 1, now: 0)
+    try require(policy.snapshotFailed(.busy, now: 1) == .wait(DeviceDetectionPolicy.busyRetryInterval), "busy retries")
+    try require(policy.phase == .connecting, "a single open failure is not yet shown as busy")
+    _ = policy.snapshotFailed(.busy, now: 3)
+    try require(policy.phase == .needsAttention(.busy), "repeated open failures are shown as busy")
+    try require(policy.takeNewOutcomes() == [.busy], "busy is reported")
+    try require(policy.usbObserved(count: 1, now: 130) == .fail(.busy), "a busy episode that expires ends as busy")
+}
+
+private func testNotMTPModeHintAfterRepeatedInvisibility() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    _ = policy.usbObserved(count: 1, now: 0)
+    for attempt in 1..<DeviceDetectionPolicy.notMTPModeAfterAttempts {
+        _ = policy.snapshotFailed(.notYetEnumerated, now: Double(attempt))
+    }
+    try require(policy.phase == .connecting, "a briefly invisible Garmin is still enumerating")
+    _ = policy.snapshotFailed(.notYetEnumerated, now: 11)
+    try require(policy.phase == .needsAttention(.notMTPMode), "a persistently invisible Garmin gets the USB-mode hint")
+    try require(policy.takeNewOutcomes() == [.notMTPMode], "not-MTP-mode is reported")
+}
+
+private func testStoppedRespondingFailsImmediately() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    _ = policy.usbObserved(count: 1, now: 0)
+    try require(policy.snapshotFailed(.stoppedResponding, now: 60) == .fail(.failed), "a bounded read deadline stops detection")
+    try require(policy.takeNewOutcomes() == [.failed], "a stalled read is reported as failed")
+}
+
+private func testConnectedReportedOnce() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    _ = policy.usbObserved(count: 1, now: 0)
+    policy.connected()
+    policy.connected()
+    try require(policy.takeNewOutcomes() == [.connected], "connected is reported once per episode")
+}
+
 @main
 struct ConnectionLifecycleTests {
     static func main() {
@@ -172,7 +264,15 @@ struct ConnectionLifecycleTests {
             ("eject is unavailable without a device", testEjectCannotStartWithoutDevice),
             ("physical unplug after eject restarts detection", testPhysicalDisconnectAfterEjectReturnsToDetection),
             ("sidebar eject visibility follows connection and lifecycle state", testSafeEjectPresentationStates),
-            ("eject policy follows the shared operation state", testSafeEjectPolicyAcrossOperations)
+            ("eject policy follows the shared operation state", testSafeEjectPolicyAcrossOperations),
+            ("no watch stays calm without a connection clock", testNoWatchStaysCalmWithoutClock),
+            ("connection clock starts only when a Garmin appears", testClockStartsOnlyWhenGarminAppears),
+            ("unplug stops the connection clock", testUnplugStopsClock),
+            ("multiple Garmins are shown immediately", testMultipleDevicesShownImmediately),
+            ("busy is shown after a confirming retry", testBusyNeedsConfirmationThenShows),
+            ("persistently invisible Garmin gets the USB-mode hint", testNotMTPModeHintAfterRepeatedInvisibility),
+            ("stalled read stops detection", testStoppedRespondingFailsImmediately),
+            ("connected outcome is reported once", testConnectedReportedOnce)
         ]
 
         do {

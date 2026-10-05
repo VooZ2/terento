@@ -49,25 +49,10 @@ enum MTPConnectionConflictDiagnostics {
             bundleIdentifierFragments: [],
             namePrefixes: []
         ),
-        Candidate(
-            exactBundleIdentifiers: ["com.apple.preview"],
-            exactNames: ["preview"],
-            bundleIdentifierFragments: [],
-            namePrefixes: []
-        ),
-        Candidate(
-            exactBundleIdentifiers: ["com.apple.photos"],
-            exactNames: ["photos"],
-            bundleIdentifierFragments: [],
-            namePrefixes: []
-        ),
-        Candidate(
-            exactBundleIdentifiers: [],
-            exactNames: ["lightroom"],
-            bundleIdentifierFragments: ["adobe.lightroom"],
-            namePrefixes: ["adobe lightroom", "lightroom classic"]
-        )
     ]
+    // Preview, Photos and Lightroom are not listed: they only claim a device
+    // while their own import window is open, so "Close Preview" merely
+    // because it is running would be wrong advice.
 
     static func runningApplicationNames() -> [String] {
         detectedApplicationNames(
@@ -110,6 +95,49 @@ enum MTPConnectionConflictDiagnostics {
 }
 
 enum UserFacingErrorMessage {
+    /// Final message after a detection episode ends without a connection.
+    static func forDetectionFailure(
+        _ outcome: DeviceConnectOutcome,
+        garminUSBPresent: Bool,
+        detectedConflicts: [String] = MTPConnectionConflictDiagnostics.runningApplicationNames()
+    ) -> String {
+        switch outcome {
+        case .busy:
+            return "Another app may be using your Garmin. Quit Garmin Express and other apps that connect to your watch, then unplug the watch and plug it back in."
+        case .multipleDevices:
+            return "More than one Garmin device is connected. Unplug the others and keep only your watch connected."
+        case .notMTPMode:
+            return "Your Garmin is connected but isn't ready for file transfer. Unlock the watch. If it has a USB Mode setting, choose MTP. Then unplug it and plug it back in."
+        case .failed:
+            return stoppedResponding
+        case .timeoutUSBPresent, .timeoutNoUSB, .connected, .disconnected:
+            return forConnectionTimeout(
+                garminUSBPresent: garminUSBPresent,
+                detectedConflicts: detectedConflicts
+            )
+        }
+    }
+
+    /// Shown when a bounded device read reaches its deadline.
+    static let stoppedResponding = "The watch stopped responding. Unplug it, wait 5 seconds, plug it back in."
+
+    /// Live title and description while detection keeps polling.
+    static func detectionAttention(_ outcome: DeviceConnectOutcome) -> (title: String, description: String)? {
+        switch outcome {
+        case .multipleDevices:
+            return ("More than one Garmin connected",
+                    "Unplug the other Garmin devices. Terento continues as soon as only your watch is connected.")
+        case .busy:
+            return ("Your Garmin is busy",
+                    "Another app may be using your watch. Quit Garmin Express and similar apps. Terento connects automatically when the watch is free.")
+        case .notMTPMode:
+            return ("Your Garmin isn't ready yet",
+                    "Unlock the watch. If it has a USB Mode setting, choose MTP. Terento keeps trying.")
+        case .connected, .timeoutNoUSB, .timeoutUSBPresent, .disconnected, .failed:
+            return nil
+        }
+    }
+
     static func forConnectionTimeout(
         garminUSBPresent: Bool,
         detectedConflicts: [String] = MTPConnectionConflictDiagnostics.runningApplicationNames()
@@ -118,7 +146,7 @@ enum UserFacingErrorMessage {
             return "We couldn't connect to your Garmin within 2 minutes. Reconnect it and try again."
         }
         guard !detectedConflicts.isEmpty else {
-            return "Your Garmin was detected, but the connection did not become ready within 2 minutes. Reconnect it and try again."
+            return "Your Garmin was detected, but it didn't become ready within 2 minutes. Unplug it, wait 5 seconds, and plug it back in."
         }
         return usbConflictMessage(detectedConflicts: detectedConflicts)
     }
