@@ -689,7 +689,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page(
             [row], {"username": "operator"}, "csrf", operations=[operation]
         ).decode()
-        self.assertIn("aria-label='View 1 open error", body)
+        self.assertIn("aria-label='View 1 open problem", body)
         self.assertIn("/admin/diagnostics?identity=", body)
         self.assertNotIn("Diagnostic record", body)
         self.assertNotIn("1.0.0-beta.6 (build 5)", body)

@@ -251,11 +251,17 @@ noindex.
 ## `GET https://api.terento.app/admin/installations`
 
 Returns the authenticated all-time model installation evidence view. Its summary
-order is Attempts, Successful, Failed, Success rate, and Open errors. `Failed`
-includes resolved historical failures; `Open errors` is active actionable work.
-Positive Failed values use the shared danger styling.
+order is Attempts, Successful, Failed, Success rate, and Open problems. `Failed`
+includes resolved historical failures. `Open problems` counts installs
+(operations) with an active, nonlocal, non-excluded failed diagnostic that is not a
+provider download/pre-install failure and has no linked GitHub issue — the
+Dashboard Needs attention `Installation problems` predicate and unit, read from
+`Database.installation_problem_counts()`. Each operation is attributed to one
+identity, the KPI is the sum of the rendered rows, and an identity with an open
+problem stays listed even with zero attempts. Positive Failed values use the
+shared danger styling.
 
-The page supports All, Failed, Open errors, Successful, and Identity review
+The page supports All, Failed, Open problems, Successful, and Identity review
 filters plus sorting and search. True no-evidence omits metrics, filters, table,
 and pagination. Filtered-empty preserves the active controls and clear action.
 Pagination appears only for multiple pages. Known exact models group by canonical
@@ -296,7 +302,7 @@ queue until the read-only GitHub synchronizer observes the issue as closed;
 closure then moves the diagnostic to resolved history.
 
 The device detail history keeps the exact model/variant scope, supports All,
-Successful, Failed, Open errors, and Resolved errors filters, and uses a
+Successful, Failed, Open problems, and Resolved errors filters, and uses a
 25/50-row presentation page. The provider detail primary health disclosure
 shows the newest observation even when stale; its compact history disclosure contains at most 10 previous checks from the last 30 days,
 so the newest row is not repeated.

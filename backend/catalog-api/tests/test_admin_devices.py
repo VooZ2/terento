@@ -600,7 +600,7 @@ class AdminDevicesTests(unittest.TestCase):
         for value in (
             "Installation history", "Administration", "Device information",
             "Technical details", "Install policy", "Public compatibility",
-            "Failed results remain historical", "Open errors", "Prepare GitHub issue",
+            "Failed results remain historical", "Open problems", "Prepare GitHub issue",
             "Copy issue report", "Copy diagnostic ID", "Copy technical report",
             "/admin/devices/authorization", "/admin/devices/public-compatibility",
         ):

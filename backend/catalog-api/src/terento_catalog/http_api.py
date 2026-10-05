@@ -615,10 +615,33 @@ class CatalogService:
         if not callable(getter):
             return _diagnostic_summary_by_identity(self.compatibility_operation_details(), self.compatibility_resolved_operation_details())
         rows = getter()
-        return _diagnostic_summary_by_identity(
+        summary = _diagnostic_summary_by_identity(
             [r for r in rows if r["diagnostic_status"] == "ACTIVE"],
             [r for r in rows if r["diagnostic_status"] == "RESOLVED"],
         )
+        problems = self.installation_problem_counts()
+        if problems is not None:
+            # Open problems use the canonical Needs attention predicate and unit
+            # (operations), never the per-result twin above.
+            by_identity = problems["byIdentity"]
+            for identity, values in summary.items():
+                values["open_errors"] = values["errors"] = int(by_identity.get(identity, 0))
+            for identity, count in by_identity.items():
+                summary.setdefault(identity, {
+                    "errors": count, "open_errors": count, "failed": 0,
+                    "attempts": 0, "successful": 0, "identity_pending": 0,
+                })
+        return summary
+
+    def installation_problem_counts(self) -> dict[str, Any] | None:
+        getter = getattr(self.database, "installation_problem_counts", None)
+        return getter() if callable(getter) else None
+
+    def installation_problem_count(self, identity_key: str) -> int | None:
+        problems = self.installation_problem_counts()
+        if problems is None:
+            return None
+        return int(problems["byIdentity"].get(identity_key, 0))
 
     def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
         getter = getattr(self.database, "compatibility_identity_details", None)
@@ -1479,6 +1502,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         session,
                         csrf_token,
                         identity=identity,
+                        open_problem_count=service.installation_problem_count(f"identity:{identity}"),
                         operations=service.compatibility_identity_details("ACTIVE", identity=identity),
                         resolved_operations=service.compatibility_identity_details("RESOLVED", identity=identity),
                         identity_devices=identity_devices,
@@ -1591,6 +1615,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     body = device_detail_page(
                         device, session, csrf_token,
                         update_history=update_history,
+                        open_problem_count=service.installation_problem_count(f"canonical:{device_id}"),
                         operations=service.compatibility_identity_details("ACTIVE", device_id=device_id),
                         resolved_operations=service.compatibility_identity_details("RESOLVED", device_id=device_id),
                         identity_devices=payload.get("devices", []),

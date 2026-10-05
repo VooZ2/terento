@@ -464,6 +464,28 @@ def _operation_is_problematic(results: list[dict[str, Any]]) -> bool:
     return False
 
 
+def _result_is_open_problem(results: list[dict[str, Any]]) -> bool:
+    """Row-level mirror of the canonical open installation problem predicate.
+
+    A phase-FAILED diagnostic that is not a provider download/pre-install
+    failure, without a linked GitHub issue. The authoritative count and unit
+    (operations) come from ``Database.installation_problem_counts``.
+    """
+    return any(
+        str(result.get("phase_outcome") or "").strip().upper() == "FAILED"
+        and not _is_preinstall_download_failure(result)
+        for result in results
+    ) and not _operation_issue(results)
+
+
+def _open_problem_operation_count(events: list[dict[str, Any]]) -> int:
+    """Fallback operation-level open problem count when SQL counts are absent."""
+    return sum(
+        1 for results in _group_operation_tasks(events).values()
+        if _result_is_open_problem(results)
+    )
+
+
 def _diagnostic_summary_by_identity(
     events: list[dict[str, Any]], resolved_events: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, int]]:
@@ -2422,11 +2444,18 @@ def dashboard_page(
     # The statistics view may retain a zero-attempt identity row so raw
     # pre-install evidence remains queryable, but it is not an installation
     # variant and must not appear in the Installations table.
+    diagnostic_summary = diagnostic_summary if diagnostic_summary is not None else _diagnostic_summary_by_identity(
+        operations or [], resolved_operations or [],
+    )
+    summary_source = diagnostic_summary
     rows = [
         row for row in rows
         if not (
             int(row.get("attempted_install_count") or 0) == 0
             and int(row.get("prewrite_failure_count") or 0) > 0
+            # An identity with an open installation problem stays visible so
+            # the Open problems total is the sum of the rendered rows.
+            and not int((summary_source.get(_identity_group_key(row)) or {}).get("open_errors") or 0)
         )
     ]
     latest_copy = "All time · Model evidence"
@@ -2447,9 +2476,6 @@ def dashboard_page(
         f"<option value='{status.lower()}'>{status.title()}</option>"
         for status in status_values
     )
-    diagnostic_summary = diagnostic_summary if diagnostic_summary is not None else _diagnostic_summary_by_identity(
-        operations or [], resolved_operations or [],
-    )
     def metric(row: dict[str, Any], summary_key: str, row_key: str) -> int:
         summary = diagnostic_summary.get(_identity_group_key(row), {})
         if row_key in row:
@@ -2459,8 +2485,11 @@ def dashboard_page(
     attempts = sum(metric(row, "attempts", "attempted_install_count") for row in rows)
     successes = sum(metric(row, "successful", "successful_install_count") for row in rows)
     failures = sum(metric(row, "failed", "failed_install_count") for row in rows)
+    # Sum only rendered identities (each identity once) so the KPI equals the
+    # column total; with SQL counts it also equals Dashboard Installation problems.
     open_errors = sum(
-        int(summary.get("open_errors") or 0) for summary in diagnostic_summary.values()
+        int((diagnostic_summary.get(identity) or {}).get("open_errors") or 0)
+        for identity in dict.fromkeys(_identity_group_key(row) for row in rows)
     )
     success_rate = (successes / attempts * 100) if attempts else None
     table_rows = "".join(
@@ -2489,21 +2518,21 @@ def dashboard_page(
             <div class="map-statistics-kpi-value"><span>Successful</span><strong>{successes}</strong></div>
             <div class="map-statistics-kpi-value"><span>Failed</span><strong class="installation-failed-value">{failures}</strong></div>
             <div class="map-statistics-kpi-value"><span>Success rate</span><strong>{_format_rate(success_rate)}</strong></div>
-            <div class="map-statistics-kpi-value error-counter-kpi"><span>Open errors</span>{_admin_error_counter(open_errors)}</div>
+            <div class="map-statistics-kpi-value error-counter-kpi" title="Installs (operations) with an unresolved failure and no linked GitHub issue"><span>Open problems</span>{_admin_error_counter(open_errors)}</div>
           </div></section></div>
         </section>
         <section class="evidence-section" aria-label="Installation evidence table">
           <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search"{' hidden' if len(rows) <= 1 else ''}>
-            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open errors</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>
+            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open problems</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <details class="admin-disclosure filter-disclosure" id="installation-more-filters"><summary>More filters</summary><div class="disclosure-body">
               <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
-            </div></details><label class="device-mobile-sort"><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="latest" selected>Latest activity</option><option value="model:ascending">Model ↑</option><option value="model:descending">Model ↓</option><option value="variant:ascending">Variant ↑</option><option value="variant:descending">Variant ↓</option><option value="status:ascending">Status ↑</option><option value="status:descending">Status ↓</option><option value="attempts:ascending">Attempts ↑</option><option value="attempts:descending">Attempts ↓</option><option value="successfulCount:ascending">Successful ↑</option><option value="successfulCount:descending">Successful ↓</option><option value="failedCount:ascending">Failed ↑</option><option value="failedCount:descending">Failed ↓</option><option value="errors:ascending">Open errors ↑</option><option value="errors:descending">Open errors ↓</option><option value="lastSuccess:ascending">Last success ↑</option><option value="lastSuccess:descending">Last success ↓</option></select></label>
+            </div></details><label class="device-mobile-sort"><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="latest" selected>Latest activity</option><option value="model:ascending">Model ↑</option><option value="model:descending">Model ↓</option><option value="variant:ascending">Variant ↑</option><option value="variant:descending">Variant ↓</option><option value="status:ascending">Status ↑</option><option value="status:descending">Status ↓</option><option value="attempts:ascending">Attempts ↑</option><option value="attempts:descending">Attempts ↓</option><option value="successfulCount:ascending">Successful ↑</option><option value="successfulCount:descending">Successful ↓</option><option value="failedCount:ascending">Failed ↑</option><option value="failedCount:descending">Failed ↓</option><option value="errors:ascending">Open problems ↑</option><option value="errors:descending">Open problems ↓</option><option value="lastSuccess:ascending">Last success ↑</option><option value="lastSuccess:descending">Last success ↓</option></select></label>
             <p class="results-count" id="results-count" aria-live="polite">{_count_label(len(rows), 'variant')}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters" hidden>Clear</button>
           </form>
           <p id="installation-empty" class="table-help" role="status" hidden>No matching models.</p>
-          <div class="table-wrap evidence-table-wrap" id="installation-table" tabindex="0" role="region" aria-label="Installation evidence table"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="model" aria-label="Model">Model <span aria-hidden="true">↕</span></button></th><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="status" aria-label="Status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="attempts" aria-label="Attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="successfulCount" aria-label="Successful">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="failedCount" aria-label="Failed">Failed <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="errors" aria-label="Open errors">Open errors <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="lastSuccess" aria-label="Last success">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <div class="table-wrap evidence-table-wrap" id="installation-table" tabindex="0" role="region" aria-label="Installation evidence table"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="model" aria-label="Model">Model <span aria-hidden="true">↕</span></button></th><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="status" aria-label="Status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="attempts" aria-label="Attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="successfulCount" aria-label="Successful">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="failedCount" aria-label="Failed">Failed <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="errors" aria-label="Open problems">Open problems <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="lastSuccess" aria-label="Last success">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
           {pagination}
         </section>
       </main>
@@ -4833,6 +4862,7 @@ def device_detail_page(
     origin: str = "devices",
     requested_state: str | None = None,
     update_history: dict[str, Any] | None = None,
+    open_problem_count: int | None = None,
 ) -> bytes:
     device_id = str(device.get("id") or "").strip()
     model, variant, _ = _identity_parts(device)
@@ -4861,9 +4891,9 @@ def device_detail_page(
     attempts = int(stats.get("attempts") or 0)
     successful = int(stats.get("successful") or 0)
     failed = int(stats.get("failed") or 0)
-    open_errors = sum(
-        1 for results in active_groups.values()
-        if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "FAILED"
+    open_errors = (
+        int(open_problem_count) if open_problem_count is not None
+        else _open_problem_operation_count(active_events)
     )
     status = calculate_compatibility_status(
         successful_install_count=successful,
@@ -4899,7 +4929,7 @@ def device_detail_page(
         if publication.get("published") else ""
     )
     alert = (
-        f"<aside class='model-review-alert' role='status'><span><strong>{open_errors} installation {'error needs' if open_errors == 1 else 'errors need'} review.</strong> Resolved failures remain in the historical failed count.</span><a href='#installations' data-filter-open-errors>Review open errors</a></aside>"
+        f"<aside class='model-review-alert' role='status'><span><strong>{open_errors} installation {'problem needs' if open_errors == 1 else 'problems need'} review.</strong> Resolved failures remain in the historical failed count.</span><a href='#installations' data-filter-open-errors>Review open problems</a></aside>"
         if open_errors else ""
     )
 
@@ -4909,7 +4939,7 @@ def device_detail_page(
         first = results[0]
         result = _operation_result(results)
         issue = _operation_issue(results)
-        is_open_error = not resolved and result == "FAILED"
+        is_open_error = not resolved and _result_is_open_problem(results)
         is_resolved_error = resolved and result == "FAILED"
         region = _operation_text(results, "region", fallback="")
         map_release = _operation_text(results, "map_release", fallback="")
@@ -5008,12 +5038,12 @@ def device_detail_page(
         technical_rows = "<p class='diagnostic-technical-empty'>Detailed technical data is not available for this record.</p>"
 
     statistics_section = "" if not history and not attempts and not failed else f"""
-        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><div class='map-statistics-kpi-groups model-kpi-groups'><section class='map-statistics-kpi-group' aria-labelledby='model-installation-kpis-title'><h2 id='model-installation-kpis-title' class='sr-only'>Installation outcomes</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.'><span>Attempts</span><strong>{attempts}</strong></div><div class='map-statistics-kpi-value'><span>Successful</span><strong>{successful}</strong></div><div class='map-statistics-kpi-secondary'><div class='map-statistics-kpi-value error-counter-kpi'><span>Failed</span>{_admin_error_counter(failed)}</div><div class='map-statistics-kpi-value error-counter-kpi'><span>Open errors</span>{_admin_error_counter(open_errors)}</div></div></div></section><section class='map-statistics-kpi-group model-activity-kpi-group' aria-labelledby='model-activity-kpis-title'><h2 id='model-activity-kpis-title'>Install activity</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value timestamp-metric'><span>Last installation report</span><strong>{last_activity}</strong></div></div></section></div></section>
+        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><div class='map-statistics-kpi-groups model-kpi-groups'><section class='map-statistics-kpi-group' aria-labelledby='model-installation-kpis-title'><h2 id='model-installation-kpis-title' class='sr-only'>Installation outcomes</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.'><span>Attempts</span><strong>{attempts}</strong></div><div class='map-statistics-kpi-value'><span>Successful</span><strong>{successful}</strong></div><div class='map-statistics-kpi-secondary'><div class='map-statistics-kpi-value error-counter-kpi'><span>Failed</span>{_admin_error_counter(failed)}</div><div class='map-statistics-kpi-value error-counter-kpi' title='Installs (operations) with an unresolved failure and no linked GitHub issue'><span>Open problems</span>{_admin_error_counter(open_errors)}</div></div></div></section><section class='map-statistics-kpi-group model-activity-kpi-group' aria-labelledby='model-activity-kpis-title'><h2 id='model-activity-kpis-title'>Install activity</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value timestamp-metric'><span>Last installation report</span><strong>{last_activity}</strong></div></div></section></div></section>
     """
     history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not history else f"""
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table mobile-record-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
           {history_pagination}
@@ -5055,6 +5085,7 @@ def diagnostics_page(
     identity_devices: list[dict[str, Any]] | None = None,
     canonical_device_model_id: str | None = None,
     unresolved_only: bool = False,
+    open_problem_count: int | None = None,
 ) -> bytes:
     identity = identity.strip()
     canonical_device_model_id = str(canonical_device_model_id or "").strip() or None
@@ -5099,7 +5130,10 @@ def diagnostics_page(
     if model_row:
         attempts = int(model_row.get("attempted_install_count") or 0)
         successes = int(model_row.get("successful_install_count") or 0)
-    errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
+    errors = (
+        int(open_problem_count) if open_problem_count is not None
+        else _open_problem_operation_count(active_events)
+    )
     status = _row_compatibility_status(model_row) if model_row else None
     filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
     rows_markup: list[str] = []
@@ -5139,7 +5173,7 @@ def diagnostics_page(
       <main class='dashboard diagnostics-page' id='main-content'>
         <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
         <div class='heading-row'><div><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1></div></div>
-        <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Errors</span>{_admin_error_counter(errors)}</article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
+        <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Open problems</span>{_admin_error_counter(errors)}</article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
           <div class='section-heading'><div><h2 id='diagnostic-list-title'>Installations</h2></div></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'{' hidden' if len(diagnostic_groups) <= 1 else ''}>{filters}</form>
@@ -5674,7 +5708,7 @@ def _statistics_row(
     open_errors_markup = _admin_error_counter(
         open_errors,
         href=_model_detail_url(row, state="open") if open_errors else None,
-        aria_label=f"View {open_errors} open {'error' if open_errors == 1 else 'errors'}",
+        aria_label=f"View {open_errors} open {'problem' if open_errors == 1 else 'problems'}",
     )
     cells = (
         ("", model_cell),

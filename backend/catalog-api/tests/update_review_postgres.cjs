@@ -8,7 +8,8 @@ const input=JSON.parse(require('node:fs').readFileSync(0,'utf8'));
  CREATE TABLE admin_audit_log(admin_user_id BIGINT,action TEXT,provider_id TEXT,old_status TEXT,new_status TEXT,reason TEXT,target TEXT,request_id TEXT,details JSONB);`);
  await db.exec(`CREATE TABLE compatibility_evidence_event(event_id UUID,operation_id UUID,phase_outcome TEXT,write_started BOOLEAN,
  failure_stage TEXT,failure_code TEXT,linked_github_issue TEXT,canonical_device_model_id TEXT,identity_resolution_state TEXT,
- diagnostic_status TEXT,is_local_test BOOLEAN,statistics_exclusion_code TEXT,map_result_index INT,provider TEXT,region TEXT);
+ diagnostic_status TEXT,is_local_test BOOLEAN,statistics_exclusion_code TEXT,map_result_index INT,provider TEXT,region TEXT,
+ compatibility_identity TEXT,model TEXT);
  CREATE TABLE compatibility_model_statistics(canonical_device_model_id TEXT,calculated_status TEXT,successful_install_count INT,
  review_status TEXT,public_statistics_enabled BOOLEAN);
  CREATE TABLE map_download_event(event_id UUID,operation_id UUID,is_local_test BOOLEAN,statistics_exclusion_code TEXT,

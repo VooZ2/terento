@@ -145,7 +145,7 @@ compatibility status, identity assignment, sharing or device safety.
 | Success | SUCCEEDED with VERIFIED finishing; no success inferred from download completion or missing errors. |
 | Failed result | Recorded final failure; never a compatibility promotion. Preserve historical failed/attempt totals after resolution. |
 | Not started / cancellation | Not a successful or failed completed install merely because a later map was skipped or the user cancelled. Preserve the recorded distinction. |
-| Open error | Active actionable diagnostic; resolution removes it from open work, not historical failure totals. |
+| Open problem | One install operation with an active, nonlocal, non-excluded failed diagnostic that is not a provider download/pre-install failure and has no linked GitHub issue. This is the single Needs attention installation-task predicate and unit; resolution or linking an issue removes it from open problems, never from historical failure totals. |
 | Identity review | Device identity requires a decision; distinct from an installation failure and from publication approval. |
 | Missing diagnostic | Map event lacks matching device diagnostic evidence. It cannot supply model-specific counts or public compatibility evidence by guessing. |
 | Public compatibility | Exact approved model/variant, retained verified successes and existing promotion/publication rules. No family-wide inference or promotion from map statistics. |
@@ -236,14 +236,20 @@ unchanged. A received device failure instead opens its actionable diagnostic
 context and is not redirected to aggregate Maps as a substitute.
 
 Provider acquisition failure remains activity/history, not an installation
-failure, open error, identity task, or publication task. Never borrow a model from
+failure, open problem, identity task, or publication task. Never borrow a model from
 another report or nearby timestamp.
 
 ### Installations
 
 Installations is all-time model evidence and is visibly labelled `All time ·
 Model evidence`. Its primary summary order is Attempts, Successful, Failed,
-Success rate, and Open errors. A positive Failed value uses the danger color.
+Success rate, and Open problems. A positive Failed value uses the danger color.
+Open problems, the per-identity Open problems column and model detail Open
+problems use the operation-level Needs attention installation predicate, so
+Dashboard `Installation problems` equals Installations `Open problems`. Each
+operation is attributed to exactly one identity; the KPI is the sum of the rendered
+rows and an identity with an open problem stays listed even with zero attempts.
+Model history rows marked open are the per-map results of those operations.
 Maps applies the same fresh main-map write-boundary contract. A current
 map-side failure with no reliable write evidence, a pre-write failure, and an
 optional-component result stay in raw Event detail but do not enter the Maps
@@ -251,8 +257,8 @@ install denominator. Maps and Installations can still differ because their
 independently delivered telemetry populations are attributed differently;
 neither view invents the missing stream or a model identity.
 
-All, Failed, Open errors, Successful, and Identity review filters retain their
-separate meanings. Failed includes resolved historical failures; Open errors does
+All, Failed, Open problems, Successful, and Identity review filters retain their
+separate meanings. Failed includes resolved historical failures; Open problems does
 not. A true no-evidence state omits metrics, filters, table, and pagination. A
 filtered-empty state keeps the active filters and a clear action. Pagination
 appears only when multiple pages exist.

@@ -33,6 +33,60 @@ from .statistics_exclusions import classify_compatibility_event
 OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
 ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS = 4
 
+# The single canonical "open installation problem" population (STATISTICS_CONTRACT,
+# Needs attention). Unit: one operation (batch). An operation is an open problem
+# when it has an ACTIVE, nonlocal, non-excluded diagnostic with phase FAILED that
+# is not a provider download/pre-install failure, and no linked GitHub issue
+# (a linked issue moves the same task to the GitHub category). Each operation is
+# attributed to exactly one identity so per-identity counts sum to the total.
+INSTALLATION_PROBLEM_OPERATIONS_CTE = """
+    installation_review_rows AS (
+        SELECT
+            COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
+            CASE WHEN NULLIF(btrim(canonical_device_model_id), '') IS NOT NULL
+                 THEN 'canonical:' || btrim(canonical_device_model_id)
+                 ELSE 'identity:' || COALESCE(NULLIF(btrim(compatibility_identity), ''),
+                                              NULLIF(btrim(model), ''), 'Unknown')
+            END AS identity_key,
+            (
+                phase_outcome = 'FAILED'
+                AND NOT (
+                    write_started IS FALSE
+                    AND (
+                        failure_stage = 'download'
+                        OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                    )
+                )
+            ) AS is_failure,
+            NULLIF(btrim(linked_github_issue), '') IS NOT NULL AS has_github_issue,
+            (
+                canonical_device_model_id IS NULL
+                AND COALESCE(identity_resolution_state, 'UNRESOLVED')
+                    NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
+                AND NOT (
+                    write_started IS FALSE
+                    AND (
+                        failure_stage = 'download'
+                        OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                    )
+                )
+            ) AS identity_pending
+        FROM compatibility_evidence_event
+        WHERE diagnostic_status = 'ACTIVE'
+          AND is_local_test IS NOT TRUE
+          AND statistics_exclusion_code IS NULL
+    ), operation_reviews AS (
+        SELECT
+            operation_key,
+            bool_or(is_failure) AS has_failure,
+            bool_or(has_github_issue) AS has_github_issue,
+            bool_or(identity_pending) AS identity_pending,
+            min(identity_key) FILTER (WHERE is_failure) AS problem_identity_key
+        FROM installation_review_rows
+        GROUP BY operation_key
+    )
+"""
+
 
 class IdentityResolutionError(ValueError):
     """Safe, user-facing validation failure for an identity review action."""
@@ -1242,39 +1296,7 @@ class Database:
         publication review is counted per model. Resolved evidence is excluded.
         """
         query = """
-            WITH operation_reviews AS (
-                SELECT
-                    COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
-                    bool_or(
-                        phase_outcome = 'FAILED'
-                        AND NOT (
-                            write_started IS FALSE
-                            AND (
-                                failure_stage = 'download'
-                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                            )
-                        )
-                    ) AS has_failure,
-                    bool_or(NULLIF(btrim(linked_github_issue), '') IS NOT NULL)
-                        AS has_github_issue,
-                    bool_or(
-                        canonical_device_model_id IS NULL
-                        AND COALESCE(identity_resolution_state, 'UNRESOLVED')
-                            NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
-                        AND NOT (
-                            write_started IS FALSE
-                            AND (
-                                failure_stage = 'download'
-                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                            )
-                        )
-                    ) AS identity_pending
-                FROM compatibility_evidence_event
-                WHERE diagnostic_status = 'ACTIVE'
-                  AND is_local_test IS NOT TRUE
-                  AND statistics_exclusion_code IS NULL
-                GROUP BY COALESCE(operation_id::text, 'legacy:' || event_id::text)
-            ), publication_reviews AS (
+            WITH """ + INSTALLATION_PROBLEM_OPERATIONS_CTE + """, publication_reviews AS (
                 SELECT count(*) AS ready_to_publish
                 FROM compatibility_model_statistics
                 WHERE canonical_device_model_id IS NOT NULL
@@ -1383,6 +1405,28 @@ class Database:
         )
         summary["total"] = summary["pendingReviewTasks"]
         return summary
+
+    def installation_problem_counts(self) -> dict[str, Any]:
+        """Return open installation problems (operations) in total and per identity.
+
+        Uses the exact predicate and unit of the Needs attention installation
+        task, so ``total`` equals ``admin_review_summary()['installationIssues']``
+        and the per-identity values sum to it.
+        """
+        query = """
+            WITH """ + INSTALLATION_PROBLEM_OPERATIONS_CTE + """
+            SELECT problem_identity_key AS identity_key, count(*) AS problem_count
+            FROM operation_reviews
+            WHERE has_failure AND NOT has_github_issue
+            GROUP BY problem_identity_key
+        """
+        with self.connection() as connection:
+            rows = list(connection.execute(query).fetchall())
+        by_identity = {
+            str(row["identity_key"]): int(row["problem_count"] or 0)
+            for row in rows if row.get("identity_key")
+        }
+        return {"total": sum(by_identity.values()), "byIdentity": by_identity}
 
     def set_missing_diagnostic_review(
         self,

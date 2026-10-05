@@ -373,7 +373,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             + installation_panel.count('class="map-statistics-kpi-value '),
             5,
         )
-        self.assertIn("<span>Open errors</span>", installation_panel)
+        self.assertIn("<span>Open problems</span>", installation_panel)
 
         device = _admin_device_payload([{
             "device_id": "garmin-fenix-8-47-amoled", "model": "fēnix 8",
@@ -390,7 +390,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Installation outcomes", detail_panel)
         self.assertIn("<span>Attempts</span>", detail_panel)
         self.assertIn("<span>Failed</span>", detail_panel)
-        self.assertIn("<span>Open errors</span>", detail_panel)
+        self.assertIn("<span>Open problems</span>", detail_panel)
         self.assertIn("<span>Last installation report</span><strong>—</strong>", detail_panel)
         self.assertIn(".admin-kpi-panel.model-statistics .timestamp-metric>strong", detail)
         self.assertIn("class='model-evidence-grid'", detail)
@@ -1890,9 +1890,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "pendingReviewTasks": 6,
             "total": 6,
         })
+        from terento_catalog.db import INSTALLATION_PROBLEM_OPERATIONS_CTE
         source = inspect.getsource(Database.admin_review_summary)
-        self.assertIn("diagnostic_status = 'ACTIVE'", source)
-        self.assertIn("GROUP BY COALESCE(operation_id::text", source)
+        self.assertIn("INSTALLATION_PROBLEM_OPERATIONS_CTE", source)
+        self.assertIn("diagnostic_status = 'ACTIVE'", INSTALLATION_PROBLEM_OPERATIONS_CTE)
+        self.assertIn("COALESCE(operation_id::text", INSTALLATION_PROBLEM_OPERATIONS_CTE)
+        self.assertIn("GROUP BY operation_key", INSTALLATION_PROBLEM_OPERATIONS_CTE)
         self.assertIn("missing_diagnostics", source)
         self.assertIn("canonical_device_model_id IS NOT NULL", source)
         self.assertIn("review_status = 'PENDING'", source)
@@ -2419,10 +2422,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("Historical failures: 1", body)
         self.assertNotIn('id="evidence-title"', body)
         self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
-        self.assertIn("1 open error", body)
+        self.assertIn("1 open problem", body)
         self.assertIn("/admin/devices/garmin-fenix-8-51-amoled?from=installations&amp;state=open#installations", body)
         self.assertIn("data-diagnostics-url='/admin/devices/garmin-fenix-8-51-amoled?from=installations#installations'", body)
-        self.assertIn("Open errors ↓", body)
+        self.assertIn("Open problems ↓", body)
         self.assertIn("Latest activity", body)
         self.assertIn("Model ↑", body)
         self.assertNotIn("Diagnostic record", body)
@@ -2774,7 +2777,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("<h1>Installations</h1>", body)
         self.assertIn("All time · Model evidence", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
-        labels = ("Attempts", "Successful", "Failed", "Success rate", "Open errors")
+        labels = ("Attempts", "Successful", "Failed", "Success rate", "Open problems")
         for label in labels:
             self.assertIn(f"<span>{label}</span>", body)
         self.assertNotIn("<span>Variants</span>", body)
@@ -3261,7 +3264,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             operations=active, resolved_operations=resolved,
         ).decode()
         statistics = body.split("class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
-        for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open errors", "0")):
+        for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open problems", "0")):
             self.assertIn(f"<span>{label}</span>", statistics)
             self.assertIn(f">{value}</strong>", statistics)
         self.assertIn("<span>Last installation report</span><strong>—</strong>", statistics)
@@ -3322,7 +3325,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             operations=successful + open_failed, resolved_operations=resolved_failed,
         ).decode()
         statistics = body.split("class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
-        for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open errors", "1")):
+        for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open problems", "1")):
             self.assertIn(f"<span>{label}</span>", statistics)
             self.assertIn(f">{value}</strong>", statistics)
         self.assertIn("<span>Last installation report</span><strong>—</strong>", statistics)

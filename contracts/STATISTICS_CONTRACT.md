@@ -217,7 +217,7 @@ Provider acquisition failures before the device write boundary are acquisition
 facts only. A `write_started=false` diagnostic with download stage or
 `INSTALL_BLOCKED_DOWNLOAD_FAILED` is classified as `PRE-INSTALL` /
 `NOT_STARTED`: it is excluded from fresh-install attempts, failures, model
-compatibility statistics, open errors, and installation review tasks. Raw
+compatibility statistics, open installation problems, and installation review tasks. Raw
 diagnostic and map-event facts remain retained and visible in acquisition
 activity. `STARTED`, `PROCESSING`, `CANCELLED`, `INTERRUPTED`, stale and
 missing terminal outcomes do not enter the acquisition failure denominator.
@@ -405,7 +405,15 @@ Installation failure-diagnostic review and GitHub handling for one operation are
 states of one task; linking an issue moves that task between categories and
 does not add a second task. Identity review is an independent task, and
 publication review is counted per exact model. Installation queue entries use
-operation-level grouping. Linked update review adds one entry per active,
+operation-level grouping. This installation task is the single definition of an
+open installation problem: one operation with an active, nonlocal, non-excluded
+`phaseOutcome=FAILED` diagnostic that is not a provider download/pre-install
+failure and has no linked GitHub issue. Pre-write preflight/storage blocks are
+open problems (they need review) even though they are not fresh failures.
+Installations `Open problems`, its per-identity column and model detail use this
+same predicate and unit; each operation is attributed to exactly one identity so
+the rows sum to the total, and Dashboard `Installation problems` equals
+Installations `Open problems` for the same population. Linked update review adds one entry per active,
 nonlocal diagnostic UUID; the GitHub badge includes those same entries. Unlinked
 update reports do not enter installation issue counts. Both scopes exclude
 resolved work and are not labelled as a count of unique GitHub issues. A failed queue query is
