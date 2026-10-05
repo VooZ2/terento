@@ -461,3 +461,38 @@ the device. Acquisition still rechecks authorization independently of this timer
 
 This is local implementation and automated evidence, not a released app or a new
 hardware lifecycle result.
+
+
+### Garmin root/write profile regression candidate (2026-10-05)
+
+The shared write-target resolver accepts the single valid ASCII root variants
+`/GARMIN`, `/Garmin` and `/garmin`, keeps its actual storage binding, and refuses
+missing/ambiguous roots, zero storage/object IDs and incomplete physical identity.
+Install/custom acquisition checks the full profile before preparation; production
+installation rechecks it against physically bound final inventory before write.
+Lifecycle uses the same resolver and Safe Update rechecks the bound root/storage.
+See `contracts/INSTALLATION_AUTHORIZATION.md` for the representation and privacy
+contract. Canonical operation/manifest paths remain `/GARMIN`; no manifest or API
+schema changes, fallback storage guesses or model exceptions are introduced.
+
+`run-native-device-binding-profile-tests.sh` covers profile resolution and its
+negative cases. The pre-fix regression reproduced the accepted `/Garmin` root
+losing storage binding through an exact `/GARMIN` lookup. The native prefix
+runner covers the actual C projection and Swift write adapter's nil/stale-profile
+refusal. Protected inventory retains the observed root filename while accepting
+the canonical path. The local managed-update simulation runs the production
+coordinators and durable manifests for all three root spellings, including
+reconnect, historical canonical paths and the existing failure matrix; its
+injected inventory calls the actual C projection helper. Separate installation,
+safe-update, native authorization and recovery tests retain the destructive-path
+guards. No real Garmin writes are needed for these automated checks.
+
+These tests reproduce a code defect, not the missing historical device facts.
+The eight reported beta.16 attempts remain unconfirmed on hardware. Publication
+and a new owner-reported device installation/update are separate evidence stages.
+
+Candidate validation: native 34/34 and app 26/26 suite runners PASS, including
+125 installation tests, 25 safe-update tests, 33 local lifecycle simulations and
+actual Swift-to-backend diagnostic validation. Unsigned arm64 Xcode Debug build,
+release documentation checks and `git diff --check` PASS. These results apply to
+the isolated candidate based on integrated beta `0febd192`; no release is implied.

@@ -20,3 +20,18 @@ static int deny_delete(LIBMTP_mtpdevice_t *device, uint32_t object) {
 #define LIBMTP_Delete_Object deny_delete
 #include "../Sources/LibMTPBridge/MTPBridge.c"
 int terento_cleanup_forbidden_calls(void) { return forbidden_calls; }
+
+/* Test-only pure adapter to the production inventory projection. No device I/O. */
+int terento_test_project_garmin_path(const char *root, const char *path, char *out, size_t capacity) {
+    TerentoMTPFileInventory inventory={0};
+    TerentoMTPFile files[2]={{0}};
+    inventory.files=files; inventory.file_count=2;
+    files[0].item_id=1; files[0].storage_id=1; files[0].is_folder=1;
+    files[0].path=strdup(root); files[0].filename=strdup(root+1);
+    files[1].item_id=2; files[1].storage_id=1; files[1].path=strdup(path);
+    canonicalize_garmin_inventory_root(&inventory);
+    int ok=strlen(files[1].path)<capacity;
+    if(ok) strcpy(out,files[1].path);
+    free(files[0].path);free(files[0].filename);free(files[1].path);
+    return ok;
+}

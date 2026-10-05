@@ -71,7 +71,7 @@ struct InstallationPreflightResult: Equatable, Sendable {
         case .blockedUnknownInstallSize:
             return "The final Garmin install size will be calculated before storage approval."
         case .blockedUnknownTarget:
-            return "This device does not have a validated map installation target."
+            return "Terento could not verify a safe place to install maps. Reconnect your device and try again."
         case .blockedAmbiguousMapIdentity:
             return "An existing map could not be identified safely."
         case .blockedMapTypeConflict:

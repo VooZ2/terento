@@ -65,3 +65,43 @@ response and uses `Cache-Control: no-store`; conditional requests return a
 new 200 policy rather than 304. The deploy smoke check now includes this
 endpoint. Live route validation is independent of app packaging and publication;
 a separate validated app build and publication decision remain required.
+
+
+## Local write target resolution (2026-10-05 candidate)
+
+Server approval does not replace live target validation. Install, custom import
+and managed lifecycle operations resolve one root folder and its nonzero storage
+ID with the same `ResolvedMapWriteProfile` / `GarminMapTarget` rules. Only ASCII
+case differences in the root name `GARMIN` are accepted. Missing or multiple
+roots (including roots on separate storages), zero IDs and incomplete physical
+identity fail closed. No first-storage fallback, automatic folder creation or
+model-specific exception is permitted.
+
+The complete profile is checked before acquisition and again against the final
+live inventory before installation writes. The bounded inventory worker carries
+the physical operation profile into its native session. Safe Update also checks
+the unique root and expected storage on its physically bound live inventories.
+The existing native mutation grant, same-session identity, ownership, protected
+objects, source verification, free-space and no-overwrite checks remain required.
+
+Native inventory and exact-read resolution project only the verified root and
+its descendants in the selected storage to logical `/GARMIN` paths. Original
+root filename, suffix/file-name case, IDs, size and object kind are retained;
+other storages and paths are untouched. This is a comparison representation,
+not a device rename. Protected-inventory comparison retains the original root
+name, so a root rename during an operation still fails closed. Existing canonical
+manifest paths remain valid without migration, including after reconnect.
+
+A profile failure is a preparation failure with `writeStarted=false`. A valid
+transfer attempt can fail at zero bytes; progress callbacks do not define the
+write boundary. Local finishing diagnostics accept only fixed `target_reason`
+codes: `root_missing`, `root_ambiguous`, `storage_invalid`, `root_invalid`,
+`identity_invalid`, `profile_mismatch`. They never log the profile, observed root
+path, serial or Unit ID. Uploaded diagnostics keep the existing schema and error
+classification; no API or database migration is part of this candidate.
+
+This is a local patch candidate, not a release or new hardware compatibility
+claim. The beta.12/beta.16 comparison and #340/#342/#343/#344/#345 reports support
+inconsistent root/storage resolution as a strong hypothesis; historical reports
+do not contain the raw root/storage facts needed to prove that all eight failed
+attempts had this cause. Historical reports, counters and issue states are unchanged.

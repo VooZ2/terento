@@ -50,6 +50,18 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         self.lifecycleLease = lifecycleLease
     }
 
+    func validateWriteTarget(identity: DeviceIdentity, files: [DeviceFile]) throws {
+        do {
+            let resolved = try ResolvedMapWriteProfile.resolve(identity: identity, files: files)
+            guard resolved.operationProfile == operationProfile else {
+                throw MapTargetResolutionError.profileMismatch
+            }
+        } catch let reason as MapTargetResolutionError {
+            FinishingTrace.event("target_resolution", "target_reason=\(reason.rawValue)")
+            throw reason
+        }
+    }
+
     func write(
         sourceURL: URL,
         targetFilename: String,
@@ -464,6 +476,7 @@ extension MapInstallationCoordinator {
                 lifecycleLease: lifecycleLease
             ),
             deviceReader: BoundedInstallationDeviceReader(
+                operationProfile: operationProfile,
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
             ),
@@ -655,7 +668,7 @@ enum MTPFinishingWorker {
                 }
                 try transport.deleteExact(targetFilename: filename, expectedItemID: itemID, expectedSizeBytes: request.size)
             case .inventory:
-                response.files = try MTPTransport().readFileInventory()
+                response.files = try MTPTransport(operationProfile: request.profile).readFileInventory()
             case .snapshot:
                 let snapshot = try MTPTransport().readSnapshot()
                 response.snapshot = DeviceSnapshot(manufacturer: snapshot.manufacturer, model: snapshot.model,
@@ -680,11 +693,12 @@ enum MTPFinishingWorker {
 }
 
 private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
+    let operationProfile: DeviceMapOperationProfile?
     let operationGate: MTPOperationGate
     let lifecycleLease: MTPOperationLease?
     func readFileInventory() throws -> [DeviceFile] {
         try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
-            guard let files = try MTPFinishingWorker.perform(.init(operation: .inventory)).files else {
+            guard let files = try MTPFinishingWorker.perform(.init(operation: .inventory, profile: operationProfile)).files else {
                 throw MTPFinishingWorker.failure(for: .inventory, kind: .invalidResponse)
             }
             return files

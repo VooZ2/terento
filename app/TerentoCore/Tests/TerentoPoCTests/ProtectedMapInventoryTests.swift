@@ -70,6 +70,13 @@ struct ProtectedMapInventoryTests {
         }
         let forced = try ProtectedMapInventory(files: base + [xml], forcedLocations: [.init(storageID: 1, path: xml.path)])
         check(!unchanged(base + [file(3, xml.path, size: 11)], from: forced), "explicit target overrides XML diagnostic")
+        for spelling in ["Garmin", "garmin"] {
+            let projectedRoot = DeviceFile(itemID: 1, parentID: 0, storageID: 1, path: "/GARMIN",
+                filename: spelling, sizeBytes: 0, isFolder: true)
+            let projected = try ProtectedMapInventory(files: [projectedRoot, map])
+            check(projected.protected.contains(where: { $0.filename == spelling }), "observed root name remains protected")
+            check(!projected.difference(from: baseline).isEmpty, "root rename is not hidden by canonical path")
+        }
         let invalidRows: [[DeviceFile]] = [
             base + [map],
             [file(1, "/GARMIN", folder: true, storage: 0)],

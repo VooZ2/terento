@@ -195,6 +195,10 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
     var readBackMode: ReadBackMode = .success
     var readError: InstallationTransportError?
     var writeError: InstallationTransportError?
+    var targetError: MapTargetResolutionError?
+    func validateWriteTarget(identity: DeviceIdentity, files: [DeviceFile]) throws {
+        if let targetError { throw targetError }
+    }
     var writeCount = 0
     var readBackCount = 0
     var deleteCount = 0
@@ -313,6 +317,7 @@ struct Stage42InstallationTests {
         var passed = 0
         passed += testCanonicalTransferProgress()
         passed += testValidNewInstall()
+        passed += testInvalidTargetIsPreflight()
         passed += testExistingFranceBlocksNewInstall()
         passed += testInsufficientSpaceBlocksWrite()
         passed += testUnknownProfileBlocksWrite()
@@ -788,6 +793,21 @@ struct Stage42InstallationTests {
                 && harness.transport.writeCount == 1,
             "invalid native total is normalized and read-back cannot replace completed transfer diagnostics"
         )
+    }
+
+    private static func testInvalidTargetIsPreflight() -> Int {
+        var passed = 0
+        for reason in [MapTargetResolutionError.missingRoot, .ambiguousRoot, .invalidStorage, .invalidIdentity, .profileMismatch] {
+            let harness = makeHarness()
+            harness.transport.targetError = reason
+            let result = harness.run()
+            passed += expect(result.failure == .unknownInstallTarget && !result.diagnostics.writeStarted
+                && !result.diagnostics.remoteObjectCreated && !result.diagnostics.cleanupAttempted
+                && result.failureContext?.boundary == .prewriteInventory
+                && harness.transport.writeCount == 0 && harness.transport.deleteCount == 0,
+                "invalid target \(reason.rawValue) stops before writing or cleanup")
+        }
+        return passed
     }
 
     private static func testValidNewInstall() -> Int {

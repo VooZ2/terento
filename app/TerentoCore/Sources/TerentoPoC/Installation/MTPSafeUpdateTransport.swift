@@ -265,8 +265,17 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
     func readProtectedInventory() throws -> SafeUpdateInventorySnapshot {
         // The native session checks the immutable physical profile before
         // enumerating; a separate identity snapshot would permit substitution.
-        SafeUpdateInventorySnapshot(storageID: operationProfile.expectedStorageID,
-            files: try deviceReader.readFileInventory(operationProfile: operationProfile))
+        let files = try deviceReader.readFileInventory(operationProfile: operationProfile)
+        do {
+            let target = try GarminMapTarget.resolve(in: files)
+            guard target.root.storageID == operationProfile.expectedStorageID else {
+                throw MapTargetResolutionError.profileMismatch
+            }
+        } catch let reason as MapTargetResolutionError {
+            FinishingTrace.event("target_resolution", "target_reason=\(reason.rawValue)")
+            throw reason
+        }
+        return SafeUpdateInventorySnapshot(storageID: operationProfile.expectedStorageID, files: files)
     }
 
     func rescanObjects() throws -> [SafeUpdateRemoteObject] {
