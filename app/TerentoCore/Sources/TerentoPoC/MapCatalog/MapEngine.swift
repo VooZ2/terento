@@ -255,6 +255,8 @@ final class MapEngine: ObservableObject {
     @Published private(set) var evidencePrimaryFailureMapIndex: Int?
     @Published private(set) var catalogSource: MapCatalogSource?
     @Published private(set) var catalogUpdatedAt: Date?
+    /// Remote packages this app version could not accept and omitted.
+    @Published private(set) var catalogDroppedPackageCount = 0
     @Published private(set) var errorMessage: String?
     @Published private(set) var userErrorMessage: String?
     @Published private(set) var mapStatisticsEvents: [MapStatisticsEvent] = []
@@ -380,6 +382,7 @@ final class MapEngine: ObservableObject {
         installationErrorMessage = nil
         catalogSource = nil
         catalogUpdatedAt = nil
+        catalogDroppedPackageCount = 0
         errorMessage = nil
         userErrorMessage = nil
         loadedCatalog = nil
@@ -480,6 +483,7 @@ final class MapEngine: ObservableObject {
 
                 self?.loadedCatalog = loaded.catalog
                 self?.catalogSource = loaded.source
+                self?.catalogDroppedPackageCount = loaded.droppedPackageCount
                 self?.catalogUpdatedAt = loaded.catalog.updatedAt
                 self?.state = .scanning
 
@@ -1069,11 +1073,33 @@ final class MapEngine: ObservableObject {
     }
 
     /// Refresh metadata without touching or rescanning the connected device.
+    /// Uses the connect-time load path (per-package acceptance plus the
+    /// bundled supplement), so a refresh never drops bundled-only providers
+    /// or optional contour artifacts.
     func refreshCatalogAvailability() async {
         guard !isBusy, !operationGate.isBusy, let original = result else { return }
-        let refreshed = try? await catalogLoader.loadCurrentRemote()
-        guard !isBusy, !operationGate.isBusy, result == original,
-              let catalog = refreshed ?? loadedCatalog?.withUnverifiedDownloadAvailability() else { return }
+        let refreshed: Result<MapCatalogLoadResult, Error>
+        do { refreshed = .success(try await catalogLoader.loadCurrentMerged()) }
+        catch { refreshed = .failure(error) }
+        guard !Task.isCancelled, !isBusy, !operationGate.isBusy, result == original else { return }
+        let catalog: MapCatalog
+        let source: MapCatalogSource
+        switch refreshed {
+        case .success(let loaded):
+            catalog = loaded.catalog
+            source = .remote
+            catalogDroppedPackageCount = loaded.droppedPackageCount
+        case .failure(let error):
+            guard let loadedCatalog else { return }
+            if (error as? MapCatalogRemoteFailure) == .incompatible {
+                catalog = loadedCatalog.withAppUpdateRequiredDownloadAvailability()
+                source = .appUpdateRequired
+            } else {
+                catalog = loadedCatalog.withUnverifiedDownloadAvailability()
+                source = catalogSource == .bundledFallback || catalogSource == .appUpdateRequired
+                    ? (catalogSource ?? .cachedRemote) : .cachedRemote
+            }
+        }
         let comparisons = catalog.packages.compactMap { package -> MapComparison? in
             guard let provider = catalog.provider(for: package.providerId),
                   let region = catalog.region(for: package.regionId, providerId: package.providerId) else { return nil }
@@ -1081,7 +1107,7 @@ final class MapEngine: ObservableObject {
                 provider: provider, region: region, catalogMap: package)
         }
         loadedCatalog = catalog
-        catalogSource = refreshed == nil ? .cachedRemote : .remote
+        catalogSource = source
         catalogUpdatedAt = catalog.updatedAt
         result = MapInventoryResult(scan: original.scan, deviceFiles: original.deviceFiles,
             comparisons: comparisons + original.comparisons.filter { $0.catalogMap.sourceKind == .custom })

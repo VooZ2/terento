@@ -55,6 +55,7 @@ private actor DelayedAuthorizationResponse {
         try await testRetryRestartAndConsent()
         try await testOptOutDuringUpload()
         try testInstallStatisticsFollowWriteBoundary()
+        try await testCatalogRefreshUsesSharedMergedLoad()
         if let output = ProcessInfo.processInfo.environment["TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT"] {
             let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
             try encoder.encode(emittedFixtures).write(to: URL(fileURLWithPath: output))
@@ -722,6 +723,39 @@ private actor DelayedAuthorizationResponse {
         return planner.plan(items: items, selectedIDs: Set(items.map(\.id)), currentFreeSpace: 20_000_000_000,
             selectedOptionalArtifactIDs: contours ? Dictionary(uniqueKeysWithValues: items.map { ($0.id, Set([$0.package.regionId + "-contours"])) }) : [:])
     }
+    private final class CatalogResponse: @unchecked Sendable {
+        private let lock = NSLock()
+        private var body = Data()
+        func set(_ data: Data) { lock.lock(); body = data; lock.unlock() }
+        func get() -> Data { lock.lock(); defer { lock.unlock() }; return body }
+    }
+
+    @MainActor static func testCatalogRefreshUsesSharedMergedLoad() async throws {
+        let catalogURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../Sources/TerentoPoC/Resources/Maps/catalog.json")
+        var document = try JSONSerialization.jsonObject(with: Data(contentsOf: catalogURL)) as! [String: Any]
+        document["providers"] = (document["providers"] as! [[String: Any]]).filter { ($0["id"] as? String) == "freizeitkarte" }
+        let response = CatalogResponse()
+        response.set(try JSONSerialization.data(withJSONObject: document))
+        let loader = MapCatalogLoader(endpoint: URL(string: "https://catalog.example/refresh-\(UUID().uuidString).json")!,
+            dataLoader: { request in
+                (response.get(), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+            })
+        let engine = MapEngine(catalogLoader: loader)
+        engine.setDiagnosticTestIdentity(identity, files: [])
+        await engine.refreshCatalogAvailability()
+        let providers = Set(engine.result?.comparisons.map { MapIdentity.normalizeProvider($0.catalogMap.providerId) } ?? [])
+        check(engine.catalogSource == .remote && providers.isSuperset(of: ["freizeitkarte", "bbbike", "maprando"]),
+              "the 5-minute refresh merges bundled-only providers like the connect-time load")
+        check(engine.result?.comparisons.contains { $0.catalogMap.artifacts.contains { $0.kind == .contours } } == true,
+              "the refresh keeps bundled optional contour artifacts, so selected contours are not pruned")
+        response.set(try JSONSerialization.data(withJSONObject: ["catalogVersion": 1, "providers": "future"]))
+        await engine.refreshCatalogAvailability()
+        check(engine.catalogSource == .appUpdateRequired
+              && engine.result?.comparisons.contains { $0.catalogMap.downloadBlockReason == "APP_UPDATE_REQUIRED" } == true,
+              "an incompatible refreshed catalog asks for a Terento update instead of a connection check")
+    }
+
     static func testInstallStatisticsFollowWriteBoundary() throws {
         let package = plan().installItems[0].package
         let verified = result(package: package, failure: nil, wrote: true)

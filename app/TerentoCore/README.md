@@ -140,6 +140,15 @@ provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
 See [shared contracts](../../contracts/README.md).
 
+The remote catalog is accepted per package: incompatible packages are omitted
+and counted (`catalogDroppedPackageCount`) while every other map stays
+installable. An incompatible catalog document keeps the local list browsable,
+shows "Update Terento to install maps from the current catalog" and blocks
+downloads with an update message instead of "check your connection"; a real
+network failure keeps the existing local-catalog fallback. Connect and the
+five-minute refresh share one load, merge and validate path, and the refresh is
+skipped while the review or install step is open, so selections are not pruned.
+
 Maps come directly from provider infrastructure. Catalog visibility is separate
 from acquisition: canonical Russia and Crimea packages are withheld before
 workspace creation or HTTP acquisition. Existing device files remain protected.

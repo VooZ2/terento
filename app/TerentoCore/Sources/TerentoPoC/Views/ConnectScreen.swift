@@ -283,7 +283,8 @@ struct ConnectScreen: View {
             mapEngine.setInstallationAuthorization(authorization)
         }
         .onReceive(Timer.publish(every: 300, on: .main, in: .common).autoconnect()) { _ in
-            guard !lifecycleViewModel.isBusy else { return }
+            // Never refresh (and prune selections) during review or install.
+            guard !lifecycleViewModel.isBusy, selectedInstallationPlan == nil else { return }
             Task { await mapEngine.refreshCatalogAvailability() }
         }
         .onChange(of: mapEngine.result) { _ in refreshMapSelectionPresentation() }
@@ -1330,6 +1331,15 @@ struct ConnectScreen: View {
                         .foregroundStyle(TerentoColors.secondaryText)
                         .padding(.top, 10)
                         .accessibilityHint("Terento is using its bundled local map list. It may be out of date.")
+                    } else if mapEngine.catalogSource == .appUpdateRequired {
+                        Label(
+                            MapCatalogSource.appUpdateRequired.userLabel,
+                            systemImage: "arrow.down.circle"
+                        )
+                        .font(.terentoUI(size: 12, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .padding(.top, 10)
+                        .accessibilityHint("This Terento version can't use the current map catalog. Maps can be browsed; installing needs a Terento update.")
                     }
 
                     if mapEngine.state == .loadingCatalog || mapEngine.state == .scanning {
