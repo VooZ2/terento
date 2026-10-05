@@ -387,6 +387,12 @@ Lifecycle readers also validate the physical device in that session. Historical
 handles never identify a cross-session read target. These metadata checks do not
 establish whole-device byte equality.
 
+Update inspection of the current map and verification of the replacement read
+the whole exact object once. Map metadata is parsed from the first bytes of
+that local read-back, the same bytes covered by the full SHA-256. No separate
+prefix session follows the full read. The old-map hash binding, exact
+path/size/identity checks and full-content comparison are unchanged.
+
 `ProtectedMapInventory` compares storage ID, exact full path, filename, size and
 file/folder kind; item/parent handles are session-scoped navigation and diagnostics.
 It conservatively protects unknown objects, all-storage IMG/GMA/UNL/SID, map and

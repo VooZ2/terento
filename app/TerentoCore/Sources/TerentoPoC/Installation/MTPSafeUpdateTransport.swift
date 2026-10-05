@@ -102,7 +102,9 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                 )
             }
 
-            let metadata = try metadata(for: expected.file)
+            // Parse the bytes that are hashed below. A second device session
+            // would repeat the full inventory without adding identity proof.
+            let metadata = try localMetadata(of: temporaryURL, filename: expected.file.filename)
             guard let identity = MapIdentity(provider: metadata.provider, region: metadata.region) else {
                 throw SafeUpdateTransportError.metadataMismatch
             }
@@ -313,23 +315,11 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         }
     }
 
-    private func metadata(for file: InstalledMapFile) throws -> GarminIMGMetadata {
-        let mtpFile = DeviceFile(
-            itemID: file.itemID ?? 0,
-            parentID: 0,
-            storageID: operationProfile.expectedStorageID,
-            path: file.path,
-            filename: file.filename,
-            sizeBytes: file.sizeBytes,
-            isFolder: false
-        )
-        let prefix = try deviceReader.readFilePrefix(
-            for: mtpFile,
-            maxLength: GarminIMGMetadataParser.prefixLength
-        )
-        guard let metadata = contextualMetadata(prefix, filename: file.filename) ?? GarminIMGMetadataParser().parse(
+    private func localMetadata(of url: URL, filename: String) throws -> GarminIMGMetadata {
+        let prefix = try MapPackageFormat.readPrefix(from: url, maxLength: GarminIMGMetadataParser.prefixLength)
+        guard let metadata = contextualMetadata(prefix, filename: filename) ?? GarminIMGMetadataParser().parse(
             prefix,
-            filename: file.filename
+            filename: filename
         ) else {
             throw SafeUpdateTransportError.metadataMismatch
         }
