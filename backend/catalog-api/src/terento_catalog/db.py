@@ -4217,7 +4217,7 @@ class Database:
                     event["id"], event["operationId"], event["providerId"],
                     map_package_id, event.get("region"), event["eventType"],
                     event["outcome"], event["timestamp"], event.get("appBuild"),
-                    event["releaseLabel"], is_local_release_label(event.get("releaseLabel")),
+                    event.get("releaseLabel"), is_local_release_label(event.get("releaseLabel")),
                     event.get("acquisitionId"), event.get("componentKind"),
                     event.get("mapResultIndex"), event.get("acquisitionPurpose"),
                 ),

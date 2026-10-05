@@ -683,6 +683,12 @@ raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
 `providerId`, `releaseLabel`, optional `mapId`/`region`, `eventType`, `outcome`,
 optional `appBuild`/`mapResultIndex`, and the download acquisition fields described below. `releaseLabel` must be a strict SemVer app identity;
 the exact `-local` suffix classifies the row server-side as local test data.
+The released beta.9 client (builds 10/11) predates `releaseLabel`; its exact
+shape (`schemaVersion`, `id`, `operationId`, `timestamp`, `providerId`, string
+`mapId`, optional `region`, a download/install event type, `outcome` and string
+`appBuild`, with no acquisition or result-index fields) is accepted and stored
+with an unknown (NULL) release label, never as local test data. Any other body
+without `releaseLabel` is rejected with `400`.
 Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
 `DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, `INSTALL_FAILED`,
 `MAP_UPDATE_SUCCEEDED`, and `MAP_UPDATE_FAILED`; event IDs are

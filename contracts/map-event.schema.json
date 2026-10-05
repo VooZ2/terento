@@ -90,7 +90,7 @@
     },
     "releaseLabel": {
       "$ref": "#/$defs/releaseLabel",
-      "description": "SemVer app release identity. Local debug builds end in -local and are purgeable only in the authenticated admin test-data flow."
+      "description": "SemVer app release identity. Local debug builds end in -local and are purgeable only in the authenticated admin test-data flow. Required for every client except the exact released beta.9 shape (builds 10/11), which predates this field and is stored with an unknown release."
     },
     "acquisitionId": {
       "type": [
@@ -121,7 +121,6 @@
     "operationId",
     "timestamp",
     "providerId",
-    "releaseLabel",
     "eventType",
     "outcome"
   ],
@@ -138,6 +137,63 @@
     }
   },
   "allOf": [
+    {
+      "description": "releaseLabel is required unless the body is the exact released beta.9 (builds 10/11) shape, which predates it.",
+      "anyOf": [
+        {
+          "required": [
+            "releaseLabel"
+          ]
+        },
+        {
+          "required": [
+            "appBuild",
+            "mapId"
+          ],
+          "properties": {
+            "eventType": {
+              "enum": [
+                "DOWNLOAD_STARTED",
+                "DOWNLOAD_SUCCEEDED",
+                "DOWNLOAD_FAILED",
+                "INSTALL_SUCCEEDED",
+                "INSTALL_FAILED"
+              ]
+            },
+            "appBuild": {
+              "type": "string"
+            },
+            "mapId": {
+              "type": "string"
+            }
+          },
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "acquisitionId"
+                ]
+              },
+              {
+                "required": [
+                  "componentKind"
+                ]
+              },
+              {
+                "required": [
+                  "acquisitionPurpose"
+                ]
+              },
+              {
+                "required": [
+                  "mapResultIndex"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
     {
       "if": {
         "properties": {

@@ -222,7 +222,10 @@ them. Live semantic behavior still needs the separate read-only review above.
 4. Never release a client against an API known to reject its payloads. If a server
    rollback is needed after client publication, retain additive acceptance for
    every distributed client. Prefer a compatible forward fix over rejecting
-   queued reports. Retried event IDs must retain idempotency.
+   queued reports. Retried event IDs must retain idempotency. Released beta.9
+   (builds 10/11) map events have no `releaseLabel`; the API keeps accepting that
+   exact legacy shape and stores the release as unknown (NULL), never local.
+   `contracts/fixtures/map-event.valid-beta9-legacy.json` guards it.
 
 For build31, `INSTALL_FAILED_UNKNOWN` is the additive compatibility-event code;
 existing schema versions and fields remain unchanged. `MAP_UPDATE_SUCCEEDED` and

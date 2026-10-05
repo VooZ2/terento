@@ -120,7 +120,9 @@ custom imports. No change to collection defaults, retention or privacy policy
 is authorized by these schemas.
 
 Current map events and compatibility diagnostic versions 3–4 require a strict
-SemVer `releaseLabel`. A valid label ending exactly in `-local` is classified
+SemVer `releaseLabel`. The one exception is the exact released beta.9 map-event
+shape (builds 10/11, fixture `map-event.valid-beta9-legacy.json`), which predates
+the field; it is stored with an unknown release label and is never local. A valid label ending exactly in `-local` is classified
 server-side as local test telemetry; it is excluded from production aggregates
 and can only be purged through the authenticated admin test-data flow.
 Compatibility versions 1–3 retain the historical `deletionToken` field; version
