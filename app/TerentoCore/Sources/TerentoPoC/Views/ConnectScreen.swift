@@ -66,6 +66,8 @@ struct ConnectScreen: View {
     @State private var resolvedDeviceAsset = ResolvedDeviceAsset.fallback
     @State private var diagnosticLogMessage: String?
     @State private var isShowingInstallationFailure = false
+    @State private var installationFailureFollowUp: InstallationFailureFollowUp = .backToDevice
+    @State private var retryInstallationAfterScan = false
     @State private var evidenceOperationID = UUID()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openWindow) private var openWindow
@@ -80,6 +82,10 @@ struct ConnectScreen: View {
         }
         guard let snapshot = deviceEngine.snapshot else { return nil }
         return GarminDeviceIdentityAdapter().makeIdentity(from: snapshot)
+    }
+
+    private var currentDeviceFreeSpace: UInt64? {
+        deviceEngine.snapshot?.freeSpace
     }
 
     private var authorizationPresentation: DeviceAuthorizationPresentation {
@@ -265,6 +271,7 @@ struct ConnectScreen: View {
         }
         .onChange(of: mapEngine.state) { newState in
             updatePresenceMonitoring(for: newState)
+            continueRetryAfterScanIfReady(newState)
         }
         .onChange(of: mapEngine.customMapImportState) { _ in
             updatePresenceMonitoring(for: mapEngine.state)
@@ -372,7 +379,7 @@ struct ConnectScreen: View {
         }
         .sheet(
             isPresented: $isShowingInstallationFailure,
-            onDismiss: returnToDeviceAfterFailure
+            onDismiss: handleInstallationFailureDismissed
         ) {
             InstallationFailureDialog(
                 mapTitle: selectedInstallationPlan.flatMap(installationFailureMapTitle),
@@ -380,7 +387,14 @@ struct ConnectScreen: View {
                 safetyMessage: installationFailureSafetyMessage,
                 reportError: diagnosticLogMessage,
                 onReportIssue: { reportInstallationIssue(for: selectedInstallationPlan) },
-                onBackToDevice: { isShowingInstallationFailure = false }
+                onBackToDevice: {
+                    installationFailureFollowUp = .backToDevice
+                    isShowingInstallationFailure = false
+                },
+                onTryAgain: mapEngine.canRetryFailedInstallation && selectedInstallationPlan != nil ? {
+                    installationFailureFollowUp = .tryAgain
+                    isShowingInstallationFailure = false
+                } : nil
             )
             .interactiveDismissDisabled(false)
         }
@@ -516,6 +530,72 @@ struct ConnectScreen: View {
         }
 
         updatePrompt = update
+    }
+
+    private func handleInstallationFailureDismissed() {
+        let followUp = installationFailureFollowUp
+        installationFailureFollowUp = .backToDevice
+        switch followUp {
+        case .backToDevice:
+            returnToDeviceAfterFailure()
+        case .tryAgain:
+            retryInstallationAfterFailure()
+        }
+    }
+
+    /// Try again keeps the selection, rereads the watch and then starts the
+    /// normal install flow; a retained artifact skips the download and every
+    /// safety check runs again.
+    private func retryInstallationAfterFailure() {
+        guard let identity,
+              deviceEngine.snapshot != nil,
+              selectedInstallationPlan != nil else {
+            returnToDeviceAfterFailure()
+            return
+        }
+        retryInstallationAfterScan = true
+        selectedSection = .installMaps
+        localInstallStep = .install
+        mapEngine.scanDeviceMaps(
+            deviceIdentity: identity,
+            availableStorage: currentDeviceFreeSpace
+        )
+    }
+
+    private func continueRetryAfterScanIfReady(_ state: MapEngineState) {
+        guard retryInstallationAfterScan else { return }
+        switch state {
+        case .scanned:
+            retryInstallationAfterScan = false
+            guard let plan = currentInstallationPlan, !plan.installItems.isEmpty else {
+                selectedInstallationPlan = nil
+                localInstallStep = .choose
+                return
+            }
+            selectedInstallationPlan = plan
+            if installAvailability(for: plan).isEnabled {
+                beginInstallationAfterConsent(plan)
+            }
+        case .failed, .idle:
+            retryInstallationAfterScan = false
+        case .loadingCatalog, .scanning, .acquiringArtifact, .preparingInstallation, .installing:
+            break
+        }
+    }
+
+    private func installAvailability(for plan: InstallationPlan) -> InstallReviewAvailability {
+        InstallReviewAvailabilityResolver().resolve(
+            plan: plan,
+            deviceConnected: deviceEngine.hasConnectedDevice,
+            installationAuthorization: deviceEngine.installationAuthorization,
+            deviceIdentity: identity,
+            mapScanReady: mapEngine.state == .scanned,
+            supportedInstallFlow: !plan.installItems.isEmpty,
+            installationPhase: mapEngine.installationPhase,
+            hasValidatedArtifact: mapEngine.validatedArtifact != nil,
+            operationBusy: mapEngine.isBusy
+                || lifecycleViewModel.isBusy
+        )
     }
 
     private func returnToDeviceAfterFailure() {
@@ -1797,19 +1877,7 @@ struct ConnectScreen: View {
     }
 
     private func reviewInstallContent(_ plan: InstallationPlan) -> some View {
-        let supportedInstallFlow = !plan.installItems.isEmpty
-        let installAvailability = InstallReviewAvailabilityResolver().resolve(
-            plan: plan,
-            deviceConnected: deviceEngine.hasConnectedDevice,
-            installationAuthorization: deviceEngine.installationAuthorization,
-            deviceIdentity: identity,
-            mapScanReady: mapEngine.state == .scanned,
-            supportedInstallFlow: supportedInstallFlow,
-            installationPhase: mapEngine.installationPhase,
-            hasValidatedArtifact: mapEngine.validatedArtifact != nil,
-            operationBusy: mapEngine.isBusy
-                || lifecycleViewModel.isBusy
-        )
+        let installAvailability = installAvailability(for: plan)
 
         return TerentoInstallFooterPageShell(bodyScrolls: true) {
             VStack(alignment: .leading, spacing: 0) {
@@ -1911,6 +1979,20 @@ struct ConnectScreen: View {
 
                 installationJourneyView
                     .padding(.top, 10)
+
+                if mapEngine.canCancelInstallationPreparation {
+                    HStack(spacing: 12) {
+                        SecondaryButton(title: "Cancel") {
+                            mapEngine.cancelInstallationPreparation()
+                        }
+                        .accessibilityHint("Stops downloading and preparing. Nothing has been written to your watch.")
+
+                        Text("Nothing has been written to your watch yet.")
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                    }
+                    .padding(.top, 14)
+                }
             }
         }
     }
@@ -2827,6 +2909,11 @@ private struct MapLifecycleConfirmationSheet: View {
     }
 }
 
+private enum InstallationFailureFollowUp {
+    case backToDevice
+    case tryAgain
+}
+
 private struct InstallationFailureDialog: View {
     let mapTitle: String?
     let reason: String
@@ -2834,6 +2921,8 @@ private struct InstallationFailureDialog: View {
     let reportError: String?
     let onReportIssue: () -> Void
     let onBackToDevice: () -> Void
+    /// Offered only for transient failures where nothing was written.
+    var onTryAgain: (() -> Void)? = nil
 
     private var supportingMessage: String? {
         [safetyMessage, "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting.", reportError]
@@ -2857,10 +2946,12 @@ private struct InstallationFailureDialog: View {
             secondaryLabel: "Report issue",
             secondaryAssetIcon: "GitHubMark",
             secondaryUsesCancelShortcut: false,
-            primaryLabel: "Back to device",
+            tertiaryLabel: onTryAgain == nil ? nil : "Back to device",
+            onTertiary: onBackToDevice,
+            primaryLabel: onTryAgain == nil ? "Back to device" : "Try again",
             isDestructive: false,
             onCancel: onReportIssue,
-            onConfirm: onBackToDevice
+            onConfirm: onTryAgain ?? onBackToDevice
         )
         .accessibilityElement(children: .contain)
     }
@@ -2886,6 +2977,8 @@ private struct TerentoConfirmationDialog: View {
     let secondaryLabel: String
     let secondaryAssetIcon: String?
     let secondaryUsesCancelShortcut: Bool
+    let tertiaryLabel: String?
+    let onTertiary: () -> Void
     let primaryLabel: String
     let isDestructive: Bool
     let onCancel: () -> Void
@@ -2902,6 +2995,8 @@ private struct TerentoConfirmationDialog: View {
         secondaryLabel: String = "Cancel",
         secondaryAssetIcon: String? = nil,
         secondaryUsesCancelShortcut: Bool = true,
+        tertiaryLabel: String? = nil,
+        onTertiary: @escaping () -> Void = {},
         primaryLabel: String,
         isDestructive: Bool,
         onCancel: @escaping () -> Void,
@@ -2917,6 +3012,8 @@ private struct TerentoConfirmationDialog: View {
         self.secondaryLabel = secondaryLabel
         self.secondaryAssetIcon = secondaryAssetIcon
         self.secondaryUsesCancelShortcut = secondaryUsesCancelShortcut
+        self.tertiaryLabel = tertiaryLabel
+        self.onTertiary = onTertiary
         self.primaryLabel = primaryLabel
         self.isDestructive = isDestructive
         self.onCancel = onCancel
@@ -2991,6 +3088,18 @@ private struct TerentoConfirmationDialog: View {
                             border: TerentoColors.border,
                             role: nil,
                             action: onCancel
+                        )
+                    }
+
+                    if let tertiaryLabel {
+                        dialogButton(
+                            tertiaryLabel,
+                            assetIcon: nil,
+                            color: TerentoColors.graphite,
+                            background: TerentoColors.canvas,
+                            border: TerentoColors.border,
+                            role: nil,
+                            action: onTertiary
                         )
                     }
 

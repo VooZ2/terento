@@ -35,6 +35,16 @@ rg -Fq 'CommandGroup(replacing: .appInfo)' "$app_source"
 rg -Fq 'CommandGroup(replacing: .help)' "$app_source"
 rg -Fq 'Window("About Terento", id: "about")' "$app_source"
 rg -Fq 'Window("Diagnostics", id: "diagnostics")' "$app_source"
+# One main window: no File > New Window duplicate lifecycle models.
+rg -Fq 'Window("Terento", id: "main")' "$app_source"
+if rg -Fq 'WindowGroup' "$app_source"; then
+    print -u2 "FAIL: the main scene must be a single Window"
+    exit 1
+fi
+rg -Fq 'let lifecycle = MapLifecycleViewModel(deviceEngine: device, mapEngine: maps)' "$app_source"
+# Keep the Mac awake during device work and confirm before quitting mid-write.
+rg -Fq 'options: [.userInitiated, .idleSystemSleepDisabled]' "$app_source"
+rg -Fq 'func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply' "$app_source"
 rg -Fq 'Image(nsImage: NSApplication.shared.applicationIconImage)' "$about_source"
 app_info_commands="$(sed -n '/CommandGroup(replacing: .appInfo)/,/CommandGroup(replacing: .help)/p' "$app_source")"
 if ! grep -Fq 'Button("About Terento")' <<<"$app_info_commands" \

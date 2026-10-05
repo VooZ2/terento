@@ -339,6 +339,30 @@ final class MapEngine: ObservableObject {
     func setOperationDiagnosticsForTesting(_ diagnostics: InstallationOperationDiagnostics) {
         operationDiagnostics = diagnostics
     }
+
+    /// Puts the engine in the download phase with a long-running local task.
+    func beginPreparationForTesting() {
+        activeTask = Task { try? await Task.sleep(for: .seconds(60)) }
+        state = .acquiringArtifact
+        installationPhase = .downloading
+        acquisitionState = .downloading
+    }
+
+    var hasActiveTaskForTesting: Bool { activeTask != nil }
+
+    func setFailedInstallationForTesting(_ failure: InstallationFailure?) {
+        evidenceFailure = failure
+        installationPhase = .failed
+        state = .failed
+    }
+
+    func retainArtifactsForTesting(_ sets: [String: [String: ValidatedMapArtifact]]) {
+        retainArtifactsForRetry(sets)
+    }
+
+    func takeRetainedArtifactForTesting(packageID: String, artifactID: String, version: MapVersion) -> ValidatedMapArtifact? {
+        takeRetainedArtifact(packageID: packageID, artifactID: artifactID, version: version)
+    }
     #endif
 
     /// Invalidates all device-derived map state after a disconnect or eject.
@@ -1113,6 +1137,117 @@ final class MapEngine: ObservableObject {
         state == .acquiringArtifact
     }
 
+    /// Cancel is offered only while maps are downloaded and checked on the Mac
+    /// or the no-write preflight runs. The install step itself is never
+    /// cancellable here: once `installSelectedMaps` owns the device, it runs
+    /// to its own verified or failed end.
+    var canCancelInstallationPreparation: Bool {
+        state == .acquiringArtifact || state == .preparingInstallation
+    }
+
+    /// Stops download/preparation through the existing cancellation and
+    /// workspace cleanup path. Nothing has been written to the watch.
+    func cancelInstallationPreparation() {
+        guard canCancelInstallationPreparation else { return }
+        // The cancelled task records its own cancelled diagnostic and the
+        // download statistics outcome through the existing paths.
+        cancelActiveTaskAndCleanupWorkspaces()
+        state = .scanned
+        installationPhase = .idle
+        installationPhaseProgress = nil
+        installationPhaseProgressIsMeasured = false
+        acquisitionState = .idle
+        acquisitionProgress = nil
+        acquisitionErrorMessage = nil
+        installationErrorMessage = nil
+        installationResult = nil
+        selectedPreflight = nil
+        selectedInstallationPlan = nil
+        installationAuthorizationGranted = false
+    }
+
+    /// Try again is offered for transient failures where nothing was written.
+    /// It restarts the normal flow; every safety check runs again.
+    var canRetryFailedInstallation: Bool {
+        guard installationPhase == .failed else { return false }
+        if installationResult?.diagnostics.remoteObjectCreated == true { return false }
+        guard let failure = evidenceFailure else { return false }
+        return Self.retryableFailures.contains(failure)
+    }
+
+    nonisolated static let retryableFailures: Set<InstallationFailure> = [
+        .downloadFailed, .deviceDisconnected, .preflightMTPReadFailed, .writeFailed,
+        .installationAuthorizationUnavailable, .transactionAlreadyRunning
+    ]
+
+    /// Validated provider artifacts kept for a short time after a failure in
+    /// which nothing was written, so Try again does not download them again.
+    /// They are keyed by package and artifact, carry their SHA-256, and are
+    /// revalidated (identity, version, size, hash) before any write.
+    nonisolated static let retainedArtifactLifetime: TimeInterval = 30 * 60
+    private struct RetainedArtifactKey: Hashable {
+        let packageID: String
+        let artifactID: String
+    }
+    private var retainedArtifacts: [RetainedArtifactKey: (artifact: ValidatedMapArtifact, expiresAt: Date)] = [:]
+
+    var retainedWorkspaceRoots: Set<URL> {
+        Set(retainedArtifacts.values.compactMap(\.artifact.workspaceRootURL))
+    }
+
+    nonisolated static func retainsArtifactsForRetry(after failure: InstallationFailure?) -> Bool {
+        guard let failure else { return true }
+        // A source that failed validation is never reused.
+        return ![.sourceArtifactInvalid, .sourceValidationFailed, .hashMismatch,
+                 .sizeMismatch, .metadataMismatch].contains(failure)
+    }
+
+    fileprivate func retainArtifactsForRetry(_ sets: [String: [String: ValidatedMapArtifact]]) {
+        purgeExpiredRetainedArtifacts()
+        let expiresAt = Date().addingTimeInterval(Self.retainedArtifactLifetime)
+        for artifact in sets.values.flatMap(\.values)
+        where artifact.sourceKind == .provider && artifact.workspaceRootURL != nil {
+            let key = RetainedArtifactKey(packageID: artifact.catalogPackageID, artifactID: artifact.artifactID)
+            if let previous = retainedArtifacts[key]?.artifact.workspaceRootURL,
+               previous != artifact.workspaceRootURL {
+                retainedArtifacts[key] = nil
+                if !retainedWorkspaceRoots.contains(previous) {
+                    try? MapAcquisitionWorkspace.cleanup(rootURL: previous)
+                }
+            }
+            retainedArtifacts[key] = (artifact, expiresAt)
+        }
+    }
+
+    fileprivate func takeRetainedArtifact(packageID: String, artifactID: String, version: MapVersion) -> ValidatedMapArtifact? {
+        purgeExpiredRetainedArtifacts()
+        let key = RetainedArtifactKey(packageID: packageID, artifactID: artifactID)
+        guard let entry = retainedArtifacts.removeValue(forKey: key) else { return nil }
+        let size = (try? FileManager.default.attributesOfItem(atPath: entry.artifact.localIMGURL.path)[.size]) as? NSNumber
+        guard entry.artifact.version == version, size?.uint64Value == entry.artifact.installSizeBytes else {
+            if let root = entry.artifact.workspaceRootURL, !retainedWorkspaceRoots.contains(root) {
+                try? MapAcquisitionWorkspace.cleanup(rootURL: root)
+            }
+            return nil
+        }
+        return entry.artifact
+    }
+
+    private func purgeExpiredRetainedArtifacts(now: Date = Date()) {
+        let expired = retainedArtifacts.filter { $0.value.expiresAt <= now }
+        guard !expired.isEmpty else { return }
+        for key in expired.keys { retainedArtifacts[key] = nil }
+        let stillRetained = retainedWorkspaceRoots
+        for root in Set(expired.values.compactMap(\.artifact.workspaceRootURL)) where !stillRetained.contains(root) {
+            try? MapAcquisitionWorkspace.cleanup(rootURL: root)
+        }
+    }
+
+    /// Removes every retained artifact, for example when the app quits.
+    func purgeRetainedArtifacts() {
+        purgeExpiredRetainedArtifacts(now: .distantFuture)
+    }
+
     var isInstalling: Bool {
         state == .installing
     }
@@ -1404,11 +1539,16 @@ final class MapEngine: ObservableObject {
         activeTask = Task { [weak self] in
             var artifactSets: [String: [String: ValidatedMapArtifact]] = [:]
             var handedOff = false
+            var retainForRetry = false
             defer {
                 if !handedOff {
+                    if retainForRetry, !Task.isCancelled {
+                        self?.retainArtifactsForRetry(artifactSets)
+                    }
                     var roots = Self.workspaceRoots(artifactSets)
                     if let root = customCandidate?.workspaceRootURL { roots.insert(root) }
-                    Self.cleanupAcquisitionWorkspaces(at: roots)
+                    let retained = self?.retainedWorkspaceRoots ?? []
+                    Self.cleanupAcquisitionWorkspaces(at: roots.subtracting(retained))
                     self?.releaseAcquisitionWorkspaces(at: roots)
                 }
             }
@@ -1444,6 +1584,17 @@ final class MapEngine: ObservableObject {
                                 stateRelay.send(.inspectingIMG)
                                 stateRelay.send(.hashing)
                                 stateRelay.send(.validated)
+                            } else if let retained = self?.takeRetainedArtifact(
+                                packageID: package.id, artifactID: selectedArtifact.id, version: package.version
+                            ) {
+                                // Kept after a failure in which nothing was written.
+                                // Availability is rechecked now; identity, size and
+                                // SHA-256 are revalidated before any write.
+                                artifactSets[package.id, default: [:]][selectedArtifact.id] = retained
+                                stateRelay.send(.validatingDownload)
+                                try await MapCatalogLoader().validateCurrentAvailability(package: package)
+                                stateRelay.send(.validated)
+                                artifact = retained
                             } else {
                                 let start = MapStatisticsEvent(operationId: self?.mapStatisticsOperationID ?? UUID(),
                                     package: package, eventType: .downloadStarted, outcome: .unknown,
@@ -1508,6 +1659,7 @@ final class MapEngine: ObservableObject {
                 }
             } catch let authorizationError as InstallationAuthorizationAcquisitionError {
                 guard !Task.isCancelled, let self else { return }
+                retainForRetry = authorizationError.authorization.blockReason?.isRetryable == true
                 self.setInstallationAuthorization(authorizationError.authorization)
                 self.freshInstallationAuthorization = FreshInstallationAuthorization(
                     identity: authorizationIdentity, state: authorizationError.authorization)
@@ -1543,6 +1695,7 @@ final class MapEngine: ObservableObject {
                 self?.installationErrorMessage = userMessage
                 self?.installationPhase = .failed
                 self?.state = .failed
+                retainForRetry = Self.retainsArtifactsForRetry(after: self?.evidenceFailure)
                 self?.recordInstallationFailure(
                     error.localizedDescription,
                     technicalError: String(reflecting: error)
@@ -1589,10 +1742,15 @@ final class MapEngine: ObservableObject {
         let diagnostics = operationDiagnostics
         activeTask = Task { [weak self] in
             var handedOff = false
+            var retainForRetry = false
             defer {
                 if !handedOff {
+                    if retainForRetry, !Task.isCancelled {
+                        self?.retainArtifactsForRetry(artifacts)
+                    }
                     let roots = Self.workspaceRoots(artifacts)
-                    Self.cleanupAcquisitionWorkspaces(at: roots)
+                    let retained = self?.retainedWorkspaceRoots ?? []
+                    Self.cleanupAcquisitionWorkspaces(at: roots.subtracting(retained))
                     self?.releaseAcquisitionWorkspaces(at: roots)
                 }
             }
@@ -1687,6 +1845,7 @@ final class MapEngine: ObservableObject {
                         for: finalResult.failure, context: finalResult.failureContext,
                         writeStarted: finalResult.diagnostics.writeStarted)
                     self?.evidenceFailure = finalResult.failure
+                    retainForRetry = Self.retainsArtifactsForRetry(after: finalResult.failure)
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
                 }
 
@@ -1793,9 +1952,14 @@ final class MapEngine: ObservableObject {
         activeTask?.cancel()
         let diagnostics = operationDiagnostics
         activeTask = Task { [weak self] in
+            var retainForRetry = false
             defer {
+                if retainForRetry, !Task.isCancelled {
+                    self?.retainArtifactsForRetry(artifacts)
+                }
                 let roots = Self.workspaceRoots(artifacts)
-                Self.cleanupAcquisitionWorkspaces(at: roots)
+                let retained = self?.retainedWorkspaceRoots ?? []
+                Self.cleanupAcquisitionWorkspaces(at: roots.subtracting(retained))
                 self?.releaseAcquisitionWorkspaces(at: roots)
             }
             do {
@@ -1986,6 +2150,8 @@ final class MapEngine: ObservableObject {
                         for: finalResult.failure, context: finalResult.failureContext,
                         writeStarted: finalResult.diagnostics.writeStarted)
                     self?.evidenceFailure = finalResult.failure
+                    retainForRetry = !finalResult.diagnostics.remoteObjectCreated
+                        && Self.retainsArtifactsForRetry(after: finalResult.failure)
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
                     if finalResult.diagnostics.remoteObjectCreated {
                         self?.refreshCurrentDeviceMaps()
@@ -2014,6 +2180,8 @@ final class MapEngine: ObservableObject {
                 self?.evidenceFailureStage = known?.stage ?? .preflight
                 self?.evidenceFailure = readFailure?.failure ?? known?.failure
                 self?.evidenceNativeFailureCode = readFailure?.native
+                // Reads before the coordinator ran; nothing was written.
+                retainForRetry = Self.retainsArtifactsForRetry(after: readFailure?.failure ?? known?.failure)
                 self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
                     ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage

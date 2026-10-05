@@ -45,6 +45,21 @@ timeout, a failed check or an unexpected disconnect, unplugging and reconnecting
 the watch restarts discovery. `DeviceConnectOutcome` exposes each episode
 outcome for the first-run funnel; `DeviceEngine` itself sends no telemetry.
 
+While maps are downloaded and checked on the Mac, or the no-write preflight
+runs, the install page offers Cancel; it uses the existing task cancellation
+and workspace cleanup, and nothing has been written to the watch. Once the
+install step owns the device it is not cancellable. After a failure in which
+nothing was written, validated provider artifacts are kept for 30 minutes,
+keyed by package and artifact with their SHA-256; Try again (offered for
+download, connection, pre-write check, write-start and authorization-check
+failures) keeps the selection, rereads the watch and reuses them instead of
+downloading again. Availability is rechecked and the coordinator revalidates
+identity, version, size and SHA-256 before any write. Quitting removes retained
+artifacts. While maps are downloaded, prepared, written or verified, and during
+Update and Remove, the app holds a user-initiated activity that prevents idle
+system sleep; Quit during a device write asks for confirmation. The app has one
+main window; reopening it shares the same engines and lifecycle model.
+
 The review Install action starts from idle. After successful preflight, the
 engine continues automatically; its transient `awaitingConfirmation` phase is
 processing, not a second executable Install action. Authorization, device

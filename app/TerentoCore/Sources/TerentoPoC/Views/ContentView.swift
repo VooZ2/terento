@@ -6,26 +6,23 @@ struct ContentView: View {
     @ObservedObject var appUpdateController: AppUpdateController
     @ObservedObject var evidenceController: InstallationEvidenceController
     @ObservedObject var mapStatisticsController: MapStatisticsEventController
-    @StateObject private var lifecycleViewModel: MapLifecycleViewModel
+    /// Owned by the app so the main window shares one lifecycle model.
+    @ObservedObject var lifecycleViewModel: MapLifecycleViewModel
 
     init(
         deviceEngine: DeviceEngine,
         mapEngine: MapEngine,
+        lifecycleViewModel: MapLifecycleViewModel,
         appUpdateController: AppUpdateController,
         evidenceController: InstallationEvidenceController,
         mapStatisticsController: MapStatisticsEventController
     ) {
         self.deviceEngine = deviceEngine
         self.mapEngine = mapEngine
+        self.lifecycleViewModel = lifecycleViewModel
         self.appUpdateController = appUpdateController
         self.evidenceController = evidenceController
         self.mapStatisticsController = mapStatisticsController
-        _lifecycleViewModel = StateObject(
-            wrappedValue: MapLifecycleViewModel(
-                deviceEngine: deviceEngine,
-                mapEngine: mapEngine
-            )
-        )
     }
 
     var body: some View {
