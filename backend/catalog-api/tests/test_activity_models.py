@@ -7,6 +7,7 @@ import subprocess
 import unittest
 
 from terento_catalog.db import _enrich_activity_models
+from pglite_support import require_pglite
 
 
 def activity(number=1, **changes):
@@ -45,8 +46,7 @@ class ActivityModelTests(unittest.TestCase):
         self.assertEqual(result[1],rows[1])
 
     def test_exact_correlation_in_postgresql(self):
-        module=os.environ.get('PGLITE_MODULE_PATH')
-        if not module or not Path(module).exists(): self.skipTest('PGLITE_MODULE_PATH not configured')
+        module=require_pglite(self)
         capture=Capture()
         _enrich_activity_models(capture,[activity()])
         sql=capture.calls[0][0].replace('%s','$1')

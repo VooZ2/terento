@@ -544,8 +544,18 @@ def main() -> int:
         'node-version: "22"', 'backend/catalog-api[test]',
         "Tests/run-backend-tests.sh", "Database(settings.database_url).health()",
         "docker build --pull=false -t terento-catalog-api:ci",
+        'PGLITE_VERSION: "0.5.8"',
+        "PGLITE_INTEGRITY: \"sha512-",
+        "--no-save --ignore-scripts",
+        '"@electric-sql/pglite@$PGLITE_VERSION"',
+        "entry.integrity !== process.env.PGLITE_INTEGRITY",
+        'echo "PGLITE_MODULE_PATH=$pglite_root/node_modules/@electric-sql/pglite" >> "$GITHUB_ENV"',
+        'CI: "true"',
     ):
         assert contract in reusable, f"reusable API quality gate is missing {contract!r}"
+    assert reusable.index("Install pinned PGlite") < reusable.index("Tests/run-backend-tests.sh"), (
+        "PostgreSQL regressions need PGlite before the backend suite runs"
+    )
     assert reusable.count("          terento-catalog-migrate\n") == 2
     assert "secrets." not in reusable
     assert "ref:" not in reusable, "checkout must use the caller commit"

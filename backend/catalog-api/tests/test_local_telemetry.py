@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 
 from terento_catalog.db import Database
+from pglite_support import require_pglite
 
 
 class Result:
@@ -90,7 +91,6 @@ class LocalTelemetryTests(unittest.TestCase):
         self.assertEqual(audit[7], "local-test-1")
 
 
-    @unittest.skipUnless(os.environ.get('PGLITE_MODULE_PATH'), 'Set PGLITE_MODULE_PATH for PostgreSQL purge verification')
     def test_actual_postgres_purge_preserves_production_with_shared_operation(self):
         connection = Connection()
         database = LocalTelemetryDatabase(connection)
@@ -101,7 +101,7 @@ class LocalTelemetryTests(unittest.TestCase):
         root = Path(__file__).parent
         payload = {'summary':summary, 'purge':connection.queries,
                    'migration':(root.parent / 'src/terento_catalog/migrations/064_provider_rechecks_update_diagnostics.sql').read_text()}
-        result = subprocess.run(['node',str(root / 'local_telemetry_postgres.cjs'),os.environ['PGLITE_MODULE_PATH']],
+        result = subprocess.run(['node',str(root / 'local_telemetry_postgres.cjs'),require_pglite(self)],
                                 input=json.dumps(payload), text=True, capture_output=True)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
 

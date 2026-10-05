@@ -14,6 +14,7 @@ from api_test_fixtures import FakeProviderDatabase
 from terento_catalog.db import Database
 from terento_catalog.http_api import CatalogService, make_handler
 import test_catalog_api
+from pglite_support import require_pglite
 
 
 class MapIntakeDatabase(FakeProviderDatabase):
@@ -87,8 +88,7 @@ class MapEventDeliveryTests(unittest.TestCase):
             thread.join(timeout=2)
             database.sql.close()
 
-    @unittest.skipUnless(os.environ.get('PGLITE_MODULE_PATH'), 'PGLITE_MODULE_PATH required')
     def test_additive_migration_preserves_old_rows_and_writers(self):
         root = Path(__file__).resolve().parents[1]
-        result = subprocess.run(['node', str(Path(__file__).with_name('acquisition_purpose_postgres.cjs')), os.environ['PGLITE_MODULE_PATH'], str(root / 'src/terento_catalog/migrations/068_acquisition_purpose.sql')], text=True, capture_output=True)
+        result = subprocess.run(['node', str(Path(__file__).with_name('acquisition_purpose_postgres.cjs')), require_pglite(self), str(root / 'src/terento_catalog/migrations/068_acquisition_purpose.sql')], text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

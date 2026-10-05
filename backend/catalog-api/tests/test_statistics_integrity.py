@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 from terento_catalog.db import Database
 from terento_catalog.migrate import _statements
+from pglite_support import require_pglite
 
 class Capture:
     def execute(self, sql, params=()):
@@ -21,8 +22,7 @@ class Capture:
 
 class StatisticsIntegrityTests(unittest.TestCase):
     def test_postgres_result_integrity(self):
-        module=os.environ.get('PGLITE_MODULE_PATH') or os.environ.get('TERENTO_PGLITE_MODULE')
-        if not module: self.skipTest('PGLITE_MODULE_PATH required for PostgreSQL regression')
+        module=require_pglite(self)
         cursor=Capture()
         class D(Database):
             @contextmanager

@@ -7,6 +7,7 @@ import subprocess
 import unittest
 
 from terento_catalog.db import Database
+from pglite_support import require_pglite
 
 
 class Capture:
@@ -19,14 +20,13 @@ class Capture:
 
 
 class UpdateActivityTests(unittest.TestCase):
-    @unittest.skipUnless(os.environ.get('PGLITE_MODULE_PATH'), 'PGLITE_MODULE_PATH required')
     def test_retained_not_started_query_with_conflicts_and_limits(self):
         capture = Capture()
         Database._update_not_started_activity(capture, datetime(2026, 10, 5, tzinfo=timezone.utc), 8)
         index = iter(range(1, 20))
         import re
         sql = re.sub(r'%s', lambda _: '$' + str(next(index)), capture.sql)
-        result = subprocess.run(['node', str(Path(__file__).with_name('update_activity_postgres.cjs')), os.environ['PGLITE_MODULE_PATH']], input=json.dumps({'sql':sql}), text=True, capture_output=True)
+        result = subprocess.run(['node', str(Path(__file__).with_name('update_activity_postgres.cjs')), require_pglite(self)], input=json.dumps({'sql':sql}), text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_activity_summary_is_authored_and_raw_payload_not_returned(self):

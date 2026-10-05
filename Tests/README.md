@@ -57,6 +57,13 @@ second execution. Deployment repeats backend checks on its own exact commit;
 removing that repeat requires a verified same-SHA quality artifact handoff, not
 trust in an earlier PR head. The current explicit rerun is retained.
 
+PostgreSQL read-model regressions run production SQL against PGlite
+(PostgreSQL/WASM) with every catalog migration applied. CI installs the pinned
+`@electric-sql/pglite@0.5.8` with `npm install --no-save --ignore-scripts`,
+checks the lockfile integrity hash, and exports `PGLITE_MODULE_PATH`. With
+`CI=true` a missing module fails those tests instead of skipping them; local
+runs without the module skip them and say so.
+
 The production-operations contract runner exercises the fixed root helper,
 generic image-inventory/ledger-prefix migration gate, one deploy lock spanning
 migration and service replacement, deploy rollback guards, the deploy-only SSH

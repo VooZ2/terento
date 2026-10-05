@@ -15,6 +15,7 @@ from unittest.mock import Mock
 
 from terento_catalog.db import Database
 from terento_catalog.provider_monitoring import monitoring_state, provider_block_reason, run_health_cycle, run_worker
+from pglite_support import require_pglite
 
 NOW = datetime(2026, 10, 4, 12, tzinfo=timezone.utc)
 
@@ -136,7 +137,6 @@ class MonitoringTests(unittest.TestCase):
         finally:
             server.shutdown();server.server_close();thread.join(timeout=2)
 
-@unittest.skipUnless(os.environ.get('PGLITE_MODULE_PATH'),'Set PGLITE_MODULE_PATH for SQL tests')
 class MonitoringPostgresTests(unittest.TestCase):
     def test_migration_controls_due_and_retention(self):
         db=RecordingDatabase()
@@ -161,5 +161,5 @@ class MonitoringPostgresTests(unittest.TestCase):
         root=Path(__file__).parent
         payload={'migration':next((root.parent/'src/terento_catalog/migrations').glob('066_*.sql')).read_text(),
                  'interval':interval,'disable':disable,'enable':enable,'due':due,'prune':prune,'history':history,'cooldown':cooldown,'packageSql':package_sql}
-        result=subprocess.run(['node',str(root/'provider_monitoring_postgres.cjs'),os.environ['PGLITE_MODULE_PATH']],input=json.dumps(payload),text=True,capture_output=True)
+        result=subprocess.run(['node',str(root/'provider_monitoring_postgres.cjs'),require_pglite(self)],input=json.dumps(payload),text=True,capture_output=True)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)

@@ -125,7 +125,11 @@ Tests/run-backend-tests.sh
 
 The backend regression suite includes generated-admin JavaScript checks and
 therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
-`PATH`.
+`PATH`. PostgreSQL read-model regressions additionally need PGlite 0.5.8:
+install it outside the repository (`npm install --no-save --ignore-scripts
+@electric-sql/pglite@0.5.8`) and set `PGLITE_MODULE_PATH` to its
+`node_modules/@electric-sql/pglite` directory. They skip locally without it and
+fail under `CI=true`.
 
 The shared [public schemas and fixtures](../../contracts/README.md) document
 current map/device projections and event bodies. Tests use jsonschema only in
