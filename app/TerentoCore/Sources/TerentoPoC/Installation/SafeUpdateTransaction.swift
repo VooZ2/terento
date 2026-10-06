@@ -5,6 +5,7 @@ enum SafeUpdateState: String, Equatable, Sendable {
     case validating = "VALIDATING"
     case revalidating = "REVALIDATING"
     case acquiring = "ACQUIRING"
+    case preparing = "PREPARING"
     case writing = "WRITING"
     case verifying = "VERIFYING"
     case committing = "COMMITTING"
@@ -20,7 +21,12 @@ struct SafeUpdateProgress: Equatable, Sendable {
     let totalBytes: UInt64
     let bytesPerSecond: Double
 
+    // Non-byte work reports completed checks; never elapsed-time estimates.
+    var phaseFraction: Double? = nil
+    var detail: String? = nil
+
     var fractionCompleted: Double {
+        if let phaseFraction { return phaseFraction.isFinite ? min(1, max(0, phaseFraction)) : 0 }
         guard totalBytes > 0 else { return 0 }
         return min(1, Double(bytesCompleted) / Double(totalBytes))
     }
@@ -67,6 +73,9 @@ struct SafeUpdateRemoteObject: Equatable, Sendable {
     let version: MapVersion?
     let ownership: MapManagementState
     let sha256: String?
+    /// The manifest's sampled removal proof for the current map, or the proof
+    /// recorded for the verified new map. Nil keeps the full content check.
+    var removalProof: ManagedRemovalProof? = nil
 }
 
 struct SafeUpdateSourceArtifact: Equatable, Sendable {
@@ -201,7 +210,7 @@ private final class SafeUpdateAcquisitionObserver: @unchecked Sendable {
         case .invalidPackage, .unsupportedPackageFormat, .sourceIdentityMismatch,
              .sourceVersionMismatch, .noIMGFound, .ambiguousIMG, .customMapNotConfirmed:
             return .sourceValidation
-        case .workspaceFailed, .acquisitionWithheld:
+        case .workspaceFailed, .acquisitionWithheld, .insufficientMacStorage:
             return .preflight
         }
     }
@@ -242,21 +251,20 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
                 package: package,
                 onStateChange: { state in
                     evidence.state(state)
-                    let safeState: SafeUpdateState = {
-                        switch state {
-                        case .downloading: return .acquiring
-                        case .validatingDownload, .extracting, .inspectingIMG,
-                             .validatingIdentity, .hashing, .validated,
-                             .resolvingPackage, .failed, .idle:
-                            return .acquiring
-                        }
-                    }()
-                    onProgress?(SafeUpdateProgress(
-                        state: safeState,
-                        bytesCompleted: 0,
-                        totalBytes: package.expectedDownloadSizeBytes ?? 0,
-                        bytesPerSecond: 0
-                    ))
+                    let fraction: Double
+                    let detail: String
+                    switch state {
+                    case .validatingDownload: (fraction, detail) = (0, "Checking the downloaded package")
+                    case .extracting: (fraction, detail) = (0.2, "Unpacking the map")
+                    case .inspectingIMG: (fraction, detail) = (0.4, "Finding the map")
+                    case .validatingIdentity: (fraction, detail) = (0.6, "Checking the selected map")
+                    case .hashing: (fraction, detail) = (0.8, "Checking map contents")
+                    case .validated: (fraction, detail) = (1, "Map prepared")
+                    case .idle, .resolvingPackage, .downloading, .failed: return
+                    }
+                    onProgress?(SafeUpdateProgress(state: .preparing,
+                        bytesCompleted: 0, totalBytes: 0, bytesPerSecond: 0,
+                        phaseFraction: fraction, detail: detail))
                 },
                 onDownloadProgress: { progress in
                     onProgress?(SafeUpdateProgress(
@@ -265,6 +273,11 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
                         totalBytes: progress.totalBytes,
                         bytesPerSecond: progress.bytesPerSecond
                     ))
+                },
+                onValidationProgress: { fraction in
+                    onProgress?(SafeUpdateProgress(state: .preparing,
+                        bytesCompleted: 0, totalBytes: 0, bytesPerSecond: 0,
+                        phaseFraction: 0.8 + 0.19 * fraction, detail: "Checking map contents"))
                 }
             )
             evidence.finish(.succeeded)
@@ -282,10 +295,20 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
 }
 
 protocol SafeUpdateSourceValidator: Sendable {
+    func validate(artifact: SafeUpdateSourceArtifact, package: MapPackage,
+                  onProgress: (@Sendable (Double) -> Void)?) throws
     func validate(
         artifact: SafeUpdateSourceArtifact,
         package: MapPackage
     ) throws
+}
+
+extension SafeUpdateSourceValidator {
+    func validate(artifact: SafeUpdateSourceArtifact, package: MapPackage,
+                  onProgress: (@Sendable (Double) -> Void)?) throws {
+        try validate(artifact: artifact, package: package)
+        onProgress?(1)
+    }
 }
 
 enum SafeUpdateSourceValidationError: LocalizedError, Equatable, Sendable {
@@ -306,6 +329,11 @@ struct DefaultSafeUpdateSourceValidator: SafeUpdateSourceValidator, Sendable {
         artifact: SafeUpdateSourceArtifact,
         package: MapPackage
     ) throws {
+        try validate(artifact: artifact, package: package, onProgress: nil)
+    }
+
+    func validate(artifact: SafeUpdateSourceArtifact, package: MapPackage,
+                  onProgress: (@Sendable (Double) -> Void)?) throws {
         guard let expectedIdentity = package.identity,
               MapIdentityMatcher.matches(
                   actual: MapIdentity(provider: artifact.provider, region: artifact.region),
@@ -335,7 +363,8 @@ struct DefaultSafeUpdateSourceValidator: SafeUpdateSourceValidator, Sendable {
         do {
             let validated = try MapSourceValidator().validate(
                 fileURL: artifact.localIMGURL,
-                expectedPackage: package
+                expectedPackage: package,
+                onProgress: onProgress
             )
             guard validated.sizeBytes == artifact.installSizeBytes,
                   normalized(validated.sha256) == normalized(artifact.sha256) else {
@@ -381,12 +410,19 @@ enum SafeUpdateTransportError: LocalizedError, Equatable, Sendable {
 struct SafeUpdateInventorySnapshot: Sendable {
     let storageID: UInt32
     let files: [DeviceFile]
+    /// What the read covers; injected transports default to the full inventory.
+    var scope: DeviceInventoryScope = .full
+    var fallback: DeviceInventoryFallback = .none
 }
 
 /// The Stage 5.3 transport includes only operations needed by this
 /// coordinator. Device adapters must implement transaction cleanup only for
 /// the exact object returned by this transaction, never by filename alone.
 protocol SafeUpdateTransport: SafeDeleteTransport, Sendable {
+    func inspectCurrentObject(_ expected: SafeUpdateRemoteObject,
+                              onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject
+    func verifyTransactionObject(_ object: SafeUpdateRemoteObject, expected: SafeUpdateSourceArtifact,
+                                 onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject
     func readProtectedInventory() throws -> SafeUpdateInventorySnapshot
     func inspectCurrentObject(_ expected: SafeUpdateRemoteObject) throws -> SafeUpdateRemoteObject
 
@@ -404,6 +440,22 @@ protocol SafeUpdateTransport: SafeDeleteTransport, Sendable {
     func cleanupTransactionObject(_ object: SafeUpdateRemoteObject) throws
     func readFreeSpace() throws -> UInt64
     func rescanObjects() throws -> [SafeUpdateRemoteObject]
+}
+
+extension SafeUpdateTransport {
+    func inspectCurrentObject(_ expected: SafeUpdateRemoteObject,
+                              onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        let result = try inspectCurrentObject(expected)
+        onProgress?(1)
+        return result
+    }
+
+    func verifyTransactionObject(_ object: SafeUpdateRemoteObject, expected: SafeUpdateSourceArtifact,
+                                 onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        let result = try verifyTransactionObject(object, expected: expected)
+        onProgress?(1)
+        return result
+    }
 }
 
 protocol SafeUpdateManifestReconciler: Sendable {
@@ -500,7 +552,10 @@ struct LocalSafeUpdateManifestReconciler: SafeUpdateManifestReconciler, Sendable
             packageID: package.id,
             artifactID: package.mainArtifact?.id,
             artifactKind: .main,
-            bbbikeMetadata: BBBikeMapMetadata(package: package)
+            bbbikeMetadata: BBBikeMapMetadata(package: package),
+            removalProof: newObject.removalProof.flatMap {
+                $0.isBound(toFileSizeBytes: newObject.file.sizeBytes, fileSHA256: hash) ? $0 : nil
+            }
         )
         try store.replaceAfterUpdate(
             deviceKey: deviceKey,
@@ -573,8 +628,41 @@ struct SafeUpdateResult: Equatable, Sendable {
     var cleanupAttempted: Bool = false
     var cleanupSucceeded: Bool = false
     var acquisitionFailureStage: SafeUpdateAcquisitionStage? = nil
+    /// Pre/post-write protected inventory scope, counts and durations only.
+    var inventoryMetrics: InstallationInventoryMetrics? = nil
+    /// The operation stopped before the transaction was entered because the
+    /// user or app cancelled it. Nothing was attempted, so it is not reported.
+    var cancelledBeforeStart: Bool = false
 
     var isSuccess: Bool { status.isSuccess }
+
+    /// Classifies the only failures that can occur before the nonthrowing
+    /// transaction is entered: lifecycle lease acquisition and the pre-entry
+    /// operation-token check. A disconnect/eject invalidates the token or the
+    /// lease; a cancellation with a still-current token was not a disconnect.
+    static func preEntryInterruption(_ error: Error, lifecycleBusy: Bool,
+                                     operationStillCurrent: Bool) -> SafeUpdateResult {
+        if lifecycleBusy {
+            return SafeUpdateResult(status: .blockedTransactionAlreadyRunning, state: .failed,
+                message: "Another Garmin operation is already in progress. Nothing was changed.",
+                storagePlan: nil, newObject: nil, finalObjects: [], oldMapPreserved: true)
+        }
+        if error is CancellationError && operationStillCurrent {
+            return SafeUpdateResult(status: .blockedConfirmationRequired, state: .failed,
+                message: "The map update was cancelled before it started. Nothing was changed.",
+                storagePlan: nil, newObject: nil, finalObjects: [], oldMapPreserved: true,
+                cancelledBeforeStart: true)
+        }
+        return SafeUpdateResult(
+            status: .failedDeviceDisconnected,
+            state: .failed,
+            message: "The Garmin connection changed before the update could finish. The result must be checked again.",
+            storagePlan: nil,
+            newObject: nil,
+            finalObjects: [],
+            oldMapPreserved: true
+        )
+    }
 }
 
 struct SafeUpdateTransaction: Sendable {
@@ -601,6 +689,7 @@ struct SafeUpdateTransaction: Sendable {
         var writeStarted = false
         var cleanupAttempted = false
         var cleanupSucceeded = false
+        var inventoryMetrics: InstallationInventoryMetrics?
         func cleanup(_ object: SafeUpdateRemoteObject, transport: any SafeUpdateTransport) -> SafeUpdateStatus {
             cleanupAttempted = true
             let status = self.cleanup(object, transport: transport)
@@ -615,6 +704,7 @@ struct SafeUpdateTransaction: Sendable {
             result.writeStarted = writeStarted
             result.cleanupAttempted = cleanupAttempted
             result.cleanupSucceeded = cleanupSucceeded
+            result.inventoryMetrics = inventoryMetrics
             return result
         }
         let transactionID = UUID()
@@ -735,17 +825,26 @@ struct SafeUpdateTransaction: Sendable {
         defer {
             if let root = artifact.workspaceRootURL { try? MapAcquisitionWorkspace.cleanup(rootURL: root) }
         }
+        emit(.validating, onProgress)
         do {
-            try sourceValidator.validate(artifact: artifact, package: request.selectedMap)
+            try sourceValidator.validate(artifact: artifact, package: request.selectedMap,
+                onProgress: { fraction in
+                    onProgress?(SafeUpdateProgress(state: .validating, bytesCompleted: 0,
+                        totalBytes: 0, bytesPerSecond: 0, phaseFraction: fraction * 0.25,
+                        detail: "Checking the prepared map"))
+                })
         } catch {
             return failure(.failedSourceValidation, error.localizedDescription)
         }
 
-        emit(.validating, onProgress)
-        emit(.revalidating, onProgress)
+        report(.revalidating, fraction: 0.25, detail: "Checking the installed map", onProgress)
         let current: SafeUpdateRemoteObject
         do {
-            current = try transport.inspectCurrentObject(request.currentObject)
+            current = try transport.inspectCurrentObject(request.currentObject, onProgress: { fraction in
+                onProgress?(SafeUpdateProgress(state: .revalidating, bytesCompleted: 0,
+                    totalBytes: 0, bytesPerSecond: 0, phaseFraction: 0.25 + 0.7 * fraction,
+                    detail: "Checking the installed map"))
+            })
         } catch let error as SafeUpdateTransportError {
             return failure(status(for: error), error.localizedDescription)
         } catch {
@@ -780,7 +879,7 @@ struct SafeUpdateTransaction: Sendable {
         guard storagePlan.isAllowed else {
             return failure(
                 .blockedInsufficientSpace,
-                "There is not enough free space to keep the old map while the new one is verified.",
+                "There isn't enough free space on the watch to keep the old map while the new one is checked. Free up space, or remove the old map in Manage maps and then install the new version. Nothing was changed.",
                 storagePlan: storagePlan
             )
         }
@@ -802,10 +901,16 @@ struct SafeUpdateTransaction: Sendable {
         let targetPath = "/GARMIN/\(targetFilename)"
 
         let protectedBaseline: ProtectedMapInventory
+        let baselineSnapshot: SafeUpdateInventorySnapshot
         let oldKey: ProtectedMapInventory.Key
         let newKey: ProtectedMapInventory.Key
         do {
+            let baselineStartedAt = ContinuousClock.now
             let snapshot = try transport.readProtectedInventory()
+            inventoryMetrics = InstallationInventoryMetrics(
+                prewrite: DeviceInventoryRead(files: snapshot.files, scope: snapshot.scope, fallback: snapshot.fallback),
+                durationMilliseconds: Self.milliseconds(since: baselineStartedAt))
+            baselineSnapshot = snapshot
             guard snapshot.storageID != 0 else { throw ProtectedMapInventory.Invalid.malformedLocation }
             oldKey = ProtectedMapInventory.Key(storageID: snapshot.storageID,
                 path: current.file.path, filename: current.file.filename,
@@ -842,6 +947,7 @@ struct SafeUpdateTransaction: Sendable {
             return failure(.failedDeviceDisconnected, "The Garmin connection changed before writing. Nothing was changed.", storagePlan: storagePlan)
         }
 
+        report(.revalidating, fraction: 1, detail: "Map and device checked", onProgress)
         emit(.writing, onProgress)
         let written: SafeUpdateRemoteObject
         let transferProgress: (@Sendable (TransferProgress) -> Void)?
@@ -880,7 +986,11 @@ struct SafeUpdateTransaction: Sendable {
         emit(.verifying, onProgress)
         let verified: SafeUpdateRemoteObject
         do {
-            verified = try transport.verifyTransactionObject(written, expected: artifact)
+            verified = try transport.verifyTransactionObject(written, expected: artifact, onProgress: { fraction in
+                onProgress?(SafeUpdateProgress(state: .verifying, bytesCompleted: 0,
+                    totalBytes: 0, bytesPerSecond: 0, phaseFraction: min(0.99, fraction),
+                    detail: "Reading back and checking the new map"))
+            })
         } catch let error as SafeUpdateTransportError {
             let cleanupStatus = cleanup(written, transport: transport)
             return failure(
@@ -919,6 +1029,7 @@ struct SafeUpdateTransaction: Sendable {
             return failure(cleanupStatus == .failedCleanup ? .failedCleanup : .failedMetadataMismatch, "The new map metadata did not match the selected map.", storagePlan: storagePlan, newObject: verified)
         }
 
+        report(.verifying, fraction: 1, detail: "New map verified", onProgress)
         emit(.committing, onProgress)
         let filenameGenerator = TerentoManagedFilenameGenerator()
         let expectedOldVersion: MapVersion? = {
@@ -944,7 +1055,10 @@ struct SafeUpdateTransaction: Sendable {
             expectedFilename: current.file.filename,
             expectedSizeBytes: current.file.sizeBytes,
             expectedSHA256: currentHash,
-            expectedVersion: expectedOldVersion
+            expectedVersion: expectedOldVersion,
+            // The native delete uses it only when it is the exact plan for
+            // this old map's recorded size and SHA-256.
+            removalProof: request.currentObject.removalProof
         )
         let deleteResult = SafeDeleteAdapter().delete(
             target: deleteTarget,
@@ -953,7 +1067,12 @@ struct SafeUpdateTransaction: Sendable {
             rescan: {
                 try transport.rescanObjects().map(\.file)
             },
-            transport: transport
+            transport: transport,
+            onProgress: { progress in
+                onProgress?(SafeUpdateProgress(state: .committing, bytesCompleted: 0,
+                    totalBytes: 0, bytesPerSecond: 0, phaseFraction: progress.fractionCompleted,
+                    detail: progress.detail))
+            }
             // The new object has already passed remote size/hash/metadata
             // verification. Delete the old object only after that gate,
             // without a redundant local full-file copy or backup.
@@ -966,19 +1085,30 @@ struct SafeUpdateTransaction: Sendable {
         emit(.postVerifying, onProgress)
         let finalObjects: [SafeUpdateRemoteObject]
         do {
+            let finalStartedAt = ContinuousClock.now
             let snapshot = try transport.readProtectedInventory()
-            let finalInventory = try ProtectedMapInventory(files: snapshot.files,
-                forcedLocations: protectedBaseline.protectedLocations.union([newKey.location]))
+            inventoryMetrics = inventoryMetrics?.withPostwrite(
+                DeviceInventoryRead(files: snapshot.files, scope: snapshot.scope, fallback: snapshot.fallback),
+                durationMilliseconds: Self.milliseconds(since: finalStartedAt))
+            // Compare in the narrowest scope both reads cover. Objects outside
+            // the map scope are not compared when either read is scoped.
+            let compared = MapInventoryScope.comparable(baselineSnapshot.files, scope: baselineSnapshot.scope,
+                                                        snapshot.files, scope: snapshot.scope)
+            let comparableBaseline = compared.scope == baselineSnapshot.scope ? protectedBaseline
+                : try ProtectedMapInventory(files: compared.before, forcedLocations: [oldKey.location, newKey.location])
+            let finalInventory = try ProtectedMapInventory(files: compared.after,
+                forcedLocations: comparableBaseline.protectedLocations.union([newKey.location]))
             guard snapshot.storageID == oldKey.storageID,
                   verified.file.path == newKey.path,
                   verified.file.filename == newKey.filename,
                   verified.file.sizeBytes == newKey.sizeBytes,
-                  finalInventory.isExactReplacement(of: protectedBaseline,
+                  finalInventory.isExactReplacement(of: comparableBaseline,
                       removing: oldKey, adding: newKey) else {
                 return failure(.failedPostVerify,
                     "Existing device content changed during the update. The update was not recorded as complete.",
                     storagePlan: storagePlan, newObject: verified, oldMapPreserved: false)
             }
+            report(.postVerifying, fraction: 1.0 / 3, detail: "Checking the remaining maps", onProgress)
             finalObjects = try transport.rescanObjects()
         } catch {
             return failure(.failedPostVerify, "The device could not be rescanned after the update.", storagePlan: storagePlan, newObject: verified, oldMapPreserved: false)
@@ -989,12 +1119,20 @@ struct SafeUpdateTransaction: Sendable {
             return failure(.failedPostVerify, "The final device state did not match the verified update.", storagePlan: storagePlan, newObject: verified, oldMapPreserved: false, finalObjects: finalObjects)
         }
 
-        emit(.reconcilingManifest, onProgress)
+        report(.reconcilingManifest, fraction: 2.0 / 3, detail: "Saving the update record", onProgress)
+        // The new map was verified in full against this local artifact; record
+        // its sampled removal proof from the same bytes (nil keeps full checks).
+        var recordedObject = verified
+        recordedObject.removalProof = ManagedRemovalProof.make(
+            localFileURL: artifact.localIMGURL,
+            fileSizeBytes: artifact.installSizeBytes,
+            fileSHA256: artifact.sha256
+        )
         do {
             try manifestReconciler.reconcile(
                 deviceKey: request.deviceKey,
                 oldObject: current,
-                newObject: verified,
+                newObject: recordedObject,
                 package: request.selectedMap,
                 finalObjects: finalObjects
             )
@@ -1011,8 +1149,16 @@ struct SafeUpdateTransaction: Sendable {
             newObject: verified,
             finalObjects: finalObjects,
             oldMapPreserved: false,
-            writeStarted: true
+            writeStarted: true,
+            inventoryMetrics: inventoryMetrics
         )
+    }
+
+    private static func milliseconds(since start: ContinuousClock.Instant) -> UInt64 {
+        let components = start.duration(to: .now).components
+        let value = Double(components.seconds) * 1_000
+            + Double(components.attoseconds) / 1_000_000_000_000_000
+        return UInt64(max(0, value))
     }
 
     private func matches(_ lhs: SafeUpdateRemoteObject, _ rhs: SafeUpdateRemoteObject) -> Bool {
@@ -1046,11 +1192,17 @@ struct SafeUpdateTransaction: Sendable {
         value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
     }
 
+    private func report(_ state: SafeUpdateState, fraction: Double, detail: String?,
+                        _ callback: (@Sendable (SafeUpdateProgress) -> Void)?) {
+        callback?(SafeUpdateProgress(state: state, bytesCompleted: 0, totalBytes: 0,
+            bytesPerSecond: 0, phaseFraction: fraction, detail: detail))
+    }
+
     private func emit(
         _ state: SafeUpdateState,
         _ callback: (@Sendable (SafeUpdateProgress) -> Void)?
     ) {
-        callback?(SafeUpdateProgress(state: state, bytesCompleted: 0, totalBytes: 0, bytesPerSecond: 0))
+        report(state, fraction: state == .completed ? 1 : 0, detail: nil, callback)
     }
 
     private func failure(
@@ -1070,5 +1222,221 @@ struct SafeUpdateTransaction: Sendable {
             finalObjects: finalObjects,
             oldMapPreserved: oldMapPreserved
         )
+    }
+}
+
+// MARK: - Content checks
+
+/// How Safe Update checks the installed map's content before it writes. The
+/// method is chosen from the local record before any device read; once
+/// chosen, every mismatch or read failure blocks the update and is never
+/// retried as the other method.
+enum SafeUpdateCurrentMapCheck: Equatable, Sendable {
+    /// A Terento-managed map whose manifest entry carries a sampled proof
+    /// bound to the recorded size and SHA-256: exact same-session identity plus
+    /// the recorded regions and their digest.
+    case recordedProof(ManagedRemovalProof)
+    /// Entries without a proof (installed by earlier versions), unbound
+    /// proofs and anything else: the whole object is read and its SHA-256
+    /// compared with the record.
+    case fullContent
+
+    static func method(for expected: SafeUpdateRemoteObject) -> SafeUpdateCurrentMapCheck {
+        guard expected.ownership == .managedByTerento,
+              let hash = expected.sha256?.lowercased(), hash.count == 64,
+              hash.allSatisfy({ $0.isASCII && $0.isHexDigit }),
+              hash != String(repeating: "0", count: 64),
+              let itemID = expected.file.itemID, itemID != 0,
+              expected.file.path == "/GARMIN/\(expected.file.filename)",
+              let proof = ManagedRemovalProof.forNativeRemoval(expected.removalProof, managed: true,
+                  fileSizeBytes: expected.file.sizeBytes, fileSHA256: hash) else {
+            return .fullContent
+        }
+        return .recordedProof(proof)
+    }
+
+    var traceName: String {
+        switch self {
+        case .recordedProof: return "sampled"
+        case .fullContent: return "full"
+        }
+    }
+
+    /// Bytes this check reads over MTP for the installed map (excluding the
+    /// small IMG header read used for the identity and version).
+    func contentBytes(fileSizeBytes: UInt64) -> UInt64 {
+        switch self {
+        case .recordedProof(let proof): return proof.sampledBytes(fileSizeBytes: fileSizeBytes)
+        case .fullContent: return fileSizeBytes
+        }
+    }
+}
+
+/// A recorded sampled proof that did not verify. Both block the update.
+enum SafeUpdateRecordedProofError: Error, Equatable, Sendable {
+    case contentMismatch
+    case identityMismatch
+}
+
+/// The whole-object read of the installed map and its SHA-256.
+struct SafeUpdateFullContentRead: Equatable, Sendable {
+    let itemID: UInt32
+    let sourcePath: String
+    let reportedSizeBytes: UInt64
+    let sha256: String
+    /// IMG metadata parsed from the hashed bytes, when the reader has them.
+    var metadata: GarminIMGMetadata? = nil
+}
+
+/// The recorded-proof read of the installed map in one device session.
+struct SafeUpdateRecordedProofRead: Equatable, Sendable {
+    let itemID: UInt32
+    let sampledBytes: UInt64
+}
+
+/// The install-equivalent sampled read-back of the new map.
+struct SafeUpdateSampledReadBack: Equatable, Sendable {
+    let itemID: UInt32
+    let reportedSizeBytes: UInt64
+    let sampledBytes: UInt64
+    let sampleCount: Int
+    let matchedSampleCount: Int
+}
+
+/// Read-only device operations behind Safe Update's content checks.
+protocol SafeUpdateContentReader: Sendable {
+    func readFullContent(_ file: InstalledMapFile,
+                         onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateFullContentRead
+    /// Throws `SafeUpdateRecordedProofError` for a content or identity mismatch.
+    func readRecordedProof(_ file: InstalledMapFile, sha256: String, proof: ManagedRemovalProof,
+                           onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRecordedProofRead
+    func readMetadata(_ file: InstalledMapFile) throws -> GarminIMGMetadata
+    /// Compares the regions of `offsets` of the written object with the
+    /// validated local artifact (the fresh-install read-back).
+    func readInstallSamples(_ file: InstalledMapFile, artifact: SafeUpdateSourceArtifact,
+                            offsets: [UInt64], sampleLength: UInt32,
+                            onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateSampledReadBack
+}
+
+/// Safe Update's two content checks, independent of the transport.
+struct SafeUpdateContentVerifier: Sendable {
+    let reader: any SafeUpdateContentReader
+
+    /// The installed map before writing: the recorded proof for a managed
+    /// entry that has one, otherwise the full read and SHA-256.
+    func inspectCurrent(_ expected: SafeUpdateRemoteObject,
+                        onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        guard let itemID = expected.file.itemID, itemID != 0 else {
+            throw SafeUpdateTransportError.operationFailed(
+                "The installed map does not have an exact device object identity."
+            )
+        }
+        switch SafeUpdateCurrentMapCheck.method(for: expected) {
+        case .recordedProof(let proof):
+            return try inspectCurrentByProof(expected, proof: proof, onProgress: onProgress)
+        case .fullContent:
+            return try inspectCurrentFully(expected, onProgress: onProgress)
+        }
+    }
+
+    private func inspectCurrentFully(_ expected: SafeUpdateRemoteObject,
+                                     onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        let transfer = try reader.readFullContent(expected.file, onProgress: { onProgress?(0.99 * $0) })
+        guard transfer.itemID != 0,
+              transfer.sourcePath == expected.file.path,
+              transfer.reportedSizeBytes == expected.file.sizeBytes else {
+            throw SafeUpdateTransportError.operationFailed(
+                "The installed map identity changed during validation."
+            )
+        }
+        let identity = try checkedIdentity(of: expected.file, expected: expected.identity, version: expected.version,
+                                           metadata: transfer.metadata)
+        if let expectedHash = expected.sha256 {
+            guard transfer.sha256.caseInsensitiveCompare(expectedHash) == .orderedSame else {
+                throw SafeUpdateTransportError.metadataMismatch
+            }
+        }
+        onProgress?(1)
+        return SafeUpdateRemoteObject(file: expected.file, identity: identity.identity, version: identity.version,
+                                      ownership: expected.ownership, sha256: transfer.sha256)
+    }
+
+    private func inspectCurrentByProof(_ expected: SafeUpdateRemoteObject, proof: ManagedRemovalProof,
+                                       onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        guard let hash = expected.sha256 else { throw SafeUpdateTransportError.metadataMismatch }
+        let read: SafeUpdateRecordedProofRead
+        do {
+            read = try reader.readRecordedProof(expected.file, sha256: hash, proof: proof,
+                                                onProgress: { onProgress?(0.95 * $0) })
+        } catch SafeUpdateRecordedProofError.contentMismatch {
+            // Exactly as a full SHA-256 mismatch: the update is blocked.
+            throw SafeUpdateTransportError.metadataMismatch
+        } catch SafeUpdateRecordedProofError.identityMismatch {
+            throw SafeUpdateTransportError.operationFailed(
+                "The installed map identity changed during validation."
+            )
+        }
+        guard read.itemID != 0 else {
+            throw SafeUpdateTransportError.operationFailed(
+                "The installed map identity changed during validation."
+            )
+        }
+        guard read.sampledBytes == proof.sampledBytes(fileSizeBytes: expected.file.sizeBytes) else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        let identity = try checkedIdentity(of: expected.file, expected: expected.identity, version: expected.version)
+        onProgress?(1)
+        // The recorded SHA-256 is the one the proof is bound to; the live
+        // regions reproduced its recorded digest in this session.
+        return SafeUpdateRemoteObject(file: expected.file, identity: identity.identity, version: identity.version,
+                                      ownership: expected.ownership, sha256: hash)
+    }
+
+    /// The new map after writing: the fresh-install sampled read-back against
+    /// the validated local artifact, with its size and sample-count rules,
+    /// then the IMG identity and version of the written object.
+    func verifyNew(_ object: SafeUpdateRemoteObject, expected artifact: SafeUpdateSourceArtifact,
+                   onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        guard let expectedIdentity = MapIdentity(provider: artifact.provider, region: artifact.region) else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        guard let itemID = object.file.itemID, itemID != 0,
+              object.file.sizeBytes == artifact.installSizeBytes else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        let offsets = SampledReadBackPlan.offsets(fileSizeBytes: artifact.installSizeBytes,
+                                                  sourceSHA256: artifact.sha256)
+        let readBack = try reader.readInstallSamples(object.file, artifact: artifact, offsets: offsets,
+            sampleLength: SampledReadBackPlan.sampleLength, onProgress: { onProgress?(0.95 * $0) })
+        let verification = TransferVerification.sampled(
+            sourceSizeBytes: artifact.installSizeBytes,
+            sourceSHA256: artifact.sha256,
+            remoteSizeBytes: readBack.reportedSizeBytes,
+            sampledBytes: readBack.sampledBytes,
+            sampleCount: readBack.sampleCount,
+            matchedSampleCount: readBack.matchedSampleCount
+        )
+        guard verification.isVerified, readBack.sampleCount == offsets.count else {
+            throw verification.status == .sizeMismatch
+                ? SafeUpdateTransportError.sizeMismatch : SafeUpdateTransportError.hashMismatch
+        }
+        guard readBack.itemID != 0 else { throw SafeUpdateTransportError.metadataMismatch }
+        let identity = try checkedIdentity(of: object.file, expected: expectedIdentity, version: artifact.version)
+        onProgress?(1)
+        // Verified as fresh installation verifies: the written object's
+        // sampled regions equal the validated artifact of this SHA-256.
+        return SafeUpdateRemoteObject(file: object.file, identity: identity.identity, version: identity.version,
+                                      ownership: .managedByTerento, sha256: artifact.sha256)
+    }
+
+    private func checkedIdentity(of file: InstalledMapFile, expected: MapIdentity, version: MapVersion?,
+                                 metadata parsed: GarminIMGMetadata? = nil) throws -> (identity: MapIdentity, version: MapVersion?) {
+        let metadata = try parsed ?? reader.readMetadata(file)
+        guard let identity = MapIdentity(provider: metadata.provider, region: metadata.region),
+              MapIdentityMatcher.matches(actual: identity, expected: expected),
+              metadata.version == version else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        return (identity, metadata.version)
     }
 }

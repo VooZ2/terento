@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 4,
+  "id": "aabbccdd-3333-4333-8333-333333333333",
+  "operationId": "aabbccdd-4444-4444-8444-444444444444",
+  "timestamp": "2026-09-01T12:00:00Z",
+  "model": "Synthetic map watch",
+  "usbVendorID": 2334,
+  "usbProductID": 0,
+  "transport": "MTP",
+  "provider": "freizeitkarte",
+  "region": "DEU",
+  "mapRelease": "2026-08",
+  "terentoVersion": "1.0.0",
+  "macOSVersion": "macOS 15.0",
+  "phaseOutcome": "SUCCEEDED",
+  "automaticFinishingResult": "VERIFIED",
+  "mapResultIndex": 0,
+  "selectedMapCount": 1,
+  "appBuild": "1",
+  "releaseLabel": "1.0.0-beta.10",
+  "writeStarted": true,
+  "remoteObjectCreated": true,
+  "cleanupAttempted": false,
+  "cleanupSucceeded": false,
+  "transferProgressBucket": "100",
+  "inventoryMetrics": {
+    "scope": "GARMIN",
+    "prewriteObjectCount": 1843,
+    "prewriteDurationMs": 4210,
+    "postwriteObjectCount": 1844,
+    "postwriteDurationMs": 3980
+  }
+}

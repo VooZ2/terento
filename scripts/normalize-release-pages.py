@@ -29,17 +29,70 @@ def page_path(locale: str) -> Path:
     return ROOT / "site" / prefix / "download" / "index.html"
 
 
+# Visible wording follows the manifest label family (VERSIONING.md). The
+# public program stays a beta; only the description of the current build
+# changes when the manifest publishes a release candidate. A stable label needs
+# its own copy review, so it is rejected instead of being described as a beta.
+LATEST = {
+    "beta": {"en": "Latest", "de": "Neueste Beta", "fr": "Dernière bêta", "pl": "Najnowsza beta", "cs": "Nejnovější beta", "it": "Ultima beta"},
+    "rc": {
+        "en": "Latest",
+        "de": "Neuester Release Candidate",
+        "fr": "Dernière version candidate",
+        "pl": "Najnowsza wersja kandydująca",
+        "cs": "Nejnovější kandidát na vydání",
+        "it": "Ultima release candidate",
+    },
+}
+CURRENT_BUILD = {
+    "beta": {
+        "en": "This is the current Terento beta.",
+        "de": "Dies ist die aktuelle Terento-Beta.",
+        "fr": "Il s’agit de la bêta actuelle de Terento.",
+        "pl": "To aktualna beta Terento.",
+        "cs": "Jde o aktuální betu Terento.",
+        "it": "Questa è la beta attuale di Terento.",
+    },
+    "rc": {
+        "en": "This is the current Terento release candidate.",
+        "de": "Dies ist der aktuelle Terento Release Candidate.",
+        "fr": "Il s’agit de la version candidate actuelle de Terento.",
+        "pl": "To aktualna wersja kandydująca Terento.",
+        "cs": "Jde o aktuálního kandidáta na vydání Terento.",
+        "it": "Questa è la release candidate attuale di Terento.",
+    },
+}
+
+
+def release_family(label: str) -> str:
+    match = re.fullmatch(r"\d+\.\d+\.\d+-(beta|rc)\.[1-9]\d*", label)
+    if not match:
+        raise ValueError(f"unsupported public release label for Download copy: {label}")
+    return match.group(1)
+
+
 def release_line(locale: str, label: str, published: date) -> str:
     month = MONTHS[locale][published.month - 1]
+    latest = LATEST[release_family(label)][locale]
     versions = {
-        "en": f"Latest: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Released {published.day} {month} {published.year}",
-        "de": f"Neueste Beta: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Veröffentlicht am {published.day}. {month} {published.year}",
-        "fr": f"Dernière bêta: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Publiée le {published.day} {month} {published.year}",
-        "pl": f"Najnowsza beta: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Wydana {published.day} {month} {published.year}",
-        "cs": f"Nejnovější beta: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Vydáno {published.day}. {month} {published.year}",
-        "it": f"Ultima beta: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Pubblicata il {published.day} {month} {published.year}",
+        "en": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Released {published.day} {month} {published.year}",
+        "de": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Veröffentlicht am {published.day}. {month} {published.year}",
+        "fr": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Publiée le {published.day} {month} {published.year}",
+        "pl": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Wydana {published.day} {month} {published.year}",
+        "cs": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Vydáno {published.day}. {month} {published.year}",
+        "it": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Pubblicata il {published.day} {month} {published.year}",
     }
     return f'<p class="download-release">{versions[locale]}</p>'
+
+
+def current_build_sentence(source: str, locale: str, label: str) -> tuple[str, int]:
+    known = "|".join(re.escape(copy[locale]) for copy in CURRENT_BUILD.values())
+    return re.subn(
+        rf'(<section class="download-detail"><h2>[^<]+</h2><p>)(?:{known})',
+        lambda match: match.group(1) + CURRENT_BUILD[release_family(label)][locale],
+        source,
+        count=1,
+    )
 
 
 def render(source: str, locale: str, release: dict[str, object], path: Path) -> str:
@@ -94,10 +147,12 @@ def render(source: str, locale: str, release: dict[str, object], path: Path) -> 
         source,
         count=1,
     )
-    if (dmg_count, zip_count, notes_count, line_count, schema_version_count, schema_download_count, schema_notes_count) != (1, 1, 1, 1, 1, 1, 1):
+    source, status_count = current_build_sentence(source, locale, label)
+    counts = (dmg_count, zip_count, notes_count, line_count, schema_version_count, schema_download_count, schema_notes_count, status_count)
+    if counts != (1, 1, 1, 1, 1, 1, 1, 1):
         raise ValueError(
-            f"{path}: expected one DMG, ZIP, notes, visible release record, and schema release record; "
-            f"got {(dmg_count, zip_count, notes_count, line_count, schema_version_count, schema_download_count, schema_notes_count)}"
+            f"{path}: expected one DMG, ZIP, notes, visible release record, schema release record and current-build status; "
+            f"got {counts}"
         )
     return source
 

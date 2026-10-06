@@ -51,6 +51,10 @@ struct SafeDeleteTarget: Equatable, Sendable {
     /// Explicitly authorizes the beta one-by-one removal path for a parsed
     /// third-party map. This remains false for every manifest-backed target.
     let allowsExternalRemoval: Bool
+    /// Sampled removal proof from the managed manifest entry, if recorded.
+    /// The native managed delete enforces it; nil means the full SHA-256.
+    /// Never set for external maps.
+    let removalProof: ManagedRemovalProof?
 
     init(
         deviceKey: String,
@@ -62,7 +66,8 @@ struct SafeDeleteTarget: Equatable, Sendable {
         expectedSizeBytes: UInt64,
         expectedSHA256: String,
         expectedVersion: MapVersion? = nil,
-        allowsExternalRemoval: Bool = false
+        allowsExternalRemoval: Bool = false,
+        removalProof: ManagedRemovalProof? = nil
     ) {
         self.deviceKey = deviceKey
         self.mapIdentity = mapIdentity
@@ -74,6 +79,7 @@ struct SafeDeleteTarget: Equatable, Sendable {
         self.expectedSHA256 = expectedSHA256
         self.expectedVersion = expectedVersion
         self.allowsExternalRemoval = allowsExternalRemoval
+        self.removalProof = removalProof
     }
 
     var sourceFile: InstalledMapFile {
@@ -96,7 +102,8 @@ struct SafeDeleteTarget: Equatable, Sendable {
             expectedSizeBytes: expectedSizeBytes,
             expectedSHA256: expectedSHA256,
             expectedVersion: expectedVersion,
-            allowsExternalRemoval: allowsExternalRemoval
+            allowsExternalRemoval: allowsExternalRemoval,
+            removalProof: removalProof
         )
     }
 }
@@ -128,9 +135,18 @@ struct SafeDeleteDeviceObject: Equatable, Sendable {
 protocol SafeDeleteTransport: Sendable {
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject
     func deleteExactObject(_ target: SafeDeleteTarget) throws
+    func inspectExactObject(_ target: SafeDeleteTarget,
+                            onProgress: (@Sendable (TransferProgress) -> Void)?) throws -> SafeDeleteDeviceObject
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws
 }
 
 extension SafeDeleteTransport {
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
+        try deleteExactObject(target)
+    }
+
     func inspectExactObject(
         _ target: SafeDeleteTarget,
         onProgress: (@Sendable (TransferProgress) -> Void)?
@@ -141,11 +157,21 @@ extension SafeDeleteTransport {
 
 enum SafeDeleteProgressState: Equatable, Sendable {
     case verifying
+    case checkingContent
     case postVerifying
     case completed
 }
 
 struct SafeDeleteProgress: Equatable, Sendable {
+    var detail: String {
+        switch state {
+        case .verifying: return "Checking the selected map"
+        case .checkingContent: return "Checking map contents before removal"
+        case .postVerifying: return "Confirming the map was removed"
+        case .completed: return "Map removal confirmed"
+        }
+    }
+
     let state: SafeDeleteProgressState
     let bytesCompleted: UInt64
     let totalBytes: UInt64
@@ -260,7 +286,7 @@ struct SafeDeleteAdapter: Sendable {
             current = try transport.inspectExactObject(target, onProgress: { transfer in
                 progressReporter.report(
                     state: .verifying,
-                    fraction: transfer.fractionCompleted * 0.84,
+                    fraction: transfer.fractionCompleted * 0.20,
                     bytesPerSecond: transfer.bytesPerSecond
                 )
             })
@@ -291,10 +317,13 @@ struct SafeDeleteAdapter: Sendable {
             )
         }
         let resolvedTarget = target.resolvingObjectID(currentObjectID)
-        progressReporter.report(state: .verifying, fraction: 0.88)
+        progressReporter.report(state: .checkingContent, fraction: 0.20)
 
         do {
-            try transport.deleteExactObject(resolvedTarget)
+            try transport.deleteExactObject(resolvedTarget, onProgress: { transfer in
+                progressReporter.report(state: .checkingContent,
+                    fraction: 0.20 + 0.70 * transfer.fractionCompleted)
+            })
         } catch let error as SafeDeleteTransportError {
             return result(target, status: status(for: error), message: message(for: error))
         } catch {
@@ -321,7 +350,7 @@ struct SafeDeleteAdapter: Sendable {
             do {
                 progressReporter.report(
                     state: .postVerifying,
-                    fraction: 0.94 + (Double(attempt) * 0.02)
+                    fraction: 0.93
                 )
                 let remaining = try rescan()
                 observedSuccessfulRescan = true
@@ -482,7 +511,7 @@ struct SafeDeleteAdapter: Sendable {
         case .deviceDisconnected:
             return "The Garmin device was disconnected. Nothing else was changed."
         case .deviceBusy:
-            return "The Garmin watch is busy or another app is using its USB connection. Close Garmin Finder and Garmin Express, eject the watch from Finder, reconnect it, and choose Refresh. Nothing was removed."
+            return "The watch is busy or another app is using it. Quit Garmin Express and other apps that connect to your watch, unplug the watch and plug it back in, then choose Refresh. Nothing was removed."
         case .objectNotFound:
             return "The map was not found on the Garmin device. Nothing was removed."
         case .operationFailed:

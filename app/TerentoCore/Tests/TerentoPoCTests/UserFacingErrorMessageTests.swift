@@ -27,7 +27,11 @@ struct UserFacingErrorMessageTests {
             MTPRunningApplication(bundleIdentifier: "app.terento.mac", displayName: "Terento"),
             MTPRunningApplication(bundleIdentifier: "com.getdropbox.dropbox", displayName: "Dropbox")
         ])
-        expect(detected == ["Garmin Express", "Lightroom Classic"], "only running main apps with actual names are shown; helpers and invented labels excluded")
+        expect(detected == ["Garmin Express"], "only running main apps with actual names are shown; helpers, invented labels and import-only apps excluded")
+        expect(MTPConnectionConflictDiagnostics.detectedApplicationNames([
+            MTPRunningApplication(bundleIdentifier: "com.apple.Preview", displayName: "Preview"),
+            MTPRunningApplication(bundleIdentifier: "com.apple.Photos", displayName: "Photos")
+        ]).isEmpty, "a running Preview or Photos is not advice to close it")
         expect(UserFacingErrorMessage.forDevice(
             SyntheticError(message: "No Garmin MTP device detected"), detectedConflicts: ["OpenMTP"]
         ) == "No Garmin watch was found. Connect it and try again.", "absent device does not blame an app")
@@ -36,7 +40,7 @@ struct UserFacingErrorMessageTests {
         ) == "Close MacDroid and try connecting again.", "USB-present connection timeout uses agreed message")
         expect(UserFacingErrorMessage.forConnectionTimeout(
             garminUSBPresent: true, detectedConflicts: []
-        ) == "Your Garmin was detected, but the connection did not become ready within 2 minutes. Reconnect it and try again.", "USB-present timeout without conflicts preserves the detailed detected-device message")
+        ) == "Your Garmin was detected, but it didn't become ready within 2 minutes. Unplug it, wait 5 seconds, and plug it back in.", "USB-present timeout without conflicts gives a concrete next step")
         expect(UserFacingErrorMessage.forConnectionTimeout(
             garminUSBPresent: false, detectedConflicts: []
         ) == "We couldn't connect to your Garmin within 2 minutes. Reconnect it and try again.", "USB-absent timeout preserves the existing timeout description")
@@ -49,6 +53,18 @@ struct UserFacingErrorMessageTests {
         expect(MTPConnectionConflictDiagnostics.detectedApplicationNames([
             MTPRunningApplication(bundleIdentifier: "com.eltima.MacDroid", displayName: "MacDroid")
         ]) == ["MacDroid"], "actual running MacDroid main application is detected")
+        for outcome in [DeviceConnectOutcome.busy, .multipleDevices, .notMTPMode] {
+            let attention = UserFacingErrorMessage.detectionAttention(outcome)
+            expect(attention != nil && !attention!.title.isEmpty && !attention!.description.isEmpty,
+                   "\(outcome) has a live title and description while detection continues")
+            let final = UserFacingErrorMessage.forDetectionFailure(outcome, garminUSBPresent: true, detectedConflicts: ["MacDroid"])
+            expect(!final.contains("MacDroid"), "\(outcome) final message does not blame a running app")
+        }
+        expect(UserFacingErrorMessage.detectionAttention(.connected) == nil, "connected has no attention copy")
+        expect(UserFacingErrorMessage.forDetectionFailure(.failed, garminUSBPresent: true, detectedConflicts: [])
+            == "The watch stopped responding. Unplug it, wait 5 seconds, plug it back in.", "a stalled read gives the replug recovery step")
+        expect(UserFacingErrorMessage.forDetectionFailure(.notMTPMode, garminUSBPresent: true, detectedConflicts: []).contains("USB Mode"),
+               "a Garmin invisible to file transfer gets the USB-mode hint")
         print("PASS: focused error attribution and running application diagnostics")
     }
 

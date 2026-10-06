@@ -25,8 +25,9 @@ device telemetry; the audit must pass them through API validation locally.
 
 | Change | Required checks |
 | --- | --- |
-| Ordinary Markdown, including component and contracts README | shared/CI documentation and inventory checks |
-| README release identity, release notes, packaging/native dependency docs, third-party notices | release plus shared/CI |
+| Ordinary Markdown, including component READMEs | shared/CI documentation and inventory checks |
+| Root README, release notes, `VERSIONING.md`, packaging/native dependency docs, third-party notices | release plus shared/CI; the root README also site |
+| Markdown read as a contract by a suite test (`contracts/README.md`, `site-deploy/README.md`) | that suite plus shared/CI |
 | Legal web source | site, release, shared/CI |
 | App shell or presentation | app, shared/CI |
 | Native core or lifecycle | app, native, shared/CI |
@@ -35,8 +36,9 @@ device telemetry; the audit must pass them through API validation locally.
 
 The full release matrix runs on tags, manual full checks, weekly CI and release
 packaging. The required `build-and-test` aggregate rejects failed/cancelled jobs;
-only intentionally unselected suites may be skipped. A newer PR commit cancels
-older PR CI. Deployment jobs are serialized, not cancelled mid-mutation.
+only intentionally unselected suites may be skipped. In CI (`CI=true`) a suite
+runs every runner and lists all failing runners at the end; local runs stop at
+the first failure. A newer PR commit cancels older PR CI. Deployment jobs are serialized, not cancelled mid-mutation.
 
 ## Purpose of each check
 
@@ -56,6 +58,13 @@ Applying migrations twice deliberately tests idempotency; do not remove the
 second execution. Deployment repeats backend checks on its own exact commit;
 removing that repeat requires a verified same-SHA quality artifact handoff, not
 trust in an earlier PR head. The current explicit rerun is retained.
+
+PostgreSQL read-model regressions run production SQL against PGlite
+(PostgreSQL/WASM) with every catalog migration applied. CI installs the pinned
+`@electric-sql/pglite@0.5.8` with `npm install --no-save --ignore-scripts`,
+checks the lockfile integrity hash, and exports `PGLITE_MODULE_PATH`. With
+`CI=true` a missing module fails those tests instead of skipping them; local
+runs without the module skip them and say so.
 
 The production-operations contract runner exercises the fixed root helper,
 generic image-inventory/ledger-prefix migration gate, one deploy lock spanning

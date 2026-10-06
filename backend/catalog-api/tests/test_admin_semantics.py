@@ -75,6 +75,7 @@ from terento_catalog.db import (
     _overview_bucket_floor,
 )
 from terento_catalog.failure_reasons import normalize_failure_reason
+from admin_test_utils import metric_tone, metric_value
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -365,15 +366,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"}, "csrf",
         ).decode()
         installation_panel = installations.split(
-            "class=\"map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis\"",
-            1,
+            'class="admin-card installation-kpis"', 1,
         )[1].split("\n        </section>", 1)[0]
-        self.assertEqual(
-            installation_panel.count('class="map-statistics-kpi-value"')
-            + installation_panel.count('class="map-statistics-kpi-value '),
-            5,
-        )
-        self.assertIn("<span>Open errors</span>", installation_panel)
+        self.assertEqual(installation_panel.count("<div class='admin-metric'") + installation_panel.count("<a class='admin-metric "), 5)
+        self.assertIn(">Open problems<", installation_panel)
+        self.assertIn("data-scope='all'>All time</span>", installation_panel)
 
         device = _admin_device_payload([{
             "device_id": "garmin-fenix-8-47-amoled", "model": "fēnix 8",
@@ -384,25 +381,23 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         }], None)["devices"][0]
         detail = device_detail_page(device, {"username": "operator"}, "csrf").decode()
         detail_panel = detail.split(
-            "class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'",
+            "class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics'",
             1,
         )[1].split("<section class='diagnostics-detail-section'", 1)[0]
-        self.assertIn("Installation outcomes", detail_panel)
-        self.assertIn("<span>Attempts</span>", detail_panel)
-        self.assertIn("<span>Failed</span>", detail_panel)
-        self.assertIn("<span>Open errors</span>", detail_panel)
-        self.assertIn("<span>Last activity</span><strong>—</strong>", detail_panel)
-        self.assertIn(".admin-kpi-panel.model-statistics .timestamp-metric>strong", detail)
+        self.assertIn(">Installs</h2>", detail_panel)
+        for label in ("Attempts", "Failed", "Open problems", "Last report"):
+            self.assertIn(f"<span class='admin-metric-label'>{label}", detail_panel)
+        self.assertIn("data-stat='lastReport'>—<span class='sr-only'>Unknown</span>", detail_panel)
         self.assertIn("class='model-evidence-grid'", detail)
         self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", detail)
         detail_grid = detail.split("class='model-evidence-grid'", 1)[1].split("{''.join", 1)[0]
         positions = [detail_grid.index(label) for label in (
-            "Installation outcomes", "Administration", "Device information",
+            "model-installation-kpis-title", "Administration", "Device information",
             "Technical details", "Installation history",
         )]
         self.assertEqual(positions, sorted(positions))
 
-    def test_overview_period_changes_chart_without_changing_all_time_badges(self):
+    def test_overview_tiles_follow_the_period_and_all_time_stays_labelled(self):
         def render(period, period_count):
             return overview_page(
                 {
@@ -436,13 +431,21 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
         day = render("24h", 1)
         month = render("30d", 30)
-        for body in (day, month):
-            self.assertIn("aria-label='All-time installation totals'", body)
-            self.assertEqual(body.count("title='All time'"), 6)
-            self.assertNotIn("overview-map-total-scope", body)
-            self.assertIn("<strong>90</strong><small>Successful</small>", body)
-            self.assertIn("<strong>180</strong><small>Successful</small>", body)
+        for body, count, scope in ((day, 1, "Last 24 hours"), (month, 30, "Last 30 days")):
+            tiles = body.split("aria-label='Dashboard summary'", 1)[1].split("<div class='overview-primary-grid'>", 1)[0]
+            # KPI tiles follow the selected period and say so visibly (ADM-04/05).
+            self.assertIn(f"data-stat='completedInstallCount'>{count}</strong>", tiles)
+            self.assertIn(f"data-stat='completedDownloadCount'>{count}</strong>", tiles)
+            self.assertIn(f">{scope}</span>", tiles)
+            # All-time totals stay visible, labelled with an All time chip.
+            all_time = body.split("class='overview-all-time'")
+            self.assertEqual(len(all_time), 3)
+            for line in all_time[1:]:
+                self.assertIn("data-scope='all'>All time</span>", line.split("</p>", 1)[0])
+            self.assertIn("Installs <strong>90</strong>", body)
+            self.assertIn("Successful <strong>180</strong>", body)
             self.assertIn("href='/admin/map-statistics?period=all'", body)
+            self.assertNotIn("title='All time'", body)
         self.assertNotEqual(
             day.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0],
             month.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0],
@@ -542,7 +545,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 recognized_map_capable_evidence=False,
             )
         )
-        self.assertIn("status-unavailable", _status_badge(""))
+        unavailable = _status_badge("")
+        self.assertIn("data-status='UNAVAILABLE'", unavailable)
+        self.assertIn("<span>Unavailable</span>", unavailable)
+        self.assertIn("admin-icon", unavailable)
+        self.assertNotIn("role='img'", unavailable)
         self.assertIsNone(calculate_compatibility_status(successful_install_count=0))
 
     def test_dashboard_recomputes_status_and_does_not_trust_stale_view_status(self):
@@ -572,13 +579,25 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 "attention": [{"model": "Old unresolved watch", "open_error": True,
                     "has_failed": True, "last_occurred_at": "2026-01-01T00:00:00Z"}]},
         }, {"username": "operator"}, "csrf").decode()
-        self.assertIn("Installation problems", body)
-        self.assertIn("Installation problems · 12", body)
-        self.assertNotIn("12 pending", body)
+        # Without the canonical review summary the row is unavailable; the
+        # result-level compatibility fallback is never shown instead (ADM-02).
+        self.assertIn("aria-label='Open problems: unavailable'", body)
+        self.assertNotIn(">12<", body)
+        self.assertIn("Review counts are unavailable.", body)
+        self.assertNotIn("No pending work", body)
         self.assertIn("Needs attention</h2>", body)
-        self.assertNotIn("No issues need attention", body)
         self.assertNotIn("attention-shortcuts", body)
-        self.assertNotIn("Review queue shortcuts", body)
+
+        counted = overview_page({
+            "period": "24h", "data": {"hasData": False},
+            "compatibility": {"hasData": False, "allTimeOpenErrorCount": 3},
+        }, {"username": "operator", "admin_review_summary": {
+            "available": True, "installationIssues": 12, "githubIssuesInProgress": 0,
+            "identityPending": 0, "readyToPublish": 0, "missingDiagnostics": 0,
+        }}, "csrf").decode()
+        self.assertIn("aria-label='Open problems: 12'", counted)
+        self.assertIn("href='/admin/installations?state=open'", counted)
+        self.assertNotIn("aria-label='Open problems: 3'", counted)
 
     def test_overview_query_uses_independent_unresolved_queue(self):
         from unittest.mock import MagicMock
@@ -696,10 +715,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "githubSync":{"overdue":1,"errors":1}}, {"username":"operator"}, "csrf").decode()
         cards = body.split("id='main-content'", 1)[1]
         self.assertLess(cards.index("<h2>Database</h2>"), cards.index("<h2>API</h2>"))
-        self.assertIn("GitHub issue sync", cards)
+        self.assertIn("<h2>Issue sync</h2>", cards)
         self.assertNotIn("class='admin-health-summary'", body)
         self.assertNotIn("Healthy checks stay collapsed; expand a check for its evidence and next action.", body)
-        self.assertIn("<details class='overview-panel admin-disclosure'><summary>Weekly results", body)
+        self.assertIn("<details class='admin-card admin-disclosure system-health-weekly'><summary>Weekly results", body)
 
     def test_overview_does_not_turn_missing_evidence_into_zero(self):
         body = overview_page(
@@ -723,8 +742,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "csrf",
         ).decode()
         self.assertIn("<h1>Dashboard</h1>", body)
-        self.assertIn("<strong>—</strong><small>Successful</small>", body)
-        self.assertIn("<strong class='admin-error-counter'>—</strong><small>Failed</small>", body)
+        # Missing all-time totals stay unknown (—), measured period zeros stay 0.
+        self.assertIn("Installs <strong>—</strong>", body)
+        self.assertIn("Successful <strong>—</strong>", body)
+        self.assertIn("data-stat='completedInstallCount'>0</strong>", body)
+        self.assertIn("data-stat='completedDownloadCount'>—<span class='sr-only'>Unknown</span>", body)
+        self.assertIn("Failed 0</span> · —", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -790,25 +813,25 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("Last 7 days", body)
         self.assertIn("Install failed", body)
-        self.assertIn("/admin/providers/opentopomap", body)
+        # One provider-problem definition: a degraded provider is one row count
+        # that opens Providers, not a second per-provider list (ADM-10).
+        self.assertIn("aria-label='Provider problems: 1'", body)
+        self.assertIn("href='/admin/providers'", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
-        self.assertIn("aria-label='All-time installation totals'", body)
-        self.assertNotIn("overview-map-total-scope", body)
-        self.assertEqual(body.count("title='All time'"), 6)
-        self.assertIn("aria-label='Successful, all time: 3'", body)
-        self.assertIn("aria-label='Failed, all time: 1'", body)
-        self.assertIn("aria-label='Success rate, all time: 75%'", body)
-        self.assertIn("<strong>3</strong><small>Successful</small>", body)
-        self.assertIn("<strong>75%</strong><small>Success rate</small>", body)
-        self.assertIn("<strong>2</strong><small>Successful</small>", body)
-        self.assertIn("<strong>66.7%</strong><small>Success rate</small>", body)
+        self.assertIn("data-stat='completedInstallCount'>3</strong>", body)
+        self.assertIn("Failed 1</span> · 75%", body)
+        self.assertIn("data-stat='completedDownloadCount'>2</strong>", body)
+        self.assertIn("Failed 1</span> · 66.7%", body)
+        self.assertIn("Installs <strong>3</strong> · Failed <strong>1</strong> · Rate <strong>75%</strong>", body)
+        self.assertIn("Successful <strong>2</strong> · Failed <strong>1</strong> · Rate <strong>66.7%</strong>", body)
         self.assertIn("/admin/map-statistics?period=7d", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("overview-chart-update", body)
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
         self.assertIn("<h2 id='overview-activity-title'>Activity</h2>", body)
-        self.assertIn("Map downloads</h2>", body)
+        self.assertIn(">Downloads</h2>", body)
+        self.assertIn(">Installs</h2>", body)
         self.assertNotIn("<section class='overview-panel overview-download-panel'", body)
         self.assertNotIn("<small>Updates</small>", body)
         self.assertNotIn("Device report unavailable", body)
@@ -950,7 +973,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("fetch(url", body)
         self.assertNotIn("onchange='this.form.submit()'", body)
         self.assertIn("value='30d' selected", body)
-        self.assertIn("overview-attention-empty", body)
+        # Unknown review counts are not an empty queue.
+        self.assertNotIn("overview-attention-empty", body)
+        self.assertIn("Review counts are unavailable.", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
 
     def test_overview_trend_fills_selected_range_without_fabricating_events(self):
@@ -1010,12 +1035,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        attention = body.split("<section class='overview-panel overview-attention-panel", 1)[1].split("</section>", 1)[0]
+        attention = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split("</section>", 1)[0]
         self.assertNotIn("No issues need attention", attention)
         self.assertIn("Needs attention</h2>", attention)
         self.assertNotIn("attention-shortcuts", attention)
-        self.assertIn("No pending work.", attention)
+        self.assertNotIn("No pending work.", attention)
         self.assertNotIn("Download failed", attention)
+        # Fixed category rows keep their shape whatever the counts are.
+        self.assertEqual(attention.count("class='overview-attention-row'"), 9)
 
     def test_failure_reason_normalizes_source_validation_variants(self):
         for category, stage, code in (
@@ -1078,9 +1105,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Last 24 hours", body)
         self.assertLess(body.index("id='map-statistics-coverage'"), body.index("id='map-statistics-provider-table'"))
         self.assertIn("Top countries", body)
-        self.assertIn("Maps by provider", body)
+        self.assertIn(">Top maps</h2>", body)
         self.assertIn(">Downloads</h2>", body)
-        self.assertIn(">Installs and updates</h2>", body)
+        self.assertIn(">Installs</h2>", body)
         self.assertNotIn("Popular maps", body)
         self.assertNotIn("id='regions-view'", body)
 
@@ -1112,8 +1139,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         body = _overview_trend_chart([{
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
-        self.assertIn("Install succeeded: 3", body)
-        self.assertIn("class='overview-chart-success'", body)
+        self.assertIn("Custom .img install: 3", body)
+        self.assertIn("class='overview-chart-custom'", body)
         self.assertIn("<rect", body)
         self.assertNotIn("<polyline", body)
         self.assertNotIn("<circle", body)
@@ -1258,7 +1285,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 {"bucket": "2026-09-10T00:00:00Z", "dmg_count": 2, "zip_count": 1},
             ],
         }, "UTC", period="7d")
-        self.assertIn("Observed download increases between checks over the last 7 days", body)
+        self.assertIn("Terento app downloads: observed counter increases between checks over the last 7 days", body)
         self.assertIn(".dmg downloads: 2 · observed increase ending 10 Sep · UTC", body)
         self.assertNotIn("10:00", body)
 
@@ -1314,7 +1341,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         for chart in charts:
             self.assertEqual(len(chart.findall("g/rect")), 1)
             self.assertEqual(
-                len([group for group in chart.findall("g") if group.attrib.get("role") == "group"]),
+                len([group for group in chart.findall("g") if group.attrib.get("role") == "img" and group.attrib.get("tabindex") == "0"]),
                 2,
             )
         self.assertNotIn("<circle", body)
@@ -1445,25 +1472,21 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"}, "csrf",
         ).decode()
         self.assertIn("App downloads</h2>", body)
-        self.assertIn("<section class='overview-panel overview-download-panel'", body)
+        self.assertIn("<section class='admin-card overview-panel overview-download-panel'", body)
+        self.assertIn("href='/admin/glossary#terento-app-download'", body)
         self.assertNotIn("Observed download increases between checks.", body)
         self.assertNotIn("overview-info", body)
-        self.assertNotIn("Observed GitHub counter increases between checks", body)
-        self.assertIn("Last successful data update:", body)
-        self.assertIn("overview-download-heading", body)
-        self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body)
-        self.assertIn("overview-download-total' aria-label='.zip downloads total: 11'><strong>11</strong><small>.zip", body)
-        self.assertIn("overview-download-totals", body)
-        self.assertIn("overview-map-heading", body)
+        self.assertIn("Last update ", body)
+        # One compact All time line carries the totals; the legend the period.
+        totals = body.split("class='overview-all-time overview-download-all-time'", 1)[1].split("</p>", 1)[0]
+        self.assertIn("data-scope='all'>All time</span>", totals)
+        self.assertIn(".dmg <strong>23</strong> · .zip <strong>11</strong>", totals)
+        self.assertIn("Last update ", totals)
+        self.assertNotIn("overview-download-totals", body)
         self.assertLess(body.index("overview-attention-title"), body.index("overview-activity-title"))
         self.assertLess(body.index("overview-activity-title"), body.index("overview-downloads-title"))
         self.assertNotIn("overview-kpi-panel", body)
-        self.assertNotIn("Total downloads:</span>", body)
-        heading_index = body.index("overview-download-heading")
-        self.assertLess(
-            body.index("overview-download-totals", heading_index),
-            body.index("overview-chart-wrap", heading_index),
-        )
+        self.assertLess(body.index("overview-chart-wrap", body.index("overview-downloads-title")), body.index("class='overview-all-time overview-download-all-time'"))
 
     def test_overview_publication_review_opens_filtered_devices_workspace(self):
         body = overview_page(
@@ -1486,16 +1509,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn(
-            "class='overview-detail-link' href='/admin/devices?review=publication'",
-            body,
-        )
+        self.assertIn("href='/admin/devices?review=publication'", body)
+        # The capped reviewRequired list is never used as a publication count.
+        self.assertIn("aria-label='Publication review: unavailable'", body)
         self.assertNotIn(
             "/admin/devices/garmin-fenix-8-51-amoled?from=installations",
             body,
         )
 
-    def test_time_chart_uses_stacked_bars_and_combines_custom_successes(self):
+    def test_time_chart_stacks_custom_img_as_its_own_series(self):
         import xml.etree.ElementTree as ET
         from terento_catalog.admin import _overview_trend_chart
         body = _overview_trend_chart([{
@@ -1504,8 +1526,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         }], "hour")
         svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
         bars = svg.findall("g/rect")
-        self.assertEqual(len(bars), 2)
-        self.assertEqual(bars[0].attrib["x"], bars[1].attrib["x"])
+        self.assertEqual(
+            [bar.attrib["class"] for bar in bars],
+            ["overview-chart-success", "overview-chart-custom", "overview-chart-failed"],
+        )
+        self.assertEqual({bar.attrib["x"] for bar in bars}, {bars[0].attrib["x"]})
         self.assertAlmostEqual(
             float(bars[1].attrib["y"]) + float(bars[1].attrib["height"]),
             float(bars[0].attrib["y"]),
@@ -1514,8 +1539,13 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertAlmostEqual(sum(float(bar.attrib["height"]) for bar in bars), 202 * 6 / 8, places=1)
         self.assertNotIn("<polyline", body)
         self.assertNotIn("<circle", body)
-        self.assertIn("Install succeeded: 5", body)
+        self.assertIn("Install successful: 2", body)
+        self.assertIn("Custom .img install: 3", body)
         self.assertIn("Install failed: 1", body)
+        # The legend names every series; custom .img keeps its period count.
+        legend = body[body.index("<ul class='overview-chart-legend"):]
+        self.assertIn("<span>Custom .img install</span><strong>3</strong>", legend)
+        self.assertIn("<i class='overview-chart-custom'", legend)
 
     def test_install_chart_stacks_all_segments_at_one_x_position(self):
         import re
@@ -1553,7 +1583,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             202,
             places=1,
         )
-        self.assertIn("Total operations: 8", body)
+        self.assertIn("Total: 8", body)
         self.assertNotIn("<polyline", body)
         for chart in charts:
             mobile_bars = chart.findall("g/rect")
@@ -1588,7 +1618,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             202 * 9 / 12,
             places=1,
         )
-        self.assertIn("Total operations: 9", body)
+        self.assertIn("Total: 9", body)
 
     def test_stacked_chart_zero_cases_do_not_create_placeholder_bars(self):
         import xml.etree.ElementTree as ET
@@ -1753,13 +1783,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "csrf",
             selected_filters={"period": "all"},
         ).decode()
-        self.assertIn("aria-label='Successful, all time: 96'", dashboard_body)
-        self.assertIn("aria-label='Failed, all time: 10'", dashboard_body)
-        self.assertIn("aria-label='Success rate, all time: 90.6%'", dashboard_body)
+        self.assertIn("data-stat='completedInstallCount'>96</strong>", dashboard_body)
+        self.assertIn("Failed 10</span> · 90.6%", dashboard_body)
+        # With All time selected the tiles are the all-time totals; no
+        # duplicate All time line is rendered under the chart.
+        self.assertNotIn("Installs <strong>96</strong> · Failed <strong>10</strong>", dashboard_body)
         self.assertIn("data-stat='completedInstalls'>96</strong>", maps_body)
         self.assertIn("data-stat='failedInstalls'", maps_body)
         self.assertIn("data-stat='installSuccessRate'>90.6%</strong>", maps_body)
-        self.assertIn("Install succeeded: 96", dashboard_body)
+        self.assertIn("Install successful: 96", dashboard_body)
         self.assertIn("Install failed: 10", dashboard_body)
 
     def test_map_overview_fallback_excludes_final_prewrite_failures(self):
@@ -1769,7 +1801,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         database.admin_overview_map_snapshot(since, period="24h")
 
         raw_queries = "\n".join(query for query, _ in database.calls)
-        self.assertIn("e.phase_outcome = 'FAILED'", raw_queries)
+        self.assertIn("terento_fresh_result_classification(", raw_queries)
         self.assertNotIn("e.write_started IS NOT FALSE", raw_queries)
         self.assertIn("A final compatibility failure is an installation", inspect.getsource(Database.admin_overview_map_snapshot))
 
@@ -1890,9 +1922,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "pendingReviewTasks": 6,
             "total": 6,
         })
+        from terento_catalog.db import INSTALLATION_PROBLEM_OPERATIONS_CTE
         source = inspect.getsource(Database.admin_review_summary)
-        self.assertIn("diagnostic_status = 'ACTIVE'", source)
-        self.assertIn("GROUP BY COALESCE(operation_id::text", source)
+        self.assertIn("INSTALLATION_PROBLEM_OPERATIONS_CTE", source)
+        self.assertIn("diagnostic_status = 'ACTIVE'", INSTALLATION_PROBLEM_OPERATIONS_CTE)
+        self.assertIn("COALESCE(operation_id::text", INSTALLATION_PROBLEM_OPERATIONS_CTE)
+        self.assertIn("GROUP BY operation_key", INSTALLATION_PROBLEM_OPERATIONS_CTE)
         self.assertIn("missing_diagnostics", source)
         self.assertIn("canonical_device_model_id IS NOT NULL", source)
         self.assertIn("review_status = 'PENDING'", source)
@@ -2351,7 +2386,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             identity=result["compatibility_identity"], operations=[result],
         ).decode()
         table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
-        for label in ("Region", "Result", "Issue", "Review", "Action"):
+        for label in ("Map", "Result", "GitHub issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
         self.assertNotIn(">Stage<", table)
         self.assertNotIn(">Code<", table)
@@ -2364,7 +2399,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("SEND_OBJECT_FAILED", table)
         self.assertIn("SEND_OBJECT_FAILED", dialog)
         self.assertIn("action='/admin/diagnostics/resolve'", dialog)
-        self.assertIn("diagnostic-state-in_progress", dialog)
+        self.assertIn("data-status='IN_PROGRESS'", dialog)
         self.assertIn("GitHub issue workflow", dialog)
 
     def test_dashboard_is_model_summary_only_and_errors_link_to_exact_drilldown(self):
@@ -2411,18 +2446,18 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             }],
         ).decode()
         self.assertNotIn("class='metric'", body)
-        self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
-        self.assertIn("<span>Attempts</span><strong>3</strong>", body)
-        self.assertIn("<span>Successful</span><strong>1</strong>", body)
-        self.assertIn("<span>Failed</span><strong class=\"installation-failed-value\">2</strong>", body)
-        self.assertIn("<span>Success rate</span><strong>33.3%</strong>", body)
+        self.assertIn('class="admin-card installation-kpis"', body)
+        self.assertEqual(metric_value(body, "Attempts"), "3")
+        self.assertEqual(metric_value(body, "Successful"), "1")
+        self.assertEqual(metric_value(body, "Failed"), "2")
+        self.assertEqual(metric_value(body, "Success rate"), "33.3%")
         self.assertNotIn("Historical failures: 1", body)
         self.assertNotIn('id="evidence-title"', body)
         self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
-        self.assertIn("1 open error", body)
+        self.assertIn("1 open problem", body)
         self.assertIn("/admin/devices/garmin-fenix-8-51-amoled?from=installations&amp;state=open#installations", body)
         self.assertIn("data-diagnostics-url='/admin/devices/garmin-fenix-8-51-amoled?from=installations#installations'", body)
-        self.assertIn("Open errors ↓", body)
+        self.assertIn("Open problems ↓", body)
         self.assertIn("Latest activity", body)
         self.assertIn("Model ↑", body)
         self.assertNotIn("Diagnostic record", body)
@@ -2487,7 +2522,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Identity review", evidence_row)
         self.assertNotIn("class='error-count'", evidence_row)
         self.assertNotIn("historical-number", evidence_row)
-        self.assertIn("<td class='column-number numeric installation-failed-value'>0</td>", evidence_row)
+        self.assertIn("<td class='column-number numeric'><strong class='admin-error-counter'>0</strong></td>", evidence_row)
         self.assertIn("class='admin-error-counter'>0</strong>", evidence_row)
 
     def test_pending_and_canonical_rows_with_the_same_text_keep_distinct_destinations(self):
@@ -2662,7 +2697,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             }],
         ).decode()
         table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
-        for label in ("Date", "Region", "Result", "Issue", "Review", "Action"):
+        for label in ("Date", "Map", "Result", "GitHub issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
         self.assertNotIn(">Stage<", table)
         self.assertNotIn(">Code<", table)
@@ -2745,9 +2780,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         one_main = one.split('<main data-admin-revisions=', 1)[1].split("</main>", 1)[0]
         self.assertIn('id="evidence-filters" role="search" hidden', one_main)
         self.assertNotIn("installation-pagination", one_main)
-        self.assertNotIn('data-installation-filter="identity-pending"', one_main)
+        # Identity review is a working quick filter (ADM-06); Dashboard links to it.
+        self.assertIn('data-installation-filter="identity-pending"', one_main)
+        self.assertIn("selectedQuickFilter === 'identity-pending' && Number(row.dataset.identityPending || 0) > 0", one)
         evidence_row = one_main.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
-        self.assertIn("<td class='column-number numeric installation-failed-value'>1</td>", evidence_row)
+        self.assertIn("<td class='column-number numeric'><strong class='admin-error-counter is-positive'>1</strong></td>", evidence_row)
         self.assertNotIn("historical-number", evidence_row)
 
         rows = [dict(row, model=f"Model {index}", compatibility_identity=f"model-{index}") for index in range(26)]
@@ -2773,15 +2810,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("<h1>Installations</h1>", body)
         self.assertIn("All time · Model evidence", body)
-        self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
-        labels = ("Attempts", "Successful", "Failed", "Success rate", "Open errors")
+        self.assertIn('class="admin-card installation-kpis"', body)
+        labels = ("Attempts", "Successful", "Failed", "Success rate", "Open problems")
         for label in labels:
-            self.assertIn(f"<span>{label}</span>", body)
-        self.assertNotIn("<span>Variants</span>", body)
-        self.assertIn("<span>Successful</span><strong>2</strong>", body)
-        self.assertIn("<span>Failed</span><strong class=\"installation-failed-value\">2</strong>", body)
-        self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
-        positions = [body.index(f"<span>{label}</span>") for label in labels]
+            self.assertIsNotNone(metric_value(body, label), label)
+        self.assertIsNone(metric_value(body, "Variants"))
+        self.assertEqual(metric_value(body, "Successful"), "2")
+        self.assertEqual(metric_value(body, "Failed"), "2")
+        self.assertEqual(metric_value(body, "Success rate"), "66.7%")
+        positions = [body.index(f"<span class='admin-metric-label'>{label}") for label in labels]
         self.assertEqual(positions, sorted(positions))
         self.assertNotIn("Historical failures: 2", body)
         self.assertIn('data-installation-sort="attempts"', body)
@@ -2806,11 +2843,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
         self.assertIn("data-stat='completedInstalls'>95</strong>", maps)
         self.assertIn("data-stat='failedInstalls'>10</strong>", maps)
-        self.assertIn(
-            '<span>Failed</span><strong class="installation-failed-value">10</strong>',
-            installations,
-        )
-        self.assertIn("<span>Successful</span><strong>98</strong>", installations)
+        self.assertEqual(metric_value(installations, "Failed"), "10")
+        self.assertEqual(metric_value(installations, "Successful"), "98")
         self.assertIn("All time · Model evidence", installations)
         # Three valid device-side successes have model attribution but no
         # eligible map-stream result, so the population label remains needed.
@@ -2824,7 +2858,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("Diagnostic coverage", body)
         self.assertIn("id='map-download-trend-title'", body)
 
-    def test_map_statistics_keeps_all_time_badges_when_period_has_no_rows(self):
+    def test_map_statistics_tiles_follow_the_period_and_keep_an_all_time_line(self):
         historical = _map_statistics_summary([
             {"event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 4},
             {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3},
@@ -2840,8 +2874,13 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             selected_filters={"period": "24h"},
         ).decode()
         self.assertIn("id='map-statistics-metrics'", body)
-        self.assertIn("data-stat='completedDownloads'>4</strong>", body)
-        self.assertIn("data-stat='completedInstalls'>3</strong>", body)
+        # Tiles follow the selected period (measured zero) and say so (ADM-04);
+        # all-time totals stay visible on a labelled All time line.
+        self.assertIn("data-stat='completedDownloads'>0</strong>", body)
+        self.assertIn("data-stat='completedInstalls'>0</strong>", body)
+        self.assertIn("data-scope='period'>Last 24 hours</span>", body)
+        self.assertIn("Downloads <strong>4</strong> · Installs <strong>3</strong>", body)
+        self.assertIn("data-scope='all'>All time</span>", body)
         self.assertIn("No map activity for this scope", body)
         self.assertIn("id='map-download-trend-title'", body)
 
@@ -2903,7 +2942,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "csrf",
             selected_filters={"eventType": "DOWNLOAD_FAILED"},
         ).decode()
-        self.assertIn("<strong data-stat='completedInstalls'>9</strong>", body)
+        self.assertIn("data-stat='completedInstalls'>9</strong>", body)
         self.assertIn("<strong data-stat='installSuccessRate'>90%</strong>", body)
         self.assertNotIn("Diagnostic coverage", body)
         self.assertIn("No matching event groups", body)
@@ -2915,7 +2954,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertEqual(summary["failedInstalls"], 2)
         body = map_statistics_page({"rows":rows,"summary":summary}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
         self.assertIn("data-stat='failedInstalls'>2</strong>", body)
-        self.assertIn("Provider comparison", body)
+        self.assertIn(">Providers</h2>", body)
+        self.assertIn("data-provider-stream='installs' aria-pressed='true'", body)
 
     def test_download_only_failure_has_no_install_statistics(self):
         rows = [{"provider_id":"p","event_type":"DOWNLOAD_FAILED","outcome":"FAILED","operation_count":1}]
@@ -2941,7 +2981,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         for provider, (successful, failed) in fixture.items():
             rows.extend((
                 {"provider_id": provider, "event_type": event_type, "outcome": outcome,
-                 "operation_count": count, "component_kind": "main",
+                 "operation_count": count, "component_kind": "main", "map_package_id": "test-main",
                  "last_occurred_at": "2026-09-18T09:39:00Z"}
                 for event_type, outcome, count in (
                     ("INSTALL_SUCCEEDED", "SUCCEEDED", successful),
@@ -2953,7 +2993,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_FAILED", "outcome": "FAILED", "operation_count": 4},
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_INTERRUPTED", "outcome": "UNKNOWN", "operation_count": 7},
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_STARTED", "outcome": "STARTED", "operation_count": 3},
-            {"provider_id": "maprando", "event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1, "last_occurred_at": "2026-09-19T09:39:00Z"},
+            {"provider_id": "maprando", "event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1, "map_package_id": "test-main", "last_occurred_at": "2026-09-19T09:39:00Z"},
             {"provider_id": "maprando", "event_type": "MAP_UPDATE_FAILED", "outcome": "FAILED", "operation_count": 1},
         ])
         summary = _map_statistics_summary(rows)
@@ -2976,16 +3016,25 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         global.window = {terentoAdminProviders:payload.providers,terentoMapStatisticsFilters:{},
           terentoWorldMapCountryAliases:{},terentoMapStatistics:payload.statistics,addEventListener(){}};
         eval(process.argv[1]);
-        const html = nodes['#provider-statistic-rows'].innerHTML;
-        const byProvider = Object.fromEntries([...html.matchAll(/<tr><td>(.*?)<\/td>(.*?)<\/tr>/g)].map(match => [
-          match[1], [...match[2].matchAll(/<td[^>]*>(.*?)<\/td>/g)].map(cell => cell[1].replace(/<[^>]*>/g,''))
-        ]));
-        assert.deepEqual(byProvider.OpenTopoMap.slice(0,9), ['84','4','95.5%','14','6','70%','0','0','—']);
-        assert.deepEqual(byProvider.MapRando.slice(3,9), ['23','2','92%','1','1','50%']);
-        assert.deepEqual(byProvider.Freizeitkarte.slice(3,6), ['19','6','76%']);
-        assert.deepEqual(byProvider.BBBike.slice(3,6), ['8','1','88.9%']);
-        assert.deepEqual(byProvider.custom.slice(0,9), ['0','0','—','20','3','87.0%','0','0','—']);
-        assert.equal(byProvider.MapRando[9].includes('2026-09-18'),true,'updates do not advance Last install');
+        const read = (stream) => {
+          window.terentoRenderProviderStream(stream);
+          const html = nodes['#provider-statistic-rows'].innerHTML;
+          return Object.fromEntries([...html.matchAll(/<tr><td>(.*?)<\/td>(.*?)<\/tr>/g)].map(match => [
+            match[1], [...match[2].matchAll(/<td[^>]*>(.*?)<\/td>/g)].map(cell => cell[1].replace(/<[^>]*>/g,''))
+          ]));
+        };
+        // One stream at a time; each keeps its own Successful, Failed and Rate.
+        const downloads = read('downloads'), installs = read('installs'), updates = read('updates');
+        assert.deepEqual(downloads.OpenTopoMap.slice(0,3), ['84','4','95.5%']);
+        assert.deepEqual(installs.OpenTopoMap.slice(0,3), ['14','6','70%']);
+        assert.deepEqual(updates.OpenTopoMap.slice(0,3), ['0','0','—']);
+        assert.deepEqual(installs.MapRando.slice(0,3), ['23','2','92%']);
+        assert.deepEqual(updates.MapRando.slice(0,3), ['1','1','50%']);
+        assert.deepEqual(installs.Freizeitkarte.slice(0,3), ['19','6','76%']);
+        assert.deepEqual(installs.BBBike.slice(0,3), ['8','1','88.9%']);
+        assert.deepEqual(downloads.custom.slice(0,3), ['0','0','—']);
+        assert.deepEqual(installs.custom.slice(0,3), ['20','3','87.0%']);
+        assert.equal(installs.MapRando[3].includes('2026-09-18'),true,'updates do not advance Last install');
         """
         providers = [{"id": key, "name": name} for key, name in (
             ("opentopomap", "OpenTopoMap"), ("maprando", "MapRando"),
@@ -3029,8 +3078,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         rows = [{"provider_id":"p","map_package_id":"m","region":"LT","region_country":"LT","event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":3}]
         body = map_statistics_page({"rows":rows,"summary":_map_statistics_summary(rows),"trend":[]}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf").decode()
         main = body.split("<main",1)[1]
-        for text in ("Downloads", "Installs", "Updates", "Provider comparison", "Top countries", "Maps by provider", "Event detail"):
+        for text in ("Downloads", "Installs", "Updates", ">Providers</h2>", "Top countries", ">Top maps</h2>", ">Countries</h2>", ">Events <"):
             self.assertIn(text, main)
+        # Reading order: tiles, charts, countries, providers, top maps, events.
+        order = [main.index(marker) for marker in (
+            "id='map-statistics-metrics'", "id='map-download-trend-title'", "id='map-statistics-coverage'",
+            "id='map-statistics-provider-table'", "id='maps-by-provider'", "id='map-statistics-event-detail'",
+        )]
+        self.assertEqual(order, sorted(order))
         self.assertNotIn("Map downloads", main)
         self.assertNotIn("Map installs", main)
         event_detail = main.split("id='map-statistics-event-detail'", 1)[1].split("</details>", 1)[0]
@@ -3057,10 +3112,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
 
     def test_map_statistics_linkage_query_joins_only_shared_operation_ids(self):
         source = inspect.getsource(Database.map_statistics_linkage)
-        self.assertIn("FROM map_download_event AS e", source)
+        self.assertIn("FROM dated_map_events AS e", source)
         self.assertIn("FROM compatibility_evidence_event AS e", source)
         self.assertIn("ON c.operation_id = m.operation_id", source)
+        self.assertIn("c.map_result_index = m.reported_result_index", source)
+        self.assertIn("candidate_count = 1", source)
+        self.assertIn("e.statistics_exclusion_code IS NULL", source)
         self.assertIn("AND c.provider_id = m.provider_id", source)
+        self.assertNotIn("LEFT JOIN LATERAL", source)
         self.assertIn("GROUP BY e.operation_id", source)
         self.assertIn("map_only_installation_count", source)
         self.assertIn("linked_failed_install_count", source)
@@ -3080,8 +3139,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Packages", body)
         problem = [{**healthy[0],"health":"DEGRADED","affectedPackageCount":1}]
         problem_body = providers_page(problem, {"username":"operator"}, "csrf").decode()
-        self.assertIn("Needs attention", problem_body)
-        self.assertIn("1 health exceptions", problem_body)
+        # Tiles use the shared provider-problem definition (ADM-10).
+        self.assertEqual(metric_value(problem_body, "Provider problems"), "1")
+        self.assertEqual(metric_value(problem_body, "Package problems"), "1")
+        self.assertEqual(metric_value(problem_body, "Healthy"), "0")
+        unknown = providers_page([{**healthy[0], "affectedPackageCount": None, "problematicSourceCount": None}],
+                                 {"username":"operator"}, "csrf").decode()
+        # Unknown problem counts render as —, never 0 (ADM-15).
+        self.assertIn("—<span class='sr-only'> Unknown</span>", unknown)
+        self.assertEqual(metric_value(unknown, "Package problems"), "—")
 
     def test_provider_problems_keep_packages_sources_and_health_separate(self):
         body = providers_page(
@@ -3127,7 +3193,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         })
         self.assertIn("Download: — bytes · IMG: 0 bytes", package)
         self.assertIn("<td class='column-number numeric'>—</td>", package)
-        self.assertIn("><span class='provider-status", health)
+        self.assertIn("><span class='admin-pill admin-pill-success' data-status='HEALTHY'", health)
         self.assertIn(">—</td>", health)
         self.assertIn(">0</td>", health)
         self.assertIn(">0 ms</td>", health)
@@ -3184,8 +3250,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"},
             "csrf",
         ).decode()
-        for text in ("Packages", "Broken", "Catalog sync", "Health", "Check provider health", "Refresh catalog", "More", "Retire provider", "Metadata and attribution", "Original links", "Download source URLs", "Regions and packages", "Health", "View check details", "Collection history", "Provider history"):
+        for text in (">Packages</h2>", "Catalog sync", ">Health<", "Check provider health", "Refresh catalog", "More", "Retire provider", "<summary>Attribution</summary>", "Original links", "<summary>Sources ", ">Checks</h2>", ">Syncs</h2>", "View check details", "Collection history", "<summary>History "):
             self.assertIn(text, body)
+        # Summary tiles and one Problems card replace the attention sentence.
+        self.assertIsNotNone(metric_value(body, "Package problems"))
+        self.assertIn(">Problems</h2>", body)
+        self.assertNotIn("map files need attention", body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)
         self.assertIn("id='provider-source-page-size'", body)
@@ -3226,7 +3296,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("2026-08-30", history)
         self.assertNotIn("2026-08-31", history)
         self.assertNotIn("Download source URLs", body)
-        self.assertIn("Collection <span class='table-help'>No runs yet</span>", body)
+        self.assertIn("No collection run recorded yet.", body)
 
     def test_shared_model_page_keeps_resolved_failures_historical_and_open_errors_active_only(self):
         device = _admin_device_payload([{
@@ -3257,15 +3327,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             device, {"username": "operator"}, "csrf",
             operations=active, resolved_operations=resolved,
         ).decode()
-        statistics = body.split("class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
-        for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open errors", "0")):
-            self.assertIn(f"<span>{label}</span>", statistics)
-            self.assertIn(f">{value}</strong>", statistics)
-        self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
+        statistics = body.split("class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
+        for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open problems", "0")):
+            self.assertEqual(metric_value(statistics, label), value)
+        self.assertIn("<span class='admin-metric-label'>Last report</span><strong class='admin-metric-value' data-stat='lastReport'>—<span class='sr-only'>Unknown</span></strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
-        self.assertIn("diagnostic-state-resolved", body)
-        self.assertIn("data-diagnostic-result='failed'", body)
-        self.assertIn("data-review-resolved='true'", body)
+        self.assertIn("data-status='RESOLVED'", body)
+        # A resolved pre-write record is "Blocked before writing", not Failed (ADM-13).
+        self.assertIn("data-diagnostic-result='not_started'", body)
+        self.assertIn("<span>Blocked before writing</span>", body)
         self.assertNotIn("USB identity</dt>", body)
         self.assertNotIn("Firmware</dt>", body)
         self.assertIn("Write failed", body)
@@ -3318,11 +3388,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             device, {"username": "operator"}, "csrf",
             operations=successful + open_failed, resolved_operations=resolved_failed,
         ).decode()
-        statistics = body.split("class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
-        for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open errors", "1")):
-            self.assertIn(f"<span>{label}</span>", statistics)
-            self.assertIn(f">{value}</strong>", statistics)
-        self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
+        statistics = body.split("class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
+        for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open problems", "1")):
+            self.assertEqual(metric_value(statistics, label), value)
+        self.assertIn("<span class='admin-metric-label'>Last report</span><strong class='admin-metric-value' data-stat='lastReport'>—<span class='sr-only'>Unknown</span></strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
 
     def test_github_issue_report_uses_an_allowlist_and_redacts_sensitive_values(self):
@@ -3569,7 +3638,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             }},
             "csrf",
         ).decode()
-        self.assertIn("<h1>GitHub review tasks</h1>", body)
+        self.assertIn("<h1>GitHub issues</h1>", body)
         self.assertIn("#157", body)
         self.assertIn("In progress", body)
         self.assertIn("action='/admin/diagnostics/workflow'", body)
@@ -3632,7 +3701,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<h2 id='github-issue-queue-title'>Linked diagnostics</h2><span class='table-help'>1 tasks</span>", body)
+        self.assertIn("<h2 id='github-issue-queue-title'>Tasks</h2>", body)
+        self.assertIn("<span class='table-help'>1 task</span>", body)
         self.assertEqual(body.count("class='diagnostic-detail-dialog'"), 1)
 
     def test_issue_workflow_migration_is_additive_and_backfills_linked_active_rows(self):
@@ -3758,9 +3828,12 @@ class SystemHealthPageTests(unittest.TestCase):
         ).decode()
         self.assertIn("<h1>Health</h1>", body)
         self.assertIn("Search checks", body)
-        self.assertIn("Freizeitkarte</h2>", body)
+        # Provider catalogs collapse into one Catalogs row linking to Providers.
+        self.assertIn("<h2>Catalogs</h2>", body)
+        self.assertIn(">Freizeitkarte</a>", body)
+        self.assertIn("href='/admin/providers'", body)
         self.assertIn("No weekly test report received yet", body)
-        self.assertIn("system-health-unknown", body)
+        self.assertIn("data-status='UNKNOWN'", body)
         self.assertIn("class='system-health-cause'", body)
         self.assertIn("class='system-health-action'>", body)
         self.assertNotIn("<strong>Inspect:</strong>", body)
@@ -3790,7 +3863,7 @@ class SystemHealthPageTests(unittest.TestCase):
         self.assertIn("website reports 1.0.0-beta.9", body)
         self.assertIn("One suite failed", body)
         self.assertIn(">macOS application<", body)
-        self.assertIn("system-health-failed", body)
+        self.assertIn("data-status='FAILED'", body)
         self.assertIn("GitHub Actions", body)
 
     def test_page_accepts_verified_deployed_manifest_without_release_observation(self):
@@ -3809,11 +3882,12 @@ class SystemHealthPageTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<h2>Release / manifest</h2>", body)
+        self.assertIn("<h2>Release match</h2>", body)
         self.assertIn("data-health-status='HEALTHY'", body)
         self.assertIn("data-admin-timestamp", body)
-        release_card = body.split("<h2>Release / manifest</h2>", 1)[1].split("</div>", 1)[0]
-        self.assertIn("system-health-healthy", release_card)
+        release_card = body.split("<h2>Release match</h2>", 1)[1].split("</div>", 1)[0]
+        self.assertIn("data-status='HEALTHY'", release_card)
+        self.assertIn("<span>Healthy</span>", release_card)
 
 
 if __name__ == "__main__":

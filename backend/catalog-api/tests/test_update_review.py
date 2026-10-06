@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 
 from terento_catalog.db import Database
 from terento_catalog.github_issue_sync import apply_closed_update_issue
+from pglite_support import require_pglite
 
 EVENT = '11111111-1111-4111-8111-111111111111'
 
@@ -101,7 +102,6 @@ class UpdateReviewTests(unittest.TestCase):
         self.assertEqual(db.row['resolution_code'],'FIXED')
         self.assertTrue(any('github.closed' in sql for sql,_ in db.calls))
 
-    @unittest.skipUnless(os.environ.get('PGLITE_MODULE_PATH'),'Set PGLITE_MODULE_PATH for PostgreSQL verification')
     def test_postgres_model_stats_and_review_preserve_outcomes(self):
         db=ReviewDatabase()
         stats_sql=None
@@ -121,7 +121,7 @@ class UpdateReviewTests(unittest.TestCase):
         payload={'migrations':[(root.parent/'src/terento_catalog/migrations'/name).read_text() for name in
                               ('064_provider_rechecks_update_diagnostics.sql','065_update_diagnostic_review.sql')],
                  'stats':stats_sql,'summary':summary_sql,'mutations':mutations,'queue':db.calls[-1][0]}
-        result=subprocess.run(['node',str(root/'update_review_postgres.cjs'),os.environ['PGLITE_MODULE_PATH']],
+        result=subprocess.run(['node',str(root/'update_review_postgres.cjs'),require_pglite(self)],
                               input=json.dumps(payload),text=True,capture_output=True)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
 

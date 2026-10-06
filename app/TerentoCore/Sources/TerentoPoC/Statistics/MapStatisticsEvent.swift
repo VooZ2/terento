@@ -22,6 +22,10 @@ enum MapStatisticsEventType: String, Codable, Sendable {
     case mapUpdateFailed = "MAP_UPDATE_FAILED"
 }
 
+enum MapAcquisitionPurpose: String, Codable, Sendable {
+    case install, update
+}
+
 enum MapStatisticsEventOutcome: String, Codable, Sendable {
     case succeeded = "SUCCEEDED"
     case failed = "FAILED"
@@ -41,6 +45,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
     let mapId: String
     let region: String?
     let acquisitionId: UUID?
+    let acquisitionPurpose: MapAcquisitionPurpose?
     let componentKind: MapArtifactKind?
     let mapResultIndex: Int?
     let eventType: MapStatisticsEventType
@@ -57,6 +62,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         outcome: MapStatisticsEventOutcome,
         timestamp: Date = Date(),
         acquisitionId: UUID? = nil,
+        acquisitionPurpose: MapAcquisitionPurpose? = nil,
         componentKind: MapArtifactKind? = nil,
         mapResultIndex: Int? = nil,
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
@@ -66,6 +72,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         self.id = id
         self.operationId = operationId
         self.acquisitionId = acquisitionId
+        self.acquisitionPurpose = acquisitionPurpose
         self.componentKind = componentKind
         self.mapResultIndex = mapResultIndex
 
@@ -101,6 +108,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         mapId = start.mapId
         region = start.region
         acquisitionId = start.acquisitionId
+        acquisitionPurpose = start.acquisitionPurpose
         componentKind = start.componentKind
         mapResultIndex = start.mapResultIndex
         eventType = type
@@ -147,11 +155,19 @@ struct VersionedMapStatisticsConsent: Codable, Equatable, Sendable {
     let decidedAt: Date
 }
 
+/// A queued event that the server rejected with a non-retryable status. It is
+/// kept outside the ordered pending queue so it cannot block later events.
+struct ParkedMapStatisticsEvent: Codable, Equatable, Sendable {
+    let event: MapStatisticsEvent
+    let rejection: TelemetryRejection
+}
+
 private struct MapStatisticsQueueFile: Codable {
     var pendingEvents: [MapStatisticsEvent] = []
     var consent: VersionedMapStatisticsConsent?
     // Optional for backwards-compatible decoding of existing queues.
     var activeAcquisitions: [MapStatisticsEvent]?
+    var parkedEvents: [ParkedMapStatisticsEvent]?
 }
 
 final class LocalMapStatisticsEventStore: @unchecked Sendable {
@@ -175,12 +191,61 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
 
     func consent() -> VersionedMapStatisticsConsent? { lockedLoad().consent }
     func pendingEvents() -> [MapStatisticsEvent] { lockedLoad().pendingEvents }
+    func parkedEvents() -> [ParkedMapStatisticsEvent] { lockedLoad().parkedEvents ?? [] }
+
+    /// Parked events whose back-off has elapsed or whose rejection came from a
+    /// different app build, oldest first.
+    func parkedEventsEligibleForRetry(now: Date, appBuild: String) -> [MapStatisticsEvent] {
+        parkedEvents()
+            .filter { TelemetryDeliveryPolicy.isEligibleForRetry($0.rejection, now: now, appBuild: appBuild) }
+            .map(\.event)
+    }
+
+    /// Move a rejected event out of the ordered queue, or record another
+    /// rejection of an already parked event.
+    func park(eventID: UUID, statusCode: Int, now: Date, appBuild: String) throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            var parked = file.parkedEvents ?? []
+            if let index = parked.firstIndex(where: { $0.event.id == eventID }) {
+                parked[index] = ParkedMapStatisticsEvent(event: parked[index].event,
+                    rejection: TelemetryDeliveryPolicy.rejection(after: parked[index].rejection,
+                        statusCode: statusCode, now: now, appBuild: appBuild))
+            } else if let event = file.pendingEvents.first(where: { $0.id == eventID }) {
+                parked.append(ParkedMapStatisticsEvent(event: event,
+                    rejection: TelemetryDeliveryPolicy.rejection(after: nil,
+                        statusCode: statusCode, now: now, appBuild: appBuild)))
+            } else {
+                return
+            }
+            file.pendingEvents.removeAll { $0.id == eventID }
+            if parked.count > TelemetryDeliveryPolicy.maximumParkedEvents {
+                parked.removeFirst(parked.count - TelemetryDeliveryPolicy.maximumParkedEvents)
+            }
+            file.parkedEvents = parked
+            try saveUnlocked(file)
+        }
+    }
+
+    func expireParkedEvents(now: Date) throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            guard let parked = file.parkedEvents else { return }
+            let retained = parked.filter {
+                !TelemetryDeliveryPolicy.isExpired($0.rejection, occurredAt: $0.event.timestamp, now: now)
+            }
+            guard retained.count != parked.count else { return }
+            file.parkedEvents = retained
+            try saveUnlocked(file)
+        }
+    }
 
     @discardableResult
     func append(_ event: MapStatisticsEvent) throws -> Bool {
         try lock.withLock {
             var file = try loadUnlocked()
-            guard !file.pendingEvents.contains(where: { $0.id == event.id }) else { return false }
+            guard !file.pendingEvents.contains(where: { $0.id == event.id }),
+                  !(file.parkedEvents ?? []).contains(where: { $0.event.id == event.id }) else { return false }
             file.pendingEvents.append(event)
             try saveUnlocked(file)
             return true
@@ -192,7 +257,8 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
         try lock.withLock {
             var file = try loadUnlocked()
             guard file.consent?.choice != .declined,
-                  !file.pendingEvents.contains(where: { $0.id == event.id }) else {
+                  !file.pendingEvents.contains(where: { $0.id == event.id }),
+                  !(file.parkedEvents ?? []).contains(where: { $0.event.id == event.id }) else {
                 return false
             }
             if let acquisitionID = event.acquisitionId {
@@ -241,6 +307,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
             if consent.choice == .declined {
                 file.pendingEvents.removeAll()
                 file.activeAcquisitions = []
+                file.parkedEvents = nil
             }
             try saveUnlocked(file)
         }
@@ -250,6 +317,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
         try lock.withLock {
             var file = try loadUnlocked()
             file.pendingEvents.removeAll { $0.id == eventID }
+            file.parkedEvents?.removeAll { $0.event.id == eventID }
             try saveUnlocked(file)
         }
     }
@@ -265,6 +333,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
             if choice == .declined {
                 file.pendingEvents.removeAll()
                 file.activeAcquisitions = []
+                file.parkedEvents = nil
             }
             try saveUnlocked(file)
         }
@@ -286,7 +355,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
             at: fileURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        try encoder.encode(file).write(to: fileURL, options: [.atomic, .completeFileProtection])
+        try encoder.encode(file).write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 }
 
@@ -354,15 +423,21 @@ final class MapStatisticsEventController: ObservableObject {
     func scheduledRecordForTesting() -> Task<Void, Never>? { recordTaskForTesting }
     #endif
     @Published private(set) var uploadStatus: MapStatisticsUploadStatus = .idle
+    private let now: @Sendable () -> Date
+    private let appBuild: String
 
     init(
         store: LocalMapStatisticsEventStore = LocalMapStatisticsEventStore(),
         uploader: any MapStatisticsEventUploading = HTTPMapStatisticsEventUploader(),
-        retryDelays: [UInt64] = [0, 5_000_000_000, 30_000_000_000]
+        retryDelays: [UInt64] = [0, 5_000_000_000, 30_000_000_000],
+        now: @escaping @Sendable () -> Date = { Date() },
+        appBuild: String = TerentoTelemetryMetadata.eventBuild
     ) {
         self.store = store
         self.uploader = uploader
         self.retryDelays = retryDelays
+        self.now = now
+        self.appBuild = appBuild
         try? store.migrateConsentToCurrentNotice()
         try? store.reconcileInterruptedAcquisitions()
         if sharingEnabled { scheduleFlush() }
@@ -400,6 +475,19 @@ final class MapStatisticsEventController: ObservableObject {
         scheduleFlush()
     }
 
+    /// Durable recording for producers outside the main actor (acquisition
+    /// observers on a download context). Each call persists before returning,
+    /// so callbacks delivered in order are queued in that order and survive a
+    /// quit; only network delivery hops to the main actor afterwards.
+    nonisolated func recordFromAnyContext(_ event: MapStatisticsEvent) {
+        guard event.providerId != "custom" else { return }
+        let persisted = (try? store.appendIfSharingEnabled(event)) != nil
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if persisted { self.scheduleFlush() } else { self.record(event) }
+        }
+    }
+
     private func persistBufferedEvents() {
         while let event = unsavedEvents.first {
             do {
@@ -421,7 +509,8 @@ final class MapStatisticsEventController: ObservableObject {
     }
 
     private func scheduleFlush() {
-        guard sharingEnabled, uploadTask == nil, (!store.pendingEvents().isEmpty || !unsavedEvents.isEmpty) else { return }
+        guard sharingEnabled, uploadTask == nil, (!store.pendingEvents().isEmpty || !unsavedEvents.isEmpty
+            || !store.parkedEventsEligibleForRetry(now: now(), appBuild: appBuild).isEmpty) else { return }
         let delays = retryDelays
         uploadTask = Task { [weak self] in
             defer { self?.uploadTask = nil }
@@ -442,19 +531,28 @@ final class MapStatisticsEventController: ObservableObject {
     private enum UploadResult { case empty, completed, retryableFailure, permanentFailure }
 
     private func uploadOnce() async -> UploadResult {
+        // Each parked event gets at most one retry per sender pass.
+        var offeredParkedIDs = Set<UUID>()
         while sharingEnabled && !Task.isCancelled {
             persistBufferedEvents()
             guard unsavedEvents.isEmpty else { return .retryableFailure }
+            let currentTime = now()
+            try? store.expireParkedEvents(now: currentTime)
             // A record can arrive while an upload suspends this actor. Keep
             // draining fresh snapshots before declaring the queue uploaded;
             // scheduleFlush cannot start another sender while this one exists.
             let pending = store.pendingEvents()
-            guard !pending.isEmpty else {
-                uploadStatus = .uploaded
+            let parked = store.parkedEventsEligibleForRetry(now: currentTime, appBuild: appBuild)
+                .filter { !offeredParkedIDs.contains($0.id) }
+            guard !pending.isEmpty || !parked.isEmpty else {
+                let parkedCount = store.parkedEvents().count
+                uploadStatus = parkedCount == 0 ? .uploaded : .waiting(parkedCount, willRetry: false)
                 return .completed
             }
-            uploadStatus = .uploading(pending.count)
-            for event in pending {
+            uploadStatus = .uploading(pending.count + parked.count)
+            offeredParkedIDs.formUnion(parked.map(\.id))
+            // Ordered pending events first; parked retries never delay them.
+            for event in pending + parked {
                 guard sharingEnabled, !Task.isCancelled else { return .empty }
                 do {
                     // Discard stale custom events locally. A failed queue write
@@ -466,6 +564,17 @@ final class MapStatisticsEventController: ObservableObject {
                     try store.markUploaded(eventID: event.id)
                 } catch {
                     guard sharingEnabled, !Task.isCancelled else { return .empty }
+                    if let statusCode = Self.nonRetryableRejectionStatus(error) {
+                        // Park only this event; independent events continue.
+                        do {
+                            try store.park(eventID: event.id, statusCode: statusCode,
+                                           now: now(), appBuild: appBuild)
+                            continue
+                        } catch {
+                            uploadStatus = .waiting(store.pendingEvents().count, willRetry: false)
+                            return .permanentFailure
+                        }
+                    }
                     let retryable = Self.isRetryable(error)
                     uploadStatus = .waiting(store.pendingEvents().count, willRetry: retryable)
                     return retryable ? .retryableFailure : .permanentFailure
@@ -473,6 +582,12 @@ final class MapStatisticsEventController: ObservableObject {
             }
         }
         return .empty
+    }
+
+    private static func nonRetryableRejectionStatus(_ error: Error) -> Int? {
+        guard case let MapStatisticsUploadError.httpStatus(code) = error,
+              TelemetryDeliveryPolicy.isNonRetryableRejection(statusCode: code) else { return nil }
+        return code
     }
 
     private static func isRetryable(_ error: Error) -> Bool {

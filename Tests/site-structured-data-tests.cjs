@@ -50,7 +50,7 @@ function visibleFaq(source, file) {
   assert(section, `${file}: visible FAQ section is required`);
   const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*(?:<div class="faq-support-actions">[\s\S]*?<\/div>\s*)?<\/details>/gi)]
     .map((match) => ({ question: visibleText(match[1]), answer: visibleText(match[2]) }));
-  assert.equal(entries.length, 5, `${file}: expected five visible FAQ entries`);
+  assert.equal(entries.length, 6, `${file}: expected six visible FAQ entries`);
   return entries;
 }
 
@@ -113,7 +113,8 @@ for (const locale of locales) {
   assert.equal(faq["@id"], `${homeUrl}#faq`, `${home}: FAQ ID`);
   assert.equal(faq.url, `${homeUrl}#faq`, `${home}: FAQ URL`);
   assert.equal(faq.inLanguage, locale, `${home}: FAQ language`);
-  assert.equal(faq.mainEntity.length, 5, `${home}: FAQ count`);
+  assert.equal(faq.mainEntity.length, 6, `${home}: FAQ count`);
+  assert.match(faq.mainEntity[4].acceptedAnswer.text, /Garmin Express[\s\S]*Android File Transfer[\s\S]*OpenMTP/, `${home}: connection schema answer names the apps that can hold the watch`);
   assert.deepEqual(
     faq.mainEntity.map((question) => ({ question: question.name, answer: question.acceptedAnswer.text })),
     visibleFaq(homeData.source, home),

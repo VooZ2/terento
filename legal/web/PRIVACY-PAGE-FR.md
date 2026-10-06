@@ -27,6 +27,12 @@ Si vous nous écrivez, nous recevons votre adresse, message et pièces jointes p
 
 Un ticket GitHub est distinct des diagnostics automatiques : vous le vérifiez et l’envoyez ; son contenu et votre nom de compte peuvent être publics. La [politique de GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) s’applique. Les dons facultatifs passent par [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), qui traite les données de paiement selon ses conditions.
 
+## Rapports d’assistance
+
+Lorsque l’application propose d’envoyer un rapport d’assistance à Terento, le rapport n’est envoyé que si vous choisissez de l’envoyer, après en avoir vu le contenu. Il contient les détails nettoyés également utilisés pour les rapports GitHub : versions de l’application et de macOS, modèle et variante de la montre, étape en échec, catégorie et message d’erreur, fournisseur et région de la carte, durées, ainsi que la description que vous ajoutez. Il exclut les numéros de série, Unit IDs, comptes, chemins locaux, journaux bruts et cartes ; aucun compte GitHub n’est nécessaire. N’indiquez pas de données personnelles dans la description.
+
+Les rapports d’assistance servent uniquement à diagnostiquer le problème signalé, ne sont pas utilisés pour les statistiques et sont conservés 12 mois. L’accès est réservé à l’administration du projet ; votre adresse IP n’est pas enregistrée avec le rapport. Le fondement est l’intérêt légitime à répondre à votre demande et maintenir l’application, selon l’article 6(1)(f) du RGPD.
+
 ## Statistiques et stockage du navigateur
 
 Umami est chargé pour tous les visiteurs pour mesurer les pages vues, clics et téléchargements. Il n’utilise pas de cookies de suivi. Il peut traiter les URL de page/provenance, navigateur, système, appareil et localisation approximative. Les valeurs UTM des liens décrivent les sources de campagne. Terento les transmet dans les URL sans stocker les campagnes dans votre navigateur. Les statistiques servent à améliorer le site et mesurer les campagnes sur la base de l’intérêt légitime, article 6(1)(f) du RGPD. Il n’y a ni bandeau de consentement analytique ni interrupteur sur le site ; contactez-nous pour vous opposer. Ces statistiques sont distinctes des réglages de diagnostic de l’app.
@@ -51,4 +57,4 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 13 septembre 2026.
+Mise à jour : 6 octobre 2026.

@@ -13,6 +13,7 @@ from terento_catalog.admin import dashboard_page, format_timestamp, hash_passwor
 from terento_catalog.compatibility_evidence import EvidenceValidationError, validate_event
 from terento_catalog.db import Database
 from terento_catalog.http_api import CatalogService, make_handler
+from admin_test_utils import metric_tone, metric_value
 
 
 def event(**changes):
@@ -609,8 +610,8 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installations", body)
         self.assertIn(">Attempts<", body)
-        self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
-        self.assertIn("<span>Attempts</span><strong>1</strong>", body)
+        self.assertIn('class="admin-card installation-kpis"', body)
+        self.assertEqual(metric_value(body, "Attempts"), "1")
         self.assertIn('class="filter-bar admin-filter-bar"', body)
         self.assertIn(">51 mm<", body)
         self.assertIn("Latest activity", body)
@@ -689,7 +690,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page(
             [row], {"username": "operator"}, "csrf", operations=[operation]
         ).decode()
-        self.assertIn("aria-label='View 1 open error", body)
+        self.assertIn("aria-label='View 1 open problem", body)
         self.assertIn("/admin/diagnostics?identity=", body)
         self.assertNotIn("Diagnostic record", body)
         self.assertNotIn("1.0.0-beta.6 (build 5)", body)

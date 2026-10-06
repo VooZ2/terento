@@ -6,10 +6,11 @@ public website contract; crawl access never guarantees indexing or citation.
 ## Public content and identity
 
 The canonical identity is Terento, <https://terento.app/>, with source at
-<https://github.com/VooZ2/terento>. `site/metadata.json` inventories 36 indexable
-pages: Home, About, Download, Compatibility, the installation Guide, and Map
-styles, each in six languages. Map styles is one comparison page per language;
-its preview areas are hash state on that page, not separate URLs. Legal and Privacy deliberately remain `noindex,follow`;
+<https://github.com/VooZ2/terento>. `site/metadata.json` inventories 42 indexable
+pages: Home, About, Download, Compatibility, the installation Guide, the
+Troubleshooting guide and Map styles, each in six languages. Map styles is one
+comparison page per language; its preview areas are hash state on that page,
+not separate URLs. Legal and Privacy deliberately remain `noindex,follow`;
 404 and the legacy supported-watches fallback remain noindex. Do not add thin
 per-device/provider pages or invent support claims to increase the page count.
 
@@ -86,7 +87,7 @@ pages. Explicit `index.html` aliases retain the directory canonical; uppercase
 unknown paths return 404 rather than creating another content inventory.
 
 `scripts/generate-sitemap.py` owns `site/sitemap.xml`; its inventory excludes
-noindex utilities, redirects, APIs and private paths. Thirty-six URLs are well below
+noindex utilities, redirects, APIs and private paths. Forty-two URLs are well below
 [sitemap limits](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap).
 Meaningful content fingerprints and reliable Git history govern `lastmod`;
 do not insert the generation time. The same manifest drives IndexNow delta
@@ -100,8 +101,18 @@ not require adding these files as HTML pages or submitting duplicate notificatio
 `scripts/normalize-structured-data.py` synchronizes Home/Download application
 facts with published release metadata and visible FAQ content. Organization,
 WebSite and SoftwareApplication share canonical identities; price zero reflects
-the free product. No invented reviews/ratings are allowed. Guide breadcrumbs
-are generated in `scripts/build-guide-pages.py` for all six locales.
+the free product. No invented reviews/ratings are allowed. Guide and
+Troubleshooting breadcrumbs are generated in `scripts/build-guide-pages.py` for
+all six locales. The Troubleshooting guide (`/guides/troubleshooting/`) keeps
+the same 15 section ids in every locale because the app links to them; its copy
+lives in `scripts/templates/troubleshooting-copy.json`, and the generator
+rejects a locale whose anchors differ from `TROUBLESHOOTING_ANCHORS`. Its
+section headings name the symptom the way people search for it (for example
+"Garmin watch not showing up on Mac") and the first sentence answers it. The
+page has no header navigation item; it is reached from the shared footer
+navigation (`scripts/normalize-public-shell.py`, `site/site-shell.js`), one
+general link in the Home FAQ, the installation Guide, which deep-links specific
+anchors, and the app's help links.
 `scripts/validate-structured-data.py` recursively validates nested entities,
 arrays and graphs. Keep existing source/output parity and visible-content tests.
 

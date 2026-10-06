@@ -100,7 +100,7 @@ class GarminCollector:
             part_number = part_numbers.get(source_product.source_id)
             product_specs = [specifications.get(p.source_id, {}) for p in source_products]
             merged_specs = {}
-            for field in ('screen_technology', 'solar', 'inreach'):
+            for field in ('screen_technology', 'solar', 'inreach', 'map_capable'):
                 values = {spec.get(field) for spec in product_specs}
                 merged_specs[field] = next(iter(values)) if len(values) == 1 else None
             records.append(
@@ -118,6 +118,11 @@ class GarminCollector:
                     screen_technology=merged_specs['screen_technology'],
                     solar=merged_specs['solar'],
                     inreach=merged_specs['inreach'],
+                    map_capable=merged_specs['map_capable'],
+                    map_evidence_row=(
+                        sorted({spec.get('map_evidence_row') for spec in product_specs if spec.get('map_evidence_row')} or [None])[0]
+                        if merged_specs['map_capable'] is not None else None
+                    ),
                     retail_skus=tuple(sorted({sku for spec in product_specs for sku in spec.get('retail_skus', [])})),
                     product_url=device.product_url,
                     source_url=self.category_source_url,

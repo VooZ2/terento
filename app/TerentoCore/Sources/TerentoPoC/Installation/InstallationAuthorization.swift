@@ -10,6 +10,10 @@ enum InstallationAuthorizationBlockReason: String, Codable, Equatable, Sendable 
     case notAuthorized = "NOT_AUTHORIZED"
     case catalogUnavailable = "CATALOG_UNAVAILABLE"
     case ambiguousCatalogMatch = "AMBIGUOUS_CATALOG_MATCH"
+    /// The server publishes a newer policy schema than this app understands.
+    /// Writes stay blocked until Terento is updated; this is not a
+    /// connection problem and retrying does not help.
+    case updateRequired = "UPDATE_REQUIRED"
 
     var isRetryable: Bool {
         self == .catalogUnavailable
@@ -18,6 +22,9 @@ enum InstallationAuthorizationBlockReason: String, Codable, Equatable, Sendable 
     var userMessage: String {
         if self == .catalogUnavailable {
             return "Terento could not verify this device's installation authorization right now. Check your connection and try again."
+        }
+        if self == .updateRequired {
+            return "This Terento version needs an update before it can install maps. Update Terento, then try again."
         }
         if self == .pending || self == .unknownModel || self == .ambiguousCatalogMatch {
             return "Terento could not reliably determine whether this device is supported for map installation."
@@ -88,6 +95,17 @@ enum InstallationAuthorizationState: Equatable, Sendable {
 
 struct InstallationAuthorizationClient: Sendable {
     static let defaultEndpoint = URL(string: "https://api.terento.app/devices/installation-policy.json")!
+    /// The policy schema this client implements. A higher published version
+    /// means the server may express write rules this client cannot evaluate.
+    static let supportedSchemaVersion = 3
+
+    /// The normalized base model used for policy matching (for example
+    /// `fenix 8`), for privacy-minimised funnel telemetry. Never a raw MTP
+    /// label, serial, Unit ID or catalog hint.
+    static func funnelBaseModel(for identity: DeviceIdentity) -> String? {
+        guard observedIdentityIsConsistent(identity) else { return nil }
+        return authorizationBaseModel(identity)
+    }
 
     private let endpoint: URL
     private let dataLoader: @Sendable (URLRequest) async throws -> (Data, URLResponse)
@@ -120,8 +138,16 @@ struct InstallationAuthorizationClient: Sendable {
                 return .blocked(.catalogUnavailable)
             }
 
+            // A newer schema can add write restrictions this client cannot
+            // see. Fail closed with a distinct update-required state.
+            if let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let schemaVersion = raw["schemaVersion"] as? NSNumber,
+               CFGetTypeID(schemaVersion) != CFBooleanGetTypeID(),
+               schemaVersion.intValue > Self.supportedSchemaVersion {
+                return .blocked(.updateRequired)
+            }
             let document = try JSONDecoder().decode(InstallationAuthorizationDocument.self, from: data)
-            guard document.schemaVersion == 3,
+            guard document.schemaVersion == Self.supportedSchemaVersion,
                   document.policyVersion >= 3,
                   policyDocumentIsValid(document, rawData: data) else {
                 return .blocked(.catalogUnavailable)
@@ -150,6 +176,10 @@ struct InstallationAuthorizationClient: Sendable {
         case pending
     }
 
+    /// Every known field must be present (nullable fields as explicit null)
+    /// and valid. Additive unknown fields at document or record level are
+    /// tolerated; a field that can narrow write authority must instead ship
+    /// as a new `schemaVersion` (see INSTALLATION_AUTHORIZATION.md).
     private func policyDocumentIsValid(
         _ document: InstallationAuthorizationDocument,
         rawData: Data
@@ -164,7 +194,7 @@ struct InstallationAuthorizationClient: Sendable {
         ]
         guard document.manufacturer == "Garmin",
               let rawDocument = try? JSONSerialization.jsonObject(with: rawData) as? [String: Any],
-              Set(rawDocument.keys) == documentKeys,
+              documentKeys.isSubset(of: Set(rawDocument.keys)),
               let rawRecords = rawDocument["devices"] as? [[String: Any]],
               rawRecords.count == document.devices.count else {
             return false
@@ -172,7 +202,7 @@ struct InstallationAuthorizationClient: Sendable {
 
         var seenIDs = Set<String>()
         for (record, rawRecord) in zip(document.devices, rawRecords) {
-            guard Set(rawRecord.keys) == recordKeys,
+            guard recordKeys.isSubset(of: Set(rawRecord.keys)),
                   record.manufacturer == "Garmin",
                   !record.id.isEmpty,
                   !record.model.isEmpty,

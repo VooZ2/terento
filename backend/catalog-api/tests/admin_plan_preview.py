@@ -7,7 +7,7 @@ from terento_catalog.admin import _admin_device_payload, _system_health_card, _i
 
 
 def build(root):
-    root=Path(root); user={'username':'Preview', 'admin_review_summary':{'available':True,'installationIssues':20,'githubIssuesInProgress':5,'identityPending':12,'readyToPublish':3,'total':40}}
+    root=Path(root); user={'username':'Preview', 'admin_review_summary':{'available':True,'installationIssues':20,'githubIssuesInProgress':5,'identityPending':12,'readyToPublish':3,'missingDiagnostics':8,'total':48}}
     rows=[{'model':f'fēnix {i+1} Very Long Authentic Model Name', 'compatibility_identity':f'model-{i}', 'canonical_device_model_id':f'model-{i}',
        'variant': '51 mm, AMOLED, Solar, inReach' if i%2 else '', 'calculated_status':'VERIFIED',
        'attempted_install_count':i+10,'successful_install_count':i+10-(1 if i<10 else 0),'failed_install_count':1 if i<10 else 0,
@@ -18,7 +18,7 @@ def build(root):
         'provider':'custom' if i%5==0 else 'freizeitkarte', 'region':'custom' if i%5==0 else 'LT'} for i in range(3000)]
     summary=_diagnostic_summary_by_identity(events)
     providers=[{'id':k,'name':n,'status':'ACTIVE','health':'HEALTHY','packageCount':180,'affectedPackageCount':0,'problematicSourceCount':0,
-        'lastHealthCheck':'2026-09-17T10:30:00Z','lastCatalogSync':'2026-09-16T10:30:00Z'} for k,n in [('freizeitkarte','Freizeitkarte'),('opentopomap','OpenTopoMap'),('long','Provider With A Very Long Real Name')]]
+        'lastHealthCheck':'2026-09-17T10:30:00Z','lastCatalogSync':'2026-09-16T10:30:00Z','lastCollectionStatus':'SUCCEEDED','lastCollectionSuccess':'2099-01-01T00:00:00Z','latestRelease':'2026-09-15'} for k,n in [('freizeitkarte','Freizeitkarte'),('opentopomap','OpenTopoMap'),('long','Provider With A Very Long Real Name')]]
     stats={'rows':[{'provider_id':'freizeitkarte','map_package_id':'lt','region':'LT','region_country':'LT','region_identity':'lt','display_name':'Lithuania',
         'component_kind':'main','event_type':'INSTALL_SUCCEEDED','outcome':'SUCCEEDED','operation_count':3000,'event_count':3000,'last_occurred_at':'2026-09-17T10:30:00Z'}], 'summary':{'hasEventData':True,'completedDownloads':3000,'completedInstalls':3000,'failedInstalls':0,'downloadSuccessRate':100,'installSuccessRate':100}}
     stats['rows'] += [{'provider_id':'custom','event_type':'INSTALL_SUCCEEDED','outcome':'SUCCEEDED','operation_count':15,'event_count':15},
@@ -38,6 +38,36 @@ def build(root):
         'downloads':{'hasData':True,'dmgTotal':326,'zipTotal':84,'lastObservedAt':'2026-09-24T18:00:00Z','lastSuccessfulObservedAt':'2026-09-24T18:00:00Z','bucket':'day','trend':app_download_trend},
         'providers':providers,'compatibility':{'hasData':True,'allTimeOpenErrorCount':20,'recentActivity':[dict(events[0],operation_key='fixture-0',last_occurred_at='2026-09-17T10:30:00Z')],
         'attention':[dict(events[i],operation_key=f'fixture-{i}',open_error=True,has_failed=True,error_category='TRANSFER_FAILED',last_occurred_at='2026-09-17T10:30:00Z') for i in range(40)]}}
+    overview['data'].update({'completedMapUpdateCount':38,'failedMapUpdateCount':1,'mapUpdateCount':39,
+        'allTimeMapUpdateSuccessCount':120,'allTimeMapUpdateFailedCount':3,
+        'downloadPurposes':{'install':{'succeeded':52,'failed':2},'update':{'succeeded':12,'failed':1},'unknown':{'succeeded':6,'failed':0}}})
+    for item in overview_trend:
+        item.setdefault('map_update_success_count', 1 if item['bucket'].endswith('24T00:00:00Z') else 0)
+        item['custom_count'] = 1 if item['bucket'].endswith(('20T00:00:00Z','23T00:00:00Z')) else 0
+    # Period tiles describe the same population as the chart beside them.
+    def _trend_total(*fields):
+        return sum(int(item.get(field) or 0) for item in overview_trend for field in fields)
+    installs, failed_installs = _trend_total('success_count', 'custom_count'), _trend_total('failed_count')
+    updates, failed_updates = _trend_total('map_update_success_count'), _trend_total('map_update_failed_count')
+    downloads, failed_downloads = _trend_total('download_success_count'), _trend_total('download_failed_count')
+    overview['data'].update({
+        'completedInstallCount': installs, 'failedInstallCount': failed_installs,
+        'installSuccessRate': installs / (installs + failed_installs) * 100,
+        'completedMapUpdateCount': updates, 'failedMapUpdateCount': failed_updates,
+        'mapUpdateCount': updates + failed_updates,
+        'completedDownloadCount': downloads, 'failedDownloadCount': failed_downloads,
+        'downloadSuccessRate': downloads / (downloads + failed_downloads) * 100,
+        'downloadPurposes': {'install': {'succeeded': downloads - 6 - 12, 'failed': failed_downloads - 1},
+                             'update': {'succeeded': 12, 'failed': 1},
+                             'unknown': {'succeeded': 6, 'failed': 0}},
+    })
+    overview['funnel']={'sessionCount':42,'stages':[
+        {'stage':'DEVICE_CONNECT','outcomes':[{'outcome':'CONNECTED','sessionCount':38},{'outcome':'TIMEOUT_NO_USB','sessionCount':2},{'outcome':'NOT_MTP_MODE','sessionCount':1},{'outcome':'BUSY','sessionCount':1}]},
+        {'stage':'AUTHORIZATION','outcomes':[{'outcome':'APPROVED','sessionCount':30},{'outcome':'PENDING','sessionCount':5},{'outcome':'UNKNOWN_MODEL','sessionCount':2},{'outcome':'AMBIGUOUS','sessionCount':1}]}],
+        'modelsNeedingReview':[{'baseModel':'fenix 8','outcome':'PENDING','sessionCount':4},{'baseModel':'Forerunner 965','outcome':'UNKNOWN_MODEL','sessionCount':1}]}
+    overview['supportReports']={'openCount':3}
+    overview['mapsUnknown']={'modelCount':2}
+    overview['system']={'api':'HEALTHY','database':'HEALTHY','providers':providers,'observations':[],'scheduler':None,'weekly':None}
     device=_admin_device_payload([{'device_id':'model-0','model':'fēnix 8','variant':'51 mm, AMOLED','family_name':'fēnix','map_capable':True,'active':True,'support_status':'SUPPORTED','usb_identities':[]}],None)['devices'][0]
     detail=dict(providers[0],maps=[],sources=[],healthStatus='HEALTHY',healthHistory=[{'status':'HEALTHY','checked_at':'2026-09-17T10:30:00Z','http_status':200,'duration_ms':125,'artifact_count':180,**{key:'HEALTHY' for key in ('website_status','catalog_status','redirect_status','download_status','mime_status','magic_status','zip_status','img_status','last_update_status')}}],activationGate={'canActivate':True})
     pages={'overview':overview_page(overview,user,'fixture'),'installations':dashboard_page(rows,user,'fixture',diagnostic_summary=summary),

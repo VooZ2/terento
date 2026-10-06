@@ -50,7 +50,7 @@ def build(root):
         'occurred_at': NOW}, 'status': 'Failure details were not received. Request the local Terento diagnostic report for investigation.'}
     pages = {'provider': provider_detail_page({'provider': provider}, [], [], user, 'fixture'),
         'chart': overview_page(overview, user, 'fixture'),
-        'updates': update_diagnostics_page({'rows': [detail]}, user, 'fixture'),
+        'updates': update_diagnostics_page({'rows': [detail], 'totals': {'total': 52, 'succeeded': 44, 'failed': 5, 'not_started': 3, 'open_failed': 2}}, user, 'fixture'),
         'update-detail': update_diagnostics_page({'detail': detail}, user, 'fixture'),
         'update-missing': update_diagnostics_page(missing, user, 'fixture'),
         'update-source': update_diagnostics_page({'detail': source_detail}, user, 'fixture')}

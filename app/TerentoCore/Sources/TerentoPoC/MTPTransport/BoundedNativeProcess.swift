@@ -120,8 +120,13 @@ extension FinishingTrace {
     // Every access to these fields is protected by lock.
     nonisolated(unsafe) private static var entries: [String] = []
     nonisolated(unsafe) private static var frozenReport = ""
-    static let fileURL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Logs/Terento/finishing.log")
+    static let fileURL: URL = {
+        if let path = ProcessInfo.processInfo.environment["TERENTO_LOG_DIRECTORY"], !path.isEmpty {
+            return URL(fileURLWithPath: path, isDirectory: true).appendingPathComponent("finishing.log")
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/Terento/finishing.log")
+    }()
 
     static func beginInstallation() {
         lock.lock()
@@ -194,11 +199,15 @@ extension FinishingTrace {
         "session_close_begin", "session_close_end", "native_cleanup_begin", "native_cleanup_end",
         "read_chunk_limit", "abort_close_begin", "abort_close_returned", "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
-        "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result"
+        "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result",
+        "prewrite_inventory_duplicates", "postwrite_inventory_duplicates",
+        "prewrite_inventory_metrics", "postwrite_inventory_metrics", "update_inventory_metrics", "inventory_scope",
+        "removal_check", "update_current_check", "update_new_check"
     ]
     private static let numericKeys: Set<String> = [
         "t", "pid", "child", "timeout", "attempt", "delay", "status", "reason", "offset", "rc",
-        "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded"
+        "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded",
+        "duplicates", "objects", "baseline", "duration_ms", "bytes", "regions"
     ]
     static func safeLine(_ line: String) -> String? {
         guard line.utf8.count < 1024 else { return nil }
@@ -218,11 +227,17 @@ extension FinishingTrace {
                 guard !value.isEmpty, value.utf8.allSatisfy({ (48...57).contains($0) || $0 == 45 || $0 == 46 }),
                       let number = Double(value), number.isFinite else { return nil }
             } else if key == "operation" {
-                guard ["samples", "cleanup", "inventory", "snapshot"].contains(value) else { return nil }
+                guard ["samples", "cleanup", "inventory", "snapshot", "deviceSnapshot",
+                       "scanInventory", "prefixes"].contains(value) else { return nil }
             } else if key == "validation" {
                 guard ["notExactValidatedArtifact", "sourceUnavailable", "sourceSizeMismatch",
                        "sourceHashMismatch", "sourceFormatMismatch", "unknown"].contains(value) else { return nil }
             } else if key == "worker" { guard ["true", "false"].contains(value) else { return nil } }
+            else if key == "scope" { guard ["FULL", "GARMIN"].contains(value) else { return nil } }
+            else if key == "method" { guard ["sampled", "full"].contains(value) else { return nil } }
+            else if key == "fallback" {
+                guard ["none", "no_root", "ambiguous_root", "scoped_failed"].contains(value) else { return nil }
+            }
             else if key == "trace" { guard UUID(uuidString: value) != nil else { return nil } }
             else if key == "error" {
                 guard ["other", "deviceDisconnected", "operationFailed", "remoteFileMissing",

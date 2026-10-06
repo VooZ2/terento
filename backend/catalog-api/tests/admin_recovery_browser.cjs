@@ -81,7 +81,7 @@ const current = '22222222-2222-4222-8222-222222222222';
     await page.waitForFunction(() => document.querySelector('#provider-recheck-progress').textContent.includes('RUNNING'));
     await page.locator('button[data-provider-action="rechecks"]:not([data-package-id])').click();
     assert.deepEqual(posts.at(-1), {});
-    await page.getByRole('button', {name: 'Copy diagnostic details'}).first().click();
+    await page.getByRole('button', {name: 'Copy details'}).first().click();
     await page.getByRole('button', {name: /Copied|Copy unavailable/}).first().waitFor();
     rejectPost = true;
     await page.locator('[data-package-id]').first().click();

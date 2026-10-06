@@ -10,6 +10,19 @@ from pathlib import PurePosixPath
 
 ALL_SUITES = ("site", "app", "native", "backend", "release", "shared", "ci")
 
+# Markdown documents that suite tests read as contracts. Other Markdown only
+# needs the always-selected shared and CI documentation checks.
+DOCUMENT_SUITES = {
+    "README.md": ("release", "site"),
+    "RELEASE_NOTES.md": ("release",),
+    "THIRD_PARTY_NOTICES.md": ("release",),
+    "VERSIONING.md": ("release",),
+    "Packaging/README.md": ("release",),
+    "Packaging/NativeDependencies/README.md": ("release",),
+    "contracts/README.md": ("backend",),
+    "site-deploy/README.md": ("site",),
+}
+
 
 def select_suites(paths: list[str]) -> list[str]:
     if not paths:
@@ -23,9 +36,7 @@ def select_suites(paths: list[str]) -> list[str]:
             continue
 
         if text.endswith(".md") and "fixtures" not in {part.lower() for part in path.parts}:
-            if text in {"README.md", "RELEASE_NOTES.md", "THIRD_PARTY_NOTICES.md",
-                        "Packaging/README.md", "Packaging/NativeDependencies/README.md"}:
-                selected.add("release")
+            selected.update(DOCUMENT_SUITES.get(text, ()))
             if text.startswith("legal/"):
                 selected.update(("site", "release"))
             if text.startswith("brand/"):

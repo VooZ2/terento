@@ -40,6 +40,8 @@ struct MapInstallationDiagnostics: Equatable, Sendable {
     let nativeFailureCode: InstallationNativeFailureCode?
     var failureContext: InstallationFailureContext? = nil
     var originalFailureContext: InstallationFailureContext? = nil
+    /// Pre/post-write inventory scope, object counts and durations only.
+    var inventoryMetrics: InstallationInventoryMetrics? = nil
 
     static func initial(
         artifact: ValidatedMapArtifact?,
@@ -104,6 +106,17 @@ struct MapInstallationResult: Equatable, Sendable {
 
     var failureContext: InstallationFailureContext? { diagnostics.failureContext }
     var originalFailureContext: InstallationFailureContext? { diagnostics.originalFailureContext }
+
+    /// The cause shown to the user. Automatic cleanup is declined by design,
+    /// so a cleanup failure must not hide the failure that stopped the install.
+    var primaryFailure: InstallationFailure? {
+        cleanupFailure != nil ? (originalFailure ?? failure) : failure
+    }
+
+    /// A created object may remain on the watch; cleanup never removes it.
+    var mayHaveLeftMapOnWatch: Bool {
+        status == .failed && diagnostics.remoteObjectCreated && !diagnostics.cleanupSucceeded
+    }
 }
 
 enum Stage42ArtifactValidationError: String, LocalizedError, Equatable, Sendable {
@@ -541,14 +554,24 @@ struct MapInstallationCoordinator: Sendable {
         let preWriteInventoryStartedAt = ContinuousClock.now
         diagnostic("preflight_inventory_begin", "")
         do {
-            let liveBeforeWrite = try deviceReader.readFileInventory()
+            let liveRead = try deviceReader.readMapScopeInventory()
+            let liveBeforeWrite = liveRead.files
+            let preWriteElapsed = elapsedMilliseconds(since: preWriteInventoryStartedAt)
             diagnostic(
                 "preflight_inventory_end",
-                "elapsed=\(elapsedMilliseconds(since: preWriteInventoryStartedAt))"
+                "elapsed=\(preWriteElapsed)"
             )
+            diagnostic("prewrite_inventory_metrics", InstallationInventoryMetrics.traceFields(
+                liveRead, durationMilliseconds: preWriteElapsed, baseline: request.beforeDeviceFiles.count))
+            diagnostics.inventoryMetrics = InstallationInventoryMetrics(
+                prewrite: liveRead, durationMilliseconds: preWriteElapsed)
+            // The scan baseline is a full walk. A map-scope live read is compared
+            // with the same scope of that baseline; objects outside it are not.
+            let preWriteCompared = MapInventoryScope.comparable(
+                request.beforeDeviceFiles, scope: .full, liveBeforeWrite, scope: liveRead.scope)
             guard preWriteInventoryIsUnchanged(
-                before: request.beforeDeviceFiles,
-                live: liveBeforeWrite,
+                before: preWriteCompared.before,
+                live: preWriteCompared.after,
                 targetPath: targetPath
             ) else {
                 return blocked(
@@ -557,7 +580,7 @@ struct MapInstallationCoordinator: Sendable {
                     preflight: preflight,
                     transaction: transaction,
                     diagnostics: diagnostics.withFailureContexts(Self.protectionContext(
-                        before: request.beforeDeviceFiles, after: liveBeforeWrite,
+                        before: preWriteCompared.before, after: preWriteCompared.after,
                         targetPath: targetPath, targetFilename: targetFilename,
                         expectedSize: artifact.installSizeBytes, prewrite: true
                     ))
@@ -620,11 +643,12 @@ struct MapInstallationCoordinator: Sendable {
             try transaction.transition(to: .writing)
             onPhase?(.installing)
             onPhaseProgress?(.installing, 0)
-            diagnostics = diagnostics.withLifecycle(writeStarted: true)
 
             do {
                 try recoveryStore.record(recoveryRecord)
             } catch {
+                // Local-only recovery bookkeeping failed before any device
+                // call: this is not a started device write.
                 return failureResult(
                     failure: .manifestFailed,
                     transaction: &transaction,
@@ -642,6 +666,9 @@ struct MapInstallationCoordinator: Sendable {
                 )
             )
             let written: MTPWrittenMapObject
+            // The real device write boundary. A transfer may still fail at
+            // zero bytes; progress callbacks do not define this boundary.
+            diagnostics = diagnostics.withLifecycle(writeStarted: true)
             do {
                 written = try transport.write(
                     sourceURL: artifact.localIMGURL,
@@ -739,7 +766,7 @@ struct MapInstallationCoordinator: Sendable {
             )
             try transaction.recordTransferVerification(verification)
             onPhaseProgress?(.finishing, 0.45)
-            let verifiedDiagnostics = diagnostics.withRemote(
+            var verifiedDiagnostics = diagnostics.withRemote(
                 exists: true,
                 size: readBack.reportedSizeBytes,
                 hash: nil,
@@ -787,10 +814,13 @@ struct MapInstallationCoordinator: Sendable {
             onPhaseProgress?(.finishing, 0.65)
 
             let afterFiles: [DeviceFile]
+            let afterRead: DeviceInventoryRead
             let afterSnapshot: DeviceSnapshot
             var finalReadBoundary = InstallationFailureContext.Boundary.postwriteInventory
+            let postWriteInventoryStartedAt = ContinuousClock.now
             do {
-                let firstInventory = try deviceReader.readFileInventory()
+                let firstRead = try deviceReader.readMapScopeInventory()
+                let firstInventory = firstRead.files
                 recordInventory(firstInventory, targetPath: targetPath, targetFilename: targetFilename,
                                 expectedSize: artifact.installSizeBytes, attempt: 1)
                 // A freshly written, byte-verified object can be absent from a
@@ -798,12 +828,18 @@ struct MapInstallationCoordinator: Sendable {
                 // cleanup. A present-but-changed target is never retried into
                 // acceptance; the success path performs no extra device call.
                 if !firstInventory.contains(where: { $0.path == targetPath }) {
-                    afterFiles = try deviceReader.readFileInventory()
-                    recordInventory(afterFiles, targetPath: targetPath, targetFilename: targetFilename,
+                    afterRead = try deviceReader.readMapScopeInventory()
+                    recordInventory(afterRead.files, targetPath: targetPath, targetFilename: targetFilename,
                                     expectedSize: artifact.installSizeBytes, attempt: 2)
                 } else {
-                    afterFiles = firstInventory
+                    afterRead = firstRead
                 }
+                afterFiles = afterRead.files
+                let postWriteElapsed = elapsedMilliseconds(since: postWriteInventoryStartedAt)
+                diagnostic("postwrite_inventory_metrics", InstallationInventoryMetrics.traceFields(
+                    afterRead, durationMilliseconds: postWriteElapsed, baseline: request.beforeDeviceFiles.count))
+                verifiedDiagnostics.inventoryMetrics = verifiedDiagnostics.inventoryMetrics?.withPostwrite(
+                    afterRead, durationMilliseconds: postWriteElapsed)
                 finalReadBoundary = .postwriteSnapshot
                 afterSnapshot = try deviceReader.readSnapshot()
             } catch {
@@ -822,6 +858,8 @@ struct MapInstallationCoordinator: Sendable {
                 )
             }
 
+            let postWriteCompared = MapInventoryScope.comparable(
+                request.beforeDeviceFiles, scope: .full, afterFiles, scope: afterRead.scope)
             let targetCandidates = afterFiles.filter { $0.path == targetPath }
             guard targetCandidates.count == 1, let targetObject = targetCandidates.first,
                   !targetObject.isFolder,
@@ -833,7 +871,7 @@ struct MapInstallationCoordinator: Sendable {
                     transaction: &transaction,
                     preflight: preflight,
                     diagnostics: verifiedDiagnostics.withFailureContexts(Self.protectionContext(
-                        before: request.beforeDeviceFiles, after: afterFiles,
+                        before: postWriteCompared.before, after: postWriteCompared.after,
                         targetPath: targetPath, targetFilename: targetFilename,
                         expectedSize: artifact.installSizeBytes, prewrite: false,
                         targetValidation: true
@@ -847,8 +885,8 @@ struct MapInstallationCoordinator: Sendable {
             onPhaseProgress?(.finishing, 0.85)
 
             let protection = protectionResult(
-                before: request.beforeDeviceFiles,
-                after: afterFiles,
+                before: postWriteCompared.before,
+                after: postWriteCompared.after,
                 targetPath: targetPath,
                 expectedFilename: targetFilename,
                 expectedSizeBytes: artifact.installSizeBytes
@@ -863,7 +901,7 @@ struct MapInstallationCoordinator: Sendable {
                         unrelatedUnchanged: false,
                         freeSpaceAfter: afterSnapshot.freeSpace
                     ).withFailureContexts(Self.protectionContext(
-                        before: request.beforeDeviceFiles, after: afterFiles,
+                        before: postWriteCompared.before, after: postWriteCompared.after,
                         targetPath: targetPath, targetFilename: targetFilename,
                         expectedSize: artifact.installSizeBytes, prewrite: false
                     )),
@@ -880,6 +918,16 @@ struct MapInstallationCoordinator: Sendable {
                 target: targetObject,
                 metadata: metadataResult
             )
+            // The written object passed sampled verification against this
+            // local artifact. Record a sampled removal proof from the same
+            // artifact (re-hashed in full while sampling); without it, removal
+            // keeps the full content check.
+            let removalProof = ManagedRemovalProof.make(
+                localFileURL: artifact.localIMGURL,
+                fileSizeBytes: artifact.installSizeBytes,
+                fileSHA256: artifact.sha256
+            )
+            diagnostic("removal_proof", "recorded=\(removalProof == nil ? 0 : 1) regions=\(removalProof?.offsets.count ?? 0)")
             let manifestEntry = TerentoManifestEntry(
                 deviceKey: request.identity.localManifestDeviceKey,
                 devicePath: targetPath,
@@ -893,7 +941,8 @@ struct MapInstallationCoordinator: Sendable {
                 packageID: request.selectedMap.id,
                 artifactID: artifact.artifactID,
                 artifactKind: artifact.artifactKind,
-                bbbikeMetadata: BBBikeMapMetadata(package: request.selectedMap)
+                bbbikeMetadata: BBBikeMapMetadata(package: request.selectedMap),
+                removalProof: removalProof
             )
 
             do {
@@ -1311,30 +1360,13 @@ struct MapInstallationCoordinator: Sendable {
             .joined()
     }
 
-    private static let verificationSampleLength: UInt32 = 4 * 1024 * 1024
+    private static let verificationSampleLength = SampledReadBackPlan.sampleLength
 
     private static func verificationSampleOffsets(
         fileSizeBytes: UInt64,
         sourceSHA256: String
     ) -> [UInt64] {
-        let sampleLength = min(UInt64(verificationSampleLength), fileSizeBytes)
-        let maximumOffset = fileSizeBytes - sampleLength
-        guard maximumOffset > 0 else {
-            return [0]
-        }
-
-        var seed: UInt64 = 0xcbf29ce484222325
-        for byte in sourceSHA256.utf8 {
-            seed ^= UInt64(byte)
-            seed = seed &* 0x100000001b3
-        }
-
-        var offsets: Set<UInt64> = [0, maximumOffset]
-        for _ in 0..<5 {
-            seed = seed &* 2862933555777941757 &+ 3037000493
-            offsets.insert(seed % (maximumOffset + 1))
-        }
-        return offsets.sorted()
+        SampledReadBackPlan.offsets(fileSizeBytes: fileSizeBytes, sourceSHA256: sourceSHA256)
     }
 
     private struct MetadataResult: Sendable {
@@ -1504,6 +1536,7 @@ struct MapInstallationCoordinator: Sendable {
               let current = try? ProtectedMapInventory(files: after, forcedLocations: baseline.protectedLocations) else {
             return ProtectionResult(existingFilesUnchanged: false, unrelatedFilesUnchanged: false)
         }
+        recordToleratedDuplicates(after, event: "postwrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: after, boundary: "postwrite")
         let beforeComparable = baseline.protected
         let afterComparable = Set(current.protected.filter { $0.path != targetPath })
@@ -1543,6 +1576,7 @@ struct MapInstallationCoordinator: Sendable {
               let current = try? ProtectedMapInventory(files: live, forcedLocations: baseline.protectedLocations) else {
             return false
         }
+        recordToleratedDuplicates(live, event: "prewrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: live, boundary: "prewrite")
         return baseline.protected == current.protected
     }
@@ -1569,20 +1603,24 @@ struct MapInstallationCoordinator: Sendable {
     }
 
     private static func inventoryIsUnambiguous(_ files: [DeviceFile]) -> Bool {
-        var locations = Set<CrossSessionInventoryLocation>()
         for file in files {
-            // A location must resolve to exactly one object even if duplicated
-            // entries disagree on size or kind and therefore have distinct keys.
             guard !file.filename.isEmpty, !file.filename.contains("/"),
                   file.path.hasPrefix("/"),
-                  file.hasMatchingPathFilename,
-                  locations.insert(CrossSessionInventoryLocation(
-                    storageID: file.storageID, path: file.path
-                  )).inserted else {
+                  file.hasMatchingPathFilename else {
                 return false
             }
         }
-        return true
+        // A location must resolve to exactly one object even if duplicated
+        // entries disagree on size or kind. The only exception is a plain
+        // non-map file outside /GARMIN, which ProtectedMapInventory keeps
+        // protected and compares as a multiset.
+        return ProtectedMapInventory.toleratedDuplicateLocations(in: files) != nil
+    }
+
+    /// Local count only: tolerated duplicate locations outside the map scope.
+    private func recordToleratedDuplicates(_ files: [DeviceFile], event: String) {
+        guard let count = ProtectedMapInventory.toleratedDuplicateLocations(in: files), count > 0 else { return }
+        diagnostic(event, "duplicates=\(count)")
     }
 
     private static func comparable(_ file: DeviceFile) -> CrossSessionInventoryKey {
@@ -1637,7 +1675,8 @@ private extension MapInstallationDiagnostics {
             cleanupSucceeded: cleanupSucceeded,
             nativeFailureCode: nativeFailureCode,
             failureContext: failureContext,
-            originalFailureContext: originalFailureContext
+            originalFailureContext: originalFailureContext,
+            inventoryMetrics: inventoryMetrics
         )
     }
 
@@ -1667,7 +1706,8 @@ private extension MapInstallationDiagnostics {
             cleanupSucceeded: cleanupSucceeded,
             nativeFailureCode: nativeFailureCode,
             failureContext: failureContext,
-            originalFailureContext: originalFailureContext
+            originalFailureContext: originalFailureContext,
+            inventoryMetrics: inventoryMetrics
         )
     }
 
@@ -1697,7 +1737,8 @@ private extension MapInstallationDiagnostics {
             cleanupSucceeded: cleanupSucceeded,
             nativeFailureCode: nativeFailureCode,
             failureContext: failureContext,
-            originalFailureContext: originalFailureContext
+            originalFailureContext: originalFailureContext,
+            inventoryMetrics: inventoryMetrics
         )
     }
 
@@ -1745,7 +1786,8 @@ private extension MapInstallationDiagnostics {
             cleanupSucceeded: cleanupSucceeded,
             nativeFailureCode: nativeFailureCode,
             failureContext: failureContext,
-            originalFailureContext: originalFailureContext
+            originalFailureContext: originalFailureContext,
+            inventoryMetrics: inventoryMetrics
         )
     }
 
@@ -1780,7 +1822,8 @@ private extension MapInstallationDiagnostics {
             cleanupSucceeded: cleanupSucceeded,
             nativeFailureCode: nativeFailureCode,
             failureContext: failureContext,
-            originalFailureContext: originalFailureContext
+            originalFailureContext: originalFailureContext,
+            inventoryMetrics: inventoryMetrics
         )
     }
 
@@ -1814,7 +1857,8 @@ private extension MapInstallationDiagnostics {
             cleanupSucceeded: cleanupSucceeded,
             nativeFailureCode: nativeFailureCode,
             failureContext: failureContext,
-            originalFailureContext: originalFailureContext
+            originalFailureContext: originalFailureContext,
+            inventoryMetrics: inventoryMetrics
         )
     }
 
@@ -1849,7 +1893,8 @@ private extension MapInstallationDiagnostics {
             cleanupSucceeded: cleanupSucceeded ?? self.cleanupSucceeded,
             nativeFailureCode: nativeFailureCode,
             failureContext: failureContext,
-            originalFailureContext: originalFailureContext
+            originalFailureContext: originalFailureContext,
+            inventoryMetrics: inventoryMetrics
         )
     }
 
@@ -1870,7 +1915,8 @@ private extension MapInstallationDiagnostics {
             cleanupAttempted: copy.cleanupAttempted, cleanupSucceeded: copy.cleanupSucceeded,
             nativeFailureCode: code,
             failureContext: failureContext,
-            originalFailureContext: originalFailureContext
+            originalFailureContext: originalFailureContext,
+            inventoryMetrics: inventoryMetrics
         )
     }
 }

@@ -117,7 +117,10 @@ terento-catalog-api
 
 The API listens on `http://127.0.0.1:8000` by default when `CATALOG_HOST` is
 set to `127.0.0.1`. The production Compose file binds the service only to the
-private Docker network and lets Traefik provide HTTPS.
+private Docker network and lets Traefik provide HTTPS. `CATALOG_TRUSTED_PROXIES`
+controls which direct peers may supply `X-Forwarded-For` for per-client rate
+limits (default: loopback and private networks; `none` disables it); see
+[operations](docs/operations.md#client-address-and-intake-limits).
 
 Run the offline tests from the repository root after installing the test extra:
 
@@ -128,7 +131,11 @@ Tests/run-backend-tests.sh
 
 The backend regression suite includes generated-admin JavaScript checks and
 therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
-`PATH`.
+`PATH`. PostgreSQL read-model regressions additionally need PGlite 0.5.8:
+install it outside the repository (`npm install --no-save --ignore-scripts
+@electric-sql/pglite@0.5.8`) and set `PGLITE_MODULE_PATH` to its
+`node_modules/@electric-sql/pglite` directory. They skip locally without it and
+fail under `CI=true`.
 
 The shared [public schemas and fixtures](../../contracts/README.md) document
 current map/device projections and event bodies. Tests use jsonschema only in
@@ -680,9 +687,9 @@ only unanimous reviewed specification facts for XML-matching variants.
 New acquisition phases are grouped in Recent activity with component/history;
 missing terminal receipt is explicit rather than treated as an active job.
 
-### Model source review workspace
+### Model sources workspace
 
-`/admin/device-identification` is visibly named `Model source review`. It lists
+`/admin/device-identification` is visibly named `Model sources`. It lists
 models needing source decisions first and searches model names and imported
 codes. Each decision follows Source reported, Match to, Other models using this
 code when relevant, Confirm match, then Technical details. Raw identifiers,

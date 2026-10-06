@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Build the six static Terento Mac installation guide pages.
+"""Build the six static Terento Mac installation and troubleshooting guide pages.
 
 English is the meaning source. The release label is read from the canonical
 application update manifest so the guide cannot drift from the current beta.
+Troubleshooting copy lives in scripts/templates/troubleshooting-copy.json; its
+section anchors are a stable contract because the app links to them.
 """
 
 from __future__ import annotations
@@ -40,6 +42,41 @@ REVIEWED_DISPLAY_DATES = {
 GARMIN_BASECAMP_URL = "https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&identifier=310&tab=topics"
 GARMIN_EXPRESS_URL = "https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8"
 APPLE_ROSETTA_URL = "https://support.apple.com/en-ca/102527"
+TROUBLESHOOTING_SLUG = "guides/troubleshooting/"
+TROUBLESHOOTING_PUBLISHED = "2026-10-06T00:00:00Z"
+TROUBLESHOOTING_REVIEWED = "2026-10-06T00:00:00Z"
+TROUBLESHOOTING_COPY = json.loads((ROOT / "scripts/templates/troubleshooting-copy.json").read_text(encoding="utf-8"))
+# Stable public contract: the app opens
+# https://terento.app/guides/troubleshooting/#<anchor> for each error. Every
+# locale renders exactly these ids. Rename or remove one only together with the
+# app's help-link mapping and its tests.
+TROUBLESHOOTING_ANCHORS = (
+    "connect-watch",
+    "garmin-busy",
+    "multiple-garmin",
+    "usb-mode",
+    "connection-timeout",
+    "watch-not-responding",
+    "model-not-enabled",
+    "couldnt-check",
+    "catalog-unavailable",
+    "download-failed",
+    "mac-storage",
+    "watch-storage",
+    "leftover-map",
+    "update-remove",
+    "send-report",
+)
+# TODO(app release): this copy describes the current beta only. When the next
+# app version ships, revisit in all six locales:
+# - send-report: add the in-app "Send report to Terento" option (no GitHub
+#   account needed; reference "TR-XXXXXX" after sending; Try again on failure)
+#   next to the GitHub flow, and keep the email fallback.
+# - connect-watch / connection-timeout / watch-not-responding: mention
+#   automatic reconnect and the Cancel / Try again actions if they ship.
+# - download-failed: mention that an interrupted download can resume.
+# - update-remove: mention "About N min left" estimates if they ship.
+# - each section: the app's per-error Help links land on these anchors.
 
 
 def esc(value: str) -> str:
@@ -64,6 +101,40 @@ def troubleshooting_body(item: dict[str, object]) -> str:
         'data-umami-event-channel="email">hello&#64;terento.app</a>'
     )
     return body.replace(EMAIL_ADDRESS, email_link) if EMAIL_ADDRESS in body else body + ' ' + email_link
+
+
+def troubleshooting_title(locale: str, anchor: str) -> str:
+    for group in TROUBLESHOOTING_COPY[locale]["groups"]:
+        for item in group["items"]:
+            if item["anchor"] == anchor:
+                return str(item["title"])
+    raise ValueError(f"Unknown troubleshooting anchor: {anchor}")
+
+
+def troubleshooting_href(locale: str, anchor: str) -> str:
+    if anchor not in TROUBLESHOOTING_ANCHORS:
+        raise ValueError(f"Unknown troubleshooting anchor: {anchor}")
+    return f"{localized_path(locale, TROUBLESHOOTING_SLUG)}#{anchor}"
+
+
+def troubleshooting_related_links(locale: str, anchors: tuple[str, ...]) -> str:
+    """Link an install-guide help item to the matching Troubleshooting sections."""
+    if not anchors:
+        return ""
+    links = ", ".join(
+        f'<a href="{troubleshooting_href(locale, anchor)}" data-umami-event="guide-link-click" '
+        f'data-umami-event-location="guide-troubleshooting-{anchor}">{esc(troubleshooting_title(locale, anchor))}</a>'
+        for anchor in anchors
+    )
+    return f' {esc(TROUBLESHOOTING_COPY[locale]["guide_related_label"])} {links}.'
+
+
+def troubleshooting_step_link(locale: str, anchor: str) -> str:
+    return (
+        f'<a class="guide-step-link text-link" href="{troubleshooting_href(locale, anchor)}" '
+        f'data-umami-event="guide-link-click" data-umami-event-location="guide-step-{anchor}">'
+        f'{esc(troubleshooting_title(locale, anchor))} <span aria-hidden="true">→</span></a>'
+    )
 
 
 def localized_path(locale: str, suffix: str = "") -> str:
@@ -168,6 +239,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
                   {substeps}
                   {f'<p class="guide-step-note">{esc(step["note"])}</p>' if step.get("note") else ""}
                   {f'<a class="guide-step-link text-link" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-step">{esc(step["link_label"])} <span aria-hidden="true">→</span></a>' if step.get("link_label") else ""}
+                  {troubleshooting_step_link(locale, step["help_anchor"]) if step.get("help_anchor") else ""}
                 </div>
                 {visual}
               </div>
@@ -176,7 +248,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     for item in copy["troubleshooting"]:
         troubleshooting.append(f'''<section class="troubleshooting-item">
               <h3>{esc(item["title"])}</h3>
-              <p>{troubleshooting_body(item)}</p>
+              <p>{troubleshooting_body(item)}{troubleshooting_related_links(locale, item.get("related", ()))}</p>
             </section>''')
     guide_json = guide_json_ld(locale, copy, release_label)
     facts = "".join(f'<span>{esc(fact)}</span>' for fact in copy["facts"])
@@ -253,7 +325,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
 
           <section class="troubleshooting" id="troubleshooting" aria-labelledby="troubleshooting-title">
             <div class="guide-section-heading"><p class="eyebrow">{esc(copy["troubleshooting_eyebrow"])}</p><h2 id="troubleshooting-title">{esc(copy["troubleshooting_title"])}</h2></div>
-            <div class="troubleshooting-list">{''.join(troubleshooting)}</div>
+            <div class="troubleshooting-list">{''.join(troubleshooting)}<p class="troubleshooting-more"><a class="text-link" href="{localized_path(locale, TROUBLESHOOTING_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="guide-troubleshooting">{esc(TROUBLESHOOTING_COPY[locale]["guide_page_link"])} <span aria-hidden="true">→</span></a></p></div>
           </section>
 
           <section class="guide-bottom-cta" aria-labelledby="guide-bottom-title">
@@ -742,6 +814,8 @@ def merged_copy(locale: str) -> dict[str, object]:
             "title": flow_step["title"],
             "body": flow_step["body"],
         }
+        if source_index == 1:
+            step["help_anchor"] = "connect-watch"
         if flow_step.get("note"):
             step["note"] = flow_step["note"]
         if flow_step.get("substeps"):
@@ -777,9 +851,9 @@ def merged_copy(locale: str) -> dict[str, object]:
 
     source_troubleshooting = base["troubleshooting"]
     base["troubleshooting"] = [
-        {"title": source_troubleshooting[0]["title"], "body": refinement["detect_body"]},
-        AVAILABILITY_TROUBLESHOOTING[locale],
-        {"title": source_troubleshooting[1]["title"], "body": flow["installation_failed"]},
+        {"title": source_troubleshooting[0]["title"], "body": refinement["detect_body"], "related": ("connect-watch", "garmin-busy", "usb-mode")},
+        {**AVAILABILITY_TROUBLESHOOTING[locale], "related": ("catalog-unavailable", "download-failed")},
+        {"title": source_troubleshooting[1]["title"], "body": flow["installation_failed"], "related": ("leftover-map", "send-report")},
         {"title": source_troubleshooting[3]["title"], "body": flow["not_visible"], "email_link": True},
     ]
     return base
@@ -813,6 +887,143 @@ AVAILABILITY_TROUBLESHOOTING = {
 }
 
 
+TROUBLESHOOTING_LINK_RE = re.compile(r"\[([^\]]+)\]\(#([a-z-]+)\)")
+
+
+def troubleshooting_text(value: str) -> str:
+    """Escape troubleshooting copy and expand its two supported inline tokens."""
+    def anchor(match: re.Match[str]) -> str:
+        if match.group(2) not in TROUBLESHOOTING_ANCHORS:
+            raise ValueError(f"Unknown troubleshooting anchor: {match.group(2)}")
+        return f'<a href="#{match.group(2)}">{match.group(1)}</a>'
+
+    rendered = TROUBLESHOOTING_LINK_RE.sub(anchor, esc(value))
+    email_link = (
+        '<a href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" '
+        'data-umami-event="support-link-click" '
+        'data-umami-event-location="troubleshooting-send-report" '
+        'data-umami-event-channel="email">hello&#64;terento.app</a>'
+    )
+    return rendered.replace("{email}", email_link)
+
+
+def troubleshooting_copy(locale: str) -> dict[str, object]:
+    copy = TROUBLESHOOTING_COPY[locale]
+    anchors = tuple(item["anchor"] for group in copy["groups"] for item in group["items"])
+    if anchors != TROUBLESHOOTING_ANCHORS:
+        raise ValueError(f"{locale}: troubleshooting anchors must match TROUBLESHOOTING_ANCHORS")
+    return copy
+
+
+def troubleshooting_json_ld(locale: str, copy: dict[str, object]) -> str:
+    canonical = f"{BASE_URL}{localized_path(locale, TROUBLESHOOTING_SLUG)}"
+    graph = [
+        {
+            "@type": "Organization",
+            "@id": f"{BASE_URL}/#organization",
+            "name": "Terento",
+            "url": f"{BASE_URL}/",
+            "logo": f"{BASE_URL}/assets/logo-sky.svg",
+            "sameAs": ["https://github.com/VooZ2/terento"],
+        },
+        {
+            "@type": "Article",
+            "@id": f"{canonical}#article",
+            "headline": copy["h1"],
+            "description": copy["description"],
+            "datePublished": TROUBLESHOOTING_PUBLISHED,
+            "dateModified": TROUBLESHOOTING_REVIEWED,
+            "mainEntityOfPage": {"@id": canonical},
+            "inLanguage": locale,
+            "image": f"{BASE_URL}{SOCIAL_IMAGE}",
+            "publisher": {"@id": f"{BASE_URL}/#organization"},
+            "author": {"@id": f"{BASE_URL}/#organization"},
+            "about": {"@id": f"{BASE_URL}/#software"},
+        },
+        {
+            "@type": "BreadcrumbList",
+            "@id": f"{canonical}#breadcrumb",
+            "itemListElement": [
+                {"@type": "ListItem", "position": 1, "name": copy["breadcrumb_home"], "item": f"{BASE_URL}{localized_path(locale)}"},
+                {"@type": "ListItem", "position": 2, "name": copy["breadcrumb_current"], "item": canonical},
+            ],
+        },
+    ]
+    return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, indent=2)
+
+
+def render_troubleshooting(locale: str) -> str:
+    """Render the troubleshooting page; metadata and shell are filled by later passes."""
+    copy = troubleshooting_copy(locale)
+    canonical = f"{BASE_URL}{localized_path(locale, TROUBLESHOOTING_SLUG)}"
+    groups = []
+    for group in copy["groups"]:
+        items = []
+        for item in group["items"]:
+            steps = "".join(f"<li>{troubleshooting_text(step)}</li>" for step in item["steps"])
+            items.append(f'''<section class="troubleshooting-item" id="{item["anchor"]}" aria-labelledby="{item["anchor"]}-title">
+              <h3 id="{item["anchor"]}-title">{esc(item["title"])}</h3>
+              <p>{troubleshooting_text(item["body"])}</p>
+              <ol class="troubleshooting-steps">{steps}</ol>
+            </section>''')
+        groups.append(f'''<section class="troubleshooting" id="{group["id"]}" aria-labelledby="{group["id"]}-title">
+            <div class="guide-section-heading"><p class="eyebrow">{esc(group["eyebrow"])}</p><h2 id="{group["id"]}-title">{esc(group["title"])}</h2></div>
+            <div class="troubleshooting-list">{''.join(items)}</div>
+          </section>''')
+    groups_markup = "\n          ".join(groups)
+    return f'''<!doctype html>
+<html lang="{locale}" data-language="{locale}" data-page="troubleshooting">
+  <head>
+    <script defer src="/site-shell.js?v={SHELL_VERSION}"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#F7F3EC">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+    <meta name="description" content="{esc(copy["description"])}">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="{canonical}">
+    <title>{esc(copy["title"])}</title>
+    <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
+    <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/styles.css?v={STYLE_VERSION}">
+    <script defer src="/language.js?v={LANGUAGE_VERSION}"></script>
+    <script defer src="/privacy-consent.js?v={UMAMI_SCRIPT_VERSION}"></script>
+    <script type="application/ld+json">
+{troubleshooting_json_ld(locale, copy)}
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">{esc(copy["skip"])}</a>
+    <header class="site-header"></header>
+    <main id="main-content" class="guide-main">
+      <article class="guide-article">
+        <header class="guide-intro">
+          <div class="shell">
+            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>{esc(copy["eyebrow"])}</p>
+            <h1>{esc(copy["h1"])}</h1>
+            <p class="guide-lede">{esc(copy["intro"])}</p>
+          </div>
+        </header>
+
+        <div class="shell guide-content">
+          {groups_markup}
+
+          <section class="guide-bottom-cta" aria-labelledby="troubleshooting-bottom-title">
+            <div><p class="eyebrow">{esc(copy["guide_eyebrow"])}</p><h2 id="troubleshooting-bottom-title">{esc(copy["guide_title"])}</h2></div>
+            <a class="text-link" href="{localized_path(locale, GUIDE_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">{esc(copy["guide_link"])} <span aria-hidden="true">→</span></a>
+          </section>
+        </div>
+      </article>
+    </main>
+    <footer class="site-footer"></footer>
+  </body>
+</html>
+'''
+
+
 def main() -> None:
     release_path = ROOT / "site" / "updates" / "macos-arm64.json"
     release = json.loads(release_path.read_text(encoding="utf-8"))
@@ -821,6 +1032,11 @@ def main() -> None:
         output.parent.mkdir(parents=True, exist_ok=True)
         rendered = render(locale, merged_copy(locale), release)
         output.write_text(re.sub(r"[ \t]+\n", "\n", rendered), encoding="utf-8")
+        print(output.relative_to(ROOT))
+    for locale in ("en", "de", "fr", "pl", "cs", "it"):
+        output = ROOT / "site" / localized_path(locale, TROUBLESHOOTING_SLUG).lstrip("/") / "index.html"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(re.sub(r"[ \t]+\n", "\n", render_troubleshooting(locale)), encoding="utf-8")
         print(output.relative_to(ROOT))
 
 

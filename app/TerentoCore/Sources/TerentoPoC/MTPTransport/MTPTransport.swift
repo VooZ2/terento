@@ -38,7 +38,7 @@ struct MTPTransport: Sendable {
                 if count == 0 {
                     throw MTPTransportError.deviceAbsent
                 }
-                throw MTPTransportError.readFailed("More than one Garmin MTP device connected")
+                throw MTPTransportError.multipleGarminDevices
             }
 
             // The probe intentionally does not open an MTP session. The
@@ -57,6 +57,17 @@ struct MTPTransport: Sendable {
             lifecycleLease: lifecycleLease
         ) {
             try garminUSBDeviceCount() > 0
+        }
+    }
+
+    /// USB-only count used by device discovery. It never opens an MTP
+    /// session, so it can poll while no watch is connected.
+    func countGarminUSBDevices() throws -> Int {
+        try operationGate.withOperation(
+            kind: .presence,
+            lifecycleLease: lifecycleLease
+        ) {
+            try garminUSBDeviceCount()
         }
     }
 
@@ -164,6 +175,18 @@ struct MTPTransport: Sendable {
         }
     }
 
+    /// Pre/post-write protection read: storage roots plus the GARMIN subtree,
+    /// or the full walk when the native session finds the scope ambiguous.
+    func readMapScopeInventory(operationProfile profile: DeviceMapOperationProfile?) throws -> DeviceInventoryRead {
+        try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
+            try readInventoryUncoordinated(profile: profile, mapScope: true)
+        }
+    }
+
+    func readMapScopeInventory() throws -> DeviceInventoryRead {
+        try readMapScopeInventory(operationProfile: nil)
+    }
+
     private func withReadProfile<Result>(
         _ profile: DeviceMapOperationProfile?,
         _ body: (UnsafePointer<TerentoMTPMapOperationProfile>?) throws -> Result
@@ -173,15 +196,25 @@ struct MTPTransport: Sendable {
     }
 
     private func readFileInventoryUncoordinated(profile: DeviceMapOperationProfile? = nil) throws -> [DeviceFile] {
+        try readInventoryUncoordinated(profile: profile, mapScope: false).files
+    }
+
+    private func readInventoryUncoordinated(profile: DeviceMapOperationProfile?, mapScope: Bool) throws -> DeviceInventoryRead {
         var rawInventory = TerentoMTPFileInventory()
         var nativeCategory: Int32 = 0
+        var nativeScope = Int32(TERENTO_INVENTORY_SCOPE_FULL)
+        var nativeFallback = Int32(TERENTO_INVENTORY_FALLBACK_NONE)
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
 
         let result = errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
             withUnsafeMutablePointer(to: &rawInventory) { inventoryPointer in
                 withReadProfile(profile ?? operationProfile) { nativeProfile in
-                    terento_mtp_read_file_inventory_bound(nativeProfile, inventoryPointer,
-                        errorPointer.baseAddress, errorPointer.count, &nativeCategory)
+                    mapScope
+                        ? terento_mtp_read_map_scope_inventory_bound(nativeProfile, inventoryPointer,
+                            &nativeScope, &nativeFallback,
+                            errorPointer.baseAddress, errorPointer.count, &nativeCategory)
+                        : terento_mtp_read_file_inventory_bound(nativeProfile, inventoryPointer,
+                            errorPointer.baseAddress, errorPointer.count, &nativeCategory)
                 }
             }
         }
@@ -196,11 +229,19 @@ struct MTPTransport: Sendable {
                                        boundary: .initialInventory, category: nativeCategory)
         }
 
+        let scope: DeviceInventoryScope = nativeScope == Int32(TERENTO_INVENTORY_SCOPE_GARMIN) ? .garmin : .full
+        let fallback: DeviceInventoryFallback
+        switch nativeFallback {
+        case Int32(TERENTO_INVENTORY_FALLBACK_NONE): fallback = .none
+        case Int32(TERENTO_INVENTORY_FALLBACK_NO_ROOT): fallback = .noRoot
+        case Int32(TERENTO_INVENTORY_FALLBACK_AMBIGUOUS_ROOT): fallback = .ambiguousRoot
+        default: fallback = .scopedFailed
+        }
         guard let filePointer = rawInventory.files else {
-            return []
+            return DeviceInventoryRead(files: [], scope: scope, fallback: fallback)
         }
 
-        return (0..<Int(rawInventory.file_count)).map { index in
+        let files = (0..<Int(rawInventory.file_count)).map { index in
             let file = filePointer[index]
             return DeviceFile(
                 itemID: file.item_id,
@@ -212,6 +253,7 @@ struct MTPTransport: Sendable {
                 isFolder: file.is_folder != 0
             )
         }
+        return DeviceInventoryRead(files: files, scope: scope, fallback: fallback)
     }
 
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8] {
@@ -423,6 +465,14 @@ protocol GarminUSBPresenceReader: Sendable {
 
 extension MTPTransport: GarminUSBPresenceReader {}
 
+/// USB-only device count used while waiting for a watch. Like
+/// `GarminUSBPresenceReader`, it does not identify, open or modify a device.
+protocol GarminUSBDeviceCounter: Sendable {
+    func countGarminUSBDevices() throws -> Int
+}
+
+extension MTPTransport: GarminUSBDeviceCounter {}
+
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
@@ -450,6 +500,7 @@ extension MTPTransport: DeviceFileReader {}
 enum MTPTransportError: LocalizedError, Sendable, InstallationFailureContextProviding {
     case readFailed(String)
     case deviceAbsent
+    case multipleGarminDevices
     case contextual(message: String, context: InstallationFailureContext)
 
     var failureContext: InstallationFailureContext? {
@@ -468,6 +519,8 @@ enum MTPTransportError: LocalizedError, Sendable, InstallationFailureContextProv
             return message
         case .deviceAbsent:
             return "No Garmin MTP device connected"
+        case .multipleGarminDevices:
+            return "More than one Garmin MTP device connected"
         case .contextual(let message, _):
             return message
         }

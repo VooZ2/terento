@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "8D1C3A52-9E4B-4F0A-B7C1-2D5E6F708192",
+  "operationId": "3F2A1B0C-4D5E-4F60-8A7B-9C0D1E2F3A4B",
+  "providerId": "freizeitkarte",
+  "mapId": "freizeitkarte-deu",
+  "region": "deu",
+  "eventType": "INSTALL_SUCCEEDED",
+  "outcome": "SUCCEEDED",
+  "timestamp": "2026-08-01T12:00:00Z",
+  "appBuild": "11"
+}

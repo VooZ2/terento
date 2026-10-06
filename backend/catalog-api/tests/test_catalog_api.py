@@ -159,7 +159,7 @@ class CatalogAPITests(unittest.TestCase):
             self.assertEqual(database.overview_map_requests[-1][2], "Europe/Vilnius")
             self.assertEqual(database.overview_download_requests[-1], ("30d", "Europe/Vilnius"))
             self.assertIn("value='30d' selected", body.decode())
-            self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body.decode())
+            self.assertIn(".dmg <strong>23</strong> · .zip", body.decode())
 
             response, body = self._request(
                 server, "GET", "/admin?period=all", headers={"Cookie": cookie},
@@ -263,6 +263,9 @@ class CatalogAPITests(unittest.TestCase):
         provider_b = service.map_statistics({"period": "24h", "provider": "b"})
 
         self.assertNotEqual(today["trend"], month["trend"])
+        # KPI tiles use the period summary; the all-time summary feeds only the
+        # labelled All time line and stays independent of the period.
+        self.assertEqual(today["summary"]["completedInstalls"], 1)
         self.assertEqual(today["allTimeSummary"], month["allTimeSummary"])
         self.assertEqual(today["allTimeSummary"]["completedInstalls"], 9)
         self.assertEqual(provider_b["allTimeSummary"]["completedInstalls"], 18)
@@ -368,7 +371,7 @@ class CatalogAPITests(unittest.TestCase):
 
             detail, detail_body = self._request(server, "GET", "/admin/providers/freizeitkarte", headers={"Cookie": cookie})
             self.assertEqual(detail.status, 200)
-            self.assertIn(b"Metadata and attribution", detail_body)
+            self.assertIn(b"<summary>Attribution</summary>", detail_body)
             self.assertIn(b"Health check history", detail_body)
             self.assertIn(b"Refresh catalog", detail_body)
 
@@ -387,7 +390,8 @@ class CatalogAPITests(unittest.TestCase):
             self.assertEqual(statistics.status, 200)
             self.assertIn(b">Maps</h1>", statistics_body)
             self.assertIn(b"7 days", statistics_body)
-            self.assertIn(b"id='map-statistics-installs-title'>Installs", statistics_body)
+            self.assertIn(b"id='map-install-trend-title'>Installs", statistics_body)
+            self.assertIn(b"name='timeZone' id='map-statistics-timezone'", statistics_body)
         finally:
             server.shutdown()
             server.server_close()

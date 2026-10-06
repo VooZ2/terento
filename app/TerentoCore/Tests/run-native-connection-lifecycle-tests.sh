@@ -65,7 +65,8 @@ if ! grep -Fq 'startPostEjectPresenceMonitoring()' "$device_engine" \
     exit 1
 fi
 
-if ! grep -Fq 'waitForGarminUSBPresenceBeforeSnapshot' "$device_engine" \
+if ! grep -Fq 'detectionPolicy.usbObserved(count: usbCount' "$device_engine" \
+    || ! grep -Fq 'case .settleThenRead:' "$device_engine" \
     || ! grep -Fq 'Garmin returned to USB; waiting for MTP enumeration' "$device_engine" \
     || ! grep -Fq 'try await Task.sleep(for: .milliseconds(750))' "$device_engine"; then
     print -u2 "FAIL: reconnect detection enters MTP before USB presence and enumeration settle"
@@ -77,4 +78,11 @@ print "PASS: Device and sidebar Safe Eject share one lifecycle path"
 print "PASS: install and lifecycle work pause background presence monitoring"
 print "PASS: idle presence monitoring uses a USB-only probe"
 print "PASS: Safe Eject monitors physical unplug and restarts discovery"
+if ! grep -Fq 'startReplugWatch()' "$device_engine" \
+    || ! grep -Fq 'countGarminUSBDevices()' "$device_engine"; then
+    print -u2 "FAIL: a failed check does not restart discovery after a physical replug"
+    exit 1
+fi
+
 print "PASS: reconnect waits for USB presence before reopening MTP"
+print "PASS: a failed check restarts discovery after a physical replug"

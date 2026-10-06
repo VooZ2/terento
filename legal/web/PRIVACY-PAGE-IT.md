@@ -27,6 +27,12 @@ Se ci scrivi, riceviamo indirizzo, messaggio e allegati per rispondere e analizz
 
 Una issue GitHub è distinta dalla diagnostica automatica: la controlli e invii tu; contenuti e nome account possono essere pubblici. Si applica l’[informativa GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Le donazioni facoltative avvengono tramite [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), che tratta i dati di pagamento secondo le proprie condizioni.
 
+## Rapporti di assistenza
+
+Quando l’app offre di inviare un rapporto di assistenza a Terento, il rapporto viene inviato solo se scegli di inviarlo, dopo averne visto il contenuto. Contiene i dettagli ripuliti usati anche per le segnalazioni GitHub: versioni dell’app e di macOS, modello e variante dell’orologio, passaggio non riuscito, categoria e messaggio di errore, provider e regione della mappa e tempi, oltre all’eventuale descrizione che aggiungi. Esclude numeri di serie, Unit IDs, account, percorsi locali, log grezzi e mappe; non serve un account GitHub. Non inserire dati personali nella descrizione.
+
+I rapporti di assistenza servono solo a diagnosticare il problema segnalato, non sono usati per statistiche e sono conservati per 12 mesi. L’accesso è riservato all’amministrazione del progetto; il tuo indirizzo IP non viene salvato con il rapporto. La base è il legittimo interesse a rispondere alla tua richiesta e mantenere l’app, ai sensi dell’art. 6(1)(f) GDPR.
+
 ## Statistiche e memoria del browser
 
 Umami viene caricato per tutti i visitatori per misurare visualizzazioni, clic e download. Non usa cookie di tracciamento. Può trattare URL di pagina/provenienza, browser, sistema, dispositivo e posizione approssimativa. I valori UTM nei link descrivono le fonti delle campagne. Terento li trasmette tramite URL senza salvare campagne nel browser. Le statistiche servono a migliorare il sito e misurare le campagne sulla base del legittimo interesse, art. 6(1)(f) GDPR. Non ci sono banner di consenso analitico o interruttori sul sito; contattaci per opporti. Le statistiche sono separate dalle impostazioni diagnostiche dell’app.
@@ -51,4 +57,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 13 settembre 2026.
+Aggiornamento: 6 ottobre 2026.

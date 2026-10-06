@@ -38,7 +38,28 @@ jobs:
           node-version: "22"
       - name: Install catalog API dependencies
         run: python -m pip install --disable-pip-version-check -e "backend/catalog-api[test]"
+      - name: Install pinned PGlite for PostgreSQL regressions
+        env:
+          PGLITE_VERSION: "0.5.8"
+          PGLITE_INTEGRITY: "sha512-n9tsbUOhwx2epK1V0ZG9Ar4SHWUju04dhmzZXiSBXwBoleOvIfals33NAaWgagQVAL4Rbvx/Ptsu3P+pA09f6Q=="
+        run: |
+          set -euo pipefail
+          pglite_root="$RUNNER_TEMP/terento-pglite"
+          mkdir -p "$pglite_root"
+          npm install --prefix "$pglite_root" --no-save --ignore-scripts \
+            --no-audit --no-fund "@electric-sql/pglite@$PGLITE_VERSION"
+          node -e '
+            const lock = require(process.argv[1] + "/node_modules/.package-lock.json");
+            const entry = lock.packages["node_modules/@electric-sql/pglite"] || {};
+            if (entry.version !== process.env.PGLITE_VERSION || entry.integrity !== process.env.PGLITE_INTEGRITY) {
+              console.error("PGlite version or integrity mismatch", entry.version, entry.integrity);
+              process.exit(1);
+            }
+          ' "$pglite_root"
+          echo "PGLITE_MODULE_PATH=$pglite_root/node_modules/@electric-sql/pglite" >> "$GITHUB_ENV"
       - name: Run backend suite
+        env:
+          CI: "true"
         run: Tests/run-backend-tests.sh
       - name: Validate PostgreSQL migrations
         env:

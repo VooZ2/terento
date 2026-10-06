@@ -141,18 +141,18 @@ class IndexNowObservationTests(unittest.TestCase):
             (observation(result="partial_success", status="HEALTHY", details={"http_status": 200, "http_200_count": 1, "http_202_count": 0, "error_code": None, "error_summary": "The IndexNow submission was only partially accepted."}), "WARNING", "Partial success"),
         ):
             cards, _, _ = _system_health_cards({"providers": [], "observations": [report], "scheduler": None})
-            card = next(item for item in cards if item["title"] == "IndexNow submissions")
+            card = next(item for item in cards if item["title"] == "Search indexing")
             self.assertEqual(card["status"], expected_status)
             self.assertIn(expected_text, card["html"])
             visible = card["html"].split("<details class='admin-disclosure system-health-technical'>", 1)[0]
-            self.assertIn("<h2>IndexNow submissions</h2>", visible)
-            self.assertEqual(visible.count("system-health-badge"), 1)
+            self.assertIn("<h2>Search indexing</h2>", visible)
+            self.assertEqual(visible.count("admin-pill "), 1)
             self.assertIn("class='system-health-action'", visible)
             self.assertIn("Last checked", visible)
             self.assertNotIn("Result:", visible)
             self.assertNotIn("Pending URLs", visible)
         cards, _, _ = _system_health_cards({"providers": [], "observations": [], "scheduler": None})
-        card = next(item for item in cards if item["title"] == "IndexNow submissions")
+        card = next(item for item in cards if item["title"] == "Search indexing")
         self.assertEqual(card["status"], "UNKNOWN")
         visible = card["html"].split("<details class='admin-disclosure system-health-technical'>", 1)[0]
         details = card["html"].split("<div class='disclosure-body'>", 1)[1].split("</div></details>", 1)[0]
@@ -160,23 +160,23 @@ class IndexNowObservationTests(unittest.TestCase):
         self.assertNotIn("Pending URLs", visible)
         self.assertIn("Result: Not initialized", details)
         self.assertIn("Pending URLs", details)
-        self.assertIn("Submission status only. This does not confirm search indexing.", card["html"])
+        self.assertIn("IndexNow submission status only. This does not confirm search indexing.", card["html"])
 
     def test_pending_unknown_is_not_rendered_as_zero_and_missing_report_has_grace_period(self) -> None:
         unknown = observation(details={"pending_url_count": None, "last_submission_at": None, "last_successful_submission_at": None})
         cards, _, _ = _system_health_cards({"providers": [], "observations": [unknown], "scheduler": None})
-        card = next(item for item in cards if item["title"] == "IndexNow submissions")
+        card = next(item for item in cards if item["title"] == "Search indexing")
         self.assertIn("<dt>Pending URLs</dt><dd>—</dd>", card["html"])
 
         recent_site = site_observation(age=timedelta(minutes=1))
         cards, _, _ = _system_health_cards({"providers": [], "observations": [recent_site], "scheduler": None})
-        card = next(item for item in cards if item["title"] == "IndexNow submissions")
+        card = next(item for item in cards if item["title"] == "Search indexing")
         self.assertEqual(card["status"], "UNKNOWN")
         self.assertNotIn("IndexNow report missing for the latest deployment.", card["html"])
 
         old_site = site_observation(age=timedelta(minutes=31))
         cards, _, _ = _system_health_cards({"providers": [], "observations": [old_site], "scheduler": None})
-        card = next(item for item in cards if item["title"] == "IndexNow submissions")
+        card = next(item for item in cards if item["title"] == "Search indexing")
         self.assertEqual(card["status"], "WARNING")
         self.assertIn("IndexNow report missing for the latest deployment.", card["html"])
 
@@ -184,7 +184,7 @@ class IndexNowObservationTests(unittest.TestCase):
         site = site_observation(age=timedelta(minutes=31))
         old_report = observation(details={"publication_id": "deployment-site-100-1"})
         cards, _, _ = _system_health_cards({"providers": [], "observations": [site, old_report], "scheduler": None})
-        card = next(item for item in cards if item["title"] == "IndexNow submissions")
+        card = next(item for item in cards if item["title"] == "Search indexing")
         self.assertEqual(card["status"], "WARNING")
         self.assertIn("IndexNow report missing for the latest deployment.", card["html"])
 
@@ -193,7 +193,7 @@ class IndexNowObservationTests(unittest.TestCase):
             {"api": "HEALTHY", "database": "HEALTHY", "providers": [], "observations": [], "weekly": None, "scheduler": None},
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertEqual(body.count("IndexNow submissions</h2>"), 1)
+        self.assertEqual(body.count("Search indexing</h2>"), 1)
         self.assertNotIn("Retry", body)
         self.assertNotIn("Submit all", body)
         self.assertNotIn("Bing indexed", body)

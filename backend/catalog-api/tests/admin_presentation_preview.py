@@ -1,5 +1,6 @@
 """Build read-only Admin pages with deterministic presentation evidence."""
 
+import json
 from pathlib import Path
 import shutil
 import sys
@@ -11,11 +12,15 @@ from terento_catalog.admin import (
     _map_statistics_summary,
     dashboard_page,
     device_detail_page,
+    glossary_page,
+    missing_reports_page,
     device_identification_page,
     devices_page,
     diagnostics_page,
     map_statistics_page,
 )
+from terento_catalog.support_report_admin import support_report_detail_page, support_reports_page
+from terento_catalog.support_reports import validate_support_report
 
 
 def _daily_trend() -> list[dict[str, object]]:
@@ -67,6 +72,39 @@ def _monthly_trend() -> list[dict[str, object]]:
     ]
 
 
+def _reconciled_trend(
+    rows: list[dict[str, object]], trend: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Keep the chart shape but make bucket totals equal the tile totals."""
+    def total(event_type: str, outcome: str, custom: bool | None = None) -> int:
+        return sum(
+            int(row.get("operation_count") or 0) for row in rows
+            if row.get("event_type") == event_type and row.get("outcome") == outcome
+            and (custom is None or (row.get("provider_id") == "custom") == custom)
+        )
+
+    targets = {
+        "download_success_count": total("DOWNLOAD_SUCCEEDED", "SUCCEEDED"),
+        "download_failed_count": total("DOWNLOAD_FAILED", "FAILED"),
+        "success_count": total("INSTALL_SUCCEEDED", "SUCCEEDED", custom=False),
+        "custom_count": total("INSTALL_SUCCEEDED", "SUCCEEDED", custom=True),
+        "failed_count": total("INSTALL_FAILED", "FAILED"),
+        "map_update_success_count": total("MAP_UPDATE_SUCCEEDED", "SUCCEEDED"),
+        "map_update_failed_count": total("MAP_UPDATE_FAILED", "FAILED"),
+    }
+    buckets = [dict(item) for item in trend]
+    for field, target in targets.items():
+        weights = [max(1, int(item.get(field) or 0)) for item in buckets]
+        shares = [target * weight // sum(weights) for weight in weights]
+        for index in range(target - sum(shares)):
+            shares[-1 - index % len(shares)] += 1
+        for item, share in zip(buckets, shares):
+            item[field] = share
+    for item in buckets:
+        item["map_update_count"] = item["map_update_success_count"] + item["map_update_failed_count"]
+    return buckets
+
+
 def _statistics(
     rows: list[dict[str, object]], *, trend: list[dict[str, object]] | None = None,
     bucket: str = "week",
@@ -75,7 +113,7 @@ def _statistics(
         "rows": rows,
         "summary": _map_statistics_summary(rows),
         "allTimeSummary": _map_statistics_summary(rows),
-        "trend": _weekly_trend() if trend is None else trend,
+        "trend": _reconciled_trend(rows, _weekly_trend() if trend is None else trend) if rows else (trend or []),
         "bucket": bucket,
         "timeZone": "UTC",
         "linkage": {
@@ -326,6 +364,50 @@ def create(root: Path) -> None:
         [], user, "fixture", identity="fēnix 8 · 51 mm, AMOLED",
         operations=[operation], identity_devices=[device_row],
     ))
+    (root / "glossary.html").write_bytes(glossary_page(user, "fixture"))
+    (root / "missing-reports.html").write_bytes(missing_reports_page({
+        "rows": [{
+            "event_type": "INSTALL_FAILED", "outcome": "FAILED",
+            "event_id": f"a8098c1a-f86e-11da-bd1a-0011244{index:05d}", "provider_id": "freizeitkarte",
+            "provider_name": "Freizeitkarte", "region": region, "map_package_name": region,
+            "occurred_at": f"2026-09-{20 - index:02d}T19:47:00Z",
+        } for index, region in enumerate(("France", "Lithuania", "Germany"))],
+        "total": 3, "limit": 50, "offset": 0,
+    }, user, "fixture"))
+    support_fixture = json.loads((Path(__file__).parents[3] / "contracts" / "fixtures" / "support-report.valid.json").read_text())
+    support = validate_support_report(json.dumps(support_fixture).encode())
+    support_rows = [{
+        "id": support["id"], "reference": support["reference"], "received_at": "2026-10-06T09:41:09Z",
+        "created_at": "2026-10-06T09:41:07Z", "app_build": "42", "release_label": "1.0.0-beta.19",
+        "is_local_test": False, "category": category, "operation_id": support["operationId"], "status": "OPEN",
+        "handled_at": None, "linked_github_issue": None, "title": title, "device_model": model,
+        "device_variant": variant, "has_user_message": index == 0,
+    } for index, (category, title, model, variant) in enumerate((
+        ("INSTALL_FAILED", support["report"]["title"], "fēnix 8", "51 mm, AMOLED"),
+        ("CONNECTION", None, None, None),
+        ("UPDATE_FAILED", "Map update stopped during failedInsufficientSpace — freizeitkarte / Germany", "Forerunner 965", None),
+    ))]
+    for index, row in enumerate(support_rows[1:], start=1):
+        row["reference"] = "TR-PREV" + "AB"[index - 1] * 2
+    (root / "support-reports.html").write_bytes(support_reports_page({
+        "rows": support_rows, "status": "OPEN", "limit": 50, "offset": 0,
+        "openCount": 3, "handledCount": 12, "totalCount": 15, "filteredTotal": 3,
+    }, user, "fixture"))
+    (root / "support-reports-empty.html").write_bytes(support_reports_page({
+        "rows": [], "status": "OPEN", "limit": 50, "offset": 0,
+        "openCount": 0, "handledCount": 12, "totalCount": 12, "filteredTotal": 0,
+    }, user, "fixture"))
+    (root / "support-report.html").write_bytes(support_report_detail_page({
+        **support_rows[0], "user_message": support["userMessage"], "report": support["report"],
+        "note": None, "handled_by_username": None,
+        "audit": [{"action": "REOPENED", "changed_by_username": "Preview", "changed_at": "2026-10-06T12:10:00Z",
+                   "note": "Waiting for a new report after the cable change."},
+                  {"action": "HANDLED", "changed_by_username": "Preview", "changed_at": "2026-10-06T11:00:00Z", "note": None}],
+        "installationDiagnostics": [{"compatibility_identity": "fēnix 8 · 51 mm, AMOLED", "model": "fēnix 8",
+                                     "canonical_device_model_id": "fenix-8-51-amoled", "result_count": 1,
+                                     "last_occurred_at": "2026-10-06T09:40:00Z"}],
+        "updateDiagnostics": [],
+    }, user, "fixture"))
     site_assets = Path(__file__).parents[3] / "site"
     shutil.copytree(site_assets / "assets" / "fonts", root / "fonts", dirs_exist_ok=True)
     shutil.copy2(site_assets / "favicon.ico", root / "favicon.ico")

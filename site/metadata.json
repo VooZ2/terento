@@ -270,6 +270,60 @@
       "alternates": true
     },
     {
+      "file": "site/guides/troubleshooting/index.html",
+      "path": "/guides/troubleshooting/",
+      "locale": "en",
+      "title": "Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento",
+      "description": "Fix Garmin watch and map problems on a Mac: watch not showing up, Garmin Express or Android File Transfer using the watch, USB mode (MTP), not enough space and failed map downloads.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/de/guides/troubleshooting/index.html",
+      "path": "/de/guides/troubleshooting/",
+      "locale": "de",
+      "title": "Garmin-Uhr wird am Mac nicht erkannt? Fehlerbehebung — Terento",
+      "description": "Garmin-Probleme am Mac lösen: Uhr wird nicht erkannt, Garmin Express oder Android File Transfer blockiert die Uhr, USB-Modus (MTP), zu wenig Speicher und fehlgeschlagene Karten-Downloads.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/guides/troubleshooting/index.html",
+      "path": "/fr/guides/troubleshooting/",
+      "locale": "fr",
+      "title": "Montre Garmin non détectée sur Mac ? Dépannage — Terento",
+      "description": "Résolvez les problèmes Garmin sur Mac : montre non détectée, Garmin Express ou Android File Transfer qui utilise la montre, mode USB (MTP), espace insuffisant et échec du téléchargement des cartes.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/guides/troubleshooting/index.html",
+      "path": "/pl/guides/troubleshooting/",
+      "locale": "pl",
+      "title": "Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento",
+      "description": "Rozwiąż problemy z Garminem na Macu: zegarek niewidoczny, Garmin Express lub Android File Transfer blokuje zegarek, tryb USB (MTP), za mało miejsca i nieudane pobieranie map.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/guides/troubleshooting/index.html",
+      "path": "/cs/guides/troubleshooting/",
+      "locale": "cs",
+      "title": "Mac nevidí hodinky Garmin? Řešení potíží — Terento",
+      "description": "Vyřešte potíže s Garminem na Macu: Mac nevidí hodinky, hodinky blokuje Garmin Express nebo Android File Transfer, režim USB (MTP), málo místa a nezdařené stažení map.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/it/guides/troubleshooting/index.html",
+      "path": "/it/guides/troubleshooting/",
+      "locale": "it",
+      "title": "Il Mac non rileva l’orologio Garmin? Risoluzione problemi — Terento",
+      "description": "Risolvi i problemi Garmin su Mac: orologio non rilevato, Garmin Express o Android File Transfer che usano l’orologio, modalità USB (MTP), spazio insufficiente e download delle mappe non riusciti.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
       "file": "site/map-styles/index.html",
       "path": "/map-styles/",
       "locale": "en",

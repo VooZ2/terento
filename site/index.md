@@ -107,9 +107,13 @@ Can I update maps later?
 
 Yes. Terento shows when newer releases are available and helps you update Terento-managed third-party maps.
 
+Why isn’t my Garmin watch showing up on my Mac?
+
+Connect the watch directly with a USB cable that supports data, unlock it and wait up to 2 minutes. If it still doesn’t appear, quit Garmin Express, Android File Transfer, OpenMTP and other apps that can use the watch.
+
 What should I do if installation fails?
 
-On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.
+On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened. [Read the troubleshooting guide.](https://terento.app/guides/troubleshooting/)
 
 [Open an issue](https://github.com/VooZ2/terento/issues/new/choose) [Email support](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

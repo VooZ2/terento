@@ -44,11 +44,14 @@ def main() -> int:
     expect([".github/workflows/swift-ci.yml"], set(MODULE.ALL_SUITES))
     expect(["contracts/map-catalog.schema.json"], set(MODULE.ALL_SUITES))
     expect(["contracts/fixtures/map-event.valid.json"], set(MODULE.ALL_SUITES))
-    expect(["contracts/README.md"], baseline)
+    expect(["contracts/README.md"], baseline | {"backend"})
     expect(["app/TerentoCore/README.md"], baseline)
     expect(["reports/history.md"], baseline)
     expect(["app/TerentoCore/Tests/TerentoPoCTests/Fixtures/issue148-failure-report.md"], baseline | {"app", "native"})
-    expect(["README.md"], baseline | {"release"})
+    expect(["README.md"], baseline | {"release", "site"})
+    expect(["VERSIONING.md"], baseline | {"release"})
+    expect(["site-deploy/README.md"], baseline | {"site"})
+    expect(["site-deploy/AI_DISCOVERABILITY.md"], baseline)
     expect(["legal/web/PRIVACY-PAGE-EN.md"], baseline | {"site", "release"})
     expect(["app/TerentoCore/README.md", "app/TerentoCore/Sources/Engine.swift"], baseline | {"app", "native"})
     expect(["app/TerentoCore/Package.swift"], {"app", "native", "shared", "ci"})
@@ -60,6 +63,20 @@ def main() -> int:
     expect([".github/workflows/deploy-catalog-api.yml"], baseline | {"backend"})
     expect(["backend/catalog-api/src/terento_catalog/admin.py", "Tests/site-faq-content-tests.cjs"], baseline | {"backend", "site"})
     expect([], set(MODULE.ALL_SUITES))
+    # Every Markdown document a suite test reads selects that suite.
+    root = MODULE_PATH.parent.parent
+    readers = {
+        "README.md": ("site", "Tests/site-guide-content-tests.cjs"),
+        "VERSIONING.md": ("release", "Tests/release-documentation-tests.cjs"),
+        "RELEASE_NOTES.md": ("release", "Tests/release-documentation-tests.cjs"),
+        "Packaging/NativeDependencies/README.md": ("release", "Tests/release-documentation-tests.cjs"),
+        "contracts/README.md": ("backend", "backend/catalog-api/tests/test_shared_contracts.py"),
+        "site-deploy/README.md": ("site", "Tests/site-indexnow-tests.py"),
+    }
+    for document, (suite, reader) in readers.items():
+        source = (root / reader).read_text(encoding="utf-8")
+        assert Path(document).name in source, f"{reader} no longer reads {document}"
+        assert suite in MODULE.select_suites([document]), f"{document} must select {suite}"
     process = subprocess.run(
         [str(MODULE_PATH), "--json", "--stdin"],
         input="site/index.html\n",

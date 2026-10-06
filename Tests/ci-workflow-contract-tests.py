@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import tempfile
+import shutil
 from pathlib import Path
 
 
@@ -500,7 +501,50 @@ def verify_release_reporting(swift):
     assert "if: always() && steps.report.outcome == 'success'" in report
     assert 'if [ "$GATE_RESULT" = "success" ]; then' in report
 
+def verify_backend_bootstrap_shells():
+    """Exercise the missing-dependency path without installing packages."""
+    for shell in ("sh", "bash", "zsh"):
+        executable = shutil.which(shell)
+        if executable is None:
+            continue
+        with tempfile.TemporaryDirectory(prefix="terento bootstrap ") as directory:
+            root = Path(directory)
+            tests = root / "Tests"
+            tests.mkdir()
+            shutil.copy(REPO_ROOT / "Tests/backend-python-runtime.sh", tests)
+            binaries = root / "bin"
+            binaries.mkdir()
+            python = binaries / "python3.13"
+            python.write_text("""#!/bin/sh
+if [ "$1" = "-" ]; then
+    input=$(cat)
+    case "$input" in *importlib.metadata*) exit 1;; *) exit 0;; esac
+fi
+if [ "$2" = "venv" ]; then
+    mkdir -p "$3/bin"
+    cp "$0" "$3/bin/python"
+else
+    printf '%s\\n' "$@" > "$BOOTSTRAP_ARGUMENTS"
+fi
+""")
+            python.chmod(0o755)
+            runner = tests / "runner.sh"
+            runner.write_text('set -eu\n. "$(dirname "$0")/backend-python-runtime.sh"\n')
+            arguments = root / "arguments"
+            env = dict(os.environ, PATH=f"{binaries}:{os.environ['PATH']}",
+                       BOOTSTRAP_ARGUMENTS=str(arguments))
+            env.pop("TERENTO_PYTHON_BIN", None)
+            subprocess.run([executable, str(runner)], env=env, check=True,
+                           capture_output=True, text=True)
+            assert arguments.read_text().splitlines() == [
+                "-m", "pip", "install", "--disable-pip-version-check", "-e",
+                f"{root}/backend/catalog-api[test]",
+            ], f"{shell} must pass the literal test extra as one argument"
+    print("PASS: clean backend bootstrap preserves test extra across shells")
+
+
 def main() -> int:
+    verify_backend_bootstrap_shells()
     workflow_files = sorted(WORKFLOWS.glob("*.yml")) + sorted(WORKFLOWS.glob("*.yaml"))
     assert workflow_files, "no GitHub workflows found"
     for workflow in workflow_files:
@@ -544,8 +588,18 @@ def main() -> int:
         'node-version: "22"', 'backend/catalog-api[test]',
         "Tests/run-backend-tests.sh", "Database(settings.database_url).health()",
         "docker build --pull=false -t terento-catalog-api:ci",
+        'PGLITE_VERSION: "0.5.8"',
+        "PGLITE_INTEGRITY: \"sha512-",
+        "--no-save --ignore-scripts",
+        '"@electric-sql/pglite@$PGLITE_VERSION"',
+        "entry.integrity !== process.env.PGLITE_INTEGRITY",
+        'echo "PGLITE_MODULE_PATH=$pglite_root/node_modules/@electric-sql/pglite" >> "$GITHUB_ENV"',
+        'CI: "true"',
     ):
         assert contract in reusable, f"reusable API quality gate is missing {contract!r}"
+    assert reusable.index("Install pinned PGlite") < reusable.index("Tests/run-backend-tests.sh"), (
+        "PostgreSQL regressions need PGlite before the backend suite runs"
+    )
     assert reusable.count("          terento-catalog-migrate\n") == 2
     assert "secrets." not in reusable
     assert "ref:" not in reusable, "checkout must use the caller commit"

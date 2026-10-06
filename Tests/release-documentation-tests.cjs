@@ -14,11 +14,15 @@ function candidateIdentity(candidate, published) {
   if (!candidate) return published;
   assert.deepEqual(Object.keys(candidate).sort(), ["build", "releaseLabel", "version"]);
   assert.equal(candidate.version, published.version, "candidate must preserve the marketing version");
-  const beta = published.releaseLabel.match(/^(\d+\.\d+\.\d+)-beta\.([1-9]\d*)$/);
-  assert.ok(beta, "candidate staging requires a published numbered beta");
-  const nextLabel = `${beta[1]}-beta.${Number(beta[2]) + 1}`;
-  assert.ok(candidate.releaseLabel === published.releaseLabel || candidate.releaseLabel === nextLabel,
-    "candidate must retain the beta label or advance exactly one beta");
+  const prerelease = published.releaseLabel.match(/^(\d+\.\d+\.\d+)-(beta|rc)\.([1-9]\d*)$/);
+  assert.ok(prerelease, "candidate staging requires a published numbered beta or release candidate");
+  const [, base, family, number] = prerelease;
+  // VERSIONING.md: beta.N -> beta.N+1 or rc.1; rc.N -> rc.N+1; never rc -> beta.
+  const nextLabels = family === "beta"
+    ? [`${base}-beta.${Number(number) + 1}`, `${base}-rc.1`]
+    : [`${base}-rc.${Number(number) + 1}`];
+  assert.ok(candidate.releaseLabel === published.releaseLabel || nextLabels.includes(candidate.releaseLabel),
+    "candidate must retain the published label or advance exactly one beta or release candidate");
   assert.ok(Number.isInteger(candidate.build) && candidate.build > published.build,
     "candidate build must be newer than the published build");
   return candidate;
@@ -44,7 +48,25 @@ for (const candidate of [
   { version: "1.1.0", releaseLabel: "1.1.0-beta.13", build: 33 },
   { version: "1.0.0", releaseLabel: "1.0.0-beta.13-local", build: 33 },
   { version: "1.0.0", releaseLabel: "1.0.0-beta.13", build: 32 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.2", build: 33 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.1-local", build: 33 },
+  { version: "1.0.0", releaseLabel: "1.0.0-RC.1", build: 33 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.1", build: 32 },
 ]) assert.throws(() => candidateIdentity(candidate, stagedBeta));
+// The first release candidate follows the last beta and keeps the build counter.
+const lastBeta = { version: "1.0.0", releaseLabel: "1.0.0-beta.18", build: 40 };
+assert.equal(candidateIdentity({ version: "1.0.0", releaseLabel: "1.0.0-rc.1", build: 41 }, lastBeta).releaseLabel, "1.0.0-rc.1");
+const stagedRc = { version: "1.0.0", releaseLabel: "1.0.0-rc.1", build: 41 };
+for (const releaseLabel of ["1.0.0-rc.1", "1.0.0-rc.2"]) {
+  assert.equal(candidateIdentity({ version: "1.0.0", releaseLabel, build: 42 }, stagedRc).releaseLabel, releaseLabel);
+}
+for (const candidate of [
+  { version: "1.0.0", releaseLabel: "1.0.0-beta.19", build: 42 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 42 },
+  { version: "1.0.0", releaseLabel: "1.0.0", build: 42 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.2", build: 41 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.2-local", build: 42 },
+]) assert.throws(() => candidateIdentity(candidate, stagedRc));
 const label = release.releaseLabel;
 const releaseTag = release.releaseTag || `v${label}`;
 const semanticVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
@@ -109,8 +131,87 @@ for (const [, asset] of screenshotPaths) {
 }
 
 const notes = read("RELEASE_NOTES.md");
-assert.equal(notes.split(/\r?\n/, 1)[0], `# Terento v${label} (build ${release.build})`,
-  "release-note title must match the exact manifest release label and public build");
+// A staged candidate may carry one draft section above the published release.
+// The draft is explicitly marked; DRAFT/TODO markers never survive into a
+// published section, and with no staged candidate none may remain at all.
+function publishedReleaseNotes(text, published, candidate) {
+  const publishedTitle = `# Terento v${published.releaseLabel} (build ${published.build})`;
+  const lines = text.split(/\r?\n/);
+  const markers = /<!--\s*(?:DRAFT|TODO)\b/;
+  if (lines[0] === publishedTitle) {
+    assert.doesNotMatch(text, markers, "published release notes must not keep DRAFT or TODO markers");
+    return text;
+  }
+  assert.ok(candidate && candidate !== published,
+    "release-note title must match the exact manifest release label and public build");
+  assert.equal(lines[0], `# Terento v${candidate.releaseLabel} (build ${candidate.build})`,
+    "a draft release-note section must name the staged candidate label and build");
+  assert.match(lines.slice(1, 4).join("\n"), /<!--\s*DRAFT:/, "a draft release-note section must be marked as a draft");
+  const publishedIndex = lines.indexOf(publishedTitle);
+  assert.ok(publishedIndex > 0, "the published release-note section must follow the draft section");
+  const publishedSection = lines.slice(publishedIndex).join("\n");
+  assert.doesNotMatch(publishedSection, markers, "DRAFT or TODO markers must stay in the draft section");
+  return publishedSection;
+}
+const stagedNotesCandidate = { version: "1.0.0", releaseLabel: "1.0.0-rc.1", build: 41 };
+const stagedNotesPublished = { releaseLabel: "1.0.0-beta.18", build: 40 };
+const draftNotes = "# Terento v1.0.0-rc.1 (build 41)\n\n<!-- DRAFT: unpublished -->\n<!-- TODO: note -->\n\n# Terento v1.0.0-beta.18 (build 40)\n\nPublished.\n";
+assert.equal(publishedReleaseNotes(draftNotes, stagedNotesPublished, stagedNotesCandidate),
+  "# Terento v1.0.0-beta.18 (build 40)\n\nPublished.\n");
+for (const invalidNotes of [
+  draftNotes.replace("<!-- DRAFT: unpublished -->\n", ""),
+  draftNotes.replace("(build 41)", "(build 42)"),
+  draftNotes.replace("Published.", "Published.\n<!-- TODO: leaked -->"),
+  draftNotes.replace("# Terento v1.0.0-beta.18 (build 40)", "# Terento v1.0.0-beta.17 (build 39)"),
+]) assert.throws(() => publishedReleaseNotes(invalidNotes, stagedNotesPublished, stagedNotesCandidate));
+assert.throws(() => publishedReleaseNotes(draftNotes, stagedNotesPublished, stagedNotesPublished));
+assert.throws(() => publishedReleaseNotes("# Terento v1.0.0-beta.18 (build 40)\n<!-- TODO: x -->\n", stagedNotesPublished, stagedNotesPublished));
+publishedReleaseNotes(notes, release, artifactIdentity);
+
+// From 1.0.0-rc.1 onward every section is: title, optional DRAFT/TODO
+// comments, a short intro, then WHAT'S NEW?, WHAT'S FIXED? and KNOWN ISSUES
+// as bullet lists (Packaging/README.md, "Release notes format").
+const releaseNoteBlocks = ["## WHAT'S NEW?", "## WHAT'S FIXED?", "## KNOWN ISSUES"];
+function assertReleaseNoteFormat(section, title) {
+  const body = section.split(/\r?\n/).slice(1).join("\n").replace(/<!--[\s\S]*?-->/g, "");
+  const headings = body.split("\n").filter((line) => /^#{1,6}\s/.test(line));
+  assert.deepEqual(headings, releaseNoteBlocks, `${title}: release notes need exactly the three blocks in order`);
+  const intro = body.slice(0, body.indexOf(releaseNoteBlocks[0])).trim();
+  assert.ok(intro.length > 0, `${title}: release notes need a short intro`);
+  assert.ok(intro.split(/\n\s*\n/).length <= 2, `${title}: the intro is at most two short paragraphs`);
+  assert.doesNotMatch(intro, /^\s*[-*]\s/m, `${title}: the intro is prose, not a list`);
+  releaseNoteBlocks.forEach((heading, index) => {
+    const start = body.indexOf(heading) + heading.length;
+    const end = index + 1 < releaseNoteBlocks.length ? body.indexOf(releaseNoteBlocks[index + 1]) : body.length;
+    const lines = body.slice(start, end).split("\n").map((line) => line.trim()).filter(Boolean);
+    assert.ok(lines.length > 0, `${title}: ${heading} needs at least one bullet`);
+    assert.ok(lines.every((line) => /^- \S/.test(line)), `${title}: ${heading} is a bullet list`);
+  });
+}
+function releaseNoteSections(text) {
+  const sections = [];
+  const pattern = /^# Terento v(\S+) \(build (\d+)\)$/gm;
+  const matches = [...text.matchAll(pattern)];
+  matches.forEach((match, index) => {
+    const end = index + 1 < matches.length ? matches[index + 1].index : text.length;
+    sections.push({ label: match[1], title: match[0], text: text.slice(match.index, end) });
+  });
+  return sections;
+}
+const formattedSample = "# Terento v1.0.0-rc.2 (build 42)\n\n<!-- DRAFT: x -->\n\nIntro.\n\n## WHAT'S NEW?\n\n- New.\n\n## WHAT'S FIXED?\n\n- No fixes in this release.\n\n## KNOWN ISSUES\n\n- Issue.\n";
+assertReleaseNoteFormat(formattedSample, "sample");
+for (const invalid of [
+  formattedSample.replace("## WHAT'S FIXED?\n\n- No fixes in this release.\n\n", ""),
+  formattedSample.replace("## KNOWN ISSUES", "## Known issues and limits"),
+  formattedSample.replace("Intro.\n\n", ""),
+  formattedSample.replace("- New.", "New."),
+  formattedSample.replace("- New.", "- New.\n\n## Validation\n\n- Watch."),
+  formattedSample.replace("## WHAT'S NEW?", "## WHAT'S FIXED?").replace("## WHAT'S FIXED?\n\n- No", "## WHAT'S NEW?\n\n- No"),
+]) assert.throws(() => assertReleaseNoteFormat(invalid, "invalid sample"));
+const formattedSections = releaseNoteSections(notes).filter((section) => !/-beta\.\d+$/.test(section.label));
+assert.ok(formattedSections.length > 0 || !artifactIdentity || /-beta\./.test(artifactIdentity.releaseLabel),
+  "a release candidate or stable section must exist in the new format");
+for (const section of formattedSections) assertReleaseNoteFormat(section.text, section.title);
 assert.ok(notes.includes(release.sha256), "release notes must contain the manifest DMG SHA-256");
 assert.equal(
   release.downloadURL,

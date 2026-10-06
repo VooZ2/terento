@@ -1,6 +1,7 @@
 """The batch is correlation context, never the admin attempt denominator."""
 import unittest
 from terento_catalog.admin import _diagnostic_summary_by_identity, _group_operations
+from admin_test_utils import metric_tone, metric_value
 
 
 class InstallationResultCountsTests(unittest.TestCase):
@@ -15,8 +16,8 @@ class InstallationResultCountsTests(unittest.TestCase):
         markup = _statistics_row({'model': 'Watch', 'compatibility_identity': 'Watch',
                                   'successful_install_count': 2, 'map_capable': True},
                                  {'attempts': 3, 'successful': 3, 'failed': 0})
-        self.assertIn('Tested:', markup)
-        self.assertNotIn('Supported:', markup)
+        self.assertIn("data-status='TESTED'", markup)
+        self.assertNotIn("data-status='SUPPORTED'", markup)
 
     def test_dashboard_full_history_is_not_limited_by_diagnostic_rows(self):
         from terento_catalog.admin import dashboard_page
@@ -24,9 +25,9 @@ class InstallationResultCountsTests(unittest.TestCase):
                                  'attempted_install_count': 601, 'successful_install_count': 601,
                                  'failed_install_count': 0}], {'username': 'test'}, 'csrf',
                                 operations=self.events()).decode()
-        self.assertIn('<span>Attempts</span><strong>601</strong>', markup)
-        self.assertIn('<span>Successful</span><strong>601</strong>', markup)
-        self.assertIn('<span>Failed</span><strong class="installation-failed-value">0</strong>', markup)
+        self.assertEqual(metric_value(markup, "Attempts"), "601")
+        self.assertEqual(metric_value(markup, "Successful"), "601")
+        self.assertEqual(metric_value(markup, "Failed"), "0")
 
     def events(self):
         return [dict(event_id=f'result-{index}', operation_id='mixed-session',

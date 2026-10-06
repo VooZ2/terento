@@ -7,6 +7,7 @@ binary_path="$build_dir/user-facing-error-message-tests"
 
 swiftc \
     -module-name TerentoUserFacingErrorMessageTests \
+    "$project_root/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift" \
     "$project_root/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift" \
     "$project_root/Tests/TerentoPoCTests/UserFacingErrorMessageTests.swift" \
     -o "$binary_path"

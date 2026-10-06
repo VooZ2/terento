@@ -108,7 +108,26 @@ typedef struct {
     uint32_t expected_physical_identifier_source;
     uint32_t expected_storage_id;
     const char *expected_target_directory;
+    /*
+     * Optional sampled removal proof, accepted only by the managed delete
+     * (Remove of a Terento-managed map and Update's old-map removal). The
+     * plan is recorded at install time from the verified local artifact:
+     * sorted, non-overlapping regions of removal_sample_length bytes (the
+     * last may be shorter at end of file), starting at offset 0 and ending
+     * at the last byte, and removal_sample_sha256 is the SHA-256 of the
+     * concatenated region bytes. All four fields zero/NULL means the full
+     * expected_sha256 content check. External removal refuses any proof.
+     */
+    const uint64_t *removal_sample_offsets;
+    uint32_t removal_sample_count;
+    uint32_t removal_sample_length;
+    const char *removal_sample_sha256;
 } TerentoMTPMutationAuthorization;
+
+/* Fixed sampled removal proof geometry (format 1). An odd region length keeps
+ * one GetPartialObject per region under the short-packet read policy. */
+#define TERENTO_REMOVAL_PROOF_REGION_LENGTH 65535u
+#define TERENTO_REMOVAL_PROOF_REGION_COUNT 32u
 
 typedef struct {
     uint8_t authorized;
@@ -135,7 +154,8 @@ enum {
     TERENTO_MTP_MAP_OBJECT_ID_MISMATCH = -22,
     TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23,
     TERENTO_MTP_MAP_IDENTITY_MISMATCH = -24,
-    TERENTO_MTP_MUTATION_REFUSED = -25
+    TERENTO_MTP_MUTATION_REFUSED = -25,
+    TERENTO_MTP_MAP_CONTENT_MISMATCH = -26
 };
 
 /* Read-only USB presence probe. Zero proves absence only after complete enumeration;
@@ -155,6 +175,21 @@ int terento_mtp_read_file_inventory_diagnostic(TerentoMTPFileInventory *inventor
     char *error_message, size_t error_message_capacity, int *category);
 int terento_mtp_read_file_inventory_bound(const TerentoMTPMapOperationProfile *profile,
     TerentoMTPFileInventory *inventory, char *error_message, size_t error_message_capacity, int *category);
+
+/* Map-scope inventory for pre/post-write protection: every storage-root entry
+ * plus the complete subtree of the single root folder named GARMIN (ASCII case
+ * ignored). Missing or ambiguous roots, or a failed scoped walk, fall back to
+ * the full walk in the same session; scope/fallback report what was returned. */
+enum {
+    TERENTO_INVENTORY_SCOPE_FULL = 0, TERENTO_INVENTORY_SCOPE_GARMIN = 1
+};
+enum {
+    TERENTO_INVENTORY_FALLBACK_NONE = 0, TERENTO_INVENTORY_FALLBACK_NO_ROOT = 1,
+    TERENTO_INVENTORY_FALLBACK_AMBIGUOUS_ROOT = 2, TERENTO_INVENTORY_FALLBACK_SCOPED_FAILED = 3
+};
+int terento_mtp_read_map_scope_inventory_bound(const TerentoMTPMapOperationProfile *profile,
+    TerentoMTPFileInventory *inventory, int *scope, int *fallback_reason,
+    char *error_message, size_t error_message_capacity, int *category);
 int terento_mtp_read_file_prefix_diagnostic(const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPFileDescriptor *target, uint64_t offset,
     uint32_t max_length, TerentoMTPByteBuffer *buffer, char *error_message,
@@ -300,6 +335,36 @@ int terento_mtp_verify_managed_map_samples(
     size_t error_message_capacity
 );
 
+/*
+ * Read-only content check of a Terento-managed map against its recorded
+ * sampled proof (the removal proof geometry: TERENTO_REMOVAL_PROOF_* and the
+ * SHA-256 of the concatenated regions), used by Safe Update before it writes.
+ * In one session it validates the live device, resolves the exact object (one
+ * regular file of this name and size in the single /GARMIN folder of the
+ * profile storage), reads only the recorded regions, checks the IMG header
+ * and the digest, and re-resolves the same object. Returns 0 only on an exact
+ * match; TERENTO_MTP_MAP_CONTENT_MISMATCH for different content,
+ * TERENTO_MTP_MAP_OBJECT_ID_MISMATCH for a changed identity, -5 for a read
+ * failure. Never mutates; it is never a substitute for a full check that a
+ * caller chose, and a failure is never retried as another check.
+ */
+int terento_mtp_verify_managed_map_proof(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint64_t expected_size_bytes,
+    const char *expected_sha256,
+    const uint64_t *sample_offsets,
+    uint32_t sample_count,
+    uint32_t sample_length,
+    const char *sample_sha256,
+    uint32_t *resolved_item_id,
+    uint64_t *sampled_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
+    char *error_message,
+    size_t error_message_capacity
+);
+
 /* Delete only the exact manifest-authorized managed target object. */
 int terento_mtp_delete_managed_map(
     const TerentoMTPMapOperationProfile *profile,
@@ -310,7 +375,11 @@ int terento_mtp_delete_managed_map(
     size_t error_message_capacity
 );
 
-/* Legacy entry point above refuses mutations; use explicit authorization. */
+/* Legacy entry point above refuses mutations; use explicit authorization.
+ * The content check is the authorization's sampled removal proof when one is
+ * supplied, otherwise the full expected_sha256. Optional progress observes
+ * those reads; its return value is ignored.
+ * Read completion is not proof of hash match or authorization to delete. */
 int terento_mtp_delete_managed_map_authorized(
     const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPMutationAuthorization *authorization,
@@ -318,6 +387,8 @@ int terento_mtp_delete_managed_map_authorized(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 );
@@ -332,7 +403,10 @@ int terento_mtp_delete_external_map(
     size_t error_message_capacity
 );
 
-/* Legacy entry point above refuses mutations; use explicit authorization. */
+/* Legacy entry point above refuses mutations; use explicit authorization.
+ * Always the full expected_sha256 check; a sampled removal proof is refused.
+ * Optional progress observes full-content reads; its return value is ignored.
+ * Read completion is not proof of hash match or authorization to delete. */
 int terento_mtp_delete_external_map_authorized(
     const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPMutationAuthorization *authorization,
@@ -340,6 +414,8 @@ int terento_mtp_delete_external_map_authorized(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 );

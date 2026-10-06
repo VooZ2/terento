@@ -7,6 +7,7 @@ import subprocess
 import unittest
 
 from terento_catalog.db import _enrich_activity_models
+from pglite_support import require_pglite
 
 
 def activity(number=1, **changes):
@@ -34,9 +35,10 @@ class ActivityModelTests(unittest.TestCase):
 
     def test_one_batch_enrichment_preserves_event_and_population(self):
         connection=Capture([dict(index=0,canonical_device_model_id='exact',model='Catalog name',variant='47 mm',case_size_mm=47,screen_technology='AMOLED')])
-        rows=[activity(event_id='event-id'),activity(2,event_type='DOWNLOAD_SUCCEEDED')]
+        rows=[activity(event_id='event-id',map_result_index=0),activity(2,event_type='DOWNLOAD_SUCCEEDED')]
         result=_enrich_activity_models(connection,rows)
         self.assertEqual(len(connection.calls),1)
+        self.assertEqual(json.loads(connection.calls[0][1][0])[0]['map_result_index'],0)
         self.assertEqual(len(result),2)
         self.assertEqual(result[0]['event_id'],'event-id')
         self.assertEqual(result[0]['model'],'Catalog name')
@@ -44,8 +46,7 @@ class ActivityModelTests(unittest.TestCase):
         self.assertEqual(result[1],rows[1])
 
     def test_exact_correlation_in_postgresql(self):
-        module=os.environ.get('PGLITE_MODULE_PATH')
-        if not module or not Path(module).exists(): self.skipTest('PGLITE_MODULE_PATH not configured')
+        module=require_pglite(self)
         capture=Capture()
         _enrich_activity_models(capture,[activity()])
         sql=capture.calls[0][0].replace('%s','$1')

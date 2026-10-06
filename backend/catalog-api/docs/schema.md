@@ -2,7 +2,7 @@
 
 The PostgreSQL schema is applied by the forward-only migrations in
 `src/terento_catalog/migrations/`. Map/provider tables store metadata only;
-map style preview tables (migration 067) store render bookkeeping, never map
+map style preview tables (migration 073) store render bookkeeping, never map
 files.
 Compatibility evidence, administrator credentials, and sessions are isolated
 from those tables and contain no Garmin Unit IDs, serial numbers, local
@@ -25,10 +25,10 @@ the registry contains only providers with a known server-side adapter.
 | `attribution` | `text` | Attribution shown to clients |
 | `license_url` | `text` | Official license/source page |
 | `last_catalog_sync` | `timestamptz` | Last successful metadata snapshot time |
-| `preview_enabled` | `boolean` | Operator switch for map style previews (migration 067, default `false`) |
+| `preview_enabled` | `boolean` | Operator switch for map style previews (migration 073, default `false`) |
 | `created_at`, `updated_at` | `timestamptz` | Local catalog audit timestamps |
 
-## Map style previews (migration 067)
+## Map style previews (migration 073)
 
 `map_preview_layer` has one row per preview area and style (primary key
 `area_id`, `style_id`): `provider_id`, `status` (`AVAILABLE`, `NOT_COVERED`,
@@ -544,3 +544,51 @@ acquisition/event phases and at most one terminal phase. Existing rows are not
 rewritten. Accepted additional phases are DOWNLOAD_PROCESSING,
 DOWNLOAD_CANCELLED and DOWNLOAD_INTERRUPTED. All retain the existing telemetry
 privacy, retention and local-test exclusion boundaries.
+
+### Migration069: reported identity facts and one fresh-result classifier
+
+Additive and rollback-compatible. `map_download_event.reported_map_id` (nullable,
+safe-identifier text) keeps the exact `mapId` of a map event whose package was not
+in the catalog at ingest; known packages keep only the `map_package_id` foreign
+key. Read models resolve a package by `COALESCE(map_package_id, reported_map_id)`,
+so a later-published package is attributed by exact identity, never by provider +
+region. `compatibility_evidence_event.schema_version` (nullable SMALLINT) stores
+the evidence payload version for new rows; earlier rows stay NULL and are not
+backfilled. `terento_fresh_result_classification(...)` is the single SQL fresh
+result classifier used by `compatibility_model_statistics` (same 29 columns) and
+the map-statistics, Dashboard and linkage read models. Its legacy write rule
+applies only when `write_started` is NULL and either the stored schema version is
+1 or 2, or (no stored version) both app build and release label are NULL.
+
+### Migration070: app first-run funnel events
+
+Adds the independent `app_funnel_event` table (event UUID primary key, random
+per-launch `session_id`, `occurred_at`, `received_at`, `app_build`,
+`release_label`, `is_local_test`, `stage`, `outcome`, optional `base_model` and
+`dropped_package_count`) with checks for the stage/outcome pairs and field
+placement, plus occurred/received indexes. It holds no device, account, path or
+address identifiers, is pruned 24 months after receipt, and never feeds install,
+update, download or compatibility read models. Meaning:
+`contracts/APP_FUNNEL_CONTRACT.md`.
+
+### Migration071: support reports
+
+Adds `support_report` (report UUID primary key, unique deterministic
+`reference` `TR-[A-Z2-7]{6}`, `received_at`, client `created_at`, `app_build`,
+`release_label`, `is_local_test`, `category`, optional `operation_id` and
+`user_message` ≤ 2000, structured `report` JSONB object, `status` `OPEN|HANDLED`
+with a matching `handled_at`, `handled_by`, optional `linked_github_issue`
+`#n`, `note` ≤ 2000, `updated_at`) with an open-queue index over public rows, a
+received index and an operation index, plus `support_report_audit` (action,
+previous/new status and issue, note, admin, time; cascades with its report). No
+IP, serial, Unit ID, account or path is stored. Rows are pruned 12 months after
+receipt by `prune_compatibility_events`; local rows are removed by the Test data
+purge. Never read by statistics. Meaning: `contracts/SUPPORT_REPORT_CONTRACT.md`.
+
+### Migration072: installation inventory metrics
+
+Adds the nullable `compatibility_evidence_event.inventory_metrics` JSONB object
+column (optional schema-v4 `inventoryMetrics`: scope, pre-/post-write object
+counts and durations). Additive and ignored by the previous revision; no view or
+count reads it. `Database.inventory_metrics_distribution()` computes the
+non-local per-model median/p90 read model for `/admin/inventory-metrics.json`.

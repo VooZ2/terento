@@ -74,13 +74,46 @@ struct MapStatisticsEventTests {
         try await testQueuedEventsRespectRetryPolicy()
         try await testOptOutDuringUpload()
         try await testJournalWriteRecovery()
+        try testAcquisitionPurposeCompatibility()
         try testAcquisitionJournal()
         try testPayloadAndOperationIdentity()
         try testCustomMapPrivacyBoundary()
         try await testCustomMapStatsNeverUpload()
         try testQueueAndIdempotency()
         await testSeparateOptInAndRetry()
+        try await testRejectedEventIsParkedWithoutBlockingLaterEvents()
+        try await testParkedEventBackoffBuildRetryAndExpiry()
+        try await testParkedEventsClearedOnOptOut()
+        try await testOffActorRecordingKeepsOrder()
         print("PASS: map usage diagnostics payload, privacy, default-on queue, retry, and idempotency tests")
+    }
+
+    static func testAcquisitionPurposeCompatibility() throws {
+        var fixtures: [MapStatisticsEvent] = []
+        for purpose in [MapAcquisitionPurpose.install, .update] {
+            let start = MapStatisticsEvent(operationId: UUID(), package: package,
+                eventType: .downloadStarted, outcome: .unknown,
+                acquisitionId: UUID(), acquisitionPurpose: purpose, componentKind: .main,
+                mapResultIndex: 2)
+            let phase = start.phase(.downloadSucceeded)
+            fixtures += [start, start.phase(.downloadProcessing), phase]
+            expect(phase.acquisitionPurpose == purpose && phase.mapResultIndex == 2,
+                "terminal keeps acquisition purpose and result identity")
+            let data = try JSONEncoder().encode(phase)
+            let decoded = try JSONDecoder().decode(MapStatisticsEvent.self, from: data)
+            expect(decoded == phase,
+                "new acquisition purpose round trips")
+            var old = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+            old.removeValue(forKey: "acquisitionPurpose")
+            let legacy = try JSONDecoder().decode(MapStatisticsEvent.self,
+                from: JSONSerialization.data(withJSONObject: old))
+            expect(legacy.acquisitionPurpose == nil && legacy.phase(.downloadInterrupted).acquisitionPurpose == nil,
+                "legacy acquisition purpose stays unknown rather than guessed install")
+        }
+        if let path = ProcessInfo.processInfo.environment["TERENTO_MAP_EVENT_FIXTURES"] {
+            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+            try encoder.encode(fixtures).write(to: URL(fileURLWithPath: path))
+        }
     }
 
     @MainActor
@@ -362,7 +395,7 @@ struct MapStatisticsEventTests {
         for (failure, failures, expectedAttempts, expectedPending) in [
             (MapStatisticsUploadError.httpStatus(503), 1, 3, 0),
             (.httpStatus(503), 10, 2, 2),
-            (.httpStatus(400), 10, 1, 2)
+            (.httpStatus(429), 10, 2, 2)
         ] {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             defer { try? FileManager.default.removeItem(at: root) }
@@ -420,6 +453,170 @@ struct MapStatisticsEventTests {
         expect(attempts.map(\.id) == [start.id], "opt-out prevents sending the remaining snapshot")
         expect(store.pendingEvents().isEmpty && controller.uploadStatus == .idle,
                "a late response cannot replace opted-out idle state with uploaded")
+    }
+
+    /// Rejects every attempt of the listed event IDs with one HTTP status.
+    private actor RejectingUploader: MapStatisticsEventUploading {
+        private let rejected: Set<UUID>
+        private let status: Int
+        private(set) var attempts: [UUID] = []
+        init(rejecting rejected: Set<UUID>, status: Int = 400) {
+            self.rejected = rejected
+            self.status = status
+        }
+        func upload(_ event: MapStatisticsEvent) async throws {
+            attempts.append(event.id)
+            if rejected.contains(event.id) { throw MapStatisticsUploadError.httpStatus(status) }
+        }
+        func attempted() -> [UUID] { attempts }
+    }
+
+    private final class TestClock: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value: Date
+        init(_ value: Date) { self.value = value }
+        var now: Date { lock.lock(); defer { lock.unlock() }; return value }
+        func advance(_ seconds: TimeInterval) { lock.lock(); value += seconds; lock.unlock() }
+    }
+
+    private static func event(_ type: MapStatisticsEventType = .installSucceeded,
+                              at timestamp: Date = Date()) -> MapStatisticsEvent {
+        MapStatisticsEvent(operationId: UUID(), package: package, eventType: type,
+            outcome: type == .installFailed ? .failed : .succeeded, timestamp: timestamp)
+    }
+
+    @MainActor
+    static func testRejectedEventIsParkedWithoutBlockingLaterEvents() async throws {
+        for status in [400, 404, 413] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let store = LocalMapStatisticsEventStore(rootURL: root)
+            let poisoned = event()
+            let later = (0..<4).map { _ in event() }
+            try store.append(poisoned)
+            for item in later { try store.append(item) }
+            let uploader = RejectingUploader(rejecting: [poisoned.id], status: status)
+            let controller = MapStatisticsEventController(store: store, uploader: uploader, retryDelays: [])
+            await controller.flushPendingEvents()
+            let attempts = await uploader.attempted()
+            expect(attempts == [poisoned.id] + later.map(\.id),
+                "HTTP \(status) parks one event and every later event is still delivered in order")
+            expect(store.pendingEvents().isEmpty, "no rejected event blocks the ordered queue")
+            let parked = store.parkedEvents()
+            expect(parked.map(\.event.id) == [poisoned.id] && parked[0].rejection.statusCode == status
+                && parked[0].rejection.rejectionCount == 1,
+                "the rejected event is parked durably with status and rejection count")
+            expect(controller.uploadStatus == .waiting(1, willRetry: false),
+                "parked events are visible and never reported as uploaded")
+            await controller.flushPendingEvents()
+            let again = await uploader.attempted()
+            expect(again.count == attempts.count, "a parked event is not re-sent on the next flush")
+            let restarted = LocalMapStatisticsEventStore(rootURL: root)
+            expect(restarted.parkedEvents().map(\.event.id) == [poisoned.id], "parking survives restart")
+        }
+        // Retryable failures never park and keep the queue order intact.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let first = event(), second = event()
+        try store.append(first); try store.append(second)
+        let controller = MapStatisticsEventController(store: store,
+            uploader: RejectingUploader(rejecting: [first.id], status: 503), retryDelays: [])
+        await controller.flushPendingEvents()
+        expect(store.pendingEvents().map(\.id) == [first.id, second.id] && store.parkedEvents().isEmpty,
+            "retryable failures are never parked or dropped")
+    }
+
+    @MainActor
+    static func testParkedEventBackoffBuildRetryAndExpiry() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let start = Date(timeIntervalSince1970: 2_000_000_000)
+        let clock = TestClock(start)
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let poisoned = event(at: start)
+        try store.append(poisoned)
+        let uploader = RejectingUploader(rejecting: [poisoned.id])
+        let controller = MapStatisticsEventController(store: store, uploader: uploader, retryDelays: [],
+            now: { clock.now }, appBuild: "50")
+        await controller.flushPendingEvents()
+        clock.advance(23 * 60 * 60)
+        await controller.flushPendingEvents()
+        var attempts = await uploader.attempted()
+        expect(attempts.count == 1, "a parked event waits for the 24-hour back-off")
+        clock.advance(60 * 60)
+        await controller.flushPendingEvents()
+        attempts = await uploader.attempted()
+        expect(attempts.count == 2 && store.parkedEvents().first?.rejection.rejectionCount == 2,
+            "after the back-off the parked event is retried once and its count increases")
+        clock.advance(24 * 60 * 60)
+        await controller.flushPendingEvents()
+        clock.advance(24 * 60 * 60)
+        await controller.flushPendingEvents()
+        attempts = await uploader.attempted()
+        expect(attempts.count == TelemetryDeliveryPolicy.maximumRejectionsPerBuild,
+            "one build retries a parked event only a small bounded number of times")
+        let newBuild = MapStatisticsEventController(store: store, uploader: uploader, retryDelays: [],
+            now: { clock.now }, appBuild: "51")
+        await newBuild.flushPendingEvents()
+        attempts = await uploader.attempted()
+        expect(attempts.count == TelemetryDeliveryPolicy.maximumRejectionsPerBuild + 1,
+            "a new app build retries the parked event immediately")
+        let accepting = MapStatisticsUploadRecorder()
+        let fixed = MapStatisticsEventController(store: store, uploader: accepting, retryDelays: [],
+            now: { clock.now }, appBuild: "52")
+        await fixed.flushPendingEvents()
+        let delivered = await accepting.uploadedEvents()
+        expect(delivered.map(\.id) == [poisoned.id] && store.parkedEvents().isEmpty,
+            "an accepted retry keeps the original event ID and leaves the parking list")
+
+        let old = event(at: start)
+        try store.append(old)
+        try store.park(eventID: old.id, statusCode: 400, now: start, appBuild: "52")
+        clock.advance(TelemetryDeliveryPolicy.retentionInterval)
+        await fixed.flushPendingEvents()
+        expect(store.parkedEvents().isEmpty, "parked events expire after the retention window")
+        let deliveredAfterExpiry = await accepting.uploadedEvents()
+        expect(deliveredAfterExpiry.count == 1, "an expired parked event is not sent")
+    }
+
+    @MainActor
+    static func testParkedEventsClearedOnOptOut() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let poisoned = event()
+        try store.append(poisoned)
+        let controller = MapStatisticsEventController(store: store,
+            uploader: RejectingUploader(rejecting: [poisoned.id]), retryDelays: [])
+        await controller.flushPendingEvents()
+        expect(store.parkedEvents().count == 1, "rejected event parked before opt-out")
+        controller.decideConsent(.declined)
+        expect(store.parkedEvents().isEmpty && store.pendingEvents().isEmpty,
+            "opt-out clears parked as well as pending events")
+    }
+
+    @MainActor
+    static func testOffActorRecordingKeepsOrder() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let uploader = MapStatisticsUploadRecorder()
+        let controller = MapStatisticsEventController(store: store, uploader: uploader, retryDelays: [0])
+        let start = MapStatisticsEvent(operationId: UUID(), package: package,
+            eventType: .downloadStarted, outcome: .unknown,
+            acquisitionId: UUID(), acquisitionPurpose: .update, componentKind: .main)
+        let phases = [start, start.phase(.downloadProcessing), start.phase(.downloadSucceeded)]
+        await Task.detached {
+            for phase in phases { controller.recordFromAnyContext(phase) }
+        }.value
+        expect(store.pendingEvents().map(\.id) == phases.map(\.id),
+            "observer phases are durable and ordered before any main-actor hop")
+        for _ in 0..<100 where (await uploader.uploadedEvents()).count < 3 {
+            try? await Task.sleep(nanoseconds: 5_000_000)
+        }
+        let uploaded = await uploader.uploadedEvents()
+        expect(uploaded.map(\.id) == phases.map(\.id), "fast terminal is never dropped behind its start")
     }
 
     static func expect(_ condition: @autoclosure () -> Bool, _ message: String) {

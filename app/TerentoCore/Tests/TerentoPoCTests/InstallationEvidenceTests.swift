@@ -34,12 +34,36 @@ private actor LegacyServerRecorder: InstallationEvidenceUploading {
     func uploadedIDs() -> [UUID] { uploaded }
 }
 
+private actor RejectedInstallRecorder: InstallationEvidenceUploading {
+    let rejectedID: UUID
+    var accepts = false
+    var uploaded: [UUID] = []
+    init(_ rejectedID: UUID) { self.rejectedID = rejectedID }
+    func upload(_ event: InstallationEvidenceEvent) async throws {
+        if event.id == rejectedID && !accepts {
+            throw InstallationEvidenceUploadError.httpStatus(code: 400, body: "invalid_install")
+        }
+        uploaded.append(event.id)
+    }
+    func accept() { accepts = true }
+    func ids() -> [UUID] { uploaded }
+}
+
+private final class EvidenceTestClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Date
+    init(_ value: Date) { self.value = value }
+    var now: Date { lock.lock(); defer { lock.unlock() }; return value }
+    func advance(_ seconds: TimeInterval) { lock.lock(); value += seconds; lock.unlock() }
+}
+
 @main
 struct InstallationEvidenceTests {
     @MainActor
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
         try testFailureContextRoundTrip()
+        try testInventoryMetricsPayload()
         try testUpdateEvidenceRoundTripAndIsolation()
         try testUpdateOutboxSurvivesOlderAppAndConsentChanges()
         try testCustomIMGEvidencePayload()
@@ -48,9 +72,48 @@ struct InstallationEvidenceTests {
         testStatisticsAndPromotionThresholds()
         try await testConsentAndUploadIsolation()
         try await testUnsupportedUpdateDoesNotBlockInstallationReports()
+        try await testRejectedInstallDoesNotBlockSibling()
+        try await testParkedReportsExpireAndClearOnOptOut()
+        try testParkedUpdateSurvivesFileSplit()
         testDiagnosticSanitization()
         testPreparedInstallationIssue()
+        testInventoryMetricsReportAndTrace()
         print("PASS: installation evidence, privacy, default-on upload, report, and promotion tests")
+    }
+
+    /// Exact optional top-level shape; absent when nothing was measured.
+    static func testInventoryMetricsPayload() throws {
+        func payload(_ event: InstallationEvidenceEvent) throws -> [String: Any] {
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(event)) as! [String: Any]
+        }
+        let unmeasured = try payload(makeEvent())
+        expect(unmeasured["inventoryMetrics"] == nil,
+            "events without measured inventories omit inventoryMetrics")
+        let scoped = DeviceInventoryRead(files: (1...5).map {
+            DeviceFile(itemID: UInt32($0), parentID: 0, storageID: 1, path: "/f\($0)", filename: "f\($0)",
+                       sizeBytes: 1, isFolder: false)
+        }, scope: .garmin)
+        let prewriteOnly = InstallationInventoryMetrics(prewrite: scoped, durationMilliseconds: 1_234)
+        var event = makeEvent(outcome: .failed, finishing: .failed)
+        event.inventoryMetrics = prewriteOnly
+        let partial = try payload(event)["inventoryMetrics"] as? [String: Any]
+        expect(partial.map { Set($0.keys) } == ["scope", "prewriteObjectCount", "prewriteDurationMs"]
+            && partial?["scope"] as? String == "GARMIN" && partial?["prewriteObjectCount"] as? Int == 5
+            && partial?["prewriteDurationMs"] as? Int == 1_234,
+            "pre-write-only metrics omit the post-write fields")
+        event.inventoryMetrics = prewriteOnly.withPostwrite(.full(scoped.files + scoped.files),
+                                                            durationMilliseconds: 2_500)
+        let encoded = try JSONEncoder().encode(event)
+        let complete = try (JSONSerialization.jsonObject(with: encoded) as! [String: Any])["inventoryMetrics"] as? [String: Any]
+        expect(complete.map { Set($0.keys) } == ["scope", "prewriteObjectCount", "prewriteDurationMs",
+                                                  "postwriteObjectCount", "postwriteDurationMs"]
+            && complete?["scope"] as? String == "FULL" && complete?["postwriteObjectCount"] as? Int == 10
+            && complete?["postwriteDurationMs"] as? Int == 2_500,
+            "a full-walk read anywhere reports scope FULL with both counts and durations")
+        let text = String(decoding: encoded, as: UTF8.self)
+        expect(!text.contains("/f1") && !text.contains("\"f1\""), "metrics never carry paths or names")
+        let decoded = try JSONDecoder().decode(InstallationEvidenceEvent.self, from: encoded)
+        expect(decoded.inventoryMetrics == event.inventoryMetrics, "inventory metrics survive the durable outbox format")
     }
 
     static func testUpdateEvidenceRoundTripAndIsolation() throws {
@@ -188,19 +251,102 @@ struct InstallationEvidenceTests {
         _ = try store.append(update, queueForUpload: true)
         _ = try store.append(install, queueForUpload: true)
         let uploader = LegacyServerRecorder()
-        let controller = InstallationEvidenceController(store: store, uploader: uploader, automaticRetryDelays: [0])
+        let controller = InstallationEvidenceController(store: store, uploader: uploader,
+            automaticRetryDelays: [0], appBuild: "40")
         await controller.scheduledUploadForTesting()?.value
         let firstUploaded = await uploader.uploadedIDs()
         expect(firstUploaded == [install.id], "rejected update does not starve a supported install report")
-        expect(store.pendingUploads().map(\.id) == [update.id],
-            "unsupported update remains queued with its original kind and ID")
-        expect(store.pendingUploads().first?.operationKind == "update",
+        expect(store.pendingUploads().isEmpty && store.parkedUploads().map(\.eventID) == [update.id],
+            "unsupported update is parked with its original ID instead of being re-sent every flush")
+        expect(store.events().first { $0.id == update.id }?.operationKind == "update",
             "an update must never be downgraded into installation evidence")
         await uploader.acceptUpdates()
         await controller.flushPendingUploads()
-        expect(store.pendingUploads().isEmpty, "deferred update uploads after server acceptance returns")
+        expect(store.parkedUploads().count == 1, "the same build waits for the back-off before retrying")
+        let nextBuild = InstallationEvidenceController(store: store, uploader: uploader,
+            automaticRetryDelays: [], appBuild: "41")
+        await nextBuild.flushPendingUploads()
+        expect(store.pendingUploads().isEmpty && store.parkedUploads().isEmpty,
+            "parked update uploads after a new build once server acceptance returns")
         let uploaded = await uploader.uploadedIDs()
         expect(uploaded == [install.id, update.id], "already delivered installation is not resent")
+    }
+
+    @MainActor
+    static func testRejectedInstallDoesNotBlockSibling() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        let rejected = makeEvent()
+        let sibling = makeEvent()
+        _ = try store.append(rejected, queueForUpload: true)
+        _ = try store.append(sibling, queueForUpload: true)
+        let uploader = RejectedInstallRecorder(rejected.id)
+        let clock = EvidenceTestClock(Date())
+        let controller = InstallationEvidenceController(store: store, uploader: uploader,
+            automaticRetryDelays: [0], now: { clock.now }, appBuild: "40")
+        await controller.scheduledUploadForTesting()?.value
+        let delivered = await uploader.ids()
+        expect(delivered == [sibling.id], "rejected install does not starve another result")
+        let parked = store.parkedUploads()
+        expect(store.pendingUploads().isEmpty && parked.map(\.eventID) == [rejected.id]
+            && parked[0].rejection.statusCode == 400 && parked[0].rejection.rejectionCount == 1,
+            "rejected report is parked with its original ID, status and count")
+        await uploader.accept()
+        await controller.flushPendingUploads()
+        expect(store.parkedUploads().count == 1, "parked report does not burn the rate budget on every flush")
+        clock.advance(TelemetryDeliveryPolicy.parkedRetryInterval)
+        await controller.flushPendingUploads()
+        let retried = await uploader.ids()
+        expect(retried == [sibling.id, rejected.id] && store.parkedUploads().isEmpty,
+            "back-off retry uses original ID and never resends sibling")
+    }
+
+    @MainActor
+    static func testParkedReportsExpireAndClearOnOptOut() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        let start = Date(timeIntervalSince1970: 2_000_000_000)
+        let clock = EvidenceTestClock(start)
+        let rejected = makeEvent(timestamp: start)
+        _ = try store.append(rejected, queueForUpload: true)
+        let uploader = RejectedInstallRecorder(rejected.id)
+        let controller = InstallationEvidenceController(store: store, uploader: uploader,
+            automaticRetryDelays: [], now: { clock.now }, appBuild: "40")
+        await controller.flushPendingUploads()
+        expect(store.parkedUploads().count == 1, "rejected report parked")
+        clock.advance(TelemetryDeliveryPolicy.retentionInterval + 1)
+        await controller.flushPendingUploads()
+        expect(store.parkedUploads().isEmpty && store.events().map(\.id) == [rejected.id],
+            "expired parked report stops being offered while the local report remains")
+
+        let second = makeEvent(timestamp: clock.now)
+        _ = try store.append(second, queueForUpload: true)
+        try store.parkUpload(eventID: second.id, statusCode: 422, now: clock.now, appBuild: "40")
+        controller.decideConsent(.declined)
+        expect(store.parkedUploads().isEmpty && store.pendingUploads().isEmpty,
+            "opt-out clears parked and pending reports")
+        let attempts = await uploader.ids()
+        expect(attempts.isEmpty, "no rejected report was ever delivered")
+    }
+
+    static func testParkedUpdateSurvivesFileSplit() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        var update = makeEvent(outcome: .failed, finishing: .failed)
+        update.operationKind = "update"; update.oldMapPreserved = true
+        let install = makeEvent()
+        _ = try store.append(update, queueForUpload: true)
+        _ = try store.append(install, queueForUpload: true)
+        try store.parkUpload(eventID: update.id, statusCode: 400, now: Date(), appBuild: "40")
+        try store.parkUpload(eventID: install.id, statusCode: 400, now: Date(), appBuild: "40")
+        let installationFile = String(decoding: try Data(contentsOf: root.appendingPathComponent("installation-evidence.json")), as: UTF8.self)
+        expect(!installationFile.contains(update.id.uuidString), "older apps never see a parked update ID")
+        let reopened = LocalInstallationEvidenceStore(rootURL: root)
+        expect(Set(reopened.parkedUploads().map(\.eventID)) == Set([update.id, install.id])
+            && reopened.pendingUploads().isEmpty, "parking of both kinds survives the split files")
     }
 
     static func testFailureContextRoundTrip() throws {
@@ -361,7 +507,8 @@ struct InstallationEvidenceTests {
         id: UUID = UUID(), firmware: String = "20.19",
         variant: String? = nil,
         outcome: InstallationEvidenceOutcome = .succeeded,
-        finishing: AutomaticFinishingResult = .verified
+        finishing: AutomaticFinishingResult = .verified,
+        timestamp: Date = Date()
     ) -> InstallationEvidenceEvent {
         let changedIdentity = DeviceIdentity(
             manufacturer: identity.manufacturer, model: identity.model, family: identity.family,
@@ -369,7 +516,7 @@ struct InstallationEvidenceTests {
             firmware: firmware, storageCapacity: identity.storageCapacity, freeSpace: identity.freeSpace
         )
         return InstallationEvidenceEvent(
-            id: id, identity: changedIdentity, package: package, outcome: outcome,
+            id: id, timestamp: timestamp, identity: changedIdentity, package: package, outcome: outcome,
             finishingResult: finishing, errorCategory: outcome == .failed ? .transport : nil,
             terentoVersion: "test", macOSVersion: "test"
         )
@@ -538,6 +685,28 @@ struct InstallationEvidenceTests {
         expect(!backendPayload.contains("ABC") && backendPayload.contains("safe status"), "JSON backend payload redacts restricted identifiers")
         let signedURL = DiagnosticReportSanitizer.sanitize("https://example.test/map?token=secret-value&region=LTU")
         expect(!signedURL.contains("secret-value") && signedURL.contains("region=LTU"), "diagnostic report removes signed URL token values")
+    }
+
+    @MainActor
+    static func testInventoryMetricsReportAndTrace() {
+        let read = DeviceInventoryRead(files: [DeviceFile(itemID: 1, parentID: 0, storageID: 1, path: "/GARMIN",
+            filename: "GARMIN", sizeBytes: 0, isFolder: true)], scope: .garmin)
+        let metrics = InstallationInventoryMetrics(prewrite: read, durationMilliseconds: 812)
+            .withPostwrite(read, durationMilliseconds: 905)
+        let draft = InstallationIssueReport.generate(identity: nil, maps: [], stage: "Finishing", error: nil,
+            operationID: nil, verification: InstallationIssueVerification(inventoryMetrics: metrics))
+        expect(draft.body.contains("- Inventory scope: GARMIN") && draft.body.contains("- Pre-write inventory objects: 1")
+            && draft.body.contains("- Pre-write inventory duration (ms): 812")
+            && draft.body.contains("- Post-write inventory duration (ms): 905"),
+            "the local issue report lists inventory scope, counts and durations")
+        let unmeasured = InstallationIssueReport.generate(identity: nil, maps: [], stage: "Finishing", error: nil, operationID: nil)
+        expect(unmeasured.body.contains("- Inventory scope: Unavailable"), "unmeasured inventories are reported as unavailable")
+        let fields = InstallationInventoryMetrics.traceFields(read, durationMilliseconds: 812, baseline: 12_005)
+        expect(FinishingTrace.safeLine("FINISH_TRACE swift event=prewrite_inventory_metrics " + fields) != nil
+            && FinishingTrace.safeLine("FINISH_TRACE native event=inventory_scope offset=0 rc=2 detail=0") != nil
+            && FinishingTrace.safeLine("FINISH_TRACE swift event=prewrite_inventory_metrics scope=/Music objects=1") == nil
+            && FinishingTrace.safeLine("FINISH_TRACE swift event=postwrite_inventory_metrics fallback=other") == nil,
+            "finishing trace accepts only fixed inventory scope values and numeric counts")
     }
 
     @MainActor

@@ -1,4 +1,4 @@
-"""Database bookkeeping for map style previews (migration 067)."""
+"""Database bookkeeping for map style previews (migration 073)."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

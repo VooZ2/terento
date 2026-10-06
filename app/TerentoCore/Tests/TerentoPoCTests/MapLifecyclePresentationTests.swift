@@ -489,6 +489,8 @@ func runMapLifecyclePresentationTests() throws {
         bytesPerSecond: 10
     )
     try require(progress.fractionCompleted == 0.5, "lifecycle progress reports a fraction")
+    try require(MapLifecycleOperationPhase.preparing.userLabel == "Preparing", "preparation has its own visible stage")
+
     try require(
         MapLifecycleAction.allCases.count == 4,
         "only transfer, recover, remove, and update actions are exposed"
@@ -593,6 +595,7 @@ private struct MapLifecyclePresentationTestRunner {
             try testIncompleteCustomRecovery()
             try testManageInventorySearch()
             try testBBBikeManageTypeFilters()
+            try testDisconnectInterruptionNotices()
             print("PASS: \(passed) Stage 5 UI lifecycle presentation tests")
         } catch {
             print("FAIL: \(error)")
@@ -625,4 +628,26 @@ private func testBBBikeManageTypeFilters() throws {
     try require(externalIndex.providerOptions == [MapInventoryProviderOption(id: "bbbikeontrail", title: "BBBike (Ontrail)")]
         && externalIndex.filtered(query: "Lithuania", providerID: "bbbikeontrail").otherMaps == [external],
         "Recognized external Ontrail remains external and uses its own type filter")
+}
+
+private func testDisconnectInterruptionNotices() throws {
+    func notice(_ action: MapLifecycleAction, _ phase: MapLifecycleOperationPhase, _ fraction: Double = 0) -> String {
+        MapLifecycleInterruption.notice(action: action, phase: phase, fraction: fraction) ?? ""
+    }
+    try require(notice(.remove, .verifying, 0.55).contains("Nothing was removed"),
+        "a disconnect during the content check says nothing was removed")
+    let afterDelete = notice(.remove, .verifying, 0.93)
+    try require(afterDelete.contains("check whether the map was removed") && !afterDelete.contains("Nothing was removed"),
+        "a disconnect after the delete boundary never claims the map is still there")
+    try require(notice(.update, .downloading).contains("current map is unchanged"),
+        "an update interrupted before writing keeps the current map")
+    let duringWrite = notice(.update, .installing)
+    try require(duringWrite.contains("current map is kept") && duringWrite.contains("Manage maps"),
+        "an update interrupted while writing keeps the old map and points to Manage maps")
+    try require(notice(.update, .removingOld).contains("new version was installed"),
+        "an update interrupted while removing the old version says the new one is installed")
+    try require(MapLifecycleInterruption.notice(action: .remove, phase: .completed, fraction: 1) == nil
+        && MapLifecycleInterruption.notice(action: .update, phase: .failed, fraction: 0) == nil
+        && MapLifecycleInterruption.notice(action: .remove, phase: .awaitingConfirmation, fraction: 0) == nil,
+        "finished, failed or unconfirmed operations add no disconnect notice")
 }

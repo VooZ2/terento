@@ -21,11 +21,12 @@ progress_block="$(awk '
 ' "$connect_screen")"
 
 if [[ "$progress_block" != *'ProgressView(value: progress.fractionCompleted)'* \
-   || "$progress_block" != *'ProgressView()'* \
+   || "$progress_block" == *'ProgressView()'* \
+   || "$progress_block" != *'ProgressView(value: 0)'* \
    || "$progress_block" != *'.progressViewStyle(.linear)'* \
    || "$progress_block" != *'.tint(TerentoColors.interactive)'* \
    || "$progress_block" != *'.frame(height: InstallationTimelineLayout.progressBarHeight)'* ]]; then
-    print -u2 "FAIL: Manage progress does not reuse the installation progress pattern"
+    print -u2 "FAIL: Manage progress must use a determinate bar with the shared installation styling"
     exit 1
 fi
 

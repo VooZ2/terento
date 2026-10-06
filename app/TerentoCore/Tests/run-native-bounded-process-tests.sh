@@ -61,8 +61,11 @@ done
    "$(grep -n '"file_list_end"' "$bridge_source" | head -n 1 | cut -d: -f1)" ]]
 [[ "$(grep -n '"session_close_begin"' "$bridge_source" | head -n 1 | cut -d: -f1)" -lt \
    "$(grep -n '"session_close_end"' "$bridge_source" | head -n 1 | cut -d: -f1)" ]]
-grep -Fq 'private static let inventoryTimeout: TimeInterval = 60' \
+# Inventory bounds stay finite: a 60 s floor, scaled by observed objects, capped at 600 s.
+grep -Fq 'static let inventoryBaseTimeout: TimeInterval = 60' \
     "$project_root/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift"
-grep -Fq 'return inventoryTimeout' \
+grep -Fq 'static let inventoryMaximumTimeout: TimeInterval = 600' \
+    "$project_root/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift"
+grep -Fq 'return inventoryTimeout(expectedObjectCount: request.expectedObjectCount)' \
     "$project_root/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift"
 print 'PASS: normal-build private native trace and strict Swift diagnostics pass; Debug stderr remains opt-in; checkpoints throttled; exact failure counters retained; deadline/cancellation still reap workers'

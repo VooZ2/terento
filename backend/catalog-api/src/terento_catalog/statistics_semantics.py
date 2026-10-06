@@ -115,7 +115,19 @@ def _deduplicate_results(events: Iterable[dict[str, Any]]) -> list[dict[str, Any
 
     result: list[dict[str, Any]] = []
     for group in groups.values():
-        classes = {classify_fresh_result(event) for event in group}
+        # A logical result whose reports disagree on classification, provider,
+        # region or assessed device is a conflict and stays out of the rates,
+        # exactly like the SQL read models (compatibility_model_statistics,
+        # map_statistics and admin_overview_snapshot).
+        classes = {
+            (
+                classify_fresh_result(event),
+                str(_value(event, "provider", "provider") or "").lower(),
+                _value(event, "region", "region"),
+                _value(event, "canonicalDeviceId", "canonical_device_model_id"),
+            )
+            for event in group
+        }
         if len(classes) > 1:
             base = dict(max(group, key=lambda item: str(_value(item, "timestamp", "occurred_at") or "")))
             base["__classification_override"] = UNKNOWN
@@ -168,11 +180,9 @@ def summarize_acquisitions(events: Iterable[dict[str, Any]]) -> dict[str, Any]:
         if acquisition_id is not None:
             key = ("acquisition", str(acquisition_id))
         else:
-            key = (
-                "legacy-acquisition",
-                str(_value(event, "operationId", "operation_id") or _value(event, "id", "event_id") or id(event)),
-                str(_value(event, "mapId", "map_package_id") or "unknown-map"),
-            )
+            # STATISTICS_CONTRACT: legacy records without an acquisition ID
+            # retain their event identity (never operation + map).
+            key = ("legacy-acquisition", str(_value(event, "id", "event_id") or id(event)))
         groups.setdefault(key, []).append(event)
     successful = failed = 0
     for group in groups.values():

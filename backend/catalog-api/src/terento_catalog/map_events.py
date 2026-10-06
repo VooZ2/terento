@@ -13,7 +13,7 @@ from .telemetry import validate_release_label
 
 MAX_EVENT_BYTES = 8 * 1024
 ALLOWED_EVENT_KEYS = {
-    "acquisitionId", "componentKind",
+    "acquisitionId", "componentKind", "acquisitionPurpose",
     "schemaVersion", "mapResultIndex",
     "id",
     "operationId",
@@ -37,11 +37,32 @@ ALLOWED_EVENT_TYPES = {
     "MAP_UPDATE_FAILED",
 }
 ALLOWED_OUTCOMES = {"SUCCEEDED", "FAILED", "UNKNOWN"}
+# Released beta.9 (builds 10/11) predates releaseLabel. Its exact payload shape
+# is retained for that distributed client only; the release stays unknown.
+LEGACY_BETA9_EVENT_KEYS = frozenset({
+    "schemaVersion", "id", "operationId", "timestamp", "providerId", "mapId",
+    "region", "eventType", "outcome", "appBuild",
+})
+LEGACY_BETA9_EVENT_TYPES = frozenset({
+    "DOWNLOAD_STARTED", "DOWNLOAD_SUCCEEDED", "DOWNLOAD_FAILED",
+    "INSTALL_SUCCEEDED", "INSTALL_FAILED",
+})
 SAFE_ID = re.compile(r"[a-z0-9][a-z0-9._-]{0,159}\Z")
 
 
 class MapEventValidationError(ValueError):
     pass
+
+
+def is_legacy_beta9_event(event: dict[str, Any]) -> bool:
+    """Return whether a body has the exact released beta.9 shape (no releaseLabel)."""
+    return (
+        "releaseLabel" not in event
+        and set(event) <= LEGACY_BETA9_EVENT_KEYS
+        and isinstance(event.get("appBuild"), str)
+        and isinstance(event.get("mapId"), str)
+        and event.get("eventType") in LEGACY_BETA9_EVENT_TYPES
+    )
 
 
 def validate_map_event(raw: bytes) -> dict[str, Any]:
@@ -53,18 +74,21 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         raise MapEventValidationError("invalid_json") from exc
     if not isinstance(event, dict) or set(event) - ALLOWED_EVENT_KEYS:
         raise MapEventValidationError("unknown_fields")
+    legacy_beta9 = is_legacy_beta9_event(event)
     required = {
         "schemaVersion", "id", "operationId", "timestamp", "providerId",
         "eventType", "outcome", "releaseLabel",
     }
+    if legacy_beta9:
+        required = (required - {"releaseLabel"}) | {"appBuild", "mapId"}
     if required - set(event):
         raise MapEventValidationError("missing_fields")
-    if event["schemaVersion"] != 1:
+    if type(event["schemaVersion"]) is not int or event["schemaVersion"] != 1:
         raise MapEventValidationError("unsupported_schema")
     if not isinstance(event.get("eventType"), str):
         raise MapEventValidationError("invalid_event_type")
     if event.get("mapResultIndex") is not None and (
-        not isinstance(event["mapResultIndex"], int) or event["mapResultIndex"] < 0
+        type(event["mapResultIndex"]) is not int or not 0 <= event["mapResultIndex"] <= 2147483647
     ):
         raise MapEventValidationError("invalid_mapResultIndex")
     has_acquisition = event.get("acquisitionId") is not None
@@ -73,6 +97,12 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
     if has_acquisition and (event.get("componentKind") not in ("main", "contours")
                             or not str(event.get("eventType", "")).startswith("DOWNLOAD_")):
         raise MapEventValidationError("invalid_acquisition_component")
+    if event.get("acquisitionPurpose") is not None and (
+        event["acquisitionPurpose"] not in ("install", "update")
+        or not has_acquisition
+        or not event["eventType"].startswith("DOWNLOAD_")
+    ):
+        raise MapEventValidationError("invalid_acquisition_purpose")
     if event.get("eventType") in {"DOWNLOAD_PROCESSING", "DOWNLOAD_CANCELLED", "DOWNLOAD_INTERRUPTED"}:
         if not has_acquisition or event.get("outcome") != "UNKNOWN":
             raise MapEventValidationError("invalid_acquisition_outcome")
@@ -80,6 +110,10 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         expected = {"DOWNLOAD_SUCCEEDED": "SUCCEEDED", "DOWNLOAD_FAILED": "FAILED"}.get(event.get("eventType"), "UNKNOWN")
         if event.get("outcome") != expected:
             raise MapEventValidationError("invalid_acquisition_outcome")
+    expected_outcome = ("SUCCEEDED" if event["eventType"].endswith("_SUCCEEDED")
+                        else "FAILED" if event["eventType"].endswith("_FAILED") else "UNKNOWN")
+    if event.get("outcome") != expected_outcome:
+        raise MapEventValidationError("invalid_event_outcome")
     for key in ("id", "operationId") + (("acquisitionId",) if has_acquisition else ()) :
         if not isinstance(event[key], str):
             raise MapEventValidationError(f"invalid_{key}")
@@ -99,10 +133,14 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
             not isinstance(value, str) or not value.strip() or len(value) > 80
         ):
             raise MapEventValidationError(f"invalid_{key}")
-    try:
-        event["releaseLabel"] = validate_release_label(event["releaseLabel"])
-    except ValueError as exc:
-        raise MapEventValidationError("invalid_releaseLabel") from exc
+    if legacy_beta9:
+        # Stored as an unknown (NULL) release, never as a local test build.
+        event["releaseLabel"] = None
+    else:
+        try:
+            event["releaseLabel"] = validate_release_label(event["releaseLabel"])
+        except ValueError as exc:
+            raise MapEventValidationError("invalid_releaseLabel") from exc
     if not isinstance(event["eventType"], str) or event["eventType"] not in ALLOWED_EVENT_TYPES:
         raise MapEventValidationError("invalid_event_type")
     if not isinstance(event["outcome"], str) or event["outcome"] not in ALLOWED_OUTCOMES:

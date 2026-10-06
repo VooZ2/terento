@@ -24,7 +24,7 @@ class DeviceInformationLayoutTests(unittest.TestCase):
                 evidence = _statistics_row({'model':'fēnix 7 Pro'}, catalog_device=device)
                 self.assertIn('catalog-archive-icon', evidence)
                 detail = device_detail_page(device, {'username':'operator'}, 'csrf').decode()
-                self.assertIn("admin-state'>Historical catalog entry", detail)
+                self.assertIn("<span>Historical catalog entry</span>", detail)
                 if variant != 'Historical':
                     label = '47 mm' if variant == '47 mm' else 'no Wi-Fi'
                     for markup in (row, evidence, detail): self.assertIn(label, markup)
@@ -88,8 +88,9 @@ class DeviceInformationLayoutTests(unittest.TestCase):
         for value in ('006-B1234-00', "action='/admin/devices/identity-mapping'", "name='mapping_id' value='42'", 'required', '/admin/device-identification?device='):
             self.assertIn(value, tool)
         listing = device_identification_page([device], {'username': 'operator'}, 'csrf').decode()
-        self.assertIn('Select a model', listing)
-        self.assertIn('1 model needs source review', listing)
+        self.assertIn('<h1>Model sources</h1>', listing)
+        self.assertIn("data-source-filter='pending'", listing)
+        self.assertIn('>Needs review · 1<', listing)
         self.assertNotIn("name='mapping_id'", listing)
         empty = device_identification_page([device], {'username': 'operator'}, 'csrf', query='<missing>').decode()
         self.assertIn('No matching models.', empty)
@@ -504,7 +505,7 @@ class AdminDevicesTests(unittest.TestCase):
             "Maps: Unknown", "Approved", "Blocked", "Pending", "Last success",
             "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
-            "admin-summary-strip device-summary-strip", "position:sticky",
+            "admin-card device-summary-strip", "position:sticky",
             "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
             "table-layout:fixed", "overflow-y:visible",
             "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
@@ -600,7 +601,7 @@ class AdminDevicesTests(unittest.TestCase):
         for value in (
             "Installation history", "Administration", "Device information",
             "Technical details", "Install policy", "Public compatibility",
-            "Failed results remain historical", "Open errors", "Prepare GitHub issue",
+            "/admin/glossary#failed", "Open problems", "Prepare GitHub issue",
             "Copy issue report", "Copy diagnostic ID", "Copy technical report",
             "/admin/devices/authorization", "/admin/devices/public-compatibility",
         ):

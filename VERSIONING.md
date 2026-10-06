@@ -1,32 +1,50 @@
 # Terento versioning
 
-Terento uses semantic-style beta versions:
+Terento uses semantic-style pre-release versions:
 
 ```text
 MAJOR.MINOR.PATCH-beta.N
+MAJOR.MINOR.PATCH-rc.N
 ```
 
 Current public Git tags combine the semantic release label with the distributed
 build: `v<release-label>-build<CFBundleVersion>`, for example
-`v1.0.0-beta.12-build28`. Older tags without a build suffix remain immutable
-historical identities; do not rename or overwrite them.
+`v1.0.0-beta.12-build28` or `v1.0.0-rc.1-build41`. Older tags without a build
+suffix remain immutable historical identities; do not rename or overwrite them.
 
 - **MAJOR** is reserved for intentionally incompatible public changes after
   stable maturity.
 - **MINOR** marks a meaningful new capability line.
 - **PATCH** marks a backward-compatible fix or correction within that line.
 - **beta.N** increments for each published beta of the same base version.
+- **rc.N** marks a release candidate: a feature-complete candidate for the
+  stable `MAJOR.MINOR.PATCH` release. Between release candidates only fixes are
+  accepted; a new capability waits for a later version. `rc.N` increments for each published candidate of the same base
+  version and starts at `rc.1`.
 
-The first build of a new beta label receives the next monotonically increasing
-build number. A small backward-compatible correction that does not change the
-beta label may use the next sequential build number without creating a new beta
-label. The build counter is never reset or reused.
+The first build of a new beta or release-candidate label receives the next
+monotonically increasing build number. A small backward-compatible correction
+that does not change the label may use the next sequential build number without
+creating a new label. The build counter is never reset or reused: the first
+release candidate continues from the last beta build (for example beta.18 build
+40 is followed by rc.1 build 41).
 
-Beta releases are pre-releases, not stable production releases. A beta may
-contain implemented code whose final real-device validation gate is still
-pending; release notes must state that limitation explicitly. Deferred gates
-must not be described as passed, and a genuinely new capability line may start
-the next base version.
+Beta releases and release candidates are pre-releases, not stable production
+releases. Published beta history keeps its labels, tags and build numbers.
+SemVer precedence orders `1.0.0-beta.N` before `1.0.0-rc.N` before `1.0.0`,
+but the update check never compares labels: it orders by marketing version and
+`CFBundleVersion`. A beta or release candidate may contain implemented code
+whose final real-device validation gate is still pending; release notes must
+state that limitation explicitly under KNOWN ISSUES (the release-note format
+is defined in [Packaging/README.md](Packaging/README.md#release-notes-format)).
+Deferred gates must not be described as passed, and a genuinely new capability line may start the next base version.
+
+Release candidates are distributed on the existing `beta` update channel, the
+pre-release channel that installed beta builds already follow. This keeps
+current beta users on an in-app update path to each release candidate, and
+installed clients only decode the `beta` and `stable` channel values. Do not
+introduce a separate `rc` channel. Moving from a release candidate to the
+stable label and `stable` channel requires its own release-contract review.
 
 Published tags are immutable: never reuse, overwrite, or force-push a tag.
 The release tag is the immutable source identity. The manifest releaseTag,
@@ -61,13 +79,17 @@ source identity. Preserve historical tags and assets; never delete/recreate a
 release or disable immutability to obtain a badge. GitHub also prevents reuse of
 an immutable release's tag name after deletion.
 
-## Preparing a beta build
+## Preparing a beta or release-candidate build
 
-A reviewed `Packaging/release-candidate.json` can hold the unchanged marketing
-version and either the same beta label or the immediately next numbered beta,
-plus a strictly newer build. Xcode settings must match it
-exactly, while public notes, downloads and checksums keep identifying the
-available release. Merge the candidate source through the normal checks, then
+A reviewed `Packaging/release-candidate.json` (a staging record, not tied to the
+`rc` label) can hold the unchanged marketing version and a label that is either
+the same published label or exactly one step after it, plus a strictly newer
+build. After `X.Y.Z-beta.N` the next label is `X.Y.Z-beta.N+1` or
+`X.Y.Z-rc.1`; after `X.Y.Z-rc.N` it is `X.Y.Z-rc.N+1`. A release candidate never
+returns to a beta label. Xcode settings must match it exactly, while public
+downloads and checksums keep identifying the available release. Release notes
+may carry a draft section for the staged label above the published section; the
+draft is marked as unpublished and must be finalized before publication. Merge the candidate source through the normal checks, then
 package that clean verified merge commit. Publish the actual signed artifacts
 before updating public metadata; remove the candidate file in that metadata
 change. This staging record does not waive source verification, notarization,

@@ -45,11 +45,12 @@ struct Stage45MapSelectionTests {
         testPackagesWithoutUsableOptionalArtifactsExposeNoChoice()
         testParentDeselectionInvalidatesOptionalSelection()
         testDuplicateArtifactDefinitionsAreRejected()
+        testSelectionIsCappedAtTheServerMapLimit()
 
         testCatalogGeographyIndex()
         testCatalogFilterPerformance()
         testBundledCatalogGeography()
-        print("PASS: 39 Stage 4.5 map selection tests")
+        print("PASS: 40 Stage 4.5 map selection tests")
     }
 
     private static func testCatalogRegionsProduceOneCanonicalList() {
@@ -159,6 +160,28 @@ struct Stage45MapSelectionTests {
                 && plan.storagePlan.selectedMapBytes == comparison.catalogMap.sizeBytes,
             "a new map with enough space produces a ready installation plan"
         )
+    }
+
+    private static func testSelectionIsCappedAtTheServerMapLimit() {
+        func plan(count: Int) -> InstallationPlan {
+            let comparisons = (0..<count).map {
+                makeComparison(id: "freizeitkarte-r\($0)", region: "R\($0)", name: "Region \($0)",
+                    status: .notInstalled, size: 1, identifier: "R\($0)")
+            }
+            let items = MapSelectionPlanner().items(comparisons: comparisons,
+                preflightStatuses: Dictionary(uniqueKeysWithValues: comparisons.map { ($0.id, .readyNewInstall) }),
+                recommendedRegionID: nil)
+            return MapSelectionPlanner().plan(items: items, selectedIDs: Set(items.map(\.id)),
+                currentFreeSpace: 15 * gigabyte)
+        }
+        let atLimit = plan(count: InstallationPlan.maximumMapsPerOperation)
+        let overLimit = plan(count: InstallationPlan.maximumMapsPerOperation + 1)
+        expect(InstallationPlan.maximumMapsPerOperation == 100
+            && atLimit.canContinue && atLimit.installItems.count == 100,
+            "100 selected maps (the server selectedMapCount bound) remain installable in one operation")
+        expect(!overLimit.canContinue && overLimit.status == .blocked
+            && overLimit.reason == "Select up to 100 maps at a time.",
+            "more than 100 maps are blocked at plan level with a clear message")
     }
 
     private static func testMultipleNewMapsUseCombinedStorage() {
@@ -824,6 +847,46 @@ struct Stage45MapSelectionTests {
                 && !scanning.isEnabled && scanning.userReason?.contains("Map checks") == true,
             "review does not offer a silent Install action before authorization and scan are ready"
         )
+        let pending = resolver.resolve(
+            plan: plan, deviceConnected: true,
+            installationAuthorization: .blocked(.pending), deviceIdentity: deviceIdentity,
+            mapScanReady: true, supportedInstallFlow: true,
+            installationPhase: .idle, hasValidatedArtifact: false, operationBusy: false
+        )
+        expect(
+            pending.userReason == "This watch model isn't enabled for map installation yet."
+                && unavailable.userReason == DeviceAuthorizationPresentation(.blocked(.catalogUnavailable)).reviewReason,
+            "authorization blockers use the outcome-language verdict shown on the Device page"
+        )
+        testDeviceAuthorizationPresentation(approved: approved)
+    }
+
+    private static func testDeviceAuthorizationPresentation(approved: InstallationAuthorizationState) {
+        let resolving = DeviceAuthorizationPresentation(.resolving)
+        let ready = DeviceAuthorizationPresentation(approved)
+        let unavailable = DeviceAuthorizationPresentation(.blocked(.catalogUnavailable))
+        let pendingModels = [InstallationAuthorizationBlockReason.pending, .unknownModel, .ambiguousCatalogMatch]
+            .map { DeviceAuthorizationPresentation(.blocked($0)) }
+        let outOfScope = DeviceAuthorizationPresentation(.blocked(.outOfScope))
+        expect(resolving.title == "Checking…" && resolving.tone == .neutral && !resolving.canRetry
+            && resolving.browsingNotice == nil, "resolving is a calm Checking… state, not a connection error")
+        expect(ready.title == "Ready for maps" && ready.tone == .success && ready.reviewReason == nil
+            && ready.systemImage == "checkmark.circle.fill", "approved shows Ready for maps")
+        expect(unavailable.title == "Couldn't check" && unavailable.canRetry && unavailable.tone == .error,
+            "an unavailable policy is retryable and shown as Couldn't check")
+        expect(pendingModels.allSatisfy { $0.title == "Not yet enabled for this model" && !$0.canRetry
+            && $0.detail?.contains("isn't enabled for map installation yet") == true
+            && $0.browsingNotice?.contains("browse") == true },
+            "PENDING and unknown models use outcome language and keep browsing labelled")
+        expect(outOfScope.title == "Not available for this model" && !outOfScope.canRetry,
+            "out-of-scope models are not offered a retry")
+        let all = [resolving, ready, unavailable, outOfScope] + pendingModels
+        expect(all.allSatisfy { !$0.title.isEmpty && !$0.systemImage.isEmpty }, "every verdict has text and an icon")
+        expect(all.allSatisfy { verdict in
+            !["MTP", "IMG", "policy", "authorization"].contains { term in
+                verdict.title.contains(term) || (verdict.detail ?? "").contains(term)
+            }
+        }, "verdict copy avoids technical terms")
     }
 
     private static func testSelectedMapDividerPolicy() {

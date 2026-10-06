@@ -45,7 +45,9 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
             state: progress.state == .completed ? .completed : .verifying,
             bytesCompleted: progress.bytesCompleted,
             totalBytes: progress.totalBytes,
-            bytesPerSecond: progress.bytesPerSecond
+            bytesPerSecond: progress.bytesPerSecond,
+            phaseFraction: progress.fractionCompleted,
+            detail: progress.detail
         ))
     }
 }
@@ -79,6 +81,8 @@ final class MapLifecycleViewModel: ObservableObject {
     private var lifecycleEpoch: UInt64 = 0
     private var inFlightOperationCount = 0
     private var operationTasks: [String: Task<Void, Never>] = [:]
+    private var timeEstimators: [String: (phase: MapLifecycleOperationPhase, estimator: RemainingTimeEstimator)] = [:]
+    private var timeRemainingEstimates: [String: RemainingTimeEstimate] = [:]
 
     init(
         deviceEngine: DeviceEngine,
@@ -114,7 +118,7 @@ final class MapLifecycleViewModel: ObservableObject {
             || operations.values.contains { state in
                 switch state.phase {
                 case .removing, .updating, .verifying, .downloading,
-                     .checking, .installing, .removingOld, .finishing:
+                     .preparing, .checking, .installing, .removingOld, .finishing:
                     return true
                 case .idle, .awaitingConfirmation, .completed, .failed:
                     return false
@@ -126,18 +130,33 @@ final class MapLifecycleViewModel: ObservableObject {
         !isBusy
     }
 
+    /// Explains an operation the last disconnect interrupted; cleared when
+    /// the user starts another operation.
+    @Published private(set) var interruptedOperationNotice: String?
+
     func resetForDisconnectedDevice() {
+        interruptedOperationNotice = operations.values.lazy.compactMap { state in
+            MapLifecycleInterruption.notice(action: state.action, phase: state.phase,
+                fraction: state.progress?.fractionCompleted ?? 0)
+        }.first
         lifecycleEpoch &+= 1
         operationController.invalidate()
         operationGate.invalidateLifecycleOperations()
         operationTasks.values.forEach { $0.cancel() }
         pendingConfirmation = nil
         externalSelection = nil
+        timeEstimators.removeAll()
+        timeRemainingEstimates.removeAll()
         operations.removeAll()
     }
 
     func operation(for itemID: String) -> MapLifecycleOperationState? {
         operations[itemID]
+    }
+
+    /// Time left for a measured Update/Remove phase of this map, if any.
+    func timeRemaining(for itemID: String) -> RemainingTimeEstimate? {
+        timeRemainingEstimates[itemID]
     }
 
     func availability(for item: MapLifecycleItem) -> MapLifecycleActionAvailability {
@@ -352,6 +371,7 @@ final class MapLifecycleViewModel: ObservableObject {
     }
 
     func confirmPendingAction() {
+        interruptedOperationNotice = nil
         guard let confirmation = pendingConfirmation else { return }
         pendingConfirmation = nil
 
@@ -511,12 +531,14 @@ final class MapLifecycleViewModel: ObservableObject {
         switch progress.state {
         case .acquiring:
             phase = action == .update ? .downloading : .updating
+        case .preparing:
+            phase = .preparing
         case .validating, .revalidating:
             phase = action == .update ? .checking : .verifying
         case .writing:
             phase = action == .update ? .installing : .updating
         case .verifying:
-            phase = action == .update ? .checking : .verifying
+            phase = .verifying
         case .committing:
             phase = action == .update ? .removingOld : .verifying
         case .postVerifying, .reconcilingManifest:
@@ -529,6 +551,8 @@ final class MapLifecycleViewModel: ObservableObject {
         switch phase {
         case .downloading:
             message = "Downloading the new map…"
+        case .preparing:
+            message = "Preparing the new map…"
         case .checking:
             message = "Checking the map and device…"
         case .installing:
@@ -556,7 +580,7 @@ final class MapLifecycleViewModel: ObservableObject {
             action: action,
             phase: phase,
             progress: progress,
-            message: message
+            message: progress.detail ?? message
         )
     }
 
@@ -697,7 +721,8 @@ final class MapLifecycleViewModel: ObservableObject {
                             expectedSHA256: isExternalRemoval ? (capturedSelection?.target.expectedSHA256 ?? "")
                                 : (context.expectedSHA256ByItemID[objectID] ?? ""),
                             expectedVersion: isExternalRemoval ? nil : context.item.version,
-                            allowsExternalRemoval: isExternalRemoval
+                            allowsExternalRemoval: isExternalRemoval,
+                            removalProof: isExternalRemoval ? nil : context.removalProofByItemID[objectID]
                         )
 
                         let componentResult = MapLifecycleManager().delete(
@@ -816,7 +841,8 @@ final class MapLifecycleViewModel: ObservableObject {
             identity: mapIdentity,
             version: version,
             ownership: .managedByTerento,
-            sha256: expectedHash
+            sha256: expectedHash,
+            removalProof: context.removalProofByItemID[objectID]
         )
         let request = SafeUpdateRequest(
             deviceKey: context.deviceKey,
@@ -900,18 +926,12 @@ final class MapLifecycleViewModel: ObservableObject {
                 // Only lease acquisition and the pre-entry token check can throw.
                 // The nonthrowing transaction returns its measured result even if
                 // cancellation arrives after entry; CancellableDetached awaits it.
-                result = SafeUpdateResult(
-                    status: .failedDeviceDisconnected,
-                    state: .failed,
-                    message: "The Garmin connection changed before the update could finish. The result must be checked again.",
-                    storagePlan: nil,
-                    newObject: nil,
-                    finalObjects: [],
-                    oldMapPreserved: true
-                )
+                result = SafeUpdateResult.preEntryInterruption(error,
+                    lifecycleBusy: (error as? MTPOperationGateError) == .lifecycleBusy,
+                    operationStillCurrent: operationController.isCurrent(operationToken))
             }
 
-            if !result.isSuccess {
+            if !result.isSuccess && !result.cancelledBeforeStart {
                 FinishingTrace.freezeFailure()
                 TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.generate(
                     identity: context.identity,
@@ -929,10 +949,11 @@ final class MapLifecycleViewModel: ObservableObject {
                         "Available device bytes: \(result.storagePlan.map { String($0.currentFreeSpace) } ?? "Unavailable")",
                         "Required temporary bytes: \(result.storagePlan.map { String($0.requiredTemporarySpace) } ?? "Unavailable")"],
                     error: result.message, operationID: mapStatisticsOperationID,
-                    errorCodes: [result.status.rawValue]
+                    errorCodes: [result.status.rawValue],
+                    verification: InstallationIssueVerification(inventoryMetrics: result.inventoryMetrics)
                 ))
             }
-            if result.status != .blockedInstallationAuthorization {
+            if result.status != .blockedInstallationAuthorization && !result.cancelledBeforeStart {
                 reportingMapEngine.recordUpdateDiagnostic(identity: context.identity, package: selectedMap,
                     operationID: mapStatisticsOperationID, result: result)
             }
@@ -983,6 +1004,16 @@ final class MapLifecycleViewModel: ObservableObject {
         progress: SafeUpdateProgress?,
         message: String
     ) {
+        // Derived before `operations` publishes, so both change together.
+        var estimator = timeEstimators[itemID]?.phase == phase
+            ? timeEstimators[itemID]!.estimator : RemainingTimeEstimator()
+        if let units = LifecycleRemainingTimeUnits.units(action: action, phase: phase, progress: progress) {
+            timeRemainingEstimates[itemID] = estimator.update(completed: units.completed, total: units.total)
+        } else {
+            estimator.reset()
+            timeRemainingEstimates[itemID] = nil
+        }
+        timeEstimators[itemID] = (phase, estimator)
         operations[itemID] = MapLifecycleOperationState(
             itemID: itemID,
             action: action,

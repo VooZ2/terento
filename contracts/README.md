@@ -13,6 +13,8 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
+| `app-funnel-event.schema.json` | `POST /app-funnel/events` request body | `schemaVersion: 1`; meaning owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md) |
+| `support-report.schema.json` | `POST /support/reports` request body | `schemaVersion: 1`; meaning owned by [`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md) |
 | `map-preview-manifest.schema.json` | `GET /maps/previews/manifest.json` | `schemaVersion: 1` |
 | `map-preview-areas.schema.json` | `map-preview-areas.json` (curated preview areas, not an HTTP payload) | `schemaVersion: 1` |
 
@@ -79,14 +81,26 @@ Statistics populations, formulas, deduplication and historical interpretation
 are canonical in [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md). The
 contract distinguishes terminal provider acquisitions, fresh main-map results,
 optional components and updates; it does not authorize a production migration
-or claim complete telemetry coverage.
+or claim complete telemetry coverage. App first-run funnel sessions are a
+separate population owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md).
+User-sent support reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md))
+are operator work, never statistics.
 
 ## Responses and client compatibility
 
 The current beta.18 client requests `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
-Older clients can reject a complete snapshot containing an unknown installable
-provider, so these projections must remain separate. v4 additionally exposes
+Older clients (beta.18 and earlier) can reject a complete snapshot containing
+an unknown installable provider, so these projections must remain separate.
+From the next app candidate, the native client accepts the remote catalog per
+package: a package that fails its provider adapter, reviewed source host, IMG
+identity or BBBike rules (or names a required artifact of an unknown `kind`) is
+dropped and counted; an optional artifact of an unknown `kind` is ignored.
+Duplicate provider or package IDs, a missing document field, or no compatible
+package make the whole catalog incompatible, which the client reports as
+"update Terento" rather than a connection problem. Acquisition re-validates only
+the package being acquired against the current catalog. Release and deploy gates
+still require every published package to pass the strict client validator. v4 additionally exposes
 BBBike with `bbbike-latin1` and `ontrail-latin1` map types. Catalog body versions
 remain unchanged. Source activation and exact-model evidence are separate.
 MapRando/BBBike versions may include an optional day; legacy provider versions
@@ -129,15 +143,22 @@ custom imports. No change to collection defaults, retention or privacy policy
 is authorized by these schemas.
 
 Current map events and compatibility diagnostic versions 3–4 require a strict
-SemVer `releaseLabel`. A valid label ending exactly in `-local` is classified
+SemVer `releaseLabel`. The one exception is the exact released beta.9 map-event
+shape (builds 10/11, fixture `map-event.valid-beta9-legacy.json`), which predates
+the field; it is stored with an unknown release label and is never local. A valid label ending exactly in `-local` is classified
 server-side as local test telemetry; it is excluded from production aggregates
 and can only be purged through the authenticated admin test-data flow.
 Compatibility versions 1–3 retain the historical `deletionToken` field; version
 4 forbids it. This documents old request acceptance, not a restored deletion
 feature. Versions 3–4 check structured diagnostic types and consistency.
-The existing server does not validate those diagnostic fields on versions
-1–2; the schema records this legacy limitation rather than silently tightening
-the API. Clients must not exploit that gap to transmit extra diagnostic data.
+The existing server does not validate the semantics of those diagnostic fields
+on versions 1–2; the schema records this legacy limitation rather than silently
+tightening the API. A present value that the typed database columns cannot store
+(a non-UUID `operationId`, a non-integer or boolean index/count, a non-boolean
+write fact, or a stage/bucket/identity code outside the stored domain) is
+rejected with `400` on every version instead of failing as a retryable `503`.
+Event and operation IDs must be canonical 8-4-4-4-12 UUID text, and a boolean is
+never accepted as a map-event `schemaVersion`. Clients must not exploit that gap to transmit extra diagnostic data.
 A future tightening requires its own privacy/compatibility review.
 
 Some checks remain procedural: raw JSON byte limits (16 KiB compatibility,
@@ -260,6 +281,16 @@ top-level null-as-absent rule does not relax nested validation. They exclude raw
 filenames, serials, Unit IDs, object identifiers, hashes and map contents.
 Absent or explicit-null context stays unavailable; it is not reconstructed.
 Persistence uses SQL NULL for either case, never a JSONB `null` value.
+
+## Installation inventory metrics
+
+Schema version 4 accepts an optional top-level `inventoryMetrics` object:
+`scope` (`FULL` or `GARMIN`), `prewriteObjectCount` (0–10,000,000),
+`prewriteDurationMs` (0–86,400,000) and optional `postwriteObjectCount` and
+`postwriteDurationMs` with the same bounds. Unknown nested keys are rejected;
+null means absent; versions 1–3 reject the field. It carries no names, paths or
+identifiers and is diagnostics only, never a count.
+`fixtures/compatibility-event.valid-inventory-metrics.json` is the reference.
 
 ## Changing a contract
 

@@ -32,6 +32,8 @@ Le parcours
 
 Connectez votre montre avec un câble USB de données. Terento la reconnaît et vérifie si vous pouvez continuer en toute sécurité.
 
+[Montre Garmin non détectée sur Mac](https://terento.app/fr/guides/troubleshooting/#connect-watch)
+
 Terento affiche une montre Garmin connectée et son état de détection
 Terento reconnaît la montre Garmin connectée avant l’installation.
 
@@ -63,19 +65,21 @@ Besoin d’aide ?
 
 ### Terento ne détecte pas la montre
 
-Attendez 1 à 2 minutes après la connexion. Si la montre n’apparaît toujours pas, reconnectez-la, vérifiez que le câble permet les données et fermez les autres apps susceptibles de l’utiliser.
+Attendez 1 à 2 minutes après la connexion. Si la montre n’apparaît toujours pas, reconnectez-la, vérifiez que le câble permet les données et fermez les autres apps susceptibles de l’utiliser. Plus d’aide : [Montre Garmin non détectée sur Mac](https://terento.app/fr/guides/troubleshooting/#connect-watch), [Garmin Express ou une autre app utilise la montre](https://terento.app/fr/guides/troubleshooting/#garmin-busy), [Montre Garmin non reconnue : mode USB (MTP)](https://terento.app/fr/guides/troubleshooting/#usb-mode).
 
 ### L’installation ou la mise à jour est indisponible
 
-Les cartes temporairement indisponibles restent visibles. Lisez la raison affichée à côté de la carte. Si le fournisseur est inaccessible ou si les téléchargements sont suspendus, réessayez plus tard. Si Terento ne peut pas vérifier la disponibilité actuelle, vérifiez votre connexion Internet et réessayez. Vos cartes déjà installées restent disponibles.
+Les cartes temporairement indisponibles restent visibles. Lisez la raison affichée à côté de la carte. Si le fournisseur est inaccessible ou si les téléchargements sont suspendus, réessayez plus tard. Si Terento ne peut pas vérifier la disponibilité actuelle, vérifiez votre connexion Internet et réessayez. Vos cartes déjà installées restent disponibles. Plus d’aide : [La liste des cartes Garmin ne se charge pas ou Terento doit être mis à jour](https://terento.app/fr/guides/troubleshooting/#catalog-unavailable), [Échec du téléchargement de la carte Garmin](https://terento.app/fr/guides/troubleshooting/#download-failed).
 
 ### Échec de l’installation
 
-Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.
+Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. Plus d’aide : [Échec de l’installation de la carte : carte restante sur la montre](https://terento.app/fr/guides/troubleshooting/#leftover-map), [Signaler un problème avec Terento](https://terento.app/fr/guides/troubleshooting/#send-report).
 
 ### La carte est installée mais n’est pas visible
 
 Reconnectez ou redémarrez la montre et vérifiez ses réglages de carte. Si la carte reste invisible, envoyez au support le modèle exact de la montre, la région de la carte et une description du problème. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+[Voir toutes les solutions](https://terento.app/fr/guides/troubleshooting/)
 
 Prêt quand vous l’êtes
 

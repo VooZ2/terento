@@ -5,6 +5,8 @@ struct InstallationIssueDraft: Equatable, Sendable {
     let title: String
     let body: String
     let url: URL
+    /// The same report as structured fields for "Send report to Terento".
+    var supportReport: SavedSupportReport? = nil
 }
 
 enum DiagnosticMapOperation: String, Sendable {
@@ -34,6 +36,8 @@ struct InstallationIssueVerification: Sendable {
     var sampledBytes: UInt64? = nil
     var sampleCount: Int? = nil
     var matchedSampleCount: Int? = nil
+    /// Scope, object counts and durations of the pre/post-write inventories.
+    var inventoryMetrics: InstallationInventoryMetrics? = nil
 }
 
 @MainActor
@@ -114,7 +118,12 @@ enum InstallationIssueReport {
             ("Elapsed at failure (ms)", verification.elapsedMilliseconds.map(String.init)),
             ("Verified sample bytes", verification.sampledBytes.map(String.init)),
             ("Planned samples", verification.sampleCount.map(String.init)),
-            ("Matched samples", verification.matchedSampleCount.map(String.init))
+            ("Matched samples", verification.matchedSampleCount.map(String.init)),
+            ("Inventory scope", verification.inventoryMetrics?.scope.rawValue),
+            ("Pre-write inventory objects", verification.inventoryMetrics.map { String($0.prewriteObjectCount) }),
+            ("Pre-write inventory duration (ms)", verification.inventoryMetrics.map { String($0.prewriteDurationMs) }),
+            ("Post-write inventory objects", verification.inventoryMetrics?.postwriteObjectCount.map(String.init)),
+            ("Post-write inventory duration (ms)", verification.inventoryMetrics?.postwriteDurationMs.map(String.init))
         ]
         let mapLines = reportedMaps.map { map in
             "- \(sanitizedLine(map.provider, fallback: "Unavailable")) / \(sanitizedLine(map.package, fallback: "Unavailable")): release=\(sanitizedLine(map.release ?? "Unavailable", fallback: "Unavailable")), planned installed bytes=\(map.artifactSizeBytes.map(String.init) ?? "Unavailable")"
@@ -187,7 +196,21 @@ enum InstallationIssueReport {
         Prepared by Terento. Please review before submitting.
         """)
 
-        return draft(title: title, body: body)
+        var result = draft(title: title, body: body)
+        result.supportReport = SavedSupportReport(
+            title: result.title,
+            category: SupportReportCategory(operation: operation),
+            operationID: operationID,
+            report: SupportReportBody.make(
+                title: title, identity: identity, maps: maps, stage: safeStage, operation: operation,
+                lifecycleFacts: lifecycleFacts, error: error, failureStages: failureStages,
+                errorCategory: errorCategory, errorCodes: errorCodes, writeStarted: writeStarted,
+                transferProgressPercent: transferProgressPercent, remoteObjectCreated: remoteObjectCreated,
+                cleanupAttempted: cleanupAttempted, cleanupSucceeded: cleanupSucceeded,
+                verification: verification, failureContext: failureContext,
+                originalFailureContext: originalFailureContext,
+                finishingTrace: FinishingTrace.failureReport, operatingSystem: operatingSystem))
+        return result
     }
 
     private static func contextLines(_ context: InstallationFailureContext?) -> String {

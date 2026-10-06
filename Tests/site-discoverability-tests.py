@@ -133,7 +133,7 @@ class DiscoverabilityTests(unittest.TestCase):
         allowed = {BASE + p['path'] for p in CONFIG['pages'] if p.get('indexable', True)}
         allowed.add('https://github.com/VooZ2/terento')
         self.assertTrue(set(links) <= allowed)
-        for path in ('/', '/about/', '/compatibility/', '/download/', '/guides/install-garmin-maps-mac/'):
+        for path in ('/', '/about/', '/compatibility/', '/download/', '/guides/install-garmin-maps-mac/', '/guides/troubleshooting/'):
             self.assertIn(BASE + path, links)
 
     def test_markdown_negotiation_representations_match_public_html(self):

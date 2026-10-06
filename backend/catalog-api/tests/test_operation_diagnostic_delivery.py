@@ -63,9 +63,9 @@ class IntakeDatabase(FakeEvidenceDatabase, Database):
             optional_component_selected BOOLEAN, optional_component_outcome TEXT,
             optional_component_failure_stage TEXT, optional_component_failure_code TEXT,
             optional_component_native_failure_code TEXT,
-            failure_context TEXT, original_failure_context TEXT,
+            failure_context TEXT, original_failure_context TEXT, inventory_metrics TEXT,
             statistics_exclusion_code TEXT, statistics_exclusion_reason TEXT,
-            security_issue_code TEXT'''
+            security_issue_code TEXT, schema_version INTEGER'''
         self.sqlite.execute('CREATE TABLE compatibility_evidence_event (' + columns + ')')
         self.mappings = deepcopy(MAPPINGS)
         self.identity_scope_calls = []
@@ -367,13 +367,15 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         self.assertIn('data-github-create', detail)
         attention = dict(row, has_failed=True, open_error=True, last_occurred_at=row['occurred_at'])
         overview = overview_page({'data': {'hasData': False}, 'compatibility': {
-            'hasData': True, 'allTimeOpenErrorCount': 1, 'attention': [attention]}}, user, 'test-csrf').decode()
+            'hasData': True, 'allTimeOpenErrorCount': 1, 'attention': [attention]}},
+            dict(user, admin_review_summary={'available': True, 'installationIssues': 1,
+                'githubIssuesInProgress': 0, 'identityPending': 0, 'readyToPublish': 0,
+                'missingDiagnostics': 0}), 'test-csrf').decode()
         panel = overview.split("aria-labelledby='overview-attention-title'>", 1)[1].split('</section>', 1)[0]
-        self.assertIn('Installation problems', panel)
-        self.assertIn('Installation problems · 1', panel)
+        self.assertIn('Open problems', panel)
+        self.assertIn("aria-label='Open problems: 1'", panel)
         self.assertIn('/admin/installations?state=open', panel)
-        self.assertNotIn('No device diagnostic report received', panel)
-        self.assertIn('Inspect', panel)
+        self.assertNotIn('No device report', panel)
         # Rendering is read-only: no assignment or GitHub action was submitted.
         self.assertEqual(self.db.identity_reviews, [])
 

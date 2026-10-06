@@ -9,6 +9,7 @@ import subprocess
 import unittest
 
 from terento_catalog.migrate import _statements
+from pglite_support import require_pglite
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,10 +122,6 @@ class Migration062ReconciliationTests(unittest.TestCase):
         self.assertEqual(old_columns, new_columns)
         self.assertEqual(len(new_columns), 29)
 
-    @unittest.skipUnless(
-        os.environ.get("TERENTO_PGLITE_MODULE"),
-        "Set TERENTO_PGLITE_MODULE for isolated PostgreSQL migration execution",
-    )
     def test_clean_live_like_and_reconciled_postgresql_paths(self) -> None:
         payload = {
             "legacyView": view_statement(MIGRATION_056),
@@ -134,7 +131,7 @@ class Migration062ReconciliationTests(unittest.TestCase):
         }
         script = Path(__file__).with_name("migration_062_postgres.cjs")
         result = subprocess.run(
-            ["node", str(script), os.environ["TERENTO_PGLITE_MODULE"]],
+            ["node", str(script), require_pglite(self)],
             input=json.dumps(payload),
             text=True,
             capture_output=True,

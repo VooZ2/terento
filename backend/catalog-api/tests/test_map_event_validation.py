@@ -68,6 +68,10 @@ class MapEventValidationTests(unittest.TestCase):
         self.assertFalse(is_local_release_label(accepted["releaseLabel"]))
         local = validate_map_event(json.dumps({**base, "releaseLabel": "1.0.0-beta.10-local"}).encode())
         self.assertTrue(is_local_release_label(local["releaseLabel"]))
+        candidate = validate_map_event(json.dumps({**base, "releaseLabel": "1.0.0-rc.1"}).encode())
+        self.assertFalse(is_local_release_label(candidate["releaseLabel"]))
+        local_candidate = validate_map_event(json.dumps({**base, "releaseLabel": "1.0.0-rc.1-local"}).encode())
+        self.assertTrue(is_local_release_label(local_candidate["releaseLabel"]))
         for label in (None, "", "development", "1.0", "1.0.0-local ", "v1.0.0"):
             with self.subTest(label=label), self.assertRaises(MapEventValidationError):
                 validate_map_event(json.dumps({**base, "releaseLabel": label}).encode())

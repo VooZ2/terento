@@ -215,5 +215,25 @@ class UpdateDiagnosticsHTTPTests(unittest.TestCase):
             thread.join()
 
 
+    def test_report_list_shows_totals_for_the_report_stream(self):
+        rows = [{'event_id': EVENT, 'outcome': 'FAILED', 'provider': 'bbbike', 'region': 'FRA', 'payload': {}}]
+        totals = {'total': 52, 'succeeded': 44, 'failed': 5, 'not_started': 3, 'open_failed': 2}
+        data = load_update_diagnostics(FakeDatabase([rows, totals]))
+        self.assertEqual(data['totals'], totals)
+        page = update_diagnostics_page(data, {'username': 'operator'}, 'csrf').decode()
+        self.assertIn('<h1>Update reports</h1>', page)
+        for label, value in (('Reports', '52'), ('Successful', '44'), ('Failed', '5'), ('Blocked', '3'), ('Open', '2')):
+            self.assertIn(f"<span class='admin-metric-label'>{label}", page)
+            self.assertIn(f">{value}</strong>", page)
+        self.assertIn("data-scope='all'>All time</span>", page)
+        self.assertIn('France · BBBike', page)
+        self.assertNotIn('FRA · bbbike', page)
+        self.assertNotIn('Diagnostic sharing is independent', page)
+        # A failing totals query leaves the list usable and marks the tiles unavailable.
+        degraded = load_update_diagnostics(FakeDatabase([rows]))
+        self.assertIsNone(degraded['totals'])
+        self.assertIn('<span>Unavailable</span>', update_diagnostics_page(degraded, {'username': 'operator'}, 'csrf').decode())
+
+
 if __name__ == '__main__':
     unittest.main()

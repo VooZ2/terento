@@ -27,6 +27,12 @@ Wenn du uns schreibst, erhalten wir deine E-Mail-Adresse, Nachricht und Anhänge
 
 Ein GitHub-Issue ist von automatischer Diagnose getrennt: Du prüfst und sendest es selbst; Inhalt und GitHub-Kontoname können öffentlich sein. Es gilt [GitHubs Datenschutzerklärung](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Freiwillige Spenden erfolgen über [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), das Zahlungsinformationen nach eigenen Bedingungen verarbeitet.
 
+## Supportberichte
+
+Wenn die App anbietet, einen Supportbericht an Terento zu senden, wird er nur gesendet, wenn du dich dafür entscheidest, nachdem du seinen Inhalt gesehen hast. Er enthält die bereinigten Fehlerangaben, die auch für GitHub-Berichte verwendet werden: App- und macOS-Version, Uhrenmodell und -variante, den fehlgeschlagenen Schritt, Fehlerkategorie und -meldung, Kartenanbieter und Region sowie Zeitangaben, dazu eine optionale Beschreibung. Seriennummern, Unit IDs, Kontodaten, lokale Pfade, Rohprotokolle und Kartendateien sind ausgeschlossen; ein GitHub-Konto ist nicht nötig. Gib in der Beschreibung keine personenbezogenen Daten an.
+
+Supportberichte dienen nur der Diagnose des gemeldeten Problems, fließen nicht in Statistiken ein und werden 12 Monate aufbewahrt. Zugriff hat nur die Projektverwaltung; deine IP-Adresse wird nicht mit dem Bericht gespeichert. Grundlage sind berechtigte Interessen an der Beantwortung deiner Anfrage und der Wartung der App nach Art. 6 Abs. 1 lit. f DSGVO.
+
 ## Website-Statistik und Browserspeicher
 
 Umami wird für alle Besucher geladen, um Seitenaufrufe, Linkklicks und Downloads zu messen. Es nutzt keine Tracking-Cookies. Verarbeitet werden können Seiten-/Referrer-URLs, Browser, Betriebssystem, Gerät und ungefähre Standortdaten. UTM-Werte in Links beschreiben Kampagnenquellen. Terento reicht sie über URLs weiter, ohne Kampagnen im Browser zu speichern. Die Statistik dient Website-Verbesserung und Kampagnenmessung auf Grundlage berechtigter Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Es gibt weder ein Analyse-Einwilligungsbanner noch einen Analyseschalter auf der Website; für einen Widerspruch kontaktiere uns. Website-Statistik und App-Diagnoseeinstellungen sind getrennt.
@@ -51,4 +57,4 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 13. September 2026.
+Aktualisiert: 6. Oktober 2026.

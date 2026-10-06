@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
@@ -31,15 +32,15 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .existingMapConflict:
             return "This map is already on the Garmin device. No replacement was attempted."
         case .sourceArtifactInvalid:
-            return "The prepared map did not match the validated source artifact."
+            return "The downloaded map didn't pass Terento's checks, so it wasn't installed. Try installing it again."
         case .insufficientSpace:
             return "There is not enough free space for a safe installation."
         case .unknownInstallSize:
-            return "The final Garmin install size must be calculated before installation."
+            return "Terento couldn't work out how much space this map needs on the watch, so it wasn't installed."
         case .unknownInstallTarget:
             return "Terento could not verify a safe place to install maps. Reconnect your device and try again."
         case .stableWatchIdentityUnavailable:
-            return "Terento could not establish the stable local watch identity required to manage this installation safely."
+            return "Terento couldn't identify this watch reliably, so it didn't install the map. Unplug the watch, plug it back in, and try again."
         case .mapIdentityAmbiguous:
             return "An existing map could not be identified safely."
         case .downloadFailed:
@@ -75,15 +76,157 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .installationAuthorization:
             return "Map installation is not available for this device in Terento."
         case .installationAuthorizationUnavailable:
-            return "Terento could not verify this device's installation authorization right now. Check your connection and try again."
+            return "Terento couldn't check whether this watch can install maps. Check your internet connection and try again."
         }
     }
+}
+
+extension InstallationFailure {
+    /// One plain follow-up when a map file may remain after a failed install.
+    static let leftoverMapFollowUp = "The map file may be on your watch. Open Manage maps to remove it, then install it again."
 }
 
 enum InstallMapOwnership: String, Codable, Equatable, Sendable {
     case terentoManaged = "TERENTO_MANAGED"
     case externalRecognized = "EXTERNAL_RECOGNIZED"
     case unknown = "UNKNOWN"
+}
+
+/// Sampled removal proof recorded for a map Terento itself wrote and verified.
+///
+/// The plan is deterministic for the artifact's size and full SHA-256: 32
+/// non-overlapping regions of `regionLength` bytes, always the first region
+/// (Garmin IMG header) and the final bytes, with the rest spread across the
+/// file. Files no longer than the full plan are covered completely. `sha256`
+/// is the SHA-256 of the concatenated region bytes of the validated local
+/// artifact. The native managed delete reads only these regions of the exact
+/// live object and refuses on any mismatch; entries without a proof keep the
+/// full SHA-256 content check.
+struct ManagedRemovalProof: Codable, Equatable, Sendable {
+    static let currentFormat = 1
+    /// Odd so the short-packet read policy keeps one request per region.
+    static let regionLength: UInt32 = 65_535
+    static let regionCount = 32
+
+    let format: Int
+    let regionLength: UInt32
+    let offsets: [UInt64]
+    let sha256: String
+
+    init(format: Int = ManagedRemovalProof.currentFormat,
+         regionLength: UInt32 = ManagedRemovalProof.regionLength,
+         offsets: [UInt64], sha256: String) {
+        self.format = format
+        self.regionLength = regionLength
+        self.offsets = offsets
+        self.sha256 = sha256
+    }
+
+    /// Bytes the native delete reads for this proof of a file of `size` bytes.
+    func sampledBytes(fileSizeBytes size: UInt64) -> UInt64 {
+        offsets.reduce(0) { total, offset in
+            offset < size ? total + min(UInt64(regionLength), size - offset) : total
+        }
+    }
+
+    /// Format-1 plan for one artifact. Empty only for an empty file.
+    static func plan(fileSizeBytes size: UInt64, fileSHA256: String) -> [UInt64] {
+        let length = UInt64(regionLength)
+        guard size > 0 else { return [] }
+        let fullPlan = UInt64(regionCount) * length
+        guard size > fullPlan else {
+            return Array(stride(from: UInt64(0), to: size, by: Int(length)))
+        }
+        var seed: UInt64 = 0xcbf29ce484222325
+        for byte in fileSHA256.lowercased().utf8 {
+            seed ^= UInt64(byte)
+            seed = seed &* 0x100000001b3
+        }
+        // One region in each of 30 equal strata between the first and last.
+        let strata = UInt64(regionCount - 2)
+        let width = (size - 2 * length) / strata
+        var offsets: [UInt64] = [0]
+        for index in 0..<strata {
+            seed = seed &* 2862933555777941757 &+ 3037000493
+            offsets.append(length + index * width + seed % (width - length + 1))
+        }
+        offsets.append(size - length)
+        return offsets
+    }
+
+    /// Computes the proof from the local artifact in one pass that also
+    /// re-hashes the whole file, so the proof is bound to exactly the bytes
+    /// whose full SHA-256 is recorded. Returns nil when the file differs.
+    static func make(localFileURL: URL, fileSizeBytes size: UInt64, fileSHA256: String) -> ManagedRemovalProof? {
+        let expected = fileSHA256.lowercased()
+        guard size >= 512, expected.count == 64, expected.allSatisfy({ $0.isASCII && $0.isHexDigit }),
+              let handle = try? FileHandle(forReadingFrom: localFileURL) else { return nil }
+        defer { try? handle.close() }
+        let offsets = plan(fileSizeBytes: size, fileSHA256: expected)
+        let length = UInt64(regionLength)
+        var full = SHA256()
+        var sampled = SHA256()
+        var position: UInt64 = 0
+        var regionIndex = 0
+        while true {
+            let data: Data
+            do {
+                // FileHandle reports end of file as nil or empty data.
+                data = try handle.read(upToCount: 1024 * 1024) ?? Data()
+            } catch {
+                return nil
+            }
+            if data.isEmpty { break }
+            full.update(data: data)
+            let chunkStart = position
+            let chunkEnd = position + UInt64(data.count)
+            while regionIndex < offsets.count {
+                let regionStart = offsets[regionIndex]
+                let regionEnd = min(regionStart + length, size)
+                guard regionStart < chunkEnd else { break }
+                let from = max(regionStart, chunkStart)
+                let to = min(regionEnd, chunkEnd)
+                if from < to {
+                    let lower = data.startIndex + Int(from - chunkStart)
+                    let upper = data.startIndex + Int(to - chunkStart)
+                    sampled.update(data: data[lower..<upper])
+                }
+                guard regionEnd <= chunkEnd else { break }
+                regionIndex += 1
+            }
+            position = chunkEnd
+        }
+        guard position == size, regionIndex == offsets.count,
+              hex(full.finalize()) == expected else { return nil }
+        return ManagedRemovalProof(offsets: offsets, sha256: hex(sampled.finalize()))
+    }
+
+    /// True only for the exact format-1 plan of this size and full SHA-256
+    /// with a well-formed digest. Anything else uses the full content check.
+    func isBound(toFileSizeBytes size: UInt64, fileSHA256: String) -> Bool {
+        let digest = sha256.lowercased()
+        return format == Self.currentFormat
+            && regionLength == Self.regionLength
+            && size >= 512
+            && digest.count == 64
+            && digest.allSatisfy { $0.isASCII && $0.isHexDigit }
+            && digest != String(repeating: "0", count: 64)
+            && offsets == Self.plan(fileSizeBytes: size, fileSHA256: fileSHA256)
+    }
+
+    /// The proof the native delete receives: only for a managed removal
+    /// (Remove or Update's old map) and only when exactly bound to the
+    /// manifest size and full SHA-256. Everything else, including every
+    /// external removal, gets nil and therefore the full content check.
+    static func forNativeRemoval(_ proof: ManagedRemovalProof?, managed: Bool,
+                                 fileSizeBytes size: UInt64, fileSHA256: String) -> ManagedRemovalProof? {
+        guard managed, let proof, proof.isBound(toFileSizeBytes: size, fileSHA256: fileSHA256) else { return nil }
+        return proof
+    }
+
+    private static func hex(_ digest: SHA256.Digest) -> String {
+        digest.map { String(format: "%02x", $0) }.joined()
+    }
 }
 
 struct TerentoManifestEntry: Codable, Equatable, Sendable {
@@ -103,6 +246,10 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
     let artifactID: String?
     let artifactKind: MapArtifactKind?
     let bbbikeMetadata: BBBikeMapMetadata?
+    /// Additive manifest field (entries written before it decode as nil).
+    /// Present only for maps Terento wrote and verified itself; nil keeps
+    /// the full SHA-256 content check before removal.
+    let removalProof: ManagedRemovalProof?
 
     init(
         deviceKey: String,
@@ -117,7 +264,8 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
         packageID: String? = nil,
         artifactID: String? = nil,
         artifactKind: MapArtifactKind? = nil,
-        bbbikeMetadata: BBBikeMapMetadata? = nil
+        bbbikeMetadata: BBBikeMapMetadata? = nil,
+        removalProof: ManagedRemovalProof? = nil
     ) {
         self.deviceKey = deviceKey
         self.devicePath = devicePath
@@ -132,11 +280,19 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
         self.artifactID = artifactID
         self.artifactKind = artifactKind
         self.bbbikeMetadata = bbbikeMetadata
+        self.removalProof = removalProof
+    }
+
+    /// The recorded proof only when it is the exact plan for this entry's
+    /// size and full SHA-256; otherwise nil (full content check).
+    var boundRemovalProof: ManagedRemovalProof? {
+        removalProof.flatMap { $0.isBound(toFileSizeBytes: sizeBytes, fileSHA256: sha256) ? $0 : nil }
     }
 
     private enum CodingKeys: String, CodingKey {
         case deviceKey, devicePath, filename, providerId, regionId, version
         case sizeBytes, sha256, installedAt, packageID, artifactID, artifactKind, bbbikeMetadata
+        case removalProof
     }
 
     init(from decoder: Decoder) throws {
@@ -154,7 +310,10 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
             packageID: try container.decodeIfPresent(String.self, forKey: .packageID),
             artifactID: try container.decodeIfPresent(String.self, forKey: .artifactID),
             artifactKind: try container.decodeIfPresent(MapArtifactKind.self, forKey: .artifactKind),
-            bbbikeMetadata: try container.decodeIfPresent(BBBikeMapMetadata.self, forKey: .bbbikeMetadata)
+            bbbikeMetadata: try container.decodeIfPresent(BBBikeMapMetadata.self, forKey: .bbbikeMetadata),
+            // An unreadable proof never makes the ownership record unreadable:
+            // it only falls back to the full content check.
+            removalProof: (try? container.decodeIfPresent(ManagedRemovalProof.self, forKey: .removalProof)) ?? nil
         )
     }
 }

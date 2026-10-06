@@ -16,6 +16,7 @@ from unittest.mock import patch, Mock
 from terento_catalog import provider_rechecks as checks
 from terento_catalog.provider_catalog import ProviderCollectionError
 from terento_catalog.collectors.freizeitkarte.range_zip import HTTPRangeFetcher, InvalidRangeResponse
+from pglite_support import require_pglite
 
 
 class RecheckInspectionTests(unittest.TestCase):
@@ -306,7 +307,6 @@ class RecheckHTTPTests(unittest.TestCase):
             thread.join(timeout=2)
 
 
-@unittest.skipUnless(os.environ.get('PGLITE_MODULE_PATH'), 'Set PGLITE_MODULE_PATH for isolated PostgreSQL tests')
 class RecheckPostgresTests(unittest.TestCase):
     def test_publication_and_cooldown_sql_against_postgres(self):
         for failure in (False, True):
@@ -319,7 +319,7 @@ class RecheckPostgresTests(unittest.TestCase):
             root = Path(__file__).parent
             payload = {'migration': (root.parent / 'src/terento_catalog/migrations/064_provider_rechecks_update_diagnostics.sql').read_text(),
                        'rows':db.rows, 'commands':db.commands, 'expectedState':db.state, 'resultCount':len(db.results)}
-            result = subprocess.run(['node', str(root / 'provider_rechecks_postgres.cjs'), os.environ['PGLITE_MODULE_PATH']],
+            result = subprocess.run(['node', str(root / 'provider_rechecks_postgres.cjs'), require_pglite(self)],
                                     input=json.dumps(payload, default=lambda value:value.isoformat()), text=True, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
 
