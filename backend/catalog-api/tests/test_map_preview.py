@@ -29,7 +29,7 @@ from terento_catalog.map_preview.job import (
     PreviewRun, PreviewSettings, next_window, parse_window, plan_work,
 )
 from terento_catalog.map_preview.manifest import build_manifest
-from terento_catalog.map_preview.publish import PreviewStore
+from terento_catalog.map_preview.publish import PreviewStore, webp_has_alpha
 from terento_catalog.map_preview.render import MapInfo, RenderError, RenderResult, Renderer
 from terento_catalog.map_preview.styles import STYLE_BY_ID, candidates_for, package_country_codes, packages_from_snapshot
 
@@ -424,6 +424,17 @@ class WindowTests(unittest.TestCase):
         work, uncovered = plan_work([target], [], {}, {}, {"bbbike"}, now=NOW, refresh_days=90)
         self.assertEqual(len(uncovered), 2)
 
+    def test_drawn_but_unpublished_layers_are_drawn_again(self):
+        target = area()
+        packages = packages_from_snapshot([snapshot_row("italy")])
+        drawn = {(target.id, "bbbike"): {"status": "AVAILABLE", "package_id": "italy", "package_version": "2026-09-01",
+                                         "rendered_at": NOW - timedelta(hours=1), "retry_not_before": None}}
+        work, _ = plan_work([target], packages, drawn, {}, {"bbbike"}, now=NOW, refresh_days=90, published=set())
+        self.assertEqual([(item.area.id, item.style.id) for item in work], [(target.id, "bbbike")])
+        work, _ = plan_work([target], packages, drawn, {}, {"bbbike"}, now=NOW, refresh_days=90,
+                            published={(target.id, "bbbike")})
+        self.assertEqual(work, [])
+
 
 class PreviewRunTests(unittest.TestCase):
     def run_window(self, root, rows, *, renderer=None, db=None, downloader=None, **setting_values):
@@ -498,6 +509,25 @@ class PreviewRunTests(unittest.TestCase):
             self.assertTrue(all(seconds == job_module.LEASE_SECONDS for seconds in db.lease_calls))
             self.assertEqual(list((root / "work").iterdir()), [])
             self.assertIsNone(db.lease)
+
+    def test_previously_uncovered_layer_with_a_package_is_pending_until_drawn(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rows = [snapshot_row("nord-est", region="EUROPE-ITALY-NORD-EST",
+                                 url="https://data.bbbike.org/osm/garmin/region/europe/italy/nord-est.osm.garmin-bbbike-latin1.img")]
+            db = FakePreviewDatabase()
+            db.rows[("a", "bbbike")] = {"status": "NOT_COVERED", "provider_id": "bbbike"}
+            seen = []
+            original = db.save_layer
+
+            def recording_save_layer(area_id, style_id, provider_id, status, **kwargs):
+                seen.append((area_id, style_id, status))
+                return original(area_id, style_id, provider_id, status, **kwargs)
+
+            db.save_layer = recording_save_layer
+            result, db, _, _, _ = self.run_window(Path(directory), rows, db=db)
+            bbbike = [status for area_id, style_id, status in seen if (area_id, style_id) == ("a", "bbbike")]
+            self.assertEqual(bbbike, ["PENDING", "AVAILABLE"])
+            self.assertEqual(db.rows[("a", "bbbike")]["status"], "AVAILABLE")
 
     def test_package_not_covering_area_moves_to_next_candidate(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -582,6 +612,7 @@ class RendererBinaryTests(unittest.TestCase):
             tiles = list(Path(directory, "a").rglob("*.webp"))
             self.assertEqual(len(tiles), result.tiles)
             self.assertTrue(all(tile.read_bytes()[8:12] == b"WEBP" for tile in tiles))
+            self.assertFalse(any(webp_has_alpha(tile) for tile in tiles))
             renderer.render(fixture_area, [FIXTURE_IMG, FIXTURE_IMG], Path(directory) / "b")
             self.assertEqual(renderer.compare(Path(directory) / "a", Path(directory) / "a", 14), 0.0)
             self.assertLess(renderer.compare(Path(directory) / "a", Path(directory) / "b", 14), 0.05)
@@ -597,6 +628,73 @@ class RendererBinaryTests(unittest.TestCase):
             for tile in Path(directory, "serial").rglob("*.webp"):
                 twin = Path(directory, "parallel", tile.relative_to(Path(directory, "serial")))
                 self.assertEqual(tile.read_bytes(), twin.read_bytes())
+
+
+class WorkerTests(unittest.TestCase):
+    def test_busy_lease_is_retried_soon_instead_of_after_the_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            renderer_path = root / "renderer"
+            renderer_path.write_text("#!/bin/sh\n")
+            renderer_path.chmod(0o755)
+            stop = threading.Event()
+            attempts = []
+            waits = []
+
+            class BusyRun:
+                def __init__(self, *args, **kwargs):
+                    pass
+
+                def run(self, deadline, stop_event):
+                    attempts.append(deadline)
+                    if len(attempts) >= 3:
+                        stop.set()
+                    return job_module.WindowResult(lease_busy=True)
+
+            class RecordingStop:
+                def is_set(self):
+                    return stop.is_set()
+
+                def wait(self, seconds):
+                    waits.append(seconds)
+                    return stop.is_set()
+
+            database = mock.Mock()
+            with mock.patch.object(job_module, "PreviewRun", BusyRun):
+                job_module.run_worker(database, RecordingStop(),
+                                      settings(root, renderer=renderer_path, window_utc=(day_time(0), day_time(0))),
+                                      clock=lambda: NOW)
+            self.assertEqual(len(attempts), 3)
+            self.assertTrue(all(seconds == job_module.LEASE_RENEW_SECONDS for seconds in waits))
+
+
+class PaperAndCountryTests(unittest.TestCase):
+    def test_transparent_published_layers_are_detected(self):
+        opaque = b"RIFF\x24\x00\x00\x00WEBPVP8 " + bytes(48)
+        with_alpha = b"RIFF\x24\x00\x00\x00WEBPVP8X\x0a\x00\x00\x00\x10" + bytes(43)
+        with tempfile.TemporaryDirectory() as directory:
+            store = PreviewStore(Path(directory))
+            staging = store.staging_dir("job")
+            for style, payload in (("bbbike", with_alpha), ("freizeitkarte", opaque)):
+                tile = staging / "zermatt" / style / "14" / "8600"
+                tile.mkdir(parents=True)
+                (tile / "5800.webp").write_bytes(payload)
+            store.publish(release="20261006T180000Z", keep=[], staged={
+                ("zermatt", "bbbike"): staging / "zermatt" / "bbbike",
+                ("zermatt", "freizeitkarte"): staging / "zermatt" / "freizeitkarte",
+            })
+            self.assertTrue(store.has_transparency("20261006T180000Z", "zermatt", "bbbike"))
+            self.assertFalse(store.has_transparency("20261006T180000Z", "zermatt", "freizeitkarte"))
+            self.assertFalse(store.has_transparency("20261006T180000Z", "zermatt", "maprando"))
+
+    def test_opentopomap_regions_map_to_countries(self):
+        def codes(region):
+            return package_country_codes({"provider_id": "opentopomap", "provider_region_id": region, "country_codes": []})
+        self.assertEqual(codes("germany"), {"DE"})
+        self.assertTrue({"IT", "CH", "AT"} <= codes("alps"))
+        self.assertEqual(codes("british-isles"), {"GB", "IE", "IM"})
+        self.assertEqual(codes("canada-west"), {"CA"})
+        self.assertEqual(codes("atlantis"), set())
 
 
 class RendererSettingsTests(unittest.TestCase):
