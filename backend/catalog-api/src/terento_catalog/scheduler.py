@@ -200,6 +200,14 @@ def main() -> None:
     from .provider_monitoring import run_worker as run_health_worker
     health_worker = Thread(target=run_health_worker, args=(database, stop), daemon=True, name="provider-health")
     health_worker.start()
+    from .map_preview.job import run_worker as run_preview_worker
+    preview_worker = Thread(
+        target=run_preview_worker,
+        args=(database, stop, settings.map_preview_settings()),
+        daemon=True,
+        name="map-preview-renderer",
+    )
+    preview_worker.start()
     try:
         run_schedule(database, settings.collector_schedule_utc)
     finally:
@@ -207,6 +215,7 @@ def main() -> None:
         download_worker.join(timeout=12)
         recheck_worker.join(timeout=12)
         health_worker.join(timeout=12)
+        preview_worker.join(timeout=12)
 
 
 if __name__ == "__main__":

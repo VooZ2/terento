@@ -23,8 +23,11 @@ country sets, preserve manual pan and zoom rather than auto-fitting coverage.
 
 This service is a metadata-only source for the Terento macOS catalog client.
 It stores map-provider metadata and a separate Garmin smartwatch device
-catalog. It does not download, host, proxy, mirror, cache, repackage, or serve
-provider map binaries or Garmin product images.
+catalog. It does not host, proxy, mirror, cache, repackage, or serve provider
+map binaries or Garmin product images. The only exception to "never downloads"
+is the map style preview job below: it temporarily downloads selected provider
+maps to draw preview tiles and deletes each download as soon as its tiles are
+drawn.
 
 The catalog is provider-neutral and has no fixed provider count. Each enabled
 provider must be represented by a reviewed server-side adapter and pass its own
@@ -283,6 +286,51 @@ Scheduled catalog collection remains a separate process. The authenticated
 admin `/collect` action may run one known adapter on demand and records a
 collection run; health checks perform only bounded source probes. Neither path
 downloads, stores, proxies, mirrors, or serves a provider map binary.
+
+## Map style previews
+
+The scheduler's `map-preview-renderer` thread draws comparison tiles for the
+public website's Map styles page from `contracts/map-preview-areas.json`
+(copied into the package as `map_preview/areas.json`; a test keeps the copies
+equal). That page is published separately, after the first preview release
+exists; until then the manifest and tiles have no public consumer. It is
+off unless `MAP_PREVIEW_ENABLED=true`, and only providers an operator switched
+on under Admin › Providers › Map style previews are rendered.
+
+Inside the nightly UTC window (`MAP_PREVIEW_WINDOW_UTC`, default `00:00-06:00`)
+it renders layers that are missing, failed earlier, use an outdated package
+version or are older than `MAP_PREVIEW_REFRESH_DAYS` (default 90). For each
+area and style it picks catalog packages by country and the area's
+`regionHints`, downloads one package at a time from the reviewed provider
+paths (no redirects, the Terento user agent, `Retry-After` honoured, size and
+free-disk limits), checks that the map covers the area, renders WebP tiles
+with the bundled `terento-preview-render`, and deletes the download in a
+`finally` block. A window that drew new tiles publishes a release under
+`<TERENTO_ASSET_ROOT>/previews/releases/<id>`; unchanged layers are hard-linked
+from the previous release and the newest two releases are kept.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MAP_PREVIEW_ENABLED` | `false` | Start the preview thread in the scheduler. |
+| `MAP_PREVIEW_WINDOW_UTC` | `00:00-06:00` | Nightly rendering window. |
+| `MAP_PREVIEW_REFRESH_DAYS` | `90` | Redraw unchanged layers after this many days. |
+| `MAP_PREVIEW_MAX_TOTAL_BYTES` | `55000000000` | Disk budget for all preview releases. |
+| `MAP_PREVIEW_MAX_SOURCE_BYTES` | `5368709120` | Largest provider download accepted. |
+| `MAP_PREVIEW_MIN_FREE_BYTES` | `20000000000` | Free disk space that must remain. |
+| `TERENTO_PREVIEW_WORK_DIR` | `/var/lib/terento/preview-work` | Temporary downloads (scheduler only). |
+| `TERENTO_PREVIEW_RENDERER` | `/usr/local/bin/terento-preview-render` | Renderer executable in the image. |
+| `TERENTO_PUBLIC_API_URL` | `https://api.terento.app` | Base of the public tile URL template. |
+
+The API serves the public manifest at `/maps/previews/manifest.json` and tiles
+at `/assets/previews/<release>/<area>/<style>/<z>/<x>/<y>.webp`; see
+`docs/api.md`. The scheduler container needs the asset volume and a separate
+work volume mounted read-write; the renderer runs at the lowest CPU priority
+with a 1.5 GiB address-space limit.
+
+`terento-preview-render` (in `renderer/`) is built in the image from an
+unmodified, pinned subset of GPXSee's Garmin IMG renderer (GPL-3.0). It can be
+built locally with Qt 6 (`cmake -S renderer -B build && cmake --build build`)
+and tested on the synthetic fixture in `renderer/tests/fixture/`.
 
 The scheduler also reads the public `VooZ2/terento` GitHub Releases API at
 startup and once per UTC hour. It follows all release pages and aggregates only

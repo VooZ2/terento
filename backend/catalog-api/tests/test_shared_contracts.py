@@ -29,6 +29,8 @@ NAMES = (
     'map-event',
     'app-funnel-event',
     'support-report',
+    'map-preview-areas',
+    'map-preview-manifest',
 )
 
 
@@ -79,6 +81,20 @@ class SharedContractTests(unittest.TestCase):
                     else:
                         kind, location, detail = intended[path.stem]
                         self.assertTrue(any(e.validator == kind and list(e.absolute_path) == location and detail in e.message for e in errors), errors)
+
+    def test_map_preview_area_list(self):
+        areas = json.loads((CONTRACTS / 'map-preview-areas.json').read_text())
+        self.assertEqual(list(validator('map-preview-areas').iter_errors(areas)), [])
+        ids = [area['id'] for area in areas['areas']]
+        self.assertEqual(len(ids), len(set(ids)))
+        for kind in ('place', 'route', 'city'):
+            self.assertTrue(any(area['kind'] == kind for area in areas['areas']), kind)
+        for area in areas['areas']:
+            with self.subTest(area=area['id']):
+                low, high = areas['zoom'][area['kind']]
+                self.assertLessEqual(low, high)
+                if area['kind'] == 'route':
+                    self.assertIn('routeName', area)
 
     def test_backend_serialized_projections(self):
         database = FakeDatabase()
