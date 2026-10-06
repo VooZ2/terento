@@ -21,8 +21,8 @@
     return Math.min(area.zoom[1], area.zoom[0] + (area.kind === "city" ? 2 : 1));
   }
 
-  function zoomPercent(area, zoom) {
-    return Math.round(100 * Math.pow(2, zoom - defaultZoom(area)));
+  function zoomPercent(area, zoom, base = defaultZoom(area)) {
+    return Math.round(100 * Math.pow(2, zoom - base));
   }
 
   function format(template, values) {
