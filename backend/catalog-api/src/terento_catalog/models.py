@@ -94,4 +94,7 @@ class CollectedDevice:
     screen_technology: str | None = None
     solar: bool | None = None
     inreach: bool | None = None
+    # Maps from official specification evidence only; None means unknown.
+    map_capable: bool | None = None
+    map_evidence_row: str | None = None
     retail_skus: tuple[str, ...] = ()

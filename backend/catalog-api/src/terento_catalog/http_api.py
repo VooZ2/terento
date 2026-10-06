@@ -734,6 +734,11 @@ class CatalogService:
                 lambda: {"openCount": self.database.support_report_open_count()},
                 dict(unavailable),
             ),
+            "mapsUnknown": section(
+                "mapsUnknown",
+                lambda: {"modelCount": self.database.maps_unknown_model_count()},
+                dict(unavailable),
+            ),
         }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:

@@ -97,7 +97,8 @@ def main() -> None:
                 version = hashlib.sha256(path.read_bytes()).hexdigest()
                 report.append({'deviceId': device['id'], 'source': url, 'version': version, 'specifications': specs})
                 if args.apply:
-                    database.enrich_device_specifications(connection, device['id'], specs, url, version, specs.get('retail_skus', []))
+                    database.enrich_device_specifications(connection, device['id'], specs, url, version, specs.get('retail_skus', []),
+                                                           evidence_fields={'map_capable': specs.get('map_evidence_row')})
             print(json.dumps({'readOnly': not args.apply, 'devices': report}, ensure_ascii=False, indent=2))
             return
         if args.command == 'import':

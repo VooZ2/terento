@@ -22,7 +22,6 @@ from .compatibility_status import calculate_compatibility_status
 from .models import CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
 from .historical_devices import historical_device_for_event
-from .map_capability import classify_map_capable
 from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
@@ -2882,11 +2881,18 @@ class Database:
             return len(rows)
 
     @staticmethod
-    def enrich_device_specifications(connection, device_id: str, specifications: dict, source: str, version: str, skus=()) -> None:
-        values = {k: v for k, v in specifications.items() if k in {"screen_technology", "solar", "inreach"} and v is not None}
+    def enrich_device_specifications(connection, device_id: str, specifications: dict, source: str, version: str, skus=(),
+                                     evidence_fields: dict | None = None) -> None:
+        # map_capable is recorded as evidence only: its column is written by the
+        # catalog upsert (new rows / Unknown rows) and never overwritten here.
+        values = {k: v for k, v in specifications.items()
+                  if k in {"screen_technology", "solar", "inreach", "map_capable"} and v is not None}
         if values:
             checked = datetime.now(timezone.utc).isoformat()
             evidence = {key: {"value": value, "source": source, "version": version, "checkedAt": checked} for key, value in values.items()}
+            for key, field in (evidence_fields or {}).items():
+                if key in evidence and field:
+                    evidence[key]["field"] = field
             connection.execute("""UPDATE device_model SET screen_technology=COALESCE(%s,screen_technology),
                 solar=COALESCE(%s,solar), inreach=COALESCE(%s,inreach), specification_source=%s,
                 specification_checked_at=now(), specification_evidence=specification_evidence || %s::jsonb,
@@ -4347,6 +4353,14 @@ class Database:
                 "SELECT id FROM support_report WHERE id = %s", (report["id"],),
             ).fetchone()
         return "duplicate" if existing else "conflict"
+
+    def maps_unknown_model_count(self) -> int:
+        """Needs attention: active catalog models whose Maps value is Unknown (NULL)."""
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT count(*) AS n FROM device_model WHERE active IS TRUE AND map_capable IS NULL"
+            ).fetchone() or {}
+        return int(row.get("n") or 0)
 
     def support_report_open_count(self) -> int:
         """Needs attention: open reports from public (non-local) builds."""
@@ -6068,7 +6082,8 @@ class Database:
                     """
                     SELECT id, family_id, manufacturer, model, canonical_model, variant,
                            case_size_mm, display_type, part_number, product_url,
-                           source_url, source_image_url, active, screen_technology, solar, inreach
+                           source_url, source_image_url, active, screen_technology, solar, inreach,
+                           map_capable
                     FROM device_model
                     WHERE id = ANY(%s)
                     """,
@@ -6103,6 +6118,10 @@ class Database:
                     ))
                     specifications_changed = any(value is not None and value != existing.get(key)
                         for key, value in (("screen_technology", record.screen_technology), ("solar", record.solar), ("inreach", record.inreach)))
+                    # An Unknown Maps value filled from specification evidence is a change.
+                    specifications_changed = specifications_changed or (
+                        existing.get("map_capable") is None and record.map_capable is not None
+                    )
                     if existing["active"] is False or incoming_values != existing_values or specifications_changed:
                         updated_ids.append(record.id)
                 connection.execute(
@@ -6131,13 +6150,20 @@ class Database:
                         record.product_url,
                         record.source_url,
                         record.source_image_url,
-                        classify_map_capable(record.canonical_model, record.manufacturer),
+                        # Owner rule 2026-10-06: a new model's Maps value comes
+                        # only from official specification evidence (True or
+                        # False); without it the model stays Unknown (NULL,
+                        # installation PENDING). A model-name prefix never
+                        # stores a value, and a stored value is never replaced.
+                        record.map_capable,
                     ),
                 )
 
                 self.enrich_device_specifications(connection, record.id,
-                    {"screen_technology": record.screen_technology, "solar": record.solar, "inreach": record.inreach},
-                    record.product_url, "official-product-specifications", record.retail_skus)
+                    {"screen_technology": record.screen_technology, "solar": record.solar, "inreach": record.inreach,
+                     "map_capable": record.map_capable},
+                    record.product_url, "official-product-specifications", record.retail_skus,
+                    evidence_fields={"map_capable": record.map_evidence_row} if record.map_capable is not None else None)
 
                 connection.execute(
                     """

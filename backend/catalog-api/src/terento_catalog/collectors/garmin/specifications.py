@@ -38,6 +38,35 @@ class SpecificationTable(HTMLParser):
             self.rows[key] = value if key not in self.rows or self.rows[key] == value else ''
 
 
+# Maps evidence from the official specification table (owner rule 2026-10-06):
+# an explicit "yes" on any map-support row means the model has maps; an
+# explicit "no" counts only on a row that states additional-map support as a
+# whole, because a watch without preloaded maps may still accept added maps.
+# Anything else is unknown (NULL), never inferred from the model name.
+MAP_POSITIVE_ROWS = ('ability to add maps', 'preloaded maps', 'topoactive maps', 'maps', 'map support')
+MAP_NEGATIVE_ROWS = ('ability to add maps', 'maps', 'map support')
+
+
+def map_capability_from_rows(rows: dict) -> tuple[bool | None, str | None]:
+    """Return (map_capable, evidence row) from one SKU's specification rows."""
+    def answer(key):
+        value = (rows.get(key) or '').strip().lower()
+        if value.startswith('yes'):
+            return True
+        if value.startswith('no') and not value.startswith('none'):
+            return False
+        return None
+    positive = [key for key in MAP_POSITIVE_ROWS if answer(key) is True]
+    negative = [key for key in MAP_NEGATIVE_ROWS if answer(key) is False]
+    if positive and negative:
+        return None, None
+    if positive:
+        return True, positive[0]
+    if negative:
+        return False, negative[0]
+    return None, None
+
+
 def parse_specifications(html: str, product_id: str) -> dict:
     marker = 'var GarminAppBootstrap = '
     if marker not in html:
@@ -64,11 +93,15 @@ def parse_specifications(html: str, product_id: str) -> dict:
         satellite = table.rows.get('satellite communication', '').lower()
         if satellite.startswith('yes') and 'inreach' in satellite:
             inreach_value = 'yes'
+        map_capable, map_row = map_capability_from_rows(table.rows)
         variants.append({'screen_technology': screen,
                          'solar': {'yes': True, 'no': False}.get(solar_value),
-                         'inreach': {'yes': True, 'no': False}.get(inreach_value)})
+                         'inreach': {'yes': True, 'no': False}.get(inreach_value),
+                         'map_capable': map_capable, 'map_evidence_row': map_row})
     result = {'retail_skus': sorted(set(skus))}
-    for key in ('screen_technology', 'solar', 'inreach'):
+    for key in ('screen_technology', 'solar', 'inreach', 'map_capable'):
         values = {v[key] for v in variants}
         result[key] = next(iter(values)) if len(values) == 1 else None
+    rows = sorted({v['map_evidence_row'] for v in variants if v['map_evidence_row']})
+    result['map_evidence_row'] = rows[0] if result['map_capable'] is not None and rows else None
     return result

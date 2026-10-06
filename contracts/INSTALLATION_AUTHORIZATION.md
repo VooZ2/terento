@@ -39,6 +39,22 @@ unsupported. A future reliably identified, active Edge catalog model with
 Maps=Yes follows the same rule without a dedicated blacklist, whitelist, or
 feature flag. Public product claims remain independently evidence-gated.
 
+The stored catalog Maps value of a **new** collector-managed model comes only
+from the official Garmin product specifications the collector already reads:
+an explicit `yes` on a map-support row (`Ability to add maps`, `Preloaded maps`,
+`TopoActive maps`, `Maps`, `Map support`) stores `true`; an explicit `no` on a
+whole-support row (`Ability to add maps`, `Maps`, `Map support`) with no
+conflicting `yes` stores `false`; missing, conflicting or per-SKU-disagreeing
+information stores NULL (Unknown → `PENDING`). A model-name prefix never stores
+a value, so a future maps-capable model in a family the native display registry
+calls non-map (for example a new Venu) is never silently `BLOCKED`. The
+evidence row, source page and check time are recorded in
+`specification_evidence.map_capable`. A stored `true`/`false` (reviewed,
+backfilled or set by an administrator) is never replaced by the collector; an
+Unknown row may be filled later from the same specification evidence.
+Administrators still set Maps manually, and Dashboard → Needs attention →
+Maps unknown counts active models whose value is Unknown.
+
 Installation checks current policy before provider/custom acquisition or
 extraction and again at the final write boundary. Safe Update checks when the
 operation starts and immediately before its first remote write, comparing the

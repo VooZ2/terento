@@ -209,8 +209,9 @@ attention (Now). The Downloads and Installs chart cards follow, each with a
 legend of period totals and an `All time` line with the all-time totals; the
 Downloads card adds the period purpose breakdown (`downloadPurposes`: install,
 update, unknown). Needs attention covers unresolved work across all dates in
-eight fixed rows read only from `admin_review_summary()`, the open public
-support-report count (`support_report_open_count()`), the shared
+nine fixed rows read only from `admin_review_summary()`, the open public
+support-report count (`support_report_open_count()`), the active Maps-unknown
+model count (`maps_unknown_model_count()`), the shared
 provider-problem definition and the system checks; an unavailable query shows
 `—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
 for the period. App downloads is the separate Terento `.dmg` and `.zip`

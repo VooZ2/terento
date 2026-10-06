@@ -27,9 +27,11 @@ response shape fails closed and preserves the previous catalog.
 
 `/devices/catalog.json` primarily answers: “This Garmin product exists in the
 official current retail catalog.” Its additive nullable `mapCapable` field
-reports only the reviewed Garmin Map Manager capability classification used by
-the beta client; it is not public compatibility evidence and does not by
-itself authorize a write. Compatibility status is deliberately absent from
+reports the stored catalog Maps value (`true`, `false`, or `null` for Unknown),
+the same value the installation policy uses (`null` → `PENDING`); it is not
+public compatibility evidence and does not by itself authorize a write. New
+collector rows take that value only from official specification evidence
+([`INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md)). Compatibility status is deliberately absent from
 this public contract. Retail rows are collector-managed; inactive
 retail rows remain in the database for continuity, while reviewed historical
 rows have `record_source = HISTORICAL_REVIEWED` and
@@ -259,11 +261,11 @@ continues to support released clients. Shared presentation fixtures live in
 
 The fēnix 9 family is classified as map-capable in both backend and native
 registries, based on Garmin's official [Map Manager instructions](https://www8.garmin.com/manuals/webhelp/GUID-708A8F4D-9A78-49CF-9528-DE109BBCC472/EN-US/GUID-501D6F25-266A-4913-8F18-35AEEB9335DE.html).
-The public catalog now applies the same fallback as admin when stored map
-capability is null; an explicit stored true/false remains authoritative. Existing
-rows become classifiable without a database migration or a source-specification
-rewrite. This public catalog classification is a display/evidence hint, not a
-write grant or public compatibility evidence. Native write authorization uses
+The public catalog no longer applies the model-name fallback: a stored NULL is
+published as `mapCapable: null` (Unknown), so catalog, installation policy and
+app agree; an explicit stored true/false remains authoritative. The classifier
+remains only the native display registry mirror and the admin
+`observedMapCapability` hint, never a stored or published Maps value. Native write authorization uses
 the separate installation-policy projection and resolver above, including its
 stored nullable capability and active-state checks. This task adds no other
 unknown family without reviewed additional-map evidence.

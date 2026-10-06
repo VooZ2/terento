@@ -378,6 +378,10 @@ ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
     ("support-report", "Support report",
      "A sanitised issue report that a user chose to send from the app, with an optional "
      "description. Review work only, never counted in statistics; kept 12 months after receipt."),
+    ("maps-unknown", "Maps unknown",
+     "An active catalog model whose Maps value is not known yet: the official Garmin "
+     "specifications did not say whether it supports maps, so installation stays Pending "
+     "until an administrator sets Maps to Yes or No."),
     ("first-run", "First run session",
      "One app launch that reported a first-run stage (connect, authorization, catalog or "
      "a blocked install). A separate population, never mixed into install counts."),
@@ -2305,6 +2309,14 @@ def overview_page(
     )
     attention_counts.append(support_count)
     attention_rows.append(_attention_row("Support reports", support_count, "/admin/support-reports", "message"))
+    # Active catalog models whose Maps value is Unknown (installation PENDING).
+    maps_unknown = overview.get("mapsUnknown")
+    maps_unknown_count = (
+        _optional_nonnegative_int(maps_unknown.get("modelCount"))
+        if isinstance(maps_unknown, dict) and maps_unknown.get("available") is not False else None
+    )
+    attention_counts.append(maps_unknown_count)
+    attention_rows.append(_attention_row("Maps unknown", maps_unknown_count, "/admin/devices?maps=unknown&active=1", "question"))
     provider_states = [_provider_problem_state(provider) for provider in providers]
     provider_problem_count = (
         sum(1 for state in provider_states if state["problem"]) if providers_available else None
@@ -2483,7 +2495,7 @@ def overview_page(
     return _layout("Dashboard", content, sections={
         "mapActivity": data, "compatibility": compatibility, "downloads": downloads,
         "providers": providers, "review": review, "funnel": overview.get("funnel"),
-        "supportReports": overview.get("supportReports"),
+        "supportReports": overview.get("supportReports"), "mapsUnknown": overview.get("mapsUnknown"),
         "system": [(card["title"], card["status"], card["reason"]) for card in health_cards],
     })
 
@@ -6762,6 +6774,8 @@ def _devices_script() -> str:
       sortKey = parameters.get('sort') || saved.sort || 'model';
       sortDirection = parameters.get('direction') || saved.direction || 'ascending';
       publicationReview = parameters.get('review') === 'publication';
+      // Needs attention → Maps unknown opens active models only.
+      const activeOnly = parameters.get('active') === '1';
       if (publicationReview) { search.value = ''; family.value = 'all'; map.value = 'all'; support.value = 'all'; status.value = 'all'; }
       showNew = parameters.get('new') === '1' || (!parameters.size && saved.new === true);
       const mapValue = (device) => device.mapCapable === true ? 'yes' : device.mapCapable === false ? 'no' : 'unknown';
@@ -6814,6 +6828,7 @@ def _devices_script() -> str:
         if (sortDirection !== 'ascending') query.set('direction', sortDirection);
         if (showNew) query.set('new', '1');
         if (publicationReview) query.set('review', 'publication');
+        if (activeOnly) query.set('active', '1');
         history.replaceState(null, '', `${window.location.pathname}?${query.toString()}`);
       };
       const matching = () => {
@@ -6821,6 +6836,7 @@ def _devices_script() -> str:
         return devices.filter((device) => {
           if (publicationReview && !(device.publicCompatibility?.eligible && ['TESTED', 'SUPPORTED', 'VERIFIED'].includes(device.evidenceStatus) && !device.publicCompatibility?.published && device.publicCompatibility?.reviewStatus !== 'REJECTED')) return false;
           if (showNew) return device.catalog?.newInLatestSync === true;
+          if (activeOnly && device.active === false) return false;
           const matchesSearch = !query || deviceSearch(device).includes(query);
           const matchesFamily = family.value === 'all' || family.value === (device.familyName || device.family);
           const matchesMap = map.value === 'all' || mapValue(device) === map.value;
