@@ -76,7 +76,7 @@ from terento_catalog.db import (
     _overview_bucket_floor,
 )
 from terento_catalog.failure_reasons import normalize_failure_reason
-from admin_test_utils import metric_tone, metric_value
+from admin_test_utils import metric_tone, metric_value, visible_text
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -266,6 +266,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => '{broken'}), 'all');
 assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocked');}}), 'all');
 """, _table_filter_state_script())
 
+    def test_installations_quick_filter_is_never_restored_from_session_storage(self):
+        # Owner review 2026-10-06: Installations opened at Identity review
+        # because the quick filter was restored from the previous visit.
+        script = _dashboard_script()
+        self.assertIn("let selectedQuickFilter = parameters.get('state') || 'all';", script)
+        self.assertNotIn("saved.quick", script)
+        self.assertIn("const state = {search: search.value, status: status.value, sort: sort.value};", script)
+        self.assertIn("stateQuery.set('state', selectedQuickFilter)", script)
+
     def test_every_generated_admin_script_passes_node_syntax_check(self):
         scripts = {
             "dashboard": _dashboard_script(),
@@ -327,6 +336,21 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn(".admin-table th.column-number,.admin-table td.column-number", ADMIN_STYLES)
         self.assertIn("text-align:right", ADMIN_STYLES)
         self.assertIn(".admin-table th.column-status,.admin-table td.column-status{text-align:left}", ADMIN_STYLES)
+
+    def test_phone_ranking_lists_and_filter_toggles_keep_compact_layouts(self):
+        # Owner report 2026-10-06 (390 px iPhone): Top countries and Top maps stay
+        # compact list rows instead of labelled record cards, and More filters
+        # shares one row with Filters and sorting.
+        source = inspect.getsource(map_statistics_page)
+        self.assertIn("<table class='admin-table popular-maps-table' data-own-mobile-layout><caption class='sr-only'>Top countries</caption>", source)
+        self.assertIn("<table class='admin-table popular-maps-table' data-own-mobile-layout><caption class='sr-only'>Top maps</caption>", source)
+        script = _map_statistics_script()
+        self.assertIn('data-sort-value="${item.installs}"', script)
+        self.assertIn('<span class="sr-only"> installs</span>', script)
+        self.assertIn(".map-statistics-ranking .popular-maps-table thead{display:none}", ADMIN_STYLES)
+        self.assertIn(".filter-bar>.mobile-filter-toggle,.filter-bar>.filter-disclosure:has(~.mobile-filter-toggle:not([hidden])){flex:0 0 calc(50% - 4px)", ADMIN_STYLES)
+        self.assertIn(".filter-bar>.filter-disclosure:has(~.mobile-filter-toggle:not([hidden])) .disclosure-body{width:calc(200% + 8px)}", ADMIN_STYLES)
+        self.assertIn(".filter-bar>.results-count{min-height:0;align-self:center}", ADMIN_STYLES)
 
     def test_overview_uses_selected_period_charts_and_installations_prioritize_errors(self):
         overview = overview_page(
@@ -712,11 +736,13 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         body = system_health_page({"api":"HEALTHY", "database":"FAILED",
             "githubSync":{"overdue":1,"errors":1}}, {"username":"operator"}, "csrf").decode()
         cards = body.split("id='main-content'", 1)[1]
-        self.assertLess(cards.index("<h2>Database</h2>"), cards.index("<h2>API</h2>"))
-        self.assertIn("<h2>Issue sync</h2>", cards)
+        self.assertLess(cards.index("data-health-name='database'"), cards.index("data-health-name='api'"))
+        self.assertIn("<span class='health-check-title'>Issue sync</span>", cards)
         self.assertNotIn("class='admin-health-summary'", body)
         self.assertNotIn("Healthy checks stay collapsed; expand a check for its evidence and next action.", body)
-        self.assertIn("<details class='admin-card admin-disclosure system-health-weekly'><summary>Weekly results", body)
+        # Weekly results is one tab of the single Technical details card.
+        self.assertIn("aria-selected='false' tabindex='-1'>Weekly results</button>", body)
+        self.assertIn("id='health-panel-weekly'", body)
 
     def test_overview_does_not_turn_missing_evidence_into_zero(self):
         body = overview_page(
@@ -1033,7 +1059,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("attention-shortcuts", attention)
         self.assertNotIn("No pending work.", attention)
         self.assertNotIn("Download failed", attention)
-        # At most the six review queues; zero rows are omitted.
+        # At most the six review queues (no Health snapshot here, so no System
+        # checks row); zero rows are omitted.
         self.assertLessEqual(attention.count("class='overview-attention-row'"), 6)
         for label in ("Maps unknown", "Provider problems", "System checks"):
             self.assertNotIn(label, attention)
@@ -1467,7 +1494,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("App downloads</h2>", body)
         self.assertIn("<section class='admin-card overview-panel overview-download-panel'", body)
-        self.assertNotIn("admin-glossary-link", body)
         self.assertNotIn("Observed download increases between checks.", body)
         self.assertNotIn("overview-info", body)
         self.assertIn("Last update ", body)
@@ -2340,9 +2366,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn(".device-information-section .model-information-list{max-width:780px}", detail_body)
         self.assertIn("grid-template-columns:150px minmax(0,1fr)", detail_body)
         self.assertNotIn("Change history", detail_body)
-        self.assertIn("placeholder=\"garmin maps\"", campaign_body)
-        self.assertIn("Usually used for paid-search keywords or targeting", campaign_body)
-        self.assertIn("syncPresetLabel", campaign_body)
+        self.assertIn("placeholder='garmin_maps'", campaign_body)
+        self.assertIn("Rarely needed: only for paid search keywords.", campaign_body)
+        self.assertIn("<summary>More options</summary>", campaign_body)
         self.assertNotIn('value="47mm"', campaign_body)
         positions = [dashboard_body.index(f">{status.title()}<") for status in ("TESTING", "TESTED", "SUPPORTED", "VERIFIED")]
         self.assertEqual(positions, sorted(positions))
@@ -3084,12 +3110,19 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         main = body.split("<main",1)[1]
         for text in ("Downloads", "Installs", "Updates", ">Providers</h2>", "Top countries", ">Top maps</h2>", ">Countries</h2>", ">Events <"):
             self.assertIn(text, main)
-        # Reading order: tiles, charts, countries, providers, top maps, events.
+        # Reading order: tiles, countries, providers, top maps, events, then the
+        # charts at the very bottom (owner decision 2026-10-06).
         order = [main.index(marker) for marker in (
-            "id='map-statistics-metrics'", "id='map-download-trend-title'", "id='map-statistics-coverage'",
+            "id='map-statistics-filters'", "id='map-statistics-metrics'", "id='map-statistics-coverage'",
             "id='map-statistics-provider-table'", "id='maps-by-provider'", "id='map-statistics-event-detail'",
+            "class='overview-primary-grid map-statistics-trends'", "id='map-download-trend-title'",
         )]
         self.assertEqual(order, sorted(order))
+        self.assertTrue(main.split("</main>", 1)[0].rstrip().endswith("</section>"))
+        self.assertGreater(main.index("map-statistics-trends"), main.index("</details></section>"))
+        # The Countries card has no visible country/install count line.
+        self.assertNotIn("map-statistics-world-map-status", body)
+        self.assertNotIn("countries ·", body)
         self.assertNotIn("Map downloads", main)
         self.assertNotIn("Map installs", main)
         event_detail = main.split("id='map-statistics-event-detail'", 1)[1].split("</details>", 1)[0]
@@ -3143,15 +3176,17 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Packages", body)
         problem = [{**healthy[0],"health":"DEGRADED","affectedPackageCount":1}]
         problem_body = providers_page(problem, {"username":"operator"}, "csrf").decode()
-        # Tiles use the shared provider-problem definition (ADM-10).
-        self.assertEqual(metric_value(problem_body, "Provider problems"), "1")
-        self.assertEqual(metric_value(problem_body, "Package problems"), "1")
+        # Tiles use the shared provider-problem definition (ADM-10), copy "Issues".
+        self.assertEqual(metric_value(problem_body, "Provider issues"), "1")
+        self.assertEqual(metric_value(problem_body, "Package issues"), "1")
         self.assertEqual(metric_value(problem_body, "Healthy"), "0")
+        self.assertNotIn("Package problems", problem_body)
+        self.assertNotIn("Provider problems", problem_body)
         unknown = providers_page([{**healthy[0], "affectedPackageCount": None, "problematicSourceCount": None}],
                                  {"username":"operator"}, "csrf").decode()
         # Unknown problem counts render as —, never 0 (ADM-15).
         self.assertIn("—<span class='sr-only'> Unknown</span>", unknown)
-        self.assertEqual(metric_value(unknown, "Package problems"), "—")
+        self.assertEqual(metric_value(unknown, "Package issues"), "—")
 
     def test_provider_problems_keep_packages_sources_and_health_separate(self):
         body = providers_page(
@@ -3162,8 +3197,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             }],
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("2 packages · 1 source", body)
-        self.assertIn(">Problems</th>", body)
+        cell = body.split("<tbody id='provider-rows'>", 1)[1].split("</td>")[4]
+        self.assertEqual(visible_text(cell.rsplit("<td", 1)[1].split(">", 1)[1]), "2 packages · 1 source")
+        self.assertIn("<span class='sr-only'> with issues</span>", cell)
+        self.assertIn(">Issues</th>", body)
+        self.assertNotIn(">Problems</th>", body)
         self.assertIn("health_timeout", body)
         self.assertNotIn("provider issue(s)", body)
         source = inspect.getsource(Database.provider_rows)
@@ -3254,11 +3292,13 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"username": "operator"},
             "csrf",
         ).decode()
-        for text in (">Packages</h2>", "Catalog sync", ">Health<", "Check provider health", "Refresh catalog", "More", "Retire provider", "<summary>Attribution</summary>", "Original links", "<summary>Sources ", ">Checks</h2>", ">Syncs</h2>", "View check details", "Collection history", "<summary>History "):
+        for text in (">Packages</h2>", "Catalog sync", ">Health<", "Check provider health", "Refresh catalog", "More", "Retire provider",
+                     "data-technical-tab='attribution'", ">Original links</h3>", "data-technical-tab='sources'", ">Download links",
+                     ">Checks</h2>", ">Syncs</h2>", "View check details", "Collection history", "data-technical-tab='history'"):
             self.assertIn(text, body)
-        # Summary tiles and one Problems card replace the attention sentence.
-        self.assertIsNotNone(metric_value(body, "Package problems"))
-        self.assertIn(">Problems</h2>", body)
+        # Summary tiles and one Issues card replace the attention sentence.
+        self.assertIsNotNone(metric_value(body, "Package issues"))
+        self.assertIn(">Issues</h2>", body)
         self.assertNotIn("map files need attention", body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)
@@ -3295,8 +3335,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 "activationGate": {"canActivate": False, "blockers": []},
             }}, [], [], {"username": "operator"}, "csrf",
         ).decode()
-        history = body.split("id='provider-health-history'", 1)[1].split("</details>", 1)[0]
-        self.assertIn("Health check history <span class='disclosure-meta'>· 1 previous check</span>", history)
+        self.assertIn("Health check history <span class='disclosure-meta'>· 1 previous check</span>", body)
+        history = body.split("id='provider-health-history'", 1)[1].split("<div class='provider-technical-panel'", 1)[0]
         self.assertIn("2026-08-30", history)
         self.assertNotIn("2026-08-31", history)
         self.assertNotIn("Download source URLs", body)
@@ -3833,7 +3873,7 @@ class SystemHealthPageTests(unittest.TestCase):
         self.assertIn("<h1>Health</h1>", body)
         self.assertIn("Search checks", body)
         # Provider catalogs collapse into one Catalogs row linking to Providers.
-        self.assertIn("<h2>Catalogs</h2>", body)
+        self.assertIn("<span class='health-check-title'>Catalogs</span>", body)
         self.assertIn(">Freizeitkarte</a>", body)
         self.assertIn("href='/admin/providers'", body)
         self.assertIn("No weekly test report received yet", body)
@@ -3886,10 +3926,10 @@ class SystemHealthPageTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<h2>Release match</h2>", body)
+        self.assertIn("<span class='health-check-title'>Release match</span>", body)
         self.assertIn("data-health-status='HEALTHY'", body)
         self.assertIn("data-admin-timestamp", body)
-        release_card = body.split("<h2>Release match</h2>", 1)[1].split("</div>", 1)[0]
+        release_card = body.split("data-health-name='release match'", 1)[1].split("</tr>", 1)[0]
         self.assertIn("data-status='HEALTHY'", release_card)
         self.assertIn("<span>Healthy</span>", release_card)
 

@@ -49,6 +49,18 @@ class DevicesPageTests(unittest.TestCase):
             self.assertIsNotNone(metric_value(body, label), label)
         self.assertEqual(metric_value(body, "Models"), "1")
 
+    def test_pending_policy_tile_uses_danger_tone_only_when_positive(self):
+        # Owner decision 2026-10-06: a positive Pending policy count is red like
+        # other failure tiles; zero stays neutral.
+        approved = devices_page([DEVICE_ROW], None, {"username": "operator"}, "csrf").decode()
+        self.assertEqual(metric_value(approved, "Pending policy"), "0")
+        self.assertEqual(metric_tone(approved, "Pending policy"), "neutral")
+        pending_row = dict(DEVICE_ROW, device_id="garmin-unknown-1", model="Watch 1", map_capable=None,
+                           successful_install_count=0, failed_install_count=0, attempted_install_count=0)
+        pending = devices_page([DEVICE_ROW, pending_row], None, {"username": "operator"}, "csrf").decode()
+        self.assertEqual(metric_value(pending, "Pending policy"), "1")
+        self.assertEqual(metric_tone(pending, "Pending policy"), "danger")
+
     def test_duplicate_sticky_header_is_hidden_from_assistive_technology(self):
         body = devices_page([DEVICE_ROW], None, {"username": "operator"}, "csrf").decode()
         sticky = body.split("id=\"device-sticky-header\"", 1)[1].split("</table>", 1)[0]

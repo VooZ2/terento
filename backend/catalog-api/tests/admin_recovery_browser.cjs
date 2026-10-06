@@ -97,7 +97,11 @@ const current = '22222222-2222-4222-8222-222222222222';
     await page.getByRole('link', {name: 'Review provider packages'}).click();
     assert.equal(await page.locator('.provider-problem').count(), 4);
     await load('updates');
-    await page.getByRole('link', {name: 'View report', exact: true}).click();
+    // Installations-style list: link quick filters without underline, Inspect as a compact secondary action.
+    assert.equal(await page.locator('.update-report-filters a.quick-filter').evaluateAll(links => links.filter(link => getComputedStyle(link).textDecorationLine !== 'none').length), 0, 'quick filters are not underlined');
+    assert.equal(await page.locator('main h1').innerText(), 'Update reports');
+    assert.equal(await page.getByText('All update reports').count(), 0, 'list has no self link');
+    await page.getByRole('link', {name: 'Inspect update 1', exact: true}).click();
     assert((await page.locator('main').innerText()).includes('Not confirmed — inspect device'));
     // Keyboard action and expanded labels stay in document flow at narrow width.
     await load('provider');

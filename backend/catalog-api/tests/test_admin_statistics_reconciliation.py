@@ -27,9 +27,11 @@ class AdminStatisticsReconciliationTests(unittest.TestCase):
         summary = _map_statistics_summary(rows)
         self.assertEqual(summary['completedDownloads'], 9)
         self.assertEqual(summary['downloadPurposes'], {'install': {'succeeded': 2, 'failed': 0}, 'update': {'succeeded': 3, 'failed': 1}, 'unknown': {'succeeded': 4, 'failed': 0}})
+        # The breakdown stays in the summary payload, but Maps no longer renders
+        # it under the Downloads chart (owner decision 2026-10-06).
         body = map_statistics_page({'rows': rows, 'summary': summary}, [], {'username': 'operator'}, 'csrf').decode()
-        for text in ["aria-label='Downloads by purpose'", '<dt>For installs</dt><dd>2', '<dt>For updates</dt><dd>3', '<dt>Not recorded</dt><dd>4', 'Failed 1']:
-            self.assertIn(text, body)
+        for text in ["Downloads by purpose", '<dt>For installs</dt>', '<dt>For updates</dt>', '<dt>Not recorded</dt>']:
+            self.assertNotIn(text, body)
 
     def test_prewrite_update_is_visible_but_not_failed(self):
         body = _overview_map_activity_row(dict(event_type='MAP_UPDATE_NOT_STARTED', diagnostic_report_id='test-report', provider_id='freizeitkarte', region='LTU'))
@@ -62,6 +64,10 @@ const countries=nodes['#map-rows'].innerHTML;
 assert.match(countries,/data-map-country="lt"/);
 assert.doesNotMatch(countries,/data-map-country="(fr|de|es)"/);
 assert.doesNotMatch(nodes['#all-map-rows'].innerHTML,/2026-10-05/);
+// Top maps names are plain text with the provider/date line; Top countries keeps its buttons.
+const topMaps=nodes['#all-map-rows'].innerHTML;
+assert.match(topMaps,/<span class="popular-map-name">[^<]+<\/span><small class="popular-map-detail">Freizeitkarte · 2026-10-01 10:00/);
+assert.doesNotMatch(topMaps,/<button|region-map-link|data-map-country/);
 """
         result = subprocess.run(['node', '-e', harness, _map_statistics_script(), json.dumps(rows)], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)

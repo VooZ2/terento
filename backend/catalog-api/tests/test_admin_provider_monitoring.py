@@ -29,7 +29,7 @@ class ProviderMonitoringPresentationTests(unittest.TestCase):
     def test_history_is_bounded_compact_and_separate_from_current(self):
         history = [dict(status='HEALTHY', checked_at=f'2026-10-04T{hour:02d}:00:00Z') for hour in range(23, 0, -1)]
         body = self.render(healthHistory=history)
-        previous = body.split("id='provider-health-history'", 1)[1].split('</details>', 1)[0]
+        previous = body.split("id='provider-health-history'", 1)[1].split("<div class='provider-technical-panel'", 1)[0]
         self.assertEqual(previous.count('<li>'), 10)
         self.assertIn('last 30 days', previous)
         self.assertNotIn('<table', previous)
@@ -62,7 +62,7 @@ class ProviderMonitoringPresentationTests(unittest.TestCase):
         self.assertIn('Old server timeout', current)
         self.assertIn('Check overdue.', current)
         self.assertNotIn('No health checks recorded yet.', current)
-        history = body.split("id='provider-health-history'", 1)[1].split('</details>', 1)[0]
+        history = body.split("id='provider-health-history'", 1)[1].split("<div class='provider-technical-panel'", 1)[0]
         self.assertNotIn('2026-08-01', history)
         self.assertIn('No previous health checks recorded.', history)
 

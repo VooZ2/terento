@@ -184,7 +184,7 @@ class IdentityAssessmentTests(unittest.TestCase):
         mapping = dict(self.mappings[0], id=1, history=[])
         rendered = _identity_mapping_markup(dict(id='test', identityMappings=[mapping, dict(mapping, id=2, source_version='2')]), 'csrf')
         self.assertIn("class='identity-mappings'", rendered)
-        self.assertEqual(rendered.count("class='identity-mapping-source'"), 2)
+        self.assertEqual(rendered.count("class='admin-card identity-mapping-source'"), 2)
         self.assertEqual(rendered.count('<summary>Technical details</summary>'), 1)
         self.assertNotIn('identity-mapping-code', rendered)
         self.assertNotIn('2 sources', rendered)

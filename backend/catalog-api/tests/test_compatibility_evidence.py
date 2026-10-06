@@ -949,7 +949,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("script-src 'nonce-", campaign_links.headers["Content-Security-Policy"])
         self.assertRegex(campaign_body, rb'<script nonce="[A-Za-z0-9_-]+">')
         self.assertIn(b"Campaign link builder", campaign_body)
-        self.assertIn(b"Reddit community post", campaign_body)
+        self.assertIn(b"Where will you share this link?", campaign_body)
 
         update_body = urlencode({
             "csrf_token": csrf_token, "username": "owner",

@@ -220,14 +220,19 @@ There is no summary tile row. The Downloads and Installs chart cards come
 first; each header shows a visible period chip and the period totals
 (successful, failed and success rate; Installs counts fresh installs only),
 then the chart and a legend naming its series without counts; nothing else is
-shown in these cards (all-time totals and the purpose breakdown are on Maps).
+shown in these cards (all-time totals are on Maps).
 The Needs attention header shows its Now total. The payload still carries the
 period purpose breakdown (`downloadPurposes`: install, update, unknown), which
 the Dashboard does not render. Needs attention covers unresolved work across all dates in
 up to six review-queue rows (zero-count rows are omitted; all zero shows
 `Nothing to review.`) read only from `admin_review_summary()` and the open
-public support-report count (`support_report_open_count()`); Maps unknown,
-provider problems and system checks are not rendered there; an unavailable query shows
+public support-report count (`support_report_open_count()`), plus one System
+checks row only when the overview's system health snapshot (the same
+`operational_health_snapshot()` data Health renders) has failed or degraded
+checks other than the provider Catalogs check; it links to
+`/admin/system-health?status=FAILED` (or `WARNING` when none failed), a
+client-side query the Health status filter honours. Maps unknown and provider
+problems are not rendered there; an unavailable query shows
 `—` and `Unavailable`. The Identity review row links to `/admin/review/identity`. First run shows the `/admin/app-funnel.json` read model
 for the period. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
@@ -384,30 +389,34 @@ closure then moves the diagnostic to resolved history.
 The device detail history keeps the exact model/variant scope, supports All,
 Successful, Failed, Open problems, and Resolved errors filters, and uses a
 25/50-row presentation page. The provider detail primary health disclosure
-shows the newest observation even when stale; its compact history disclosure contains at most 10 previous checks from the last 30 days,
-so the newest row is not repeated.
+shows the newest observation even when stale; its compact history (Technical
+details → Health checks) contains at most 10 previous checks from the last 30
+days, so the newest row is not repeated.
 
 ## `GET https://api.terento.app/admin/campaign-links`
 
 Returns the authenticated operator's local Campaign link builder. It is a
 client-side tool: no campaign links, history, or analytics data are stored and
-no campaign-link API is exposed. The builder restricts destinations to
-`terento.app`, normalizes UTM values, replaces existing UTM parameters, and
-keeps the canonical parameter order `utm_source`, `utm_medium`,
-`utm_campaign`, `utm_content`, `utm_term`. The page uses the same private
-admin session, CSRF cookie, no-store response policy, and noindex policy as
-`GET https://api.terento.app/admin`.
+no campaign-link API is exposed. The operator picks where the link is shared;
+each channel maps to one fixed `utm_source`/`utm_medium` pair from
+`campaign_links.CHANNELS` (Reddit post `reddit`/`community`, Garmin forum
+`garmin_forum`/`community`, GitHub `github`/`referral`, Discord
+`discord`/`community`, Facebook group `facebook`/`social`, X post `x`/`social`,
+Email `email`/`email`; Other takes a typed source and a medium choice). The
+builder restricts destinations to `terento.app`, normalizes UTM values, rejects
+values longer than the 80 characters the public site forwards to Umami,
+replaces existing UTM parameters, and keeps the canonical parameter order
+`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`. Page
+behavior is specified in `admin-behavior-contract.md` (Campaign links). The
+page uses the same private admin session, CSRF cookie, no-store response
+policy, and noindex policy as `GET https://api.terento.app/admin`.
 
 ## `GET https://api.terento.app/admin/glossary`
 
-Returns the authenticated Tools → Glossary page: one anchored definition per
-Admin term (Attempt, Successful, Failed, Blocked before writing, Open problem,
-Provider download, Install, Installation report, Map update, Update report,
-Terento app download, Task and the review/evidence terms). Definitions follow
-`contracts/STATISTICS_CONTRACT.md`, `contracts/APP_FUNNEL_CONTRACT.md` and
-`docs/admin-behavior-contract.md`; it is reached from the Tools menu, and
-Admin labels carry no inline links to it. The page reads no data and uses the
-shared admin session, no-store and noindex policy.
+Removed (owner decision 2026-10-06). An authenticated request, with or without
+a trailing slash, answers `303 See Other` to `/admin`; without a valid admin
+session it redirects to `/admin/login` like every other Admin page. Admin has
+no glossary page or Tools menu item.
 
 ## `GET https://api.terento.app/admin/devices`
 
@@ -649,19 +658,22 @@ provider binaries or executable adapter configuration.
 ## `GET /admin/providers` and `GET /admin/providers/{id}`
 
 These authenticated, no-store/noindex HTML pages provide the operator views
-for the provider registry and each registered provider. The list opens with
-Active, Healthy, Package problems, Provider problems and Last sync tiles, then a
-table of provider name, lifecycle/health state, package count, Problems
-(affected packages · problematic sources; unknown is `—`) and catalog sync. The
-detail page shows Health, Catalog, Package problems and Downloads tiles, one
-Problems card grouped by recorded reason (five rows per group and `Show all N in
-Packages`), one Packages list with search, Problems/Available filter, 25/50-row
-pagination and a per-row actions menu, Checks and Syncs cards with collapsed
-history, and sibling disclosures for History, Sources (download links with
-search, broken-only filter and pagination), Releases, Attribution and Original
-links. It provides `Check provider health`, `Refresh catalog`, `Recheck affected
-packages`, targeted package rechecks, Disable/Enable downloads, `Pause`/`Activate`,
-and an overflow `Retire` control. A request without a valid admin session
+for the provider registry and each registered provider. The list shows the
+latest catalog sync in its heading, one card of Active, Healthy, Package issues
+and Provider issues tiles, then a table of provider name, lifecycle/health
+state, package count, Issues (affected packages · problematic sources; unknown
+is `—`) and catalog sync. The
+detail page shows one summary card (Health, Catalog, Package issues, Downloads
+and Previews tiles), one Issues card grouped by recorded reason (five rows per
+group and `Show all N in Packages`), one Packages list with search,
+Issues/Available filter, 25/50-row pagination and a per-row actions menu, Checks
+and Syncs cards with their latest result, and one collapsed Technical details
+card whose tabs hold History, Health checks, Syncs and Releases, Preview layers,
+Download links (search, broken-only filter and pagination) and Attribution with
+Original links. It provides `Check provider health`, `Refresh catalog`, `Recheck
+affected packages`, targeted package rechecks, Disable/Enable downloads,
+`Pause`/`Activate`, `Turn previews on`/`off` and an overflow `Retire` control;
+`docs/admin-behavior-contract.md` owns the layout. A request without a valid admin session
 redirects to `/admin/login`; the page never serves map binaries.
 
 `GET /admin/providers/{id}.json` and `GET /admin/providers/{id}/audit` are
@@ -769,9 +781,11 @@ Retired providers cannot be changed. Turning previews off hides the provider's
 layers from the public manifest within a minute; it does not change catalog,
 download or installation behaviour.
 
-The provider detail page shows the switch and a "Preview layers" table with
-each area and style, its state (Published, Not covered, Waiting, Failed — text
-badges), package and version, render time and the last problem.
+The provider detail page shows the switch as a secondary action in its action
+bar, a Previews summary tile (On/Off and the layer states that occur), and a
+"Preview layers" table under Technical details with each area and style, its
+state (Published, Not covered, Waiting, Failed — text badges), package and
+version, render time and the last problem.
 
 ## `POST /admin/providers/{id}/retire`
 
@@ -949,10 +963,10 @@ model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time, plus
 provider, map, region, event-type, outcome, and exact `eventId` detail filters.
 
 The visible order is the period tiles (Downloads, Installs, Updates from
-`summary`, with the purpose breakdown and an `All time` line from
-`allTimeSummary`), the Downloads and Installs trend cards, Countries and Top
-countries, Providers (one stream at a time), Top maps and the collapsed Events
-disclosure. These analytics remain visible. Diagnostic linkage coverage is
+`summary`), Countries and Top countries, Providers (one stream at a time), Top
+maps, the collapsed Events disclosure, and last the Downloads and Installs trend
+cards; `docs/admin-behavior-contract.md`
+owns the presentation details. These analytics remain visible. Diagnostic linkage coverage is
 retained in the private JSON contract but is not rendered as an Admin block.
 The filter form sends `timeZone`; the page reloads with the browser-selected zone
 so trend buckets and period boundaries match the Dashboard.
@@ -1345,7 +1359,8 @@ labels when all phases occur on the same day in the selected timezone.
 
 `GET /admin/device-identification` is the authenticated, no-store Model
 sources tool under Tools (`?q=` searches models and codes, `?device=` opens one
-model). The list has state filters and a paginated table; the detail workflow is
+model). The list has one summary card, a filter bar (client-side state quick
+filters plus the `?q=` search) and a sortable paginated table; the detail workflow is
 `Source says` ⇄ `Catalog model` → `Same code` → `Confirm` → `Technical details`
 with a `Next in queue` link. Raw codes, mapping/catalog IDs, source revision, policy internals,
 missing-source inventory, reasons, and history remain secondary. Existing

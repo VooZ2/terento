@@ -30,7 +30,6 @@ from .admin import (
     diagnostics_page,
     github_issue_queue_page,
     identity_review_page,
-    glossary_page,
     admin_error_page,
     _ADMIN_NONCE_PLACEHOLDER,
     missing_reports_page,
@@ -2024,7 +2023,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_devices_unavailable"}, send_body=send_body, cache_control="no-store")
                 return
             if request_path in {"/admin/glossary", "/admin/glossary/"}:
-                self._send_admin_html(glossary_page(session, csrf_token), send_body=send_body)
+                # The Glossary page was removed (owner decision 2026-10-06);
+                # old bookmarks land on the Dashboard behind the normal gate.
+                self._redirect("/admin", send_body=send_body)
                 return
             if request_path in {"/admin/campaign-links", "/admin/campaign-links/"}:
                 self._send_admin_html(campaign_links_page(session, csrf_token), send_body=send_body)

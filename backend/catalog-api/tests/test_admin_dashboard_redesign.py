@@ -101,8 +101,9 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertEqual(attention.count("class='overview-attention-row'"), len(labels))
         positions = [attention.index(f"<span class='overview-attention-label'>{label}</span>") for label in labels]
         self.assertEqual(positions, sorted(positions))
-        # A measured zero (Publication review) renders no row; Maps unknown,
-        # Provider problems and System checks are not Needs attention rows.
+        # A measured zero (Publication review) renders no row; Maps unknown and
+        # Provider problems are not Needs attention rows, and System checks
+        # appears only with failed or degraded Health checks (none here).
         for label in ("Publication review", "Maps unknown", "Provider problems", "System checks"):
             self.assertNotIn(f">{label}<", attention)
         self.assertNotIn("data-state='zero'", attention)

@@ -46,7 +46,10 @@ class DiagnosticParityTests(unittest.TestCase):
             self.assertIn("data-url-limit='7000'", body)
             self.assertIn("role='status' aria-live='polite'", body)
         self.assertIn('Installation failed</h2>', install)
-        self.assertIn('Map update failed</h2>', update)
+        # The update report is a page: the result is its h1 under a back link (owner decision 2026-10-06).
+        self.assertIn('<h1>Map update failed</h1>', update)
+        self.assertIn("<p class='back-link'><a href='/admin/update-diagnostics'>", update)
+        self.assertNotIn('All update reports', update)
         for body in (install, update): self.assertIn('France · BBBike', body)
         self.assertIn('did not pass device verification', install)
         self.assertNotIn('Installation error', install)
@@ -95,8 +98,14 @@ class DiagnosticParityTests(unittest.TestCase):
         unknown = update_diagnostics_page({'detail': self.report(canonical_device_model_id=None, device=None)}, {'username': 'admin'}, 'csrf').decode()
         self.assertIn('/admin/devices/' + MODEL, known)
         self.assertNotIn('/admin/devices/' + MODEL, unknown)
-        self.assertIn('exact identity unassigned', unknown)
-        self.assertIn('Reported model', unknown)
+        # Identity sits in a read-only Device identity section last, not in the top facts.
+        identity = unknown.split("<h3 id='update-identity-title'>Device identity</h3>", 1)[1]
+        self.assertIn('Exact identity unassigned', identity)
+        self.assertIn('<dt>Catalog model</dt><dd><span class=\'muted-value\'>Not assigned</span>', identity)
+        self.assertIn('<dt>Reported model</dt><dd>Reported model</dd>', identity)
+        self.assertIn('<dt>Device</dt><dd>Reported model</dd>', unknown)
+        self.assertNotIn('<form', identity)
+        self.assertIn("<dt>Catalog model</dt><dd><a href='/admin/devices/" + MODEL, known)
 
     def test_queue_joined_catalog_names_are_authoritative(self):
         row = self.report(device=None, canonical_device_model_name='fēnix 8',
@@ -118,7 +127,6 @@ class DiagnosticParityTests(unittest.TestCase):
             update_history={'rows': [self.report()], 'device_id': MODEL, 'offset': 50, 'has_more': True}).decode()
         self.assertIn('Installation history', body); self.assertIn('Update history', body)
         self.assertIn('>Updates</h2>', body)
-        self.assertNotIn("admin-glossary-link", body)
         # Update report counts are plain numbers styled like Installs (owner decision 2026-10-06).
         reports = body.split("id='model-update-kpis-title'", 1)[1].split('</section>', 1)[0]
         self.assertNotIn('<a ', reports)
@@ -150,12 +158,12 @@ class DiagnosticParityTests(unittest.TestCase):
         updates = empty.split("<section class='diagnostics-detail-section model-page-section compact-empty-state' id='updates'", 1)[1].split('</section>', 1)[0]
         self.assertIn("<h2 id='update-history-title'>Update history</h2><p class='empty'>No update history for this device.</p>", updates)
         self.assertNotIn('quick-filter', updates)
-        # The standalone report list keeps its own card layout.
+        # The standalone report list follows the Installations layout: no card or
+        # title around the filter bar and table (owner decision 2026-10-06).
         standalone = update_history_markup({'rows': [self.report()], 'device_id': MODEL})
-        self.assertIn("<header class='admin-card-head'><h2 id='update-history-title'>Reports</h2>", standalone)
-        self.assertIn("<nav class='quick-filter-group' aria-label='Filter update reports'>", standalone)
-        from terento_catalog.admin import ADMIN_GLOSSARY
-        self.assertIn('never change installation totals', dict((a, d) for a, _, d in ADMIN_GLOSSARY)['update-report'])
+        self.assertNotIn('admin-card', standalone)
+        self.assertNotIn('<h2', standalone)
+        self.assertIn("<nav class='filter-bar diagnostic-filter-bar update-report-filters' aria-label='Filter update reports'><div class='quick-filter-group'>", standalone)
 
     def test_unknown_reason_and_update_queue_do_not_guess_or_reuse_install(self):
         reason, action = _installation_explanation([{'phase_outcome': 'FAILED', 'failure_code': 'UNRECOGNIZED'}])
@@ -250,7 +258,10 @@ class DiagnosticDetailLayoutTests(unittest.TestCase):
         main = body.split("<main", 1)[1]
         structure = Structure(main)
         self.assertEqual(structure.order, ['diagnostic-outcome', 'diagnostic-safety', 'diagnostic-issue-section',
-            'diagnostic-review-administration', 'diagnostic-technical-section'])
+            'diagnostic-review-administration', 'diagnostic-technical-section', 'diagnostic-identity-section'])
+        self.assertLess(main.index("class='diagnostic-detail-summary'"), main.index('diagnostic-outcome'))
+        self.assertIn("<section class='admin-card update-report-card'", main)
+        self.assertNotIn('provider-card', main)
         for classes in structure.details:
             self.assertTrue(classes.startswith('admin-disclosure diagnostic-disclosure'), classes)
         hidden = ['csrf_token', 'diagnostic_id', 'return_to']

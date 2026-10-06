@@ -32,23 +32,69 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}/${width}: page overflow`);
    assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
    assert(!/\bFresh\b/i.test(await page.locator('main').innerText()), `${name}: no Fresh labels`);
-   assert.equal(await page.locator('.admin-glossary-link').count(),0,`${name}: no glossary ? links`);
    const unsortable=await page.evaluate(()=>[...document.querySelectorAll('main table')].filter(t=>t.tHead&&t.getAttribute('role')!=='presentation').flatMap(t=>{const style=getComputedStyle(t.tHead);if(style.clip.startsWith('rect(0')||(style.position==='absolute'&&parseFloat(style.height)<=1))return [];const row=t.tHead.rows[t.tHead.rows.length-1];return [...row.cells].filter(th=>th.textContent.trim()&&th.colSpan===1&&!th.querySelector('button')).map(th=>th.textContent.trim());}));
    assert.deepEqual(unsortable,[],`${name}: every visible data-table header sorts`);
    assert.deepEqual(await tightCardGaps(page,width),[],`${name}/${width}: separate cards keep the shared card gap`);
    if(name==='health'){
-    const indexnow=page.locator("[data-health-name*='indexnow']");
-    assert.equal(await indexnow.count(),1,'one IndexNow card');
-    const indexnowSummary=indexnow.locator('.system-health-issue-heading');
-    assert.equal(await indexnowSummary.locator('h2').innerText(),'Search indexing');
-    assert.equal(await indexnowSummary.locator('.admin-pill').count(),1,'IndexNow summary has one health pill');
-    assert.equal(await indexnowSummary.locator('.health-issue').count(),0,'IndexNow summary has no result detail');
-    assert(!/Last check|Pending URLs|Validation pending/i.test(await indexnowSummary.innerText()),'IndexNow summary has no expanded details');
-    const indexnowTechnical=indexnow.locator('details.system-health-technical');
-    await indexnowTechnical.locator('summary').click();
-    assert.match(await indexnow.locator('.disclosure-body').innerText(),/validation message remains readable/);
-    assert.match(await indexnow.locator('.disclosure-body').innerText(),/https:\/\/terento\.app\/guides\/install-garmin-maps-mac\//);
-    assert.equal(await page.locator('[data-health-name]').first().locator('.system-health-cause').count(),1,'other health card keeps its summary issue');
+    // One plain summary card (no icons, chips or filter buttons), Issues, then one Technical details card.
+    assert.equal(await page.locator('.health-kpis .admin-metric').count(),4,'Four plain Health tiles');
+    assert.equal(await page.locator('.health-kpis .admin-icon, .health-kpis .admin-scope-chip, .health-kpis button').count(),0,'Health tiles carry no icons, chips or buttons');
+    assert.equal(await page.locator('#health-attention-title').innerText(),'Issues');
+    assert.equal(await page.locator('.health-technical-card').count(),1,'One Technical details card');
+    assert.equal(await page.locator('#health-technical-disclosure').getAttribute('open'),null,'Technical details starts collapsed');
+    const indexnow=page.locator("tr[data-health-name*='indexnow']");
+    assert.equal(await indexnow.count(),1,'one IndexNow row');
+    assert.equal(await indexnow.locator('.health-check-title').innerText(),'Search indexing');
+    assert.equal(await indexnow.locator('.admin-pill').count(),1,'IndexNow row has one health pill');
+    assert(!/Last check|Pending URLs|Validation pending/i.test(await indexnow.innerText()),'IndexNow row has no expanded details');
+    const indexnowToggle=indexnow.locator('[data-health-details]');
+    const indexnowDetails=page.locator('#'+await indexnowToggle.getAttribute('aria-controls'));
+    assert.equal(await indexnowDetails.isVisible(),false,'Details start hidden');
+    await indexnowToggle.click();
+    assert.equal(await indexnowToggle.getAttribute('aria-expanded'),'true');
+    assert.match(await indexnowDetails.innerText(),/validation message remains readable/);
+    assert.match(await indexnowDetails.innerText(),/https:\/\/terento\.app\/guides\/install-garmin-maps-mac\//);
+    await indexnowToggle.click();
+    assert.equal(await indexnowDetails.isVisible(),false,'Details close again');
+    assert.equal(await page.locator('tr[data-health-name]').first().locator('.system-health-cause').count(),1,'other health row keeps its reason');
+    // Issue rows stay compact: no column is wider than the table and the Details control fits.
+    const fits=await page.locator('.health-issue-table').evaluate(t=>{const box=t.getBoundingClientRect();return [...t.querySelectorAll('[data-health-details]')].every(b=>{const r=b.getBoundingClientRect();return r.right<=box.right+1&&r.width>0;});});
+    assert(fits,'Details controls fit inside the Issues table');
+   }
+   if(name==='provider'){
+    // Provider detail redesign (owner decision 2026-10-06): one KPI card, previews switch in the
+    // action bar, Checks/Syncs equal halves or stacked, one collapsed Technical details switcher.
+    assert.equal(await page.locator('main .admin-metric-row').count(),1,'one summary tile row');
+    assert.equal(await page.locator('section.admin-card.provider-kpis .admin-metric').count(),5,'five tiles in one card');
+    assert.equal(await page.locator('main h2').filter({hasText:/^Issues$/}).count(),1,'Issues card');
+    assert.equal(await page.locator('.provider-action-bar button.secondary-button[data-provider-action="previews"]').count(),1,'previews switch is a secondary action in the bar');
+    assert.equal(await page.locator('.provider-action-bar button:not(.secondary-button)').count(),1,'one primary action');
+    assert.equal(await page.locator('[aria-label="Map style previews"]').count(),0,'no previews card');
+    const schedule=await page.locator('.provider-health-schedule').evaluate(row=>[...row.querySelectorAll('select,button')].map(e=>{const r=e.getBoundingClientRect();return {top:Math.round(r.top),height:Math.round(r.height),border:getComputedStyle(e).borderTopWidth};}));
+    assert.equal(schedule.length,2);assert.equal(schedule[0].height,schedule[1].height,'interval select and Save share one height');
+    assert.equal(schedule[0].border,'1px','interval select uses the Admin control border');
+    const [checks,syncs]=await page.locator('#provider-checks, #provider-syncs').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().toJSON()));
+    if(width>1180){assert(Math.abs(checks.top-syncs.top)<=1&&Math.abs(checks.height-syncs.height)<=1,'Checks and Syncs share a row at one height');}
+    else assert(syncs.top>=checks.bottom,'Checks and Syncs stack');
+    const technical=page.locator('#provider-technical-disclosure');
+    assert.equal(await technical.evaluate(d=>d.open),false,'Technical details start collapsed');
+    await page.locator('[data-technical-open="health"]').click();
+    assert.equal(await technical.evaluate(d=>d.open),true,'history link opens Technical details');
+    assert.equal(await page.locator('#provider-health-history').isVisible(),true,'and shows Health checks');
+    assert.equal(await page.locator('[role="tabpanel"]:visible').count(),1,'one panel at a time');
+    await page.locator('#provider-technical-tab-health').focus();await page.keyboard.press('ArrowLeft');
+    assert.equal(await page.locator('#provider-technical-tab-history').getAttribute('aria-selected'),'true','arrow keys move between tabs');
+    assert.equal(await page.locator('#provider-history tbody tr:visible').count(),5,'History starts with five rows');
+    await page.locator('#provider-history .provider-show-more').click();
+    assert.equal(await page.locator('#provider-history tbody tr:visible').count(),10,'Show more reveals the rest');
+    assert.equal(await page.locator('#provider-history .catalog-release-changes').first().locator('li').count(),3,'long release lists show three items');
+    for(const tab of await page.locator('[data-technical-tab]').all()){
+     await tab.click();
+     const clipped=await page.locator('#provider-technical-details').evaluate(card=>[...card.querySelectorAll('.table-wrap,td,th')].filter(e=>e.offsetParent&&e.scrollWidth>e.clientWidth+1).map(e=>e.className||e.tagName));
+     assert.deepEqual(clipped,[],`${width}/${await tab.getAttribute('data-technical-tab')}: technical tables fit their card`);
+     assert.deepEqual(await tightCardGaps(page,width),[],`${width}/${await tab.getAttribute('data-technical-tab')}: panel keeps the shared gaps`);
+    }
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`provider/${width}: open technical details cause no overflow`);
    }
    if(name==='overview'){
     assert.equal(await page.locator('.overview-tiles, .overview-page>.admin-metric-row').count(),0,'Dashboard has no summary tile row');
@@ -110,6 +156,18 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert.match(await page.locator('.page-meta').innerText(),/All time · Model evidence/);
     assert.equal(await page.locator("[data-stat='failed']").first().innerText(),'10','Model evidence keeps ten failed results');
    }
+   if(name==='providers'){
+    // Owner decision 2026-10-06: one summary card, no scope chips, Last sync in the heading, Issues as plain numbers.
+    assert.equal(await page.locator('.installation-kpis .admin-metric').count(),4,'Provider summary has four tiles in one card');
+    assert.equal(await page.locator('main .admin-scope-chip').count(),0,'Provider tiles carry no scope chips');
+    assert.match(await page.locator('.heading-row .page-meta').innerText(),/^Last sync 2026-09-16 10:30/);
+    assert.equal(await page.locator('main').getByText(/problems/i).count(),0,'Providers says Issues, not Problems');
+    const issues=await page.locator('#provider-rows tr').evaluateAll(rows=>rows.map(r=>{const c=r.children[4],n=c.querySelector('.admin-error-counter');return {sort:c.dataset.sortValue,pill:!!c.querySelector('.admin-pill,svg'),color:getComputedStyle(n).color,align:getComputedStyle(c).textAlign,border:getComputedStyle(c.firstElementChild).borderTopStyle};}));
+    assert.deepEqual(issues.map(i=>i.sort),['0','0','2'],'Issues sorts by its count');
+    assert(issues.every(i=>!i.pill&&i.border==='none'),'Issues is plain text, not a pill');
+    assert.notEqual(issues[2].color,issues[0].color,'A positive Issues count uses the danger text');
+    if(width>760) assert(issues.every(i=>i.align==='right'),'Issues aligns with the other numbers');
+   }
    if(name==='device'){
     const summaryGaps=await page.locator('.model-evidence-summary').evaluate(e=>{const rects=[...e.children].filter(c=>getComputedStyle(c).display!=='none').map(c=>c.getBoundingClientRect());return rects.slice(1).map((r,i)=>Math.round(r.top-rects[i].bottom));});
     assert(summaryGaps.length>=2,'Device summary column stacks several cards');
@@ -124,7 +182,19 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     else {assert.equal(columns.split(' ').length,1,'Device evidence stacks narrow');const left=await page.locator('.model-evidence-summary').boundingBox(),history=await page.locator('.model-evidence-history').boundingBox();assert(history.y>=left.y+left.height,'Device history follows left-column content when stacked');}
    }
    if(name==='statistics'){
-    assert.match(await page.locator('#map-statistics-world-map-status').innerText(),/\d+ countries? · \d+ installs/,'World map reports mapped successful installs');
+    // Owner decision 2026-10-06: no Countries count line, Top maps names are plain text,
+    // and the trend charts sit at the very bottom after Top maps and Events.
+    assert.equal(await page.locator('#map-statistics-world-map-status').count(),0,'Countries card has no count line');
+    assert.equal(await page.locator('#map-statistics-world-map-card').getByText(/countries? · \d+ installs/).count(),0,'Countries card shows no country/install count');
+    assert.equal(await page.locator('#all-map-rows tr').count()>0,true,'Top maps lists ranked maps');
+    assert.equal(await page.locator('#all-map-rows button, #all-map-rows a, #all-map-rows [data-map-country]').count(),0,'Top maps names are plain text');
+    assert.equal(await page.locator('#all-map-rows .popular-map-name').count(),await page.locator('#all-map-rows .popular-map-detail').count(),'Top maps keeps the provider/date line');
+    assert.equal(await page.locator('#map-rows [data-map-country]').count()>0,true,'Top countries keeps its country buttons');
+    const mainOrder=await page.locator('main.map-statistics-page').evaluate(main=>[...main.children].map(e=>e.id||e.className));
+    assert.equal(mainOrder.at(-1),'overview-primary-grid map-statistics-trends','Trend charts are the last Maps section');
+    assert.equal(mainOrder.at(-2),'admin-card provider-card map-events-card','Events precedes the trend charts');
+    const sectionGaps=await page.locator('main.map-statistics-page').evaluate(main=>{const blocks=[...main.children].filter(e=>!e.matches('.heading-row,form')&&getComputedStyle(e).display!=='none').map(e=>e.getBoundingClientRect());return blocks.slice(1).map((r,i)=>Math.round(r.top-blocks[i].bottom));});
+    assert.deepEqual([...new Set(sectionGaps)],[width<=700?16:24],`statistics/${width}: Maps sections share one card gap`);
     assert.equal(await page.locator('#map-statistics-updates').isVisible(),true,'Updates stays visible at zero or nonzero');
     const mapTrendCharts=page.locator('.map-statistics-page .overview-trend-chart:visible');
     assert.equal(await mapTrendCharts.count(),2,'Maps keeps separate download and install trends');
@@ -163,7 +233,11 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     if(width<=760){const [heading,target]=await page.locator('.identification-match>*').evaluateAll(es=>es.slice(0,2).map(e=>Math.round(e.getBoundingClientRect().x)));assert(Math.abs(heading-target)<=1,'Match target shares the narrow-layout left edge');}
     if(name==='identification-ambiguous')assert.equal(await page.locator('.identification-other-models li').count(),2);
     if(name==='identification-no-others'||name==='identification')assert.equal(await page.locator('.identification-other-models').count(),0);
-    if(name==='identification-decided')assert.match(await page.locator('.identification-existing-decision').innerText(),/Current decision: Approved/);
+    if(name==='identification-decided'){assert.match(await page.locator('.identification-existing-decision').innerText(),/Current decision:\s+Approved/);assert.equal(await page.locator('.identification-existing-decision .admin-pill .admin-icon').count(),1,'Decision state shows text plus an icon');}
+    assert.equal(await page.locator('.identity-mapping-source.admin-card').count()>=1,true,'Each source is an Admin card');
+    assert.equal(await page.locator('.identification-technical.admin-card').count(),1,'Technical details is its own card');
+    const primary=await page.locator('main :is(button,a)').evaluateAll(es=>es.filter(e=>e.offsetParent&&getComputedStyle(e).backgroundColor==='rgb(87, 119, 135)').map(e=>e.textContent.trim()));
+    assert(primary.length>=1&&primary.every(text=>text==='Approve match'),`Interactive Primary is used only to confirm: ${primary}`);
    }
    if(name==='diagnostics'){
     const inspect=page.getByRole('button',{name:/Inspect installation/}).first();
@@ -214,10 +288,16 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
 
    await page.screenshot({path:`${output}/${name}-${width}.png`,fullPage:true});
   }
-  for(const name of ['devices','support-reports','support-report','missing-reports','glossary']){
+  for(const name of ['devices','support-reports','support-report','missing-reports']){
    await page.goto(base+'/admin/'+name+'.html');await page.waitForTimeout(150);
    assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
    assert.deepEqual(await tightCardGaps(page,width),[],`${name}/${width}: separate cards keep the shared card gap`);
+   if(name==='devices'){
+    // Owner decision 2026-10-06: a positive Pending policy count is red like other failure tiles.
+    const pendingTile=page.locator('.device-summary-strip .admin-metric').filter({has:page.locator('.admin-metric-label',{hasText:'Pending policy'})});
+    assert.equal(await pendingTile.getAttribute('data-tone'),'danger','Positive Pending policy uses the danger tone');
+    assert.notEqual(await pendingTile.locator('.admin-metric-value').evaluate(e=>getComputedStyle(e).color),await page.locator('.device-summary-strip .admin-metric').first().locator('.admin-metric-value').evaluate(e=>getComputedStyle(e).color),'Pending policy value is visibly toned');
+   }
   }
   await page.goto(base+'/admin/device-empty.html');
   const empty=page.locator('.model-evidence-history .compact-empty-state');
@@ -241,13 +321,13 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
   const logo=fs.readFileSync(path.join(__dirname,'../../../brand/logo/logo.svg'));
   await dropdown.route('https://terento.app/**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:logo}));
   const dropdownErrors=[];dropdown.on('pageerror',e=>dropdownErrors.push(e.message));
-  const expected={overview:['overview-period'],installations:['evidence-status','evidence-sort'],devices:['device-family','device-support','device-status','device-mobile-sort'],statistics:['map-statistics-provider','map-statistics-event','map-statistics-outcome'],providers:[],provider:['provider-package-page-size'],health:[],diagnostics:[],'support-reports':[],device:['diagnostic-state-filter']};
+  const expected={overview:['overview-period'],installations:['evidence-status','evidence-sort'],devices:['device-family','device-support','device-status','device-mobile-sort'],statistics:['map-statistics-provider','map-statistics-event','map-statistics-outcome'],providers:[],provider:['provider-package-page-size','provider-source-page-size'],health:[],diagnostics:[],'support-reports':[],device:['diagnostic-state-filter']};
   const navigates=new Set(['overview-period','map-statistics-range','map-statistics-provider']);
   const exercised=new Set();
   const settle=async name=>{if(name==='overview')await dropdown.waitForURL(/timeZone=/);await dropdown.waitForTimeout(50);};
   const control=id=>dropdown.locator(`#${id}`).locator('xpath=following-sibling::button[contains(@class,"admin-dropdown-button")]');
   const geometry=id=>dropdown.evaluate(id=>{const select=document.getElementById(id),button=select.parentElement.querySelector('.admin-dropdown-button'),list=document.getElementById(button.getAttribute('aria-controls'));const b=button.getBoundingClientRect(),l=list.getBoundingClientRect(),option=list.querySelector('[role="option"][aria-selected="true"]')||list.querySelector('[role="option"]');return {viewport:innerHeight,hidden:list.hidden,expanded:button.getAttribute('aria-expanded'),buttonTop:b.top,buttonBottom:b.bottom,buttonLeft:b.left,buttonWidth:b.width,listTop:l.top,listBottom:l.bottom,listLeft:l.left,listWidth:l.width,background:getComputedStyle(list).backgroundColor,border:getComputedStyle(list).borderTopWidth,optionFont:option&&getComputedStyle(option).fontFamily,optionSize:option&&getComputedStyle(option).fontSize,buttonSize:getComputedStyle(button).fontSize,selectedCheck:option&&getComputedStyle(option.querySelector('.admin-dropdown-check')).visibility,focused:document.activeElement===button,value:select.value,text:button.textContent.trim(),selectedLabel:select.selectedOptions[0]?.label,active:button.getAttribute('aria-activedescendant')};},id);
-  const reveal=id=>dropdown.evaluate(id=>{const select=document.getElementById(id);for(let node=select;node;node=node.parentElement){if(node.tagName==='DETAILS')node.open=true;if(node.tagName==='FORM'&&node.hidden)node.hidden=false;}const extra=select.closest('.mobile-filter-options');if(extra&&extra.hidden)document.querySelector(`[aria-controls="${extra.id}"]`)?.click();select.parentElement.scrollIntoView({block:'center'});},id);
+  const reveal=id=>dropdown.evaluate(id=>{const select=document.getElementById(id);for(let node=select;node;node=node.parentElement){if(node.tagName==='DETAILS')node.open=true;if(node.getAttribute('role')==='tabpanel'&&node.hidden)document.querySelector(`[role="tab"][aria-controls="${node.id}"]`)?.click();if(node.tagName==='FORM'&&node.hidden)node.hidden=false;}const extra=select.closest('.mobile-filter-options');if(extra&&extra.hidden)document.querySelector(`[aria-controls="${extra.id}"]`)?.click();select.parentElement.scrollIntoView({block:'center'});},id);
   for(const width of [1440,390]){
    await dropdown.setViewportSize({width,height:1000});
    for(const [name,ids] of Object.entries(expected)){
@@ -264,6 +344,11 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
      if(!await button.isVisible())continue;
      exercised.add(`${name}:${id}`);
      const before=await geometry(id);
+     // Owner review 2026-10-06: the selected text keeps the control inset even when the hidden native select has no padding.
+     const inset=await dropdown.evaluate(async id=>{const select=document.getElementById(id),button=select.parentElement.querySelector('.admin-dropdown-button');select.style.setProperty('padding','0','important');window.dispatchEvent(new Event('resize'));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));const b=button.getBoundingClientRect(),v=button.querySelector('.admin-dropdown-value').getBoundingClientRect(),c=button.querySelector('.admin-dropdown-chevron').getBoundingClientRect(),style=getComputedStyle(button),control=getComputedStyle(document.documentElement).getPropertyValue('--admin-control-padding-x').trim();select.style.removeProperty('padding');return {left:style.paddingLeft,right:style.paddingRight,control,text:v.left-b.left,chevron:b.right-c.right,gap:c.left-v.right};},id);
+     assert.equal(inset.left,inset.control,`${name}/${width}/${id}: button keeps the control padding on the left`);assert.equal(inset.right,inset.control,`${name}/${width}/${id}: button keeps the control padding on the right`);
+     assert(inset.text>=10&&inset.chevron>=10&&inset.gap>=7.5,`${name}/${width}/${id}: text and chevron stay inset with a gap ${JSON.stringify(inset)}`);
+     if(name==='overview'){const bar=await dropdown.evaluate(()=>{const f=document.querySelector('#overview-period-form'),b=f.querySelector('.admin-dropdown-button').getBoundingClientRect(),r=f.getBoundingClientRect();return [b.left-r.left,r.right-b.right,b.top-r.top,r.bottom-b.bottom].map(v=>Math.round(v));});assert(Math.max(...bar)-Math.min(...bar)<=1,`overview/${width}: the period bar has equal padding around the field ${bar}`);}
      assert.equal(before.text,before.selectedLabel,`${name}/${id}: button shows the selected option`);
      await button.click();
      let open=await geometry(id);
@@ -350,6 +435,96 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
   await dropdown.close();
   if(onlyDropdowns){console.log('PASS: filter dropdowns on 10 Admin pages at 1440/390 (placement, styling, keyboard, sync and page reactions).');return;}
  }
+ // Phone filter bars and Maps ranking lists (owner report 2026-10-06, 390 px iPhone):
+ // More filters and Filters and sorting split one row, open panels span the full bar below it,
+ // the result count is one tight line; Top countries and Top maps are compact list rows.
+ {
+  await page.setViewportSize({width:390,height:1000});
+  for(const [name,form] of [['installations','#evidence-filters'],['devices','#device-filters']]){
+   await page.goto(base+'/admin/'+name+'.html');await page.waitForTimeout(150);
+   const bar=page.locator(form),more=bar.locator('.filter-disclosure'),toggle=bar.locator('.mobile-filter-toggle'),count=bar.locator('.results-count');
+   const [m,t,c,b]=[await more.boundingBox(),await toggle.boundingBox(),await count.boundingBox(),await bar.boundingBox()];
+   assert(Math.abs(m.y-t.y)<=1&&Math.abs(m.height-t.height)<=1,`${name}/390: More filters and Filters and sorting share one row`);
+   assert(Math.abs(m.width-t.width)<=1&&Math.abs(t.x-(m.x+m.width)-8)<=1,`${name}/390: the two toggles split the row equally with the 8px gap`);
+   assert(c.y>=m.y+m.height&&c.y-(m.y+m.height)<=12&&c.height<=24,`${name}/390: the result count is one tight line below the toggles`);
+   const inner=await bar.evaluate(e=>{const s=getComputedStyle(e);return {left:e.getBoundingClientRect().left+parseFloat(s.paddingLeft)+parseFloat(s.borderLeftWidth),width:e.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight)};});
+   await more.locator('summary').click();
+   const body=await more.locator('.disclosure-body').boundingBox();
+   assert(Math.abs(body.x-inner.left)<=1&&Math.abs(body.width-inner.width)<=1&&body.y>=m.y+m.height,`${name}/390: More filters opens full width below the row`);
+   assert.equal(Math.round((await toggle.boundingBox()).y),Math.round(t.y),`${name}/390: Filters and sorting stays on the row while More filters is open`);
+   await more.locator('summary').click();
+   await toggle.click();
+   const extra=await bar.locator('.mobile-filter-options').boundingBox();
+   assert(Math.abs(extra.x-inner.left)<=1&&Math.abs(extra.width-inner.width)<=1&&extra.y>=t.y+t.height,`${name}/390: Filters and sorting opens full width below the row`);
+   await toggle.click();
+   assert(b.width<=390,`${name}/390: filter bar fits the viewport`);
+  }
+  await page.goto(base+'/admin/statistics.html');await page.waitForTimeout(200);
+  for(const id of ['top-countries','maps-by-provider']){const show=page.locator(`[data-mobile-collapse-toggle][aria-controls="${id}"]`);if(await show.isVisible()&&await show.getAttribute('aria-expanded')==='false')await show.click();}
+  for(const [body,label] of [['#map-rows','Top countries'],['#all-map-rows','Top maps']]){
+   const table=page.locator(body).locator('xpath=ancestor::table[1]');
+   assert.equal(await table.evaluate(t=>t.classList.contains('mobile-record-table')),false,`${label}/390: no record-card conversion`);
+   assert.equal(await table.getAttribute('role'),'table',`${label}/390: keeps table semantics`);
+   const rows=await page.locator(body+' tr:visible').evaluateAll(rows=>rows.map(row=>{const [name,count]=[...row.cells];const s=getComputedStyle(row);const line=e=>{const r=document.createRange();r.selectNodeContents(e.querySelector('.popular-map-name,.region-map-link,strong')||e);return r.getClientRects()[0];};const n=line(name),c=line(count);return {nameBottom:n.bottom,countBottom:c.bottom,countRight:count.getBoundingClientRect().right,nameLeft:name.getBoundingClientRect().left,rowRight:row.getBoundingClientRect().right,height:row.getBoundingClientRect().height,label:getComputedStyle(name,'::before').content,border:s.borderTopWidth+' '+s.borderLeftWidth,radius:s.borderTopLeftRadius};}));
+   assert(rows.length>0,`${label}/390: rows render`);
+   for(const r of rows){
+    assert(Math.abs(r.nameBottom-r.countBottom)<=2,`${label}/390: name and count share one baseline line`);
+    assert(Math.abs(r.countRight-r.rowRight)<=1,`${label}/390: count sits on the right`);
+    assert(['none','normal'].includes(r.label),`${label}/390: no per-row field labels`);
+    assert.equal(r.border,'0px 0px',`${label}/390: rows are list rows, not cards`);
+    assert.equal(r.radius,'0px',`${label}/390: rows are not rounded cards`);
+    assert(r.height<=(label==='Top maps'?60:48),`${label}/390: compact row height (${r.height}px)`);
+   }
+  }
+  assert.equal(await page.locator('#all-map-rows').locator('xpath=ancestor::table[1]/thead').isVisible(),false,'Top maps/390: no visible Map/Installs header');
+  assert.match(await page.locator('#all-map-rows .popular-map-count strong').first().innerText(),/^\d+$/,'Top maps/390: count shows only the number');
+  assert.equal(await page.locator('#all-map-rows .popular-map-count .sr-only').first().textContent(),' installs','Top maps/390: count names its unit for screen readers');
+ }
+ // Model sources list (owner decision 2026-10-06): one KPI card, the Installations filter bar, a sortable table with shared pagination.
+ for(const width of [1440,390]){
+  await page.setViewportSize({width,height:1000});
+  await page.goto(base+'/admin/identification-list.html');await page.waitForTimeout(150);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`model sources/${width}: page overflow`);
+  assert.deepEqual(errors.splice(0),[],`model sources/${width}: script errors`);
+  assert.deepEqual(await tightCardGaps(page,width),[],`model sources/${width}: separate cards keep the shared card gap`);
+  const kpis=page.locator('main>section.admin-card.installation-kpis');
+  assert.equal(await kpis.count(),1,'Model sources has one KPI card');
+  assert.deepEqual(await kpis.locator('.admin-metric-label').allTextContents(),['Needs review','Approved','Rejected','No source']);
+  assert.equal(await kpis.locator('.admin-scope-chip, .admin-icon').count(),0,'KPI tiles carry no scope chips or icons');
+  assert.equal(await kpis.locator('[data-tone="danger"]').count(),0,'Needs review stays neutral');
+  const bar=page.locator('#identification-filters.filter-bar');
+  assert.equal(await bar.count(),1);
+  assert.deepEqual(await bar.locator('.quick-filter').allTextContents(),['All','Needs review','Approved','Rejected','No source']);
+  assert.equal(await bar.locator("[data-source-filter='pending']").getAttribute('aria-pressed'),'true','Needs review is preselected');
+  assert.equal(await bar.locator('#identification-search').getAttribute('name'),'q','Search stays server-side');
+  assert.equal(await bar.locator('[data-filter-clear]').isVisible(),false,'Clear hides at the default filter');
+  assert.match(await bar.locator('#identification-results-count').innerText(),/^10 models$/);
+  assert.equal(await page.locator('#identification-pagination').isVisible(),false);
+  await bar.locator("[data-source-filter='all']").click();
+  assert.equal(await bar.locator('[data-filter-clear]').isVisible(),true,'Clear shows once the filter differs');
+  assert.match(await bar.locator('#identification-results-count').innerText(),/^39 models$/);
+  assert.equal(await page.locator('#identification-rows tr:not([hidden])').count(),25);
+  assert.equal(await page.locator('#identification-pagination').isVisible(),true,'Shared pagination appears beyond 25 rows');
+  assert.equal(await page.locator('main').getByText(/\d+ records/).count(),0,'No N records line');
+  await page.locator('#identification-pagination [data-source-page="next"]').click();
+  assert.equal(await page.locator('#identification-rows tr:not([hidden])').count(),14);
+  if(width>760){
+   const header=page.locator('.identification-table thead th').nth(3);
+   await header.locator('button').click();
+   assert.equal(await header.getAttribute('aria-sort'),'ascending');
+   assert.equal(await page.locator('#identification-rows tr:not([hidden])').first().getAttribute('data-source-state'),'pending','State sorts in queue order');
+   const fits=await page.locator('.identification-table thead th').evaluateAll(es=>es.every(e=>e.scrollWidth<=e.clientWidth+1&&e.getBoundingClientRect().height<48));
+   assert(fits,'Table headers fit on one line');
+  }
+  await bar.locator('[data-filter-clear]').click();
+  assert.equal(await bar.locator("[data-source-filter='pending']").getAttribute('aria-pressed'),'true','Clear returns to Needs review');
+  assert.equal(await bar.locator('[data-filter-clear]').isVisible(),false);
+  await page.goto(base+'/admin/identification-list-search.html');await page.waitForTimeout(100);
+  assert.equal(await page.locator('#identification-search').inputValue(),'fēnix');
+  assert.equal(await page.locator('#identification-filters [data-filter-clear]').isVisible(),true,'Clear shows while a search is active');
+  assert.equal(await page.locator('#identification-filters [data-filter-clear]').getAttribute('href'),'/admin/device-identification');
+  assert.deepEqual(errors.splice(0),[],`model sources search/${width}: script errors`);
+ }
  await page.setViewportSize({width:1440,height:1000});
  // Identity review queue: Edit / pick / Confirm inline against a routed success; the page stays put.
  const posts=[];
@@ -411,6 +586,20 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
  assert.equal(await page.locator('#installation-pagination').isVisible(),false);
  assert.equal(await page.locator('[data-filter-clear]').isVisible(),true);
  assert.match(page.url(),/search=/);await page.reload();assert.equal(await page.locator('#evidence-search').inputValue(),'fēnix 12 Very');
+ // Owner review 2026-10-06: a plain visit opens at All; only an explicit ?state= link (or the current URL on reload) preselects a quick filter.
+ const pressedQuick=()=>page.locator('[data-installation-filter][aria-pressed="true"]').evaluateAll(es=>es.map(e=>e.dataset.installationFilter));
+ await page.goto(base+'/admin/installations?state=identity-pending');assert.deepEqual(await pressedQuick(),['identity-pending']);
+ await page.reload();assert.deepEqual(await pressedQuick(),['identity-pending'],'reload keeps the explicit quick filter');
+ await page.evaluate(()=>sessionStorage.setItem('terento.admin.installations.filters',JSON.stringify({search:'',status:'all',sort:'latest',quick:'identity-pending'})));
+ await page.goto(base+'/admin/installations');assert.deepEqual(await pressedQuick(),['all'],'a plain Installations visit opens at All');
+ assert.equal(await page.locator('[data-filter-clear]').isVisible(),false);
+ await page.goto(base+'/admin/installations?state=open');assert.deepEqual(await pressedQuick(),['open']);
+ await page.goto(base+'/admin/installations');assert.deepEqual(await pressedQuick(),['all']);
+ const pressedMaps=()=>page.locator('[data-device-map-filter][aria-pressed="true"]').evaluateAll(es=>es.map(e=>e.dataset.deviceMapFilter));
+ await page.goto(base+'/admin/devices?maps=no');assert.deepEqual(await pressedMaps(),['no']);
+ await page.evaluate(()=>sessionStorage.setItem('terento.admin.devices.filters',JSON.stringify({maps:'unknown',new:true})));
+ await page.goto(base+'/admin/devices');assert.deepEqual(await pressedMaps(),['yes'],'a plain Devices visit opens at Maps: Yes');
+ await page.goto(base+'/admin/installations-plan.html?search='+encodeURIComponent('fēnix 12 Very'));
  await page.locator('#evidence-search').fill('No matching model');
  assert.equal(await page.locator('#installation-empty').innerText(),'No matching models.');
  assert.equal(await page.locator('#installation-table').isVisible(),false);
@@ -419,9 +608,34 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
  assert.equal(await page.locator("[data-quick-value='FAILED']").getAttribute('aria-pressed'),'true');
  assert.equal(await page.locator('[data-health-status]:not([hidden])').count(),5);
  await page.locator('#health-search').fill('Check 2');assert.equal(await page.locator('[data-health-status]:not([hidden])').count(),1);
- const healthTechnical=page.locator('[data-health-status]:not([hidden]) details').first();
- await healthTechnical.locator('summary').focus();await page.keyboard.press('Enter');
- assert.equal(await healthTechnical.getAttribute('open'),'');
+ const healthToggle=page.locator('tr[data-health-status]:not([hidden]) [data-health-details]').first();
+ await healthToggle.focus();await page.keyboard.press('Enter');
+ assert.equal(await healthToggle.getAttribute('aria-expanded'),'true');
+ assert.equal(await page.locator('#'+await healthToggle.getAttribute('aria-controls')).isVisible(),true,'Details open inline under the row');
+ assert.equal(await page.locator('#health-technical-disclosure').getAttribute('open'),null,'Failed matches stay in Issues');
+ // A search that matches a check inside a group tab opens Technical details on that tab.
+ await page.locator("[data-quick-select='health-status'] [data-quick-value='all']").click();
+ await page.locator('#health-search').fill('Check 14');
+ assert.equal(await page.locator('#health-technical-disclosure').getAttribute('open'),'');
+ assert.equal(await page.locator('#health-tab-releases').getAttribute('aria-selected'),'true');
+ assert.equal(await page.locator("tr[data-health-name='check 14']").isVisible(),true);
+ assert.equal(await page.locator('#health-issues-filtered').isVisible(),true,'Issues says no issue matches');
+ // Tabs follow the ARIA tabs keyboard pattern.
+ await page.locator('#health-tab-releases').focus();await page.keyboard.press('ArrowRight');
+ assert.equal(await page.locator('#health-tab-catalogs').getAttribute('aria-selected'),'true');
+ assert.equal(await page.evaluate(()=>document.activeElement.id),'health-tab-catalogs');
+ await page.keyboard.press('End');assert.equal(await page.locator('#health-tab-weekly').getAttribute('aria-selected'),'true');
+ assert.equal(await page.locator('#health-panel-weekly').isVisible(),true);
+ await page.keyboard.press('Home');assert.equal(await page.locator('#health-tab-service').getAttribute('aria-selected'),'true');
+ assert.equal(await page.locator('#health-panel-weekly').isVisible(),false);
+ // Dashboard System checks links preselect the status filter through ?status=.
+ await page.goto(base+'/admin/health.html?status=WARNING');
+ assert.equal(await page.locator("[data-quick-value='WARNING']").getAttribute('aria-pressed'),'true');
+ assert.equal(await page.locator('tr[data-health-status]:not([hidden])').count(),6);
+ await page.goto(base+'/admin/overview.html');
+ const systemChecks=page.locator('.overview-attention-row a',{hasText:'System checks'});
+ assert.equal(await systemChecks.getAttribute('href'),'/admin/system-health?status=FAILED');
+ assert.equal(await systemChecks.locator('strong').innerText(),'1');
  // Polling is controlled without sleeping: the real installed handler runs against a routed snapshot.
  const refresh=await browser.newPage();await refresh.addInitScript(()=>{const original=setInterval;window.setInterval=(f,ms)=>ms===120000?(window.testPoll=f,1):original(f,ms);});
  await refresh.goto(base+'/admin/device.html');await refresh.waitForFunction(()=>!!window.testPoll);
