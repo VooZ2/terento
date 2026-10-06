@@ -4894,18 +4894,20 @@ def _map_statistics_script() -> str:
       const providerStreams = {
         installs: {success: 'installs', failed: 'failedInstalls', last: 'lastInstall', date: 'Last install'},
         updates: {success: 'completedUpdates', failed: 'failedUpdates', last: 'lastUpdate', date: 'Last update'},
-        downloads: {success: 'downloads', failed: 'failedDownloads', last: null, date: 'Last success'},
+        downloads: {success: 'downloads', failed: 'failedDownloads', last: 'lastDownload', date: 'Last download'},
       };
       let providerStream = 'installs';
       try { const saved = sessionStorage.getItem('terento.admin.maps.providerStream'); if (providerStreams[saved]) providerStream = saved; } catch (_) { /* optional */ }
       const renderProviders = () => {
         const selected = String(filters.provider || '').toLowerCase();
         const scoped = selected ? providers.filter((item) => String(item.id || '').toLowerCase() === selected) : providers;
-        const byProvider = Object.fromEntries(scoped.map((item) => [item.id, {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null,lastUpdate:null}]));
+        const byProvider = Object.fromEntries(scoped.map((item) => [item.id, {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null,lastUpdate:null,lastDownload:null}]));
         rows.forEach((row) => {
           const id = row.provider_id || 'unknown';
-          byProvider[id] ||= {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null,lastUpdate:null};
-          if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'downloads', row);
+          byProvider[id] ||= {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null,lastUpdate:null,lastDownload:null};
+          // Last download follows the Downloads total population (all purposes);
+          // a zero or unknown operation count cannot advance it.
+          if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'downloads', row); if ((operations(row) || 0) > 0 && String(row.last_occurred_at || '') > String(byProvider[id].lastDownload || '')) byProvider[id].lastDownload = row.last_occurred_at; }
           if (row.event_type === 'DOWNLOAD_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedDownloads', row);
           if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'installs', row); if (eligibleMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastInstall || '')) byProvider[id].lastInstall = row.last_occurred_at; }
           if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedInstalls', row);

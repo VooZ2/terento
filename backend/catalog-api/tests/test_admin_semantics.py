@@ -3019,7 +3019,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 )
             ))
         rows.extend([
-            {"provider_id": "opentopomap", "event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 84},
+            {"provider_id": "opentopomap", "event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 84, "last_occurred_at": "2026-09-20T09:39:00Z"},
+            {"provider_id": "opentopomap", "event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 0, "last_occurred_at": "2026-09-25T09:39:00Z"},
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_FAILED", "outcome": "FAILED", "operation_count": 4},
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_INTERRUPTED", "outcome": "UNKNOWN", "operation_count": 7},
             {"provider_id": "opentopomap", "event_type": "DOWNLOAD_STARTED", "outcome": "STARTED", "operation_count": 3},
@@ -3063,6 +3064,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         assert.deepEqual(installs.Freizeitkarte.slice(0,3), ['19','6','76%']);
         assert.deepEqual(installs.BBBike.slice(0,3), ['8','1','88.9%']);
         assert.deepEqual(downloads.custom.slice(0,3), ['0','0','—']);
+        assert.equal(downloads.OpenTopoMap[3].includes('2026-09-20'),true,'Downloads shows Last download; a zero-count row cannot advance it');
+        assert.equal(downloads.custom[3],'—','no download means no Last download');
         assert.deepEqual(installs.custom.slice(0,3), ['20','3','87.0%']);
         assert.equal(installs.MapRando[3].includes('2026-09-18'),true,'updates do not advance Last install');
         """
