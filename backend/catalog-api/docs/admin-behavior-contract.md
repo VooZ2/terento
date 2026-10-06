@@ -70,11 +70,22 @@ arrows and placeholders, is an unchanged Font Awesome Free solid icon from the
 pinned revision in `THIRD_PARTY_NOTICES.md`, inlined (no external origin);
 Admin never uses hand-drawn SVG, CSS-drawn shapes or text glyphs as icons.
 
-Filter dropdown (owner decision 2026-10-06): every filter-type `<select>` —
-filter bars and More filters panels (Installations, Devices, Maps, provider
-packages and sources), Dashboard and Maps periods, device and diagnostics
-installation-history filters, Health status, rows-per-page and the mobile sort
-selects — carries `data-admin-dropdown` and is enhanced by one shared,
+Filter bar (owner decision 2026-10-06): every Admin filter bar uses the
+Installations design — one muted rounded bar holding, in order, a quick-filter
+group, the search field, More filters or other selects, the result count and
+Clear; Clear appears only when a filter differs from its default. A
+single-choice filter is a quick-filter group, not a dropdown: Devices Maps
+capability, Health status, the Maps time range, provider package and source
+status, support report status, and the device, diagnostics and update history
+filters. Such a group drives a hidden native select that stays the source of
+truth for page scripts and GET forms. The bar sits 12px above its table. The
+Dashboard period stays a dropdown because the Dashboard replaces its content in
+place.
+
+Filter dropdown (owner decision 2026-10-06): every remaining filter-type
+`<select>` — More filters panels (Installations, Devices, Maps), the Maps
+provider, the Dashboard period, rows-per-page and the mobile sort selects —
+carries `data-admin-dropdown` and is enhanced by one shared,
 nonce-delivered Admin script. A combobox button shows the selected option and
 a Font Awesome chevron; its listbox popover opens directly below the field,
 left-aligned and at least the field's width, flips above only when there is no
@@ -455,8 +466,14 @@ observed capability, success counts, identity review, and public compatibility
 never grant write permission. Evidence is computed only from the stored catalog
 Maps fact and verified successes; a model-name classifier never sets it.
 
-The Devices list opens with tiles (Models, Maps: Yes, Verified, Covered, Pending
-policy) and the last sync line. The narrow-width sticky column header is a
+The Devices list uses the Installations layout: the last sync line sits in the
+page heading meta, and the tiles (Models, Maps: Yes, Verified, Covered, Pending
+policy) carry no scope chips. Covered reads `covered/eligible (rate)`, for
+example `12/40 (30.0%)`. The filter bar matches Installations: a Maps quick
+filter group (All, Maps: Yes, Maps: No, Maps: Unknown; Maps: Yes by default),
+search, More filters and the result count, separated from the table by the
+filter-to-table gap and still sticky above it; Clear appears only when a filter
+or sort differs from the default. The narrow-width sticky column header is a
 visual copy hidden from assistive technology; the table's own header keeps the
 caption and sortable controls.
 
@@ -467,8 +484,9 @@ details form the left column while Installation history and, below it, Update
 history use the right column.
 Update history uses the Installation history layout: its `Update history` title
 sits outside the card in the same section heading, with no scope chip, followed
-by the same quick-filter bar (All, Successful, Failed, Blocked before writing)
-and the same diagnostic list table (Date, Map, Result, GitHub issue, App
+by the same quick-filter bar in the Installation history order (All, Failed,
+Blocked, Successful; Clear when a filter is active) and the same diagnostic
+list table (Date, Map, Result, GitHub issue, App
 version, Inspect). Its filters and pages stay server-side (`updateOutcome`,
 `updateOffset`), so the filters are links; the active one carries
 `aria-current` and the quick-filter active style. At ≥1024 px the table fits
@@ -478,8 +496,9 @@ labelled record cards as Installation history. An empty Update history shows
 the same compact empty state as Installation history and omits filters, table
 and pagination; a filter with no matches keeps the filter bar and says so.
 A pre-write result (`writeStarted=false`) shows a `Blocked` status pill (its title
-says `Blocked before writing`; filters and counts keep the full term), is not
-in the Failed filter, has its own Blocked before writing filter, and stays an
+says `Blocked before writing`; quick filters also read `Blocked`, counts keep
+the full term), is not in the Failed filter, has its own Blocked filter, and
+stays an
 open problem when the canonical predicate says so.
 Narrow layouts stack that same reading order. Historical catalog provenance
 remains accessible and does not change Maps, Install policy, support, or public

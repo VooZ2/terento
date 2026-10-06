@@ -49,8 +49,9 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn("@media(max-width:700px){\n  :root{--admin-card-gap:16px}", spacing)
         self.assertIn("main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-card-gap)}", spacing)
         self.assertIn(".model-evidence-grid>.model-evidence-history>*+*{margin-top:var(--admin-card-gap)}", spacing)
-        self.assertIn(".filter-bar:not(.device-filter-bar):has(~.table-wrap){margin-bottom:var(--admin-filter-table-gap)}", spacing)
-        self.assertIn(".device-filter-bar{margin-bottom:var(--admin-filter-table-gap)}", spacing)
+        # Devices uses the same detached filter bar as Installations (owner decision 2026-10-06).
+        self.assertIn(".filter-bar:has(~.table-wrap){margin-bottom:var(--admin-filter-table-gap)}", spacing)
+        self.assertNotIn(".filter-bar:not(.device-filter-bar)", ADMIN_STYLES)
         grids = spacing.split("){gap:var(--admin-card-gap)}", 1)[0].rsplit(":is(", 1)[1].split(",")
         for group in (".overview-primary-grid", ".overview-composition-grid", ".model-evidence-summary",
                       ".model-information-columns", ".provider-dashboard-grid", ".provider-state-grid", ".support-report-main"):

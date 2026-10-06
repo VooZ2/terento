@@ -471,6 +471,35 @@ def _metric_tile(
     return f"<div class='admin-metric' {attributes}>{inner}</div>"
 
 
+def _quick_select_filter(
+    select_id: str, options: list[tuple[str, str]], selected: str, *, label: str, name: str | None = None,
+) -> str:
+    """Quick-filter buttons driving a hidden filter select.
+
+    Owner decision 2026-10-06: every filter bar uses the Installations design,
+    so a single-choice filter is a quick-filter group, not a dropdown. The
+    native select stays in the DOM, hidden, as the source of truth for page
+    scripts and GET forms; ``_admin_quick_select_script`` keeps both in sync.
+    """
+    buttons = "".join(
+        f"<button type='button' class='quick-filter{' active' if value == selected else ''}' "
+        f"data-quick-value='{html.escape(value, quote=True)}' aria-pressed='{'true' if value == selected else 'false'}'>"
+        f"{html.escape(text)}</button>"
+        for value, text in options
+    )
+    select_options = "".join(
+        f"<option value='{html.escape(value, quote=True)}'{' selected' if value == selected else ''}>{html.escape(text)}</option>"
+        for value, text in options
+    )
+    name_attribute = f" name='{html.escape(name, quote=True)}'" if name else ""
+    return (
+        f"<div class='quick-filter-group' role='group' aria-label='{html.escape(label, quote=True)}' "
+        f"data-quick-select='{html.escape(select_id, quote=True)}'>{buttons}</div>"
+        f"<label hidden><span class='sr-only'>{html.escape(label)}</span>"
+        f"<select id='{html.escape(select_id, quote=True)}'{name_attribute}>{select_options}</select></label>"
+    )
+
+
 def _metric_row(tiles: list[str], *, label: str, css: str = "") -> str:
     return (
         f"<div class='admin-metric-row{(' ' + css) if css else ''}' role='group' "
@@ -3079,8 +3108,9 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
     cards, weekly, weekly_details = _system_health_cards(health)
     counts = {state: sum(card['status'] == state for card in cards) for state, _, _ in _HEALTH_FILTERS}
     labels = {state: label for state, label, _ in _HEALTH_FILTERS}
-    health_options = "".join(
-        f"<option value='{state}'>{labels[state]} · {counts[state]}</option>" for state, _, _ in _HEALTH_FILTERS
+    health_status_filter = _quick_select_filter(
+        "health-status", [("all", "All"), *[(state, labels[state]) for state, _, _ in _HEALTH_FILTERS]], "all",
+        label="Check status",
     )
     # Count tiles double as status filters, labelled like the pills.
     tiles = "".join(
@@ -3134,7 +3164,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
       <main class='dashboard system-health-page' id='main-content'>
         <div class='heading-row'><div><h1>Health</h1></div></div>
         <div class='admin-metric-row health-filter-tiles' role='group' aria-label='Filter checks by status'>{tiles}</div>
-        <form class='filter-bar' id='health-filters' role='search'><label class='filter-search'><span class='sr-only'>Search checks</span><input type='search' id='health-search' placeholder='Search checks'></label><label><span class='sr-only'>Check status</span><select id='health-status' data-admin-dropdown><option value='all'>All statuses</option>{health_options}</select></label></form>
+        <form class='filter-bar' id='health-filters' role='search'>{health_status_filter}<label class='filter-search'><span class='sr-only'>Search checks</span><input type='search' id='health-search' placeholder='Search checks'></label></form>
         <p class='empty' id='health-empty' hidden>No checks match your filters.</p>
         {problems}
         {''.join(groups)}
@@ -3159,7 +3189,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
         }};
         tiles.forEach(tile => tile.addEventListener('click', () => {{
           status.value = status.value === tile.dataset.healthFilter ? 'all' : tile.dataset.healthFilter;
-          filter();
+          status.dispatchEvent(new Event('change', {{bubbles: true}}));
         }}));
         search.addEventListener('input', filter); status.addEventListener('change', filter);
       }})();</script>
@@ -3882,7 +3912,7 @@ def provider_detail_page(
     empty_audits = "<p class='empty'>No provider audit entries recorded yet.</p>" if not audits else ""
     source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Provider-level original sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div>" if provider_sources else ""
     download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Download source URLs</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
-    download_source_section = f"<details class='admin-card admin-disclosure provider-technical-section' id='provider-download-sources'><summary>Sources <span class='disclosure-meta'>· {len(download_sources)} download links</span></summary><div class='disclosure-body'><p>{source_counts}</p><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter' data-admin-dropdown><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size' data-admin-dropdown><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details>" if download_sources else ""
+    download_source_section = f"<details class='admin-card admin-disclosure provider-technical-section' id='provider-download-sources'><summary>Sources <span class='disclosure-meta'>· {len(download_sources)} download links</span></summary><div class='disclosure-body'><p>{source_counts}</p><div class='filter-bar provider-filter-bar'>{_quick_select_filter('provider-source-filter', [('all', 'All'), ('broken', 'Broken')], 'all', label='Source status')}<label class='filter-search'><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size' data-admin-dropdown><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details>" if download_sources else ""
     package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-package-table'><caption class='sr-only'>Packages</caption><thead><tr><th scope='col'>Map</th><th scope='col'>Release</th><th scope='col' class='column-number'>Files</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-status'><span class='sr-only'>Actions</span></th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
     latest_health_table = _provider_current_health(latest_health, provider)
     health_history_table = f"<p class='table-help'>Up to 10 previous checks from the last 30 days.</p><ol class='provider-health-history'>{rows_health}</ol>" if previous_health else ""
@@ -3975,7 +4005,7 @@ def provider_detail_page(
     )
     packages_section = _section_card(
         "Packages",
-        f"<div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter' data-admin-dropdown><option value='all'>All packages</option><option value='broken'{' selected' if groups else ''}>Problems</option><option value='available'>Available</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size' data-admin-dropdown><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label><span class='disclosure-meta'>{len(packages)} catalog entries</span></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div>",
+        f"<div class='filter-bar provider-filter-bar'>{_quick_select_filter('provider-package-filter', [('all', 'All'), ('broken', 'Problems'), ('available', 'Available')], 'broken' if groups else 'all', label='Package status')}<label class='filter-search'><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size' data-admin-dropdown><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label><p class='results-count'>{len(packages)} catalog entries</p></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div>",
         card_id="provider-packages", css="provider-card",
     )
     content = f"""
@@ -4216,11 +4246,10 @@ def map_statistics_page(
         ], label="Map statistics for the selected period")
         + purpose_line + all_time_line + "</section>"
     )
-    statistics_period_options = "".join(
-        f"<option value='{value}'{' selected' if value == selected_period else ''}>{label}</option>"
-        for value, label in (
-            ("24h", "Last 24 hours"), ("7d", "Last 7 days"), ("30d", "Last 30 days"), ("all", "All time"),
-        )
+    statistics_period_filter = _quick_select_filter(
+        "map-statistics-range",
+        [("24h", "Last 24 hours"), ("7d", "Last 7 days"), ("30d", "Last 30 days"), ("all", "All time")],
+        selected_period, label="Time range", name="period",
     )
     detail_query = {
         key: value for key, value in selected.items()
@@ -4307,7 +4336,7 @@ def map_statistics_page(
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
         <div class='heading-row'><div><h1>Maps</h1></div><a class='section-link' href='/admin/update-diagnostics'>Update reports&nbsp;{_admin_icon('arrow-right')}</a></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'><label><span class='sr-only'>Time range</span><select id='map-statistics-range' data-admin-dropdown name='period'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider' data-admin-dropdown name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' data-admin-dropdown name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' data-admin-dropdown name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'>{statistics_period_filter}<label><span class='sr-only'>Provider</span><select id='map-statistics-provider' data-admin-dropdown name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' data-admin-dropdown name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' data-admin-dropdown name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
         {metrics_section if has_all_time_data else ""}
         {trends}
         {empty_notice}
@@ -6192,7 +6221,7 @@ def device_detail_page(
     history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not history else f"""
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false'>Blocked before writing</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter' data-admin-dropdown><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked before writing</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false' title='Blocked before writing'>Blocked</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter' data-admin-dropdown><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters' hidden>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'></p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table mobile-record-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
           {history_pagination}
@@ -6299,7 +6328,7 @@ def diagnostics_page(
     )
     filters = (
         f"<div class='quick-filter-group' role='group' aria-label='Quick history filters'>{quick_filters}</div>"
-        "<button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"
+        "<button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters' hidden>Clear</button>"
     )
     rows_markup: list[str] = []
     dialogs: list[str] = []
@@ -6905,23 +6934,34 @@ def devices_page(
     devices = payload["devices"]
     verified_models = sum(device.get("evidenceStatus") == "VERIFIED" for device in devices)
     pending_policy = sum(device.get("installationAuthorization") == "PENDING" and device.get("active") is not False for device in devices)
+    covered_value = (f"{summary['mapModelsWithSuccess']:,}/{summary['eligibleMapModels']:,}"
+                     f" ({_format_rate(summary['mapModelCoverageRate'])})")
+    map_filters = "".join(
+        f"<button type='button' class='quick-filter{' active' if value == 'yes' else ''}' data-device-map-filter='{value}' "
+        f"aria-pressed='{'true' if value == 'yes' else 'false'}'>{label}</button>"
+        for value, label in (("all", "All"), ("yes", "Maps: Yes"), ("no", "Maps: No"), ("unknown", "Maps: Unknown"))
+    )
+    sync_status = f" · {html.escape(str(sync_data['status'] or '').title())}" if sync_data['status'] else ""
+    sync_meta = "" if not devices else (
+        f"<p class='page-meta device-summary-sync'><strong>Last sync</strong> {completed} · {sync_line}{sync_status}</p>"
+    )
     device_list = "<section class='compact-empty-state' aria-labelledby='device-list-title'><h2 id='device-list-title'>No devices</h2><p>No Garmin device records are available. Run or check the latest catalog sync.</p></section>" if not rows_html else f"""
-        <section class="admin-card device-summary-strip" aria-label="Device catalog summary and sync">
+        <section class="admin-card installation-kpis device-summary-strip" aria-label="Device catalog summary">
           {_metric_row([
-              _metric_tile("Models", summary['models'], scope="now"),
-              _metric_tile("Maps: Yes", summary['mapCapable'], scope="now"),
-              _metric_tile("Verified", verified_models, scope="all"),
-              _metric_tile("Covered", summary['mapModelsWithSuccess'], scope="all",
-                           secondary=f"of {summary['eligibleMapModels']} · {html.escape(_format_rate(summary['mapModelCoverageRate']))}",
+              # Same tiles as Installations: no scope chips (owner decision 2026-10-06).
+              _metric_tile("Models", summary['models']),
+              _metric_tile("Maps: Yes", summary['mapCapable']),
+              _metric_tile("Verified", verified_models),
+              _metric_tile("Covered", summary['mapModelsWithSuccess'], value_html=html.escape(covered_value), data_stat="covered",
                            hint="Active Maps: Yes models with at least one verified installation"),
-              _metric_tile("Pending policy", pending_policy, scope="now"),
+              _metric_tile("Pending policy", pending_policy),
           ], label="Device catalog summary")}
-          <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {sync_line}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
         <section class="evidence-section" aria-label="Device catalog">
           <form class="filter-bar admin-filter-bar device-filter-bar" id="device-filters" role="search">
+            <div class="quick-filter-group" role="group" aria-label="Filter by map capability">{map_filters}</div>
+            <label hidden><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
-            <label><span class="sr-only">Filter by map capability</span><select id="device-map" data-admin-dropdown><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
             <details class="admin-disclosure filter-disclosure" id="device-more-filters"><summary>More filters</summary><div class="disclosure-body">
               <label><span class="sr-only">Filter by family</span><select id="device-family" data-admin-dropdown><option value="all">All families</option>{family_options}</select></label>
               <label><span class="sr-only">Filter by install policy</span><select id="device-support" data-admin-dropdown><option value="all">All policies</option><option value="APPROVED">Approved</option><option value="BLOCKED">Blocked</option><option value="PENDING">Pending</option></select></label>
@@ -6929,7 +6969,7 @@ def devices_page(
             </div></details>
             <label class="device-mobile-sort"><span class="sr-only">Sort devices</span><select id="device-mobile-sort" data-admin-dropdown>{mobile_sort_options}</select></label>
             <p class="results-count" id="device-results-count" aria-live="polite">{_count_label(summary['mapCapable'], 'result')}</p>
-            <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear device filters">Clear</button>
+            <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear device filters" hidden>Clear</button>
           </form>
           <div class="device-sticky-header" id="device-sticky-header" aria-hidden="true"><div class="device-sticky-header-scroll"><table class="admin-table" role="presentation">{table_columns}{table_header.replace('<button type="button"', '<button type="button" tabindex="-1"')}</table></div></div>
           <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption>{table_columns}{table_header}<tbody id="device-rows">{rows_html}</tbody></table></div>
@@ -6939,7 +6979,7 @@ def devices_page(
     content = f"""
       {_admin_header(user, csrf_token, active="devices")}
       <main class="dashboard devices-page" id="main-content">
-        <div class="heading-row"><div><h1>Devices</h1></div></div>
+        <div class="heading-row installation-heading"><div><h1>Devices</h1></div>{sync_meta}</div>
         {device_list}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">const terentoAdminDevices = {payload_json};{_devices_script()}</script>
@@ -7157,6 +7197,8 @@ def _devices_script() -> str:
       const support = document.querySelector('#device-support');
       const status = document.querySelector('#device-status');
       const sortButtons = [...document.querySelectorAll('[data-device-sort]')];
+      const mapFilters = [...document.querySelectorAll('[data-device-map-filter]')];
+      const clear = form?.querySelector('[data-filter-clear]');
       const count = document.querySelector('#device-results-count');
       const pagination = document.querySelector('#device-pagination');
       const previous = document.querySelector('#device-previous');
@@ -7277,6 +7319,14 @@ def _devices_script() -> str:
         pageStatus.textContent = `Page ${page + 1} of ${totalPages}`;
         previous.disabled = page === 0;
         next.disabled = page >= totalPages - 1;
+        mapFilters.forEach((button) => {
+          const active = button.dataset.deviceMapFilter === map.value;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        if (clear) clear.hidden = !(search.value.trim() || family.value !== 'all' || map.value !== 'yes'
+          || support.value !== 'all' || status.value !== 'all' || sortKey !== 'model'
+          || sortDirection !== 'ascending' || showNew || publicationReview);
         saveState();
       };
       const reset = () => { showNew = false; publicationReview = false; page = 0; refresh(); };
@@ -7302,6 +7352,10 @@ def _devices_script() -> str:
       });
       form.addEventListener('submit', (event) => event.preventDefault());
       [search, family, map, support, status].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', reset));
+      mapFilters.forEach((button) => button.addEventListener('click', () => {
+        map.value = button.dataset.deviceMapFilter;
+        map.dispatchEvent(new Event('change', {bubbles: true}));
+      }));
       sortButtons.forEach((button) => button.addEventListener('click', () => {
         const key = button.dataset.deviceSort;
         if (sortKey === key) sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
@@ -7691,8 +7745,10 @@ def _diagnostics_script() -> str:
       let selectedFilter = new URLSearchParams(window.location.search).get('state') || filter?.value || quickValues[0] || 'all';
       if (!validFilters.has(selectedFilter)) selectedFilter = 'all';
       if (filter && filterValues.includes(selectedFilter)) filter.value = selectedFilter;
+      const clear = document.querySelector('#diagnostic-filters [data-filter-clear]');
       const syncFilterControls = () => {
         if (filter && filterValues.includes(selectedFilter)) filter.value = selectedFilter;
+        if (clear) clear.hidden = selectedFilter === 'all';
         quickFilters.forEach((button) => {
           const active = button.dataset.historyFilter === selectedFilter;
           button.classList.toggle('active', active);
@@ -8332,8 +8388,9 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .test-data-page{padding-top:30px}.test-data-card{margin-top:0}.test-data-metrics{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 20px}.test-data-release-labels{margin:0;color:var(--secondary);font-size:12px;line-height:18px}.test-data-release-labels code{color:var(--graphite);font:500 11px var(--font-mono);overflow-wrap:anywhere}.test-data-danger-zone{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.95fr);align-items:start;gap:24px;margin-top:22px;padding-top:20px;border-top:1px solid var(--border)}.test-data-danger-zone h3{margin:0;font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}.test-data-danger-zone .table-help{max-width:460px;margin:6px 0 0}.admin-danger-form{display:grid;gap:10px;padding:14px;background:var(--error-surface);border:1px solid var(--status-error-border);border-radius:var(--radius-card)}.admin-danger-form label{display:grid;gap:6px;color:var(--graphite);font-size:12px;font-weight:650}.admin-danger-form code{font:500 11px var(--font-mono)}.admin-danger-form input{width:100%;min-height:var(--admin-control-height);box-sizing:border-box;padding:8px var(--admin-control-padding-x);border:1px solid var(--status-error-border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font:500 var(--admin-control-font-size)/1.2 var(--font-mono)}.admin-danger-form input:focus{border-color:var(--danger);outline:3px solid var(--danger);outline-offset:1px}.danger-button{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--danger);color:var(--interactive-primary-text);font:600 var(--admin-type-button-size)/var(--admin-type-button-line) var(--font-ui)}.danger-button:hover{background:color-mix(in srgb,var(--danger) 86%,var(--graphite))}
 @media(max-width:760px){.test-data-danger-zone{grid-template-columns:1fr;gap:16px}}
 .evidence-table-wrap table{table-layout:fixed}.evidence-table-wrap .evidence-column-model{width:24%}.evidence-table-wrap .evidence-column-variant{width:14%}.evidence-table-wrap .evidence-column-status{width:12%}.evidence-table-wrap .evidence-column-attempts{width:7%}.evidence-table-wrap .evidence-column-successful{width:9%}.evidence-table-wrap .evidence-column-failed{width:7%}.evidence-table-wrap .evidence-column-open-errors{width:11%}.evidence-table-wrap .evidence-column-last-success{width:16%}
-.device-filter-bar{position:sticky;top:var(--admin-topbar-height);z-index:22;align-items:stretch;margin-bottom:0;background:var(--surface);border-radius:var(--radius-card) var(--radius-card) 0 0;box-shadow:0 2px 0 color-mix(in srgb,var(--graphite) 7%,transparent)}
-.device-table-wrap{overflow:visible;border-top:0;border-radius:0 0 var(--radius-card) var(--radius-card)}
+/* Same filter bar as Installations (owner decision 2026-10-06); it stays sticky above the table. */
+.device-filter-bar{position:sticky;top:var(--admin-topbar-height);z-index:22;align-items:stretch}
+.device-table-wrap{overflow:visible}
 .device-sticky-header{display:none}
 .device-table-wrap table,.device-sticky-header table{min-width:0;table-layout:fixed}
 .device-column-model{width:20%}.device-column-variant{width:18%}.device-column-maps{width:9%}.device-column-authorization{width:14%}.device-column-status{width:11%}.device-column-attempts{width:9%}.device-column-successful{width:8%}.device-column-last-success{width:11%}
@@ -9176,8 +9233,8 @@ main.overview-page>.overview-primary-grid+.overview-composition-grid,
 .model-evidence-grid>.model-evidence-history>*+*{margin-top:var(--admin-card-gap)}
 :is(.overview-primary-grid,.overview-composition-grid,.model-evidence-grid,.model-evidence-summary,.model-information-columns,.map-statistics-coverage-layout,.provider-dashboard-grid,.provider-state-grid,.provider-technical-grid,.support-report-grid,.support-report-main,.support-report-side,.diagnostic-secondary-grid){gap:var(--admin-card-gap)}
 main.dashboard :is(.overview-primary-grid,.overview-composition-grid,.model-evidence-grid,.model-evidence-summary,.model-information-columns,.map-statistics-coverage-layout,.provider-dashboard-grid,.provider-state-grid,.provider-technical-grid,.support-report-grid,.support-report-main,.support-report-side,.diagnostic-secondary-grid)>*{margin-top:0;margin-bottom:0}
-.filter-bar:not(.device-filter-bar):has(~.table-wrap){margin-bottom:var(--admin-filter-table-gap)}
-@media(max-width:760px){.device-filter-bar{margin-bottom:var(--admin-filter-table-gap)}}
+.filter-bar:has(~.table-wrap){margin-bottom:var(--admin-filter-table-gap)}
+@media(max-width:1100px) and (min-width:761px){.device-sticky-header{border-radius:var(--radius-card) var(--radius-card) 0 0}.device-table-wrap{border-top:0;border-top-left-radius:0;border-top-right-radius:0}}
 @media(max-width:700px){
   :root{--admin-card-gap:16px}
   main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-card-gap)}
@@ -9400,7 +9457,7 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script() + _admin_dropdown_script())
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_quick_select_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script() + _admin_dropdown_script())
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
@@ -9625,7 +9682,7 @@ def _admin_mobile_script() -> str:
       }
       const forms = document.querySelectorAll('#evidence-filters, #device-filters');
       forms.forEach(form => {
-        const labels = [...form.children].filter(e => e.tagName === 'LABEL' && !e.classList.contains('filter-search'));
+        const labels = [...form.children].filter(e => e.tagName === 'LABEL' && !e.hidden && !e.classList.contains('filter-search'));
         if (!labels.length) return;
         const extra = document.createElement('div'); extra.className = 'mobile-filter-options'; extra.id = form.id + '-extra';
         const button = document.createElement('button'); button.type = 'button'; button.className = 'mobile-filter-toggle secondary-button';
@@ -9659,6 +9716,33 @@ def _admin_mobile_script() -> str:
       labelTables();
       const main = document.querySelector('main');
       if (main) new MutationObserver(labelTables).observe(main, {childList:true, subtree:true});
+    })();"""
+
+
+def _admin_quick_select_script() -> str:
+    """Keep ``_quick_select_filter`` buttons and their hidden select in sync."""
+    return r"""(() => {
+      document.querySelectorAll('[data-quick-select]').forEach((group) => {
+        const select = document.getElementById(group.dataset.quickSelect);
+        if (!select) return;
+        const buttons = [...group.querySelectorAll('[data-quick-value]')];
+        const sync = () => buttons.forEach((button) => {
+          const active = button.dataset.quickValue === select.value;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        buttons.forEach((button) => button.addEventListener('click', () => {
+          if (select.value === button.dataset.quickValue) return;
+          select.value = button.dataset.quickValue;
+          sync();
+          select.dispatchEvent(new Event('input', {bubbles: true}));
+          select.dispatchEvent(new Event('change', {bubbles: true}));
+        }));
+        select.addEventListener('change', sync);
+        select.form?.addEventListener('change', sync);
+        select.form?.addEventListener('terento-admin-clear-filters', () => setTimeout(sync));
+        sync();
+      });
     })();"""
 
 

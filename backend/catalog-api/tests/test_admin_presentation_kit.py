@@ -98,11 +98,11 @@ class AdminFilterDropdownTests(unittest.TestCase):
     """Owner decision 2026-10-06: filter selects open one styled listbox below the field."""
 
     FILTER_SELECTS = {
-        "overview-period", "health-status", "installation-page-size", "evidence-status", "evidence-sort",
-        "provider-source-filter", "provider-source-page-size", "provider-package-filter",
-        "provider-package-page-size", "map-statistics-range", "map-statistics-provider",
+        "overview-period", "installation-page-size", "evidence-status", "evidence-sort",
+        "provider-source-page-size",
+        "provider-package-page-size", "map-statistics-provider",
         "map-statistics-event", "map-statistics-outcome", "diagnostic-history-page-size",
-        "diagnostic-state-filter", "device-map", "device-family", "device-support", "device-status",
+        "diagnostic-state-filter", "device-family", "device-support", "device-status",
         "device-mobile-sort",
     }
 
@@ -140,9 +140,9 @@ class AdminFilterDropdownTests(unittest.TestCase):
                 self.assertNotIn("data-admin-dropdown", dialog, name)
         # Marked selects the preview fixtures render (pagination needs >25 rows,
         # provider sources need download links).
-        self.assertTrue({"overview-period", "health-status", "evidence-status", "evidence-sort",
-                         "provider-package-filter", "map-statistics-range", "diagnostic-state-filter",
-                         "device-map", "device-mobile-sort"} <= marked, marked)
+        self.assertTrue({"overview-period", "evidence-status", "evidence-sort",
+                         "provider-package-page-size", "map-statistics-provider", "diagnostic-state-filter",
+                         "device-mobile-sort"} <= marked, marked)
 
     def test_dropdown_keeps_the_native_select_as_source_of_truth(self):
         from terento_catalog.admin import _admin_dropdown_script

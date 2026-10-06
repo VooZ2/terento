@@ -239,7 +239,7 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
   const logo=fs.readFileSync(path.join(__dirname,'../../../brand/logo/logo.svg'));
   await dropdown.route('https://terento.app/**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:logo}));
   const dropdownErrors=[];dropdown.on('pageerror',e=>dropdownErrors.push(e.message));
-  const expected={overview:['overview-period'],installations:['evidence-status','evidence-sort'],devices:['device-map','device-mobile-sort','device-family','device-support','device-status'],statistics:['map-statistics-range','map-statistics-provider','map-statistics-event','map-statistics-outcome'],providers:[],provider:['provider-package-filter','provider-package-page-size'],health:['health-status'],diagnostics:[],'support-reports':[],device:['diagnostic-state-filter']};
+  const expected={overview:['overview-period'],installations:['evidence-status','evidence-sort'],devices:['device-family','device-support','device-status','device-mobile-sort'],statistics:['map-statistics-provider','map-statistics-event','map-statistics-outcome'],providers:[],provider:['provider-package-page-size'],health:[],diagnostics:[],'support-reports':[],device:['diagnostic-state-filter']};
   const navigates=new Set(['overview-period','map-statistics-range','map-statistics-provider']);
   const exercised=new Set();
   const settle=async name=>{if(name==='overview')await dropdown.waitForURL(/timeZone=/);await dropdown.waitForTimeout(50);};
@@ -276,7 +276,7 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
      assert.equal(open.optionSize,open.buttonSize,`${name}/${id}: options match the field size`);
      assert.equal(open.selectedCheck,'visible',`${name}/${id}: selected option shows its check`);
      assert.equal(await dropdown.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}/${width}/${id}: open listbox causes no page overflow`);
-     if(name==='installations'&&id==='evidence-status'||name==='overview'||name==='statistics'&&id==='map-statistics-range')await dropdown.screenshot({path:`${output}/dropdown-${name}-${width}.png`});
+     if(name==='installations'&&id==='evidence-status'||name==='overview'||name==='statistics'&&id==='map-statistics-provider')await dropdown.screenshot({path:`${output}/dropdown-${name}-${width}.png`});
      await dropdown.keyboard.press('Escape');
      open=await geometry(id);
      assert.equal(open.hidden,true,`${name}/${id}: Escape closes`);assert.equal(open.focused,true,`${name}/${id}: Escape returns focus`);
@@ -326,7 +326,7 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
      }
     }
     if(name==='health'){
-     await control('health-status').click();await dropdown.getByRole('option',{name:/^Failed/}).click();
+     await dropdown.locator("[data-quick-select='health-status'] [data-quick-value='FAILED']").click();
      assert.equal(await dropdown.locator('[data-health-status]:not([hidden])').count(),5,'Health status filter keeps working');
     }
     if(name==='overview'){
@@ -336,7 +336,7 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     }
     if(name==='statistics'){
      await dropdown.goto(base+'/admin/statistics.html');await settle(name);
-     await control('map-statistics-range').click();await dropdown.getByRole('option',{name:'Last 7 days',exact:true}).click();
+     await dropdown.locator("[data-quick-select='map-statistics-range'] [data-quick-value='7d']").click();
      await dropdown.waitForURL(/period=7d/);
     }
     assert.equal(await dropdown.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}/${width}: no page overflow`);
@@ -413,7 +413,8 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
  assert.equal(await page.locator('#installation-empty').innerText(),'No matching models.');
  assert.equal(await page.locator('#installation-table').isVisible(),false);
  assert.equal(await page.locator('[data-filter-clear]').isVisible(),true);
- await page.goto(base+'/admin/health.html');await page.locator('#health-status').selectOption('FAILED');
+ await page.goto(base+'/admin/health.html');await page.locator("[data-quick-select='health-status'] [data-quick-value='FAILED']").click();
+ assert.equal(await page.locator("[data-quick-value='FAILED']").getAttribute('aria-pressed'),'true');
  assert.equal(await page.locator('[data-health-status]:not([hidden])').count(),5);
  await page.locator('#health-search').fill('Check 2');assert.equal(await page.locator('[data-health-status]:not([hidden])').count(),1);
  const healthTechnical=page.locator('[data-health-status]:not([hidden]) details').first();

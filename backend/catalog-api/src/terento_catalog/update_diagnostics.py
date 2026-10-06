@@ -313,11 +313,11 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
         f"<section class='model-page-section admin-card' id='updates' aria-labelledby='update-history-title'><header class='admin-card-head'><h2 id='update-history-title'>{title}</h2>"
         f"{_scope_chip('all')}</header>"
     )
-    result += "<nav class='quick-filter-group' aria-label='Filter update reports'>"
-    for value, label in (('', 'All'), ('succeeded', 'Successful'), ('failed', 'Failed'), ('not_started', 'Blocked before writing')):
+    result += "<div class='filter-bar diagnostic-filter-bar'><nav class='quick-filter-group' aria-label='Filter update reports'>"
+    for value, label in _UPDATE_OUTCOME_FILTERS:
         active = selected == value
         result += f"<a class='quick-filter{' active' if active else ''}' href='{html.escape(url(outcome=value, offset=0), quote=True)}'{' aria-current="true"' if active else ''}>{label}</a>"
-    result += "</nav><div class='table-wrap'><table class='diagnostic-list-table mobile-record-table'><caption class='sr-only'>Reported map update results</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody>"
+    result += "</nav></div><div class='table-wrap'><table class='diagnostic-list-table mobile-record-table'><caption class='sr-only'>Reported map update results</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody>"
     for row in data.get('rows', []):
         payload = row.get('payload') if isinstance(row.get('payload'), dict) else {}
         link = '/admin/update-diagnostics?' + urlencode({'diagnosticId': str(row['event_id'])})
@@ -332,7 +332,8 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
     return result + '</nav></section>'
 
 
-_UPDATE_OUTCOME_FILTERS = (('', 'All'), ('succeeded', 'Successful'), ('failed', 'Failed'), ('not_started', 'Blocked before writing'))
+# Same order and labels as the Installation history quick filters (owner decision 2026-10-06).
+_UPDATE_OUTCOME_FILTERS = (('', 'All'), ('failed', 'Failed'), ('not_started', 'Blocked'), ('succeeded', 'Successful'))
 
 
 def _embedded_update_history_markup(data: dict[str, Any], url: Any) -> str:
@@ -362,7 +363,10 @@ def _embedded_update_history_markup(data: dict[str, Any], url: Any) -> str:
         "<section class='diagnostics-detail-section model-page-section' id='updates' aria-labelledby='update-history-title'>"
         f"<div class='section-heading'><div>{heading}</div></div>"
         "<nav class='filter-bar diagnostic-filter-bar update-history-filters' aria-label='Filter update history'>"
-        f"<div class='quick-filter-group'>{filters}</div></nav>"
+        f"<div class='quick-filter-group'>{filters}</div>"
+        + (f"<a class='secondary-button filter-clear' href='{html.escape(url(outcome='', offset=0), quote=True)}' "
+           "aria-label='Clear update history filters'>Clear</a>" if selected else '')
+        + "</nav>"
     )
     if rows:
         result += (

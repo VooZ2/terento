@@ -124,10 +124,12 @@ class HealthPageTests(unittest.TestCase):
         for state, label in (("FAILED", "Failed"), ("WARNING", "Degraded"), ("UNKNOWN", "No data"), ("HEALTHY", "Healthy")):
             self.assertIn(f"data-health-filter='{state}'", tiles)
             self.assertIn(f">{label}</span>", tiles)
-        options = body.split("id='health-status'", 1)[1].split("</select>", 1)[0]
-        self.assertIn(">Degraded · ", options)
-        self.assertIn(">No data · ", options)
-        self.assertNotIn("Warning", options)
+        # Status filter is an Installations-style quick-filter group (owner decision 2026-10-06).
+        quick = body.split("data-quick-select='health-status'>", 1)[1].split("</div>", 1)[0]
+        for value, label in (("all", "All"), ("FAILED", "Failed"), ("WARNING", "Degraded"), ("UNKNOWN", "No data"), ("HEALTHY", "Healthy")):
+            self.assertIn(f"data-quick-value='{value}' aria-pressed='{'true' if value == 'all' else 'false'}'>{label}</button>", quick)
+        self.assertNotIn("Warning", quick)
+        self.assertNotIn("data-admin-dropdown", body.split("id='health-filters'", 1)[1].split("</form>", 1)[0])
         main = body.split("<main", 1)[1]
         self.assertLess(main.index("id='health-attention-title'"), main.index("data-health-group-card='service'"))
         problems = main.split("id='health-attention-title'", 1)[1].split("</section>", 1)[0]
