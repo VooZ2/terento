@@ -20,16 +20,15 @@ Terento 1.0.0-rc.1 is the first release candidate for Terento 1.0.0, the free, o
 - Update and Remove show measured progress throughout.
 - Your Mac stays awake during map transfers, and Terento asks before quitting while it writes to the watch.
 - The safety check before writing is faster on watches with a lot of music or other non-map content.
-- On a watch without Terento maps yet, the map list recommends a map for your region and shows each map's download size and estimated download time.
+- The map list shows each map's download size and estimated download time. On a watch without Terento maps yet, it also recommends a map for your region.
 
-<!-- TODO(fast removal, variant A): add the user-facing fast-removal note after terento/app-sampled-removal is merged. -->
+- Removing a map installed with this version, and removing the old version during an Update of such a map, now takes seconds instead of minutes. Terento checks the exact map object and a recorded fingerprint of the map it wrote and verified. Maps installed with earlier versions and maps not installed by Terento keep the full check.
 
 ## Help and reports
 
-- Errors and hints link to the matching section of the new Troubleshooting guide on terento.app.
+- Error dialogs link to the matching section of the new Troubleshooting guide on terento.app, and Help → Troubleshooting opens the guide.
 - Send report to Terento sends a sanitised failure report without a GitHub account. You review exactly what is sent, and the report is sent only when you choose Send. Reporting on GitHub remains available.
 
-<!-- TODO(Help links): update this section after the Help-link cleanup on terento/app-sampled-removal is merged. -->
 
 ## Safer catalog and reporting
 
