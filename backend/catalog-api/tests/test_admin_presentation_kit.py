@@ -214,6 +214,36 @@ class AdminChartValueStripTests(unittest.TestCase):
         self.assertIn(".overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}", ADMIN_STYLES)
 
 
+class AdminMapsMobileTests(unittest.TestCase):
+    """Maps at ≤600 px: compact KPI row and collapsible long cards."""
+
+    def test_section_card_can_start_collapsed_on_mobile_only(self):
+        card = _section_card("Top maps", "<p>rows</p>", card_id="maps-by-provider", mobile_collapse=True)
+        self.assertIn(" data-mobile-collapse>", card)
+        self.assertIn("<button type='button' class='secondary-button admin-card-toggle' data-mobile-collapse-toggle "
+                      "aria-expanded='true' aria-controls='maps-by-provider' hidden>Hide<span class='sr-only'> Top maps</span></button></header>", card)
+        self.assertNotIn("data-mobile-collapse", _section_card("Top maps", "", card_id="plain"))
+        self.assertIn("[data-mobile-collapse][data-mobile-collapsed]>:not(.admin-card-head){display:none}", ADMIN_STYLES)
+        self.assertIn(".map-statistics-metrics>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}", ADMIN_STYLES)
+        mobile = ADMIN_STYLES.split("@media(max-width:600px){\n  .map-statistics-metrics>.admin-metric-row", 1)[1].split("\n}", 1)[0]
+        self.assertIn("[data-mobile-collapse][data-mobile-collapsed]", mobile)
+
+    def test_maps_page_marks_its_long_lower_cards_collapsible(self):
+        from terento_catalog.admin import _admin_mobile_collapse_script, map_statistics_page
+        rows = [{"provider_id": "opentopomap", "map_package_id": "lt", "region": "LT", "region_country": "LT",
+                 "component_kind": "main", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED",
+                 "operation_count": 3, "event_count": 3, "last_occurred_at": "2026-09-18T09:39:00Z"}]
+        body = map_statistics_page({"rows": rows}, [{"id": "opentopomap", "name": "OpenTopoMap"}],
+                                   {"username": "operator"}, "csrf").decode()
+        collapsible = re.findall(r"<section class='admin-card[^']*' id='([^']+)'[^>]* data-mobile-collapse>", body)
+        self.assertEqual(collapsible, ["top-countries", "map-statistics-provider-table", "maps-by-provider"])
+        self.assertNotIn("id='map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-card-title' data-mobile-collapse", body)
+        script = _admin_mobile_collapse_script()
+        self.assertIn("matchMedia('(max-width: 600px)')", script)
+        self.assertIn("'hashchange'", script)
+        self.assertIn(script, body)
+
+
 class AdminComponentKitTests(unittest.TestCase):
     def test_scope_chip_is_visible_text_for_every_scope(self):
         self.assertEqual(_scope_chip("7d"), "<span class='admin-scope-chip' data-scope='period'>Last 7 days</span>")

@@ -480,9 +480,22 @@ def _metric_row(tiles: list[str], *, label: str, css: str = "") -> str:
 def _section_card(
     title: str, body: str, *, card_id: str, action: tuple[str, str] | None = None,
     scope: str | None = None, css: str = "", glossary: str | None = None,
-    heading_tag: str = "h2", extra_attributes: str = "",
+    heading_tag: str = "h2", extra_attributes: str = "", mobile_collapse: bool = False,
 ) -> str:
-    """A card with a 1–2 word title, an optional scope chip and one action link."""
+    """A card with a 1–2 word title, an optional scope chip and one action link.
+
+    ``mobile_collapse`` lets a long card start collapsed at ≤600 px behind a
+    Show/Hide button (the shared mobile-collapse script); without script or on
+    wider screens it stays fully open.
+    """
+    if mobile_collapse:
+        extra_attributes += " data-mobile-collapse"
+    toggle_markup = (
+        f"<button type='button' class='secondary-button admin-card-toggle' data-mobile-collapse-toggle "
+        f"aria-expanded='true' aria-controls='{html.escape(card_id, quote=True)}' hidden>"
+        f"Hide<span class='sr-only'> {html.escape(title)}</span></button>"
+        if mobile_collapse else ""
+    )
     action_markup = (
         f"<a class='admin-card-action section-link' href='{html.escape(action[0], quote=True)}'>"
         f"{html.escape(action[1])}&nbsp;{_admin_icon('arrow-right')}</a>"
@@ -493,7 +506,7 @@ def _section_card(
         f"{html.escape(title)}</{heading_tag}>"
         + (_glossary_link(glossary) if glossary else "")
         + (_scope_chip(scope) if scope else "")
-        + action_markup + "</header>"
+        + action_markup + toggle_markup + "</header>"
     )
     return (
         f"<section class='admin-card{(' ' + css) if css else ''}' id='{html.escape(card_id, quote=True)}' "
@@ -4242,7 +4255,7 @@ def map_statistics_page(
     coverage = f"""
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installs by country'>
           {_section_card('Countries', "<p class='table-help' id='map-statistics-world-map-status'>Successful installs</p><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', scope=selected_period, css='provider-card map-statistics-world-map-card')}
-          {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', scope=selected_period, css='provider-card map-statistics-popularity')}
+          {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', scope=selected_period, css='provider-card map-statistics-popularity', mobile_collapse=True)}
         </section>"""
     stream_buttons = "".join(
         f"<button type='button' class='quick-filter{' active' if value == 'installs' else ''}' data-provider-stream='{value}' aria-pressed='{'true' if value == 'installs' else 'false'}'>{label}</button>"
@@ -4255,12 +4268,13 @@ def map_statistics_page(
         "<thead><tr><th scope='col'>Provider</th><th scope='col' class='column-number'>Successful</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-date' id='provider-stream-date'>Last success</th></tr></thead>"
         "<tbody id='provider-statistic-rows'></tbody></table></div>",
         card_id="map-statistics-provider-table", scope=selected_period,
-        css="provider-card map-statistics-provider-table",
+        css="provider-card map-statistics-provider-table", mobile_collapse=True,
     )
     ranking = _section_card(
         "Top maps",
         "<label class='popularity-search-label' for='all-maps-search'>Search</label><input type='search' id='all-maps-search' placeholder='Map or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top maps</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' id='all-maps-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div>",
         card_id="maps-by-provider", scope=selected_period, css="provider-card map-statistics-ranking",
+        mobile_collapse=True,
     )
     events = (
         f"<section class='admin-card provider-card map-events-card'><details class='admin-disclosure' id='map-statistics-event-detail'{event_detail_open}>"
@@ -8787,6 +8801,15 @@ ADMIN_STYLES += """
 .overview-chart-values-date{color:var(--graphite)}
 .overview-chart-values-hint{color:var(--secondary)}
 .overview-trend-chart .overview-chart-group{cursor:pointer}
+@media(max-width:600px){
+  .map-statistics-metrics>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .map-statistics-metrics .admin-metric{min-width:0}
+  .map-statistics-metrics .admin-metric-value{font-size:20px;line-height:26px}
+  .map-statistics-metrics .admin-metric-meta{flex-wrap:wrap;font-size:11px}
+  .map-statistics-metrics .admin-metric-label{font-size:12px}
+  [data-mobile-collapse][data-mobile-collapsed]>:not(.admin-card-head){display:none}
+  [data-mobile-collapse][data-mobile-collapsed]>.admin-card-head{margin-bottom:0}
+}
 .overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}
 """
 
@@ -8808,7 +8831,7 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script())
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_mobile_collapse_script())
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
@@ -8858,6 +8881,47 @@ def _admin_chart_values_script() -> str:
         const group = target(event);
         if (group && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); show(group); }
       });
+    })();"""
+
+
+def _admin_mobile_collapse_script() -> str:
+    """Long cards marked ``data-mobile-collapse`` start collapsed at ≤600 px;
+    the Show/Hide button and links into the card reopen them."""
+    return r"""(() => {
+      const narrow = matchMedia('(max-width: 600px)');
+      const set = (card, open) => {
+        const button = card.querySelector('[data-mobile-collapse-toggle]');
+        card.toggleAttribute('data-mobile-collapsed', !open);
+        if (!button) return;
+        button.setAttribute('aria-expanded', String(open));
+        button.firstChild.textContent = open ? 'Hide' : 'Show';
+      };
+      const adapt = () => {
+        document.querySelectorAll('[data-mobile-collapse]').forEach((card) => {
+          const button = card.querySelector('[data-mobile-collapse-toggle]');
+          if (button) button.hidden = !narrow.matches;
+          if (!narrow.matches) set(card, true);
+          else if (!card.dataset.mobileCollapseReady) set(card, false);
+          card.dataset.mobileCollapseReady = narrow.matches ? 'true' : '';
+        });
+      };
+      const reveal = () => {
+        let id;
+        try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+        const target = id && document.getElementById(id);
+        const card = target && target.closest('[data-mobile-collapse]');
+        if (card) set(card, true);
+      };
+      document.addEventListener('click', (event) => {
+        const button = event.target instanceof Element ? event.target.closest('[data-mobile-collapse-toggle]') : null;
+        const card = button && button.closest('[data-mobile-collapse]');
+        if (card) set(card, card.hasAttribute('data-mobile-collapsed'));
+      });
+      narrow.addEventListener('change', adapt);
+      window.addEventListener('terento-admin-content-changed', adapt);
+      window.addEventListener('hashchange', reveal);
+      adapt();
+      reveal();
     })();"""
 
 

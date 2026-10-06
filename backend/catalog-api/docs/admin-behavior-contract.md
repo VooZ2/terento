@@ -427,9 +427,13 @@ period (each with failed count, rate and a visible period chip) with the downloa
 purpose breakdown and, unless the period is All time, one `All time` line with
 the all-time totals; then the Downloads and Installs trend cards; then Countries
 (world map) and Top countries; then Providers; then Top maps; then the collapsed
-Events disclosure. These analytics are not placed in disclosures. The world map
-remains visible and Top countries shows up to 10 rows from the existing country
-ranking. A period without rows shows measured zero tiles and an empty-scope note;
+Events disclosure. These analytics are not placed in disclosures on wider
+screens. At ≤600 px the three tiles form one compact three-column row, and Top
+countries, Providers and Top maps start collapsed behind a Show/Hide button
+(`aria-expanded`, card title in its accessible name) so the page stays short;
+a link to an element inside a collapsed card opens it, and without script or
+above 600 px every card stays open. The world map remains visible and Top
+countries shows up to 10 rows from the existing country ranking. A period without rows shows measured zero tiles and an empty-scope note;
 it never shows populated all-time numbers as if they were the period. Diagnostic
 linkage coverage may remain in the private API contract but is not shown as an
 Admin block. Events uses human labels (event type, provider, map name) with the
