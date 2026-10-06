@@ -42,7 +42,8 @@
     "app/TerentoCore/Tests/run-app-installation-operation-diagnostics-tests.sh",
     "app/TerentoCore/Tests/run-app-installation-retry-tests.sh",
     "app/TerentoCore/Tests/run-app-funnel-telemetry-tests.sh",
-    "app/TerentoCore/Tests/run-app-troubleshooting-help-tests.sh"
+    "app/TerentoCore/Tests/run-app-troubleshooting-help-tests.sh",
+    "app/TerentoCore/Tests/run-app-time-remaining-tests.sh"
   ],
   "native": [
     "app/TerentoCore/Tests/run-native-compatibility-status-client-tests.sh",

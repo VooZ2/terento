@@ -81,6 +81,8 @@ final class MapLifecycleViewModel: ObservableObject {
     private var lifecycleEpoch: UInt64 = 0
     private var inFlightOperationCount = 0
     private var operationTasks: [String: Task<Void, Never>] = [:]
+    private var timeEstimators: [String: (phase: MapLifecycleOperationPhase, estimator: RemainingTimeEstimator)] = [:]
+    private var timeRemainingEstimates: [String: RemainingTimeEstimate] = [:]
 
     init(
         deviceEngine: DeviceEngine,
@@ -135,11 +137,18 @@ final class MapLifecycleViewModel: ObservableObject {
         operationTasks.values.forEach { $0.cancel() }
         pendingConfirmation = nil
         externalSelection = nil
+        timeEstimators.removeAll()
+        timeRemainingEstimates.removeAll()
         operations.removeAll()
     }
 
     func operation(for itemID: String) -> MapLifecycleOperationState? {
         operations[itemID]
+    }
+
+    /// Time left for a measured Update/Remove phase of this map, if any.
+    func timeRemaining(for itemID: String) -> RemainingTimeEstimate? {
+        timeRemainingEstimates[itemID]
     }
 
     func availability(for item: MapLifecycleItem) -> MapLifecycleActionAvailability {
@@ -983,6 +992,16 @@ final class MapLifecycleViewModel: ObservableObject {
         progress: SafeUpdateProgress?,
         message: String
     ) {
+        // Derived before `operations` publishes, so both change together.
+        var estimator = timeEstimators[itemID]?.phase == phase
+            ? timeEstimators[itemID]!.estimator : RemainingTimeEstimator()
+        if let units = LifecycleRemainingTimeUnits.units(action: action, phase: phase, progress: progress) {
+            timeRemainingEstimates[itemID] = estimator.update(completed: units.completed, total: units.total)
+        } else {
+            estimator.reset()
+            timeRemainingEstimates[itemID] = nil
+        }
+        timeEstimators[itemID] = (phase, estimator)
         operations[itemID] = MapLifecycleOperationState(
             itemID: itemID,
             action: action,

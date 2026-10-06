@@ -1278,6 +1278,7 @@ struct ConnectScreen: View {
             item: item,
             availability: lifecycleViewModel.availability(for: item),
             operation: lifecycleViewModel.operation(for: item.id),
+            timeRemaining: lifecycleViewModel.timeRemaining(for: item.id),
             isLifecycleBusy: mapManagementActionsBusy,
             onRemove: { lifecycleViewModel.requestRemove(itemID: item.id) },
             onUpdate: { lifecycleViewModel.requestUpdate(itemID: item.id) }
@@ -2105,6 +2106,7 @@ struct ConnectScreen: View {
                 bytes: mapEngine.acquisitionProgress.map {
                     (current: $0.bytesDownloaded, total: $0.totalBytes, speed: $0.bytesPerSecond)
                 },
+                timeRemaining: mapEngine.downloadTimeRemaining,
                 isLast: false
             )
 
@@ -2133,6 +2135,7 @@ struct ConnectScreen: View {
                 bytes: mapEngine.installationProgress.map {
                     (current: $0.bytesTransferred, total: $0.totalBytes, speed: $0.bytesPerSecond)
                 },
+                timeRemaining: mapEngine.installTimeRemaining,
                 isLast: false
             )
 
@@ -2146,6 +2149,7 @@ struct ConnectScreen: View {
                     ? mapEngine.installationPhaseProgress
                     : nil,
                 bytes: nil,
+                timeRemaining: mapEngine.finishingTimeRemaining,
                 isLast: true
             )
         }
@@ -2164,6 +2168,7 @@ struct ConnectScreen: View {
         state: InstallationStepState,
         progress: Double?,
         bytes: (current: UInt64, total: UInt64, speed: Double)?,
+        timeRemaining: RemainingTimeEstimate? = nil,
         isLast: Bool
     ) -> some View {
         HStack(alignment: .top, spacing: 12) {
@@ -2243,13 +2248,18 @@ struct ConnectScreen: View {
                     .font(.terentoUI(size: 11, weight: .medium))
                     .foregroundStyle(TerentoColors.secondaryText)
                 }
+
+                if state == .active, let timeRemaining {
+                    TimeRemainingLabel(estimate: timeRemaining)
+                }
             }
             .padding(.bottom, isLast ? 0 : 16)
         }
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title) — \(installationStepAccessibilityLabel(for: state))")
-        .accessibilityValue(installationStepAccessibilityValue(progress: progress, bytes: bytes))
+        .accessibilityValue(installationStepAccessibilityValue(progress: progress, bytes: bytes,
+            timeRemaining: state == .active ? timeRemaining?.text(at: Date()) : nil))
     }
 
     private func installationStepMarker(for state: InstallationStepState) -> some View {
@@ -2406,15 +2416,19 @@ struct ConnectScreen: View {
 
     private func installationStepAccessibilityValue(
         progress: Double?,
-        bytes: (current: UInt64, total: UInt64, speed: Double)?
+        bytes: (current: UInt64, total: UInt64, speed: Double)?,
+        timeRemaining: String? = nil
     ) -> String {
+        let value: String
         if let progress {
-            return "\(Int(progress * 100)) percent"
+            value = "\(Int(progress * 100)) percent"
+        } else if let bytes, bytes.total > 0 {
+            value = "\(formatBytes(bytes.current)) of \(formatBytes(bytes.total))"
+        } else {
+            value = ""
         }
-        if let bytes, bytes.total > 0 {
-            return "\(formatBytes(bytes.current)) of \(formatBytes(bytes.total))"
-        }
-        return ""
+        guard let timeRemaining else { return value }
+        return value.isEmpty ? timeRemaining : "\(value), \(timeRemaining)"
     }
 
     private var downloadStepDetail: String {
@@ -4177,6 +4191,7 @@ private struct ManageMapRow: View {
     let item: MapLifecycleItem
     let availability: MapLifecycleActionAvailability
     let operation: MapLifecycleOperationState?
+    var timeRemaining: RemainingTimeEstimate? = nil
     let isLifecycleBusy: Bool
     let onRemove: () -> Void
     let onUpdate: () -> Void
@@ -4215,8 +4230,14 @@ private struct ManageMapRow: View {
             if let operation, operationIsActive {
                 VStack(alignment: .leading, spacing: 4) {
                     ManageOperationProgress(operation: operation)
-                    if let topic = TroubleshootingHelp.topic(for: operation.phase) {
-                        TerentoHelpLink(topic: topic, size: 11)
+                    HStack(spacing: 10) {
+                        if let timeRemaining {
+                            TimeRemainingLabel(estimate: timeRemaining, size: 10)
+                        }
+                        Spacer(minLength: 0)
+                        if let topic = TroubleshootingHelp.topic(for: operation.phase) {
+                            TerentoHelpLink(topic: topic, size: 11)
+                        }
                     }
                 }
                 .frame(width: InstallationTimelineLayout.manageProgressWidth, alignment: .leading)

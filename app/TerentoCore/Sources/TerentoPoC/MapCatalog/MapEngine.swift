@@ -315,6 +315,14 @@ final class MapEngine: ObservableObject {
     private var ownershipManifestDeviceKeys: Set<String> = []
     private var preferredOwnershipManifestDeviceKey: String?
     private var installationSpeedEstimator = TransferSpeedEstimator()
+    /// Time left for the measured download, write and read-back steps. They
+    /// change together with the published progress they are derived from.
+    private(set) var downloadTimeRemaining: RemainingTimeEstimate?
+    private(set) var installTimeRemaining: RemainingTimeEstimate?
+    private(set) var finishingTimeRemaining: RemainingTimeEstimate?
+    private var downloadTimeEstimator = RemainingTimeEstimator()
+    private var installTimeEstimator = RemainingTimeEstimator()
+    private var finishingTimeEstimator = RemainingTimeEstimator()
     private var installationAuthorizationGranted = false
     private var deviceInstallationAuthorization: InstallationAuthorizationState = .blocked(.catalogUnavailable)
     private var customMapImportAcknowledged = false
@@ -1241,6 +1249,7 @@ final class MapEngine: ObservableObject {
         // The cancelled task records its own cancelled diagnostic and the
         // download statistics outcome through the existing paths.
         cancelActiveTaskAndCleanupWorkspaces()
+        resetTimeRemaining()
         state = .scanned
         installationPhase = .idle
         installationPhaseProgress = nil
@@ -1373,6 +1382,7 @@ final class MapEngine: ObservableObject {
     }
 
     fileprivate func receiveAcquisitionState(_ state: MapAcquisitionState) {
+        if state != .downloading { resetTimeRemaining() }
         acquisitionState = state
         installationPhaseProgressIsMeasured = false
 
@@ -1410,7 +1420,20 @@ final class MapEngine: ObservableObject {
     }
 
     fileprivate func receiveDownloadProgress(_ progress: MapDownloadProgress) {
+        downloadTimeRemaining = installationPhase == .downloading
+            ? downloadTimeEstimator.update(completed: Double(progress.bytesDownloaded),
+                                           total: Double(progress.totalBytes))
+            : nil
         acquisitionProgress = progress
+    }
+
+    private func resetTimeRemaining() {
+        downloadTimeEstimator.reset()
+        installTimeEstimator.reset()
+        finishingTimeEstimator.reset()
+        downloadTimeRemaining = nil
+        installTimeRemaining = nil
+        finishingTimeRemaining = nil
     }
 
     fileprivate func receiveInstallationProgress(_ progress: TransferProgress) {
@@ -1420,6 +1443,8 @@ final class MapEngine: ObservableObject {
             bytesPerSecond: installationSpeedEstimator.update(bytes: progress.bytesTransferred)
         )
         if installationPhase == .finishing {
+            finishingTimeRemaining = finishingTimeEstimator.update(
+                completed: Double(progress.bytesTransferred), total: Double(progress.totalBytes))
             finishingTransferProgress = updatedProgress
             if progress.totalBytes > 0 {
                 let readBackFraction = progress.fractionCompleted
@@ -1431,11 +1456,16 @@ final class MapEngine: ObservableObject {
                 installationPhaseProgressIsMeasured = true
             }
         } else {
+            installTimeRemaining = installationPhase == .installing
+                ? installTimeEstimator.update(completed: Double(progress.bytesTransferred),
+                                              total: Double(progress.totalBytes))
+                : nil
             installationProgress = updatedProgress
         }
     }
 
     fileprivate func receiveInstallationPhase(_ phase: InstallationProcessPhase) {
+        if phase != installationPhase { resetTimeRemaining() }
         installationPhase = phase
         installationPhaseProgressIsMeasured = false
 
@@ -1629,6 +1659,7 @@ final class MapEngine: ObservableObject {
         }
 
         state = .acquiringArtifact
+        resetTimeRemaining()
         installationPhase = .preparing
         installationPhaseProgress = 0
         acquisitionState = .resolvingPackage
