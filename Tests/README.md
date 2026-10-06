@@ -25,8 +25,9 @@ device telemetry; the audit must pass them through API validation locally.
 
 | Change | Required checks |
 | --- | --- |
-| Ordinary Markdown, including component and contracts README | shared/CI documentation and inventory checks |
-| README release identity, release notes, packaging/native dependency docs, third-party notices | release plus shared/CI |
+| Ordinary Markdown, including component READMEs | shared/CI documentation and inventory checks |
+| Root README, release notes, `VERSIONING.md`, packaging/native dependency docs, third-party notices | release plus shared/CI; the root README also site |
+| Markdown read as a contract by a suite test (`contracts/README.md`, `site-deploy/README.md`) | that suite plus shared/CI |
 | Legal web source | site, release, shared/CI |
 | App shell or presentation | app, shared/CI |
 | Native core or lifecycle | app, native, shared/CI |
