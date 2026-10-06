@@ -7,6 +7,7 @@ struct DiagnosticsView: View {
     @State private var isSending = false
     @State private var actionMessage: String?
     @State private var failureReportMessage: String?
+    @Environment(\.openWindow) private var openWindow
 
     private var pendingCompatibilityCount: Int {
         evidenceController.store.pendingUploads().count
@@ -102,7 +103,7 @@ struct DiagnosticsView: View {
                     }
 
                     diagnosticsSection(title: "Failure report") {
-                        Text("After an installation, update, or removal fails, Terento saves a report on this Mac. Report latest failure copies the full report and opens GitHub. If the report field is not filled in, click it and press ⌘A, then ⌘V. Review before submitting. GitHub issues are public.")
+                        Text("After an installation, update, or removal fails, Terento saves a report on this Mac. Report latest failure copies the full report and opens GitHub. If the report field is not filled in, click it and press ⌘A, then ⌘V. Review before submitting. GitHub issues are public. Without a GitHub account, send the report to Terento instead: you see exactly what is sent first. Sending a report doesn't depend on the sharing settings above.")
                             .font(.terentoUI(size: 13, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -116,6 +117,18 @@ struct DiagnosticsView: View {
                                 .font(.terentoUI(size: 13, weight: .regular))
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
+                        }
+                        HStack(spacing: 18) {
+                            Button {
+                                openWindow(id: "support-report")
+                            } label: {
+                                Label("Send report to Terento", systemImage: "paperplane")
+                            }
+                            .buttonStyle(.plain)
+                            .font(.terentoUI(size: 13, weight: .semibold))
+                            .foregroundStyle(TerentoColors.interactive)
+                            .accessibilityHint("Shows exactly what will be sent before anything is sent.")
+                            TerentoHelpLink(topic: .sendReport)
                         }
                     }
 

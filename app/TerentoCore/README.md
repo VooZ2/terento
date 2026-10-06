@@ -220,7 +220,8 @@ eligible common fresh-install totals, but no provider-download event or guessed
 catalog geography.
 Strict `-local` labels keep local-test events outside public aggregates.
 Report issue opens a user-reviewed GitHub draft; raw logs are not automatically
-uploaded. App updates use metadata checks and an explicit official-download
+uploaded. "Send report to Terento" (failure dialog, Diagnostics, Help menu) is the
+alternative without a GitHub account; see "Support reports" below. App updates use metadata checks and an explicit official-download
 handoff, never silent application replacement.
 
 Map-use delivery drains events appended during an in-flight upload before
@@ -252,6 +253,53 @@ rejection parks events without affecting other telemetry.
 A response already in flight cannot restore the opted-out status. This does not
 add cancellation/interruption events or reconstruct missing historical outcomes;
 a download start without a received outcome is not proof of a failed download.
+
+### First-run additions (local candidate)
+
+- **Support reports** (`Diagnostics/SupportReport*.swift`, `POST /support/reports`,
+  schema v1; meaning owned by `contracts/SUPPORT_REPORT_CONTRACT.md`). The sheet
+  shows exactly the JSON that Send uploads: the structured form of the sanitised
+  GitHub report (unknown values omitted, never "Unavailable"; no serial, Unit ID,
+  account, local path, raw log or file content; the Diagnostic ID and
+  `Transport: MTP` line are not sent) plus an optional description of at most
+  2000 characters. Nothing is sent before Send, and sending does not depend on
+  the sharing toggles. The reply's reference is shown ("Report TR-XXXXXX sent");
+  409 resends once under a new id; 429, 503 and network failures keep the report
+  in `Application Support/Terento/support-report-unsent.json` and offer Try
+  again with the same id. Saved failures keep their structured fields in
+  `failure-report.json` beside `failure-report.md`, so the Diagnostics and Help
+  menu entry points send the full report; without one only `macOSVersion` and a
+  chosen category are sent. `-local` builds are marked by `releaseLabel`. The
+  API must be deployed before an app that sends reports is released.
+- **Help links.** `Errors/TroubleshootingHelp.swift` is the only mapping from
+  connection outcomes, authorization verdicts, catalog/acquisition errors,
+  storage, post-write and Update/Remove states to the anchors of
+  `https://terento.app/guides/troubleshooting/` (English URL). Links reuse the
+  existing app referral parameters (`utm_source=terento_app`,
+  `utm_medium=referral`) with `utm_campaign=app_troubleshooting` and
+  `utm_content=<anchor>` (Help → Troubleshooting uses `help_menu`), followed by
+  the `#<anchor>` fragment; no model, version or id is added. A "Help" text link
+  appears next to those messages; it is never a primary button.
+- **First map selection.** While no map on the watch is managed by Terento, the
+  locale recommendation is highlighted with "Recommended for your region" (never
+  selected automatically), rows show the catalog download size and "about N min"
+  from the median of the last five measured download speeds on this Mac (30
+  days, local only) or a conservative 1 MB/s, and "Keep the watch connected and
+  the Mac awake until Terento finishes." appears once a map is selected.
+- **Resumed downloads.** A provider download that fails or is cancelled after at
+  least 1 MiB is kept for 30 minutes when the server advertised byte ranges with
+  a strong validator (non-weak ETag or Last-Modified), sent no content encoding
+  and did not redirect to another host. Try again sends `Range` and `If-Range`;
+  a 200, changed validator, size or host, 416 or malformed range restarts from
+  zero. BBBike source-proof downloads are not resumed. Final size, identity,
+  version and SHA-256 validation is unchanged; quitting removes partial files and
+  the launch scavenger removes stale ones.
+- **Time left.** "About N min left" is shown only for measured phases (download,
+  device write, read-back, Update/Remove content checks) after a 5-second, 2 %
+  warm-up, from a smoothed measured rate; it disappears after 15 seconds without
+  progress and never appears for checkpoint-only phases.
+
+These are local changes, not release or hardware evidence.
 
 ## Build and automated validation
 

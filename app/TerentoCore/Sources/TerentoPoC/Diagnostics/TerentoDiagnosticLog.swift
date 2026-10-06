@@ -4,9 +4,23 @@ import Darwin
 
 /// Small, user-retrievable diagnostics for beta failures. The log is local to
 /// the Mac and contains operation state, not map binaries or credentials.
+/// Optional log folder override used by test runners (`TERENTO_LOG_DIRECTORY`).
+enum TerentoLogLocation {
+    static let overrideDirectory: URL? = {
+        guard let path = ProcessInfo.processInfo.environment["TERENTO_LOG_DIRECTORY"],
+              !path.isEmpty else { return nil }
+        return URL(fileURLWithPath: path, isDirectory: true)
+    }()
+}
+
 @MainActor
 enum TerentoDiagnosticLog {
     static let fileURL: URL = {
+        // Test runners point this at a temporary folder so they never touch
+        // the user's real diagnostic log or saved failure report.
+        if let override = TerentoLogLocation.overrideDirectory {
+            return override.appendingPathComponent("log.txt")
+        }
         let libraryURL = FileManager.default.urls(
             for: .libraryDirectory,
             in: .userDomainMask
@@ -24,18 +38,46 @@ enum TerentoDiagnosticLog {
         fileURL.deletingLastPathComponent().appendingPathComponent("failure-report.md")
     }
 
+    /// The structured fields of the same report, for "Send report to Terento".
+    static var failureSupportReportURL: URL {
+        fileURL.deletingLastPathComponent().appendingPathComponent("failure-report.json")
+    }
+
     static func saveFailureReport(_ draft: InstallationIssueDraft) {
+        let content = "# \(draft.title)\n\n\(draft.body)"
+        guard writePrivately(Data(content.utf8), to: failureReportURL) else { return }
+        if let structured = draft.supportReport,
+           let data = try? JSONEncoder().encode(structured) {
+            _ = writePrivately(data, to: failureSupportReportURL)
+        } else {
+            // Never pair a new Markdown report with an older structured one.
+            try? FileManager.default.removeItem(at: failureSupportReportURL)
+        }
+    }
+
+    /// The latest saved failure as a support report, when its structured
+    /// fields belong to the latest Markdown report.
+    static func latestSavedSupportReport() -> SavedSupportReport? {
+        guard let markdown = try? String(contentsOf: failureReportURL, encoding: .utf8),
+              let data = try? Data(contentsOf: failureSupportReportURL),
+              let saved = try? JSONDecoder().decode(SavedSupportReport.self, from: data),
+              markdown.hasPrefix("# \(saved.title)\n") else { return nil }
+        return saved
+    }
+
+    @discardableResult
+    private static func writePrivately(_ data: Data, to url: URL) -> Bool {
         do {
-            try FileManager.default.createDirectory(at: failureReportURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let temporary = failureReportURL.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".tmp")
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let temporary = url.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".tmp")
             defer { try? FileManager.default.removeItem(at: temporary) }
-            let content = "# \(draft.title)\n\n\(draft.body)"
             guard FileManager.default.createFile(atPath: temporary.path,
-                contents: Data(content.utf8), attributes: [.posixPermissions: NSNumber(value: 0o600)]) else { return }
+                contents: data, attributes: [.posixPermissions: NSNumber(value: 0o600)]) else { return false }
             // Rename a private file atomically; never follow an existing report symlink.
-            _ = rename(temporary.path, failureReportURL.path)
+            return rename(temporary.path, url.path) == 0
         } catch {
             // A diagnostic write cannot change the operation outcome.
+            return false
         }
     }
 

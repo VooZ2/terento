@@ -120,8 +120,13 @@ extension FinishingTrace {
     // Every access to these fields is protected by lock.
     nonisolated(unsafe) private static var entries: [String] = []
     nonisolated(unsafe) private static var frozenReport = ""
-    static let fileURL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Logs/Terento/finishing.log")
+    static let fileURL: URL = {
+        if let path = ProcessInfo.processInfo.environment["TERENTO_LOG_DIRECTORY"], !path.isEmpty {
+            return URL(fileURLWithPath: path, isDirectory: true).appendingPathComponent("finishing.log")
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/Terento/finishing.log")
+    }()
 
     static func beginInstallation() {
         lock.lock()

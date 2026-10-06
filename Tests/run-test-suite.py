@@ -43,6 +43,9 @@ def main() -> int:
     module_cache.mkdir(parents=True, exist_ok=True)
     environment.setdefault("CLANG_MODULE_CACHE_PATH", str(module_cache))
     environment.setdefault("SWIFT_MODULECACHE_PATH", str(module_cache))
+    # Keep test runs away from the user's real ~/Library/Logs/Terento files.
+    log_sandbox = Path(tempfile.mkdtemp(prefix="terento-test-logs-"))
+    environment.setdefault("TERENTO_LOG_DIRECTORY", str(log_sandbox))
     print(f"Terento test plan: {', '.join(selected)} ({total} runners)", flush=True)
 
     log_root = Path(os.environ.get("TERENTO_TEST_LOG_DIR", str(REPO_ROOT / "test-results")))

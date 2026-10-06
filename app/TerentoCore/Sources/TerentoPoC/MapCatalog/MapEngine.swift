@@ -279,6 +279,9 @@ final class MapEngine: ObservableObject {
     @Published private(set) var evidenceFailureContext: InstallationFailureContext?
     @Published private(set) var evidenceOriginalFailureContext: InstallationFailureContext?
     @Published private(set) var evidencePrimaryFailureMapIndex: Int?
+    /// The typed acquisition error behind the last stopped installation, used
+    /// only to choose the matching troubleshooting guide section.
+    @Published private(set) var installationFailureAcquisitionError: MapAcquisitionError?
     @Published private(set) var catalogSource: MapCatalogSource?
     @Published private(set) var catalogUpdatedAt: Date?
     /// Remote packages this app version could not accept and omitted.
@@ -312,6 +315,24 @@ final class MapEngine: ObservableObject {
     private var ownershipManifestDeviceKeys: Set<String> = []
     private var preferredOwnershipManifestDeviceKey: String?
     private var installationSpeedEstimator = TransferSpeedEstimator()
+    /// Time left for the measured download, write and read-back steps. They
+    /// change together with the published progress they are derived from.
+    private(set) var downloadTimeRemaining: RemainingTimeEstimate?
+    private(set) var installTimeRemaining: RemainingTimeEstimate?
+    private(set) var finishingTimeRemaining: RemainingTimeEstimate?
+    private var downloadTimeEstimator = RemainingTimeEstimator()
+    private let downloadSpeedHistory = DownloadSpeedHistory()
+    /// Median of recently measured download speeds on this Mac, for the
+    /// first-map download estimate. Local only.
+    private(set) lazy var recentDownloadBytesPerSecond: Double? = downloadSpeedHistory.recentBytesPerSecond()
+
+    /// No map on the connected watch is managed by Terento yet.
+    var isFirstMapSelection: Bool {
+        guard let scan = result?.scan else { return false }
+        return FirstMapGuidance.isFirstMapSelection(installedMaps: scan.installedMaps + scan.otherMaps)
+    }
+    private var installTimeEstimator = RemainingTimeEstimator()
+    private var finishingTimeEstimator = RemainingTimeEstimator()
     private var installationAuthorizationGranted = false
     private var deviceInstallationAuthorization: InstallationAuthorizationState = .blocked(.catalogUnavailable)
     private var customMapImportAcknowledged = false
@@ -1238,6 +1259,7 @@ final class MapEngine: ObservableObject {
         // The cancelled task records its own cancelled diagnostic and the
         // download statistics outcome through the existing paths.
         cancelActiveTaskAndCleanupWorkspaces()
+        resetTimeRemaining()
         state = .scanned
         installationPhase = .idle
         installationPhaseProgress = nil
@@ -1342,6 +1364,7 @@ final class MapEngine: ObservableObject {
     /// Removes every retained artifact, for example when the app quits.
     func purgeRetainedArtifacts() {
         purgeExpiredRetainedArtifacts(now: .distantFuture)
+        MapDownloadResumeStore.shared.purgeAll()
     }
 
     var isInstalling: Bool {
@@ -1370,6 +1393,13 @@ final class MapEngine: ObservableObject {
     }
 
     fileprivate func receiveAcquisitionState(_ state: MapAcquisitionState) {
+        if state == .validatingDownload, acquisitionState == .downloading, let progress = acquisitionProgress {
+            // The transfer's own measured rate, independent of resumed bytes.
+            downloadSpeedHistory.record(bytesPerSecond: progress.bytesPerSecond,
+                                        downloadedBytes: progress.bytesDownloaded)
+            recentDownloadBytesPerSecond = downloadSpeedHistory.recentBytesPerSecond()
+        }
+        if state != .downloading { resetTimeRemaining() }
         acquisitionState = state
         installationPhaseProgressIsMeasured = false
 
@@ -1407,7 +1437,20 @@ final class MapEngine: ObservableObject {
     }
 
     fileprivate func receiveDownloadProgress(_ progress: MapDownloadProgress) {
+        downloadTimeRemaining = installationPhase == .downloading
+            ? downloadTimeEstimator.update(completed: Double(progress.bytesDownloaded),
+                                           total: Double(progress.totalBytes))
+            : nil
         acquisitionProgress = progress
+    }
+
+    private func resetTimeRemaining() {
+        downloadTimeEstimator.reset()
+        installTimeEstimator.reset()
+        finishingTimeEstimator.reset()
+        downloadTimeRemaining = nil
+        installTimeRemaining = nil
+        finishingTimeRemaining = nil
     }
 
     fileprivate func receiveInstallationProgress(_ progress: TransferProgress) {
@@ -1417,6 +1460,8 @@ final class MapEngine: ObservableObject {
             bytesPerSecond: installationSpeedEstimator.update(bytes: progress.bytesTransferred)
         )
         if installationPhase == .finishing {
+            finishingTimeRemaining = finishingTimeEstimator.update(
+                completed: Double(progress.bytesTransferred), total: Double(progress.totalBytes))
             finishingTransferProgress = updatedProgress
             if progress.totalBytes > 0 {
                 let readBackFraction = progress.fractionCompleted
@@ -1428,11 +1473,16 @@ final class MapEngine: ObservableObject {
                 installationPhaseProgressIsMeasured = true
             }
         } else {
+            installTimeRemaining = installationPhase == .installing
+                ? installTimeEstimator.update(completed: Double(progress.bytesTransferred),
+                                              total: Double(progress.totalBytes))
+                : nil
             installationProgress = updatedProgress
         }
     }
 
     fileprivate func receiveInstallationPhase(_ phase: InstallationProcessPhase) {
+        if phase != installationPhase { resetTimeRemaining() }
         installationPhase = phase
         installationPhaseProgressIsMeasured = false
 
@@ -1525,6 +1575,7 @@ final class MapEngine: ObservableObject {
         evidenceFailure = nil
         evidenceNativeFailureCode = nil
         evidencePrimaryFailureMapIndex = nil
+        installationFailureAcquisitionError = nil
         TerentoDiagnosticLog.recordInstallationStarted(
             maps: plan.installItems.map(\.package)
         )
@@ -1625,6 +1676,7 @@ final class MapEngine: ObservableObject {
         }
 
         state = .acquiringArtifact
+        resetTimeRemaining()
         installationPhase = .preparing
         installationPhaseProgress = 0
         acquisitionState = .resolvingPackage
@@ -1822,6 +1874,7 @@ final class MapEngine: ObservableObject {
                     self?.funnel?.recordInstallBlocked(.macStorage)
                 }
                 self?.evidencePrimaryFailureMapIndex = activePackageIndex
+                self?.installationFailureAcquisitionError = error as? MapAcquisitionError
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
                     self?.evidenceFailureStage = diagnostic.stage

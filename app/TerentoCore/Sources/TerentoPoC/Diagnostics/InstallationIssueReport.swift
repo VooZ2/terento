@@ -5,6 +5,8 @@ struct InstallationIssueDraft: Equatable, Sendable {
     let title: String
     let body: String
     let url: URL
+    /// The same report as structured fields for "Send report to Terento".
+    var supportReport: SavedSupportReport? = nil
 }
 
 enum DiagnosticMapOperation: String, Sendable {
@@ -187,7 +189,21 @@ enum InstallationIssueReport {
         Prepared by Terento. Please review before submitting.
         """)
 
-        return draft(title: title, body: body)
+        var result = draft(title: title, body: body)
+        result.supportReport = SavedSupportReport(
+            title: result.title,
+            category: SupportReportCategory(operation: operation),
+            operationID: operationID,
+            report: SupportReportBody.make(
+                title: title, identity: identity, maps: maps, stage: safeStage, operation: operation,
+                lifecycleFacts: lifecycleFacts, error: error, failureStages: failureStages,
+                errorCategory: errorCategory, errorCodes: errorCodes, writeStarted: writeStarted,
+                transferProgressPercent: transferProgressPercent, remoteObjectCreated: remoteObjectCreated,
+                cleanupAttempted: cleanupAttempted, cleanupSucceeded: cleanupSucceeded,
+                verification: verification, failureContext: failureContext,
+                originalFailureContext: originalFailureContext,
+                finishingTrace: FinishingTrace.failureReport, operatingSystem: operatingSystem))
+        return result
     }
 
     private static func contextLines(_ context: InstallationFailureContext?) -> String {

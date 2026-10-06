@@ -93,11 +93,17 @@ struct TerentoPoCApp: App {
                 Button("Terento Website") {
                     openExternalURL(TerentoAppLinks.website)
                 }
+                Button("Troubleshooting") {
+                    openExternalURL(TroubleshootingGuide.helpMenuURL)
+                }
                 Button("Documentation") {
                     openExternalURL(TerentoAppLinks.documentation)
                 }
                 Button("Report an Issue") {
                     openExternalURL(TerentoAppLinks.issues)
+                }
+                Button("Send Report to Terento…") {
+                    openWindow(id: "support-report")
                 }
                 Button("GitHub Repository") {
                     openExternalURL(TerentoAppLinks.repository)
@@ -120,6 +126,12 @@ struct TerentoPoCApp: App {
             .background(TerentoSecondaryWindowPlacement())
         }
         .defaultSize(width: 520, height: 600)
+        .windowResizability(.contentSize)
+        .windowStyle(.titleBar)
+        Window("Send Report to Terento", id: "support-report") {
+            SupportReportWindow()
+                .background(TerentoSecondaryWindowPlacement())
+        }
         .windowResizability(.contentSize)
         .windowStyle(.titleBar)
     }
