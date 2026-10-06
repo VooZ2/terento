@@ -14,6 +14,8 @@ const {chromium}=require(process.argv[2]);
    assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
    assert(!/\bFresh\b/i.test(await page.locator('main').innerText()), `${name}: no Fresh labels`);
    assert.equal(await page.locator('.admin-glossary-link').count(),0,`${name}: no glossary ? links`);
+   const unsortable=await page.evaluate(()=>[...document.querySelectorAll('main table')].filter(t=>t.tHead&&t.getAttribute('role')!=='presentation').flatMap(t=>{const style=getComputedStyle(t.tHead);if(style.clip.startsWith('rect(0')||(style.position==='absolute'&&parseFloat(style.height)<=1))return [];const row=t.tHead.rows[t.tHead.rows.length-1];return [...row.cells].filter(th=>th.textContent.trim()&&th.colSpan===1&&!th.querySelector('button')).map(th=>th.textContent.trim());}));
+   assert.deepEqual(unsortable,[],`${name}: every visible data-table header sorts`);
    if(name==='health'){
     const indexnow=page.locator("[data-health-name*='indexnow']");
     assert.equal(await indexnow.count(),1,'one IndexNow card');

@@ -4367,7 +4367,7 @@ def _provider_detail_script() -> str:
         catch { button.textContent = 'Copy unavailable'; }
       }));
       const setupPagination = ({rowsSelector, searchSelector, filterSelector, pageSizeSelector, paginationSelector, noun}) => {
-        const rows = [...document.querySelectorAll(rowsSelector)];
+        let rows = [...document.querySelectorAll(rowsSelector)];
         const search = document.querySelector(searchSelector);
         const filter = document.querySelector(filterSelector);
         const pageSizeControl = document.querySelector(pageSizeSelector);
@@ -4408,6 +4408,7 @@ def _provider_detail_script() -> str:
           pagination.querySelector('[data-page="next"]')?.addEventListener('click', () => { page += 1; refresh(); });
         };
         search?.addEventListener('input', () => { page = 0; refresh(); });
+        rows[0]?.closest('table')?.addEventListener('admin:table-sorted', () => { rows = [...document.querySelectorAll(rowsSelector)]; page = 0; refresh(); });
         filter?.addEventListener('change', () => { page = 0; refresh(); });
         pageSizeControl?.addEventListener('change', () => { page = 0; refresh(); });
         refresh();
@@ -4538,7 +4539,12 @@ def _map_statistics_script() -> str:
         const labels = ['Provider','Successful','Failed','Rate',stream.date];
         const body = document.querySelector('#provider-statistic-rows');
         const dateHeader = document.querySelector('#provider-stream-date');
-        if (dateHeader) dateHeader.textContent = stream.date;
+        if (dateHeader) {
+          // Keep the shared sort button: rename its label, not the header.
+          const sortButton = dateHeader.querySelector?.('button');
+          if (sortButton && sortButton.firstChild) { sortButton.firstChild.textContent = stream.date; sortButton.setAttribute('aria-label', stream.date); }
+          else dateHeader.textContent = stream.date;
+        }
         document.querySelectorAll('[data-provider-stream]').forEach((button) => {
           const active = button.dataset.providerStream === providerStream;
           button.classList.toggle('active', active);
@@ -4553,6 +4559,8 @@ def _map_statistics_script() -> str:
           const empty = success === 0 && failed === 0;
           return `<tr><td>${escapeHtml(countValue(values[0]))}</td>${values.slice(1).map((value, index) => `<td data-label="${labels[index + 1]}"${index < 3 ? ` data-empty-group="${empty}"` : ''} class="${index === 3 ? 'column-date' : 'column-number numeric'}">${escapeHtml(countValue(value))}</td>`).join('')}</tr>`;
         }).join('');
+        // Re-rendered rows start unsorted, so no header claims a sort order.
+        body.closest?.('table')?.querySelectorAll('th[aria-sort]').forEach((th) => { th.setAttribute('aria-sort', 'none'); const mark = th.querySelector('.sort-indicator'); if (mark) mark.dataset.sort = 'none'; });
       };
       window.terentoRenderProviderStream = (stream) => { if (providerStreams[stream]) { providerStream = stream; renderProviders(); } };
       document.querySelectorAll('[data-provider-stream]').forEach((button) => button.addEventListener('click', () => {
@@ -4851,7 +4859,7 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
 
 def _identification_review_script() -> str:
     return r"""(() => {
-      const rows = [...document.querySelectorAll('#identification-rows tr[data-source-state]')];
+      let rows = [...document.querySelectorAll('#identification-rows tr[data-source-state]')];
       const chips = [...document.querySelectorAll('[data-source-filter]')];
       const pagination = document.querySelector('#identification-pagination');
       const filterEmpty = document.querySelector('#identification-filter-empty');
@@ -4877,6 +4885,7 @@ def _identification_review_script() -> str:
       chips.forEach(chip => chip.addEventListener('click', () => { state = chip.dataset.sourceFilter; page = 0; refreshList(); }));
       pagination?.querySelector('[data-source-page="previous"]')?.addEventListener('click', () => { page -= 1; refreshList(); });
       pagination?.querySelector('[data-source-page="next"]')?.addEventListener('click', () => { page += 1; refreshList(); });
+      rows[0]?.closest('table')?.addEventListener('admin:table-sorted', () => { rows = [...document.querySelectorAll('#identification-rows tr[data-source-state]')]; page = 0; refreshList(); });
       if (rows.length) refreshList();
       document.querySelectorAll('.identity-mapping-review').forEach(form => {
         form.addEventListener('submit', async event => {
@@ -7395,7 +7404,7 @@ def _diagnostics_script() -> str:
       const count = document.querySelector('#diagnostic-results-count');
       const pagination = document.querySelector('#diagnostic-history-pagination');
       const pageSize = document.querySelector('#diagnostic-history-page-size');
-      const rows = body ? [...body.querySelectorAll('tr[data-diagnostic-state]')] : [];
+      let rows = body ? [...body.querySelectorAll('tr[data-diagnostic-state]')] : [];
       const dialogs = [...document.querySelectorAll('.diagnostic-detail-dialog')];
       let page = 1;
       let lastFocused = null;
@@ -7462,6 +7471,7 @@ def _diagnostics_script() -> str:
         if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
         dialog.querySelector('button, input, select, textarea')?.focus();
       };
+      body?.closest('table')?.addEventListener('admin:table-sorted', () => { rows = [...body.querySelectorAll('tr[data-diagnostic-state]')]; page = 1; refresh(); });
       document.querySelector('[data-filter-open-errors]')?.addEventListener('click', () => {
         selectedFilter = 'open';
         refresh();
@@ -8009,6 +8019,8 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .device-sort-button{display:inline-flex;align-items:center;gap:5px;width:auto;min-height:0;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;white-space:nowrap;cursor:pointer}
 .device-sort-button:hover{color:var(--graphite)}.device-sort-button:focus-visible{outline:var(--admin-focus-ring);outline-offset:1px}
 .device-sort-button span{min-width:10px;color:var(--secondary);font-size:12px;opacity:.2;transition:color .15s ease,opacity .15s ease}.device-sort-button:hover span,.device-sort-button:focus-visible span{opacity:.6}.device-table-wrap th[aria-sort="ascending"] .device-sort-button,.device-table-wrap th[aria-sort="descending"] .device-sort-button{color:var(--graphite);font-weight:800}.device-table-wrap th[aria-sort="ascending"] .device-sort-button span,.device-table-wrap th[aria-sort="descending"] .device-sort-button span{color:var(--interactive);opacity:1}
+table th[aria-sort="ascending"]>.device-sort-button,table th[aria-sort="descending"]>.device-sort-button{color:var(--graphite)}
+table th[aria-sort="ascending"]>.device-sort-button span,table th[aria-sort="descending"]>.device-sort-button span{color:var(--interactive);opacity:1}
 .device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7),.device-table-wrap td:nth-child(8){white-space:nowrap}
 .device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}
 .device-table-wrap tbody tr{cursor:pointer}
@@ -8874,11 +8886,91 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_mobile_collapse_script())
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script())
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body class="admin-shell">{content}</body></html>""".encode("utf-8")
+
+
+def _admin_table_sort_script() -> str:
+    """Every Admin data table sorts by any column (owner decision 2026-10-06).
+
+    Tables that already sort themselves (Devices, Installations) and ranking
+    lists whose header is visually hidden are left alone. Values come from ``data-sort-value``, then ``<time datetime>``, then
+    numbers, then text; empty or ``—`` cells always sort last. A row made of one
+    spanning cell stays attached to the row above it. Scripts that paginate
+    rows listen for ``admin:table-sorted`` and re-read the row order.
+    """
+    return r"""(() => {
+      const owned = 'thead [data-device-sort], thead [data-installation-sort], thead .sort-indicator, thead button, thead input, thead select';
+      const collator = new Intl.Collator('en', {numeric: true, sensitivity: 'base'});
+      const valueOf = (cell) => {
+        if (!cell) return null;
+        if (cell.dataset.sortValue !== undefined && cell.dataset.sortValue !== '') {
+          const number = Number(cell.dataset.sortValue);
+          return Number.isFinite(number) ? number : cell.dataset.sortValue;
+        }
+        const time = cell.querySelector('time[datetime]');
+        if (time) { const at = Date.parse(time.getAttribute('datetime')); if (Number.isFinite(at)) return at; }
+        const text = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!text || text === '—' || /^—\s/.test(text)) return null;
+        const numeric = text.replace(/[,\u00a0\s]/g, '').replace(/%$/, '');
+        if (/^-?\d+(\.\d+)?$/.test(numeric)) return Number(numeric);
+        return text;
+      };
+      const compare = (a, b) => (typeof a === 'number' && typeof b === 'number') ? a - b : collator.compare(String(a), String(b));
+      document.querySelectorAll('main table').forEach((table) => {
+        if (!table.tHead || !table.tBodies.length || table.getAttribute('role') === 'presentation' || table.querySelector(owned)) return;
+        // A visually hidden header (ranking lists such as Top countries) gets
+        // no invisible sort buttons in the keyboard order.
+        const headStyle = getComputedStyle(table.tHead);
+        if (headStyle.clip.startsWith('rect(0') || (headStyle.position === 'absolute' && parseFloat(headStyle.height) <= 1)) return;
+        const headerRow = table.tHead.rows[table.tHead.rows.length - 1];
+        if (!headerRow) return;
+        const headers = [...headerRow.cells];
+        headers.forEach((th, index) => {
+          const label = (th.textContent || '').trim();
+          if (!label || th.colSpan > 1) return;
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'device-sort-button';
+          button.setAttribute('aria-label', label);
+          button.append(...th.childNodes);
+          const indicator = document.createElement('span');
+          indicator.className = 'sort-indicator';
+          indicator.setAttribute('aria-hidden', 'true');
+          indicator.dataset.sort = 'none';
+          button.append(' ', indicator);
+          th.append(button);
+          th.setAttribute('aria-sort', 'none');
+          button.addEventListener('click', () => {
+            const direction = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+            headers.forEach((other) => {
+              if (!other.hasAttribute('aria-sort')) return;
+              other.setAttribute('aria-sort', other === th ? direction : 'none');
+              const mark = other.querySelector('.sort-indicator');
+              if (mark) mark.dataset.sort = other === th ? direction : 'none';
+            });
+            const body = table.tBodies[0];
+            const groups = [];
+            [...body.rows].forEach((row) => {
+              const attached = row.cells.length === 1 && row.cells[0].colSpan > 1;
+              if (attached && groups.length) groups[groups.length - 1].push(row);
+              else groups.push([row]);
+            });
+            const keyed = groups.map((group, order) => ({group, order, value: valueOf(group[0].cells[index])}));
+            keyed.sort((a, b) => {
+              if (a.value === null || b.value === null) return (a.value === null) - (b.value === null) || a.order - b.order;
+              const result = compare(a.value, b.value);
+              return (direction === 'descending' ? -result : result) || a.order - b.order;
+            });
+            body.append(...keyed.flatMap((item) => item.group));
+            table.dispatchEvent(new CustomEvent('admin:table-sorted', {bubbles: true}));
+          });
+        });
+      });
+    })();"""
 
 
 def _admin_chart_values_script() -> str:

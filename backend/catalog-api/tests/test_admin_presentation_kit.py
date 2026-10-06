@@ -82,6 +82,18 @@ class AdminTokenAndFocusTests(unittest.TestCase):
 
 
 
+class AdminTableSortTests(unittest.TestCase):
+    """Owner decision 2026-10-06: every Admin data table sorts by any column."""
+
+    def test_every_admin_page_carries_the_shared_table_sorter(self):
+        from terento_catalog.admin import _admin_table_sort_script
+        body = glossary_page({"username": "operator"}, "csrf").decode()
+        self.assertIn("admin:table-sorted", body)
+        script = _admin_table_sort_script()
+        for fragment in ("dataset.sortValue", "time[datetime]", "aria-sort", "sort-indicator", "headStyle.clip"):
+            self.assertIn(fragment, script)
+
+
 class AdminIconTests(unittest.TestCase):
     """Owner decision 2026-10-06: Admin icons are Font Awesome Free, never hand-drawn."""
 

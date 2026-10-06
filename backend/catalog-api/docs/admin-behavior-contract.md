@@ -58,7 +58,10 @@ section card
 (one- or two-word title, optional scope chip, at most one action link, no
 explanatory paragraph), a status pill (icon plus sentence-case text; colour
 supports but never replaces the text), table conventions (identity first,
-numbers and dates trailing, `—` for unknown), empty states (empty, filtered,
+numbers and dates trailing, `—` for unknown; every data table sorts by any
+labelled column through its header button with a Font Awesome sort icon and
+`aria-sort`, `—` always last; server-paginated tables sort the loaded page and
+ranking lists with a visually hidden header keep their ranking order), empty states (empty, filtered,
 unavailable with Retry) and chart legends. Labels and card titles carry no
 inline `?` glossary links; term definitions live only on Tools → Glossary.
 Colours, radii and focus rings come only from the generated brand tokens; the
