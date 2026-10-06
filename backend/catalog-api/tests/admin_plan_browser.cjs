@@ -29,20 +29,16 @@ const {chromium}=require(process.argv[2]);
     assert.equal(await page.locator('[data-health-name]').first().locator('.system-health-cause').count(),1,'other health card keeps its summary issue');
    }
    if(name==='overview'){
-    const tiles=await page.locator('.overview-tiles .admin-metric').evaluateAll(es=>es.map(e=>({height:Math.round(e.getBoundingClientRect().height),font:getComputedStyle(e.querySelector('.admin-metric-value')).fontSize})));
-    assert.equal(tiles.length,4,'Dashboard keeps four summary tiles');
-    assert.equal(new Set(tiles.map(t=>t.font)).size,1,'Tiles share numeric size');
-    const tileRows=await page.locator('.overview-tiles .admin-metric').evaluateAll(es=>es.map(e=>({label:Math.round(e.querySelector('.admin-metric-label').getBoundingClientRect().top-e.getBoundingClientRect().top),value:Math.round(e.querySelector('.admin-metric-value').getBoundingClientRect().top-e.getBoundingClientRect().top),icons:e.querySelectorAll('.admin-metric-value .admin-icon').length})));
-    assert.equal(new Set(tileRows.map(t=>t.label)).size,1,'Tile labels share one line');
-    assert.equal(new Set(tileRows.map(t=>t.value)).size,1,'Tile values share one line');
-    assert.equal(tileRows.reduce((sum,t)=>sum+t.icons,0),0,'Tile values carry no icons');
-    const rates=await page.locator('.overview-tiles .admin-metric-rate>strong').evaluateAll(es=>es.map(e=>({font:getComputedStyle(e).fontSize,top:Math.round(e.getBoundingClientRect().top),value:Math.round(e.closest('.admin-metric').querySelector('.admin-metric-value').getBoundingClientRect().top)})));
-    assert.equal(rates.length,3,'Installs, Updates and Downloads show a success rate figure');
-    if(width>720)assert(rates.every(r=>r.font===tiles[0].font&&Math.abs(r.top-r.value)<=1),'Success rate sits beside the value at the value size');
+    assert.equal(await page.locator('.overview-tiles, .overview-page>.admin-metric-row').count(),0,'Dashboard has no summary tile row');
+    const totals=await page.locator('.overview-card-totals').evaluateAll(es=>es.map(e=>({card:e.closest('section').id,icons:e.querySelectorAll('.admin-icon').length,values:[...e.querySelectorAll('strong')].map(s=>getComputedStyle(s).fontSize)})));
+    assert.deepEqual(totals.map(t=>t.card),['overview-download-trend','overview-trend','overview-attention'],'Downloads, Installs and Needs attention headers carry the totals');
+    assert(totals.every(t=>t.icons===0),'Header totals carry no icons');
+    assert.equal(new Set(totals.flatMap(t=>t.values)).size,1,'Header totals share one numeric size');
+    if(width>900){const heads=await page.locator('#overview-download-trend .admin-card-head, #overview-trend .admin-card-head, #overview-attention .admin-card-head, #overview-activity .admin-card-head').evaluateAll(es=>es.map(e=>Math.round(e.getBoundingClientRect().height)));assert(heads[0]===heads[1]&&heads[2]===heads[3],'Card headers in a row share one height');}
     assert.equal(await page.locator('.overview-download-panel').count(),1,'App downloads chart remains visible');
     assert.equal(await page.locator('.overview-download-panel h2').innerText(),'App downloads');
     assert.deepEqual(await page.locator('main>.overview-primary-grid, main>.overview-composition-grid').evaluateAll(es=>es.map(e=>e.className)),['overview-primary-grid','overview-composition-grid']);
-    assert.equal(await page.locator('.overview-tiles .admin-scope-chip').count(),4,'Every tile shows a visible scope chip');
+    assert.equal(await page.locator('.overview-primary-grid .admin-card-head .admin-scope-chip').count(),2,'Each chart header shows its period scope');
     assert.equal(await page.locator('.overview-all-time .admin-scope-chip').count(),3,'One All time line per chart card');
     assert.equal(await page.locator('.overview-attention-row').count(),9,'Needs attention keeps nine fixed rows');
     const visibleTrendCharts=page.locator('.overview-primary-grid .overview-trend-chart:visible');

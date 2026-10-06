@@ -405,21 +405,18 @@ def _metric_value_text(value: Any, fmt: str) -> str | None:
     return f"{number:,}" if number is not None else None
 
 
-_NO_RATE = object()
-
-
 def _metric_tile(
     label: str, value: Any, *, fmt: str = "count", scope: str | None = None,
     state: str | None = None, failure: bool = False, secondary: str = "",
     href: str | None = None,
     data_stat: str | None = None, hint: str | None = None,
-    value_html: str | None = None, rate: Any = _NO_RATE, rate_stat: str | None = None,
+    value_html: str | None = None,
 ) -> str:
     """One metric: label, value, visible scope chip and one optional secondary line.
 
     ``state`` is measured, unknown, unavailable or partial. A failure count uses
     the danger tone only when it is a measured value above zero; tiles carry no
-    icons. ``rate`` adds the success rate as a second figure beside the value.
+    icons.
     """
     rendered = _metric_value_text(value, fmt)
     if state is None:
@@ -450,14 +447,7 @@ def _metric_tile(
         f"<strong class='admin-metric-value'{stat}>{value_markup}</strong>"
         + (f"<span class='admin-metric-meta'>{meta}</span>" if meta else "")
     )
-    show_rate = rate is not _NO_RATE and state not in {"unknown", "unavailable"}
-    if show_rate:
-        rate_attr = f" data-stat='{html.escape(rate_stat, quote=True)}'" if rate_stat else ""
-        inner += (
-            f"<span class='admin-metric-rate'><strong{rate_attr}>{html.escape(_format_rate(rate))}</strong>"
-            "<span>Success</span></span>"
-        )
-    attributes = f"data-state='{state}' data-tone='{tone}'{' data-kind=' + chr(39) + 'text' + chr(39) if fmt == 'text' else ''}{' data-rate' if show_rate else ''}{title}"
+    attributes = f"data-state='{state}' data-tone='{tone}'{' data-kind=' + chr(39) + 'text' + chr(39) if fmt == 'text' else ''}{title}"
     if href:
         return (
             f"<a class='admin-metric admin-metric-link' {attributes} href='{html.escape(href, quote=True)}' "
@@ -475,7 +465,7 @@ def _metric_row(tiles: list[str], *, label: str, css: str = "") -> str:
 
 def _section_card(
     title: str, body: str, *, card_id: str, action: tuple[str, str] | None = None,
-    scope: str | None = None, css: str = "",
+    scope: str | None = None, css: str = "", totals: str = "",
     heading_tag: str = "h2", extra_attributes: str = "", mobile_collapse: bool = False,
 ) -> str:
     """A card with a 1–2 word title, an optional scope chip and one action link.
@@ -501,7 +491,7 @@ def _section_card(
         f"<header class='admin-card-head'><{heading_tag} id='{html.escape(card_id, quote=True)}-title'>"
         f"{html.escape(title)}</{heading_tag}>"
         + (_scope_chip(scope) if scope else "")
-        + action_markup + toggle_markup + "</header>"
+        + totals + action_markup + toggle_markup + "</header>"
     )
     return (
         f"<section class='admin-card{(' ' + css) if css else ''}' id='{html.escape(card_id, quote=True)}' "
@@ -1767,6 +1757,8 @@ _INSTALL_CHART_SERIES = (
     ("update-failed", "Update failed", "map_update_failed_count"),
 )
 _LEGEND_COUNTED_SERIES = frozenset({"custom"})
+# Dashboard header totals cover installs only, so its legend also counts updates.
+_DASHBOARD_COUNTED_SERIES = _LEGEND_COUNTED_SERIES | {"update", "update-failed"}
 _DOWNLOAD_CHART_SERIES = (
     ("download-success", "Download successful", "download_success_count"),
     ("download-failed", "Download failed", "download_failed_count"),
@@ -1796,7 +1788,7 @@ def _chart_legend(items: list[tuple[str, str, Any]], *, label: str) -> str:
 def _overview_trend_chart(
     trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
     *, metric: str = "installs", has_activity: bool = False,
-    chart_id: str = "", _compact: bool = False,
+    chart_id: str = "", counted: frozenset[str] = _LEGEND_COUNTED_SERIES, _compact: bool = False,
 ) -> str:
     if not trend:
         if has_activity:
@@ -1887,11 +1879,11 @@ def _overview_trend_chart(
     )
     if _compact:
         return svg
-    # Tiles carry the period totals; the legend names the series and counts
-    # only the custom .img split, which no tile shows on its own.
+    # Tiles or card headers carry the period totals; the legend names the
+    # series and counts only the ``counted`` series no total shows on its own.
     totals = [sum(counts[index] for counts in values) for index in range(len(series))]
     legend = _chart_legend(
-        [(name, label, total if name in _LEGEND_COUNTED_SERIES else _LEGEND_NAME_ONLY)
+        [(name, label, total if name in counted else _LEGEND_NAME_ONLY)
          for (name, label, _), total in zip(series, totals)],
         label=f"{chart_label} legend",
     )
@@ -2372,12 +2364,24 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
     )
 
 
-def _failed_secondary(failed: Any) -> str:
-    failed_count = _optional_nonnegative_int(failed)
+def _card_totals(items: list[tuple[str, str]], *, label: str) -> str:
+    """Compact value + noun chips that close a card header (Dashboard totals)."""
     return (
-        f"<span class='admin-metric-failed{' is-positive' if failed_count else ''}'>Failed {failed_count:,}</span>"
-        if failed_count is not None else "<span class='admin-metric-failed'>Failed —</span>"
+        f"<div class='overview-card-totals' role='group' aria-label='{html.escape(label, quote=True)}'>"
+        + "".join(f"<span class='overview-card-total'>{value}<small>{html.escape(noun)}</small></span>"
+                  for value, noun in items)
+        + "</div>"
     )
+
+
+def _period_totals(data: dict[str, Any], completed: str, failed: str, rate: str, *, label: str) -> str:
+    completed_value = _optional_nonnegative_int(data.get(completed))
+    return _card_totals([
+        (f"<strong data-stat='{completed}'>{f'{completed_value:,}' if completed_value is not None else '—'}</strong>",
+         "Successful"),
+        (_admin_error_counter(data.get(failed), data_stat=failed), "Failed"),
+        (f"<strong data-stat='{rate}'>{html.escape(_format_rate(data.get(rate)))}</strong>", "Success rate"),
+    ], label=label)
 
 
 def overview_page(
@@ -2469,46 +2473,15 @@ def overview_page(
         "Needs attention",
         review_notice + attention_status + "<ul class='overview-attention-rows'>" + "".join(attention_rows) + "</ul>",
         card_id="overview-attention", scope="now",
+        totals=_card_totals([(_admin_error_counter(attention_total, available=attention_total is not None,
+                                                   data_stat="attentionTotal"), "Total")],
+                            label="Needs attention total") if review_available else "",
         css="overview-panel overview-attention-panel" + (" overview-attention-empty" if attention_total == 0 else ""),
     )
 
-    # --- Period tiles ---------------------------------------------------------
-    def stat(key: str) -> Any:
-        return data.get(key) if data_available else None
-
-    tile_state = None if data_available else "unavailable"
-    updates_ok = _optional_nonnegative_int(stat("completedMapUpdateCount"))
-    updates_failed = _optional_nonnegative_int(stat("failedMapUpdateCount"))
-    update_rate = (
-        updates_ok / (updates_ok + updates_failed) * 100
-        if updates_ok is not None and updates_failed is not None and updates_ok + updates_failed else None
-    )
-    tiles = _metric_row([
-        _metric_tile(
-            "Installs", stat("completedInstallCount"), scope=period, state=tile_state,
-            secondary=_failed_secondary(stat("failedInstallCount")) if data_available else "",
-            rate=stat("installSuccessRate"), rate_stat="installSuccessRate", data_stat="completedInstallCount",
-        ),
-        _metric_tile(
-            "Updates", stat("completedMapUpdateCount"), scope=period, state=tile_state,
-            secondary=_failed_secondary(stat("failedMapUpdateCount")) if data_available else "",
-            rate=update_rate, rate_stat="mapUpdateSuccessRate", data_stat="completedMapUpdateCount",
-        ),
-        _metric_tile(
-            "Downloads", stat("completedDownloadCount"), scope=period, state=tile_state,
-            secondary=_failed_secondary(stat("failedDownloadCount")) if data_available else "",
-            rate=stat("downloadSuccessRate"), rate_stat="downloadSuccessRate", data_stat="completedDownloadCount",
-        ),
-        _metric_tile(
-            "Needs attention", attention_total, scope="now",
-            state=None if attention_total is not None else "unavailable" if not review_available else "partial",
-            failure=True, href="#overview-attention",
-        ),
-    ], label="Dashboard summary", css="overview-tiles")
-
     # --- Charts with an explicit all-time line -------------------------------
     def all_time_line(items: list[tuple[str, Any, str]]) -> str:
-        # With All time selected the tiles already show these totals.
+        # With All time selected the header totals already are these totals.
         if period == "all":
             return ""
         parts = []
@@ -2544,12 +2517,14 @@ def overview_page(
                 ("Rate", data.get("allTimeDownloadSuccessRate"), "rate"),
             ]),
             card_id="overview-download-trend", scope=period,
+            totals=_period_totals(data, "completedDownloadCount", "failedDownloadCount", "downloadSuccessRate",
+                                  label="Downloads in this period"),
             css="overview-panel overview-chart-panel",
         )
         installs_chart = _section_card(
             "Installs",
             _overview_trend_chart(
-                trend, bucket, time_zone, chart_id="overview-installs",
+                trend, bucket, time_zone, chart_id="overview-installs", counted=_DASHBOARD_COUNTED_SERIES,
                 has_activity=bool((data.get("completedInstallCount") or 0) + (data.get("failedInstallCount") or 0) + (data.get("mapUpdateCount") or 0)),
             ) + all_time_line([
                 ("Installs", data.get("allTimeSuccessCount"), "count"),
@@ -2559,6 +2534,8 @@ def overview_page(
                 ("Failed", data.get("allTimeMapUpdateFailedCount"), "count"),
             ]),
             card_id="overview-trend", scope=period,
+            totals=_period_totals(data, "completedInstallCount", "failedInstallCount", "installSuccessRate",
+                                  label="Installs in this period"),
             css="overview-panel overview-chart-panel",
         )
     else:
@@ -2607,7 +2584,6 @@ def overview_page(
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
-        {tiles}
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
         <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
@@ -8683,17 +8659,6 @@ ADMIN_STYLES += """
 .admin-metric[data-state="unknown"] .admin-metric-value,.admin-metric[data-state="unavailable"] .admin-metric-value{color:var(--secondary)}
 .admin-metric-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--secondary);font-size:12px;line-height:16px}
 .admin-metric-secondary{font-variant-numeric:tabular-nums}
-.admin-metric[data-rate]{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-content:start}
-.admin-metric[data-rate]>.admin-metric-label{grid-column:1/-1}
-.admin-metric-rate{display:flex;flex-direction:column;align-items:flex-end;grid-column:2;grid-row:2/4;gap:4px;color:var(--secondary);font-size:12px;line-height:16px}
-.admin-metric-rate>strong{color:var(--graphite);font:600 24px/32px var(--font-ui);font-variant-numeric:tabular-nums}
-.admin-metric[data-rate]>.admin-metric-meta{grid-column:1;grid-row:3}
-@media (max-width:720px){
-  .admin-metric[data-rate]{grid-template-columns:minmax(0,1fr)}
-  .admin-metric-rate{flex-direction:row;align-items:baseline;grid-column:1;grid-row:3;gap:6px}
-  .admin-metric-rate>strong{font-size:20px;line-height:26px}
-  .admin-metric[data-rate]>.admin-metric-meta{grid-column:1;grid-row:4}
-}
 .admin-metric-link:hover{background:var(--surface-muted)}
 .admin-metric-link:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}
 .admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
@@ -8728,7 +8693,12 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .provider-technical-grid>.provider-technical-section{margin:0;padding:0}
 @media(max-width:760px){.provider-technical-grid{grid-template-columns:minmax(0,1fr)}.provider-problem-list>.provider-problem{grid-template-columns:minmax(0,1fr)}}
 .admin-metric-failed{white-space:nowrap}.admin-metric-failed.is-positive{color:var(--danger);font-weight:600}
-.overview-tiles{margin:0 0 16px}
+.overview-card-totals{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;margin-inline-start:auto}
+.overview-card-total{display:inline-flex;align-items:baseline;gap:4px;box-sizing:border-box;height:24px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:22px}
+.overview-card-total strong{color:var(--graphite);font-size:16px;line-height:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.overview-card-total strong.is-positive{color:var(--danger)}
+.overview-card-total small{color:var(--secondary);font-size:var(--admin-type-support-size);line-height:22px}
+@media(max-width:560px){.overview-card-totals{flex-basis:100%;justify-content:flex-start;margin-inline-start:0}}
 .overview-attention-rows{display:grid;gap:2px;margin:0;padding:0;list-style:none}
 .overview-attention-row>a{display:grid;grid-template-columns:18px minmax(0,1fr) auto 14px;align-items:center;gap:10px;min-height:40px;padding:6px 8px;border-radius:var(--radius-control);color:var(--graphite);text-decoration:none}
 .overview-attention-row>a:hover{background:var(--surface-muted)}

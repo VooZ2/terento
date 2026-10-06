@@ -258,12 +258,6 @@ class AdminComponentKitTests(unittest.TestCase):
         self.assertIn("title='One provider failed.'", partial)
         rate = _metric_tile("Success rate", 97.94, fmt="rate")
         self.assertIn(">97.9%</strong>", rate)
-        with_rate = _metric_tile("Installs", 48, rate=94.12, rate_stat="installSuccessRate")
-        self.assertIn(" data-rate", with_rate)
-        self.assertIn("<strong data-stat='installSuccessRate'>94.1%</strong><span>Success</span>", with_rate)
-        self.assertIn(">—</strong><span>Success</span>", _metric_tile("Updates", 0, rate=None))
-        self.assertNotIn("Success", _metric_tile("Installs", 5, state="unavailable", rate=90))
-        self.assertNotIn("data-rate", _metric_tile("Installs", 5))
         self.assertIn(">1,204<", _metric_tile("Downloads", 1204))
 
     def test_linked_tile_carries_scope_in_its_accessible_name(self):

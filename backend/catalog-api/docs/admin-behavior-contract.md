@@ -50,11 +50,10 @@ and legends must preserve these distinctions at supported widths.
 
 Every Admin page renders numbers, statuses, cards, tables, empty states and
 legends through one kit: a metric tile (label of one or two words, value,
-optional success rate as a second figure of the value's size labelled
-`Success` beside the value — below it at ≤720 px — visible scope chip, at most
-one secondary line, measured/unknown/unavailable/partial states, danger tone
-only for a positive failure count; the label and secondary text carry the
-meaning, so a tile value never carries an icon), a section card
+visible scope chip, at most one secondary line, measured/unknown/unavailable/
+partial states, danger tone only for a positive failure count; the label and
+secondary text carry the meaning, so a tile value never carries an icon), a
+section card
 (one- or two-word title, optional scope chip, at most one action link, no
 explanatory paragraph), a status pill (icon plus sentence-case text; colour
 supports but never replaces the text), table conventions (identity first,
@@ -214,21 +213,24 @@ duplicate Review navigation item.
 ### Dashboard and Needs attention
 
 Dashboard must answer whether anything is wrong, what happened in the selected
-period, whether activity is changing, and what to inspect next. Its first row is
-four metric tiles: Installs, Updates and Downloads for the selected period (each
-with failed count and success rate) and Needs attention (Now). Below them, the
-Downloads and Installs chart cards share a row; each shows the period scope chip,
-a legend naming its series and one compact line with the all-time totals behind
-an `All time` chip (omitted when the period is All time, because the tiles then
-show those totals). Period totals live only in the tiles; a legend shows a count
-only where it adds information no tile shows (the Custom .img install split, and
-the App downloads period increases). Tiles and charts use the same period
-population, so they agree. The Downloads card also breaks the period
+period, whether activity is changing, and what to inspect next. It has no
+summary tile row: the Downloads and Installs chart cards share the first row.
+Each chart header shows the period scope chip and the period totals as compact
+value chips (Successful, Failed — danger only when positive — and Success rate;
+Installs counts fresh installs only), then the chart, a legend naming its series
+and one compact line with the all-time totals behind an `All time` chip
+(omitted when the period is All time, because the header totals then are those
+totals). Period totals live only in the chart headers; a legend shows a count
+only where it adds information no header shows (the Custom .img install split,
+Update successful and Update failed on the Dashboard, and the App downloads
+period increases). Header totals and charts use the same period population, so
+they agree. The Needs attention header shows its `Now` total as one chip (`—`
+when any row is unavailable). The Downloads card also breaks the period
 total down by purpose (For installs, For updates, Not recorded). Below the
 charts, Needs attention and Activity share a row, then First run and App
 downloads share the next row; when one of those cards is omitted the remaining
 one spans the row, so no Dashboard row leaves an empty grid cell at ≥1024 px.
-The narrow order is tiles, Downloads, Installs, Needs attention, Activity, First
+The narrow order is Downloads, Installs, Needs attention, Activity, First
 run, then App downloads.
 
 Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
@@ -320,7 +322,7 @@ context and is not redirected to aggregate Maps as a substitute.
 
 Support reports counts open reports from public (non-local) builds, read from
 its own query; a failed query shows that row as `Unavailable` (`—`) and the
-Needs attention tile as partial, never `0`. `/admin/support-reports` shows Open
+Needs attention header total as `—`, never `0`. `/admin/support-reports` shows Open
 (`Now`), Handled and Reports (`All time`, i.e. the 12-month retention window)
 tiles, Open/Handled filter chips with their counts, and a table (Reference,
 Category, Report, Model, App version, Received, Status pill) with 50 rows per

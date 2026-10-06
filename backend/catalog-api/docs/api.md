@@ -216,12 +216,13 @@ an input to counts.
 Returns the authenticated operator Dashboard. The default period is the last 24
 hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
 
-The first row is four tiles: Installs, Updates and Downloads for the selected
-period (successful, failed and rate, with a visible period chip) and Needs
-attention (Now). The Downloads and Installs chart cards follow, each with a
-legend naming its series (period totals stay in the tiles; only the custom
-`.img` split is counted) and, unless the period is All time, an `All time`
-line with the all-time totals; the Downloads card adds the period purpose
+There is no summary tile row. The Downloads and Installs chart cards come
+first; each header shows a visible period chip and the period totals
+(successful, failed and success rate; Installs counts fresh installs only),
+then the chart, a legend naming its series (only the custom `.img` split and
+the update series are counted) and, unless the period is All time, an
+`All time` line with the all-time totals; the Needs attention header shows its
+Now total; the Downloads card adds the period purpose
 breakdown (`downloadPurposes`: install, update, unknown). Needs attention covers unresolved work across all dates in
 nine fixed rows read only from `admin_review_summary()`, the open public
 support-report count (`support_report_open_count()`), the active Maps-unknown

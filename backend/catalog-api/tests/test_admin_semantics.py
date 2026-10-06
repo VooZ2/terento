@@ -432,11 +432,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         day = render("24h", 1)
         month = render("30d", 30)
         for body, count, scope in ((day, 1, "Last 24 hours"), (month, 30, "Last 30 days")):
-            tiles = body.split("aria-label='Dashboard summary'", 1)[1].split("<div class='overview-primary-grid'>", 1)[0]
-            # KPI tiles follow the selected period and say so visibly (ADM-04/05).
-            self.assertIn(f"data-stat='completedInstallCount'>{count}</strong>", tiles)
-            self.assertIn(f"data-stat='completedDownloadCount'>{count}</strong>", tiles)
-            self.assertIn(f">{scope}</span>", tiles)
+            heads = "".join(section.split("</header>", 1)[0] for section in body.split("<section")[1:3])
+            # Header totals follow the selected period and say so visibly (ADM-04/05).
+            self.assertIn(f"data-stat='completedInstallCount'>{count}</strong>", heads)
+            self.assertIn(f"data-stat='completedDownloadCount'>{count}</strong>", heads)
+            self.assertIn(f">{scope}</span>", heads)
             # All-time totals stay visible, labelled with an All time chip.
             all_time = body.split("class='overview-all-time'")
             self.assertEqual(len(all_time), 3)
@@ -746,9 +746,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Installs <strong>—</strong>", body)
         self.assertIn("Successful <strong>—</strong>", body)
         self.assertIn("data-stat='completedInstallCount'>0</strong>", body)
-        self.assertIn("data-stat='completedDownloadCount'>—<span class='sr-only'>Unknown</span>", body)
-        self.assertIn("Failed 0</span>", body)
-        self.assertIn(">—</strong><span>Success</span>", body)
+        self.assertIn("data-stat='completedDownloadCount'>—</strong>", body)
+        self.assertIn("data-stat='failedInstallCount'>0</strong>", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -1785,7 +1784,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             selected_filters={"period": "all"},
         ).decode()
         self.assertIn("data-stat='completedInstallCount'>96</strong>", dashboard_body)
-        self.assertIn("Failed 10</span>", dashboard_body)
+        self.assertIn("data-stat='failedInstallCount'>10</strong>", dashboard_body)
         self.assertIn("data-stat='installSuccessRate'>90.6%</strong>", dashboard_body)
         # With All time selected the tiles are the all-time totals; no
         # duplicate All time line is rendered under the chart.
