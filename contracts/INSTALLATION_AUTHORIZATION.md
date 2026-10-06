@@ -52,8 +52,9 @@ evidence row, source page and check time are recorded in
 `specification_evidence.map_capable`. A stored `true`/`false` (reviewed,
 backfilled or set by an administrator) is never replaced by the collector; an
 Unknown row may be filled later from the same specification evidence.
-Administrators still set Maps manually, and Dashboard → Needs attention →
-Maps unknown counts active models whose value is Unknown.
+Administrators still set Maps manually; Devices filtered to `Maps: Unknown`
+and active models (`/admin/devices?maps=unknown&active=1`) lists active models
+whose value is Unknown.
 
 Installation checks current policy before provider/custom acquisition or
 extraction and again at the final write boundary. Safe Update checks when the
