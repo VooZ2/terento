@@ -21,6 +21,9 @@
 #if defined(TERENTO_BUNDLED_MTP)
 extern void LIBMTP_Terento_End_Operation(void);
 extern void LIBMTP_Terento_Abort_Device(void *usbinfo);
+extern int LIBMTP_Terento_GetPartialObject_Validated(LIBMTP_mtpdevice_t *device,
+    uint32_t const id, uint64_t offset, uint32_t maxbytes,
+    unsigned char **data, unsigned int *size);
 #endif
 
 void terento_mtp_end_operation(void) {
@@ -1961,6 +1964,20 @@ static int map_short_packet_reads(const TerentoMTPMapOperationProfile *profile) 
 #endif
 }
 
+/* Full-object reads only: the caller resolved this exact object and size in the
+ * current session and bounds each request by it. The bundled extension skips
+ * libmtp's per-chunk metadata transactions for every Garmin; content proof is
+ * still the caller's exact byte count and full hash. */
+static int read_validated_partial_object(LIBMTP_mtpdevice_t *device, uint32_t object_id,
+    uint64_t offset, uint32_t length, unsigned char **bytes, unsigned int *count) {
+#if defined(TERENTO_BUNDLED_MTP)
+    return LIBMTP_Terento_GetPartialObject_Validated(device, object_id, offset, length, bytes, count);
+#else
+    /* Legacy Homebrew harness lacks the bundled extension. */
+    return LIBMTP_GetPartialObject(device, object_id, offset, length, bytes, count);
+#endif
+}
+
 /* A 64-digit hexadecimal SHA-256 that is not all zeroes. */
 static int valid_content_hash(const char *expected_hash) {
     if (!expected_hash || strnlen(expected_hash, 65) != 64) return 0;
@@ -1989,7 +2006,8 @@ static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
         uint32_t requested = terento_sample_read_request(remaining, map_short_packet_reads(profile));
         unsigned char *bytes = NULL;
         unsigned int count = 0;
-        int result = LIBMTP_GetPartialObject(device, object_id, offset, requested, &bytes, &count);
+        int result = read_validated_partial_object(device, object_id, offset, requested,
+            &bytes, &count);
         int valid = result == 0 && bytes && count == requested;
         if (valid && offset == 0) valid = count >= 0x48 && bytes[0] == 0
             && !memcmp(bytes + 0x10, "DSKIMG", 6) && !memcmp(bytes + 0x41, "GARMIN", 6);

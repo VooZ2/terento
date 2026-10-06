@@ -665,6 +665,16 @@ Lifecycle readers also validate the physical device in that session. Historical
 handles never identify a cross-session read target. These metadata checks do not
 establish whole-device byte equality.
 
+When Safe Update reads the whole installed map (an entry without a recorded
+removal proof), map metadata is parsed from the first bytes of that local
+read-back, the same bytes covered by the full SHA-256; no separate prefix
+session follows the full read. The recorded-proof check and the new-map
+verification keep their header read. The old-map hash binding and exact
+path/size/identity checks are unchanged. The full removal content check reads
+in chunks through the bundled `LIBMTP_Terento_GetPartialObject_Validated`
+extension, which skips libmtp's per-chunk metadata transactions; sampled reads
+keep the upstream call.
+
 `ProtectedMapInventory` compares storage ID, exact full path, filename, size and
 file/folder kind; item/parent handles are session-scoped navigation and diagnostics.
 Within the compared inventory it conservatively protects unknown objects,

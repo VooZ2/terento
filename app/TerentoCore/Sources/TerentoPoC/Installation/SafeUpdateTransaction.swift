@@ -1284,6 +1284,8 @@ struct SafeUpdateFullContentRead: Equatable, Sendable {
     let sourcePath: String
     let reportedSizeBytes: UInt64
     let sha256: String
+    /// IMG metadata parsed from the hashed bytes, when the reader has them.
+    var metadata: GarminIMGMetadata? = nil
 }
 
 /// The recorded-proof read of the installed map in one device session.
@@ -1347,7 +1349,8 @@ struct SafeUpdateContentVerifier: Sendable {
                 "The installed map identity changed during validation."
             )
         }
-        let identity = try checkedIdentity(of: expected.file, expected: expected.identity, version: expected.version)
+        let identity = try checkedIdentity(of: expected.file, expected: expected.identity, version: expected.version,
+                                           metadata: transfer.metadata)
         if let expectedHash = expected.sha256 {
             guard transfer.sha256.caseInsensitiveCompare(expectedHash) == .orderedSame else {
                 throw SafeUpdateTransportError.metadataMismatch
@@ -1426,9 +1429,9 @@ struct SafeUpdateContentVerifier: Sendable {
                                       ownership: .managedByTerento, sha256: artifact.sha256)
     }
 
-    private func checkedIdentity(of file: InstalledMapFile, expected: MapIdentity,
-                                 version: MapVersion?) throws -> (identity: MapIdentity, version: MapVersion?) {
-        let metadata = try reader.readMetadata(file)
+    private func checkedIdentity(of file: InstalledMapFile, expected: MapIdentity, version: MapVersion?,
+                                 metadata parsed: GarminIMGMetadata? = nil) throws -> (identity: MapIdentity, version: MapVersion?) {
+        let metadata = try parsed ?? reader.readMetadata(file)
         guard let identity = MapIdentity(provider: metadata.provider, region: metadata.region),
               MapIdentityMatcher.matches(actual: identity, expected: expected),
               metadata.version == version else {

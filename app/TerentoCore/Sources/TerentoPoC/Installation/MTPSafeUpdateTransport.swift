@@ -209,8 +209,12 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             onProgress: { onProgress?($0.fractionCompleted * 0.86) }
         )
         let hash = try sha256(of: temporaryURL, onProgress: { onProgress?(0.86 + 0.14 * $0) })
+        // Parse the bytes that were hashed. A second device session would
+        // repeat the full inventory without adding identity proof.
+        let metadata = try localMetadata(of: temporaryURL, filename: file.filename)
         return SafeUpdateFullContentRead(itemID: transfer.itemID, sourcePath: transfer.sourcePath,
-                                         reportedSizeBytes: transfer.reportedSizeBytes, sha256: hash)
+                                         reportedSizeBytes: transfer.reportedSizeBytes, sha256: hash,
+                                         metadata: metadata)
     }
 
     fileprivate func readRecordedProof(_ file: InstalledMapFile, sha256: String, proof: ManagedRemovalProof,
@@ -352,6 +356,17 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         guard let metadata = contextualMetadata(prefix, filename: file.filename) ?? GarminIMGMetadataParser().parse(
             prefix,
             filename: file.filename
+        ) else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        return metadata
+    }
+
+    private func localMetadata(of url: URL, filename: String) throws -> GarminIMGMetadata {
+        let prefix = try MapPackageFormat.readPrefix(from: url, maxLength: GarminIMGMetadataParser.prefixLength)
+        guard let metadata = contextualMetadata(prefix, filename: filename) ?? GarminIMGMetadataParser().parse(
+            prefix,
+            filename: filename
         ) else {
             throw SafeUpdateTransportError.metadataMismatch
         }

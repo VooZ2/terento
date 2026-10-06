@@ -230,3 +230,24 @@ python3 "$project_root/Tests/TerentoPoCTests/USBRecoveryPatchTests.py" \
 
 python3 "$project_root/Tests/TerentoPoCTests/USBDeviceReferenceTests.py" \
     "$project_root/../../Packaging/NativeDependencies/patch-usb-device-references.py"
+
+python3 "$project_root/Tests/TerentoPoCTests/ValidatedPartialReadPatchTests.py" \
+    "$project_root/../../Packaging/NativeDependencies/patch-validated-partial-read.py"
+
+# Full-object deletion hashing keeps exact counts. Bundled builds use the
+# validated read for every Garmin; only the legacy harness keeps upstream.
+validated_helper="$(awk '/^static int read_validated_partial_object\(/,/^}/' "$bridge")"
+if ! print -r -- "$validated_helper" | grep -q '#if defined(TERENTO_BUNDLED_MTP)' \
+    || ! print -r -- "$validated_helper" | grep -q 'return LIBMTP_Terento_GetPartialObject_Validated(device' \
+    || print -r -- "$validated_helper" | grep -q 'profile\|product_id\|0x51b8'; then
+    print -u2 "FAIL: validated partial read is not device-independent in bundled builds"
+    exit 1
+fi
+deletion_reader="$(awk '/^static int verify_deletion_content\(/,/^}/' "$bridge")"
+if print -r -- "$deletion_reader" | grep -q 'LIBMTP_GetPartialObject(' \
+    || ! print -r -- "$deletion_reader" | grep -q 'read_validated_partial_object(device, object_id' \
+    || ! print -r -- "$deletion_reader" | grep -q 'count == requested'; then
+    print -u2 "FAIL: deletion content hashing lost its validated exact-count read"
+    exit 1
+fi
+print "PASS: validated partial reads keep exact-count full-content hashing"
