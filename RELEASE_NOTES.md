@@ -21,14 +21,14 @@ Terento 1.0.0-rc.1 is the first release candidate for Terento 1.0.0, the free, o
 - Your Mac stays awake during map transfers, and Terento asks before quitting while it writes to the watch.
 - The safety check before writing is faster on watches with a lot of music or other non-map content.
 - The map list shows each map's download size and estimated download time. On a watch without Terento maps yet, it also recommends a map for your region.
-
-- Removing a map installed with this version, and removing the old version during an Update of such a map, now takes seconds instead of minutes. Terento checks the exact map object and a recorded fingerprint of the map it wrote and verified. Maps installed with earlier versions and maps not installed by Terento keep the full check.
+- Removing a map installed with this version now takes seconds instead of minutes. Terento checks the exact map object and a recorded fingerprint of the map it wrote and verified.
+- Updating such a map is much faster: the checks of the installed map and of the new map take seconds, so an Update takes little more than writing the new map. The new map is checked the same way as a fresh installation, and the current map stays on the watch until the new one is verified.
+- Maps installed with earlier versions and maps not installed by Terento keep the full check. After their first Update with this version, later Updates and removals use the fast check.
 
 ## Help and reports
 
 - Error dialogs link to the matching section of the new Troubleshooting guide on terento.app, and Help → Troubleshooting opens the guide.
 - Send report to Terento sends a sanitised failure report without a GitHub account. You review exactly what is sent, and the report is sent only when you choose Send. Reporting on GitHub remains available.
-
 
 ## Safer catalog and reporting
 
@@ -48,7 +48,7 @@ Map Update was validated on a real watch with BBBike, Freizeitkarte and MapRando
 - Garmin Edge devices remain outside the current supported scope. This release does not broaden device compatibility claims.
 - Update and remove operations can remain at a high displayed percentage for a noticeable period before completion.
 
-<!-- TODO(owner validation): remove the high displayed percentage item above only after the owner validates fast removal on a real watch. -->
+<!-- TODO(owner validation): remove the high displayed percentage item above only after the owner validates fast removal and fast Update on a real watch. -->
 
 Existing protected-map, ownership, safe Update and explicit Remove safeguards remain in place. Installation authorization rules are unchanged.
 
