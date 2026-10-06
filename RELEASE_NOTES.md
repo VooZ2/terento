@@ -46,9 +46,9 @@ Map Update was validated on a real watch with BBBike, Freizeitkarte and MapRando
 - Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
 - OpenTopoMap India remains under investigation in [issue #278](https://github.com/VooZ2/terento/issues/278).
 - Garmin Edge devices remain outside the current supported scope. This release does not broaden device compatibility claims.
-- Update and remove operations can remain at a high displayed percentage for a noticeable period before completion.
+- The faster Update checks have passed automated tests; real-watch confirmation of their speed is still pending. Updating or removing a map installed with an earlier version still uses the full check and can remain at a high displayed percentage for a noticeable period before completion.
 
-<!-- TODO(owner validation): remove the high displayed percentage item above only after the owner validates fast removal and fast Update on a real watch. -->
+<!-- TODO(owner validation): fast removal was validated on a real watch on 2026-10-06 (sampled check, about 6 s for a 277 MB map). Shorten the item above after the owner validates a fast Update on a real watch. -->
 
 Existing protected-map, ownership, safe Update and explicit Remove safeguards remain in place. Installation authorization rules are unchanged.
 
