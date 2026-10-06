@@ -200,9 +200,12 @@ installed, old map removed, protected final inventory, manifest):
 - Measured with the fake-libmtp harness (`run-native-fast-update-tests.sh`), a
   434 MB managed update reads 33,554,368 content bytes over MTP (2,097,120 +
   29,360,128 + 2,097,120) instead of 870,097,120 (434,000,000 + 434,000,000 +
-  2,097,120); inventory and header reads are unchanged. Local traces show
-  `update_current_check method=sampled|full bytes=…` and
-  `update_new_check method=sampled regions=… bytes=…`.
+  2,097,120); inventory and header reads are unchanged. The local finishing
+  trace (and the issue report's filtered trace) records
+  `update_current_check method=sampled|full bytes=…`,
+  `update_new_check method=sampled regions=… bytes=…` and, for every removal,
+  `removal_check method=sampled|full bytes=…`; only the method and counts, never a
+  path, name or handle.
 
 Manage maps shows a determinate bar, percentage and current action throughout
 Update. Downloading and Installing retain their byte counts and transfer speed.
