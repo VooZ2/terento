@@ -807,10 +807,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("Last 7 days", body)
         self.assertIn("Install failed", body)
-        # One provider-problem definition: a degraded provider is one row count
-        # that opens Providers, not a second per-provider list (ADM-10).
-        self.assertIn("aria-label='Provider problems: 1'", body)
-        self.assertIn("href='/admin/providers'", body)
+        # Provider problems live on Providers, not in Needs attention.
+        self.assertNotIn("aria-label='Provider problems", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
         self.assertIn("data-stat='completedInstallCount'>3</strong>", body)
         self.assertIn("data-stat='installSuccessRate'>75%</strong>", body)
@@ -1033,8 +1031,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("attention-shortcuts", attention)
         self.assertNotIn("No pending work.", attention)
         self.assertNotIn("Download failed", attention)
-        # Fixed category rows keep their shape whatever the counts are.
-        self.assertEqual(attention.count("class='overview-attention-row'"), 9)
+        # At most the six review queues; zero rows are omitted.
+        self.assertLessEqual(attention.count("class='overview-attention-row'"), 6)
+        for label in ("Maps unknown", "Provider problems", "System checks"):
+            self.assertNotIn(label, attention)
 
     def test_failure_reason_normalizes_source_validation_variants(self):
         for category, stage, code in (

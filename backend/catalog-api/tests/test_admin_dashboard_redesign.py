@@ -97,14 +97,14 @@ class DashboardPresentationTests(unittest.TestCase):
     def test_needs_attention_lists_only_nonzero_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
-        labels = ["Open problems", "GitHub issues", "Identity review",
-                  "Missing reports", "Support reports", "Maps unknown", "System checks"]
+        labels = ["Open problems", "GitHub issues", "Identity review", "Missing reports", "Support reports"]
         self.assertEqual(attention.count("class='overview-attention-row'"), len(labels))
         positions = [attention.index(f"<span class='overview-attention-label'>{label}</span>") for label in labels]
         self.assertEqual(positions, sorted(positions))
-        # Measured zeros (Publication review, Provider problems) render no row.
-        self.assertNotIn(">Publication review<", attention)
-        self.assertNotIn(">Provider problems<", attention)
+        # A measured zero (Publication review) renders no row; Maps unknown,
+        # Provider problems and System checks are not Needs attention rows.
+        for label in ("Publication review", "Maps unknown", "Provider problems", "System checks"):
+            self.assertNotIn(f">{label}<", attention)
         self.assertNotIn("data-state='zero'", attention)
         self.assertIn("aria-label='Missing reports: 57'", attention)
         self.assertIn("href='/admin/review/missing-reports'", attention)
@@ -112,8 +112,6 @@ class DashboardPresentationTests(unittest.TestCase):
         import re
         rows = [int(value) for value in re.findall(r"aria-label='[A-Za-z ]+: (\d+)'><svg", attention)]
         self.assertEqual(len(rows), len(labels))
-        self.assertIn("aria-label='Maps unknown: 4'", attention)
-        self.assertIn("href='/admin/devices?maps=unknown&amp;active=1'", attention)
         self.assertIn("aria-label='Support reports: 2'", attention)
         self.assertIn("href='/admin/support-reports'", attention)
         head = attention.split("</header>", 1)[0]
@@ -123,9 +121,7 @@ class DashboardPresentationTests(unittest.TestCase):
     def test_needs_attention_with_nothing_open_says_so_without_rows(self):
         zero_review = {"available": True, "installationIssues": 0, "githubIssuesInProgress": 0,
                        "identityPending": 0, "readyToPublish": 0, "missingDiagnostics": 0}
-        from unittest import mock
-        with mock.patch("terento_catalog.admin._system_health_cards", return_value=([], None)):
-            body = self.render(review=zero_review, supportReports={"openCount": 0}, mapsUnknown={"modelCount": 0})
+        body = self.render(review=zero_review, supportReports={"openCount": 0})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
         self.assertIn("Nothing to review.", attention)
         self.assertNotIn("overview-attention-row", attention)

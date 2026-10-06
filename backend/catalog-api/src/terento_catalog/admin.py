@@ -2393,7 +2393,6 @@ def overview_page(
     compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
     downloads = overview.get("downloads") if isinstance(overview.get("downloads"), dict) else {}
     providers = list(overview.get("providers") or [])
-    providers_available = overview.get("providersAvailable", True) is not False
     period = str(overview.get("period") or "24h")
     if period not in {"24h", "7d", "30d", "all"}:
         period = "24h"
@@ -2431,29 +2430,11 @@ def overview_page(
     )
     attention_counts.append(support_count)
     attention_rows.append(_attention_row("Support reports", support_count, "/admin/support-reports", "message"))
-    # Active catalog models whose Maps value is Unknown (installation PENDING).
-    maps_unknown = overview.get("mapsUnknown")
-    maps_unknown_count = (
-        _optional_nonnegative_int(maps_unknown.get("modelCount"))
-        if isinstance(maps_unknown, dict) and maps_unknown.get("available") is not False else None
-    )
-    attention_counts.append(maps_unknown_count)
-    attention_rows.append(_attention_row("Maps unknown", maps_unknown_count, "/admin/devices?maps=unknown&active=1", "question"))
-    provider_states = [_provider_problem_state(provider) for provider in providers]
-    provider_problem_count = (
-        sum(1 for state in provider_states if state["problem"]) if providers_available else None
-    )
-    attention_counts.append(provider_problem_count)
-    attention_rows.append(_attention_row("Provider problems", provider_problem_count, "/admin/providers", "alert"))
+    # Needs attention lists six review queues only (owner decision 2026-10-06);
+    # Maps unknown, provider problems and system checks stay on their own pages.
     system = overview.get("system") if isinstance(overview.get("system"), dict) else None
     system_available = isinstance(system, dict) and system.get("available") is not False
     health_cards = _system_health_cards(system)[0] if system_available else []
-    system_count = (
-        sum(1 for card in health_cards if card["status"] != "HEALTHY" and card.get("group") != "catalogs")
-        if system_available else None
-    )
-    attention_counts.append(system_count)
-    attention_rows.append(_attention_row("System checks", system_count, "/admin/system-health", "alert"))
     attention_total = (
         sum(attention_counts) if all(value is not None for value in attention_counts) else None
     )

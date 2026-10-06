@@ -224,11 +224,10 @@ shown in these cards (all-time totals and the purpose breakdown are on Maps).
 The Needs attention header shows its Now total. The payload still carries the
 period purpose breakdown (`downloadPurposes`: install, update, unknown), which
 the Dashboard does not render. Needs attention covers unresolved work across all dates in
-up to nine rows (zero-count rows are omitted; all zero shows `Nothing to
-review.`) read only from `admin_review_summary()`, the open public
-support-report count (`support_report_open_count()`), the active Maps-unknown
-model count (`maps_unknown_model_count()`), the shared
-provider-problem definition and the system checks; an unavailable query shows
+up to six review-queue rows (zero-count rows are omitted; all zero shows
+`Nothing to review.`) read only from `admin_review_summary()` and the open
+public support-report count (`support_report_open_count()`); Maps unknown,
+provider problems and system checks are not rendered there; an unavailable query shows
 `—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
 for the period. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
