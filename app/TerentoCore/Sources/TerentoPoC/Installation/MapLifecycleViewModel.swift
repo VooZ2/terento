@@ -128,7 +128,15 @@ final class MapLifecycleViewModel: ObservableObject {
         !isBusy
     }
 
+    /// Explains an operation the last disconnect interrupted; cleared when
+    /// the user starts another operation.
+    @Published private(set) var interruptedOperationNotice: String?
+
     func resetForDisconnectedDevice() {
+        interruptedOperationNotice = operations.values.lazy.compactMap { state in
+            MapLifecycleInterruption.notice(action: state.action, phase: state.phase,
+                fraction: state.progress?.fractionCompleted ?? 0)
+        }.first
         lifecycleEpoch &+= 1
         operationController.invalidate()
         operationGate.invalidateLifecycleOperations()
@@ -354,6 +362,7 @@ final class MapLifecycleViewModel: ObservableObject {
     }
 
     func confirmPendingAction() {
+        interruptedOperationNotice = nil
         guard let confirmation = pendingConfirmation else { return }
         pendingConfirmation = nil
 

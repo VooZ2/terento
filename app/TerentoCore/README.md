@@ -655,3 +655,16 @@ flattened component position. MapRando's standalone France contours catalog entr
 has its own main artifact; it remains a selectable independent map, distinct from
 attached optional component downloads. These are local changes, not release or
 hardware evidence. No Checking UI or device-write sequencing changes are included.
+
+### Connection and disconnect messages
+
+While a Garmin is on USB but not yet offering file transfer, the app shows the
+calm "Waiting for your Garmin…" state; the USB-mode hint appears only after the
+watch stays invisible to file transfer for 45 seconds (watches commonly need
+20-30 seconds after plugging in or unlocking). A watch that drops off USB for
+less than 10 seconds while connecting keeps the connecting state. After an
+unexpected disconnect the waiting screen is titled "Your Garmin was
+disconnected" and, when Remove or Update was running, states what the safety
+order guarantees at that point: before the removal content check finished
+nothing was removed; an interrupted update keeps the current map until the new
+one is verified; later phases point to Manage maps to check the result.
