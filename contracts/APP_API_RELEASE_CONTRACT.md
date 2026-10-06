@@ -331,6 +331,36 @@ instead of blocking as ambiguous. Incomplete authorization/journal evidence,
 ambiguous targets and uncertain cleanup identity fail closed. No automatic retry
 or name-plus-size cleanup authority is introduced.
 
+The pre-write and post-write protected comparisons of fresh installation and
+Safe Update cover the map scope: every storage-root entry on every storage plus
+the complete subtree of the single root folder named `GARMIN` (ASCII case
+ignored). Objects inside other top-level folders (for example `/Music/**`) are
+no longer compared. This is sufficient because every Terento mutation is
+object-scoped inside that subtree: a fresh object is sent into the verified
+`/GARMIN` folder handle under native authorization and a same-session
+no-overwrite check, and every native delete resolves the same folder and
+removes one exact verified object in it (the replaced or user-confirmed map
+after full SHA-256 comparison; automatic cleanup after a lost creation session
+is refused). The scan only recognizes, manages or
+offers Remove for maps in `/GARMIN` and `/GARMIN/Map`, and storage-root map
+files remain compared. When the native session cannot prove exactly one root
+folder, or the scoped listing fails, it answers with the previous full walk;
+each comparison uses the narrowest scope both sides cover. Map scan, detection,
+Remove, the post-update rescan and prefix reads keep the full walk. The exact
+boundary is described in `app/TerentoCore/README.md` (map-scope protection
+inventory).
+
+Compatibility events (installation and `operationKind=update`) may carry an
+optional top-level `inventoryMetrics` object: `scope` (`FULL` or `GARMIN`;
+`GARMIN` only when every measured read was scoped), `prewriteObjectCount`,
+`prewriteDurationMs` and, once a post-write read completed,
+`postwriteObjectCount` and `postwriteDurationMs` (non-negative integers). It
+contains no path, name, size or object handle and is omitted when no inventory
+was measured. Older APIs reject unknown fields, so API acceptance of exactly
+this shape must be deployed before a client that emits it is distributed; until
+then the client parks rejected reports under the existing telemetry parking
+rules.
+
 Durable local ownership is independent of app version and mutation-journal lifetime.
 Without a reliable device/map manifest, managed Update is unavailable and no silent
 ownership inference is allowed. Explicit external Remove remains available after
