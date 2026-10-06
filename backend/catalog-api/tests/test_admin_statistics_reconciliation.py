@@ -18,7 +18,7 @@ class AdminStatisticsReconciliationTests(unittest.TestCase):
         self.assertIn("<span class='admin-metric-label'>Last report</span>", body)
         self.assertNotIn("Last activity", body)
         self.assertIn("2026-10-05T10:00:00", body)
-        self.assertIn(">Update reports</h2>", body)
+        self.assertIn(">Updates</h2>", body)
 
     def test_download_purposes_preserve_unknown_and_independent_totals(self):
         rows = [dict(event_type='DOWNLOAD_SUCCEEDED', outcome='SUCCEEDED', operation_count=n, acquisition_purpose=purpose)

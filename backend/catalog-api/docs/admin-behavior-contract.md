@@ -21,7 +21,8 @@ requires one exact operation/provider/region match with the same outcome. Region
 casing is normalized to lowercase in both streams; names and aliases are not
 guessed. Missing,
 ambiguous or conflicting evidence is shown explicitly. The list is titled
-`Update reports` and shows Reports, Successful, Failed, Blocked and Open tiles
+`Update reports`, is reached from Tools → Update reports (the Tools menu and
+that item are marked active on it; Maps carries no Update reports link) and shows Reports, Successful, Failed, Blocked and Open tiles
 (`All time`) for the list scope, counted as raw update report rows of the
 diagnostic stream and independent of the outcome filter and pagination, so it is
 never presented as the Maps update total. The list can filter successful, failed
@@ -58,7 +59,10 @@ section card
 (one- or two-word title, optional scope chip, at most one action link, no
 explanatory paragraph), a status pill (icon plus sentence-case text; colour
 supports but never replaces the text), table conventions (identity first,
-numbers and dates trailing, `—` for unknown), empty states (empty, filtered,
+numbers and dates trailing, `—` for unknown; every data table sorts by any
+labelled column through its header button with a Font Awesome sort icon and
+`aria-sort`, `—` always last; server-paginated tables sort the loaded page and
+ranking lists with a visually hidden header keep their ranking order), empty states (empty, filtered,
 unavailable with Retry) and chart legends. Labels and card titles carry no
 inline `?` glossary links; term definitions live only on Tools → Glossary.
 Colours, radii and focus rings come only from the generated brand tokens; the
@@ -66,6 +70,39 @@ focus ring is Interactive Primary (≥3:1). Every icon, including chevrons,
 arrows and placeholders, is an unchanged Font Awesome Free solid icon from the
 pinned revision in `THIRD_PARTY_NOTICES.md`, inlined (no external origin);
 Admin never uses hand-drawn SVG, CSS-drawn shapes or text glyphs as icons.
+
+Filter bar (owner decision 2026-10-06): every Admin filter bar uses the
+Installations design — one muted rounded bar holding, in order, a quick-filter
+group, the search field, More filters or other selects, the result count and
+Clear; Clear appears only when a filter differs from its default. A
+single-choice filter is a quick-filter group, not a dropdown: Devices Maps
+capability, Health status, the Maps time range, provider package and source
+status, support report status, and the device, diagnostics and update history
+filters. Such a group drives a hidden native select that stays the source of
+truth for page scripts and GET forms. The bar sits 12px above its table. The
+Dashboard period stays a dropdown because the Dashboard replaces its content in
+place.
+
+Filter dropdown (owner decision 2026-10-06): every remaining filter-type
+`<select>` — More filters panels (Installations, Devices, Maps), the Maps
+provider, the Dashboard period, rows-per-page and the mobile sort selects —
+carries `data-admin-dropdown` and is enhanced by one shared,
+nonce-delivered Admin script. A combobox button shows the selected option and
+a Font Awesome chevron; its listbox popover opens directly below the field,
+left-aligned and at least the field's width, flips above only when there is no
+room below, and never covers the field. It uses the white surface, a 1px
+border, the control radius, the existing card shadow, Inter at the field's
+size, a check icon plus selected tint on the chosen option, and the Admin focus
+ring; the popover is used at every width and never causes page overflow. The
+native select stays in the DOM, labelled and visually hidden, as the source of
+truth: a choice sets its value and dispatches bubbling `input` and `change`
+events, and programmatic value or option changes and `disabled` are mirrored.
+Keyboard follows the ARIA select-only combobox (Enter, Space, Alt+Down or the
+arrows open; arrows, Home, End and type-ahead move; Enter selects; Escape closes
+and keeps focus; an outside click closes). Selects in forms that post data
+(device Administration, diagnostic issue workflow), selects inside dialogs, the
+provider health-check interval, the campaign link builder and the top-bar time
+zone stay native.
 
 This is the canonical behavioral contract for the private Terento admin surface
 and its diagnostic data dependencies. It complements `api.md` (routes and current
@@ -292,7 +329,8 @@ come only from the canonical review read model and the support-report count;
 there is no fallback from another definition.
 A failed query shows `—` with an explicit `Unavailable` message, never `0` or
 "No pending work". Each row links to its work list, and that list shows the same
-total even when it paginates. Failures, linked issue work, identity/publication
+total even when it paginates; Identity review links to the Identity review queue
+(`/admin/review/identity`). Failures, linked issue work, identity/publication
 review, and provider/system problems remain distinct work types. Empty active
 work does not mean there have been no failures.
 
@@ -349,7 +387,8 @@ another report or nearby timestamp.
 
 Installations is all-time model evidence and is visibly labelled `All time ·
 Model evidence`. Its summary tiles, in order, are Attempts, Successful, Failed,
-Success rate (each with an `All time` chip) and Open problems (`Now`). A positive
+Success rate (all time) and Open problems (now), shown without scope chips under
+the numbers (owner decision 2026-10-06; the page is the all-time evidence view). A positive
 Failed value uses the danger color; a measured zero stays neutral. The status
 column is named Evidence.
 Open problems, the per-identity Open problems column and model detail Open
@@ -367,14 +406,51 @@ neither view invents the missing stream or a model identity.
 
 All, Failed, Open problems, Identity review and Successful quick filters retain
 their separate meanings; Identity review shows identities with a pending
-identity decision and is the Dashboard Identity review destination. Failed includes resolved historical failures; Open problems does
-not. A true no-evidence state omits metrics, filters, table, and pagination. A
+identity decision. When a listed identity is pending, a `Review identities`
+link beside the quick filters opens the Identity review queue, and a row's
+`Identity review` badge links to the queue at that reported identity
+(`/admin/review/identity#identity-…`); the model link keeps its destination.
+Failed includes resolved historical failures; Open problems does not. A true no-evidence state omits metrics, filters, table, and pagination. A
 filtered-empty state keeps the active filters and a clear action. Pagination
 appears only when multiple pages exist.
 
 Known exact identities group consistently across list, record, detail, and
 statistics views. Unknown identities remain discoverable. Identity text is
 leading aligned; numbers and dates are trailing aligned where practical.
+
+### Identity review
+
+`/admin/review/identity` is the one Identity review queue (owner decision
+2026-10-06) and the Dashboard Identity review destination. It lists every
+active install operation with at least one identity-pending result, across all
+reported identities, newest first, grouped by reported identity (one card per
+identity with its reported model and variant, its count and an `All
+installations` link to that identity's page). The unit is the Needs attention
+one, an install operation; a multi-map operation is one item. Each item is one
+compact row: date, map, result pill, a short reason taken from the received
+identity assessment (for example `2 possible models`, `One match · size not
+confirmed`, `No catalog match`), a `Details` link that opens that result's
+diagnostic dialog on the reported-identity page, and the Device identity
+controls inline. The inline controls are the dialog's Device identity form
+(same fields, same `/admin/diagnostics/identity` action, one exact result per
+form, so a multi-map item shows one form per pending result): the suggested
+model when the assessment has exactly one, Edit or Pick model to open the
+picker (candidates only, or the page's catalog template), and Confirm. The
+picker stays closed until Edit or Pick model. Confirm saves through the shared
+async action and keeps the queue open: the form becomes `Confirmed` with a link
+to the model and the remaining counts drop; a conflict keeps the separate
+Confirm manual assignment path. The endpoint assigns one result or one explicit
+operation scope, so the queue never offers a group-wide confirm. With nothing
+pending the page says `No installations wait for identity review.`; a failed
+read renders an `Unavailable` card with Retry.
+
+Discovery reuses the Installations source (identities whose active results are
+identity pending) and the existing per-identity detail read; the Needs
+attention count is the SQL operation count. Both use the same row predicate
+(active, nonlocal, not statistics-excluded, no catalog model, not resolved or
+not identifiable, not a provider download failure) and the same operation
+unit, so they agree except when one operation reports results under two
+different reported identities, which then appears under each identity.
 
 ### Devices and device detail
 
@@ -391,17 +467,39 @@ observed capability, success counts, identity review, and public compatibility
 never grant write permission. Evidence is computed only from the stored catalog
 Maps fact and verified successes; a model-name classifier never sets it.
 
-The Devices list opens with tiles (Models, Maps: Yes, Verified, Covered, Pending
-policy) and the last sync line. The narrow-width sticky column header is a
+The Devices list uses the Installations layout: the last sync line sits in the
+page heading meta, and the tiles (Models, Maps: Yes, Verified, Covered, Pending
+policy) carry no scope chips. Covered reads `covered/eligible (rate)`, for
+example `12/40 (30.0%)`. The filter bar matches Installations: a Maps quick
+filter group (All, Maps: Yes, Maps: No, Maps: Unknown; Maps: Yes by default),
+search, More filters and the result count, separated from the table by the
+filter-to-table gap and still sticky above it; Clear appears only when a filter
+or sort differs from the default. The narrow-width sticky column header is a
 visual copy hidden from assistive technology; the table's own header keeps the
 caption and sortable controls.
 
 Empty installation history omits unusable filters, table, and pagination. Above
 900px, the Installs card (Attempts, Successful, Failed, Open problems, Last
-report), Update reports, Administration, Device information, and Technical
-details form the left column while Installation history uses the right column.
-A pre-write result (`writeStarted=false`) shows `Blocked before writing`, is not
-in the Failed filter, has its own Blocked before writing filter, and stays an
+report), Updates, Administration, Device information, and Technical
+details form the left column while Installation history and, below it, Update
+history use the right column.
+Update history uses the Installation history layout: its `Update history` title
+sits outside the card in the same section heading, with no scope chip, followed
+by the same quick-filter bar in the Installation history order (All, Failed,
+Blocked, Successful; Clear when a filter is active) and the same diagnostic
+list table (Date, Map, Result, GitHub issue, App
+version, Inspect). Its filters and pages stay server-side (`updateOutcome`,
+`updateOffset`), so the filters are links; the active one carries
+`aria-current` and the quick-filter active style. At ≥1024 px the table fits
+the history column without horizontal scrolling and shows the GitHub issue
+column only when a listed row has a linked issue; narrower layouts use the same
+labelled record cards as Installation history. An empty Update history shows
+the same compact empty state as Installation history and omits filters, table
+and pagination; a filter with no matches keeps the filter bar and says so.
+A pre-write result (`writeStarted=false`) shows a `Blocked` status pill (its title
+says `Blocked before writing`; quick filters also read `Blocked`, counts keep
+the full term), is not in the Failed filter, has its own Blocked filter, and
+stays an
 open problem when the canonical predicate says so.
 Narrow layouts stack that same reading order. Historical catalog provenance
 remains accessible and does not change Maps, Install policy, support, or public
@@ -430,24 +528,30 @@ the collapsed Events disclosure. Initial HTML and asynchronous JSON use the same
 server summary.
 
 Maps reads top to bottom: Downloads, Installs and Updates tiles for the selected
-period (each with failed count, rate and a visible period chip) with the download
-purpose breakdown and, unless the period is All time, one `All time` line with
-the all-time totals; then the Downloads and Installs trend cards; then Countries
-(world map) and Top countries; then Providers; then Top maps; then the collapsed
-Events disclosure. These analytics are not placed in disclosures on wider
+period (each with failed count and rate); then the Downloads and Installs trend
+cards, laid out like the Dashboard charts (period Successful, Failed and Success
+rate totals at the top right, a legend without numbers), with the download
+purpose breakdown under the Downloads legend; then Countries (world map) and Top
+countries; then Providers; then Top maps; then the collapsed Events disclosure.
+The filter bar names the selected period, so Maps cards carry no scope chips and
+no separate All time line (owner decision 2026-10-06). The Providers stream
+control and the Top maps search sit in the shared filter bar inside their
+cards. These analytics are not placed in disclosures on wider
 screens. At ≤600 px the three tiles form one compact three-column row, and Top
 countries, Providers and Top maps start collapsed behind a Show/Hide button
 (`aria-expanded`, card title in its accessible name) so the page stays short;
 a link to an element inside a collapsed card opens it, and without script or
 above 600 px every card stays open. The world map remains visible and Top
-countries shows up to 10 rows from the existing country ranking. A period without rows shows measured zero tiles and an empty-scope note;
+countries shows at least 10 rows from the existing country ranking; beside the
+Countries card it adds further rows while they fit its height (up to 30). A period without rows shows measured zero tiles and an empty-scope note;
 it never shows populated all-time numbers as if they were the period. Diagnostic
 linkage coverage may remain in the private API contract but is not shown as an
 Admin block. Events uses human labels (event type, provider, map name) with the
 raw code in the title, and shows Results (counted) and Events (raw records)
 separately. The Maps page carries the selected time zone in its form so chart
-buckets and period boundaries use it; changing the zone reloads them. An
-`Update reports` link opens the update report list.
+buckets and period boundaries use it; changing the zone reloads them. The Maps
+heading carries no Update reports link; the update report list is reached from
+Tools → Update reports.
 
 Maps trends use hourly buckets for 24 hours, daily buckets for seven days,
 weekly buckets for 30 days, and adaptive all-time buckets: daily through 14
@@ -492,13 +596,31 @@ Download phase icons remain static. Timestamps use the selected time zone.
 
 Primary actions precede raw technical evidence. Prepare GitHub issue is visible
 without opening a disclosure in both installation and update failure views.
-Issue preview/link management, Technical details and review administration use
-the same disclosure presentation, without duplicate headings. Resolve marks
-a diagnostic reviewed; it is secondary to investigating the failure. Assigned
-model administration stays collapsed; unresolved identity has a clear action.
-Cards use content-driven heights and stack when space requires it.
+Resolve marks a diagnostic reviewed; it is secondary to investigating the
+failure.
 
-Assign model is an operator-assisted exact-catalog selection. Initial candidate
+The installation detail dialog (opened from Inspect) reads, below the record
+summary, in one section rhythm with one heading style (owner decision
+2026-10-06): What happened, with its Next action sentence as a labelled line in
+the same section; Safety facts as a compact fact list; GitHub issue (status
+line, one help line, one action row with Prepare GitHub issue and Copy issue
+report, then the Preview issue report and Link or manage an existing issue
+disclosures); Review administration; Technical details; and Device identity
+last. Every `<details>` in the dialog, including the per-result Technical
+details, uses the one `admin-disclosure diagnostic-disclosure` presentation
+(white surface, border, card radius, Font Awesome chevron, same summary font).
+Review administration holds the resolve/reopen and workflow forms in one
+collapsed disclosure, each form a compact row with its button aligned to its
+fields; it is omitted when no lifecycle or workflow action applies. There is no
+separate "Identity incomplete" notice; the Review state badge and Next action
+point to Device identity. The update report page uses the same sections,
+disclosure presentation and review-form layout; it has no Device identity
+section.
+
+Device identity is an operator-assisted exact-catalog selection: Selected model
+is shown as a label with a bold value, and Edit, Confirm and (only on conflict)
+Confirm manual assignment share one action row. When a model is already
+selected the search picker stays hidden until Edit. Initial candidate
 buttons are immediately usable by pointer and keyboard without
 typing into the search field. When a dialog would list the whole catalog, the
 page renders the catalog once in a template and each dialog clones it when it
@@ -509,6 +631,16 @@ target. A conflicting normal assignment requires the separate explicit manual
 action and an audit record. Scope remains one exact result unless the operator
 explicitly submits an operation-level scope. Identity decisions never alter
 installation outcomes, device files, telemetry, statistics, or publication.
+
+The reported-identity page (`/admin/diagnostics?identity=…` for an identity
+without a catalog model) follows the device page: an Installs card with the
+same classes and tiles (Attempts, Successful, Failed, Open problems and
+Evidence as a normal status pill) without scope chips, an Installation history
+with a quick-filter bar (All, Failed, Open problems, Identity review, Resolved,
+With issue, Successful; no select and no `N records` line) above the shared
+diagnostic table (labelled record cards when narrow), and a `Review all pending
+identities` link at the top. A link ending in `#diagnostic-detail-…` opens that
+result's dialog on load.
 
 Diagnostic detail retains the result, time, map/provider, device identity,
 available image, reason, lifecycle actions, issue actions, and one collapsed
@@ -521,9 +653,10 @@ failure.
 ### Shared installation and update review
 
 Installation and update failures use the same reading order and control patterns:
-operation, model/variant, date, provider/map, result and app version; What happened;
-Next action with visible Prepare GitHub issue; known safety facts; expandable
-issue management, review administration and Technical details. Both use the same
+operation, model/variant, date, provider/map, result and app version; What happened
+with Next action; known safety facts; GitHub issue with visible Prepare GitHub
+issue and expandable preview/link management; then review administration and
+Technical details as disclosures (see Diagnostics). Both use the same
 bounded content width, typography, spacing and button hierarchy. A generic
 installation failure explicitly says the specific reason was not received and
 points to the local report; it does not merely repeat “Installation error.”
@@ -547,10 +680,15 @@ rows without an assessment remain unassigned; no adjacent installation or time
 match supplies identity. The cards describe model-and-variant history; no unique
 physical-watch identifier is collected.
 
-The model detail adds a separate Update reports card and Update history, scoped
-to all retained nonlocal reports for that exact identity, labelled as the update
-report stream with an `All time` chip. Successful, Failed and Blocked before
-writing values link to the corresponding update records. Blocked results stay in
+The model detail adds a separate Updates card and Update history, scoped to all
+retained nonlocal reports for that exact identity. The Installs and Updates
+cards share one design (same classes, label and value sizes), carry no `All
+time` chip, and show plain Successful, Failed and Blocked before writing counts
+without links (owner decision 2026-10-06); the Update history outcome filters
+open the matching records. The Administration card has two separated sections,
+Install policy (Install policy and Public compatibility as label/value rows) and
+Support metadata (Support status and Save), with no optional note fields.
+Blocked results stay in
 history and outside the attempt denominator. Summary totals are independent of
 history pagination and diagnostic resolution. Conflicting logical reports remain
 visible with an ambiguity notice and are excluded from completed counts.
@@ -660,6 +798,16 @@ one chart height, the shorter card's spare space sits below its content and an
 `All time` line aligns to the card bottom. Controls retain keyboard focus,
 readable labels, and existing `aria-sort` semantics.
 
+Separate cards, tables and sections stacked anywhere in Admin keep one clear
+gap from the spacing scale: 24 px, and 16 px at 700 px and narrower. Grid rows
+and columns of cards use the same gap, so consecutive cards in one column (for
+example Installs, Updates and Administration on a device page) are equally
+spaced. The only tighter case is a filter bar directly above its own table,
+which keeps 12 px (a filter bar drawn as the table's attached header keeps no
+gap). Rows inside one table or list are not separate cards; labelled mobile
+record rows keep their 12 px row gap. The spacing belongs to the containing
+layout (`--admin-card-gap`), never to both the layout and the card.
+
 ## Mandatory change and release gate
 
 For changes affecting this contract:
@@ -703,5 +851,5 @@ Provider recovery respects HTTP 429 Retry-After cooldown across package rechecks
 
 Activity keeps the failure status as plain text and provides `View failure` as
 an inline text link without a button border or padding. The Maps Updates failed
-count uses the shared failure counter without a link; the `Update reports` link
-on Maps opens the update report list.
+count uses the shared failure counter without a link; the update report list is
+reached from Tools → Update reports.

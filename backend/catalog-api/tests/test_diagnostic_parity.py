@@ -117,11 +117,43 @@ class DiagnosticParityTests(unittest.TestCase):
         body = device_detail_page(device, {'username': 'admin'}, 'csrf',
             update_history={'rows': [self.report()], 'device_id': MODEL, 'offset': 50, 'has_more': True}).decode()
         self.assertIn('Installation history', body); self.assertIn('Update history', body)
-        self.assertIn('>Update reports</h2>', body)
+        self.assertIn('>Updates</h2>', body)
         self.assertNotIn("admin-glossary-link", body)
-        self.assertIn('outcome=succeeded', body); self.assertIn('outcome=failed', body)
+        # Update report counts are plain numbers styled like Installs (owner decision 2026-10-06).
+        reports = body.split("id='model-update-kpis-title'", 1)[1].split('</section>', 1)[0]
+        self.assertNotIn('<a ', reports)
+        self.assertIn("data-stat='successfulUpdateCount'>7</strong>", reports)
         self.assertIn('updateOffset=100', body); self.assertIn('updateOffset=0', body)
         self.assertIn('diagnosticId=' + EVENT, body)
+        # Update history mirrors Installation history (owner decision 2026-10-06):
+        # heading outside the card, no scope chip, quick-filter bar, same table.
+        updates = body.split("id='updates'", 1)[1].split('</section>', 1)[0]
+        self.assertIn("<div class='section-heading'><div><h2 id='update-history-title'>Update history</h2></div></div>", updates)
+        self.assertNotIn('admin-card', updates)
+        self.assertNotIn('All time', updates)
+        self.assertIn("<nav class='filter-bar diagnostic-filter-bar update-history-filters' aria-label='Filter update history'><div class='quick-filter-group'>", updates)
+        self.assertIn("<a class='quick-filter active' href='/admin/devices/", updates)
+        self.assertEqual(updates.count("<a class='quick-filter"), 4)
+        self.assertEqual(updates.count("aria-current='page'"), 1)
+        self.assertIn("<div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table update-history-table mobile-record-table'>", updates)
+        self.assertIn("data-label='Action'><a class='secondary-button update-history-inspect'", updates)
+        self.assertIn("aria-label='Update history pages'", updates)
+        failed = device_detail_page(device, {'username': 'admin'}, 'csrf',
+            update_history={'rows': [], 'device_id': MODEL, 'outcome': 'failed', 'offset': 0, 'has_more': False}).decode()
+        updates = failed.split("id='updates'", 1)[1].split('</section>', 1)[0]
+        self.assertIn("<a class='quick-filter active' href='/admin/devices/", updates)
+        self.assertIn('updateOutcome=failed', updates)
+        self.assertIn("<p class='results-count'>No update reports match this filter.</p>", updates)
+        self.assertNotIn('<table', updates)
+        self.assertNotIn('Update history pages', updates)
+        empty = device_detail_page(device, {'username': 'admin'}, 'csrf').decode()
+        updates = empty.split("<section class='diagnostics-detail-section model-page-section compact-empty-state' id='updates'", 1)[1].split('</section>', 1)[0]
+        self.assertIn("<h2 id='update-history-title'>Update history</h2><p class='empty'>No update history for this device.</p>", updates)
+        self.assertNotIn('quick-filter', updates)
+        # The standalone report list keeps its own card layout.
+        standalone = update_history_markup({'rows': [self.report()], 'device_id': MODEL})
+        self.assertIn("<header class='admin-card-head'><h2 id='update-history-title'>Reports</h2>", standalone)
+        self.assertIn("<nav class='quick-filter-group' aria-label='Filter update reports'>", standalone)
         from terento_catalog.admin import ADMIN_GLOSSARY
         self.assertIn('never change installation totals', dict((a, d) for a, _, d in ADMIN_GLOSSARY)['update-report'])
 
@@ -136,5 +168,96 @@ class DiagnosticParityTests(unittest.TestCase):
         rendered = update_diagnostics_page({'detail': success}, {'username': 'admin'}, 'csrf').decode()
         self.assertIn('The update succeeded', rendered)
         self.assertNotIn("action='/admin/update-diagnostics/resolve'", rendered)
+
+
+class Structure(HTMLParser):
+    """Records details classes, forms (action + field names) and section order."""
+    def __init__(self, markup):
+        super().__init__(); self.details = []; self.forms = []; self.order = []
+        self.feed(markup)
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        classes = attrs.get('class') or ''
+        if tag == 'details': self.details.append(classes)
+        if tag == 'form': self.forms.append((attrs.get('action'), []))
+        if tag in {'input', 'select', 'textarea', 'button'} and self.forms and attrs.get('name'):
+            self.forms[-1][1].append(attrs['name'])
+        for marker in ('diagnostic-outcome', 'diagnostic-safety', 'diagnostic-issue-section',
+                       'diagnostic-review-administration', 'diagnostic-technical-section', 'diagnostic-identity-section'):
+            if marker in classes.split(): self.order.append(marker)
+
+
+class DiagnosticDetailLayoutTests(unittest.TestCase):
+    """Owner decision 2026-10-06: summary, safety, GitHub issue, review administration,
+    technical details, then Device identity last; one disclosure style; no separate
+    "Identity incomplete" notice; forms keep their endpoints and fields."""
+
+    HIDDEN = ['csrf_token', 'operation_key', 'return_to']
+
+    def dialog(self, **fields):
+        result = {'event_id': EVENT, 'operation_key': EVENT, 'phase_outcome': 'FAILED', 'provider': 'bbbike',
+                  'region': 'FRA', 'failure_stage': 'verify', 'failure_code': 'INSTALL_FAILED_HASH_MISMATCH',
+                  'canonical_device_model_id': MODEL, 'linked_github_issue': '#32',
+                  'diagnostic_workflow_status': 'IN_PROGRESS', **fields}
+        return _diagnostic_detail_dialog('fēnix 8 · 51 mm', EVENT, [result], resolved=False,
+                                         csrf_token='csrf', identity_devices=[DEVICE])
+
+    def test_installation_dialog_order_disclosures_and_forms(self):
+        markup = self.dialog()
+        structure = Structure(markup)
+        self.assertEqual(structure.order, ['diagnostic-outcome', 'diagnostic-safety', 'diagnostic-issue-section',
+            'diagnostic-review-administration', 'diagnostic-technical-section', 'diagnostic-identity-section'])
+        self.assertGreater(markup.rindex('diagnostic-identity-section'), markup.rindex('</details>'))
+        self.assertGreaterEqual(len(structure.details), 5)
+        for classes in structure.details:
+            self.assertTrue(classes.startswith('admin-disclosure diagnostic-disclosure'), classes)
+        forms = dict((action, names) for action, names in structure.forms if action != '/admin/diagnostics/issue')
+        self.assertEqual(forms['/admin/diagnostics/resolve'], self.HIDDEN + ['resolution_reason', 'resolution_note'])
+        self.assertEqual(forms['/admin/diagnostics/workflow'], self.HIDDEN + ['diagnostic_workflow_status'])
+        self.assertEqual(forms['/admin/diagnostics/identity'],
+                         self.HIDDEN + ['canonical_device_model_id', 'identity_action', 'identity_action'])
+        issue_forms = [names for action, names in structure.forms if action == '/admin/diagnostics/issue']
+        self.assertEqual(issue_forms, [self.HIDDEN + ['linked_github_issue']] * 2)
+        self.assertIn("<button type='button' class='secondary-button' data-identity-edit>Edit</button><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button>", markup)
+        self.assertIn("<dt>Selected model</dt><dd data-identity-selection>", markup)
+        self.assertNotIn('diagnostic-secondary-grid', markup)
+        self.assertNotIn('diagnostic-action-form diagnostic-secondary-disclosure', markup)
+
+    def test_identity_pending_success_has_no_incomplete_notice_or_empty_administration(self):
+        markup = self.dialog(phase_outcome='SUCCEEDED', failure_stage=None, failure_code=None,
+                             canonical_device_model_id=None, identity_resolution_state='UNRESOLVED',
+                             linked_github_issue=None, diagnostic_workflow_status=None)
+        self.assertNotIn('Identity incomplete', markup)
+        self.assertNotIn('diagnostic-identity-state', markup)
+        self.assertIn('Assign the exact catalog model in Device identity below.', markup)
+        self.assertNotIn('Review administration', markup)
+        structure = Structure(markup)
+        self.assertEqual(structure.order[-1], 'diagnostic-identity-section')
+        self.assertIn('diagnostic-technical-section', structure.order)
+
+    def test_resolved_dialog_keeps_reopen_form(self):
+        result = {'event_id': EVENT, 'operation_key': EVENT, 'phase_outcome': 'FAILED', 'provider': 'bbbike',
+                  'canonical_device_model_id': MODEL, 'diagnostic_status': 'RESOLVED'}
+        markup = _diagnostic_detail_dialog('fēnix 8 · 51 mm', EVENT, [result], resolved=True,
+                                           csrf_token='csrf', identity_devices=[DEVICE])
+        forms = dict(Structure(markup).forms)
+        self.assertEqual(forms['/admin/diagnostics/reopen'], self.HIDDEN)
+        self.assertIn('<summary>Review administration</summary>', markup)
+
+    def test_update_report_uses_the_same_structure(self):
+        row = DiagnosticParityTests.report(self, linked_github_issue='#32', diagnostic_workflow_status='IN_PROGRESS')
+        body = update_diagnostics_page({'detail': row}, {'username': 'admin'}, 'csrf').decode()
+        main = body.split("<main", 1)[1]
+        structure = Structure(main)
+        self.assertEqual(structure.order, ['diagnostic-outcome', 'diagnostic-safety', 'diagnostic-issue-section',
+            'diagnostic-review-administration', 'diagnostic-technical-section'])
+        for classes in structure.details:
+            self.assertTrue(classes.startswith('admin-disclosure diagnostic-disclosure'), classes)
+        hidden = ['csrf_token', 'diagnostic_id', 'return_to']
+        forms = dict(structure.forms)
+        self.assertEqual(forms['/admin/update-diagnostics/resolve'], hidden + ['resolution_reason', 'resolution_note'])
+        self.assertEqual(forms['/admin/update-diagnostics/workflow'], hidden + ['diagnostic_workflow_status'])
+        self.assertEqual(forms['/admin/update-diagnostics/issue'], hidden + ['linked_github_issue'])
+
 
 if __name__ == '__main__': unittest.main()

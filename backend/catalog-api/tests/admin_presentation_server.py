@@ -22,6 +22,7 @@ def serve(directory: Path, port: int = 8765) -> None:
                 "/admin/system-health": "/health.html",
                 "/admin/diagnostics": "/diagnostics.html",
                 "/admin/support-reports": "/support-reports.html",
+                "/admin/review/identity": "/identity-review.html",
             }
             if route in fixture_routes:
                 self.path = fixture_routes[route]

@@ -108,7 +108,7 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertNotIn("data-state='zero'", attention)
         self.assertIn("aria-label='Missing reports: 57'", attention)
         self.assertIn("href='/admin/review/missing-reports'", attention)
-        self.assertIn("href='/admin/installations?state=identity-pending'", attention)
+        self.assertIn("href='/admin/review/identity'", attention)
         import re
         rows = [int(value) for value in re.findall(r"aria-label='[A-Za-z ]+: (\d+)'><svg", attention)]
         self.assertEqual(len(rows), len(labels))

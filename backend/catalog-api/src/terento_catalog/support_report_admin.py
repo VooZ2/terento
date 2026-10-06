@@ -156,7 +156,7 @@ def support_reports_page(
             _metric_tile("Reports", open_count + handled_count, scope="all"),
         ], label="Support report summary") + _section_card(
             "Reports",
-            f"<div class='quick-filter-group support-report-filters' role='group' aria-label='Report status'>{chips}</div>{listing}",
+            f"<div class='filter-bar support-report-filters'><div class='quick-filter-group' role='group' aria-label='Report status'>{chips}</div></div>{listing}",
             card_id="support-report-list",
         )
     content = f"""

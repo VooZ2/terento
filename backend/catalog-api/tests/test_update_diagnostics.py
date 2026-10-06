@@ -234,6 +234,22 @@ class UpdateDiagnosticsHTTPTests(unittest.TestCase):
         self.assertIsNone(degraded['totals'])
         self.assertIn('<span>Unavailable</span>', update_diagnostics_page(degraded, {'username': 'operator'}, 'csrf').decode())
 
+    def test_update_reports_live_in_the_tools_menu_not_the_maps_heading(self):
+        from terento_catalog.admin import map_statistics_page
+        user = {'username': 'operator'}
+        page = update_diagnostics_page(load_update_diagnostics(FakeDatabase([[], {}])), user, 'csrf').decode()
+        tools = page.split('<details class="admin-tools-menu">', 1)[1].split('</details>', 1)[0]
+        self.assertIn("<summary class='active'>Tools</summary>", tools)
+        self.assertIn("<a class='active' href=\"/admin/update-diagnostics\">Update reports</a>", tools)
+        self.assertLess(tools.index('Model sources'), tools.index('Update reports'))
+        primary = page.split('aria-label="Primary"', 1)[1].split('</div>', 1)[0]
+        self.assertNotIn("class='active'", primary)
+        maps = map_statistics_page({'rows': []}, [], user, 'csrf').decode()
+        self.assertIn("<a href=\"/admin/update-diagnostics\">Update reports</a>", maps)
+        heading = maps.split("class='dashboard map-statistics-page'", 1)[1].split('<form', 1)[0]
+        self.assertIn('<h1>Maps</h1>', heading)
+        self.assertNotIn('update-diagnostics', heading)
+
 
 if __name__ == '__main__':
     unittest.main()

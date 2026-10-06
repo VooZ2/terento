@@ -29,6 +29,7 @@ from .admin import (
     device_identification_page,
     diagnostics_page,
     github_issue_queue_page,
+    identity_review_page,
     glossary_page,
     admin_error_page,
     _ADMIN_NONCE_PLACEHOLDER,
@@ -1676,6 +1677,28 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
+            if request_path in {"/admin/review/identity", "/admin/review/identity/"}:
+                # Read-only reuse: the identities Installations marks pending,
+                # their active operations and the catalog for the picker.
+                identity_devices: list[dict[str, Any]] = []
+                try:
+                    identity_devices = service.admin_devices().get("devices", [])
+                    summary = service.compatibility_diagnostic_summary()
+                    identities = sorted(
+                        key.removeprefix("identity:") for key, values in summary.items()
+                        if key.startswith("identity:") and int(values.get("identity_pending") or 0) > 0
+                    )
+                    pending_operations: list[dict[str, Any]] | None = [
+                        event for identity in identities
+                        for event in service.compatibility_identity_details("ACTIVE", identity=identity)
+                    ]
+                except Exception:
+                    LOGGER.exception("identity review queue failed")
+                    pending_operations = None
+                self._send_admin_html(identity_review_page(
+                    pending_operations, session, csrf_token, identity_devices=identity_devices,
+                ), send_body=send_body)
+                return
             if request_path in {"/admin/support-reports", "/admin/support-reports/"}:
                 from .support_report_admin import SUPPORT_REPORT_PAGE_SIZE, support_reports_page
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
@@ -2528,6 +2551,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 or re.fullmatch(r"/admin/update-diagnostics(?:\?[^#\s]*)?", target)
                 or re.fullmatch(r"/admin/device-identification(?:\?[^#\s]*)?", target)
                 or target.startswith("/admin/review/github-issues")
+                or re.fullmatch(r"/admin/review/identity(?:#[-A-Za-z0-9._~]+)?", target)
                 or re.fullmatch(
                     r"/admin/devices/[A-Za-z0-9._~-]+(?:\?[^#\s]*)?(?:#[-A-Za-z0-9._~]+)?",
                     target,

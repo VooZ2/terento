@@ -40,19 +40,24 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn(".overview-attention-empty h2", ADMIN_STYLES)
         self.assertNotIn(".overview-attention-empty{display:grid", ADMIN_STYLES)
 
-    def test_mobile_card_spacing_has_one_layout_owner(self):
+    def test_card_spacing_has_one_layout_owner(self):
         from terento_catalog.admin import ADMIN_STYLES
-        mobile = ADMIN_STYLES.split("/* Mobile card spacing belongs", 1)[1].split("@media(prefers-reduced-motion", 1)[0]
-        self.assertIn("@media(max-width:700px)", mobile)
-        self.assertIn("--admin-mobile-card-gap:12px", mobile)
-        self.assertIn("main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-mobile-card-gap)}", mobile)
-        self.assertIn(".overview-page>.overview-panel{margin:0}", mobile)
-        self.assertIn(".overview-primary-grid>.overview-panel{margin:0}", mobile)
-        self.assertNotIn(".overview-columns>.overview-panel{margin:0}", mobile)
-        self.assertIn(".provider-dashboard-grid>.provider-card{margin-top:0}", mobile)
-        self.assertIn(".device-filter-bar{margin-bottom:var(--admin-mobile-card-gap)}", mobile)
-        for group in (".system-health-list", ".model-information-columns", ".provider-metrics", ".admin-kpi-grid"):
-            self.assertIn(group, mobile)
+        spacing = ADMIN_STYLES.split("/* Card spacing belongs to the containing layout", 1)[1]
+        self.assertNotIn("--admin-mobile-card-gap", ADMIN_STYLES)
+        # One owner rule: 24px between separate cards, 16px at 700px and narrower; 12px filter-to-table.
+        self.assertIn(":root{--admin-card-gap:24px;--admin-filter-table-gap:12px}", spacing)
+        self.assertIn("@media(max-width:700px){\n  :root{--admin-card-gap:16px}", spacing)
+        self.assertIn("main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-card-gap)}", spacing)
+        self.assertIn(".model-evidence-grid>.model-evidence-history>*+*{margin-top:var(--admin-card-gap)}", spacing)
+        # Devices uses the same detached filter bar as Installations (owner decision 2026-10-06).
+        self.assertIn(".filter-bar:has(~.table-wrap){margin-bottom:var(--admin-filter-table-gap)}", spacing)
+        self.assertNotIn(".filter-bar:not(.device-filter-bar)", ADMIN_STYLES)
+        grids = spacing.split("){gap:var(--admin-card-gap)}", 1)[0].rsplit(":is(", 1)[1].split(",")
+        for group in (".overview-primary-grid", ".overview-composition-grid", ".model-evidence-summary",
+                      ".model-information-columns", ".provider-dashboard-grid", ".provider-state-grid", ".support-report-main"):
+            self.assertIn(group, grids)
+        self.assertIn("main.dashboard :is(" + ",".join(grids) + ")>*{margin-top:0;margin-bottom:0}", spacing)
+        self.assertNotIn(".admin-kpi-panel.model-statistics+.model-review-alert{margin-top:16px}", ADMIN_STYLES)
 
     def test_overview_activity_uses_a_compact_internal_scroll_surface(self):
         from terento_catalog.admin import ADMIN_STYLES
@@ -70,10 +75,11 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn('.overview-tertiary-grid', ADMIN_STYLES)
 
     def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):
-        from terento_catalog.admin import ADMIN_STYLES, _layout
+        from terento_catalog.admin import ADMIN_DROPDOWN_STYLES, ADMIN_STYLES, _layout
 
         self.assertIn('<body class="admin-shell">', _layout("Test", "").decode())
-        scrollbar_css = ADMIN_STYLES.split("/* Admin scrollbars are visually hidden", 1)[1]
+        # The filter dropdown truncates its value text; it is not a scroll surface.
+        scrollbar_css = ADMIN_STYLES.split("/* Admin scrollbars are visually hidden", 1)[1].replace(ADMIN_DROPDOWN_STYLES, "")
         self.assertIn("scrollbar-width:none", scrollbar_css)
         self.assertIn("-ms-overflow-style:none", scrollbar_css)
         self.assertIn("::-webkit-scrollbar", scrollbar_css)
@@ -397,7 +403,10 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_top_countries_uses_country_coverage_instead_of_region_identity(self):
         script = _map_statistics_script()
-        self.assertIn("countryCoverage().slice(0,10)", script)
+        # At least 10 rows, more while they fit beside the Countries card (owner decision 2026-10-06).
+        self.assertIn("countryCoverage().slice(0,30)", script)
+        self.assertIn("index >= 10 && card.scrollHeight > card.clientHeight", script)
+        self.assertIn("rows.forEach((row, index) => { row.hidden = index >= 10; });", script)
         self.assertNotIn("countryCoverage().slice(0,5)", script)
         self.assertNotIn("const byRegion", script)
 

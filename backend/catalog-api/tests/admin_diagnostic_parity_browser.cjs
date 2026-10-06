@@ -197,14 +197,16 @@ const diagnosticID = '22222222-2222-4222-8222-222222222222';
     assert((await installStats.innerText()).includes('12'));
     assert((await installStats.innerText()).includes('11'));
     const updateStats = page.locator('[aria-labelledby="model-update-kpis-title"]');
-    assert.deepEqual(await updateStats.locator('[data-stat] a').allTextContents().then(v => v.map(s => s.trim())), ['7','2','1']);
+    // Update counts are plain numbers (owner decision 2026-10-06); outcome filtering lives in Update history.
+    assert.deepEqual(await updateStats.locator('[data-stat]').allTextContents().then(v => v.map(s => s.trim())), ['7','2','1']);
+    assert.equal(await updateStats.locator('a').count(), 0);
     assert.equal(await page.locator('#installations tbody tr').count(), 1);
     assert.equal(await page.locator('#updates tbody tr').count(), 3);
-    const failedLink = updateStats.locator('[data-stat] a').filter({hasText: /^2$/});
+    const failedLink = page.locator('#updates .quick-filter').filter({hasText: /^Failed$/});
     const failedURL = new URL(await failedLink.getAttribute('href'), base);
-    assert.equal(failedURL.searchParams.get('deviceId'), deviceID);
-    assert.equal(failedURL.searchParams.get('outcome'), 'failed');
-    await page.locator('#updates a').filter({hasText: 'Inspect update'}).nth(1).click();
+    assert(failedURL.pathname.includes(deviceID));
+    assert.equal(failedURL.searchParams.get('updateOutcome'), 'failed');
+    await page.locator('#updates a.update-history-inspect').nth(1).click();
     assert(page.url().includes('diagnosticId=' + diagnosticID));
     // Initial server-rendered identity options must work without a search input event.
     for (const exactID of [deviceID, 'fenix-8-47-amoled']) {

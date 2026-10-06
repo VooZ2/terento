@@ -228,7 +228,7 @@ up to six review-queue rows (zero-count rows are omitted; all zero shows
 `Nothing to review.`) read only from `admin_review_summary()` and the open
 public support-report count (`support_report_open_count()`); Maps unknown,
 provider problems and system checks are not rendered there; an unavailable query shows
-`—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
+`—` and `Unavailable`. The Identity review row links to `/admin/review/identity`. First run shows the `/admin/app-funnel.json` read model
 for the period. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
 and internally scrollable. Generic rows have no Maps link unless an exact
@@ -303,8 +303,8 @@ noindex.
 ## `GET https://api.terento.app/admin/installations`
 
 Returns the authenticated all-time model installation evidence view. Its summary
-tiles are Attempts, Successful, Failed, Success rate (All time) and Open problems
-(Now). `Failed`
+tiles are Attempts, Successful, Failed, Success rate (all time) and Open problems
+(now), without scope chips under the numbers. `Failed`
 includes resolved historical failures. `Open problems` counts installs
 (operations) with an active, nonlocal, non-excluded failed diagnostic that is not a
 provider download/pre-install failure and has no linked GitHub issue — the
@@ -315,7 +315,9 @@ problem stays listed even with zero attempts. Positive Failed values use the
 shared danger styling.
 
 The page supports All, Failed, Open problems, Identity review and Successful
-quick filters (also as `?state=identity-pending`) plus sorting and search. True no-evidence omits metrics, filters, table,
+quick filters (also as `?state=identity-pending`) plus sorting and search. When
+an identity is pending, `Review identities` and each row's Identity review badge
+link to `/admin/review/identity` (the badge with the identity anchor). True no-evidence omits metrics, filters, table,
 and pagination. Filtered-empty preserves the active controls and clear action.
 Pagination appears only for multiple pages. Known exact models group by canonical
 ID; unresolved identities remain visible. Historical catalog provenance is
@@ -332,15 +334,40 @@ device also add the internal `identity_scope=unresolved` parameter. That scope
 prevents a pending record from being redirected to a canonical device that
 happens to use the same textual identity and limits the drill-down to
 uncanonicalized operations. Assigning a canonical Garmin device redirects to
-that exact device history after the audited identity update. The list uses the compact columns Date, Region, Result,
-Stage, Code, Issue, and State, and defaults to active diagnostic history. A
-linked issue is shown as `In progress` or `Under review`, rather than `Open`. A Review action opens the
+that exact device history after the audited identity update. The page shows an
+Installs card (Attempts, Successful, Failed, Open problems, Evidence pill; no
+scope chips), a `Review all pending identities` link, and an Installation
+history with quick filters (All, Failed, Open problems, Identity review,
+Resolved, With issue, Successful; `?state=` preselects one) over the columns
+Date, Map, Result, GitHub issue, Review and Action, covering active and
+resolved history. A linked issue is shown as `In progress` or `Under review`,
+rather than `Open`. A URL fragment `#diagnostic-detail-…` opens that result's
+dialog. An Inspect action opens the
 detail dialog with the separate evidence/lifecycle summary, Resolve/Reopen,
 auditable identity selector, GitHub issue link/create actions, and collapsed
 technical fields. Successful normal evidence remains historical evidence and
 does not appear as an open problem. Identity-pending success is a separate
 state from Failed. This is an additive admin-only route and does not alter any
 native, public, or existing device API contract.
+
+## `GET https://api.terento.app/admin/review/identity`
+
+Returns the authenticated, no-store/noindex Identity review queue, the
+Dashboard Needs attention Identity review destination. It reads only existing
+service methods: `compatibility_diagnostic_summary()` names the reported
+identities with `identity_pending > 0`, `compatibility_identity_details("ACTIVE",
+identity=…)` supplies their active operations (local-test and
+statistics-excluded rows are already excluded), and `admin_devices()` supplies
+the catalog picker. Items are install operations with at least one result that
+`_identity_is_pending` keeps, newest first, grouped by reported identity with an
+`#identity-<hash>` anchor. Each pending result carries the unchanged identity
+form (`csrf_token`, `operation_key`, `return_to=/admin/review/identity`,
+`canonical_device_model_id`, `identity_action`) posting to
+`POST /admin/diagnostics/identity`; an assignment still redirects to the
+device page, which the queue's script does not follow, and the other identity
+actions accept `/admin/review/identity` as `return_to`. A failed read renders
+an Unavailable card inside the admin chrome. No write route, form field or
+schema changes.
 
 ## `GET https://api.terento.app/admin/review/github-issues`
 

@@ -13,6 +13,7 @@ from terento_catalog.admin import (
     dashboard_page,
     device_detail_page,
     glossary_page,
+    identity_review_page,
     missing_reports_page,
     device_identification_page,
     devices_page,
@@ -126,9 +127,79 @@ def _statistics(
     }
 
 
+def _identity_review_fixture():
+    """Pending installations across identities; three share fēnix 8, one batch holds two maps."""
+    devices = [
+        {"id": "fenix-8-47-amoled", "device_id": "fenix-8-47-amoled", "model": "fēnix 8", "variant": "47 mm, AMOLED",
+         "case_size_mm": 47, "screen_technology": "AMOLED", "solar": False, "inreach": False},
+        {"id": "fenix-8-51-amoled", "device_id": "fenix-8-51-amoled", "model": "fēnix 8", "variant": "51 mm, AMOLED",
+         "case_size_mm": 51, "screen_technology": "AMOLED", "solar": False, "inreach": False},
+        {"id": "forerunner-965", "device_id": "forerunner-965", "model": "Forerunner 965", "variant": "",
+         "case_size_mm": 47, "screen_technology": "AMOLED", "solar": False, "inreach": False},
+        {"id": "instinct-3-45-amoled", "device_id": "instinct-3-45-amoled", "model": "Instinct 3",
+         "variant": "45 mm, AMOLED", "case_size_mm": 45, "screen_technology": "AMOLED", "solar": False, "inreach": False},
+    ]
+
+    def candidate(device_id, model, *missing):
+        checks = [{"name": "model", "state": "MATCH", "features": []}]
+        checks += [{"name": name, "state": "MISSING"} for name in missing]
+        return {"deviceId": device_id, "model": model, "checks": checks, "conflict": False}
+
+    def event(index, identity, model, variant, *, outcome="SUCCEEDED", region="Lithuania",
+              provider="opentopomap", day=20, candidates=(), map_index=0, operation=None, **extra):
+        operation = operation or f"7a1b2c3d-0000-4000-8000-{index:012d}"
+        failed = outcome == "FAILED"
+        return {
+            "event_id": f"8b1b2c3d-0000-4000-8000-{index:010d}{map_index:02d}",
+            "operation_id": operation, "map_result_index": map_index,
+            "operation_key": f"result:{operation}:{map_index}",
+            "compatibility_identity": identity, "model": model, "variant": variant,
+            "canonical_device_model_id": None, "identity_resolution_state": "UNRESOLVED",
+            "provider": provider, "region": region, "phase_outcome": outcome,
+            "automatic_finishing_result": None if failed else "VERIFIED",
+            "failure_stage": "verify" if failed else None,
+            "failure_code": "INSTALL_FAILED_HASH_MISMATCH" if failed else None,
+            "write_started": True, "diagnostic_status": "ACTIVE",
+            "occurred_at": f"2026-09-{day:02d}T09:{10 + index:02d}:00Z",
+            "release_label": "1.0.0-beta.19", "app_build": "42",
+            "current_identity_assessment": {"state": "UNRESOLVED", "candidates": list(candidates)},
+            **extra,
+        }
+
+    fenix = (candidate("fenix-8-47-amoled", "fēnix 8", "size"), candidate("fenix-8-51-amoled", "fēnix 8", "size"))
+    instinct = (candidate("instinct-3-45-amoled", "Instinct 3", "screen"),)
+    batch = "7a1b2c3d-0000-4000-8000-0000000000aa"
+    operations = [
+        event(1, "fēnix 8", "fēnix 8", None, outcome="FAILED", region="France", provider="bbbike", day=24,
+              candidates=fenix),
+        event(2, "fēnix 8", "fēnix 8", None, day=22, candidates=fenix),
+        event(3, "fēnix 8", "fēnix 8", None, region="Latvia", day=19, candidates=fenix),
+        event(4, "Forerunner 965", "Forerunner 965", None, region="Germany", provider="freizeitkarte", day=23,
+              candidates=(candidate("forerunner-965", "Forerunner 965", "screen"),)),
+        event(5, "Instinct 3 · 45 mm", "Instinct 3", "45 mm", region="Poland", day=21, operation=batch,
+              candidates=instinct),
+        event(6, "Instinct 3 · 45 mm", "Instinct 3", "45 mm", region="Czechia", day=21, operation=batch,
+              map_index=1, candidates=instinct),
+        event(7, "Unknown", None, None, outcome="FAILED", region="Spain", day=18),
+    ]
+    resolved = [{
+        **event(8, "fēnix 8", "fēnix 8", None, outcome="FAILED", region="Italy", day=12, candidates=fenix),
+        "diagnostic_status": "RESOLVED", "resolution_reason": "FIXED", "resolved_at": "2026-09-14T10:00:00Z",
+    }]
+    statistics = [{
+        "model": "fēnix 8", "variant": None, "compatibility_identity": "fēnix 8",
+        "canonical_device_model_id": None, "attempted_install_count": 4, "successful_install_count": 2,
+        "failed_install_count": 2, "calculated_status": "TESTING", "recognized_map_capable_evidence": True,
+        "last_success": "2026-09-22T09:12:00Z", "last_evidence": "2026-09-24T09:11:00Z",
+    }]
+    return operations, resolved, statistics, devices
+
+
 def create(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
     build(root)
+    # Keep the large plan fixture (125 models) for the sorting/pagination browser checks.
+    shutil.copy2(root / "installations.html", root / "installations-plan.html")
     map_assets = Path(__file__).parents[1] / "src" / "terento_catalog" / "static" / "map"
     shutil.copytree(map_assets, root / "admin" / "map-assets", dirs_exist_ok=True)
     user = {"username": "Preview"}
@@ -297,11 +368,35 @@ def create(root: Path) -> None:
     device = _admin_device_payload([device_row], None)["devices"][0]
     (root / "devices.html").write_bytes(devices_page([device_row], None, user, "fixture"))
     (root / "devices-empty.html").write_bytes(devices_page([], None, user, "fixture"))
+    update_rows = [
+        {
+            "event_id": f"33333333-3333-4333-8333-33333333333{index}",
+            "operation_id": f"33333333-3333-4333-8333-33333333333{index}",
+            "canonical_device_model_id": "fenix-8-51-amoled",
+            "provider": provider, "region": region, "outcome": outcome,
+            "diagnostic_status": "ACTIVE", "linked_github_issue": "#325" if index == 1 else None,
+            "occurred_at": f"2026-09-{20 - index:02d}T08:15:00Z",
+            "payload": {"terentoVersion": "beta.15", "appBuild": "37"},
+        }
+        for index, (provider, region, outcome) in enumerate([
+            ("opentopomap", "Lithuania", "SUCCEEDED"),
+            ("bbbike", "FRA", "FAILED"),
+            ("freizeitkarte", "Germany", "NOT_STARTED"),
+            ("opentopomap", "Latvia", "SUCCEEDED"),
+        ])
+    ]
     (root / "device.html").write_bytes(device_detail_page(
         device, user, "fixture", operations=device_history, identity_devices=[device_row],
+        update_history={"device_id": "fenix-8-51-amoled", "rows": update_rows,
+                        "outcome": "", "offset": 0, "has_more": True},
     ))
     (root / "device-empty.html").write_bytes(device_detail_page(
         device, user, "fixture", operations=[], identity_devices=[device_row],
+    ))
+    (root / "device-updates-filtered.html").write_bytes(device_detail_page(
+        device, user, "fixture", operations=device_history, identity_devices=[device_row],
+        update_history={"device_id": "fenix-8-51-amoled", "rows": [],
+                        "outcome": "failed", "offset": 0, "has_more": False},
     ))
     identification_device = {
         "id": "fenix-8-51-amoled", "model": "fēnix 8",
@@ -363,6 +458,18 @@ def create(root: Path) -> None:
     (root / "diagnostics.html").write_bytes(diagnostics_page(
         [], user, "fixture", identity="fēnix 8 · 51 mm, AMOLED",
         operations=[operation], identity_devices=[device_row],
+    ))
+    identity_operations, identity_resolved, identity_statistics, identity_devices = _identity_review_fixture()
+    (root / "identity-review.html").write_bytes(identity_review_page(
+        identity_operations, user, "fixture", identity_devices=identity_devices,
+    ))
+    (root / "identity-review-empty.html").write_bytes(identity_review_page(
+        [], user, "fixture", identity_devices=identity_devices,
+    ))
+    (root / "diagnostics-identity.html").write_bytes(diagnostics_page(
+        identity_statistics, user, "fixture", identity="fēnix 8",
+        operations=[event for event in identity_operations if event["compatibility_identity"] == "fēnix 8"],
+        resolved_operations=identity_resolved, identity_devices=identity_devices, unresolved_only=True,
     ))
     (root / "glossary.html").write_bytes(glossary_page(user, "fixture"))
     (root / "missing-reports.html").write_bytes(missing_reports_page({

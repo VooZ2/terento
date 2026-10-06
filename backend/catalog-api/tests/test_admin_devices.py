@@ -505,7 +505,7 @@ class AdminDevicesTests(unittest.TestCase):
             "Maps: Unknown", "Approved", "Blocked", "Pending", "Last success",
             "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
-            "admin-card device-summary-strip", "position:sticky",
+            "position:sticky",
             "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
             "table-layout:fixed", "overflow-y:visible",
             "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
@@ -513,6 +513,10 @@ class AdminDevicesTests(unittest.TestCase):
             "data-device-sort=\"attempts\"", "data-device-sort=\"success\"", "data-device-sort=\"evidence\"",
             "aria-sort=\"ascending\"", "/admin/devices/garmin-fenix-8-47-amoled?from=devices",
             'id="device-map"><option value="yes" selected', "results",
+            # Same filter bar and tiles as Installations (owner decision 2026-10-06).
+            "data-device-map-filter='yes' aria-pressed='true'>Maps: Yes", "data-device-map-filter='all'",
+            "admin-card installation-kpis device-summary-strip", "data-stat='covered'>1/1 (100%)",
+            "class='page-meta device-summary-sync'><strong>Last sync</strong>",
         ):
             self.assertIn(value, body)
         table_header = body[body.index("<thead>"):body.index("</thead>")]
@@ -616,11 +620,10 @@ class AdminDevicesTests(unittest.TestCase):
             "<details class='model-page-section model-administration admin-disclosure'>", 1,
         )[1].split("</details>", 1)[0]
         self.assertNotIn(" open", administration.split(">", 1)[0])
-        self.assertEqual(administration.count("<article>"), 1)
-        self.assertIn(
-            "<strong>Public compatibility</strong><span>Not shown.</span>",
-            administration,
-        )
+        self.assertEqual(administration.count("<article class='administration-card'>"), 1)
+        self.assertIn("<dt>Public compatibility</dt><dd>Not shown.</dd>", administration)
+        # No optional note fields (owner decision 2026-10-06).
+        self.assertNotIn("name='note'", administration)
 
     def test_device_history_renders_pagination_only_for_multiple_pages(self):
         device = _admin_device_payload([device_row()], None)["devices"][0]
