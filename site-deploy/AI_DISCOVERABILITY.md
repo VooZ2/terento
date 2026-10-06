@@ -6,9 +6,10 @@ public website contract; crawl access never guarantees indexing or citation.
 ## Public content and identity
 
 The canonical identity is Terento, <https://terento.app/>, with source at
-<https://github.com/VooZ2/terento>. `site/metadata.json` inventories 30 indexable
-pages: Home, About, Download, Compatibility, and the installation Guide, each
-in six languages. Legal and Privacy deliberately remain `noindex,follow`;
+<https://github.com/VooZ2/terento>. `site/metadata.json` inventories 36 indexable
+pages: Home, About, Download, Compatibility, the installation Guide, and Map
+styles, each in six languages. Map styles is one comparison page per language;
+its preview areas are hash state on that page, not separate URLs. Legal and Privacy deliberately remain `noindex,follow`;
 404 and the legacy supported-watches fallback remain noindex. Do not add thin
 per-device/provider pages or invent support claims to increase the page count.
 
@@ -85,7 +86,7 @@ pages. Explicit `index.html` aliases retain the directory canonical; uppercase
 unknown paths return 404 rather than creating another content inventory.
 
 `scripts/generate-sitemap.py` owns `site/sitemap.xml`; its inventory excludes
-noindex utilities, redirects, APIs and private paths. Thirty URLs are well below
+noindex utilities, redirects, APIs and private paths. Thirty-six URLs are well below
 [sitemap limits](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap).
 Meaningful content fingerprints and reliable Git history govern `lastmod`;
 do not insert the generation time. The same manifest drives IndexNow delta

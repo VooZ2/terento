@@ -2,6 +2,7 @@
   "site": [
     "Tests/run-site-faq-content-tests.sh",
     "Tests/run-site-guide-content-tests.sh",
+    "Tests/run-site-map-styles-tests.sh",
     "Tests/run-site-generator-parity-tests.sh",
     "Tests/run-site-home-accessibility-tests.sh",
     "Tests/run-site-home-copy-cta-tests.sh",
