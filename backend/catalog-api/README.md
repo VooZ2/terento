@@ -290,10 +290,8 @@ downloads, stores, proxies, mirrors, or serves a provider map binary.
 ## Map style previews
 
 The scheduler's `map-preview-renderer` thread draws comparison tiles for the
-public website's Map styles page from `contracts/map-preview-areas.json`
-(copied into the package as `map_preview/areas.json`; a test keeps the copies
-equal). That page is published separately, after the first preview release
-exists; until then the manifest and tiles have no public consumer. It is
+public Map styles page from `contracts/map-preview-areas.json` (copied into
+the package as `map_preview/areas.json`; a test keeps the copies equal). It is
 off unless `MAP_PREVIEW_ENABLED=true`, and only providers an operator switched
 on under Admin › Providers › Map style previews are rendered.
 
