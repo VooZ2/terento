@@ -321,12 +321,14 @@ a download start without a received outcome is not proof of a failed download.
   `utm_content=<anchor>` (Help → Troubleshooting uses `help_menu`), followed by
   the `#<anchor>` fragment; no model, version or id is added. A "Help" text link
   appears next to those messages; it is never a primary button.
-- **First map selection.** While no map on the watch is managed by Terento, the
-  locale recommendation is highlighted with "Recommended for your region" (never
-  selected automatically), rows show the catalog download size and "about N min"
-  from the median of the last five measured download speeds on this Mac (30
-  days, local only) or a conservative 1 MB/s, and "Keep the watch connected and
-  the Mac awake until Terento finishes." appears once a map is selected.
+- **Install selection guidance.** Every selectable map row shows the catalog
+  download size and "about N min" ("Download 412 MB · about 7 min") from the
+  median of the last five measured download speeds on this Mac (30 days, local
+  only) or a conservative 1 MB/s. While no map on the watch is managed by
+  Terento (first map selection only), the locale recommendation is also
+  highlighted with "Recommended for your region" (never selected
+  automatically), and "Keep the watch connected and the Mac awake until Terento
+  finishes." appears once a map is selected.
 - **Resumed downloads.** A provider download that fails or is cancelled after at
   least 1 MiB is kept for 30 minutes when the server advertised byte ranges with
   a strong validator (non-weak ETag or Last-Modified), sent no content encoding

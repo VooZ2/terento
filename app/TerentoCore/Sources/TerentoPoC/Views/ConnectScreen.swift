@@ -1503,11 +1503,11 @@ struct ConnectScreen: View {
                                 isAvailable: true,
                                 selectionEnabled: isMapSelectionEnabled(item),
                                 highlightsRecommendation: isFirstMapSelection,
-                                downloadEstimate: isFirstMapSelection
-                                    ? FirstMapGuidance.downloadEstimateText(
-                                        bytes: item.package.expectedDownloadSizeBytes,
-                                        recentBytesPerSecond: mapEngine.recentDownloadBytesPerSecond)
-                                    : nil
+                                // Every install selection shows its download
+                                // size and time; the highlight stays first-map only.
+                                downloadEstimate: FirstMapGuidance.downloadEstimateText(
+                                    bytes: item.package.expectedDownloadSizeBytes,
+                                    recentBytesPerSecond: mapEngine.recentDownloadBytesPerSecond)
                             )
                         }
                     }
@@ -5054,7 +5054,7 @@ struct MapSelectionRow: View {
     let showsDivider: Bool
     /// First map selection only: highlight the locale recommendation.
     let highlightsRecommendation: Bool
-    /// First map selection only: "Download 412 MB · about 4 min".
+    /// Install selection: "Download 412 MB · about 4 min".
     let downloadEstimate: String?
 
     init(
@@ -5309,11 +5309,11 @@ struct MapSelectionRow: View {
         }
 
         if showsSize {
-            let firstMap = [showsRecommendation ? FirstMapGuidance.recommendedLabel : nil, downloadEstimate]
+            let guidance = [showsRecommendation ? FirstMapGuidance.recommendedLabel : nil, downloadEstimate]
                 .compactMap { $0 }.map { ", \($0)" }.joined()
             return (item.installSizeBytes.map {
                 "\(item.title), \(item.comparison.providerName), \(formatBytes($0))"
-            } ?? "\(item.title), \(item.comparison.providerName), size calculated before installation") + firstMap
+            } ?? "\(item.title), \(item.comparison.providerName), size calculated before installation") + guidance
         }
         return "\(item.title), \(detail)"
     }

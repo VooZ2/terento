@@ -1,9 +1,9 @@
 import Foundation
 
-/// Guidance for the first map selection on a watch that has no map installed
-/// by Terento yet: the existing locale recommendation is highlighted (never
-/// selected automatically), each map shows its download size and an
-/// estimated download time, and one line asks to keep the watch connected.
+/// Install selection guidance. Every selectable map shows its download size
+/// and an estimated download time. On a watch with no map installed by
+/// Terento yet, the existing locale recommendation is also highlighted (never
+/// selected automatically) and one line asks to keep the watch connected.
 enum FirstMapGuidance {
     static let recommendedLabel = "Recommended for your region"
     static let keepConnectedLine = "Keep the watch connected and the Mac awake until Terento finishes."
