@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "map-preview-areas.schema.json",
+  "title": "Map style preview areas",
+  "description": "Curated places, trail sections and city centres that the catalog service renders in every available map style for the public map style comparison page. Read by the backend renderer job and by the site generator; not an HTTP payload.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "areaSizesKm": {
+      "description": "Default rendered extent per kind as [east-west, north-south] kilometres around the centre.",
+      "type": "object",
+      "properties": {
+        "place": {
+          "$ref": "#/$defs/size"
+        },
+        "route": {
+          "$ref": "#/$defs/size"
+        },
+        "city": {
+          "$ref": "#/$defs/size"
+        }
+      },
+      "required": [
+        "place",
+        "route",
+        "city"
+      ],
+      "additionalProperties": false
+    },
+    "zoom": {
+      "description": "Rendered Web Mercator zoom range [min, max] per kind.",
+      "type": "object",
+      "properties": {
+        "place": {
+          "$ref": "#/$defs/zoomRange"
+        },
+        "route": {
+          "$ref": "#/$defs/zoomRange"
+        },
+        "city": {
+          "$ref": "#/$defs/zoomRange"
+        }
+      },
+      "required": [
+        "place",
+        "route",
+        "city"
+      ],
+      "additionalProperties": false
+    },
+    "areas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/area"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "areaSizesKm",
+    "zoom",
+    "areas"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "size": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 40
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 40
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "zoomRange": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "localizedName": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "de": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fr": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "it": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "en"
+      ],
+      "additionalProperties": false
+    },
+    "area": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 64
+        },
+        "kind": {
+          "enum": [
+            "place",
+            "route",
+            "city"
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/localizedName"
+        },
+        "countryCodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          }
+        },
+        "continent": {
+          "enum": [
+            "europe",
+            "north-america",
+            "south-america",
+            "africa",
+            "asia",
+            "oceania"
+          ]
+        },
+        "center": {
+          "description": "[longitude, latitude] in WGS84 degrees.",
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            {
+              "type": "number",
+              "minimum": -85,
+              "maximum": 85
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "sizeKm": {
+          "$ref": "#/$defs/size"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "mountains",
+              "glaciers",
+              "lakes",
+              "coast",
+              "forest",
+              "volcano",
+              "canyon",
+              "dunes",
+              "river",
+              "highlands",
+              "island",
+              "rocks",
+              "city",
+              "cycling",
+              "parks",
+              "old-town",
+              "non-latin-labels",
+              "long-distance-trail",
+              "pilgrim-route"
+            ]
+          }
+        },
+        "routeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "regionHints": {
+          "description": "Lower-case tokens matched against provider region identifiers and names to choose the covering map package before downloading; the rendered map's bounds are still verified.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          }
+        },
+        "featured": {
+          "description": "Editorial 'best for comparing' flag used until rendered difference scores exist.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "countryCodes",
+        "continent",
+        "center",
+        "tags"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

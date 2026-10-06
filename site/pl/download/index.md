@@ -12,9 +12,9 @@ Natywna aplikacja na Maca do instalowania i zarządzania mapami społecznościow
 - Bezpłatna
 - Notaryzowana
 - Apple Silicon
-[Pobierz DMG Zalecane](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.dmg) [Pobierz ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.zip) [Informacje o wydaniu](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.18-build40)
+[Pobierz DMG Zalecane](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.1-build41/Terento-1.0.0-rc.1-macOS-arm64.dmg) [Pobierz ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.1-build41/Terento-1.0.0-rc.1-macOS-arm64.zip) [Informacje o wydaniu](https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.1-build41)
 
-Najnowsza beta: **v1.0.0-beta.18** Wydana 5 października 2026
+Najnowsza wersja kandydująca: **v1.0.0-rc.1** Wydana 6 października 2026
 
 Terento pokazuje podłączony zegarek Garmin w macOS
 
@@ -31,6 +31,6 @@ Przed instalacją
 
 ## Status bety
 
-To aktualna beta Terento. Obsługuje mapy od czterech dostawców. Strona zgodności pokazuje dokładne modele i warianty z udanymi, udostępnionymi instalacjami. Brak modelu nie oznacza, że urządzenie nie jest obsługiwane.
+To aktualna wersja kandydująca Terento. Obsługuje mapy od czterech dostawców. Strona zgodności pokazuje dokładne modele i warianty z udanymi, udostępnionymi instalacjami. Brak modelu nie oznacza, że urządzenie nie jest obsługiwane.
 
 [Sprawdź kompatybilność](https://terento.app/pl/compatibility/)

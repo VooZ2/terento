@@ -616,6 +616,7 @@ class Database:
         started_at: datetime | None = None,
         completed_at: datetime | None = None,
         error_summary: str | None = None,
+        job_name: str = "catalog-collector",
     ) -> None:
         with self.connection() as connection:
             connection.execute(
@@ -624,7 +625,7 @@ class Database:
                     job_name, status, next_run_at, started_at, completed_at,
                     error_summary
                 ) VALUES (
-                    'catalog-collector', %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, %s
                 )
                 ON CONFLICT (job_name) DO UPDATE SET
                     status = EXCLUDED.status,
@@ -634,7 +635,7 @@ class Database:
                     error_summary = EXCLUDED.error_summary,
                     updated_at = now()
                 """,
-                (status, next_run_at, started_at, completed_at, error_summary),
+                (job_name, status, next_run_at, started_at, completed_at, error_summary),
             )
 
     def record_github_download_snapshot(

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "map-preview-manifest.schema.json",
+  "title": "Public map style preview manifest",
+  "description": "GET /maps/previews/manifest.json. Lists the preview areas, the map styles and which style layers have published WebP tiles. Unknown additive response fields are allowed.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "release": {
+      "description": "Published tile release identifier, or null before the first release.",
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{8}T[0-9]{6}Z$"
+    },
+    "tileUrlTemplate": {
+      "description": "Absolute URL template with {area}, {style}, {z}, {x} and {y} placeholders; the release is already substituted.",
+      "type": ["string", "null"]
+    },
+    "dataAttribution": {"type": "string", "minLength": 1},
+    "dataAttributionUrl": {"type": "string", "format": "uri"},
+    "styles": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/style"}
+    },
+    "areas": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/area"}
+    }
+  },
+  "required": ["schemaVersion", "generatedAt", "release", "tileUrlTemplate", "dataAttribution", "dataAttributionUrl", "styles", "areas"],
+  "$defs": {
+    "style": {
+      "type": "object",
+      "properties": {
+        "id": {"enum": ["freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail"]},
+        "providerId": {"type": "string", "minLength": 1},
+        "mapType": {"type": ["string", "null"]},
+        "name": {"type": "string", "minLength": 1},
+        "attribution": {"type": "string", "minLength": 1},
+        "attributionUrl": {"type": "string", "format": "uri"}
+      },
+      "required": ["id", "providerId", "mapType", "name", "attribution", "attributionUrl"]
+    },
+    "layer": {
+      "type": "object",
+      "properties": {
+        "style": {"type": "string", "minLength": 1},
+        "status": {
+          "description": "AVAILABLE: tiles are published. NOT_COVERED: the provider has no map for this area. PENDING: not rendered yet or temporarily unavailable.",
+          "enum": ["AVAILABLE", "NOT_COVERED", "PENDING"]
+        },
+        "packageVersion": {"type": ["string", "null"]},
+        "renderedAt": {"type": ["string", "null"], "format": "date-time"}
+      },
+      "required": ["style", "status", "packageVersion", "renderedAt"]
+    },
+    "area": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+        "kind": {"enum": ["place", "route", "city"]},
+        "name": {
+          "type": "object",
+          "properties": {"en": {"type": "string", "minLength": 1}},
+          "required": ["en"],
+          "additionalProperties": {"type": "string"}
+        },
+        "countryCodes": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z]{2}$"}},
+        "continent": {"type": "string"},
+        "center": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+        "bbox": {
+          "description": "[west, south, east, north] in WGS84 degrees.",
+          "type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4
+        },
+        "minZoom": {"type": "integer", "minimum": 0},
+        "maxZoom": {"type": "integer", "minimum": 0},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "routeName": {"type": "string"},
+        "featured": {"type": "boolean"},
+        "diffScore": {
+          "description": "0–1 measure of how different the rendered styles look; null until at least two layers are rendered.",
+          "type": ["number", "null"], "minimum": 0, "maximum": 1
+        },
+        "layers": {"type": "array", "items": {"$ref": "#/$defs/layer"}}
+      },
+      "required": ["id", "kind", "name", "countryCodes", "continent", "center", "bbox", "minZoom", "maxZoom", "tags", "featured", "diffScore", "layers"]
+    }
+  }
+}

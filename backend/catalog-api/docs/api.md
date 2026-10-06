@@ -731,6 +731,21 @@ records, records a `catalog_collection_run`, and returns counts. The body is
 an empty JSON object. Provider map binaries remain direct provider → user's
 Mac.
 
+## `POST /admin/providers/{id}/previews`
+
+Turns map style previews on or off for one provider. The JSON body is exactly
+`{"enabled": true}` or `{"enabled": false}`; anything else is rejected with
+`invalid_preview_control`. The action requires the admin session and CSRF
+token, sets `map_provider.preview_enabled` and writes a
+`provider.previews_enabled` or `provider.previews_disabled` audit record.
+Retired providers cannot be changed. Turning previews off hides the provider's
+layers from the public manifest within a minute; it does not change catalog,
+download or installation behaviour.
+
+The provider detail page shows the switch and a "Preview layers" table with
+each area and style, its state (Published, Not covered, Waiting, Failed — text
+badges), package and version, render time and the last problem.
+
 ## `POST /admin/providers/{id}/retire`
 
 Equivalent to a CSRF-protected state change to `RETIRED`; it accepts an empty
@@ -1075,6 +1090,29 @@ Serves only validated WebP runtime assets from the same `api.terento.app`
 origin. Assets use a long-lived immutable cache policy and an SHA-256 ETag.
 Review storage, source images, arbitrary files, and traversal paths are not
 served.
+
+## `GET /maps/previews/manifest.json`
+
+Public map style preview manifest (`contracts/map-preview-manifest.schema.json`).
+It lists every curated area with its extent, zoom range, tags, `featured` flag,
+`diffScore` (0–1, how different the rendered styles look; `null` until two
+layers exist) and one layer per style with status `AVAILABLE`, `NOT_COVERED`
+or `PENDING`. Only providers with previews switched on can report
+`AVAILABLE`, and only for layers present in the current tile release.
+`release` and `tileUrlTemplate` are `null` before the first release. The body
+is rebuilt from PostgreSQL at most once a minute per API process and is served
+with `Cache-Control: public, max-age=300` and `X-Robots-Tag: noindex`.
+
+## `GET /assets/previews/<release>/<area>/<style>/<z>/<x>/<y>.webp`
+
+Serves one preview tile from the current or previous release under
+`<TERENTO_ASSET_ROOT>/previews/releases`. The path must match the release,
+lower-case slug and numeric tile pattern exactly and the file must start with
+a WebP RIFF header; anything else, traversal included, is `404 tile_not_found`.
+Tiles are immutable per release: `Cache-Control: public, max-age=31536000,
+immutable`, an inode/size ETag with `304` support, `X-Robots-Tag: noindex` and
+`Access-Control-Allow-Origin: *`. Tiles are rendered images, not provider map
+binaries.
 
 ## `POST /internal/operations/observations`
 

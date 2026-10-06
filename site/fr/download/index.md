@@ -12,9 +12,9 @@ Une application Mac native pour installer et gérer des cartes communautaires su
 - Gratuit
 - Notarié
 - Apple Silicon
-[Télécharger le DMG Recommandé](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.dmg) [Télécharger le ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.zip) [Notes de version](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.18-build40)
+[Télécharger le DMG Recommandé](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.1-build41/Terento-1.0.0-rc.1-macOS-arm64.dmg) [Télécharger le ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.1-build41/Terento-1.0.0-rc.1-macOS-arm64.zip) [Notes de version](https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.1-build41)
 
-Dernière bêta: **v1.0.0-beta.18** Publiée le 5 octobre 2026
+Dernière version candidate: **v1.0.0-rc.1** Publiée le 6 octobre 2026
 
 Terento affiche une montre Garmin connectée sur macOS
 
@@ -31,6 +31,6 @@ Avant l’installation
 
 ## État de la bêta
 
-Il s’agit de la bêta actuelle de Terento. Elle prend en charge les cartes de quatre fournisseurs. La page Compatibilité affiche les modèles et variantes exacts avec des installations réussies partagées. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge.
+Il s’agit de la version candidate actuelle de Terento. Elle prend en charge les cartes de quatre fournisseurs. La page Compatibilité affiche les modèles et variantes exacts avec des installations réussies partagées. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge.
 
 [Vérifier la compatibilité](https://terento.app/fr/compatibility/)

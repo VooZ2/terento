@@ -15,6 +15,8 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
 | `app-funnel-event.schema.json` | `POST /app-funnel/events` request body | `schemaVersion: 1`; meaning owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md) |
 | `support-report.schema.json` | `POST /support/reports` request body | `schemaVersion: 1`; meaning owned by [`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md) |
+| `map-preview-manifest.schema.json` | `GET /maps/previews/manifest.json` | `schemaVersion: 1` |
+| `map-preview-areas.schema.json` | `map-preview-areas.json` (curated preview areas, not an HTTP payload) | `schemaVersion: 1` |
 
 The installation policy contract contains exact Garmin catalog rows and
 `active`, normalized `baseModel` from the catalog model label, nullable
@@ -63,6 +65,13 @@ check. Native enforcement remains published in beta.15 build 36; backend
 availability alone was not its release gate. The valid fixture uses a synthetic Maps=No model; it is not a
 live catalog snapshot.
 
+`map-preview-areas.json` is the single curated list of places, trail sections
+and city centres rendered for the public map style comparison page. The
+backend preview job and the site generator both read it; `regionHints` only
+order candidate packages before download, and the job still verifies that
+the downloaded map covers the area. Review coverage and install-based gaps
+with `scripts/select-preview-areas.py` before editing the list.
+
 HTTP authentication, idempotency and rate-limit headers are outside these body
 schemas. Schema versions are independent of Terento app versions and build
 numbers. Relative `$id` values identify files within this directory; `$ref`
@@ -79,11 +88,11 @@ are operator work, never statistics.
 
 ## Responses and client compatibility
 
-The current beta.18 client requests `/maps/catalog-v4.json`. The legacy route
+The current rc.1 client requests `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
 Older clients (beta.18 and earlier) can reject a complete snapshot containing
 an unknown installable provider, so these projections must remain separate.
-From the next app candidate, the native client accepts the remote catalog per
+From rc.1, the native client accepts the remote catalog per
 package: a package that fails its provider adapter, reviewed source host, IMG
 identity or BBBike rules (or names a required artifact of an unknown `kind`) is
 dropped and counted; an optional artifact of an unknown `kind` is ignored.
