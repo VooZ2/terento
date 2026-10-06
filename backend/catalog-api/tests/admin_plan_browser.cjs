@@ -91,8 +91,8 @@ const {chromium}=require(process.argv[2]);
     assert.equal(await page.locator("[data-stat='failed']").first().innerText(),'10','Model evidence keeps ten failed results');
    }
    if(name==='device'){
-    assert.equal(await page.locator('.model-statistics .admin-metric').count(),5,'Installs card has five tiles');
-    const metrics=await page.locator('.model-statistics').boundingBox(), alert=await page.locator('.model-review-alert').boundingBox();
+    assert.equal(await page.locator('section[aria-labelledby="model-installation-kpis-title"] .admin-metric').count(),5,'Installs card has five tiles');
+    const metrics=await page.locator('.model-statistics:not(.model-update-statistics)').boundingBox(), alert=await page.locator('.model-review-alert').boundingBox();
     if(metrics&&alert) assert(alert.y-(metrics.y+metrics.height)>=16,'Device summary and alert keep a section gap');
     const columns=await page.locator('.model-evidence-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns);
     assert.equal(await page.locator('.model-evidence-summary>.model-administration').count(),1,'Administration stays in the left evidence column');

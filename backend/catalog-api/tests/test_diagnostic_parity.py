@@ -119,7 +119,10 @@ class DiagnosticParityTests(unittest.TestCase):
         self.assertIn('Installation history', body); self.assertIn('Update history', body)
         self.assertIn('>Update reports</h2>', body)
         self.assertNotIn("admin-glossary-link", body)
-        self.assertIn('outcome=succeeded', body); self.assertIn('outcome=failed', body)
+        # Update report counts are plain numbers styled like Installs (owner decision 2026-10-06).
+        reports = body.split("id='model-update-kpis-title'", 1)[1].split('</section>', 1)[0]
+        self.assertNotIn('<a ', reports)
+        self.assertIn("data-stat='successfulUpdateCount'>7</strong>", reports)
         self.assertIn('updateOffset=100', body); self.assertIn('updateOffset=0', body)
         self.assertIn('diagnosticId=' + EVENT, body)
         from terento_catalog.admin import ADMIN_GLOSSARY

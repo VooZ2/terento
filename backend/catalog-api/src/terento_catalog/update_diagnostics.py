@@ -273,24 +273,23 @@ def _update_review_controls(row: dict[str, Any], csrf_token: str, return_to: str
 
 
 def update_summary_markup(summary: dict[str, Any], device_id: str) -> str:
-    """Update reports for one model: diagnostic stream, all time, linked counts."""
+    """Update reports for one model: diagnostic stream, all time. Styled like
+    the Installs card beside it, with plain (unlinked) counts (owner decision
+    2026-10-06); the update history below filters by outcome."""
     from .admin import _metric_row, _metric_tile, _scope_chip
 
-    def count(field: str, outcome: str, label: str, *, failure: bool = False) -> str:
-        href = '/admin/update-diagnostics?' + urlencode({'deviceId': device_id, 'outcome': outcome})
-        value = int(summary.get(field) or 0)
-        return _metric_tile(label, value, failure=failure,
-                            value_html=f"<a href='{html.escape(href, quote=True)}'>{value}</a>", data_stat=field)
+    def count(field: str, label: str, *, failure: bool = False) -> str:
+        return _metric_tile(label, int(summary.get(field) or 0), failure=failure, data_stat=field)
 
     values = _metric_row([
-        count('successfulUpdateCount', 'succeeded', 'Successful'),
-        count('failedUpdateCount', 'failed', 'Failed', failure=True),
-        count('notStartedCount', 'not_started', 'Blocked before writing'),
+        count('successfulUpdateCount', 'Successful'),
+        count('failedUpdateCount', 'Failed', failure=True),
+        count('notStartedCount', 'Blocked before writing'),
     ], label='Update reports for this model')
     conflicts = int(summary.get('ambiguousUpdateCount') or 0)
     note = f"<p class='table-help'>{conflicts} conflicting reported results excluded from attempt totals. Inspect update history.</p>" if conflicts else ''
     return (
-        "<section class='admin-card admin-kpi-panel model-update-statistics' aria-labelledby='model-update-kpis-title'>"
+        "<section class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics model-update-statistics' aria-labelledby='model-update-kpis-title'>"
         f"<header class='admin-card-head'><h2 id='model-update-kpis-title'>Update reports</h2>{_scope_chip('all')}</header>"
         f"{values}{note}</section>"
     )
