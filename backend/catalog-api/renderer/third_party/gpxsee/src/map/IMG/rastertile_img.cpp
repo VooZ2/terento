@@ -1,0 +1,742 @@
+#include <QFont>
+#include <QPainter>
+#include <QCache>
+#include "common/util.h"
+#include "map/textpathitem.h"
+#include "map/textpointitem.h"
+#include "map/bitmapline.h"
+#include "map/rectd.h"
+#include "map/hillshading.h"
+#include "map/filter.h"
+#include "map/pcs.h"
+#include "style_img.h"
+#include "lblfile.h"
+#include "demtree.h"
+#include "rastertile_img.h"
+
+using namespace IMG;
+
+#define TEXT_EXTENT 160
+#define ICON_PADDING 2
+#define RANGE_FACTOR 4
+#define MAJOR_RANGE  10
+
+#define AREA(rect) \
+	(rect.size().width() * rect.size().height())
+
+static const QColor textColor(Qt::black);
+static const QColor haloColor(Qt::white);
+static const QColor shieldColor(Qt::white);
+static const QColor shieldBgColor1(0xdd, 0x3e, 0x3e);
+static const QColor shieldBgColor2(0x37, 0x99, 0x47);
+static const QColor shieldBgColor3(0x4a, 0x7f, 0xc1);
+
+static const QColor *shieldBgColor(Shield::Type type)
+{
+	switch (type) {
+		case Shield::USInterstate:
+		case Shield::Hbox:
+			return &shieldBgColor1;
+		case Shield::USShield:
+		case Shield::Box:
+			return &shieldBgColor2;
+		case Shield::USRound:
+		case Shield::Oval:
+			return &shieldBgColor3;
+		default:
+			return 0;
+	}
+}
+
+static int minShieldZoom(Shield::Type type)
+{
+	switch (type) {
+		case Shield::USInterstate:
+		case Shield::Hbox:
+			return 17;
+		case Shield::USShield:
+		case Shield::Box:
+			return 19;
+		case Shield::USRound:
+		case Shield::Oval:
+			return 20;
+		default:
+			return 0;
+	}
+}
+
+static QPointF centroid(const QVector<QPointF> &polygon)
+{
+	qreal area = 0;
+	qreal cx = 0, cy = 0;
+
+	for (int i = 0; i < polygon.size(); i++) {
+		int j = (i == polygon.size() - 1) ? 0 : i + 1;
+		qreal f = (polygon.at(i).x() * polygon.at(j).y() - polygon.at(j).x()
+		  * polygon.at(i).y());
+		area += f;
+		cx += (polygon.at(i).x() + polygon.at(j).x()) * f;
+		cy += (polygon.at(i).y() + polygon.at(j).y()) * f;
+	}
+
+	qreal factor = 1.0 / (3.0 * area);
+
+	return QPointF(cx * factor, cy * factor);
+}
+
+static bool rectNearPolygon(const QPolygonF &polygon, const QRectF &rect)
+{
+	return (polygon.boundingRect().contains(rect)
+	  && (polygon.containsPoint(rect.topLeft(), Qt::OddEvenFill)
+	  || polygon.containsPoint(rect.topRight(), Qt::OddEvenFill)
+	  || polygon.containsPoint(rect.bottomLeft(), Qt::OddEvenFill)
+	  || polygon.containsPoint(rect.bottomRight(), Qt::OddEvenFill)));
+}
+
+int RasterTile::_pathsDetail = 0;
+int RasterTile::_pointsDetail = 0;
+int RasterTile::_hillshadingDetail = 0;
+
+const QFont *RasterTile::poiFont(Style::FontSize size, int zoom,
+  bool extended) const
+{
+	if (zoom > 25)
+		size = Style::Normal;
+	else if (extended)
+		size = Style::None;
+
+	switch (size) {
+		case Style::None:
+			return 0;
+		default:
+			return _style->font(Style::ExtraSmall);
+	}
+}
+
+void RasterTile::ll2xy(QList<MapData::Poly> &polys) const
+{
+	for (int i = 0; i < polys.size(); i++) {
+		MapData::Poly &poly = polys[i];
+		for (int j = 0; j < poly.points.size(); j++) {
+			QPointF &p = poly.points[j];
+			p = ll2xy(Coordinates(p.x(), p.y()));
+		}
+	}
+}
+
+void RasterTile::ll2xy(QList<MapData::Point> &points) const
+{
+	for (int i = 0; i < points.size(); i++) {
+		QPointF p(ll2xy(points.at(i).coordinates));
+		points[i].coordinates = Coordinates(p.x(), p.y());
+	}
+}
+
+void RasterTile::drawPolygons(QPainter *painter,
+  const QList<MapData::Poly> &polygons) const
+{
+	for (int n = 0; n < _style->drawOrder().size(); n++) {
+		for (int i = 0; i < polygons.size(); i++) {
+			const MapData::Poly &poly = polygons.at(i);
+			if (poly.type != _style->drawOrder().at(n))
+				continue;
+
+			if (poly.raster.isValid()) {
+				if (!_rasters)
+					continue;
+
+				RectC r(poly.raster.rect());
+				QPointF tl(ll2xy(r.topLeft()));
+				QPointF br(ll2xy(r.bottomRight()));
+				QSizeF size(QRectF(tl, br).size());
+
+				QPixmap pm;
+				if (!pm.loadFromData(poly.raster.img(), "jpeg"))
+					continue;
+				qreal sx = size.width() / (qreal)pm.width();
+				qreal sy = size.height() / (qreal)pm.height();
+
+				painter->save();
+				painter->scale(sx, sy);
+				painter->drawPixmap(QPointF(tl.x() / sx, tl.y() / sy), pm);
+				painter->restore();
+
+				//painter->setPen(Qt::blue);
+				//painter->setBrush(Qt::NoBrush);
+				//painter->setRenderHint(QPainter::Antialiasing, false);
+				//painter->drawRect(QRectF(tl, br));
+				//painter->setRenderHint(QPainter::Antialiasing);
+			} else {
+				if (!_vectors)
+					continue;
+
+				const Style::Polygon &style = _style->polygon(poly.type);
+
+				painter->setPen(style.pen());
+				painter->setBrush(style.brush());
+				painter->drawPolygon(poly.points);
+			}
+		}
+	}
+}
+
+static quint32 lineType(quint32 type, quint32 flags)
+{
+	if (Style::isCartographicLine(type)) {
+		if (flags & MapData::Poly::Dashed)
+			return type | (flags & 0xFF000000) | 1<<20;
+		else
+			return type | (flags & 0xFF000000);
+	} else if (Style::isRecommendedRoute(type))
+		return (flags & MapData::Poly::Dashed) ? type | 1<<20 : type;
+	else if (flags & MapData::Poly::Direction)
+		return type | 2<<20;
+	else
+		return type;
+}
+
+void RasterTile::drawLines(QPainter *painter,
+  const QList<MapData::Poly> &lines) const
+{
+	painter->setBrush(Qt::NoBrush);
+
+	for (int i = 0; i < lines.size(); i++) {
+		const MapData::Poly &poly = lines.at(i);
+		const Style::Line &style = _style->line(poly.type);
+
+		if (style.background() == Qt::NoPen)
+			continue;
+
+		painter->setPen(style.background());
+		painter->drawPolyline(poly.points);
+	}
+
+	for (int i = 0; i < lines.size(); i++) {
+		const MapData::Poly &poly = lines.at(i);
+		const Style::Line &style = _style->line(lineType(poly.type, poly.flags));
+
+		if (!style.img().isNull()) {
+			if (poly.flags & MapData::Poly::Invert)
+				BitmapLine::drawR(painter, poly.points, style.img());
+			else
+				BitmapLine::draw(painter, poly.points, style.img());
+		} else if (style.foreground() != Qt::NoPen) {
+			painter->setPen(style.foreground());
+			painter->drawPolyline(poly.points);
+		}
+	}
+}
+
+void RasterTile::drawTextItems(QPainter *painter,
+  const QList<TextItem*> &textItems) const
+{
+	QRectF rect(_rect);
+
+	for (int i = 0; i < textItems.size(); i++) {
+		const TextItem *ti = textItems.at(i);
+		if (rect.intersects(ti->boundingRect()))
+			ti->paint(painter);
+	}
+}
+
+static QRect lightRect(const QPoint &pos, quint32 range)
+{
+	quint32 r = qMin(range * RANGE_FACTOR, (quint32)TEXT_EXTENT);
+	return QRect(pos.x() - r, pos.y() - r, 2 * r, 2 * r);
+}
+
+void RasterTile::drawSectorLights(QPainter *painter,
+  const QList<const MapData::Point*> &lights)
+{
+	for (int i = 0; i < lights.size(); i++) {
+		const MapData::Point *p = lights.at(i);
+		QPoint pos(p->coordinates.lon(), p->coordinates.lat());
+		QMap<Sector, quint32> rangeMap;
+
+		for (int j = 0; j < p->lights.size(); j++) {
+			const Light &l = p->lights.at(j);
+
+			if (l.sectors().size()) {
+				for (int k = 0; k < l.sectors().size(); k++) {
+					const Light::Sector &start = l.sectors().at(k);
+					const Light::Sector &end = (k == l.sectors().size() - 1)
+					  ? l.sectors().at(0) : l.sectors().at(k+1);
+					quint32 angle = end.angle() - start.angle();
+
+					if (start.color() && (angle || start.range() >= MAJOR_RANGE)) {
+						quint32 range = start.range() ? start.range() : 6;
+						Sector s(start.color(), start.angle(), end.angle());
+						if (rangeMap.value(s) >= range)
+							continue;
+						else
+							rangeMap.insert(s, range);
+
+						double a1 = -(end.angle() / 10.0 + 90.0);
+						double a2 = -(start.angle() / 10.0 + 90.0);
+						if (a1 > a2)
+							a2 += 360;
+						double as = (a2 - a1);
+						if (as == 0)
+							as = 360;
+
+						QRect rect(lightRect(pos, range));
+						painter->setPen(QPen(Qt::black, 6, Qt::SolidLine,
+						  Qt::FlatCap));
+						painter->drawArc(rect, a1 * 16, as * 16);
+						painter->setPen(QPen(Style::color(start.color()), 4,
+						  Qt::SolidLine, Qt::FlatCap));
+						painter->drawArc(rect, a1 * 16, as * 16);
+
+						if (angle) {
+							QLineF ln(pos, QPointF(pos.x() + rect.width(),
+							  pos.y()));
+							ln.setAngle(a1);
+							painter->setPen(QPen(Qt::black, 1, Qt::DashLine));
+							painter->drawLine(ln);
+							ln.setAngle(a2);
+							painter->drawLine(ln);
+						}
+					}
+				}
+			} else if (l.color() && l.range() >= MAJOR_RANGE) {
+				Sector s(l.color(), 0, 3600);
+				if (rangeMap.value(s) >= l.range())
+					continue;
+				else
+					rangeMap.insert(s, l.range());
+
+				QRect rect(lightRect(pos, l.range()));
+				painter->setPen(QPen(Qt::black, 6, Qt::SolidLine, Qt::FlatCap));
+				painter->drawArc(rect, 0, 360 * 16);
+				painter->setPen(QPen(Style::color(l.color()), 4, Qt::SolidLine,
+				  Qt::FlatCap));
+				painter->drawArc(rect, 0, 360 * 16);
+			}
+		}
+	}
+}
+
+static void removeDuplicitLabel(QList<TextItem*> &labels, const QString &text,
+  const QRectF &tileRect)
+{
+	for (int i = 0; i < labels.size(); i++) {
+		TextItem *item = labels.at(i);
+		if (tileRect.contains(item->boundingRect()) && *(item->text()) == text) {
+			labels.removeAt(i);
+			delete item;
+			return;
+		}
+	}
+}
+
+void RasterTile::processPolygons(const QList<MapData::Poly> &polygons,
+  QList<TextItem*> &textItems)
+{
+	QSet<QString> set;
+	QList<TextItem *> labels;
+
+	if (!_vectors)
+		return;
+
+	for (int i = 0; i < polygons.size(); i++) {
+		const MapData::Poly &poly = polygons.at(i);
+		bool exists = set.contains(poly.label.text());
+
+		if (poly.label.text().isEmpty())
+			continue;
+
+		if (_zoom <= 23 && (Style::isWaterArea(poly.type)
+		  || Style::isMilitaryArea(poly.type)
+		  || Style::isNatureReserve(poly.type))) {
+			const Style::Polygon &style = _style->polygon(poly.type);
+			QPointF center(centroid(poly.points));
+			if (qIsNaN(center.x()) || qIsInf(center.x()))
+				continue;
+			TextPointItem *item = new TextPointItem(center.toPoint(),
+			  &poly.label.text(), poiFont(), 0, &style.brush().color(),
+			  &haloColor);
+			if (item->isValid() && !item->collides(textItems)
+			  && !item->collides(labels)
+			  && !(exists && _rect.contains(item->boundingRect().toRect()))
+			  && rectNearPolygon(poly.points, item->boundingRect())) {
+				if (exists)
+					removeDuplicitLabel(labels, poly.label.text(), _rect);
+				else
+					set.insert(poly.label.text());
+				labels.append(item);
+			} else
+				delete item;
+		}
+	}
+
+	textItems.append(labels);
+}
+
+void RasterTile::processLines(QList<MapData::Poly> &lines,
+  QList<TextItem*> &textItems)
+{
+	std::stable_sort(lines.begin(), lines.end());
+
+	if (_zoom + _pathsDetail >= 22)
+		processStreetNames(lines, textItems);
+
+	processShields(lines, textItems);
+}
+
+void RasterTile::processStreetNames(const QList<MapData::Poly> &lines,
+  QList<TextItem*> &textItems)
+{
+	for (int i = 0; i < lines.size(); i++) {
+		const MapData::Poly &poly = lines.at(i);
+		const Style::Line &style = _style->line(poly.type);
+
+		if (style.img().isNull() && style.foreground() == Qt::NoPen)
+			continue;
+
+		const QFont *fnt = _style->font(style.text().size(),
+		  Style::Small);
+		const QColor *color = style.text().color().isValid()
+		  ? &style.text().color() : Style::isContourLine(poly.type)
+			? 0 : &textColor;
+		const QColor *hColor = Style::isContourLine(poly.type) ? 0 : &haloColor;
+		const QImage *img = (poly.flags & MapData::Poly::OneWay)
+		  ? _style->arrow(poly.type) : 0;
+		const QString *label = poly.label.text().isEmpty()
+		  ? 0 : &poly.label.text();
+
+		if (!img && (!label || !fnt || !color))
+			continue;
+
+		TextPathItem *item = new TextPathItem(poly.points, label, _rect, fnt,
+		  color, hColor, img);
+		if (item->isValid() && !item->collides(textItems))
+			textItems.append(item);
+		else {
+			delete item;
+
+			if (img) {
+				TextPathItem *item = new TextPathItem(poly.points, 0, _rect, 0,
+				  0, 0, img);
+				if (item->isValid() && !item->collides(textItems))
+					textItems.append(item);
+				else
+					delete item;
+			}
+		}
+	}
+}
+
+void RasterTile::processShields(const QList<MapData::Poly> &lines,
+  QList<TextItem*> &textItems)
+{
+	for (int type = FIRST_SHIELD; type <= LAST_SHIELD; type++) {
+		if (minShieldZoom(static_cast<Shield::Type>(type)) > _zoom
+		  + _pathsDetail)
+			continue;
+
+		QHash<Shield, QPolygonF> shields;
+		QHash<Shield, const Shield*> sp;
+
+		for (int i = 0; i < lines.size(); i++) {
+			const MapData::Poly &poly = lines.at(i);
+			const Shield &shield = poly.label.shield();
+			if (!shield.isValid() || shield.type() != type
+			  || !Style::isMajorRoad(poly.type))
+				continue;
+
+			QPolygonF &p = shields[shield];
+			for (int j = 0; j < poly.points.size(); j++)
+				p.append(poly.points.at(j));
+
+			sp.insert(shield, &shield);
+		}
+
+		for (QHash<Shield, QPolygonF>::const_iterator it = shields.constBegin();
+		  it != shields.constEnd(); ++it) {
+			const QPolygonF &p = it.value();
+			QRectF rect(p.boundingRect() & _rect);
+			if (AREA(rect) < AREA(QRect(0, 0, _rect.width()/4, _rect.width()/4)))
+				continue;
+
+			QMap<qreal, int> map;
+			QPointF center = rect.center();
+			for (int j = 0; j < p.size(); j++) {
+				QLineF l(p.at(j), center);
+				map.insert(l.length(), j);
+			}
+
+			QMap<qreal, int>::const_iterator jt = map.constBegin();
+
+			TextPointItem *item = new TextPointItem(
+			  p.at(jt.value()).toPoint(), &(sp.value(it.key())->text()),
+			  poiFont(), 0, &shieldColor, 0, shieldBgColor(it.key().type()));
+
+			bool valid = false;
+			while (true) {
+				if (!item->collides(textItems)
+				  && _rect.contains(item->boundingRect().toRect())) {
+					valid = true;
+					break;
+				}
+				if (++jt == map.constEnd())
+					break;
+				item->setPos(p.at(jt.value()).toPoint());
+			}
+
+			if (valid)
+				textItems.append(item);
+			else
+				delete item;
+		}
+	}
+}
+
+static bool sectorLight(const QVector<Light> &lights)
+{
+	for (int i = 0; i < lights.size(); i++) {
+		const Light &l = lights.at(i);
+		if (l.color() && l.range() >= MAJOR_RANGE)
+			return true;
+		for (int j = 0; j < l.sectors().size(); j++) {
+			const Light::Sector &start = l.sectors().at(j);
+			const Light::Sector &end = (j == l.sectors().size() - 1)
+			  ? l.sectors().at(0) : l.sectors().at(j+1);
+			quint32 angle = end.angle() - start.angle();
+			if (start.color() && (angle || start.range() >= MAJOR_RANGE))
+				return true;
+		}
+	}
+
+	return false;
+}
+
+static Light::Color ordinaryLight(const QVector<Light> &lights)
+{
+	for (int i = 0; i < lights.size(); i++) {
+		const Light &l = lights.at(i);
+		if (l.color() && l.range() < MAJOR_RANGE)
+			return l.color();
+		for (int j = 0; j < l.sectors().size(); j++) {
+			const Light::Sector &start = l.sectors().at(j);
+			const Light::Sector &end = (j == l.sectors().size() - 1)
+			  ? l.sectors().at(0) : l.sectors().at(j+1);
+			quint32 angle = end.angle() - start.angle();
+			if (start.color() && !angle && start.range() < MAJOR_RANGE)
+				return start.color();
+		}
+	}
+
+	return Light::None;
+}
+
+static quint32 pointType(quint32 type, quint32 flags)
+{
+	if (Style::hasColorset(type) || Style::isDHPoint(type))
+		return type | (flags & 0xFF000000);
+	else if (Style::isLabelPoint(type))
+		return type | (flags & 0xFFF00000);
+	else
+		return type;
+}
+
+void RasterTile::processPoints(QList<MapData::Point> &points,
+  QList<TextItem*> &textItems, QList<TextItem*> &lights,
+  QList<const MapData::Point*> &sectorLights)
+{
+	std::sort(points.begin(), points.end());
+
+	for (int i = 0; i < points.size(); i++) {
+		const MapData::Point &point = points.at(i);
+		const Style::Point &ps = _style->point(pointType(point.type, point.flags));
+		bool poi = Style::isPOI(point.type);
+		bool sl = sectorLight(point.lights);
+
+		if (sl)
+			sectorLights.append(&point);
+
+		const QString *label = point.label.text().isEmpty()
+		  ? 0 : &(point.label.text());
+		const QImage *img = ps.img().isNull() ? 0 : &ps.img();
+		const QFont *fnt = poi
+		  ? poiFont(ps.text().size(), _zoom + _pointsDetail, point.flags
+			& MapData::Point::ClassLabel)
+		  : _style->font(ps.text().size());
+		const QColor *color = ps.text().color().isValid()
+		  ? &ps.text().color() : &textColor;
+		const QColor *hcolor = Style::isDepthPoint(point.type)
+		  ? 0 : &haloColor;
+
+		if ((!label || !fnt) && !img)
+			continue;
+
+		QPoint pos(point.coordinates.lon(), point.coordinates.lat());
+		QPoint offset = img ? ps.offset() : QPoint(0, 0);
+
+		TextPointItem *item = new TextPointItem(pos + offset, label, fnt, img,
+		  color, hcolor, 0, ICON_PADDING);
+		if (item->isValid() && (sl || !item->collides(textItems))) {
+			textItems.append(item);
+			Light::Color color = ordinaryLight(point.lights);
+			if (color)
+				lights.append(new TextPointItem(pos + _style->lightOffset(),
+				  0, 0, _style->light(color), 0, 0, 0, 0));
+		} else
+			delete item;
+	}
+}
+
+bool RasterTile::hasDEM() const
+{
+	for (int i = 0; i < _data.size(); i++)
+		if (_data.at(i)->hasDEM())
+			return true;
+
+	return false;
+}
+
+void RasterTile::fetchData(QList<MapData::Poly> &polygons,
+  QList<MapData::Poly> &lines, QList<MapData::Point> &points, MatrixD &dem)
+{
+	QPoint ttl(_rect.topLeft());
+	QRectF polyRect(ttl, QPointF(ttl.x() + _rect.width(), ttl.y()
+	  + _rect.height()));
+	RectD polyRectD(_transform.img2proj(polyRect.topLeft()),
+	  _transform.img2proj(polyRect.bottomRight()));
+	RectC polyRectC(polyRectD.toRectC(*_proj, 20));
+	RectC pointRectC;
+	RectC demRectC;
+	MatrixC demLL;
+	QList<MapData::Elevation> tiles;
+
+	if (_vectors) {
+		QRectF pointRect(QPointF(ttl.x() - TEXT_EXTENT, ttl.y() - TEXT_EXTENT),
+		  QPointF(ttl.x() + _rect.width() + TEXT_EXTENT, ttl.y() + _rect.height()
+		  + TEXT_EXTENT));
+		RectD pointRectD(_transform.img2proj(pointRect.topLeft()),
+		  _transform.img2proj(pointRect.bottomRight()));
+		pointRectC = pointRectD.toRectC(*_proj, 20);
+	}
+
+	if (_hillShading && _zoom >= 17 && _zoom <= 24 && hasDEM()) {
+		int extend = HillShading::blur() + 1;
+		int left = _rect.left() - extend;
+		int right = _rect.right() + extend;
+		int top = _rect.top() - extend;
+		int bottom = _rect.bottom() + extend;
+		RectC br;
+		demLL = MatrixC(_rect.height() + 2 * extend, _rect.width() + 2 * extend);
+
+		if (*_proj == PCS::pcs(3857)) {
+			RectC rect(xy2ll(QPointF(left, top)), xy2ll(QPointF(right, bottom)));
+			double sx = rect.width() / demLL.w();
+			double sy = rect.height() / demLL.h();
+
+			for (int i = 0, n = 0; i < demLL.h(); i++)
+				for (int j = 0; j < demLL.w(); j++, n++)
+					demLL.at(n) = Coordinates(rect.left() + j * sx,
+					  rect.top() - i * sy);
+
+			br = rect;
+		} else {
+			for (int y = top, i = 0; y <= bottom; y++)
+				for (int x = left; x <= right; x++, i++)
+					demLL.at(i) = xy2ll(QPointF(x, y));
+
+			br = demLL.boundingRect();
+		}
+
+		/* Extra margin for always including the next DEM tile on the map
+		   tile edges (the DEM tile resolution is usally 0.5-15% of the map
+		   tile) */
+		double factor = 6 - (_zoom - 24) * 1.7;
+		demRectC = br.adjusted(0, 0, br.width() / factor, -br.height() / factor);
+	}
+
+	for (int i = 0; i < _data.size(); i++) {
+		MapData *data = _data.at(i);
+		QFile *file = 0;
+
+		if (dynamic_cast<IMGData*>(data)) {
+			file = new QFile(data->fileName());
+			if (!file->open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
+				qWarning("%s: %s", qUtf8Printable(file->fileName()),
+				  qUtf8Printable(file->errorString()));
+				delete file;
+				continue;
+			}
+		}
+
+		data->polys(file, polyRectC, _zoom + _pathsDetail, &polygons,
+		  _vectors ? &lines : 0);
+		if (_vectors)
+			data->points(file, pointRectC, _zoom + _pointsDetail, &points);
+
+		if (!demRectC.isNull())
+			data->elevations(file, demRectC, _zoom + _hillshadingDetail, &tiles);
+
+		delete file;
+	}
+
+	ll2xy(polygons);
+	ll2xy(lines);
+	ll2xy(points);
+
+	if (!demLL.isNull())
+		dem = DEMTree(tiles).elevation(demLL);
+}
+
+void RasterTile::drawHillShading(QPainter *painter, const MatrixD &dem) const
+{
+	if (dem.isNull())
+		return;
+
+	if (HillShading::blur()) {
+		MatrixD filtered(Filter::blur(dem, HillShading::blur()));
+		painter->drawImage(_rect.x(), _rect.y(), HillShading::render(
+		  filtered, HillShading::blur() + 1));
+	} else
+		painter->drawImage(_rect.x(), _rect.y(), HillShading::render(dem, 1));
+}
+
+void RasterTile::render()
+{
+	QImage img(_rect.width() * _ratio, _rect.height() * _ratio,
+	  QImage::Format_ARGB32_Premultiplied);
+	QList<MapData::Poly> polygons;
+	QList<MapData::Poly> lines;
+	QList<MapData::Point> points;
+	MatrixD dem;
+	QList<TextItem*> textItems, lights;
+	QList<const MapData::Point*> sectorLights;
+
+	fetchData(polygons, lines, points, dem);
+
+	processPoints(points, textItems, lights, sectorLights);
+	processPolygons(polygons, textItems);
+	processLines(lines, textItems);
+
+	img.setDevicePixelRatio(_ratio);
+	img.fill(Qt::transparent);
+
+	QPainter painter(&img);
+	painter.setRenderHint(QPainter::SmoothPixmapTransform);
+	painter.setRenderHint(QPainter::Antialiasing);
+	painter.translate(-_rect.x(), -_rect.y());
+
+	drawPolygons(&painter, polygons);
+	drawHillShading(&painter, dem);
+	drawLines(&painter, lines);
+	drawTextItems(&painter, lights);
+	drawSectorLights(&painter, sectorLights);
+	drawTextItems(&painter, textItems);
+
+	qDeleteAll(lights);
+	qDeleteAll(textItems);
+
+	//painter.setPen(Qt::red);
+	//painter.setBrush(Qt::NoBrush);
+	//painter.setRenderHint(QPainter::Antialiasing, false);
+	//painter.drawRect(_rect);
+
+	_pixmap.convertFromImage(img);
+}
