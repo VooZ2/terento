@@ -159,7 +159,7 @@
     const tags = current.tags.filter((tag) => copy.tags[tag]).slice(0, 2)
       .map((tag) => `<span class="map-styles-tag">${escapeHtml(copy.tags[tag])}</span>`).join("");
     const covered = D.coveredCount(manifest, current.id, styleIds);
-    $("map-styles-area-meta").innerHTML = `${ICON_PIN}<span>${escapeHtml(countries)}</span>${tags}<span>· ${escapeHtml(D.format(copy.styles_of, {n: covered}))}</span>`;
+    $("map-styles-area-meta").innerHTML = `${ICON_PIN}<span>${escapeHtml(countries)}</span>${tags}<span>${escapeHtml(D.format(copy.styles_of, {n: covered}))}</span>`;
   }
 
   function styleOption(styleId, selected, other) {
