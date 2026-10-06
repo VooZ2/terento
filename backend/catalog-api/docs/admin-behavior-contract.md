@@ -617,9 +617,11 @@ statistics contract's existing zero-fill and timezone rules.
 
 Providers shows one stream at a time through a segmented control (Installs,
 Updates, Downloads); each stream keeps its own Successful, Failed and Rate, and
-Installs and Updates show their own Last install / Last update date. Both dates
-require a positive eligible operation count for a known catalog main map;
-excluded or zero-count rows cannot advance them. Downloads shows Last download:
+Installs and Updates show their own Last install / Last update date, drawn from
+the same rows as that provider's Successful count: a positive operation count
+for a main map (or a historical row without a component), including custom maps
+that have no catalog package. Zero-count rows and optional components such as
+contours cannot advance them. Downloads shows Last download:
 the latest successful download with a positive operation count, across the same
 all-purpose population as the Downloads totals. Download failures include only
 terminal `DOWNLOAD_FAILED`. A zero denominator displays `—`. Downloads totals

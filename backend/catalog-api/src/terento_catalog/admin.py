@@ -4853,6 +4853,9 @@ def _map_statistics_script() -> str:
       };
       const knownProviderIds = new Set(providers.map((item) => String(item.id || '')).filter(Boolean));
       const eligibleMain = (row) => operations(row) > 0 && row.map_package_id && knownProviderIds.has(String(row.provider_id || '')) && (!row.component_kind || row.component_kind === 'main');
+      // Provider dates follow the provider's own Successful count: any positive
+      // main-component operation, including custom maps without a catalog package.
+      const datedMain = (row) => operations(row) > 0 && (!row.component_kind || row.component_kind === 'main');
       const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED' && eligibleMain(row));
       let coverageMap = null;
       const countryCoverage = () => {
@@ -4909,9 +4912,9 @@ def _map_statistics_script() -> str:
           // a zero or unknown operation count cannot advance it.
           if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'downloads', row); if ((operations(row) || 0) > 0 && String(row.last_occurred_at || '') > String(byProvider[id].lastDownload || '')) byProvider[id].lastDownload = row.last_occurred_at; }
           if (row.event_type === 'DOWNLOAD_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedDownloads', row);
-          if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'installs', row); if (eligibleMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastInstall || '')) byProvider[id].lastInstall = row.last_occurred_at; }
+          if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'installs', row); if (datedMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastInstall || '')) byProvider[id].lastInstall = row.last_occurred_at; }
           if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedInstalls', row);
-          if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'completedUpdates', row); if (eligibleMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastUpdate || '')) byProvider[id].lastUpdate = row.last_occurred_at; }
+          if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'completedUpdates', row); if (datedMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastUpdate || '')) byProvider[id].lastUpdate = row.last_occurred_at; }
           if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedUpdates', row);
         });
         const rate = (success, failed) => success !== null && failed !== null && success + failed ? success / (success + failed) * 100 : null;
