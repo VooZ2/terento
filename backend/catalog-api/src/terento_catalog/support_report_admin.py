@@ -151,7 +151,7 @@ def support_reports_page(
         else:
             listing = _empty_state("empty", "No open reports." if status == "OPEN" else "No handled reports.")
         body = _metric_row([
-            _metric_tile("Open", open_count, scope="now", glossary="support-report", failure=False),
+            _metric_tile("Open", open_count, scope="now", failure=False),
             _metric_tile("Handled", handled_count, scope="all"),
             _metric_tile("Reports", open_count + handled_count, scope="all"),
         ], label="Support report summary") + _section_card(

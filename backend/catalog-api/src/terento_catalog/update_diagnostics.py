@@ -274,24 +274,24 @@ def _update_review_controls(row: dict[str, Any], csrf_token: str, return_to: str
 
 def update_summary_markup(summary: dict[str, Any], device_id: str) -> str:
     """Update reports for one model: diagnostic stream, all time, linked counts."""
-    from .admin import _glossary_link, _metric_row, _metric_tile, _scope_chip
+    from .admin import _metric_row, _metric_tile, _scope_chip
 
-    def count(field: str, outcome: str, label: str, *, failure: bool = False, glossary: str | None = None) -> str:
+    def count(field: str, outcome: str, label: str, *, failure: bool = False) -> str:
         href = '/admin/update-diagnostics?' + urlencode({'deviceId': device_id, 'outcome': outcome})
         value = int(summary.get(field) or 0)
-        return _metric_tile(label, value, failure=failure, glossary=glossary,
+        return _metric_tile(label, value, failure=failure,
                             value_html=f"<a href='{html.escape(href, quote=True)}'>{value}</a>", data_stat=field)
 
     values = _metric_row([
-        count('successfulUpdateCount', 'succeeded', 'Successful', glossary='successful'),
-        count('failedUpdateCount', 'failed', 'Failed', failure=True, glossary='failed'),
-        count('notStartedCount', 'not_started', 'Blocked before writing', glossary='blocked-before-writing'),
+        count('successfulUpdateCount', 'succeeded', 'Successful'),
+        count('failedUpdateCount', 'failed', 'Failed', failure=True),
+        count('notStartedCount', 'not_started', 'Blocked before writing'),
     ], label='Update reports for this model')
     conflicts = int(summary.get('ambiguousUpdateCount') or 0)
     note = f"<p class='table-help'>{conflicts} conflicting reported results excluded from attempt totals. Inspect update history.</p>" if conflicts else ''
     return (
         "<section class='admin-card admin-kpi-panel model-update-statistics' aria-labelledby='model-update-kpis-title'>"
-        f"<header class='admin-card-head'><h2 id='model-update-kpis-title'>Update reports</h2>{_glossary_link('update-report')}{_scope_chip('all')}</header>"
+        f"<header class='admin-card-head'><h2 id='model-update-kpis-title'>Update reports</h2>{_scope_chip('all')}</header>"
         f"{values}{note}</section>"
     )
 
@@ -305,11 +305,11 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
         if embedded:
             parameters = {'updateOutcome': parameters['outcome'], 'updateOffset': parameters.get('offset', 0)}
         return base_url + ('&' if '?' in base_url else '?') + urlencode({k: v for k, v in parameters.items() if v != ''}) + ('#updates' if embedded else '')
-    from .admin import _glossary_link, _operation_map_label, _scope_chip
+    from .admin import _operation_map_label, _scope_chip
     title = 'Update history' if embedded else 'Reports'
     result = (
         f"<section class='model-page-section admin-card' id='updates' aria-labelledby='update-history-title'><header class='admin-card-head'><h2 id='update-history-title'>{title}</h2>"
-        f"{_glossary_link('update-report')}{_scope_chip('all')}</header>"
+        f"{_scope_chip('all')}</header>"
     )
     result += "<nav class='quick-filter-group' aria-label='Filter update reports'>"
     for value, label in (('', 'All'), ('succeeded', 'Successful'), ('failed', 'Failed'), ('not_started', 'Blocked before writing')):
@@ -336,15 +336,15 @@ def _update_totals_markup(totals: dict[str, Any] | None) -> str:
     state = None if totals is not None else 'unavailable'
     totals = totals or {}
 
-    def tile(label: str, key: str, *, failure: bool = False, glossary: str | None = None, href: str | None = None) -> str:
-        return _metric_tile(label, totals.get(key), scope='all', state=state, failure=failure, glossary=glossary,
+    def tile(label: str, key: str, *, failure: bool = False, href: str | None = None) -> str:
+        return _metric_tile(label, totals.get(key), scope='all', state=state, failure=failure,
                             href=href, data_stat=key)
 
     return _metric_row([
-        tile('Reports', 'total', glossary='update-report'),
-        tile('Successful', 'succeeded', glossary='successful'),
-        tile('Failed', 'failed', failure=True, glossary='failed'),
-        tile('Blocked', 'not_started', glossary='blocked-before-writing'),
+        tile('Reports', 'total'),
+        tile('Successful', 'succeeded'),
+        tile('Failed', 'failed', failure=True),
+        tile('Blocked', 'not_started'),
         tile('Open', 'open_failed', failure=True, href='/admin/update-diagnostics?outcome=failed&lifecycle=ACTIVE'),
     ], label='Update report totals')
 

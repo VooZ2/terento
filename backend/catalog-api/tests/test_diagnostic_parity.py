@@ -118,7 +118,7 @@ class DiagnosticParityTests(unittest.TestCase):
             update_history={'rows': [self.report()], 'device_id': MODEL, 'offset': 50, 'has_more': True}).decode()
         self.assertIn('Installation history', body); self.assertIn('Update history', body)
         self.assertIn('>Update reports</h2>', body)
-        self.assertIn("href='/admin/glossary#update-report'", body)
+        self.assertNotIn("admin-glossary-link", body)
         self.assertIn('outcome=succeeded', body); self.assertIn('outcome=failed', body)
         self.assertIn('updateOffset=100', body); self.assertIn('updateOffset=0', body)
         self.assertIn('diagnosticId=' + EVENT, body)

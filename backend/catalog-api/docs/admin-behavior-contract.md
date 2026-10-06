@@ -38,9 +38,10 @@ series and labels. Chart colours follow the single rule in the statistics
 contract (owner decision 2026-10-05): provider fresh install successful uses
 Interactive Primary (slate), custom `.img` fresh install successful its own
 Lichen-dark series and legend entry, install failed solid red (destructive
-text), update successful Warm Stone with a stone-dark outline (Warm Stone alone
-is 2.69:1 on white), and update failed red diagonal stripes in bars and legends.
-Stacked segments are separated by a 1 px surface line, every series has a legend
+text), update successful solid Stone Dark with no outline (Warm Stone alone is
+2.69:1 on white), and update failed red diagonal stripes in bars and legends.
+Stacked segments touch with no separator line, so each bar reads as one solid
+column; every series has a legend
 entry (counts follow the Dashboard legend rule), and each bucket is one keyboard
 stop whose label lists every series. Fresh-install KPI denominators exclude every update.
 Not-started updates are diagnostics, not failed device-write attempts. Charts
@@ -51,14 +52,20 @@ and legends must preserve these distinctions at supported widths.
 Every Admin page renders numbers, statuses, cards, tables, empty states and
 legends through one kit: a metric tile (label of one or two words, value,
 visible scope chip, at most one secondary line, measured/unknown/unavailable/
-partial states, danger tone only for a positive failure count), a section card
+partial states, danger tone only for a positive failure count; the label and
+secondary text carry the meaning, so a tile value never carries an icon), a
+section card
 (one- or two-word title, optional scope chip, at most one action link, no
 explanatory paragraph), a status pill (icon plus sentence-case text; colour
 supports but never replaces the text), table conventions (identity first,
 numbers and dates trailing, `—` for unknown), empty states (empty, filtered,
-unavailable with Retry) and chart legends. Metric labels link to the Tools →
-Glossary entry for their term. Colours, radii and focus rings come only from the
-generated brand tokens; the focus ring is Interactive Primary (≥3:1).
+unavailable with Retry) and chart legends. Labels and card titles carry no
+inline `?` glossary links; term definitions live only on Tools → Glossary.
+Colours, radii and focus rings come only from the generated brand tokens; the
+focus ring is Interactive Primary (≥3:1). Every icon, including chevrons,
+arrows and placeholders, is an unchanged Font Awesome Free solid icon from the
+pinned revision in `THIRD_PARTY_NOTICES.md`, inlined (no external origin);
+Admin never uses hand-drawn SVG, CSS-drawn shapes or text glyphs as icons.
 
 This is the canonical behavioral contract for the private Terento admin surface
 and its diagnostic data dependencies. It complements `api.md` (routes and current
@@ -210,27 +217,29 @@ duplicate Review navigation item.
 ### Dashboard and Needs attention
 
 Dashboard must answer whether anything is wrong, what happened in the selected
-period, whether activity is changing, and what to inspect next. Its first row is
-four metric tiles: Installs, Updates and Downloads for the selected period (each
-with failed count and success rate) and Needs attention (Now). Below them, the
-Downloads and Installs chart cards share a row; each shows the period scope chip,
-a legend naming its series and one compact line with the all-time totals behind
-an `All time` chip (omitted when the period is All time, because the tiles then
-show those totals). Period totals live only in the tiles; a legend shows a count
-only where it adds information no tile shows (the Custom .img install split, and
-the App downloads period increases). Tiles and charts use the same period
-population, so they agree. The Downloads card also breaks the period
-total down by purpose (For installs, For updates, Not recorded). Below the
+period, whether activity is changing, and what to inspect next. It has no
+summary tile row: the Downloads and Installs chart cards share the first row.
+Each chart card holds exactly three things (owner decision 2026-10-06): a
+header with the period scope chip and, top right, the period totals as compact
+value chips (Successful, Failed — danger only when positive — and Success rate;
+Installs counts fresh installs only); the chart; and a legend naming each
+series by colour without counts. No All time line, purpose breakdown or other
+explanatory text is shown in these cards; all-time totals and the purpose
+breakdown live on Maps. Header totals and charts use the same period
+population, so they agree. A legend elsewhere shows a count only where it adds
+information no total shows (the Maps Custom .img install split and the App
+downloads period increases). The Needs attention header shows its `Now` total
+as one chip (`—` when any row is unavailable). Below the
 charts, Needs attention and Activity share a row, then First run and App
 downloads share the next row; when one of those cards is omitted the remaining
 one spans the row, so no Dashboard row leaves an empty grid cell at ≥1024 px.
-The narrow order is tiles, Downloads, Installs, Needs attention, Activity, First
+The narrow order is Downloads, Installs, Needs attention, Activity, First
 run, then App downloads.
 
 Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
 `Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
-`.dmg` and `.zip`), carries a glossary link with that definition, shows its
+`.dmg` and `.zip`; the Glossary defines it), shows its
 period increases in the legend and its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
 population for the period (sessions, connected vs not connected by reason,
@@ -255,7 +264,7 @@ each with its own legend entry; optional components and pre-write failures remai
 excluded by the statistics contract. Each bucket is one keyboard stop with a
 label listing every series; segments are presentational. Tapping, clicking or
 keyboard-focusing a bucket (Enter/Space also select it) fills a small value
-strip under the chart with the bucket date, every series value (`—` when not
+strip under the chart (hidden, with no hint text, until a bucket is chosen) with the bucket date, every series value (`—` when not
 recorded) and the total, announced through `aria-live`; values never require
 hover. The strip uses the shared inline nonce script, no chart library, and the
 charts stay server-rendered SVG.
@@ -271,16 +280,16 @@ strip. X axis: every bucket is labelled when the labels fit, otherwise every
 second bucket (or the smallest regular step that fits on the compact chart),
 always including the most recent bucket and never overlapping.
 
-Needs attention covers unresolved work across all dates in nine fixed category
-rows, each with an icon, label, count and arrow: Open problems, GitHub issues,
-Identity review, Publication review, Missing reports, Support reports, Maps
-unknown, Provider problems and System checks. Maps unknown counts active catalog
-models whose stored Maps value is NULL (installation `PENDING`) from its own
-query and opens Devices filtered to `Maps: Unknown` and active models
-(`/admin/devices?maps=unknown&active=1`), which shows the same total; a failed
-query shows that row as unavailable. Rows with zero stay listed (muted) so the shape is stable. Counts
-come only from the canonical review read model, the shared provider-problem
-definition and the system checks; there is no fallback from another definition.
+Needs attention covers unresolved work across all dates in six review queues
+(owner decision 2026-10-06), in this order, each row with an icon, label, count
+and arrow: Open problems, GitHub issues, Identity review, Publication review,
+Missing reports and Support reports. Maps unknown models, provider problems and
+system checks are not Needs attention rows; they stay on Devices
+(`/admin/devices?maps=unknown&active=1`), Providers and Health. Only rows with a positive or unavailable
+count are listed (owner decision 2026-10-06); a measured zero renders no row,
+and when every count is zero the card shows `Nothing to review.` instead. Counts
+come only from the canonical review read model and the support-report count;
+there is no fallback from another definition.
 A failed query shows `—` with an explicit `Unavailable` message, never `0` or
 "No pending work". Each row links to its work list, and that list shows the same
 total even when it paginates. Failures, linked issue work, identity/publication
@@ -316,7 +325,7 @@ context and is not redirected to aggregate Maps as a substitute.
 
 Support reports counts open reports from public (non-local) builds, read from
 its own query; a failed query shows that row as `Unavailable` (`—`) and the
-Needs attention tile as partial, never `0`. `/admin/support-reports` shows Open
+Needs attention header total as `—`, never `0`. `/admin/support-reports` shows Open
 (`Now`), Handled and Reports (`All time`, i.e. the 12-month retention window)
 tiles, Open/Handled filter chips with their counts, and a table (Reference,
 Category, Report, Model, App version, Received, Status pill) with 50 rows per

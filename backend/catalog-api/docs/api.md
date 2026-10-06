@@ -216,17 +216,18 @@ an input to counts.
 Returns the authenticated operator Dashboard. The default period is the last 24
 hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
 
-The first row is four tiles: Installs, Updates and Downloads for the selected
-period (successful, failed and rate, with a visible period chip) and Needs
-attention (Now). The Downloads and Installs chart cards follow, each with a
-legend naming its series (period totals stay in the tiles; only the custom
-`.img` split is counted) and, unless the period is All time, an `All time`
-line with the all-time totals; the Downloads card adds the period purpose
-breakdown (`downloadPurposes`: install, update, unknown). Needs attention covers unresolved work across all dates in
-nine fixed rows read only from `admin_review_summary()`, the open public
-support-report count (`support_report_open_count()`), the active Maps-unknown
-model count (`maps_unknown_model_count()`), the shared
-provider-problem definition and the system checks; an unavailable query shows
+There is no summary tile row. The Downloads and Installs chart cards come
+first; each header shows a visible period chip and the period totals
+(successful, failed and success rate; Installs counts fresh installs only),
+then the chart and a legend naming its series without counts; nothing else is
+shown in these cards (all-time totals and the purpose breakdown are on Maps).
+The Needs attention header shows its Now total. The payload still carries the
+period purpose breakdown (`downloadPurposes`: install, update, unknown), which
+the Dashboard does not render. Needs attention covers unresolved work across all dates in
+up to six review-queue rows (zero-count rows are omitted; all zero shows
+`Nothing to review.`) read only from `admin_review_summary()` and the open
+public support-report count (`support_report_open_count()`); Maps unknown,
+provider problems and system checks are not rendered there; an unavailable query shows
 `—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
 for the period. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
@@ -377,9 +378,9 @@ Admin term (Attempt, Successful, Failed, Blocked before writing, Open problem,
 Provider download, Install, Installation report, Map update, Update report,
 Terento app download, Task and the review/evidence terms). Definitions follow
 `contracts/STATISTICS_CONTRACT.md`, `contracts/APP_FUNNEL_CONTRACT.md` and
-`docs/admin-behavior-contract.md`; metric labels link to `#anchor` entries. The
-page reads no data and uses the shared admin session, no-store and noindex
-policy.
+`docs/admin-behavior-contract.md`; it is reached from the Tools menu, and
+Admin labels carry no inline links to it. The page reads no data and uses the
+shared admin session, no-store and noindex policy.
 
 ## `GET https://api.terento.app/admin/devices`
 
@@ -818,7 +819,7 @@ Terento-owned provider map. They are counted separately from first
 installations; they do not increase installation totals, country coverage, or
 map popularity counts. Admin Dashboard and Map statistics render successful
 and failed updates as separate series; their colours follow the statistics
-contract (update successful Warm Stone, update failed red diagonal stripes,
+contract (update successful Stone Dark, update failed red diagonal stripes,
 install failed solid red). Map statistics supports
 filtering by either update event type.
 

@@ -432,19 +432,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         day = render("24h", 1)
         month = render("30d", 30)
         for body, count, scope in ((day, 1, "Last 24 hours"), (month, 30, "Last 30 days")):
-            tiles = body.split("aria-label='Dashboard summary'", 1)[1].split("<div class='overview-primary-grid'>", 1)[0]
-            # KPI tiles follow the selected period and say so visibly (ADM-04/05).
-            self.assertIn(f"data-stat='completedInstallCount'>{count}</strong>", tiles)
-            self.assertIn(f"data-stat='completedDownloadCount'>{count}</strong>", tiles)
-            self.assertIn(f">{scope}</span>", tiles)
-            # All-time totals stay visible, labelled with an All time chip.
-            all_time = body.split("class='overview-all-time'")
-            self.assertEqual(len(all_time), 3)
-            for line in all_time[1:]:
-                self.assertIn("data-scope='all'>All time</span>", line.split("</p>", 1)[0])
-            self.assertIn("Installs <strong>90</strong>", body)
-            self.assertIn("Successful <strong>180</strong>", body)
-            self.assertIn("href='/admin/map-statistics?period=all'", body)
+            heads = "".join(section.split("</header>", 1)[0] for section in body.split("<section")[1:3])
+            # Header totals follow the selected period and say so visibly (ADM-04/05).
+            self.assertIn(f"data-stat='completedInstallCount'>{count}</strong>", heads)
+            self.assertIn(f"data-stat='completedDownloadCount'>{count}</strong>", heads)
+            self.assertIn(f">{scope}</span>", heads)
+            # Map chart cards carry no All time line (owner decision 2026-10-06).
+            for card in ("overview-trend-title", "overview-download-trend-title"):
+                self.assertNotIn("class='overview-all-time'", body.split(f"id='{card}'", 1)[1].split("</section>", 1)[0])
+            self.assertNotIn("href='/admin/map-statistics?period=all'", body)
             self.assertNotIn("title='All time'", body)
         self.assertNotEqual(
             day.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0],
@@ -742,12 +738,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "csrf",
         ).decode()
         self.assertIn("<h1>Dashboard</h1>", body)
-        # Missing all-time totals stay unknown (—), measured period zeros stay 0.
-        self.assertIn("Installs <strong>—</strong>", body)
-        self.assertIn("Successful <strong>—</strong>", body)
+        # Missing period totals stay unknown (—), measured period zeros stay 0.
         self.assertIn("data-stat='completedInstallCount'>0</strong>", body)
-        self.assertIn("data-stat='completedDownloadCount'>—<span class='sr-only'>Unknown</span>", body)
-        self.assertIn("Failed 0</span> · —", body)
+        self.assertIn("data-stat='completedDownloadCount'>—</strong>", body)
+        self.assertIn("data-stat='failedInstallCount'>0</strong>", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -813,17 +807,13 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("Last 7 days", body)
         self.assertIn("Install failed", body)
-        # One provider-problem definition: a degraded provider is one row count
-        # that opens Providers, not a second per-provider list (ADM-10).
-        self.assertIn("aria-label='Provider problems: 1'", body)
-        self.assertIn("href='/admin/providers'", body)
+        # Provider problems live on Providers, not in Needs attention.
+        self.assertNotIn("aria-label='Provider problems", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
         self.assertIn("data-stat='completedInstallCount'>3</strong>", body)
-        self.assertIn("Failed 1</span> · 75%", body)
+        self.assertIn("data-stat='installSuccessRate'>75%</strong>", body)
         self.assertIn("data-stat='completedDownloadCount'>2</strong>", body)
-        self.assertIn("Failed 1</span> · 66.7%", body)
-        self.assertIn("Installs <strong>3</strong> · Failed <strong>1</strong> · Rate <strong>75%</strong>", body)
-        self.assertIn("Successful <strong>2</strong> · Failed <strong>1</strong> · Rate <strong>66.7%</strong>", body)
+        self.assertIn("data-stat='downloadSuccessRate'>66.7%</strong>", body)
         self.assertIn("/admin/map-statistics?period=7d", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("overview-chart-update", body)
@@ -1041,8 +1031,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("attention-shortcuts", attention)
         self.assertNotIn("No pending work.", attention)
         self.assertNotIn("Download failed", attention)
-        # Fixed category rows keep their shape whatever the counts are.
-        self.assertEqual(attention.count("class='overview-attention-row'"), 9)
+        # At most the six review queues; zero rows are omitted.
+        self.assertLessEqual(attention.count("class='overview-attention-row'"), 6)
+        for label in ("Maps unknown", "Provider problems", "System checks"):
+            self.assertNotIn(label, attention)
 
     def test_failure_reason_normalizes_source_validation_variants(self):
         for category, stage, code in (
@@ -1473,7 +1465,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("App downloads</h2>", body)
         self.assertIn("<section class='admin-card overview-panel overview-download-panel'", body)
-        self.assertIn("href='/admin/glossary#terento-app-download'", body)
+        self.assertNotIn("admin-glossary-link", body)
         self.assertNotIn("Observed download increases between checks.", body)
         self.assertNotIn("overview-info", body)
         self.assertIn("Last update ", body)
@@ -1784,7 +1776,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             selected_filters={"period": "all"},
         ).decode()
         self.assertIn("data-stat='completedInstallCount'>96</strong>", dashboard_body)
-        self.assertIn("Failed 10</span> · 90.6%", dashboard_body)
+        self.assertIn("data-stat='failedInstallCount'>10</strong>", dashboard_body)
+        self.assertIn("data-stat='installSuccessRate'>90.6%</strong>", dashboard_body)
         # With All time selected the tiles are the all-time totals; no
         # duplicate All time line is rendered under the chart.
         self.assertNotIn("Installs <strong>96</strong> · Failed <strong>10</strong>", dashboard_body)
