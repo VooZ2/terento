@@ -201,6 +201,20 @@ private func testUnplugStopsClock() throws {
     try require(policy.connectionDeadline == 420, "replug starts a fresh 2-minute clock")
 }
 
+private func testBriefUSBDropKeepsConnecting() throws {
+    var policy = DeviceDetectionPolicy(now: 0)
+    _ = policy.usbObserved(count: 1, now: 10)
+    _ = policy.snapshotFailed(.notYetEnumerated, now: 12)
+    try require(policy.usbObserved(count: 0, now: 15) == .wait(DeviceDetectionPolicy.presencePollInterval), "a brief USB drop keeps polling")
+    try require(policy.phase == .connecting, "a watch re-enumerating for a few seconds stays in the connecting state")
+    try require(policy.connectionClockIsRunning, "the connection clock keeps running through a brief drop")
+    try require(policy.usbObserved(count: 1, now: 18) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle), "the returning watch settles before reading")
+    _ = policy.usbObserved(count: 0, now: 19)
+    try require(policy.phase == .connecting, "repeated brief drops within the grace window stay calm")
+    _ = policy.usbObserved(count: 0, now: 40)
+    try require(policy.phase == .waitingForWatch && !policy.connectionClockIsRunning, "a watch gone longer than the grace window returns to waiting")
+}
+
 private func testMultipleDevicesShownImmediately() throws {
     var policy = DeviceDetectionPolicy(now: 0)
     try require(policy.usbObserved(count: 2, now: 1) == .wait(DeviceDetectionPolicy.attentionPollInterval), "two Garmins keep polling")
@@ -233,7 +247,9 @@ private func testNotMTPModeHintAfterRepeatedInvisibility() throws {
         _ = policy.snapshotFailed(.notYetEnumerated, now: Double(attempt))
     }
     try require(policy.phase == .connecting, "a briefly invisible Garmin is still enumerating")
-    _ = policy.snapshotFailed(.notYetEnumerated, now: 11)
+    _ = policy.snapshotFailed(.notYetEnumerated, now: 30)
+    try require(policy.phase == .connecting, "a watch still preparing file transfer after 30 s is not shown a warning")
+    _ = policy.snapshotFailed(.notYetEnumerated, now: 46)
     try require(policy.phase == .needsAttention(.notMTPMode), "a persistently invisible Garmin gets the USB-mode hint")
     try require(policy.takeNewOutcomes() == [.notMTPMode], "not-MTP-mode is reported")
 }
@@ -268,6 +284,7 @@ struct ConnectionLifecycleTests {
             ("no watch stays calm without a connection clock", testNoWatchStaysCalmWithoutClock),
             ("connection clock starts only when a Garmin appears", testClockStartsOnlyWhenGarminAppears),
             ("unplug stops the connection clock", testUnplugStopsClock),
+            ("a brief USB drop while connecting keeps the calm connecting state", testBriefUSBDropKeepsConnecting),
             ("multiple Garmins are shown immediately", testMultipleDevicesShownImmediately),
             ("busy is shown after a confirming retry", testBusyNeedsConfirmationThenShows),
             ("persistently invisible Garmin gets the USB-mode hint", testNotMTPModeHintAfterRepeatedInvisibility),

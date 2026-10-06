@@ -328,3 +328,42 @@ enum DeviceOperationActivityPolicy {
         }
     }
 }
+
+/// What to tell the user when the watch disconnects during Remove or Update.
+/// Pure: derived from the last reported phase and progress, so the message
+/// only promises what the safety order guarantees at that point.
+enum MapLifecycleInterruption {
+    /// Removal sends the delete command only after the full content check
+    /// (reported up to 0.90); before that nothing can have been removed.
+    static let removalDeleteBoundary = 0.90
+
+    /// `fraction` is the operation's last reported completed fraction (0...1).
+    static func notice(action: MapLifecycleAction, phase: MapLifecycleOperationPhase, fraction: Double) -> String? {
+        switch phase {
+        case .idle, .awaitingConfirmation, .completed, .failed:
+            return nil
+        default:
+            break
+        }
+        switch action {
+        case .remove:
+            if fraction < removalDeleteBoundary {
+                return "Removal didn't finish because your Garmin was disconnected. Nothing was removed, so the map is still on your watch."
+            }
+            return "Your Garmin was disconnected while Terento was confirming the removal. Plug it back in and open Manage maps to check whether the map was removed."
+        case .update:
+            switch phase {
+            case .downloading, .preparing, .checking, .removing, .updating:
+                return "The update didn't finish because your Garmin was disconnected. Your current map is unchanged."
+            case .installing, .verifying:
+                return "The update didn't finish because your Garmin was disconnected. Your current map is kept. Plug the watch back in and open Manage maps to check for an unfinished copy."
+            case .removingOld, .finishing:
+                return "Your Garmin was disconnected after the new version was installed. Plug it back in and open Manage maps to check whether the old version is still there."
+            case .idle, .awaitingConfirmation, .completed, .failed:
+                return nil
+            }
+        case .transferOwnership, .recoverOwnership:
+            return "Your Garmin was disconnected before Terento finished. No map was changed. Plug it back in and try again."
+        }
+    }
+}

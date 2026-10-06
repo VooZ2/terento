@@ -153,8 +153,14 @@ struct DeviceDetectionPolicy: Sendable {
     /// Repeated session-open failures are treated as a device held elsewhere.
     static let busyAfterAttempts = 2
     /// A Garmin that stays invisible to file transfer this long is shown a USB-mode hint.
+    /// Watches commonly need 20-30 s after plugging in or unlocking before file
+    /// transfer is offered, so the hint waits well beyond that normal window.
     static let notMTPModeAfterAttempts = 5
-    static let notMTPModeAfterSeconds: TimeInterval = 10
+    static let notMTPModeAfterSeconds: TimeInterval = 45
+    /// A watch can briefly drop off USB while it switches into file-transfer
+    /// mode. Within this window the calm "connecting" state is kept instead of
+    /// flipping back to "Connect your watch".
+    static let reconnectGrace: TimeInterval = 10
 
     enum Step: Equatable, Sendable {
         /// Poll USB presence again after this many seconds.
@@ -172,6 +178,7 @@ struct DeviceDetectionPolicy: Sendable {
     private(set) var reportedOutcomes: Set<DeviceConnectOutcome> = []
     private var waitingSince: TimeInterval
     private var usbPresentSince: TimeInterval?
+    private var lastUSBSeen: TimeInterval?
     private var needsSettle = false
     private var consecutiveNotEnumerated = 0
     private var consecutiveBusy = 0
@@ -198,6 +205,13 @@ struct DeviceDetectionPolicy: Sendable {
         }
 
         if count == 0 {
+            let connectingPhase = phase == .connecting || phase == .needsAttention(.notMTPMode)
+            if connectingPhase, let lastUSBSeen, now - lastUSBSeen < Self.reconnectGrace {
+                // A brief re-enumeration: keep connecting and settle again on return.
+                needsSettle = true
+                return .wait(Self.presencePollInterval)
+            }
+            lastUSBSeen = nil
             if usbPresentSince != nil || phase != .waitingForWatch {
                 waitingSince = now
             }
@@ -225,6 +239,7 @@ struct DeviceDetectionPolicy: Sendable {
         }
 
         if usbPresentSince == nil { usbPresentSince = now }
+        lastUSBSeen = now
         if connectionDeadline == nil {
             connectionDeadline = now + Self.connectionWindow
         }
