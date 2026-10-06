@@ -23,7 +23,7 @@ private func hex<D: Sequence>(_ digest: D) -> String where D.Element == UInt8 {
 
 private func writeContent(size: UInt64) throws -> (URL, Data, String) {
     var data = Data(count: Int(size))
-    data.withUnsafeMutableBytes { buffer in
+    data.withUnsafeMutableBytes { (buffer: UnsafeMutableRawBufferPointer) in
         for index in 0..<Int(size) { buffer[index] = contentByte(UInt64(index)) }
     }
     let url = FileManager.default.temporaryDirectory
