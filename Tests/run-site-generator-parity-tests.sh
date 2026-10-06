@@ -86,13 +86,7 @@ site/de/compatibility/index.html
 site/fr/compatibility/index.html
 site/pl/compatibility/index.html
 site/cs/compatibility/index.html
-site/it/compatibility/index.html
-site/map-styles/index.html
-site/de/map-styles/index.html
-site/fr/map-styles/index.html
-site/pl/map-styles/index.html
-site/cs/map-styles/index.html
-site/it/map-styles/index.html"
+site/it/compatibility/index.html"
 
 regenerate_site() {
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-legal-pages.py >/dev/null
@@ -102,7 +96,6 @@ regenerate_site() {
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-guide-pages.py
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/add-guide-links.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-compatibility-pages.py >/dev/null
-  PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-map-style-pages.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-public-shell.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-site-metadata.py --write >/dev/null
 }

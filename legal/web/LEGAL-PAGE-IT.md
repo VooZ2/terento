@@ -20,7 +20,7 @@ La licenza software non concede diritti sul marchio Terento. Le versioni modific
 
 Le mappe provengono da [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/) e [BBBike](https://garmin.bbbike.org) e restano soggette alle licenze dei fornitori e all’[attribuzione OpenStreetMap](https://www.openstreetmap.org/copyright). Le mappe importate dall’utente mantengono le proprie condizioni.
 
-Terento non crea queste mappe, non ne cambia la licenza e non ospita, replica o ridistribuisce i file sui propri server. Le mappe del catalogo vengono scaricate dal fornitore originale sul Mac e poi sull’orologio. Per la pagina [Stili di mappa](/it/map-styles/), il server di Terento scarica temporaneamente alcune mappe del catalogo dal fornitore originale, ne ricava piccole immagini di anteprima e poi elimina i file delle mappe. Le anteprime riportano l’attribuzione del fornitore e di OpenStreetMap.
+Terento non crea queste mappe, non ne cambia la licenza e non ospita, replica o ridistribuisce i file sui propri server. Le mappe del catalogo vengono scaricate dal fornitore originale sul Mac e poi sull’orologio.
 
 ## Nomi e indipendenza
 

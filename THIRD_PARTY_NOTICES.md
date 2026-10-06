@@ -139,9 +139,9 @@ libraries in `Terento.app/Contents/Frameworks`.
 
 - Upstream: https://github.com/Leaflet/Leaflet/tree/v1.9.4
 - License: BSD-2-Clause; redistribution and modification permitted with copyright, conditions and disclaimer retained.
-- Use: admin country-statistics navigation (pan, zoom, keyboard and SVG overlay), and the public website Map styles comparison page.
-- Bundled files: original minified JS and CSS in `backend/catalog-api/src/terento_catalog/static/map/` and `site/assets/vendor/leaflet-1.9.4/`; full notice in `LEAFLET-LICENSE.txt` / `LICENSE.txt` alongside them.
-- No runtime npm dependencies, third-party tile servers or CDN calls; the public page loads only Terento-rendered preview tiles from `api.terento.app`. No native application linking or source-disclosure requirement is introduced by Leaflet.
+- Use: admin country-statistics navigation (pan, zoom, keyboard and SVG overlay), with a reusable presentation component for a future separately approved public statistics page.
+- Bundled files: original minified JS and CSS in `backend/catalog-api/src/terento_catalog/static/map/`; full notice in `LEAFLET-LICENSE.txt` alongside them.
+- No runtime npm dependencies, remote tiles or CDN calls. No native application linking or source-disclosure requirement is introduced by Leaflet.
 
 ## GPXSee Garmin IMG renderer (vendored subset)
 

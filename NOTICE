@@ -22,7 +22,7 @@ Apple, Mac, macOS, and Apple Silicon belong to Apple Inc. Terento is not affilia
 
 Terento does not create, relicense, or call the maps “Terento maps.”
 
-Freizeitkarte, OpenStreetMap, and other data providers keep their own licences. Terento only connects the path: download from the original provider → your Mac → the watch. Terento does not host or redistribute map files on its own servers. To draw the preview images on the website's Map styles page, the server temporarily downloads selected catalog maps from the original provider and deletes them after rendering; previews carry the provider and OpenStreetMap attribution.
+Freizeitkarte, OpenStreetMap, and other data providers keep their own licences. Terento only connects the path: download from the original provider → your Mac → the watch. Terento does not host or redistribute map files on its own servers.
 
 See [Freizeitkarte](https://www.freizeitkarte-osm.de/) and [OpenStreetMap copyright](https://www.openstreetmap.org/copyright).
 

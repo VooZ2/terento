@@ -20,7 +20,7 @@ Softwarová licence neposkytuje práva k ochranné známce Terento. Upravené ve
 
 Mapy pocházejí od [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/) a [BBBike](https://garmin.bbbike.org) a podléhají jejich licencím a [uvedení autorství OpenStreetMap](https://www.openstreetmap.org/copyright). Pro vlastní importované mapy nadále platí příslušné podmínky.
 
-Terento tyto mapy nevytváří, nemění jejich licence ani jejich soubory nehostuje, nezrcadlí či nešíří na svých serverech. Katalogové mapy se stahují od původního poskytovatele na váš Mac a pak do hodinek. Pro stránku [Styly map](/cs/map-styles/) server Terento dočasně stáhne vybrané katalogové mapy od původního poskytovatele, vytvoří z nich malé náhledové obrázky a soubory map poté smaže. Náhledy uvádějí poskytovatele a OpenStreetMap.
+Terento tyto mapy nevytváří, nemění jejich licence ani jejich soubory nehostuje, nezrcadlí či nešíří na svých serverech. Katalogové mapy se stahují od původního poskytovatele na váš Mac a pak do hodinek.
 
 ## Názvy a nezávislost
 

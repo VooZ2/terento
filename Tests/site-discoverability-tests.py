@@ -180,7 +180,7 @@ class DiscoverabilityTests(unittest.TestCase):
         self.assertEqual(spec['externalDocs']['url'], entry['service-doc'][0]['href'])
         self.assertEqual(set(spec['paths']), {
             '/health', '/maps/catalog.json', '/maps/catalog-v3.json',
-            '/maps/catalog-v4.json', '/maps/previews/manifest.json', '/devices/catalog.json',
+            '/maps/catalog-v4.json', '/devices/catalog.json',
             '/devices/installation-policy.json', '/compatibility/public/models.json',
             '/compatibility/public/top-models.json',
         })

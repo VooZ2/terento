@@ -3,7 +3,7 @@
   "info": {
     "title": "Terento public catalog API",
     "version": "1.0.0",
-    "description": "Public read-only map, device and reviewed compatibility metadata. Map binaries are downloaded from original providers, never through this API; it serves only small rendered map-style preview images. This discovery specification covers public read operations; diagnostic ingestion and authenticated administration are outside its scope."
+    "description": "Public read-only map, device and reviewed compatibility metadata. Map binaries are downloaded from original providers, never through this API. This discovery specification covers public read operations; diagnostic ingestion and authenticated administration are outside its scope."
   },
   "servers": [
     {
@@ -82,28 +82,6 @@
           },
           "304": {
             "description": "Unchanged response; reuse the cached representation."
-          },
-          "503": {
-            "description": "Service temporarily unavailable."
-          }
-        }
-      }
-    },
-    "/maps/previews/manifest.json": {
-      "get": {
-        "summary": "Read the map style preview manifest",
-        "operationId": "maps_previews_manifest_json",
-        "responses": {
-          "200": {
-            "description": "Read the current map style preview areas, per-style layer status and the versioned preview tile URL template. Previews are rendered images with provider and OpenStreetMap attribution; they are not map downloads.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
           },
           "503": {
             "description": "Service temporarily unavailable."

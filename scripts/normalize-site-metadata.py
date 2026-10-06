@@ -105,8 +105,6 @@ def page_group(page: dict) -> str:
         return "guide"
     if path.endswith("/guides/troubleshooting"):
         return "troubleshooting"
-    if path.endswith("/map-styles"):
-        return "map-styles"
     return "home"
 
 
