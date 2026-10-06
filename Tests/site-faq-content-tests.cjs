@@ -29,7 +29,7 @@ function visibleFaq(source, file) {
   assert.ok(section, `${file}: Home FAQ section`);
   const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*(?:<div class="faq-support-actions">[\s\S]*?<\/div>\s*)?<\/details>/gi)]
     .map((match) => ({ question: visibleText(match[1]), answer: visibleText(match[2]), markup: match[0] }));
-  assert.equal(entries.length, 5, `${file}: exactly five FAQ entries`);
+  assert.equal(entries.length, 6, `${file}: exactly six FAQ entries`);
   return entries;
 }
 
@@ -38,6 +38,7 @@ const questionSignals = [
   [/BaseCamp/i, /Mac|macOS/],
   [/own|my own|ma propre|moją|vlastn|mia|\.img/i, /\.img|map|mapa|carte|Karte|mapy|mappa/i],
   [/update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, /Terento|map/i],
+  [/Garmin/, /Garmin Express[\s\S]*Android File Transfer[\s\S]*OpenMTP/],
   [/fail|fehlsch|échou|nie powied|selže|riesce/i, /GitHub|hello@terento\.app/i],
 ];
 
@@ -51,8 +52,8 @@ for (const locale of locales) {
   });
   assert.match(entries[1].answer, /simple|einfach|simple|proste|jednoduch|semplice/i, `${home}: BaseCamp answer explains simple map management`);
   assert.match(entries[2].answer, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map answer explains compatible local import`);
-  assert.match(entries[4].answer, /already filled in|bereits ausgefüllten|déjà rempli|już wypełnionym|již vyplněnou|già compilato/, `${home}: installation report is prefilled`);
-  assert.doesNotMatch(entries[4].answer, /copies a diagnostic|kopiert einen Diagnosebericht|copie un rapport|kopiuje raport|zkopíruje|copia un rapporto/, `${home}: no obsolete clipboard instruction`);
+  assert.match(entries[5].answer, /already filled in|bereits ausgefüllten|déjà rempli|już wypełnionym|již vyplněnou|già compilato/, `${home}: installation report is prefilled`);
+  assert.doesNotMatch(entries[5].answer, /copies a diagnostic|kopiert einen Diagnosebericht|copie un rapport|kopiuje raport|zkopíruje|copia un rapporto/, `${home}: no obsolete clipboard instruction`);
   assert.match(entries[3].question, /update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, `${home}: update FAQ question`);
   assert.match(entries[3].answer, /newer|neuere|plus récente|nowsz|novější|più recent/i, `${home}: update FAQ answer`);
   assert.match(source, /class="provider-section section"[^>]*id="providers"[\s\S]*Freizeitkarte[\s\S]*OpenTopoMap[\s\S]*MapRando/i, `${home}: provider directory names current providers`);
@@ -63,15 +64,27 @@ for (const locale of locales) {
   assert.match(entries[1].markup, new RegExp(`href="${localePath(locale, guideSlug)}"`), `${home}: Guide link`);
   assert.match(entries[1].markup, /data-umami-event="guide-link-click"/);
   assert.match(entries[1].markup, /data-umami-event-location="home-faq-basecamp"/);
-  assert.match(entries[4].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues\/new\/choose"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
-  assert.match(entries[4].markup, /href="mailto:hello&#64;terento\.app\?subject=Terento%20installation%20issue"/);
-  assert.doesNotMatch(entries[4].markup, /href="mailto:hello@terento\.app/);
-  assert.match(entries[4].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue"/);
-  assert.match(entries[4].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email"/);
+  assert.match(entries[5].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues\/new\/choose"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
+  assert.match(entries[5].markup, /href="mailto:hello&#64;terento\.app\?subject=Terento%20installation%20issue"/);
+  assert.doesNotMatch(entries[5].markup, /href="mailto:hello@terento\.app/);
+  assert.match(entries[5].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue"/);
+  assert.match(entries[5].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email"/);
+  // Troubleshooting questions deep-link the matching Troubleshooting guide sections.
+  const troubleshootingLinks = (markup) => [...markup.matchAll(/<a href="([^"#]+)#([a-z-]+)" data-umami-event="guide-link-click" data-umami-event-location="home-faq-([a-z-]+)">/g)]
+    .map(([, target, anchor, location]) => {
+      assert.equal(target, localePath(locale, "guides/troubleshooting/"), `${home}: FAQ troubleshooting link target`);
+      assert.equal(location, anchor, `${home}: FAQ troubleshooting link location`);
+      return anchor;
+    });
+  assert.deepEqual(troubleshootingLinks(entries[4].markup), ["connect-watch", "garmin-busy"], `${home}: watch-not-showing-up FAQ links`);
+  assert.deepEqual(troubleshootingLinks(entries[5].markup), ["download-failed", "leftover-map"], `${home}: installation-failed FAQ links`);
+  assert.deepEqual(troubleshootingLinks(entries.slice(0, 4).map((entry) => entry.markup).join("")), [], `${home}: product FAQ answers stay focused`);
+  assert.match(entries[5].answer, /Manage maps/, `${home}: leftover map is removed in Manage maps`);
   if (locale === "en") {
     assert.match(entries[1].markup, />Read the installation guide\.</);
-    assert.match(entries[4].markup, />Open an issue /);
-    assert.match(entries[4].markup, />Email support /);
+    assert.match(entries[5].markup, />Open an issue /);
+    assert.match(entries[5].markup, />Email support /);
+    assert.equal(entries[4].question, "Why isn’t my Garmin watch showing up on my Mac?");
   }
   assert.doesNotMatch(source, /<section[^>]+id="faq"[^>]*>[\s\S]*?<section[^>]+id="faq"/i, `${home}: one FAQ section`);
   assert.doesNotMatch(source, /href="[^"']*\/faq\//i, `${home}: no standalone FAQ route`);
@@ -83,6 +96,7 @@ const shellFiles = [
   "compatibility/index.html",
   "download/index.html",
   `${guideSlug}index.html`,
+  "guides/troubleshooting/index.html",
   "legal/index.html",
   "privacy/index.html",
 ];

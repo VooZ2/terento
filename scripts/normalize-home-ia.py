@@ -265,6 +265,17 @@ def home_path(locale: str) -> Path:
     return ROOT / "site" / ("index.html" if locale == "en" else f"{locale}/index.html")
 
 
+# Visible Home FAQ order; the FAQPage JSON-LD mirrors it exactly.
+FAQ_ANSWER_KEYS = (
+    "compatibility_answer",
+    "basecamp_answer",
+    "safety_answer",
+    "update_answer",
+    "connection_answer",
+    "failure_answer",
+)
+
+
 def reduce_faq_schema(source: str, path: Path, copy: dict[str, str], description: str) -> str:
     pattern = re.compile(r'(<script\b[^>]*type=["\']application/ld\+json["\'][^>]*>)([\s\S]*?)(</script>)', re.IGNORECASE)
     match = pattern.search(source)
@@ -285,12 +296,18 @@ def reduce_faq_schema(source: str, path: Path, copy: dict[str, str], description
     application["downloadUrl"] = release["downloadURL"]
     application["releaseNotes"] = release["releaseNotesURL"]
     faq = next((item for item in graph if item.get("@type") == "FAQPage"), None)
-    if faq is None or len(faq.get("mainEntity", [])) != 5:
-        raise ValueError(f"{path}: expected five FAQ schema entries")
-    answer_keys = ("compatibility_answer", "basecamp_answer", "safety_answer", "update_answer", "failure_answer")
-    for index, key in enumerate(answer_keys):
-        faq["mainEntity"][index]["name"] = copy["faq_questions"][index]
-        faq["mainEntity"][index]["acceptedAnswer"]["text"] = re.sub(r"<[^>]+>", "", copy[key])
+    if faq is None or not faq.get("mainEntity"):
+        raise ValueError(f"{path}: expected FAQ schema entries")
+    if len(copy["faq_questions"]) != len(FAQ_ANSWER_KEYS):
+        raise ValueError(f"{path}: expected {len(FAQ_ANSWER_KEYS)} FAQ questions")
+    faq["mainEntity"] = [
+        {
+            "@type": "Question",
+            "name": question,
+            "acceptedAnswer": {"@type": "Answer", "text": re.sub(r"<[^>]+>", "", copy[key])},
+        }
+        for question, key in zip(copy["faq_questions"], FAQ_ANSWER_KEYS)
+    ]
     serialized = json.dumps(data, ensure_ascii=False, indent=2)
     indented = "\n".join("      " + line for line in serialized.splitlines())
     replacement = "\n" + indented + "\n    "

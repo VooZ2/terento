@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20260926-static-shell-v1"
+SHELL_VERSION = "20261006-troubleshooting-footer-v1"
 PROVIDER_SCRIPT_VERSION = "20260912-bbbike-types-v1"
 STYLE_VERSION = "20261006-troubleshooting-v1"
 IMAGE_VERSION = "20260912-app-screens-v2"
@@ -20,12 +20,12 @@ COMPATIBILITY_VERSION = "20260918-compatibility-successful-snapshot-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 PAGE_LANGUAGE_VERSION = "20260905-shared-page-language-v1"
 LOCALES = {
-    "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
-    "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
-    "fr": {"flag": "🇫🇷", "name": "Français", "home": "Accueil Terento", "primary": "Navigation principale", "menu": "Menu", "close": "Fermer le menu", "about": "À propos", "compatibility": "Compatibilité", "guide": "Guide", "faq": "FAQ", "download": "Télécharger", "language": "Choisir la langue", "footer": "Navigation du pied de page", "status": "Projet open source", "legal": "Mentions légales", "privacy": "Confidentialité", "support": "Support Terento", "stats": "Les statistiques de visites (Umami) n’utilisent pas de cookies."},
-    "pl": {"flag": "🇵🇱", "name": "Polski", "home": "Strona główna Terento", "primary": "Główna nawigacja", "menu": "Menu", "close": "Zamknij menu", "about": "O projekcie", "compatibility": "Kompatybilność", "guide": "Poradnik", "faq": "FAQ", "download": "Pobierz", "language": "Wybierz język", "footer": "Nawigacja w stopce", "status": "Projekt open source", "legal": "Informacje prawne", "privacy": "Prywatność", "support": "Support Terento", "stats": "Statystyki odwiedzin (Umami) nie używają plików cookie."},
-    "cs": {"flag": "🇨🇿", "name": "Čeština", "home": "Domů Terento", "primary": "Hlavní navigace", "menu": "Menu", "close": "Zavřít menu", "about": "O projektu", "compatibility": "Kompatibilita", "guide": "Průvodce", "faq": "FAQ", "download": "Stáhnout", "language": "Vybrat jazyk", "footer": "Navigace v zápatí", "status": "Open-source projekt", "legal": "Právní informace", "privacy": "Soukromí", "support": "Support Terento", "stats": "Statistiky návštěvnosti (Umami) nepoužívají cookies."},
-    "it": {"flag": "🇮🇹", "name": "Italiano", "home": "Home Terento", "primary": "Navigazione principale", "menu": "Menu", "close": "Chiudi menu", "about": "Informazioni", "compatibility": "Compatibilità", "guide": "Guida", "faq": "FAQ", "download": "Scarica", "language": "Scegli la lingua", "footer": "Navigazione del piè di pagina", "status": "Progetto open source", "legal": "Note legali", "privacy": "Privacy", "support": "Support Terento", "stats": "Le statistiche delle visite (Umami) non usano cookie."},
+    "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "troubleshooting": "Troubleshooting", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
+    "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "troubleshooting": "Fehlerbehebung", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
+    "fr": {"flag": "🇫🇷", "name": "Français", "home": "Accueil Terento", "primary": "Navigation principale", "menu": "Menu", "close": "Fermer le menu", "about": "À propos", "compatibility": "Compatibilité", "guide": "Guide", "faq": "FAQ", "troubleshooting": "Dépannage", "download": "Télécharger", "language": "Choisir la langue", "footer": "Navigation du pied de page", "status": "Projet open source", "legal": "Mentions légales", "privacy": "Confidentialité", "support": "Support Terento", "stats": "Les statistiques de visites (Umami) n’utilisent pas de cookies."},
+    "pl": {"flag": "🇵🇱", "name": "Polski", "home": "Strona główna Terento", "primary": "Główna nawigacja", "menu": "Menu", "close": "Zamknij menu", "about": "O projekcie", "compatibility": "Kompatybilność", "guide": "Poradnik", "faq": "FAQ", "troubleshooting": "Rozwiązywanie problemów", "download": "Pobierz", "language": "Wybierz język", "footer": "Nawigacja w stopce", "status": "Projekt open source", "legal": "Informacje prawne", "privacy": "Prywatność", "support": "Support Terento", "stats": "Statystyki odwiedzin (Umami) nie używają plików cookie."},
+    "cs": {"flag": "🇨🇿", "name": "Čeština", "home": "Domů Terento", "primary": "Hlavní navigace", "menu": "Menu", "close": "Zavřít menu", "about": "O projektu", "compatibility": "Kompatibilita", "guide": "Průvodce", "faq": "FAQ", "troubleshooting": "Řešení potíží", "download": "Stáhnout", "language": "Vybrat jazyk", "footer": "Navigace v zápatí", "status": "Open-source projekt", "legal": "Právní informace", "privacy": "Soukromí", "support": "Support Terento", "stats": "Statistiky návštěvnosti (Umami) nepoužívají cookies."},
+    "it": {"flag": "🇮🇹", "name": "Italiano", "home": "Home Terento", "primary": "Navigazione principale", "menu": "Menu", "close": "Chiudi menu", "about": "Informazioni", "compatibility": "Compatibilità", "guide": "Guida", "faq": "FAQ", "troubleshooting": "Risoluzione dei problemi", "download": "Scarica", "language": "Scegli la lingua", "footer": "Navigazione del piè di pagina", "status": "Progetto open source", "legal": "Note legali", "privacy": "Privacy", "support": "Support Terento", "stats": "Le statistiche delle visite (Umami) non usano cookie."},
 }
 
 
@@ -58,14 +58,16 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     compatibility = route_for(locale, "compatibility/")
     download = route_for(locale, "download/")
     guide = route_for(locale, "guides/install-garmin-maps-mac/")
+    troubleshooting = route_for(locale, "guides/troubleshooting/")
     route_for_language = route if page in {"about", "compatibility", "download", "guide", "troubleshooting"} else ""
-    nav = {"about": route_for(locale, "about/"), "compatibility": compatibility, "guide": guide, "faq": f"{root}#faq", "download": download}
-    active = {"about": page == "about", "compatibility": page == "compatibility", "guide": page == "guide", "download": page == "download"}
+    nav = {"about": route_for(locale, "about/"), "compatibility": compatibility, "guide": guide, "faq": f"{root}#faq", "troubleshooting": troubleshooting, "download": download}
+    active = {"about": page == "about", "compatibility": page == "compatibility", "guide": page == "guide", "troubleshooting": page == "troubleshooting", "download": page == "download"}
     nav_events = {
         "about": "navigation-link-click",
         "compatibility": "compatibility-link-click",
         "guide": "guide-link-click",
         "faq": "faq-link-click",
+        "troubleshooting": "guide-link-click",
         "download": "download-cta-click",
     }
 
@@ -114,7 +116,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
           <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">{copy["status"]}</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">{copy["support"]}</a></div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="{copy["footer"]}">
-          {nav_link("about", location="footer-nav")}{nav_link("compatibility", location="footer-nav")}{nav_link("guide", location="footer-nav")}{nav_link("faq", location="footer-nav")}{nav_link("download", location="footer-nav")}
+          {nav_link("about", location="footer-nav")}{nav_link("compatibility", location="footer-nav")}{nav_link("guide", location="footer-nav")}{nav_link("faq", location="footer-nav")}{nav_link("troubleshooting", location="footer-nav")}{nav_link("download", location="footer-nav")}
           <a data-shell-copy="legal" href="/legal/"{umami_attributes("legal-link-click", "footer-nav")}>{copy["legal"]}</a>
           <a data-shell-copy="privacy" href="/privacy/"{umami_attributes("privacy-link-click", "footer-nav")}>{copy["privacy"]}</a>
         </nav>

@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="it" data-language="it" data-page="troubleshooting">
   <head>
-    <script defer src="/site-shell.js?v=20260926-static-shell-v1"></script>
+    <script defer src="/site-shell.js?v=20261006-troubleshooting-footer-v1"></script>
     <link rel="stylesheet" href="/styles.css?v=20261006-troubleshooting-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Risolvi i problemi comuni di Terento su Mac: collegamento dello smartwatch Garmin, controlli di orologio e mappe, download, spazio libero, mappe residue, aggiornamenti lenti e invio di un rapporto.">
+    <meta name="description" content="Risolvi i problemi Garmin su Mac: orologio non rilevato, Garmin Express o Android File Transfer che usano l’orologio, modalità USB (MTP), spazio insufficiente e download delle mappe non riusciti.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/it/guides/troubleshooting/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
@@ -18,8 +18,8 @@
     <link rel="alternate" hreflang="x-default" href="https://terento.app/guides/troubleshooting/">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Risoluzione dei problemi delle mappe Garmin su Mac — Terento">
-    <meta property="og:description" content="Risolvi i problemi comuni di Terento su Mac: collegamento dello smartwatch Garmin, controlli di orologio e mappe, download, spazio libero, mappe residue, aggiornamenti lenti e invio di un rapporto.">
+    <meta property="og:title" content="Il Mac non rileva l’orologio Garmin? Risoluzione problemi — Terento">
+    <meta property="og:description" content="Risolvi i problemi Garmin su Mac: orologio non rilevato, Garmin Express o Android File Transfer che usano l’orologio, modalità USB (MTP), spazio insufficiente e download delle mappe non riusciti.">
     <meta property="og:url" content="https://terento.app/it/guides/troubleshooting/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -28,10 +28,10 @@
     <meta property="og:image:alt" content="Terento mostra uno smartwatch Garmin collegato su macOS">
     <meta property="og:locale" content="it_IT">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Risoluzione dei problemi delle mappe Garmin su Mac — Terento">
-    <meta name="twitter:description" content="Risolvi i problemi comuni di Terento su Mac: collegamento dello smartwatch Garmin, controlli di orologio e mappe, download, spazio libero, mappe residue, aggiornamenti lenti e invio di un rapporto.">
+    <meta name="twitter:title" content="Il Mac non rileva l’orologio Garmin? Risoluzione problemi — Terento">
+    <meta name="twitter:description" content="Risolvi i problemi Garmin su Mac: orologio non rilevato, Garmin Express o Android File Transfer che usano l’orologio, modalità USB (MTP), spazio insufficiente e download delle mappe non riusciti.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Risoluzione dei problemi delle mappe Garmin su Mac — Terento</title>
+    <title>Il Mac non rileva l’orologio Garmin? Risoluzione problemi — Terento</title>
 
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
 
@@ -59,8 +59,8 @@
     {
       "@type": "Article",
       "@id": "https://terento.app/it/guides/troubleshooting/#article",
-      "headline": "Risolvi i problemi comuni di Terento",
-      "description": "Risolvi i problemi comuni di Terento su Mac: collegamento dello smartwatch Garmin, controlli di orologio e mappe, download, spazio libero, mappe residue, aggiornamenti lenti e invio di un rapporto.",
+      "headline": "Risolvi i problemi di orologio Garmin e mappe su Mac",
+      "description": "Risolvi i problemi Garmin su Mac: orologio non rilevato, Garmin Express o Android File Transfer che usano l’orologio, modalità USB (MTP), spazio insufficiente e download delle mappe non riusciti.",
       "datePublished": "2026-10-06T00:00:00Z",
       "dateModified": "2026-10-06T00:00:00Z",
       "mainEntityOfPage": {
@@ -137,90 +137,90 @@
         <header class="guide-intro">
           <div class="shell">
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Risoluzione dei problemi</p>
-            <h1>Risolvi i problemi comuni di Terento</h1>
-            <p class="guide-lede">Trova il problema mostrato da Terento e segui i brevi passaggi. Se niente funziona, invia un rapporto così possiamo dare un’occhiata.</p>
+            <h1>Risolvi i problemi di orologio Garmin e mappe su Mac</h1>
+            <p class="guide-lede">Trova il tuo problema, da un orologio Garmin che il Mac non rileva a un download della mappa non riuscito, e segui i brevi passaggi. Se niente funziona, invia un rapporto così possiamo dare un’occhiata.</p>
           </div>
         </header>
 
         <div class="shell guide-content">
           <section class="troubleshooting" id="topic-connection" aria-labelledby="topic-connection-title">
-            <div class="guide-section-heading"><p class="eyebrow">Connessione</p><h2 id="topic-connection-title">Collegare l’orologio</h2></div>
+            <div class="guide-section-heading"><p class="eyebrow">Connessione</p><h2 id="topic-connection-title">Problemi di connessione dell’orologio Garmin</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
-              <h3 id="connect-watch-title">Terento è in attesa dell’orologio</h3>
-              <p>Terento rileva l’orologio automaticamente dopo il collegamento. Possono servire fino a 2 minuti.</p>
-              <ol class="troubleshooting-steps"><li>Collega l’orologio direttamente al Mac con un cavo USB che supporti il trasferimento dati. I cavi solo di ricarica e alcuni hub non funzionano.</li><li>Sblocca l’orologio.</li><li>Attendi fino a 2 minuti mentre Terento controlla la connessione.</li><li>Se l’orologio non appare ancora, scollegalo, attendi qualche secondo e ricollegalo.</li></ol>
+              <h3 id="connect-watch-title">Orologio Garmin non rilevato dal Mac</h3>
+              <p>Collega l’orologio direttamente al Mac con un cavo USB che trasferisca i dati, sbloccalo e attendi fino a 2 minuti: Terento lo rileva automaticamente.</p>
+              <ol class="troubleshooting-steps"><li>Usa un cavo dati. I cavi solo di ricarica e alcuni hub USB non funzionano.</li><li>Attendi fino a 2 minuti mentre Terento controlla la connessione.</li><li>Se l’orologio non appare ancora, scollegalo, attendi qualche secondo e ricollegalo.</li><li>Se è aperta un’altra app, vedi <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express o un’altra app sta usando l’orologio</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
-              <h3 id="garmin-busy-title">Un’altra app sta usando l’orologio</h3>
-              <p>Solo un’app alla volta può usare la connessione con l’orologio.</p>
-              <ol class="troubleshooting-steps"><li>Chiudi Garmin Express e le altre app che possono aprire l’orologio, ad esempio le app di trasferimento file.</li><li>Se l’orologio appare nel Finder, espellilo da lì.</li><li>Ricollega l’orologio, poi scegli “Refresh” in Terento.</li></ol>
+              <h3 id="garmin-busy-title">Garmin Express o un’altra app sta usando l’orologio</h3>
+              <p>Chiudi Garmin Express e le app di trasferimento file come Android File Transfer, OpenMTP o MacDroid: solo un’app alla volta può usare la connessione con l’orologio.</p>
+              <ol class="troubleshooting-steps"><li>Chiudi Garmin Express, Android File Transfer, OpenMTP, MacDroid e le altre app MTP. Se Terento indica un’app, chiudi prima quella.</li><li>Chiudi anche Acquisizione Immagine, Foto e Anteprima se sono aperte.</li><li>Se l’orologio appare nel Finder, espellilo da lì.</li><li>Scollega l’orologio, ricollegalo e poi scegli “Refresh” in Terento.</li></ol>
             </section><section class="troubleshooting-item" id="multiple-garmin" aria-labelledby="multiple-garmin-title">
-              <h3 id="multiple-garmin-title">È collegato più di un dispositivo Garmin</h3>
-              <p>Terento funziona con un solo dispositivo Garmin alla volta.</p>
-              <ol class="troubleshooting-steps"><li>Scollega tutti i dispositivi Garmin tranne l’orologio che vuoi usare.</li><li>Lascia collegato quell’orologio e attendi che Terento lo trovi.</li></ol>
+              <h3 id="multiple-garmin-title">Più dispositivi Garmin collegati</h3>
+              <p>Scollega tutti i dispositivi Garmin tranne l’orologio che vuoi usare: Terento funziona con un solo Garmin alla volta.</p>
+              <ol class="troubleshooting-steps"><li>Scollega gli altri orologi, ciclocomputer e dispositivi portatili Garmin.</li><li>Lascia collegato l’orologio scelto e attendi che Terento lo trovi.</li></ol>
             </section><section class="troubleshooting-item" id="usb-mode" aria-labelledby="usb-mode-title">
-              <h3 id="usb-mode-title">L’orologio non è pronto per il trasferimento file</h3>
-              <p>Alcuni orologi Garmin hanno un’impostazione Modalità USB che determina come si collegano a un computer.</p>
-              <ol class="troubleshooting-steps"><li>Sull’orologio cerca Modalità USB, di solito in Impostazioni › Sistema. Non tutti i modelli la hanno.</li><li>Se l’impostazione è presente, scegli MTP.</li><li>Scollega l’orologio e ricollegalo.</li></ol>
+              <h3 id="usb-mode-title">Orologio Garmin non riconosciuto: modalità USB (MTP)</h3>
+              <p>Se Terento indica che l’orologio non è pronto per il trasferimento file, imposta la Modalità USB dell’orologio su MTP, se il tuo modello ha questa impostazione.</p>
+              <ol class="troubleshooting-steps"><li>Sull’orologio apri Modalità USB, di solito in Impostazioni › Sistema. Non tutti i modelli la hanno.</li><li>Scegli MTP.</li><li>Scollega l’orologio e ricollegalo.</li></ol>
             </section><section class="troubleshooting-item" id="connection-timeout" aria-labelledby="connection-timeout-title">
-              <h3 id="connection-timeout-title">L’orologio è stato rilevato ma non è pronto</h3>
-              <p>Terento ha rilevato l’orologio, ma la connessione non era pronta entro 2 minuti. I blocchi occasionali della connessione sono un limite noto della beta attuale.</p>
-              <ol class="troubleshooting-steps"><li>Scollega l’orologio e ricollegalo.</li><li>Chiudi le altre app che potrebbero usare l’orologio.</li><li>Prova un’altra porta USB o un altro cavo.</li><li>Se continua a succedere, riavvia l’orologio e ricollegalo.</li></ol>
+              <h3 id="connection-timeout-title">Orologio Garmin rilevato ma non pronto</h3>
+              <p>Se Terento trova l’orologio ma la connessione non è pronta entro 2 minuti, scollega l’orologio e ricollegalo. I blocchi occasionali della connessione sono un limite noto della beta attuale.</p>
+              <ol class="troubleshooting-steps"><li>Chiudi le altre app che potrebbero usare l’orologio. Vedi <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express o un’altra app sta usando l’orologio</a>.</li><li>Prova un’altra porta USB o un altro cavo.</li><li>Se continua a succedere, riavvia l’orologio e ricollegalo.</li></ol>
             </section><section class="troubleshooting-item" id="watch-not-responding" aria-labelledby="watch-not-responding-title">
-              <h3 id="watch-not-responding-title">L’orologio non risponde più</h3>
-              <p>La connessione si è interrotta o l’orologio ha smesso di rispondere a Terento.</p>
-              <ol class="troubleshooting-steps"><li>Scollega l’orologio, attendi qualche secondo e ricollegalo.</li><li>Se Terento stava installando, aggiornando o rimuovendo una mappa, dopo il ricollegamento apri “Manage maps” e controlla il risultato prima di riprovare.</li><li>Riavvia l’orologio se succede di nuovo.</li></ol>
+              <h3 id="watch-not-responding-title">L’orologio Garmin non risponde più</h3>
+              <p>Scollega l’orologio, attendi qualche secondo e ricollegalo: la connessione si è interrotta o l’orologio ha smesso di rispondere a Terento.</p>
+              <ol class="troubleshooting-steps"><li>Se Terento stava installando, aggiornando o rimuovendo una mappa, dopo il ricollegamento apri “Manage maps” e controlla il risultato prima di riprovare.</li><li>Riavvia l’orologio se succede di nuovo.</li></ol>
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-checks" aria-labelledby="topic-checks-title">
             <div class="guide-section-heading"><p class="eyebrow">Controlli</p><h2 id="topic-checks-title">Controlli di orologio e mappe</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="model-not-enabled" aria-labelledby="model-not-enabled-title">
-              <h3 id="model-not-enabled-title">Questo modello di orologio non è abilitato all’installazione di mappe</h3>
+              <h3 id="model-not-enabled-title">Installazione mappe non disponibile per questo modello Garmin</h3>
               <p>Terento installa mappe solo sugli smartwatch Garmin con supporto alle mappe abilitati in Terento. Puoi comunque collegare l’orologio e sfogliare le mappe.</p>
-              <ol class="troubleshooting-steps"><li>Verifica che il tuo modello di orologio supporti le mappe.</li><li>Terento controlla il suo elenco aggiornato a ogni collegamento. Se il tuo modello viene abilitato in seguito, ricollega l’orologio.</li><li>Indicaci il modello esatto così possiamo valutarlo. Vedi <a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Invia un rapporto</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Verifica che il tuo modello di orologio supporti le mappe.</li><li>Terento controlla il suo elenco aggiornato a ogni collegamento. Se il tuo modello viene abilitato in seguito, ricollega l’orologio.</li><li>Indicaci il modello esatto così possiamo valutarlo. Vedi <a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Come segnalare un problema con Terento</a>.</li></ol>
             </section><section class="troubleshooting-item" id="couldnt-check" aria-labelledby="couldnt-check-title">
-              <h3 id="couldnt-check-title">Terento non è riuscito a controllare questo orologio</h3>
-              <p>Terento ha bisogno di una connessione Internet per verificare se su questo orologio si possono installare mappe.</p>
-              <ol class="troubleshooting-steps"><li>Verifica che il Mac sia connesso a Internet.</li><li>Ricollega l’orologio per ripetere il controllo.</li><li>Se non riesce ancora, attendi qualche minuto e riprova.</li></ol>
+              <h3 id="couldnt-check-title">Terento non è riuscito a controllare l’orologio Garmin</h3>
+              <p>Verifica che il Mac sia connesso a Internet e ricollega l’orologio: Terento ha bisogno di Internet per verificare se su questo orologio si possono installare mappe.</p>
+              <ol class="troubleshooting-steps"><li>Apri un sito web per verificare che il Mac sia online.</li><li>Scollega l’orologio e ricollegalo per ripetere il controllo.</li><li>Se non riesce ancora, attendi qualche minuto e riprova.</li></ol>
             </section><section class="troubleshooting-item" id="catalog-unavailable" aria-labelledby="catalog-unavailable-title">
-              <h3 id="catalog-unavailable-title">Non è stato possibile verificare la disponibilità delle mappe</h3>
-              <p>Terento non è riuscito a caricare l’elenco attuale delle mappe, oppure questa versione di Terento è troppo vecchia. Le mappe già presenti sull’orologio non sono interessate.</p>
-              <ol class="troubleshooting-steps"><li>Controlla la connessione Internet e riprova tra qualche minuto.</li><li>Se Terento segnala una versione più recente, installa l’aggiornamento.</li><li>Finché Terento mostra un elenco salvato meno recente, l’installazione e l’aggiornamento delle mappe del catalogo restano non disponibili fino a quando non è possibile verificare l’elenco attuale.</li></ol>
+              <h3 id="catalog-unavailable-title">L’elenco delle mappe Garmin non si carica o Terento va aggiornato</h3>
+              <p>Se Terento non riesce a caricare l’elenco attuale delle mappe, controlla la connessione Internet e riprova tra qualche minuto. Le mappe già presenti sull’orologio non sono interessate.</p>
+              <ol class="troubleshooting-steps"><li>Se questa versione di Terento è troppo vecchia per l’elenco attuale e Terento segnala una versione più recente, installa l’aggiornamento.</li><li>Finché Terento mostra un elenco salvato meno recente, l’installazione e l’aggiornamento delle mappe del catalogo restano non disponibili fino a quando non è possibile verificare l’elenco attuale.</li></ol>
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-storage" aria-labelledby="topic-storage-title">
-            <div class="guide-section-heading"><p class="eyebrow">Download e spazio</p><h2 id="topic-storage-title">Download e spazio libero</h2></div>
+            <div class="guide-section-heading"><p class="eyebrow">Download e spazio</p><h2 id="topic-storage-title">Download delle mappe e spazio libero</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="download-failed" aria-labelledby="download-failed-title">
-              <h3 id="download-failed-title">Il download della mappa non è riuscito</h3>
-              <p>Terento scarica ogni mappa direttamente dal suo provider. I provider a volte sono lenti o temporaneamente non disponibili.</p>
-              <ol class="troubleshooting-steps"><li>Controlla la connessione Internet.</li><li>Leggi il motivo indicato accanto alla mappa. Se il provider non è raggiungibile o i download sono sospesi, riprova più tardi.</li><li>Avvia di nuovo l’installazione.</li></ol>
+              <h3 id="download-failed-title">Download della mappa Garmin non riuscito</h3>
+              <p>Controlla la connessione Internet e riprova più tardi: Terento scarica ogni mappa direttamente dal suo provider, e i provider a volte sono lenti o temporaneamente non disponibili.</p>
+              <ol class="troubleshooting-steps"><li>Leggi il motivo indicato accanto alla mappa. Se il provider non è raggiungibile o i download sono sospesi, riprova più tardi.</li><li>Avvia di nuovo l’installazione.</li></ol>
             </section><section class="troubleshooting-item" id="mac-storage" aria-labelledby="mac-storage-title">
-              <h3 id="mac-storage-title">Spazio libero insufficiente sul Mac</h3>
-              <p>Terento ha bisogno di spazio temporaneo sul Mac per scaricare e preparare una mappa.</p>
-              <ol class="troubleshooting-steps"><li>Libera spazio sul Mac, ad esempio eliminando file che non ti servono più.</li><li>Riprova. Le regioni grandi richiedono più spazio.</li></ol>
+              <h3 id="mac-storage-title">Spazio insufficiente sul Mac per scaricare la mappa</h3>
+              <p>Libera spazio sul Mac e riprova: Terento ha bisogno di spazio temporaneo per scaricare e preparare una mappa.</p>
+              <ol class="troubleshooting-steps"><li>Elimina i file che non ti servono più e svuota il Cestino.</li><li>Riprova. Le regioni grandi richiedono più spazio.</li></ol>
             </section><section class="troubleshooting-item" id="watch-storage" aria-labelledby="watch-storage-title">
-              <h3 id="watch-storage-title">Spazio libero insufficiente sull’orologio</h3>
-              <p>Terento controlla lo spazio libero sull’orologio prima di installare e non inizia se le mappe non ci stanno.</p>
-              <ol class="troubleshooting-steps"><li>Scegli una regione più piccola o meno mappe.</li><li>Rimuovi in “Manage maps” una mappa che non ti serve più.</li><li>Un aggiornamento richiede spazio extra mentre la nuova mappa viene verificata. Libera spazio se un aggiornamento non può iniziare.</li></ol>
+              <h3 id="watch-storage-title">Spazio insufficiente per le mappe Garmin sull’orologio</h3>
+              <p>Scegli una regione più piccola o rimuovi una mappa che non ti serve più: Terento controlla lo spazio libero sull’orologio prima di installare e non inizia se le mappe non ci stanno.</p>
+              <ol class="troubleshooting-steps"><li>Scegli una regione più piccola o meno mappe.</li><li>Apri “Manage maps” e rimuovi una mappa che non ti serve più.</li><li>Un aggiornamento richiede spazio extra mentre la nuova mappa viene verificata. Libera spazio se un aggiornamento non può iniziare.</li></ol>
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-maps" aria-labelledby="topic-maps-title">
-            <div class="guide-section-heading"><p class="eyebrow">Installazione e aggiornamenti</p><h2 id="topic-maps-title">Installazioni, aggiornamenti e rimozioni</h2></div>
+            <div class="guide-section-heading"><p class="eyebrow">Installazione e aggiornamenti</p><h2 id="topic-maps-title">Installare, aggiornare e rimuovere mappe</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="leftover-map" aria-labelledby="leftover-map-title">
-              <h3 id="leftover-map-title">L’installazione non è riuscita dopo la scrittura della mappa</h3>
-              <p>Se un’installazione si interrompe dopo l’inizio della copia, parte della mappa può restare sull’orologio. Terento non la rimuove automaticamente.</p>
+              <h3 id="leftover-map-title">Installazione della mappa non riuscita: mappa rimasta sull’orologio</h3>
+              <p>Rimuovi la mappa rimasta in “Manage maps” e poi installala di nuovo. Se un’installazione si interrompe dopo l’inizio della copia, parte della mappa può restare sull’orologio e Terento non la rimuove automaticamente.</p>
               <ol class="troubleshooting-steps"><li>Ricollega l’orologio e attendi che Terento sia pronto.</li><li>Apri “Manage maps” e controlla l’elenco.</li><li>Se la mappa dell’installazione non riuscita è nell’elenco, rimuovila e poi installala di nuovo.</li><li>Se non riesce di nuovo, <a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">invia un rapporto</a>.</li></ol>
             </section><section class="troubleshooting-item" id="update-remove" aria-labelledby="update-remove-title">
-              <h3 id="update-remove-title">Aggiornamenti o rimozioni richiedono molto tempo</h3>
-              <p>Durante l’aggiornamento o la rimozione di una mappa l’avanzamento può restare per un po’ su una percentuale alta prima di terminare. Nella beta attuale è previsto.</p>
-              <ol class="troubleshooting-steps"><li>Lascia l’orologio collegato e il Mac attivo finché Terento non segnala che ha finito.</li><li>Non scollegare l’orologio mentre Terento è al lavoro.</li><li>Se Terento segnala un errore, ricollega l’orologio e controlla “Manage maps” prima di riprovare.</li></ol>
+              <h3 id="update-remove-title">Aggiornamento o rimozione della mappa molto lenti</h3>
+              <p>Nella beta attuale è previsto: durante l’aggiornamento o la rimozione di una mappa l’avanzamento può restare per un po’ su una percentuale alta prima di terminare. Lascia l’orologio collegato e il Mac attivo.</p>
+              <ol class="troubleshooting-steps"><li>Non scollegare l’orologio mentre Terento è al lavoro.</li><li>Attendi che Terento segnali che ha finito.</li><li>Se Terento segnala un errore, ricollega l’orologio e controlla “Manage maps” prima di riprovare.</li></ol>
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-help" aria-labelledby="topic-help-title">
             <div class="guide-section-heading"><p class="eyebrow">Ancora problemi?</p><h2 id="topic-help-title">Ottenere assistenza</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="send-report" aria-labelledby="send-report-title">
-              <h3 id="send-report-title">Invia un rapporto</h3>
-              <p>Quando un’installazione, un aggiornamento o una rimozione non riesce, Terento salva sul Mac un rapporto che ci aiuta ad analizzare il problema.</p>
-              <ol class="troubleshooting-steps"><li>Nella schermata di errore scegli “Report issue”. In seguito puoi usare “Report latest failure” in “Diagnostics”.</li><li>Terento apre GitHub con il rapporto già compilato. Se il modulo è vuoto, fai clic nel campo del rapporto, premi ⌘A e poi ⌘V.</li><li>Controlla il rapporto prima di pubblicarlo: le issue su GitHub sono pubbliche.</li><li>Non hai un account GitHub? Scrivi a <a href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="troubleshooting-send-report" data-umami-event-channel="email">hello&#64;terento.app</a> indicando il modello dell’orologio, la regione della mappa e cosa è successo.</li></ol>
+              <h3 id="send-report-title">Come segnalare un problema con Terento</h3>
+              <p>Nella schermata di errore scegli “Report issue”: Terento apre GitHub con il rapporto salvato sul Mac già compilato.</p>
+              <ol class="troubleshooting-steps"><li>In seguito puoi usare “Report latest failure” in “Diagnostics”.</li><li>Se il modulo GitHub è vuoto, fai clic nel campo del rapporto, premi ⌘A e poi ⌘V.</li><li>Controlla il rapporto prima di pubblicarlo: le issue su GitHub sono pubbliche.</li><li>Non hai un account GitHub? Scrivi a <a href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="troubleshooting-send-report" data-umami-event-channel="email">hello&#64;terento.app</a> indicando il modello dell’orologio, la regione della mappa e cosa è successo.</li></ol>
             </section></div>
           </section>
 
@@ -241,7 +241,7 @@
           <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Progetto open source</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Navigazione del piè di pagina">
-          <a href="/it/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">Informazioni</a><a href="/it/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guida</a><a href="/it/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/it/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Scarica</a>
+          <a href="/it/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">Informazioni</a><a href="/it/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guida</a><a href="/it/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/it/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Risoluzione dei problemi</a><a href="/it/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Scarica</a>
           <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Note legali</a>
           <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a>
         </nav>

@@ -105,7 +105,13 @@ Troubleshooting breadcrumbs are generated in `scripts/build-guide-pages.py` for
 all six locales. The Troubleshooting guide (`/guides/troubleshooting/`) keeps
 the same 15 section ids in every locale because the app links to them; its copy
 lives in `scripts/templates/troubleshooting-copy.json`, and the generator
-rejects a locale whose anchors differ from `TROUBLESHOOTING_ANCHORS`.
+rejects a locale whose anchors differ from `TROUBLESHOOTING_ANCHORS`. Its
+section headings name the symptom the way people search for it (for example
+"Garmin watch not showing up on Mac") and the first sentence answers it. The
+page has no header navigation item; it is reached from the shared footer
+navigation (`scripts/normalize-public-shell.py`, `site/site-shell.js`), the
+Home FAQ and the installation Guide, which deep-link specific anchors, and from
+the app's help links.
 `scripts/validate-structured-data.py` recursively validates nested entities,
 arrays and graphs. Keep existing source/output parity and visible-content tests.
 

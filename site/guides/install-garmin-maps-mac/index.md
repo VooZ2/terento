@@ -32,6 +32,8 @@ The workflow
 
 Connect your watch with a USB data cable. Terento recognizes it and checks whether you can continue safely.
 
+[Garmin watch not showing up on Mac](https://terento.app/guides/troubleshooting/#connect-watch)
+
 Terento showing a connected Garmin watch and device detection status
 Terento recognizes the connected Garmin watch before installation.
 
@@ -63,15 +65,15 @@ Need a hand?
 
 ### Terento does not detect the watch
 
-Wait up to 1–2 minutes after connecting. If the watch still does not appear, reconnect it, check that the cable supports data and close other apps that may be using it.
+Wait up to 1–2 minutes after connecting. If the watch still does not appear, reconnect it, check that the cable supports data and close other apps that may be using it. More help: [Garmin watch not showing up on Mac](https://terento.app/guides/troubleshooting/#connect-watch), [Garmin Express or another app is using the watch](https://terento.app/guides/troubleshooting/#garmin-busy), [Garmin watch not recognized: USB mode (MTP)](https://terento.app/guides/troubleshooting/#usb-mode).
 
 ### Install or Update is unavailable
 
-Temporarily unavailable maps stay visible. Read the reason shown beside the map. If its provider is unavailable or downloads are paused, try later. If Terento cannot check current availability, check your internet connection and try again. Your installed maps remain available.
+Temporarily unavailable maps stay visible. Read the reason shown beside the map. If its provider is unavailable or downloads are paused, try later. If Terento cannot check current availability, check your internet connection and try again. Your installed maps remain available. More help: [Garmin map list won’t load or Terento needs an update](https://terento.app/guides/troubleshooting/#catalog-unavailable), [Garmin map download failed](https://terento.app/guides/troubleshooting/#download-failed).
 
 ### Installation failed
 
-On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.
+On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened. More help: [Map installation failed: leftover map on the watch](https://terento.app/guides/troubleshooting/#leftover-map), [How to report a problem with Terento](https://terento.app/guides/troubleshooting/#send-report).
 
 ### The map was installed but is not visible
 

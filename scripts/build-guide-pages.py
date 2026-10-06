@@ -103,6 +103,40 @@ def troubleshooting_body(item: dict[str, object]) -> str:
     return body.replace(EMAIL_ADDRESS, email_link) if EMAIL_ADDRESS in body else body + ' ' + email_link
 
 
+def troubleshooting_title(locale: str, anchor: str) -> str:
+    for group in TROUBLESHOOTING_COPY[locale]["groups"]:
+        for item in group["items"]:
+            if item["anchor"] == anchor:
+                return str(item["title"])
+    raise ValueError(f"Unknown troubleshooting anchor: {anchor}")
+
+
+def troubleshooting_href(locale: str, anchor: str) -> str:
+    if anchor not in TROUBLESHOOTING_ANCHORS:
+        raise ValueError(f"Unknown troubleshooting anchor: {anchor}")
+    return f"{localized_path(locale, TROUBLESHOOTING_SLUG)}#{anchor}"
+
+
+def troubleshooting_related_links(locale: str, anchors: tuple[str, ...]) -> str:
+    """Link an install-guide help item to the matching Troubleshooting sections."""
+    if not anchors:
+        return ""
+    links = ", ".join(
+        f'<a href="{troubleshooting_href(locale, anchor)}" data-umami-event="guide-link-click" '
+        f'data-umami-event-location="guide-troubleshooting-{anchor}">{esc(troubleshooting_title(locale, anchor))}</a>'
+        for anchor in anchors
+    )
+    return f' {esc(TROUBLESHOOTING_COPY[locale]["guide_related_label"])} {links}.'
+
+
+def troubleshooting_step_link(locale: str, anchor: str) -> str:
+    return (
+        f'<a class="guide-step-link text-link" href="{troubleshooting_href(locale, anchor)}" '
+        f'data-umami-event="guide-link-click" data-umami-event-location="guide-step-{anchor}">'
+        f'{esc(troubleshooting_title(locale, anchor))} <span aria-hidden="true">→</span></a>'
+    )
+
+
 def localized_path(locale: str, suffix: str = "") -> str:
     prefix = "" if locale == "en" else f"{locale}/"
     return f"/{prefix}{suffix}"
@@ -205,6 +239,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
                   {substeps}
                   {f'<p class="guide-step-note">{esc(step["note"])}</p>' if step.get("note") else ""}
                   {f'<a class="guide-step-link text-link" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-step">{esc(step["link_label"])} <span aria-hidden="true">→</span></a>' if step.get("link_label") else ""}
+                  {troubleshooting_step_link(locale, step["help_anchor"]) if step.get("help_anchor") else ""}
                 </div>
                 {visual}
               </div>
@@ -213,7 +248,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     for item in copy["troubleshooting"]:
         troubleshooting.append(f'''<section class="troubleshooting-item">
               <h3>{esc(item["title"])}</h3>
-              <p>{troubleshooting_body(item)}</p>
+              <p>{troubleshooting_body(item)}{troubleshooting_related_links(locale, item.get("related", ()))}</p>
             </section>''')
     guide_json = guide_json_ld(locale, copy, release_label)
     facts = "".join(f'<span>{esc(fact)}</span>' for fact in copy["facts"])
@@ -779,6 +814,8 @@ def merged_copy(locale: str) -> dict[str, object]:
             "title": flow_step["title"],
             "body": flow_step["body"],
         }
+        if source_index == 1:
+            step["help_anchor"] = "connect-watch"
         if flow_step.get("note"):
             step["note"] = flow_step["note"]
         if flow_step.get("substeps"):
@@ -814,9 +851,9 @@ def merged_copy(locale: str) -> dict[str, object]:
 
     source_troubleshooting = base["troubleshooting"]
     base["troubleshooting"] = [
-        {"title": source_troubleshooting[0]["title"], "body": refinement["detect_body"]},
-        AVAILABILITY_TROUBLESHOOTING[locale],
-        {"title": source_troubleshooting[1]["title"], "body": flow["installation_failed"]},
+        {"title": source_troubleshooting[0]["title"], "body": refinement["detect_body"], "related": ("connect-watch", "garmin-busy", "usb-mode")},
+        {**AVAILABILITY_TROUBLESHOOTING[locale], "related": ("catalog-unavailable", "download-failed")},
+        {"title": source_troubleshooting[1]["title"], "body": flow["installation_failed"], "related": ("leftover-map", "send-report")},
         {"title": source_troubleshooting[3]["title"], "body": flow["not_visible"], "email_link": True},
     ]
     return base

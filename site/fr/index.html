@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr" data-language="fr">
   <head>
-    <script defer src="/site-shell.js?v=20260926-static-shell-v1"></script>
+    <script defer src="/site-shell.js?v=20261006-troubleshooting-footer-v1"></script>
     <link rel="stylesheet" href="/styles.css?v=20261006-troubleshooting-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -131,10 +131,18 @@
               },
               {
                 "@type": "Question",
+                "name": "Pourquoi ma montre Garmin n’apparaît-elle pas sur mon Mac ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Connectez la montre directement avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes. Si elle n’apparaît toujours pas, quittez Garmin Express, Android File Transfer, OpenMTP et les autres apps qui peuvent utiliser la montre. Consultez les étapes de connexion ou vérifiez quelles apps peuvent bloquer la montre."
+                }
+              },
+              {
+                "@type": "Question",
                 "name": "Que dois-je faire si l’installation échoue ?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. Lisez le guide de dépannage."
+                  "text": "Lisez la raison affichée par Terento. Si le téléchargement de la carte a échoué, vérifiez votre connexion et réessayez plus tard. Si l’installation s’est arrêtée pendant la copie, supprimez la carte restante dans « Manage maps » et réinstallez-la. Si cela échoue encore, choisissez « Report issue » sur l’écran d’échec de l’installation. Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé."
                 }
               }
             ]
@@ -356,8 +364,12 @@
               <p>Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento.</p>
             </details>
             <details>
+              <summary>Pourquoi ma montre Garmin n’apparaît-elle pas sur mon Mac ?</summary>
+              <p>Connectez la montre directement avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes. Si elle n’apparaît toujours pas, quittez Garmin Express, Android File Transfer, OpenMTP et les autres apps qui peuvent utiliser la montre. <a href="/fr/guides/troubleshooting/#connect-watch" data-umami-event="guide-link-click" data-umami-event-location="home-faq-connect-watch">Consultez les étapes de connexion</a> ou <a href="/fr/guides/troubleshooting/#garmin-busy" data-umami-event="guide-link-click" data-umami-event-location="home-faq-garmin-busy">vérifiez quelles apps peuvent bloquer la montre</a>.</p>
+            </details>
+            <details>
               <summary>Que dois-je faire si l’installation échoue ?</summary>
-              <p>Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. <a href="/fr/guides/troubleshooting/" data-umami-event="guide-link-click" data-umami-event-location="home-faq-troubleshooting">Lisez le guide de dépannage.</a></p>
+              <p>Lisez la raison affichée par Terento. Si le téléchargement de la carte a échoué, <a href="/fr/guides/troubleshooting/#download-failed" data-umami-event="guide-link-click" data-umami-event-location="home-faq-download-failed">vérifiez votre connexion et réessayez plus tard</a>. Si l’installation s’est arrêtée pendant la copie, <a href="/fr/guides/troubleshooting/#leftover-map" data-umami-event="guide-link-click" data-umami-event-location="home-faq-leftover-map">supprimez la carte restante dans « Manage maps »</a> et réinstallez-la. Si cela échoue encore, choisissez « Report issue » sur l’écran d’échec de l’installation. Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.</p>
               <div class="faq-support-actions">
                 <a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Ouvrir une issue <span aria-hidden="true">→</span></a>
                 <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Contacter le support <span aria-hidden="true">→</span></a>
@@ -389,7 +401,7 @@
           <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Projet open source</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Navigation du pied de page">
-          <a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">À propos</a><a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide</a><a href="/fr/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Télécharger</a>
+          <a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">À propos</a><a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide</a><a href="/fr/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/fr/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Dépannage</a><a href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Télécharger</a>
           <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Mentions légales</a>
           <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Confidentialité</a>
         </nav>
