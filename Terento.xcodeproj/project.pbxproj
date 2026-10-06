@@ -104,6 +104,9 @@
 		AE334620BB02B36C6DF98A3A /* app/TerentoCore/Sources/TerentoPoC/Installation/RemainingTimeEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD334620BB02B36C6DF98A3A /* app/TerentoCore/Sources/TerentoPoC/Installation/RemainingTimeEstimator.swift */; };
 		AE0D2E408EDEB4304F8425F4 /* app/TerentoCore/Sources/TerentoPoC/Views/TimeRemainingLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD0D2E408EDEB4304F8425F4 /* app/TerentoCore/Sources/TerentoPoC/Views/TimeRemainingLabel.swift */; };
 		AED8478911B9692D4962831C /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/FirstMapGuidance.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD8478911B9692D4962831C /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/FirstMapGuidance.swift */; };
+		AEC67F957DAC7B55D4D135CD /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC67F957DAC7B55D4D135CD /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift */; };
+		AE006FD6FB7CA77BEB78C4CC /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD006FD6FB7CA77BEB78C4CC /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift */; };
+		AEFA9788FFC221BEDB89733C /* app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA9788FFC221BEDB89733C /* app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -210,6 +213,9 @@
 		AD334620BB02B36C6DF98A3A /* app/TerentoCore/Sources/TerentoPoC/Installation/RemainingTimeEstimator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/RemainingTimeEstimator.swift; sourceTree = SOURCE_ROOT; };
 		AD0D2E408EDEB4304F8425F4 /* app/TerentoCore/Sources/TerentoPoC/Views/TimeRemainingLabel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Views/TimeRemainingLabel.swift; sourceTree = SOURCE_ROOT; };
 		ADD8478911B9692D4962831C /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/FirstMapGuidance.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/MapCatalog/FirstMapGuidance.swift; sourceTree = SOURCE_ROOT; };
+		ADC67F957DAC7B55D4D135CD /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift; sourceTree = SOURCE_ROOT; };
+		AD006FD6FB7CA77BEB78C4CC /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift; sourceTree = SOURCE_ROOT; };
+		ADFA9788FFC221BEDB89733C /* app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -318,6 +324,9 @@
 				0000000000000000000000d5 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift */,
 				7E1E7E1E0000000000000004 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/AppFunnelTelemetry.swift */,
 				7E1E7E1E0000000000000002 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TelemetryDeliveryPolicy.swift */,
+				ADFA9788FFC221BEDB89733C /* app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift */,
+				AD006FD6FB7CA77BEB78C4CC /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift */,
+				ADC67F957DAC7B55D4D135CD /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift */,
 				ADD8478911B9692D4962831C /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/FirstMapGuidance.swift */,
 				AD0D2E408EDEB4304F8425F4 /* app/TerentoCore/Sources/TerentoPoC/Views/TimeRemainingLabel.swift */,
 				AD334620BB02B36C6DF98A3A /* app/TerentoCore/Sources/TerentoPoC/Installation/RemainingTimeEstimator.swift */,
@@ -481,6 +490,9 @@
 				0000000000000000000000d4 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift in Sources */,
 				7E1E7E1E0000000000000003 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/AppFunnelTelemetry.swift in Sources */,
 				7E1E7E1E0000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Telemetry/TelemetryDeliveryPolicy.swift in Sources */,
+				AEFA9788FFC221BEDB89733C /* app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift in Sources */,
+				AE006FD6FB7CA77BEB78C4CC /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift in Sources */,
+				AEC67F957DAC7B55D4D135CD /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift in Sources */,
 				AED8478911B9692D4962831C /* app/TerentoCore/Sources/TerentoPoC/MapCatalog/FirstMapGuidance.swift in Sources */,
 				AE0D2E408EDEB4304F8425F4 /* app/TerentoCore/Sources/TerentoPoC/Views/TimeRemainingLabel.swift in Sources */,
 				AE334620BB02B36C6DF98A3A /* app/TerentoCore/Sources/TerentoPoC/Installation/RemainingTimeEstimator.swift in Sources */,

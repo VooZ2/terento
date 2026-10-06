@@ -66,6 +66,7 @@ struct ConnectScreen: View {
     @State private var resolvedDeviceAsset = ResolvedDeviceAsset.fallback
     @State private var diagnosticLogMessage: String?
     @State private var isShowingInstallationFailure = false
+    @State private var supportReportPayload: SupportReportPayload?
     @State private var installationFailureFollowUp: InstallationFailureFollowUp = .backToDevice
     @State private var retryInstallationAfterScan = false
     @State private var evidenceOperationID = UUID()
@@ -404,8 +405,13 @@ struct ConnectScreen: View {
                     installationFailureFollowUp = .manageMaps
                     isShowingInstallationFailure = false
                 } : nil,
-                helpTopic: installationFailureHelpTopic
+                helpTopic: installationFailureHelpTopic,
+                onSendSupportReport: { sendInstallationSupportReport(for: selectedInstallationPlan) }
             )
+            .sheet(item: $supportReportPayload) { payload in
+                SupportReportSheet(controller: SupportReportController(payload: payload),
+                                   onClose: { supportReportPayload = nil })
+            }
             .interactiveDismissDisabled(false)
         }
     }
@@ -2614,9 +2620,22 @@ struct ConnectScreen: View {
     }
 
     private func reportInstallationIssue(for plan: InstallationPlan?) {
+        diagnosticLogMessage = InstallationIssueReport.openGitHub(installationIssueDraft(for: plan))
+            ? nil
+            : "GitHub could not be opened. Please try again."
+    }
+
+    /// The same sanitised report as the GitHub option, as a support report.
+    private func sendInstallationSupportReport(for plan: InstallationPlan?) {
+        guard let saved = installationIssueDraft(for: plan).supportReport else { return }
+        supportReportPayload = SupportReportPayload(category: saved.category, operationID: saved.operationID,
+                                                    userMessage: nil, report: saved.report)
+    }
+
+    private func installationIssueDraft(for plan: InstallationPlan?) -> InstallationIssueDraft {
         let result = mapEngine.installationResult
         let verification = result?.verification
-        let draft = InstallationIssueReport.generate(
+        return InstallationIssueReport.generate(
             identity: identity,
             maps: (plan?.installItems ?? []).map { item in
                 InstallationIssueMap(
@@ -2655,9 +2674,6 @@ struct ConnectScreen: View {
             originalFailureContext: mapEngine.evidenceFailureContext == nil
                 ? result?.originalFailureContext : mapEngine.evidenceOriginalFailureContext
         )
-        diagnosticLogMessage = InstallationIssueReport.openGitHub(draft)
-            ? nil
-            : "GitHub could not be opened. Please try again."
     }
 
     private var finishContent: some View {

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "f6a7b8c9-d0e1-4f2a-9b3c-4d5e6f7a8b9c",
+  "createdAt": "2026-10-06T10:02:44Z",
+  "appBuild": "42",
+  "releaseLabel": "1.0.0-beta.19",
+  "category": "INSTALL_FAILED",
+  "report": {
+    "macOSVersion": "Version 15.6 (Build 24G84)",
+    "message": "Could not read /Users/someone/Library/Caches/terento/map.img"
+  }
+}
