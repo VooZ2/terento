@@ -47,7 +47,9 @@ class AdminStatisticsReconciliationTests(unittest.TestCase):
                 {**base, 'region': 'FR', 'operation_count': 0},
                 {**base, 'region': 'DE', 'map_package_id': None},
                 {**base, 'region': 'ES', 'component_kind': 'contours'},
-                {**base, 'event_type': 'MAP_UPDATE_SUCCEEDED', 'last_occurred_at': '2026-10-03T10:00:00Z'}]
+                {**base, 'event_type': 'MAP_UPDATE_SUCCEEDED', 'last_occurred_at': '2026-10-03T10:00:00Z'},
+                {**base, 'provider_id': 'custom', 'map_package_id': None, 'region': None, 'last_occurred_at': '2026-10-02T10:00:00Z'},
+                {**base, 'provider_id': 'freizeitkarte', 'component_kind': 'contours', 'last_occurred_at': '2026-10-06T10:00:00Z'}]
         harness = r"""
 const assert=require('node:assert/strict');
 const nodes=Object.fromEntries(['#provider-statistic-rows','#map-rows','#all-map-rows'].map(key=>[key,{innerHTML:''}]));
@@ -56,8 +58,9 @@ global.window={terentoAdminProviders:[{id:'freizeitkarte',name:'Freizeitkarte'}]
 eval(process.argv[1]);
 window.terentoRenderProviderStream('installs');
 const provider=nodes['#provider-statistic-rows'].innerHTML;
+assert.match(provider,/custom[\s\S]*Last install[^>]*>2026-10-02 10:00/,'custom maps without a catalog package still have a Last install');
 assert.match(provider,/Last install[^>]*>2026-10-01 10:00/);
-assert.doesNotMatch(provider,/2026-10-05/);
+assert.doesNotMatch(provider,/2026-10-05|2026-10-06/);
 window.terentoRenderProviderStream('updates');
 assert.match(nodes['#provider-statistic-rows'].innerHTML,/Last update[^>]*>2026-10-03 10:00/);
 const countries=nodes['#map-rows'].innerHTML;

@@ -428,5 +428,23 @@ class AdminToolsMenuTests(unittest.TestCase):
         self.assertNotIn("glossary", header.lower())
 
 
+
+class AdminRowMenuTests(unittest.TestCase):
+    """Row action menus float above clipping table wrappers (owner report 2026-10-06)."""
+
+    def test_layout_carries_the_row_menu_script_and_floating_style(self):
+        from terento_catalog.admin import ADMIN_STYLES, _admin_row_menu_script, _layout
+        script = _admin_row_menu_script()
+        for fragment in ("details.provider-row-menu", "body.classList.add('is-floating')",
+                         "window.innerHeight - anchor.bottom", "event.key !== 'Escape'"):
+            self.assertIn(fragment, script)
+        self.assertIn(".provider-row-menu-body.is-floating{position:fixed", ADMIN_STYLES)
+        self.assertIn(script, _layout("Test", "<main id='main-content'></main>").decode())
+
+    def test_screen_reader_only_headers_are_not_sortable(self):
+        from terento_catalog.admin import _admin_table_sort_script
+        self.assertIn("node.remove()", _admin_table_sort_script())
+
+
 if __name__ == "__main__":
     unittest.main()

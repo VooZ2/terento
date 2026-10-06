@@ -4853,6 +4853,9 @@ def _map_statistics_script() -> str:
       };
       const knownProviderIds = new Set(providers.map((item) => String(item.id || '')).filter(Boolean));
       const eligibleMain = (row) => operations(row) > 0 && row.map_package_id && knownProviderIds.has(String(row.provider_id || '')) && (!row.component_kind || row.component_kind === 'main');
+      // Provider dates follow the provider's own Successful count: any positive
+      // main-component operation, including custom maps without a catalog package.
+      const datedMain = (row) => operations(row) > 0 && (!row.component_kind || row.component_kind === 'main');
       const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED' && eligibleMain(row));
       let coverageMap = null;
       const countryCoverage = () => {
@@ -4894,22 +4897,24 @@ def _map_statistics_script() -> str:
       const providerStreams = {
         installs: {success: 'installs', failed: 'failedInstalls', last: 'lastInstall', date: 'Last install'},
         updates: {success: 'completedUpdates', failed: 'failedUpdates', last: 'lastUpdate', date: 'Last update'},
-        downloads: {success: 'downloads', failed: 'failedDownloads', last: null, date: 'Last success'},
+        downloads: {success: 'downloads', failed: 'failedDownloads', last: 'lastDownload', date: 'Last download'},
       };
       let providerStream = 'installs';
       try { const saved = sessionStorage.getItem('terento.admin.maps.providerStream'); if (providerStreams[saved]) providerStream = saved; } catch (_) { /* optional */ }
       const renderProviders = () => {
         const selected = String(filters.provider || '').toLowerCase();
         const scoped = selected ? providers.filter((item) => String(item.id || '').toLowerCase() === selected) : providers;
-        const byProvider = Object.fromEntries(scoped.map((item) => [item.id, {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null,lastUpdate:null}]));
+        const byProvider = Object.fromEntries(scoped.map((item) => [item.id, {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null,lastUpdate:null,lastDownload:null}]));
         rows.forEach((row) => {
           const id = row.provider_id || 'unknown';
-          byProvider[id] ||= {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null,lastUpdate:null};
-          if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'downloads', row);
+          byProvider[id] ||= {downloads:0,failedDownloads:0,installs:0,failedInstalls:0,completedUpdates:0,failedUpdates:0,lastInstall:null,lastUpdate:null,lastDownload:null};
+          // Last download follows the Downloads total population (all purposes);
+          // a zero or unknown operation count cannot advance it.
+          if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'downloads', row); if ((operations(row) || 0) > 0 && String(row.last_occurred_at || '') > String(byProvider[id].lastDownload || '')) byProvider[id].lastDownload = row.last_occurred_at; }
           if (row.event_type === 'DOWNLOAD_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedDownloads', row);
-          if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'installs', row); if (eligibleMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastInstall || '')) byProvider[id].lastInstall = row.last_occurred_at; }
+          if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'installs', row); if (datedMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastInstall || '')) byProvider[id].lastInstall = row.last_occurred_at; }
           if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedInstalls', row);
-          if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'completedUpdates', row); if (eligibleMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastUpdate || '')) byProvider[id].lastUpdate = row.last_occurred_at; }
+          if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'completedUpdates', row); if (datedMain(row) && String(row.last_occurred_at || '') > String(byProvider[id].lastUpdate || '')) byProvider[id].lastUpdate = row.last_occurred_at; }
           if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedUpdates', row);
         });
         const rate = (success, failed) => success !== null && failed !== null && success + failed ? success / (success + failed) * 100 : null;
@@ -9733,6 +9738,7 @@ ADMIN_STYLES += """
 .provider-row-menu{position:relative}
 .provider-row-menu>summary{display:inline-flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;border:1px solid var(--border);border-radius:var(--radius-control);list-style:none;cursor:pointer}
 .provider-row-menu>summary::-webkit-details-marker{display:none}
+.provider-row-menu-body.is-floating{position:fixed;right:auto;z-index:60}
 .provider-row-menu-body{position:absolute;z-index:5;right:0;display:grid;gap:6px;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);box-shadow:0 4px 16px color-mix(in srgb,var(--graphite) 14%,transparent);text-align:start}
 @media(max-width:760px){.provider-problem-list>.provider-problem{grid-template-columns:minmax(0,1fr)}}
 .admin-metric-failed{white-space:nowrap}.admin-metric-failed.is-positive{color:var(--danger);font-weight:600}
@@ -10169,7 +10175,7 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_quick_select_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script() + _admin_dropdown_script())
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_quick_select_script() + _admin_row_menu_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script() + _admin_dropdown_script())
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
@@ -10215,6 +10221,10 @@ def _admin_table_sort_script() -> str:
         headers.forEach((th, index) => {
           const label = (th.textContent || '').trim();
           if (!label || th.colSpan > 1) return;
+          // A column whose header is only screen-reader text (e.g. row Actions) is not sortable.
+          const visible = th.cloneNode?.(true);
+          visible?.querySelectorAll?.('.sr-only').forEach((node) => node.remove());
+          if (visible && !(visible.textContent || '').trim()) return;
           const button = document.createElement('button');
           button.type = 'button';
           button.className = 'device-sort-button';
@@ -10459,6 +10469,61 @@ def _admin_quick_select_script() -> str:
         select.form?.addEventListener('terento-admin-clear-filters', () => setTimeout(sync));
         sync();
       });
+    })();"""
+
+
+def _admin_row_menu_script() -> str:
+    """Row action menus open above the table's clipping box.
+
+    Tables scroll horizontally, so their wrappers clip absolutely positioned
+    popovers. An open ``.provider-row-menu`` body is placed with fixed
+    coordinates below its button, or above it when the viewport has no room
+    below; one menu is open at a time and it closes on Escape, an outside
+    click, scroll or resize.
+    """
+    return r"""(() => {
+      const menus = () => [...document.querySelectorAll('details.provider-row-menu')];
+      const place = (menu) => {
+        const body = menu.querySelector('.provider-row-menu-body');
+        const trigger = menu.querySelector('summary');
+        if (!body || !trigger) return;
+        body.classList.add('is-floating');
+        const anchor = trigger.getBoundingClientRect();
+        const width = Math.max(body.offsetWidth, 200);
+        const height = body.offsetHeight;
+        const gap = 6;
+        const below = window.innerHeight - anchor.bottom - gap;
+        const top = below >= height || anchor.top - gap < height ? anchor.bottom + gap : anchor.top - gap - height;
+        const left = Math.min(Math.max(8, anchor.right - width), window.innerWidth - width - 8);
+        body.style.top = `${Math.max(8, top)}px`;
+        body.style.left = `${Math.max(8, left)}px`;
+      };
+      const closeAll = (except) => menus().forEach((menu) => { if (menu !== except && menu.open) menu.open = false; });
+      document.addEventListener('toggle', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || target.tagName !== 'DETAILS') return;
+        if (target.matches('details.provider-row-menu')) {
+          if (target.open) { closeAll(target); place(target); }
+          return;
+        }
+        // A disclosure inside an open menu changes its height: place it again.
+        const parent = target.closest('details.provider-row-menu');
+        if (parent?.open) place(parent);
+      }, true);
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest?.('details.provider-row-menu')) closeAll(null);
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        const open = menus().find((menu) => menu.open);
+        if (open) { open.open = false; open.querySelector('summary')?.focus(); }
+      });
+      const closeOnMove = (event) => {
+        const open = menus().find((menu) => menu.open);
+        if (open && !(event?.target instanceof Node && open.contains(event.target))) closeAll(null);
+      };
+      window.addEventListener('scroll', closeOnMove, {passive: true, capture: true});
+      window.addEventListener('resize', () => closeAll(null), {passive: true});
     })();"""
 
 
