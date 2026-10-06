@@ -2860,7 +2860,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("Diagnostic coverage", body)
         self.assertIn("id='map-download-trend-title'", body)
 
-    def test_map_statistics_tiles_follow_the_period_and_keep_an_all_time_line(self):
+    def test_map_statistics_tiles_follow_the_period_without_scope_chips(self):
         historical = _map_statistics_summary([
             {"event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 4},
             {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3},
@@ -2876,13 +2876,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             selected_filters={"period": "24h"},
         ).decode()
         self.assertIn("id='map-statistics-metrics'", body)
-        # Tiles follow the selected period (measured zero) and say so (ADM-04);
-        # all-time totals stay visible on a labelled All time line.
+        # Tiles follow the selected period (measured zero); the filter bar names
+        # the period, so Maps shows no scope chips and no All time line
+        # (owner decision 2026-10-06).
         self.assertIn("data-stat='completedDownloads'>0</strong>", body)
         self.assertIn("data-stat='completedInstalls'>0</strong>", body)
-        self.assertIn("data-scope='period'>Last 24 hours</span>", body)
-        self.assertIn("Downloads <strong>4</strong> · Installs <strong>3</strong>", body)
-        self.assertIn("data-scope='all'>All time</span>", body)
+        main = body.split("<main", 1)[1]
+        self.assertNotIn("data-scope=", main)
+        self.assertNotIn("overview-all-time", main)
+        self.assertIn("data-quick-value='24h' aria-pressed='true'>Last 24 hours</button>", body)
         self.assertIn("No map activity for this scope", body)
         self.assertIn("id='map-download-trend-title'", body)
 

@@ -403,7 +403,10 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_top_countries_uses_country_coverage_instead_of_region_identity(self):
         script = _map_statistics_script()
-        self.assertIn("countryCoverage().slice(0,10)", script)
+        # At least 10 rows, more while they fit beside the Countries card (owner decision 2026-10-06).
+        self.assertIn("countryCoverage().slice(0,30)", script)
+        self.assertIn("index >= 10 && card.scrollHeight > card.clientHeight", script)
+        self.assertIn("rows.forEach((row, index) => { row.hidden = index >= 10; });", script)
         self.assertNotIn("countryCoverage().slice(0,5)", script)
         self.assertNotIn("const byRegion", script)
 

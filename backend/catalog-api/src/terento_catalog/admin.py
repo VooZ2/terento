@@ -1032,14 +1032,16 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
     test_data_class = " class='active'" if active == "test-data" else ""
-    tools_class = " class='active'" if active in {"test-data", "campaigns", "device-identification", "glossary"} else ""
+    tools_class = " class='active'" if active in {"test-data", "campaigns", "device-identification", "update-diagnostics", "glossary"} else ""
     sources_class = " class='active'" if active == "device-identification" else ""
+    update_reports_class = " class='active'" if active == "update-diagnostics" else ""
     glossary_class = " class='active'" if active == "glossary" else ""
     account_class = " active" if active == "account" else ""
     tools_menu = f"""<details class="admin-tools-menu">
         <summary{tools_class}>Tools</summary>
         <div class="admin-tools-popover" role="group" aria-label="Admin tools">
           <a{sources_class} href="/admin/device-identification">Model sources</a>
+          <a{update_reports_class} href="/admin/update-diagnostics">Update reports</a>
           <a{test_data_class} href="/admin/test-data">Test data</a>
           <a{campaign_class} href="/admin/campaign-links">Campaign links</a>
           <a{glossary_class} href="/admin/glossary">Glossary</a>
@@ -4201,7 +4203,8 @@ def map_statistics_page(
             f"{detail_event_label}"
         )
 
-    # --- Tiles: the selected period, with all time as a labelled line -------
+    # --- Tiles: the selected period; the filter bar names it, so no scope chips
+    # (owner decision 2026-10-06). ---------------------------------------------
     def tile(label: str, value_key: str, failed_key: str, rate_key: str, tile_id: str) -> str:
         rate = summary.get(rate_key)
         secondary = (
@@ -4210,7 +4213,7 @@ def map_statistics_page(
         )
         return (
             f"<div class='map-statistics-tile' id='{tile_id}'>"
-            + _metric_tile(label, summary.get(value_key), scope=selected_period, secondary=secondary,
+            + _metric_tile(label, summary.get(value_key), secondary=secondary,
                            data_stat=value_key)
             + "</div>"
         )
@@ -4227,16 +4230,6 @@ def map_statistics_page(
         for purpose, label in (("install", "For installs"), ("update", "For updates"), ("unknown", "Not recorded"))
     ) + "</dl>"
 
-    def all_time_value(key: str) -> str:
-        value = _optional_nonnegative_int(all_time_summary.get(key))
-        return f"{value:,}" if value is not None else "—"
-
-    all_time_line = "" if selected_period == "all" else (
-        f"<p class='overview-all-time'>{_scope_chip('all')}<span>"
-        f"Downloads <strong>{all_time_value('completedDownloads')}</strong> · "
-        f"Installs <strong>{all_time_value('completedInstalls')}</strong> · "
-        f"Updates <strong>{all_time_value('completedMapUpdates')}</strong></span></p>"
-    )
     metrics_section = (
         "<section class='admin-card map-statistics-metrics' id='map-statistics-metrics' aria-label='Map statistics summary'>"
         + _metric_row([
@@ -4244,7 +4237,7 @@ def map_statistics_page(
             tile("Installs", "completedInstalls", "failedInstalls", "installSuccessRate", "map-statistics-installs"),
             tile("Updates", "completedMapUpdates", "failedMapUpdates", "mapUpdateSuccessRate", "map-statistics-updates"),
         ], label="Map statistics for the selected period")
-        + purpose_line + all_time_line + "</section>"
+        + "</section>"
     )
     statistics_period_filter = _quick_select_filter(
         "map-statistics-range",
@@ -4286,23 +4279,31 @@ def map_statistics_page(
         + _section_card(
             "Downloads",
             _overview_trend_chart(trend, bucket, chart_time_zone, metric='downloads', chart_id='maps-downloads',
-                                  has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0))),
-            card_id="map-download-trend", scope=selected_period,
+                                  counted=frozenset(),
+                                  has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0)))
+            + purpose_line,
+            card_id="map-download-trend",
+            # Same chart cards as the Dashboard: period totals top right, a
+            # legend without numbers (owner decision 2026-10-06).
+            totals=_period_totals(summary, "completedDownloads", "failedDownloads", "downloadSuccessRate",
+                                  label="Downloads in this period") if has_event_data else "",
             css="overview-panel overview-chart-panel",
         )
         + _section_card(
             "Installs",
-            _overview_trend_chart(trend, bucket, chart_time_zone, chart_id='maps-installs',
+            _overview_trend_chart(trend, bucket, chart_time_zone, chart_id='maps-installs', counted=frozenset(),
                                   has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0))),
-            card_id="map-install-trend", scope=selected_period,
+            card_id="map-install-trend",
+            totals=_period_totals(summary, "completedInstalls", "failedInstalls", "installSuccessRate",
+                                  label="Installs in this period") if has_event_data else "",
             css="overview-panel overview-chart-panel",
         )
         + "</section>"
     )
     coverage = f"""
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installs by country'>
-          {_section_card('Countries', "<p class='table-help' id='map-statistics-world-map-status'>Successful installs</p><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', scope=selected_period, css='provider-card map-statistics-world-map-card')}
-          {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', scope=selected_period, css='provider-card map-statistics-popularity', mobile_collapse=True)}
+          {_section_card('Countries', "<p class='table-help' id='map-statistics-world-map-status'>Successful installs</p><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', css='provider-card map-statistics-world-map-card')}
+          {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', css='provider-card map-statistics-popularity', mobile_collapse=True)}
         </section>"""
     stream_buttons = "".join(
         f"<button type='button' class='quick-filter{' active' if value == 'installs' else ''}' data-provider-stream='{value}' aria-pressed='{'true' if value == 'installs' else 'false'}'>{label}</button>"
@@ -4310,17 +4311,17 @@ def map_statistics_page(
     )
     provider_table = _section_card(
         "Providers",
-        f"<div class='quick-filter-group' role='group' aria-label='Provider stream'>{stream_buttons}</div>"
+        f"<div class='filter-bar map-statistics-card-filter'><div class='quick-filter-group' role='group' aria-label='Provider stream'>{stream_buttons}</div></div>"
         "<div class='table-wrap provider-table-wrap' tabindex='0' role='region' aria-label='Provider table'><table class='admin-table mobile-record-table'><caption class='sr-only'>Providers for the selected stream</caption>"
         "<thead><tr><th scope='col'>Provider</th><th scope='col' class='column-number'>Successful</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-date' id='provider-stream-date'>Last success</th></tr></thead>"
         "<tbody id='provider-statistic-rows'></tbody></table></div>",
-        card_id="map-statistics-provider-table", scope=selected_period,
+        card_id="map-statistics-provider-table",
         css="provider-card map-statistics-provider-table", mobile_collapse=True,
     )
     ranking = _section_card(
         "Top maps",
-        "<label class='popularity-search-label' for='all-maps-search'>Search</label><input type='search' id='all-maps-search' placeholder='Map or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top maps</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' id='all-maps-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div>",
-        card_id="maps-by-provider", scope=selected_period, css="provider-card map-statistics-ranking",
+        "<div class='filter-bar map-statistics-card-filter' role='search'><label class='filter-search'><span class='sr-only'>Search maps</span><input type='search' id='all-maps-search' placeholder='Search maps or providers' autocomplete='off'></label></div><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top maps</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' id='all-maps-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div>",
+        card_id="maps-by-provider", css="provider-card map-statistics-ranking",
         mobile_collapse=True,
     )
     events = (
@@ -4335,7 +4336,7 @@ def map_statistics_page(
     content = f"""
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
-        <div class='heading-row'><div><h1>Maps</h1></div><a class='section-link' href='/admin/update-diagnostics'>Update reports&nbsp;{_admin_icon('arrow-right')}</a></div>
+        <div class='heading-row'><div><h1>Maps</h1></div></div>
         <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'>{statistics_period_filter}<label><span class='sr-only'>Provider</span><select id='map-statistics-provider' data-admin-dropdown name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' data-admin-dropdown name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' data-admin-dropdown name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
         {metrics_section if has_all_time_data else ""}
         {trends}
@@ -4626,7 +4627,26 @@ def _map_statistics_script() -> str:
         return `<tr class="popular-map-row"><td data-label="${providerDetail ? 'Map' : 'Country'}"><div class="popular-map-name-content">${mapLink}<small class="popular-map-detail">${escapeHtml(detail)}</small></div></td><td data-label="Installs" class="column-number numeric popular-map-count"><strong>${item.installs}</strong></td></tr>`;
       };
       const topBody = document.querySelector('#map-rows');
-      if (topBody) topBody.innerHTML = countryCoverage().slice(0,10).map((item) => `<tr class="popular-map-row"><td data-label="Country"><button type="button" class="region-map-link" data-map-country="${escapeHtml(item.code)}">${escapeHtml(item.name || item.code.toUpperCase())}</button></td><td data-label="Installs" class="column-number numeric popular-map-count"><strong>${countValue(item.count)}</strong></td></tr>`).join('') || '<tr><td colspan="2" class="muted-value">No country activity.</td></tr>';
+      if (topBody) topBody.innerHTML = countryCoverage().slice(0,30).map((item) => `<tr class="popular-map-row"><td data-label="Country"><button type="button" class="region-map-link" data-map-country="${escapeHtml(item.code)}">${escapeHtml(item.name || item.code.toUpperCase())}</button></td><td data-label="Installs" class="column-number numeric popular-map-count"><strong>${countValue(item.count)}</strong></td></tr>`).join('') || '<tr><td colspan="2" class="muted-value">No country activity.</td></tr>';
+      // Top countries fills the height of the Countries card beside it (owner
+      // decision 2026-10-06): at least 10 rows, more while they fit. A
+      // size-contained card cannot grow the shared row, so it overflows instead.
+      const fitTopCountries = () => {
+        const card = typeof topBody?.closest === 'function' ? topBody.closest('.map-statistics-popularity') : null;
+        if (!card) return;
+        const rows = [...(topBody.rows || [])];
+        rows.forEach((row) => { row.hidden = false; });
+        if (typeof getComputedStyle === 'function' && String(getComputedStyle(card).contain || '').includes('size')) {
+          for (let index = rows.length - 1; index >= 10 && card.scrollHeight > card.clientHeight; index -= 1) rows[index].hidden = true;
+        } else {
+          rows.forEach((row, index) => { row.hidden = index >= 10; });
+        }
+      };
+      fitTopCountries();
+      if (typeof ResizeObserver === 'function' && topBody) {
+        const countriesCard = document.querySelector('#map-statistics-world-map-card');
+        if (countriesCard) new ResizeObserver(() => fitTopCountries()).observe(countriesCard);
+      }
       let page = 1;
       const renderRanking = () => {
         const query = String(allMapsSearch?.value || '').toLowerCase().trim();
@@ -8429,7 +8449,7 @@ table th[aria-sort="ascending"]>.device-sort-button span,table th[aria-sort="des
 .numeric{font-variant-numeric:tabular-nums}
 .device-pagination{display:flex;align-items:center;justify-content:center;gap:16px;margin:14px 0 0;color:var(--secondary);font-size:13px}
 .device-pagination button,.dialog-close{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);color:var(--interactive);font-weight:700}
-.device-pagination button:hover,.dialog-close:hover{border-color:var(--interactive);background:var(--success-bg)}
+.device-pagination button:hover:not(:disabled),.dialog-close:hover{border-color:var(--interactive);background:var(--success-bg)}
 .device-pagination button:disabled{cursor:not-allowed;opacity:.45}
 .device-dialog{width:min(780px,calc(100% - 32px));max-height:calc(100% - 32px);padding:0;border:0;border-radius:var(--radius-card);background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px color-mix(in srgb,var(--graphite) 24%,transparent)}
 .device-dialog::backdrop{background:color-mix(in srgb,var(--graphite) 34%,transparent)}
@@ -8585,6 +8605,7 @@ table code,.provider-table-wrap code,.audit-technical-details code{font-size:var
 .model-page-section{margin-top:28px}
 .model-technical-details{margin-top:16px}
 .secondary-button,.provider-pagination button,.device-pagination button{min-height:var(--admin-control-height);padding:8px 10px}
+.provider-pagination button,.device-pagination button{display:inline-flex;align-items:center;justify-content:center;margin:0;text-align:center;text-decoration:none;white-space:nowrap;-webkit-appearance:none;appearance:none}
 .github-actions>.secondary-button{display:inline-flex;align-items:center;justify-content:center;margin:0;align-self:stretch;text-align:center;text-decoration:none;white-space:normal}
 .github-actions>.copy-status{flex-basis:100%}
 .identity-search-results{display:grid;gap:4px;max-height:240px;overflow-y:auto;margin:8px 0}
@@ -8800,6 +8821,8 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-statistics-popularity .table-wrap .admin-table tbody{display:grid;gap:0;width:100%}
 .map-statistics-popularity .table-wrap .admin-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:8px 0;background:none;border:0;border-bottom:1px solid var(--border);border-radius:0;min-width:0}
 .map-statistics-popularity .table-wrap .admin-table tbody tr:last-child{border-bottom:0}
+.map-statistics-popularity .table-wrap .admin-table tbody tr[hidden]{display:none}.map-statistics-popularity .table-wrap .admin-table tbody tr:has(+tr[hidden]){border-bottom:0}
+@media(min-width:1101px){.map-statistics-coverage-layout>.map-statistics-popularity{contain:size;overflow:hidden}}
 .map-statistics-popularity .table-wrap .admin-table td{display:block;width:auto!important;min-width:0;padding:0!important;border:0!important;white-space:normal;overflow-wrap:anywhere;text-align:left!important;font-size:13px}
 .map-statistics-popularity .table-wrap .admin-table td.popular-map-count{grid-column:2;grid-row:1;align-self:start;text-align:right!important;white-space:nowrap}
 .map-statistics-popularity .table-wrap .admin-table td[colspan]{grid-column:1/-1}

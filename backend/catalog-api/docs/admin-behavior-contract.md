@@ -21,7 +21,8 @@ requires one exact operation/provider/region match with the same outcome. Region
 casing is normalized to lowercase in both streams; names and aliases are not
 guessed. Missing,
 ambiguous or conflicting evidence is shown explicitly. The list is titled
-`Update reports` and shows Reports, Successful, Failed, Blocked and Open tiles
+`Update reports`, is reached from Tools → Update reports (the Tools menu and
+that item are marked active on it; Maps carries no Update reports link) and shows Reports, Successful, Failed, Blocked and Open tiles
 (`All time`) for the list scope, counted as raw update report rows of the
 diagnostic stream and independent of the outcome filter and pagination, so it is
 never presented as the Maps update total. The list can filter successful, failed
@@ -527,24 +528,30 @@ the collapsed Events disclosure. Initial HTML and asynchronous JSON use the same
 server summary.
 
 Maps reads top to bottom: Downloads, Installs and Updates tiles for the selected
-period (each with failed count, rate and a visible period chip) with the download
-purpose breakdown and, unless the period is All time, one `All time` line with
-the all-time totals; then the Downloads and Installs trend cards; then Countries
-(world map) and Top countries; then Providers; then Top maps; then the collapsed
-Events disclosure. These analytics are not placed in disclosures on wider
+period (each with failed count and rate); then the Downloads and Installs trend
+cards, laid out like the Dashboard charts (period Successful, Failed and Success
+rate totals at the top right, a legend without numbers), with the download
+purpose breakdown under the Downloads legend; then Countries (world map) and Top
+countries; then Providers; then Top maps; then the collapsed Events disclosure.
+The filter bar names the selected period, so Maps cards carry no scope chips and
+no separate All time line (owner decision 2026-10-06). The Providers stream
+control and the Top maps search sit in the shared filter bar inside their
+cards. These analytics are not placed in disclosures on wider
 screens. At ≤600 px the three tiles form one compact three-column row, and Top
 countries, Providers and Top maps start collapsed behind a Show/Hide button
 (`aria-expanded`, card title in its accessible name) so the page stays short;
 a link to an element inside a collapsed card opens it, and without script or
 above 600 px every card stays open. The world map remains visible and Top
-countries shows up to 10 rows from the existing country ranking. A period without rows shows measured zero tiles and an empty-scope note;
+countries shows at least 10 rows from the existing country ranking; beside the
+Countries card it adds further rows while they fit its height (up to 30). A period without rows shows measured zero tiles and an empty-scope note;
 it never shows populated all-time numbers as if they were the period. Diagnostic
 linkage coverage may remain in the private API contract but is not shown as an
 Admin block. Events uses human labels (event type, provider, map name) with the
 raw code in the title, and shows Results (counted) and Events (raw records)
 separately. The Maps page carries the selected time zone in its form so chart
-buckets and period boundaries use it; changing the zone reloads them. An
-`Update reports` link opens the update report list.
+buckets and period boundaries use it; changing the zone reloads them. The Maps
+heading carries no Update reports link; the update report list is reached from
+Tools → Update reports.
 
 Maps trends use hourly buckets for 24 hours, daily buckets for seven days,
 weekly buckets for 30 days, and adaptive all-time buckets: daily through 14
@@ -844,5 +851,5 @@ Provider recovery respects HTTP 429 Retry-After cooldown across package rechecks
 
 Activity keeps the failure status as plain text and provides `View failure` as
 an inline text link without a button border or padding. The Maps Updates failed
-count uses the shared failure counter without a link; the `Update reports` link
-on Maps opens the update report list.
+count uses the shared failure counter without a link; the update report list is
+reached from Tools → Update reports.

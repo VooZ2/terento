@@ -424,10 +424,9 @@ def _update_totals_markup(totals: dict[str, Any] | None) -> str:
 
 def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_token: str) -> bytes:
     from .admin import _admin_header, _admin_icon, _layout, _timestamp_markup, _diagnostic_result, _diagnostics_script, _admin_app_version_label, _operation_map_label, _diagnostic_state_badge, _diagnostic_heading, _diagnostic_outcome_sections
-    content = _admin_header(user, csrf_token, active='map-statistics')
+    content = _admin_header(user, csrf_token, active='update-diagnostics')
     content += (
         "<main id='main-content' class='dashboard provider-detail update-diagnostics-page'>"
-        f"<p class='back-link'><a href='/admin/map-statistics'>{_admin_icon('arrow-left')} Maps</a></p>"
         "<div class='heading-row'><h1>Update reports</h1>"
         "<a class='section-link' href='/admin/update-diagnostics'>All update reports</a></div>"
     )

@@ -137,8 +137,10 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     if(coverage&&providers) assert(providers.y>=coverage.y+coverage.height,'Providers does not overlap coverage');
     assert.equal(await page.getByText('Diagnostic coverage',{exact:true}).count(),0,'Non-actionable diagnostic coverage is removed');
     assert.equal(await page.locator('#map-rows tr').count(),10,'Top countries shows up to ten ranked countries');
-    assert.equal(await page.locator("[data-stat='failedInstalls']").innerText(),'10','Maps excludes non-canonical fresh failures');
-    assert.equal(await page.locator('.map-statistics-metrics .admin-scope-chip').count()>=3,true,'Maps tiles show their period scope');
+    assert.equal(await page.locator("#map-statistics-metrics [data-stat='failedInstalls']").innerText(),'10','Maps excludes non-canonical fresh failures');
+    assert.equal(await page.locator('main .admin-scope-chip').count(),0,'Maps carries no scope chips; the filter bar names the period (owner decision 2026-10-06)');
+    assert.equal(await page.locator('.map-statistics-trends .admin-card-head .overview-card-totals').count()===2,true,'Maps chart cards show period totals like the Dashboard');
+    assert.equal(await page.locator('#map-rows tr:not([hidden])').count()>=Math.min(10,await page.locator('#map-rows tr').count()),true,'Top countries shows at least ten countries');
     assert.equal(await page.locator('[data-provider-stream]').count(),3,'Providers switches one stream at a time');
     if(width>760){const date=page.locator('#provider-statistic-rows td.column-date').first();assert.equal(await date.evaluate(e=>getComputedStyle(e).whiteSpace),'nowrap','Last install stays one line');}
    }
