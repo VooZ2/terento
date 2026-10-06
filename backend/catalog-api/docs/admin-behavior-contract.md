@@ -41,8 +41,8 @@ Lichen-dark series and legend entry, install failed solid red (destructive
 text), update successful Warm Stone with a stone-dark outline (Warm Stone alone
 is 2.69:1 on white), and update failed red diagonal stripes in bars and legends.
 Stacked segments are separated by a 1 px surface line, every series has a legend
-entry with its period total, and each bucket is one keyboard stop whose label
-lists every series. Fresh-install KPI denominators exclude every update.
+entry (counts follow the Dashboard legend rule), and each bucket is one keyboard
+stop whose label lists every series. Fresh-install KPI denominators exclude every update.
 Not-started updates are diagnostics, not failed device-write attempts. Charts
 and legends must preserve these distinctions at supported widths.
 
@@ -214,9 +214,12 @@ period, whether activity is changing, and what to inspect next. Its first row is
 four metric tiles: Installs, Updates and Downloads for the selected period (each
 with failed count and success rate) and Needs attention (Now). Below them, the
 Downloads and Installs chart cards share a row; each shows the period scope chip,
-a legend with the period total per series, and one secondary line with the
-all-time totals behind an `All time` chip. Tile values and legend totals use the
-same period population, so they agree. The Downloads card also breaks the period
+a legend naming its series and one compact line with the all-time totals behind
+an `All time` chip (omitted when the period is All time, because the tiles then
+show those totals). Period totals live only in the tiles; a legend shows a count
+only where it adds information no tile shows (the Custom .img install split, and
+the App downloads period increases). Tiles and charts use the same period
+population, so they agree. The Downloads card also breaks the period
 total down by purpose (For installs, For updates, Not recorded). Below the
 charts, Needs attention and Activity share a row, then First run and App
 downloads share the next row; when one of those cards is omitted the remaining
@@ -228,8 +231,8 @@ Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
 `Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`), carries a glossary link with that definition, shows its
-all-time totals with an `All time` chip, and is omitted when no usable counter
-or trend data exists. First run shows the separate app first-run funnel
+period increases in the legend and its all-time totals and last update in one
+`All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
 population for the period (sessions, connected vs not connected by reason,
 authorization outcomes and the top waiting models); it never mixes into install
 counts. A failed sub-query renders that card as `Unavailable` with a Retry link

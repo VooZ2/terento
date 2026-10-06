@@ -159,7 +159,7 @@ class CatalogAPITests(unittest.TestCase):
             self.assertEqual(database.overview_map_requests[-1][2], "Europe/Vilnius")
             self.assertEqual(database.overview_download_requests[-1], ("30d", "Europe/Vilnius"))
             self.assertIn("value='30d' selected", body.decode())
-            self.assertIn("overview-download-total' aria-label='.dmg downloads total, all time: 23'><strong>23</strong><small>.dmg", body.decode())
+            self.assertIn(".dmg <strong>23</strong> · .zip", body.decode())
 
             response, body = self._request(
                 server, "GET", "/admin?period=all", headers={"Cookie": cookie},

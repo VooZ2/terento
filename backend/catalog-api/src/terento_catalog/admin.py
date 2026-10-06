@@ -1682,18 +1682,24 @@ _INSTALL_CHART_SERIES = (
     ("update", "Update successful", "map_update_success_count"),
     ("update-failed", "Update failed", "map_update_failed_count"),
 )
+_LEGEND_COUNTED_SERIES = frozenset({"custom"})
 _DOWNLOAD_CHART_SERIES = (
     ("download-success", "Download successful", "download_success_count"),
     ("download-failed", "Download failed", "download_failed_count"),
 )
 
 
-def _chart_legend(items: list[tuple[str, str, int | None]], *, label: str) -> str:
-    """One legend for every chart: swatch, noun and the period count."""
+_LEGEND_NAME_ONLY = object()  # legend entry that names its series without a count
+
+
+def _chart_legend(items: list[tuple[str, str, Any]], *, label: str) -> str:
+    """One legend for every chart: swatch, noun and, when it adds information
+    not already in a tile, the period count (``_LEGEND_NAME_ONLY`` omits it)."""
     entries = "".join(
         f"<li><i class='overview-chart-{html.escape(name, quote=True)}' aria-hidden='true'></i>"
         f"<span>{html.escape(text)}</span>"
-        + (f"<strong>{count:,}</strong>" if count is not None else "<strong>—</strong>")
+        + ("" if count is _LEGEND_NAME_ONLY else
+           f"<strong>{count:,}</strong>" if count is not None else "<strong>—</strong>")
         + "</li>"
         for name, text, count in items
     )
@@ -1799,10 +1805,13 @@ def _overview_trend_chart(
     )
     if _compact:
         return svg
+    # Tiles carry the period totals; the legend names the series and counts
+    # only the custom .img split, which no tile shows on its own.
     totals = [sum(counts[index] for counts in values) for index in range(len(series))]
     legend = _chart_legend(
-        [(name, label, total) for (name, label, _), total in zip(series, totals)],
-        label=f"{chart_label} legend and period totals",
+        [(name, label, total if name in _LEGEND_COUNTED_SERIES else _LEGEND_NAME_ONLY)
+         for (name, label, _), total in zip(series, totals)],
+        label=f"{chart_label} legend",
     )
     return (
         "<div class='overview-chart-wrap'>"
@@ -2406,6 +2415,9 @@ def overview_page(
 
     # --- Charts with an explicit all-time line -------------------------------
     def all_time_line(items: list[tuple[str, Any, str]]) -> str:
+        # With All time selected the tiles already show these totals.
+        if period == "all":
+            return ""
         parts = []
         for label, value, fmt in items:
             rendered = _metric_value_text(value, fmt)
@@ -2486,12 +2498,11 @@ def overview_page(
     elif download_has_data:
         downloads_section = _section_card(
             "App downloads",
-            "<div class='overview-download-totals' aria-label='Terento app downloads total, all time'>"
-            f"<div class='overview-download-total' aria-label='.dmg downloads total, all time: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
-            f"<div class='overview-download-total' aria-label='.zip downloads total, all time: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
-            f"{_scope_chip('all')}</div>"
+            # Legend: period increases; one compact All time line: totals.
             f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
-            f"<p class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</p>",
+            f"<p class='overview-all-time overview-download-all-time'>{_scope_chip('all')}"
+            f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong></span>"
+            f"<span class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</span></p>",
             card_id="overview-downloads", scope=period, glossary="terento-app-download",
             css="overview-panel overview-download-panel",
         )
@@ -8025,10 +8036,6 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-download-panel{padding-top:16px;padding-bottom:16px}
 .overview-download-panel .section-heading{margin-bottom:6px}
-.overview-download-totals{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
-.overview-download-total{display:inline-flex;align-items:baseline;gap:4px;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
-.overview-download-total strong{color:var(--graphite);font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
-.overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
 .overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
 .overview-chart-download-marker line{stroke-width:2;stroke-dasharray:4 3}.overview-chart-download-marker text{stroke:none;font-size:10px;font-weight:700}.overview-chart-download-release line{stroke:var(--interactive)}.overview-chart-download-release text{fill:var(--interactive)}.overview-chart-download-boundary line{stroke:var(--secondary)}.overview-chart-download-boundary text{fill:var(--secondary)}
@@ -8041,9 +8048,8 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
   .overview-trend-mobile text{font-size:13px}
 }
 @media(max-width:760px){
-  .overview-download-totals{justify-content:flex-start;margin-inline-start:0}
 }
-@media(max-width:560px){.overview-download-totals{flex-basis:100%}.overview-attention-actions{grid-column:2;justify-content:flex-start;flex-wrap:wrap}}
+@media(max-width:560px){.overview-attention-actions{grid-column:2;justify-content:flex-start;flex-wrap:wrap}}
 .device-information-section .model-information-list{max-width:780px}
 .device-information-section .model-information-list div{grid-template-columns:150px minmax(0,1fr);gap:16px}
 .device-information-section .model-information-list dd{text-align:left}
@@ -8698,6 +8704,7 @@ ADMIN_STYLES += """
 .overview-chart-panel,.overview-download-panel{display:flex;flex-direction:column}
 .overview-chart-panel>.overview-chart-wrap,.overview-download-panel>.overview-chart-wrap{width:100%}
 .overview-chart-panel>.overview-all-time,.overview-download-panel>.overview-all-time{margin-top:auto;padding-top:10px}
+.overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
 """
 
 def _error(message: str | None) -> str:

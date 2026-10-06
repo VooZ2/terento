@@ -69,21 +69,34 @@ class DashboardPresentationTests(unittest.TestCase):
         payload.update(overview)
         return overview_page(payload, {"username": "operator", "admin_review_summary": REVIEW}, "csrf").decode()
 
-    def test_tiles_are_period_scoped_and_match_the_chart_legend(self):
+    def test_tiles_carry_period_totals_and_the_legend_names_series(self):
         body = self.render()
         tiles = body.split("aria-label='Dashboard summary'", 1)[1].split("overview-primary-grid", 1)[0]
         self.assertEqual(tiles.count("data-scope='period'>Last 7 days</span>"), 3)
         self.assertIn("data-stat='completedInstallCount'>12</strong>", tiles)
         self.assertIn("data-stat='completedMapUpdateCount'>4</strong>", tiles)
         self.assertIn("Failed 1</span> · 80%", tiles)
-        # Installs card: legend totals equal the tiles for the same period.
+        # Installs card: tiles carry the period totals, so the legend names the
+        # series and counts only the custom .img split no tile shows.
         installs = body.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]
-        self.assertIn("<span>Install successful</span><strong>10</strong>", installs)
-        self.assertIn("<span>Custom .img install</span><strong>2</strong>", installs)
-        self.assertIn("<span>Update successful</span><strong>4</strong>", installs)
-        self.assertIn("<span>Update failed</span><strong>1</strong>", installs)
+        legend = installs.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
+        self.assertIn("<span>Install successful</span></li>", legend)
+        self.assertIn("<span>Custom .img install</span><strong>2</strong>", legend)
+        self.assertIn("<span>Update successful</span></li>", legend)
+        self.assertIn("<span>Update failed</span></li>", legend)
+        self.assertEqual(legend.count("<strong>"), 1)
         self.assertIn("data-scope='all'>All time</span>", installs)
         self.assertIn("Updates <strong>80</strong>", installs)
+        self.assertEqual(installs.count("class='overview-all-time'"), 1)
+        downloads = body.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0]
+        legend = downloads.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
+        self.assertNotIn("<strong>", legend)
+
+    def test_all_time_lines_are_omitted_when_the_period_is_all_time(self):
+        body = self.render(period="all")
+        for card in ("overview-trend-title", "overview-download-trend-title"):
+            section = body.split(f"id='{card}'", 1)[1].split("</section>", 1)[0]
+            self.assertNotIn("class='overview-all-time'", section)
 
     def test_downloads_card_breaks_down_purpose(self):
         body = self.render()
