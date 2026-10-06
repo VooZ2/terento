@@ -1,5 +1,20 @@
 # App–API compatibility and release contract
 
+## Release candidate 1.0.0-rc.1 build 41 (staged, unpublished)
+
+The next public app is the first release candidate, staged in
+`Packaging/release-candidate.json` and the Xcode Release label `1.0.0-rc.1`
+(Debug `1.0.0-rc.1-local`). It bundles every unreleased app section below, so
+the API must first be deployed with migrations 067–072 (statistics integrity,
+acquisition purpose, reported identity facts, app funnel events, support
+reports, inventory metrics) and verified per the publication order. Then
+deploy the site, then publish the app. The API already validates release labels
+as SemVer, so `1.0.0-rc.1` is stored as public (`is_local_test=false`) and
+`1.0.0-rc.1-local` as local test data without an API change. The release
+candidate is published on the existing `beta` update channel
+([versioning](../VERSIONING.md)); the manifest schema and channel values are
+unchanged, so installed beta builds are offered it by build number.
+
 ## Unreleased statistics integrity and acquisition purpose
 
 Schema-1 download map events add optional `acquisitionPurpose=install|update`
