@@ -62,7 +62,10 @@ numbers and dates trailing, `—` for unknown), empty states (empty, filtered,
 unavailable with Retry) and chart legends. Labels and card titles carry no
 inline `?` glossary links; term definitions live only on Tools → Glossary.
 Colours, radii and focus rings come only from the generated brand tokens; the
-focus ring is Interactive Primary (≥3:1).
+focus ring is Interactive Primary (≥3:1). Every icon, including chevrons,
+arrows and placeholders, is an unchanged Font Awesome Free solid icon from the
+pinned revision in `THIRD_PARTY_NOTICES.md`, inlined (no external origin);
+Admin never uses hand-drawn SVG, CSS-drawn shapes or text glyphs as icons.
 
 This is the canonical behavioral contract for the private Terento admin surface
 and its diagnostic data dependencies. It complements `api.md` (routes and current

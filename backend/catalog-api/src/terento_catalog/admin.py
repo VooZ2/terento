@@ -236,33 +236,43 @@ def _count_label(value: Any, singular: str, plural: str | None = None) -> str:
     return f"{count} {noun}"
 
 
+# Admin icons are original Font Awesome Free 7.3.1 solid SVGs (owner decision
+# 2026-10-06: no hand-drawn icons). Font Awesome Free 7.3.1 by @fontawesome -
+# https://fontawesome.com License - https://fontawesome.com/license/free
+# (Icons: CC BY 4.0) Copyright 2026 Fonticons, Inc. Paths are unchanged; see
+# THIRD_PARTY_NOTICES.md. Keys are Admin names, comments the upstream icon.
+_FA_ICONS = {
+    "external": ("0 0 512 512", "M320 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l82.7 0-201.4 201.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L448 109.3 448 192c0 17.7 14.3 32 32 32s32-14.3 32-32l0-160c0-17.7-14.3-32-32-32L320 0zM80 96C35.8 96 0 131.8 0 176L0 432c0 44.2 35.8 80 80 80l256 0c44.2 0 80-35.8 80-80l0-80c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 80c0 8.8-7.2 16-16 16L80 448c-8.8 0-16-7.2-16-16l0-256c0-8.8 7.2-16 16-16l80 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L80 96z"),  # arrow-up-right-from-square
+    "arrow-right": ("0 0 512 512", "M502.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L402.7 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l370.7 0-105.4 105.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z"),  # arrow-right
+    "arrow-left": ("0 0 512 512", "M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 288 480 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-370.7 0 105.4-105.4c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"),  # arrow-left
+    "check": ("0 0 448 512", "M434.8 70.1c14.3 10.4 17.5 30.4 7.1 44.7l-256 352c-5.5 7.6-14 12.3-23.4 13.1s-18.5-2.7-25.1-9.3l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l101.5 101.5 234-321.7c10.4-14.3 30.4-17.5 44.7-7.1z"),  # check
+    "clock": ("0 0 512 512", "M256 0a256 256 0 1 1 0 512 256 256 0 1 1 0-512zM232 120l0 136c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2 280 120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"),  # clock
+    "close": ("0 0 384 512", "M55.1 73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L147.2 256 9.9 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192.5 301.3 329.9 438.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.8 256 375.1 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192.5 210.7 55.1 73.4z"),  # xmark
+    "x-circle": ("0 0 512 512", "M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zM167 167c9.4-9.4 24.6-9.4 33.9 0l55 55 55-55c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-55 55 55 55c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-55-55-55 55c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l55-55-55-55c-9.4-9.4-9.4-24.6 0-33.9z"),  # circle-xmark
+    "alert": ("0 0 512 512", "M256 0c14.7 0 28.2 8.1 35.2 21l216 400c6.7 12.4 6.4 27.4-.8 39.5S486.1 480 472 480L40 480c-14.1 0-27.2-7.4-34.4-19.5s-7.5-27.1-.8-39.5l216-400c7-12.9 20.5-21 35.2-21zm0 352a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm0-192c-18.2 0-32.7 15.5-31.4 33.7l7.4 104c.9 12.5 11.4 22.3 23.9 22.3 12.6 0 23-9.7 23.9-22.3l7.4-104c1.3-18.2-13.1-33.7-31.4-33.7z"),  # triangle-exclamation
+    "info": ("0 0 512 512", "M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zM224 160a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm-8 64l48 0c13.3 0 24 10.7 24 24l0 88 8 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-80 0c-13.3 0-24-10.7-24-24s10.7-24 24-24l24 0 0-64-24 0c-13.3 0-24-10.7-24-24s10.7-24 24-24z"),  # circle-info
+    "question": ("0 0 512 512", "M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zm0-336c-17.7 0-32 14.3-32 32 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-44.2 35.8-80 80-80s80 35.8 80 80c0 47.2-36 67.2-56 74.5l0 3.8c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-8.1c0-20.5 14.8-35.2 30.1-40.2 6.4-2.1 13.2-5.5 18.2-10.3 4.3-4.2 7.7-10 7.7-19.6 0-17.7-14.3-32-32-32zM224 368a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"),  # circle-question
+    "minus": ("0 0 512 512", "M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zM168 232l176 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-176 0c-13.3 0-24-10.7-24-24s10.7-24 24-24z"),  # circle-minus
+    "download": ("0 0 448 512", "M256 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 210.7-41.4-41.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l96 96c12.5 12.5 32.8 12.5 45.3 0l96-96c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 242.7 256 32zM64 320c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l320 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-46.9 0-56.6 56.6c-31.2 31.2-81.9 31.2-113.1 0L110.9 320 64 320zm304 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"),  # download
+    "message": ("0 0 512 512", "M0 352L0 128C0 75 43 32 96 32l320 0c53 0 96 43 96 96l0 224c0 53-43 96-96 96l-120 0c-5.2 0-10.2 1.7-14.4 4.8L166.4 539.2c-4.2 3.1-9.2 4.8-14.4 4.8-13.3 0-24-10.7-24-24l0-72-32 0c-53 0-96-43-96-96z"),  # message
+    "circle-check": ("0 0 512 512", "M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zM374 145.7c-10.7-7.8-25.7-5.4-33.5 5.3L221.1 315.2 169 263.1c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l72 72c5 5 11.8 7.5 18.8 7s13.4-4.1 17.5-9.8L379.3 179.2c7.8-10.7 5.4-25.7-5.3-33.5z"),  # circle-check
+    "circle-exclamation": ("0 0 512 512", "M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-192a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm0-192c-18.2 0-32.7 15.5-31.4 33.7l7.4 104c.9 12.6 11.4 22.3 23.9 22.3 12.6 0 23-9.7 23.9-22.3l7.4-104c1.3-18.2-13.1-33.7-31.4-33.7z"),  # circle-exclamation
+    "chevron-down": ("0 0 448 512", "M201.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 338.7 54.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"),  # chevron-down
+    "chevron-right": ("0 0 320 512", "M311.1 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L243.2 256 73.9 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"),  # chevron-right
+    "image": ("0 0 448 512", "M64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l320 0c35.3 0 64-28.7 64-64l0-320c0-35.3-28.7-64-64-64L64 32zm64 80a48 48 0 1 1 0 96 48 48 0 1 1 0-96zM272 224c8.4 0 16.1 4.4 20.5 11.5l88 144c4.5 7.4 4.7 16.7 .5 24.3S368.7 416 360 416L88 416c-8.9 0-17.2-5-21.3-12.9s-3.5-17.5 1.6-24.8l56-80c4.5-6.4 11.8-10.2 19.7-10.2s15.2 3.8 19.7 10.2l26.4 37.8 61.4-100.5c4.4-7.1 12.1-11.5 20.5-11.5z"),  # image
+}
+
+
 def _admin_icon(name: str) -> str:
-    """Return one small, accessible SVG icon for repeated admin affordances."""
-    paths = {
-        "external": (
-            "<path d='M9.5 2.5h4v4'/><path d='m8 8 5.5-5.5'/><path "
-            "d='M12 9.5v2.75A1.75 1.75 0 0 1 10.25 14h-6.5A1.75 1.75 0 0 1 2 12.25v-6.5A1.75 1.75 0 0 1 3.75 4H6.5'/>"
-        ),
-        "arrow-right": "<path d='M2.5 8h11'/><path d='m9 3.5 4.5 4.5L9 12.5'/>",
-        "arrow-left": "<path d='M13.5 8h-11'/><path d='m7 3.5-4.5 4.5L7 12.5'/>",
-        "check": "<path d='m3 8 3 3 7-7'/>",
-        "clock": "<circle cx='8' cy='8' r='6'/><path d='M8 4v4l3 2'/>",
-        "close": "<path d='m3.5 3.5 9 9'/><path d='m12.5 3.5-9 9'/>",
-        "x-circle": "<circle cx='8' cy='8' r='6'/><path d='m5.75 5.75 4.5 4.5'/><path d='m10.25 5.75-4.5 4.5'/>",
-        "alert": "<path d='M8 2.5 14.5 13.5h-13z'/><path d='M8 6.5v3'/><path d='M8 11.6h.01'/>",
-        "info": "<circle cx='8' cy='8' r='6'/><path d='M8 7.5V11'/><path d='M8 5h.01'/>",
-        "question": "<circle cx='8' cy='8' r='6'/><path d='M6.3 6.3a1.8 1.8 0 1 1 2.5 1.6c-.5.2-.8.6-.8 1.1v.3'/><path d='M8 11.4h.01'/>",
-        "minus": "<circle cx='8' cy='8' r='6'/><path d='M5.5 8h5'/>",
-        "download": "<path d='M8 2.5v8'/><path d='m4.5 7 3.5 3.5L11.5 7'/><path d='M3 13.5h10'/>",
-        "message": "<path d='M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z'/><path d='M5 6.25h6'/><path d='M5 8.5h4'/>",
-    }
-    path = paths.get(name, "")
-    if not path:
+    """Return one small, accessible Font Awesome icon for admin affordances."""
+    icon = _FA_ICONS.get(name)
+    if not icon:
         return ""
+    view_box, path = icon
     css_name = re.sub(r"[^a-z0-9_-]", "-", name.lower())
     return (
-        f"<svg class='admin-icon admin-icon-{css_name}' viewBox='0 0 16 16' "
-        f"fill='none' aria-hidden='true' focusable='false'>{path}</svg>"
+        f"<svg class='admin-icon admin-icon-{css_name}' viewBox='{view_box}' "
+        f"aria-hidden='true' focusable='false'><path fill='currentColor' d='{path}'/></svg>"
     )
 
 
@@ -1188,7 +1198,7 @@ def _overview_missing_diagnostic_item(
             f"<input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>"
             f"<input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>{return_field}"
             "<button type='submit' class='overview-dismiss-button' "
-            "aria-label='Dismiss review item' title='Dismiss review item'>×</button>"
+            f"aria-label='Dismiss review item' title='Dismiss review item'>{_admin_icon('close')}</button>"
             "</form>"
         )
     return (
@@ -2971,7 +2981,7 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
             f"<li><a href='/admin/providers/{quote(str(provider.get('id')), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id')))}</a> "
             f"{_health_status_badge(state['status'])} <span>{html.escape(state['reason'])}</span></li>"
             for provider, state in provider_states
-        ) + "</ul><a class='section-link' href='/admin/providers'>Open Providers →</a>"
+        ) + f"</ul><a class='section-link' href='/admin/providers'>Open Providers&nbsp;{_admin_icon('arrow-right')}</a>"
         cards.append(_system_health_card(
             "Catalogs", worst, description,
             reason=(f"{names}: " + "; ".join(state["reason"] for _, state in provider_states if state["status"] != "HEALTHY")) if affected else "All provider catalogs are current.",
@@ -3090,7 +3100,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
         groups.append(
             f"<details class='admin-card admin-disclosure system-health-group system-health-healthy' data-health-group-card='{group}'>"
             f"<summary>{html.escape(title)} {_status_pill(summary_kind, f'{len(healthy)}/{len(members)} healthy')}"
-            + (" <a class='section-link' href='/admin/providers'>Providers →</a>" if group == "catalogs" else "")
+            + (f" <a class='section-link' href='/admin/providers'>Providers&nbsp;{_admin_icon('arrow-right')}</a>" if group == "catalogs" else "")
             + "</summary><div class='disclosure-body system-health-list' aria-label='"
             + html.escape(title, quote=True) + " checks'>"
             + ("".join(card["html"] for card in healthy) or "<p class='table-help'>Every check in this group is listed under Problems.</p>")
@@ -4619,7 +4629,7 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
             raw_source = str(mapping['source_url'])
             source_host = (urlsplit(raw_source).hostname or '').removeprefix('www.')
             source_link = (
-                f'<a class="section-link" href="{html.escape(raw_source, quote=True)}" target="_blank" rel="noopener noreferrer">Open {html.escape(source_host or "source")} ↗</a>'
+                f'<a class="section-link" href="{html.escape(raw_source, quote=True)}" target="_blank" rel="noopener noreferrer">Open {html.escape(source_host or "source")}&nbsp;{_admin_icon("external")}</a>'
                 if raw_source.startswith('https://') else '<span class="identification-source-unavailable">Source link unavailable</span>'
             )
             names = html.escape('; '.join(mapping.get('source_names') or [])) or 'No model name supplied'
@@ -4730,7 +4740,7 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
             "<section class='admin-card identification-workspace'>"
             f"<div class='identification-workspace-nav'><a class='section-link' href='/admin/device-identification'>{_admin_icon('arrow-left')} Model sources</a>{next_link}</div>"
             f"{_identity_mapping_markup(selected, csrf_token, code_models=code_models)}"
-            f"<a class='section-link identification-model-detail-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence →</a></section>"
+            f"<a class='section-link identification-model-detail-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence&nbsp;{_admin_icon('arrow-right')}</a></section>"
         )
     else:
         if query and not rows:
@@ -5001,7 +5011,7 @@ def _identity_value(value: Any, *, suffix: str = "") -> str:
 
 
 def _identity_fact_markup(label: str, value: str, state: str, source: str) -> str:
-    icon = {"match": "✓", "conflict": "!", "missing": "?"}.get(state, "?")
+    icon = _admin_icon({"match": "circle-check", "conflict": "circle-exclamation"}.get(state, "question"))
     return (f"<article class='identity-fact identity-fact-{state}'>"
             f"<div class='identity-fact-heading'><span class='identity-fact-icon' aria-hidden='true'>{icon}</span><span>{html.escape(label)}</span></div>"
             f"<strong>{html.escape(value)}</strong><small>{html.escape(source)}</small></article>")
@@ -6598,7 +6608,7 @@ def _campaign_info(control_id: str, title: str, body: str) -> str:
     info_id = f"{control_id}-info"
     return (
         f"<button class='info-control' type='button' aria-expanded='false' "
-        f"aria-controls='{info_id}' aria-label='More information about {html.escape(title)}'>i</button>"
+        f"aria-controls='{info_id}' aria-label='More information about {html.escape(title)}'>{_admin_icon('info')}</button>"
         f"<div class='info-popover' id='{info_id}' role='region' aria-label='{html.escape(title)} information' hidden><strong>{html.escape(title)}</strong>{body}</div>"
     )
 
@@ -7888,7 +7898,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .campaign-label{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:0 0 7px;color:var(--graphite);font-size:13px;font-weight:700}
 .required-label,.optional-label{color:var(--secondary);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .required-label{color:var(--danger)}
-.info-control{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;min-height:19px;padding:0;border:1px solid var(--border);border-radius:50%;background:var(--surface);color:var(--interactive);font-size:12px;font-weight:750;line-height:1}
+.info-control{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;min-height:19px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--interactive);font-size:17px;line-height:1}
 .info-control:hover{border-color:var(--interactive);background:var(--success-bg)}
 .info-popover{position:relative;margin:8px 0 10px;padding:10px 12px;background:var(--surface-muted);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--secondary);font-size:12px;font-weight:400}
 .info-popover strong{display:block;margin-bottom:3px;color:var(--graphite);font-size:12px}
@@ -7946,8 +7956,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .device-model-copy strong{min-width:0;overflow-wrap:anywhere}
 .device-thumb{display:block;width:38px;height:38px;flex:0 0 38px;object-fit:contain;border-radius:var(--radius-control);background:var(--surface-muted)}
 .device-thumb-placeholder{position:relative;border:1px solid var(--border)}
-.device-thumb-placeholder:before{content:"";position:absolute;left:10px;top:8px;width:16px;height:21px;border:2px solid var(--sky);border-radius:5px}
-.device-thumb-placeholder:after{content:"";position:absolute;left:15px;top:13px;width:6px;height:2px;border-radius:2px;background:var(--sky);box-shadow:0 8px 0 var(--sky)}
+.device-thumb-placeholder:before{content:"";position:absolute;inset:0;margin:auto;width:18px;height:18px;background:var(--sky);-webkit-mask:var(--fa-image) center/contain no-repeat;mask:var(--fa-image) center/contain no-repeat}
 .new-badge{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--lichen) 65%,var(--border));border-radius:999px;background:var(--new-badge-surface);color:var(--new-badge-text);font-size:10px;font-weight:750;letter-spacing:.06em;white-space:nowrap;text-transform:uppercase}
 .summary-filter-link{margin:0;padding:0;border:0;background:none;color:var(--interactive);font:inherit;font-weight:750;text-decoration:underline;text-underline-offset:3px}
 .admin-state{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;line-height:1;white-space:nowrap}
@@ -8224,8 +8233,8 @@ main.dashboard>.heading-row{align-items:flex-start}
 main.dashboard>.heading-row h1{margin:0}
 .admin-disclosure:not(.filter-disclosure)>summary{position:relative;list-style:none;padding:10px 14px 10px 36px;margin:0;min-height:44px;line-height:24px;font-size:13px;font-weight:650}
 .admin-disclosure:not(.filter-disclosure)>summary::-webkit-details-marker{display:none}
-.admin-disclosure:not(.filter-disclosure)>summary::before{content:'';position:absolute;left:14px;top:50%;width:6px;height:6px;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-50%) rotate(-45deg);transform-origin:center}
-.admin-disclosure[open]:not(.filter-disclosure)>summary::before{transform:translateY(-65%) rotate(45deg)}
+.admin-disclosure:not(.filter-disclosure)>summary::before{content:'';position:absolute;left:13px;top:50%;width:10px;height:10px;background:currentColor;-webkit-mask:var(--fa-chevron-right) center/contain no-repeat;mask:var(--fa-chevron-right) center/contain no-repeat;transform:translateY(-50%);transform-origin:center}
+.admin-disclosure[open]:not(.filter-disclosure)>summary::before{transform:translateY(-50%) rotate(90deg)}
 .admin-disclosure[open]:not(.filter-disclosure)>summary{margin-bottom:0}
 .model-information-columns>details,details.overview-panel,details.model-page-section{padding:0;min-height:0}
 .provider-component-list{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;min-width:200px}.provider-component-list>span{display:grid;grid-template-columns:90px max-content;align-items:center;gap:8px}
@@ -8272,7 +8281,7 @@ h1,h2,h3,h4{font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
 .admin-section-nav details{position:relative;flex:0 0 auto}
 .admin-section-nav details>summary{display:inline-flex;align-items:center;min-height:34px;padding:7px 9px;border-radius:var(--admin-control-radius);color:var(--secondary);cursor:pointer;font-size:var(--admin-type-control-size);font-weight:650;list-style:none;white-space:nowrap}
 .admin-section-nav details>summary::-webkit-details-marker{display:none}
-.admin-section-nav details>summary::after{content:'⌄';margin-inline-start:5px;color:var(--secondary);font-size:12px}
+.admin-section-nav details>summary::after{content:'';display:inline-block;width:10px;height:10px;margin-inline-start:6px;background:var(--secondary);-webkit-mask:var(--fa-chevron-down) center/contain no-repeat;mask:var(--fa-chevron-down) center/contain no-repeat}
 .admin-section-nav details>summary:hover,.admin-section-nav details>summary.active{background:var(--surface-muted);color:var(--interactive)}
 .admin-tools-popover{display:grid;gap:2px;position:absolute;z-index:25;top:calc(100% + 7px);left:0;right:auto;min-width:190px;padding:7px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);box-shadow:0 14px 34px color-mix(in srgb,var(--graphite) 16%,transparent)}
 .admin-tools-popover a{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 9px;color:var(--graphite);font-size:12px;font-weight:650;text-decoration:none}
@@ -8283,7 +8292,7 @@ h1,h2,h3,h4{font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
 .filter-bar .filter-clear{margin-left:0}
 .diagnostic-secondary-action{grid-column:1/-1;padding-top:2px}
 .diagnostic-secondary-action>summary{padding:8px 0;color:var(--interactive);font-size:12px;font-weight:750}
-.admin-icon{display:inline-block;width:1em;height:1em;flex:0 0 auto;vertical-align:-.15em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.admin-icon{display:inline-block;width:1em;height:1em;flex:0 0 auto;vertical-align:-.15em;fill:currentColor}
 .device-table-wrap tbody tr,.evidence-model-row{cursor:default}
 .device-model-button{border-radius:6px}
 .device-model-button:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px}
@@ -8362,10 +8371,10 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .identification-page{max-width:1200px}.identification-page h1{text-wrap:balance}.identification-page summary{cursor:pointer;min-height:44px;align-content:center}.identification-workspace{max-width:900px}.identification-workspace h2{margin-block:20px 12px;font-size:24px}.identification-workspace h3{margin:0 0 7px;font-size:16px;line-height:1.4}.identification-workspace h4{margin:0 0 8px;font-size:14px}.identification-workspace p{max-width:75ch;line-height:1.5}.identification-search{display:flex;align-items:flex-end;gap:12px;margin-block:20px}.identification-search label{display:grid;gap:8px;flex:1;min-width:0;font-weight:600}.identification-search input{width:100%;min-width:0}.identification-page :is(input,textarea)::placeholder{color:var(--secondary);opacity:1}.identification-choice{display:flex;justify-content:space-between;align-items:center;gap:20px;min-height:70px;padding:14px 4px;border-top:1px solid var(--border);text-decoration:none;color:inherit}.identification-choice:hover strong{text-decoration:underline}.identification-badges{display:flex;flex-wrap:wrap;gap:6px}.identification-page :is(.identification-pending,.identification-missing){color:var(--status-tested-text);background:var(--status-tested-surface);border-color:var(--status-tested-border)}.identification-workspace .identity-mappings{display:grid;gap:18px;margin-top:18px;padding:0}.identification-workspace .identity-mapping-source{display:grid;gap:18px;padding:0 0 20px;border-bottom:1px solid var(--border)}.identification-step{min-width:0}.identification-reported-name{display:block;font-size:16px;line-height:1.45}.identification-source-link{margin-top:7px}.identification-source-unavailable{color:var(--secondary);font-size:13px}.identification-match{display:grid;gap:4px}.identification-match>span{color:var(--secondary);font-size:13px}.identification-other-models ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}.identification-other-models li{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--border)}.identification-other-models li>span{color:var(--secondary);font-size:12px}.identification-confirm{padding:16px;border-radius:var(--radius-card);background:var(--surface-muted)}.identification-existing-decision{margin:0 0 12px;font-size:13px}.identification-workspace .identity-mapping-review{display:grid;grid-template-columns:1fr;gap:12px}.identification-workspace .identity-mapping-review label{display:grid;gap:6px;font-weight:600}.identification-workspace .identity-mapping-review textarea{width:100%;min-width:0;font:inherit}.identification-decision-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.identification-decision-actions button{min-height:44px}.identity-mapping-review .identification-decision-actions button.secondary-button{color:var(--interactive);background:var(--surface);border:1px solid var(--border)}.identity-mapping-review .identification-decision-actions button.secondary-button:hover{background:var(--surface-muted)}.identification-workspace .admin-action-status:empty{display:none}.identification-workspace .admin-action-status{margin:0;color:var(--graphite);font-size:13px}.identification-workspace .admin-action-status[data-error="true"]{color:var(--error-text)}.identification-technical{margin-top:0}.identification-technical .disclosure-body{display:grid;gap:16px}.identification-technical .disclosure-body>section{padding-top:16px;border-top:1px solid var(--border)}.identification-technical .model-information-list{margin:0}.identification-technical ul{margin:8px 0 0;padding-inline-start:20px}.identification-model-detail-link{margin-top:2px}.identification-empty{padding-block:20px}.identification-not-found{color:var(--error-text);background:var(--error-surface);padding:16px;border-radius:var(--radius-card)}.identification-page :is(a,button,input,textarea,select,summary):focus-visible{outline:var(--admin-focus-ring);outline-offset:3px}.identification-page :is(a,p,strong,dd){overflow-wrap:anywhere}.identification-page .section-link{color:var(--graphite);text-decoration:underline;text-underline-offset:3px}
 @media(max-width:760px){.identification-choice{align-items:flex-start;flex-direction:column;gap:10px}.identification-workspace .identity-mappings{gap:16px}.identification-other-models li{align-items:flex-start;flex-direction:column;gap:3px}.identification-confirm{padding:14px}.identification-decision-actions{display:grid;grid-template-columns:1fr}.identification-decision-actions button{width:100%}.identification-search{align-items:stretch;flex-direction:column}.identification-search button{align-self:flex-start}.identification-page :is(input,textarea){font-size:16px!important}.identification-workspace h2{font-size:22px}}
 
-.download-history{margin:0;font-size:13px}.download-history>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;list-style:none;cursor:pointer;min-height:44px;align-content:center}.download-history>summary::-webkit-details-marker{display:none}.download-history>summary .overview-activity-label::before{content:'›';display:inline-block;width:14px;margin-right:4px;color:var(--interactive);transform-origin:5px center}.download-history[open]>summary .overview-activity-label::before{transform:rotate(90deg)}.download-history>summary>time{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item .download-history .download-context{grid-column:1;grid-row:2;display:block;margin-left:18px;color:var(--secondary);font-size:12px;font-weight:400;overflow-wrap:anywhere}.download-history>summary:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px;border-radius:4px}.download-history[open]>.download-timeline{margin-top:6px;margin-left:18px}.download-elapsed{font-variant-numeric:tabular-nums}@media(max-width:480px){.download-history>summary{gap:3px 8px}.download-history>summary>time{font-size:11px}}
+.download-history{margin:0;font-size:13px}.download-history>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;list-style:none;cursor:pointer;min-height:44px;align-content:center}.download-history>summary::-webkit-details-marker{display:none}.download-history>summary .overview-activity-label::before{content:'';display:inline-block;width:8px;height:10px;margin-right:8px;background:var(--interactive);-webkit-mask:var(--fa-chevron-right) center/contain no-repeat;mask:var(--fa-chevron-right) center/contain no-repeat;transform-origin:center}.download-history[open]>summary .overview-activity-label::before{transform:rotate(90deg)}.download-history>summary>time{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item .download-history .download-context{grid-column:1;grid-row:2;display:block;margin-left:18px;color:var(--secondary);font-size:12px;font-weight:400;overflow-wrap:anywhere}.download-history>summary:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px;border-radius:4px}.download-history[open]>.download-timeline{margin-top:6px;margin-left:18px}.download-elapsed{font-variant-numeric:tabular-nums}@media(max-width:480px){.download-history>summary{gap:3px 8px}.download-history>summary>time{font-size:11px}}
 
 .download-timeline{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:0 0 4px;font-size:13px}
-.download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'→';color:var(--secondary);margin-right:8px}
+.download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'';display:inline-block;width:10px;height:10px;margin-right:8px;background:var(--secondary);-webkit-mask:var(--fa-arrow-right) center/contain no-repeat;mask:var(--fa-arrow-right) center/contain no-repeat}
 .download-timeline .admin-icon,.download-timeline .download-phase-icon{width:14px;height:14px;flex:none}.download-timeline time{font-size:12px;font-variant-numeric:tabular-nums;position:static}
 @media(max-width:700px){.download-history summary{min-height:44px}}
 
@@ -8382,7 +8391,7 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-activity-row .overview-activity-label>a{color:var(--interactive);text-underline-offset:3px}
 .map-activity-row .overview-activity-label .download-phase-icon{width:14px;height:14px;flex:0 0 14px}
 .map-activity-row .download-history>summary .overview-activity-label::before{content:none}
-.map-activity-row .download-history>summary .overview-activity-label::after{content:'›';display:inline-block;color:var(--secondary);margin-left:2px;line-height:1;transform-origin:center}
+.map-activity-row .download-history>summary .overview-activity-label::after{content:'';display:inline-block;width:8px;height:10px;margin-left:5px;background:var(--secondary);-webkit-mask:var(--fa-chevron-right) center/contain no-repeat;mask:var(--fa-chevron-right) center/contain no-repeat;transform-origin:center}
 .map-activity-row .download-history[open]>summary .overview-activity-label::after{transform:rotate(90deg)}
 .map-activity-row>.map-activity-copy>span:not(.overview-activity-label),.map-activity-row .download-history .download-context{margin:0 0 0 21px;font-size:12px;font-weight:400;line-height:1.4;color:var(--secondary)}
 .map-activity-row .download-history[open]>.download-timeline{margin:6px 0 0 21px}
@@ -8495,15 +8504,15 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .identity-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .identity-fact{min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface)}
 .identity-fact-heading{display:flex;align-items:center;gap:6px;color:var(--secondary);font-size:11px;font-weight:700}
-.identity-fact-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:12px;font-weight:800}
+.identity-fact-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px}
 .identity-fact strong{display:block;margin-top:5px;overflow-wrap:anywhere;font-size:13px;line-height:1.35}
 .identity-fact small{display:block;margin-top:5px;color:var(--secondary);font-size:10px}
 .identity-fact-match{border-color:var(--status-success-border);background:var(--status-success-surface)}
-.identity-fact-match .identity-fact-icon{background:var(--status-success-border);color:var(--status-success-text)}
+.identity-fact-match .identity-fact-icon{color:var(--status-success-text)}
 .identity-fact-conflict{border-color:var(--status-error-border);background:var(--status-error-surface)}
-.identity-fact-conflict .identity-fact-icon{background:var(--status-error-border);color:var(--status-error-text)}
+.identity-fact-conflict .identity-fact-icon{color:var(--status-error-text)}
 .identity-fact-missing{border-color:var(--border);background:var(--surface-muted)}
-.identity-fact-missing .identity-fact-icon{background:var(--surface);color:var(--secondary)}
+.identity-fact-missing .identity-fact-icon{color:var(--secondary)}
 .identity-selected-model{display:grid;gap:3px;margin-top:12px;padding:12px 14px;border-left:3px solid var(--interactive);background:var(--surface-muted)}
 .identity-selected-model strong{overflow-wrap:anywhere}.identity-selected-model small{color:var(--secondary);font-size:11px}
 .identity-picker{margin-top:10px}.identity-picker[hidden]{display:none}
@@ -8585,7 +8594,7 @@ ADMIN_STYLES += """
 .admin-scope-chip{display:inline-flex;align-items:center;min-height:20px;padding:1px 8px;border:1px solid var(--status-neutral-border);border-radius:999px;background:var(--status-neutral-surface);color:var(--status-neutral-text);font:600 12px/16px var(--font-ui);white-space:nowrap}
 .admin-scope-chip[data-scope="period"]{border-color:var(--status-supported-border);background:var(--selected-tint);color:var(--status-supported-text)}
 .admin-pill{display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:3px 8px;border:1px solid var(--status-neutral-border);border-radius:999px;background:var(--status-neutral-surface);color:var(--status-neutral-text);font:600 12px/16px var(--font-ui);letter-spacing:0;text-transform:none;white-space:nowrap;vertical-align:middle}
-.admin-pill .admin-icon{width:14px;height:14px;stroke-width:1.75}
+.admin-pill .admin-icon{width:14px;height:14px}
 .admin-pill-success{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}
 .admin-pill-danger{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}
 .admin-pill-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-warning-text)}
@@ -8761,6 +8770,20 @@ ADMIN_STYLES += """
 }
 .overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}
 """
+
+
+def _fa_mask_css() -> str:
+    """CSS custom properties holding Font Awesome icons as data: masks for
+    pseudo-element markers (chevrons, timeline arrows, placeholders)."""
+    def url(name: str) -> str:
+        view_box, path = _FA_ICONS[name]
+        svg = f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='{view_box}'><path d='{path}'/></svg>"
+        return 'url("data:image/svg+xml,' + quote(svg, safe="/:=' ") + '")'
+    names = ("chevron-down", "chevron-right", "arrow-right", "image")
+    return ":root{" + ";".join(f"--fa-{name}:{url(name)}" for name in names) + "}\n"
+
+
+ADMIN_STYLES += _fa_mask_css()
 
 def _error(message: str | None) -> str:
     return f"<p class='error'>{html.escape(message)}</p>" if message else ""

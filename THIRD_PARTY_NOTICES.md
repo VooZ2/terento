@@ -196,3 +196,16 @@ Paths and attribution comments are unchanged; only CSS/accessibility attributes
 are added. No runtime or font dependency is introduced.
 
 Recent map activity also uses original solid `circle-xmark`, `ban`, `triangle-exclamation`, `circle-check` and `circle-info` assets from the same pinned Font Awesome Free 7.3.1 revision above, under CC BY 4.0, with attribution comments retained.
+
+### Admin interface icons
+
+Every other Admin icon (owner decision 2026-10-06: no hand-drawn icons) uses
+original solid SVGs from the same pinned Font Awesome Free 7.3.1 revision under
+CC BY 4.0: `arrow-up-right-from-square`, `arrow-right`, `arrow-left`, `check`,
+`clock`, `xmark`, `circle-xmark`, `triangle-exclamation`, `circle-info`,
+`circle-question`, `circle-minus`, `download`, `message`, `circle-check`,
+`circle-exclamation`, `chevron-down`, `chevron-right` and `image`. Their
+unchanged viewBox and path data live in `_FA_ICONS` in
+`backend/catalog-api/src/terento_catalog/admin.py` under the Font Awesome
+attribution comment; they are rendered as inline SVG or as `data:` CSS masks.
+No Font Awesome font, CSS or runtime and no external icon origin is used.
