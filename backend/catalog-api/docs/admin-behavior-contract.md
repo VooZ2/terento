@@ -238,8 +238,10 @@ are one or two words. App downloads means Terento application downloads (GitHub
 period increases in the legend and its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
 population for the period (sessions, connected vs not connected by reason,
-authorization outcomes and the top waiting models); it never mixes into install
-counts. A failed sub-query renders that card as `Unavailable` with a Retry link
+authorization outcomes and the top waiting models); each reason, outcome and
+model is one row with its label, a small horizontal bar scaled to its share of
+the period's sessions and its count as text (zero rows are omitted). It never
+mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
 Activity is internally scrollable and must not force page height. A generic
 activity row has no Maps link unless an exact useful destination exists.

@@ -135,10 +135,19 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn(">First run</h2>", body)
         self.assertIn("data-scope='period'>Last 7 days</span>", card)
         self.assertIn(">5</strong>", card)
-        self.assertIn("No USB <strong>1</strong>", card)
-        self.assertIn("Approved <strong>3</strong> · Pending <strong>1</strong>", card)
-        self.assertIn("fenix 8 <strong>1</strong>", card)
+        # Each reason/outcome is a small bar with its label and count as text;
+        # the bar width is the share of the period's first-run sessions.
+        def bar(label, count, share):
+            return (f"<li><span class='overview-funnel-label'>{label}</span>"
+                    f"<span class='overview-funnel-bar' aria-hidden='true'><i style='width:{share:.1f}%'></i></span>"
+                    f"<strong>{count}</strong><span class='sr-only'> of 5 sessions</span></li>")
+        self.assertIn(bar("No USB", 1, 20), card)
+        self.assertIn(bar("Approved", 3, 60) + bar("Pending", 1, 20), card)  # ordered by count
+        self.assertIn(bar("fenix 8", 1, 20), card)
+        for title in ("Not connected", "Authorization", "Waiting models"):
+            self.assertIn(f"<h3>{title}</h3><ul class='overview-funnel-bars' aria-label='{title}'>", card)
         self.assertNotIn("Not in MTP mode", card)  # zero outcomes are not listed
+        self.assertNotIn("<dl class='overview-funnel-breakdown'>", card)
 
     def test_first_run_card_states(self):
         self.assertIn("Could not load this section.", _funnel_card({"available": False}, "7d"))

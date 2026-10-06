@@ -2340,27 +2340,36 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
             _metric_tile("Not connected", sum(not_connected.values()), failure=True),
         ], label="First run sessions")
 
-        def breakdown(items: dict[str, int]) -> str:
-            ordered = sorted(items.items(), key=lambda item: (-item[1], item[0]))
-            return " · ".join(
-                f"{html.escape(_FUNNEL_LABELS.get(key, key.replace('_', ' ').title()))} <strong>{value:,}</strong>"
-                for key, value in ordered
-            ) or "—"
+        def bars(title: str, items: list[tuple[str, int]]) -> str:
+            """Label, a bar scaled to the share of sessions, and the count."""
+            rows = "".join(
+                f"<li><span class='overview-funnel-label'>{html.escape(label)}</span>"
+                f"<span class='overview-funnel-bar' aria-hidden='true'><i style='width:{min(100.0, value / sessions * 100):.1f}%'></i></span>"
+                f"<strong>{value:,}</strong><span class='sr-only'> of {sessions:,} sessions</span></li>"
+                for label, value in items
+            ) or "<li class='overview-funnel-none'><span class='overview-funnel-label'>—</span></li>"
+            return (
+                f"<div class='overview-funnel-group'><h3>{html.escape(title)}</h3>"
+                f"<ul class='overview-funnel-bars' aria-label='{html.escape(title, quote=True)}'>{rows}</ul></div>"
+            )
+
+        def ordered(items: dict[str, int]) -> list[tuple[str, int]]:
+            return [
+                (_FUNNEL_LABELS.get(key, key.replace('_', ' ').title()), value)
+                for key, value in sorted(items.items(), key=lambda item: (-item[1], item[0]))
+            ]
 
         waiting = [
-            item for item in funnel.get("modelsNeedingReview") or []
+            (str(item["baseModel"]), _optional_nonnegative_int(item.get("sessionCount")) or 0)
+            for item in funnel.get("modelsNeedingReview") or []
             if isinstance(item, dict) and item.get("baseModel")
         ][:3]
-        waiting_markup = " · ".join(
-            f"{html.escape(str(item['baseModel']))} <strong>{_optional_nonnegative_int(item.get('sessionCount')) or 0}</strong>"
-            for item in waiting
-        ) or "—"
         body = tiles + (
-            "<dl class='overview-funnel-breakdown'>"
-            f"<div><dt>Not connected</dt><dd>{breakdown(not_connected)}</dd></div>"
-            f"<div><dt>Authorization</dt><dd>{breakdown(authorization)}</dd></div>"
-            f"<div><dt>Waiting models</dt><dd>{waiting_markup}</dd></div>"
-            "</dl>"
+            "<div class='overview-funnel-breakdown'>"
+            + bars("Not connected", ordered(not_connected))
+            + bars("Authorization", ordered(authorization))
+            + bars("Waiting models", waiting)
+            + "</div>"
         )
     return _section_card(
         "First run", body, card_id="overview-funnel", scope=period,
@@ -8731,12 +8740,11 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-all-time{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0;color:var(--secondary);font-size:13px}
 .overview-all-time strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600}
 .overview-all-time>.section-link{margin-left:auto}
-.overview-purposes,.overview-funnel-breakdown{display:grid;gap:4px;margin:10px 0 0;font-size:13px}
+.overview-purposes{display:grid;gap:4px;margin:10px 0 0;font-size:13px}
 .overview-purposes{grid-template-columns:repeat(3,minmax(0,max-content));gap:4px 20px}
-.overview-purposes>div,.overview-funnel-breakdown>div{display:flex;flex-wrap:wrap;gap:4px 8px;min-width:0}
-.overview-purposes dt,.overview-funnel-breakdown dt{color:var(--secondary)}
-.overview-purposes dd,.overview-funnel-breakdown dd{margin:0;font-variant-numeric:tabular-nums}
-.overview-funnel-breakdown dt{min-width:110px}
+.overview-purposes>div{display:flex;flex-wrap:wrap;gap:4px 8px;min-width:0}
+.overview-purposes dt{color:var(--secondary)}
+.overview-purposes dd{margin:0;font-variant-numeric:tabular-nums}
 @media(max-width:560px){.overview-purposes{grid-template-columns:minmax(0,1fr)}}
 .admin-glossary{display:grid;gap:0;margin:0}
 .admin-glossary-entry{display:grid;grid-template-columns:minmax(160px,220px) minmax(0,1fr);gap:4px 20px;padding:12px 0;border-top:1px solid var(--border);scroll-margin-top:calc(var(--admin-topbar-height) + 16px)}
@@ -8797,6 +8805,14 @@ ADMIN_STYLES += """
 .overview-chart-panel>.overview-all-time,.overview-download-panel>.overview-all-time{margin-top:auto;padding-top:10px}
 .overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
 .overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
+.overview-funnel-breakdown{display:grid;gap:12px;margin:12px 0 0}
+.overview-funnel-group h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
+.overview-funnel-bars{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
+.overview-funnel-bars li{display:grid;grid-template-columns:minmax(96px,1.1fr) minmax(0,2fr) minmax(32px,auto);align-items:center;gap:8px;min-width:0}
+.overview-funnel-label{min-width:0;overflow-wrap:anywhere}
+.overview-funnel-bar{display:block;height:8px;border-radius:4px;background:var(--surface-muted)}
+.overview-funnel-bar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--status-neutral-text)}
+.overview-funnel-bars strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
 .overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
 .overview-chart-values-date{color:var(--graphite)}
 .overview-chart-values-hint{color:var(--secondary)}
