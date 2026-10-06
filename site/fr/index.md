@@ -87,6 +87,8 @@ Pour explorer les petits sentiers à pied.
 
 Certains libellés de la carte sont en français.
 
+[Comparer les styles en direct](https://terento.app/fr/map-styles/)
+
 Vous avez des questions ?
 
 ## FAQ

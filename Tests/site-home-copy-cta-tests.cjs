@@ -153,7 +153,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261006-troubleshooting-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261006-map-styles-v3">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
@@ -257,9 +257,9 @@ for (const [locale, expected] of locales) {
     assert.equal((list[1].match(/<li>/g) || []).length, 3, `${locale}: exactly three benefits per map`);
   }
   assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 5);
-  assert.match(providerSection, /data-provider-previous aria-controls="provider-cards"/);
-  assert.match(providerSection, /data-provider-next aria-controls="provider-cards"/);
-  assert.match(page, /provider-list\.js\?v=20260912-bbbike-types-v1/);
+  assert.doesNotMatch(providerSection, /data-provider-previous|data-provider-next/);
+  assert.match(providerSection, new RegExp(`<p class="provider-compare"><a class="text-link" href="${locale === "en" ? "" : `/${locale}`}/map-styles/"`));
+  assert.match(page, /provider-list\.js\?v=20261006-map-styles-link-v1/);
   assert.match(providerSection, /data-count-template="[^"]*\{count\}[^"]*"/);
   assert.match(providerSection, /63/);
   assert.match(providerSection, /177/);

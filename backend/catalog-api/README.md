@@ -290,10 +290,8 @@ downloads, stores, proxies, mirrors, or serves a provider map binary.
 ## Map style previews
 
 The scheduler's `map-preview-renderer` thread draws comparison tiles for the
-public website's Map styles page from `contracts/map-preview-areas.json`
-(copied into the package as `map_preview/areas.json`; a test keeps the copies
-equal). That page is published separately, after the first preview release
-exists; until then the manifest and tiles have no public consumer. It is
+public Map styles page from `contracts/map-preview-areas.json` (copied into
+the package as `map_preview/areas.json`; a test keeps the copies equal). It is
 off unless `MAP_PREVIEW_ENABLED=true`, and only providers an operator switched
 on under Admin › Providers › Map style previews are rendered.
 
@@ -304,7 +302,8 @@ area and style it picks catalog packages by country and the area's
 `regionHints`, downloads one package at a time from the reviewed provider
 paths (no redirects, the Terento user agent, `Retry-After` honoured, size and
 free-disk limits), checks that the map covers the area, renders WebP tiles
-with the bundled `terento-preview-render`, and deletes the download in a
+with the bundled `terento-preview-render` on white paper (BBBike and MapRando
+maps have no land fill), and deletes the download in a
 `finally` block. Newly drawn layers are published as a release under
 `<TERENTO_ASSET_ROOT>/previews/releases/<id>` at most every
 `MAP_PREVIEW_PUBLISH_MINUTES` while the window runs and once more when it

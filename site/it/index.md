@@ -87,6 +87,8 @@ Per esplorare i sentieri minori a piedi.
 
 Alcune etichette della mappa sono in francese.
 
+[Confronta gli stili dal vivo](https://terento.app/it/map-styles/)
+
 Hai domande?
 
 ## FAQ

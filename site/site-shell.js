@@ -28,7 +28,7 @@
       const copy = translations[language];
       if (!copy) return;
       const root = language === "en" ? "/" : `/${language}/`;
-      const routes = {about: "about/", compatibility: "compatibility/", guide: "guides/install-garmin-maps-mac/", faq: "#faq", troubleshooting: "guides/troubleshooting/", download: "download/"};
+      const routes = {about: "about/", compatibility: "compatibility/", styles: "map-styles/", guide: "guides/install-garmin-maps-mac/", faq: "#faq", troubleshooting: "guides/troubleshooting/", download: "download/"};
       document.querySelectorAll("[data-shell-copy]").forEach(node => { node.textContent = copy[node.dataset.shellCopy]; });
       document.querySelectorAll("[data-shell-aria]").forEach(node => { node.setAttribute("aria-label", copy[node.dataset.shellAria]); });
       document.querySelectorAll("[data-shell-root]").forEach(node => { node.href = root; });

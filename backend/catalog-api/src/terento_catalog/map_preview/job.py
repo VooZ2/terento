@@ -73,6 +73,7 @@ class WindowResult:
     failed: int = 0
     skipped_budget: bool = False
     release: str | None = None
+    lease_busy: bool = False
 
 
 def parse_window(value: str) -> tuple[day_time, day_time]:
@@ -110,8 +111,14 @@ def plan_work(
     *,
     now: datetime,
     refresh_days: int,
+    published: set[tuple[str, str]] | None = None,
 ) -> tuple[list[WorkItem], list[tuple[PreviewArea, PreviewStyle]]]:
-    """Return (layers to render, layers no enabled package covers)."""
+    """Return (layers to render, layers no enabled package covers).
+
+    A layer counts as done only when its tiles are in the published release:
+    a renderer stopped between drawing a layer and publishing it leaves an
+    AVAILABLE row without tiles, and that layer is drawn again.
+    """
     work: list[WorkItem] = []
     uncovered: list[tuple[PreviewArea, PreviewStyle]] = []
     ordered = sorted(areas, key=lambda area: (not area.featured, areas.index(area)))
@@ -129,7 +136,7 @@ def plan_work(
                 retry_at = existing.get("retry_not_before")
                 if retry_at is not None and retry_at > now:
                     continue
-                if existing["status"] == "AVAILABLE":
+                if existing["status"] == "AVAILABLE" and (published is None or (area.id, style.id) in published):
                     current = {(c.package_id, c.package_version) for c in candidates}
                     fresh = existing.get("rendered_at") and existing["rendered_at"] > now - timedelta(days=refresh_days)
                     if (existing.get("package_id"), existing.get("package_version")) in current and fresh:
@@ -165,6 +172,7 @@ class PreviewRun:
         owner = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
         if not self.db.acquire_lease(owner, LEASE_SECONDS):
             LOGGER.info("map previews: another renderer holds the lease")
+            result.lease_busy = True
             return result
         renewing = Event()
         renewer = Thread(target=self._renew_lease, args=(owner, renewing), name="map-preview-lease", daemon=True)
@@ -178,13 +186,23 @@ class PreviewRun:
             layers = self.db.layers()
             bounds = self.db.package_bounds()
             enabled = self.db.enabled_providers()
+            current = self.store.current_release()
+            published = self.store.layers(current) if current else set()
+            # Layers an earlier renderer left with transparent land are redrawn.
+            published = {key for key in published if not self.store.has_transparency(current, *key)}
             work, uncovered = plan_work(
                 self.areas, packages, layers, bounds, enabled,
                 now=self.clock(), refresh_days=self.settings.refresh_days,
+                published=published,
             )
             for area, style in uncovered:
                 self.db.save_layer(area.id, style.id, style.provider_id, "NOT_COVERED")
                 result.not_covered += 1
+            # A layer marked uncovered that now has a package (for example
+            # after a catalog change) is pending again, not "no map here".
+            for item in work:
+                if item.existing is not None and item.existing.get("status") == "NOT_COVERED":
+                    self.db.save_layer(item.area.id, item.style.id, item.style.provider_id, "PENDING")
             LOGGER.info("map previews: %d layers to render, %d not covered", len(work), len(uncovered))
             staging = self.store.staging_dir(job)
             queue = list(work)
@@ -389,6 +407,11 @@ def run_worker(database: Any, stop: Event, settings: PreviewSettings, *, clock=l
         _heartbeat(database, status="RUNNING", started_at=now)
         try:
             result = PreviewRun(database, settings, renderer=renderer, clock=clock).run(end, stop)
+            if result.lease_busy:
+                # A renderer stopped by a deploy keeps its lease until it
+                # expires; retry soon instead of waiting for the next window.
+                stop.wait(LEASE_RENEW_SECONDS)
+                continue
             status = "WARNING" if result.failed or result.skipped_budget else "HEALTHY"
             summary = None
             if result.failed or result.skipped_budget:

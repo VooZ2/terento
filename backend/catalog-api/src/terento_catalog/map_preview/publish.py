@@ -81,6 +81,19 @@ class PreviewStore:
                         found.add((area.name, style.name))
         return found
 
+    def has_transparency(self, release: str, area_id: str, style_id: str) -> bool:
+        """Whether a published layer's first tile carries an alpha channel.
+
+        Tiles are drawn on white paper; an alpha channel marks a layer drawn
+        by an earlier renderer that left land transparent.
+        """
+        base = self.releases / release / area_id / style_id
+        for directory, _dirs, files in os.walk(base):
+            for name in sorted(files):
+                if name.endswith(".webp"):
+                    return webp_has_alpha(Path(directory, name))
+        return False
+
     # Writing -------------------------------------------------------------
     def staging_dir(self, job: str) -> Path:
         path = self.staging / job
@@ -161,6 +174,22 @@ class PreviewStore:
                     seen.add(key)
                     total += stat.st_size
         return total
+
+
+def webp_has_alpha(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(64)
+    except OSError:
+        return False
+    if header[:4] != b"RIFF" or header[8:12] != b"WEBP":
+        return False
+    chunk = header[12:16]
+    if chunk == b"VP8X":
+        return bool(header[20] & 0x10)
+    if chunk == b"VP8L":
+        return bool(header[24] & 0x10) if len(header) > 24 else False
+    return False
 
 
 def directory_bytes(path: Path) -> int:

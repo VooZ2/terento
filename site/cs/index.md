@@ -87,6 +87,8 @@ Pro pěší objevování menších stezek.
 
 Některé popisky mapy jsou ve francouzštině.
 
+[Porovnat styly map naživo](https://terento.app/cs/map-styles/)
+
 Máte otázky?
 
 ## FAQ

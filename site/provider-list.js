@@ -3,16 +3,10 @@
   if (!cards.length) return;
 
   const row = document.querySelector('[data-provider-cards]');
-  const controls = document.querySelector('[data-provider-controls]');
-  const previous = controls?.querySelector('[data-provider-previous]');
-  const next = controls?.querySelector('[data-provider-next]');
+  // The row scrolls sideways on narrow screens; it takes keyboard focus only then.
   const updateControls = () => {
-    if (!row || !controls) return;
-    const overflow = row.scrollWidth > row.clientWidth + 2;
-    controls.hidden = !overflow;
-    row.tabIndex = overflow ? 0 : -1;
-    previous.disabled = row.scrollLeft <= 2;
-    next.disabled = row.scrollLeft + row.clientWidth >= row.scrollWidth - 2;
+    if (!row) return;
+    row.tabIndex = row.scrollWidth > row.clientWidth + 2 ? 0 : -1;
   };
   const move = (direction) => {
     const visible = cards.filter((card) => !card.hidden);
@@ -24,10 +18,7 @@
     row.scrollBy({ left: target.getBoundingClientRect().left - row.getBoundingClientRect().left,
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
-  if (row && controls) {
-    previous.addEventListener('click', () => move(-1));
-    next.addEventListener('click', () => move(1));
-    row.addEventListener('scroll', updateControls, { passive: true });
+  if (row) {
     row.addEventListener('keydown', (event) => {
       if (event.target !== row || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
       event.preventDefault();

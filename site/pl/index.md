@@ -87,6 +87,8 @@ Do odkrywania mniejszych szlaków pieszo.
 
 Niektóre opisy na mapie są po francusku.
 
+[Porównaj style map na żywo](https://terento.app/pl/map-styles/)
+
 Masz pytania?
 
 ## FAQ

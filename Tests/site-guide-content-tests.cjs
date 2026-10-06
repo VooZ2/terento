@@ -168,8 +168,8 @@ for (const locale of locales) {
     const footer = source.match(/<nav class="footer-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
     assert.ok(primary && footer, relative + ": static shell navs");
     const hrefs = (fragment) => [...fragment.matchAll(/<a[^>]*href="([^"]+)"/g)].map((match) => match[1]);
-    assert.deepEqual(hrefs(primary).slice(0, 4), [rootPath + "compatibility/", rootPath + slug, rootPath + "about/", rootPath + "download/"], relative + ": primary nav");
-    assert.deepEqual(hrefs(footer), [rootPath + "about/", rootPath + "compatibility/", rootPath + slug, rootPath + "#faq", rootPath + "guides/troubleshooting/", rootPath + "download/", "/legal/", "/privacy/"], relative + ": footer nav");
+    assert.deepEqual(hrefs(primary).slice(0, 5), [rootPath + "compatibility/", rootPath + "map-styles/", rootPath + slug, rootPath + "about/", rootPath + "download/"], relative + ": primary nav");
+    assert.deepEqual(hrefs(footer), [rootPath + "about/", rootPath + "compatibility/", rootPath + "map-styles/", rootPath + slug, rootPath + "#faq", rootPath + "guides/troubleshooting/", rootPath + "download/", "/legal/", "/privacy/"], relative + ": footer nav");
     assert.match(source, /Support Terento/);
     const languageOptions = source.match(/<div class="language-options">([\s\S]*?)<\/div>/)?.[1];
     assert.ok(languageOptions, relative + ": language options");
@@ -209,15 +209,15 @@ for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
   const source = read(path.join(root, file));
   assert.match(source, /data-page="(?:legal|privacy)"/);
   const scripts = [...source.matchAll(/<script defer src="([^"]+)"/g)].map((match) => match[1]);
-  const controller = "/page-language.js?v=20260905-shared-page-language-v1";
-  const copy = `/${file.split("/")[1]}-language.js?v=20260905-shared-page-language-v1`;
+  const controller = "/page-language.js?v=20261006-shared-page-language-v2";
+  const copy = `/${file.split("/")[1]}-language.js?v=20261006-shared-page-language-v2`;
   assert.equal(scripts.filter((src) => src === controller).length, 1);
   assert.equal(scripts.filter((src) => src === copy).length, 1);
   assert.ok(scripts.findIndex((src) => src.startsWith("/language.js?")) < scripts.indexOf(controller));
   assert.equal(scripts.indexOf(copy), scripts.indexOf(controller) + 1);
   const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(primary, file + ": static shell nav");
-  assert.deepEqual([...primary.matchAll(/<a[^>]*href="([^"]+)"/g)].slice(0, 4).map((match) => match[1]), ["/compatibility/", "/guides/install-garmin-maps-mac/", "/about/", "/download/"], file + ": primary nav");
+  assert.deepEqual([...primary.matchAll(/<a[^>]*href="([^"]+)"/g)].slice(0, 5).map((match) => match[1]), ["/compatibility/", "/map-styles/", "/guides/install-garmin-maps-mac/", "/about/", "/download/"], file + ": primary nav");
 }
 // Exercise in-page switching after the shell replaces every language link.
 const vm = require("node:vm");
@@ -346,7 +346,6 @@ for (const pageName of ["legal", "privacy"]) {
       assert.equal(node('meta[name="twitter:description"]').content, node('meta[name="description"]').content);
       assert.ok(node("[data-i18n]").textContent);
       assert.ok(node("[data-i18n-aria]")["aria-label"]);
-      assert.ok(node("[data-footer-copy]").textContent);
       assert.deepEqual(links.filter((link) => link["aria-current"]).map((link) => link.dataset.languageSwitch), [language]);
     };
     check(locales.includes(preference) ? preference : "en");
