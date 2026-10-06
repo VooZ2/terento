@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+import ipaddress
 import os
 from dataclasses import dataclass
 from pathlib import Path
+
+# The production API binds only to the private Docker network and Traefik
+# terminates HTTPS, so the direct peer is the proxy. X-Forwarded-For is honoured
+# only when the direct peer is inside these networks (loopback and private
+# ranges); a public peer's forwarded header is ignored.
+DEFAULT_TRUSTED_PROXIES = (
+    "127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7",
+)
 
 
 @dataclass(frozen=True)
@@ -19,6 +28,7 @@ class Settings:
     operations_ingest_secret: str | None = None
     opentopomap_contour_mode: str = "off"
     opentopomap_contour_allowlist: tuple[str, ...] = ()
+    trusted_proxies: tuple[str, ...] = DEFAULT_TRUSTED_PROXIES
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -45,6 +55,7 @@ class Settings:
             operations_ingest_secret=_optional_secret("OPERATIONS_INGEST_SECRET"),
             opentopomap_contour_mode=_contour_mode(),
             opentopomap_contour_allowlist=_csv("OPENTOPO_MAP_CONTOUR_ALLOWLIST"),
+            trusted_proxies=_trusted_proxies(),
         )
 
 
@@ -97,3 +108,26 @@ def _csv(name: str) -> tuple[str, ...]:
         for item in os.environ.get(name, "").split(",")
         if item.strip()
     )
+
+
+def _trusted_proxies() -> tuple[str, ...]:
+    """Return proxy networks whose X-Forwarded-For header is trusted.
+
+    ``CATALOG_TRUSTED_PROXIES`` is a comma-separated list of IP addresses or
+    CIDR networks; ``none`` disables forwarded-header trust entirely.
+    """
+    raw = os.environ.get("CATALOG_TRUSTED_PROXIES")
+    if raw is None:
+        return DEFAULT_TRUSTED_PROXIES
+    if raw.strip().lower() == "none":
+        return ()
+    networks = []
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            networks.append(str(ipaddress.ip_network(item, strict=False)))
+        except ValueError as exc:
+            raise RuntimeError("CATALOG_TRUSTED_PROXIES must contain IP addresses or CIDR networks") from exc
+    return tuple(networks)

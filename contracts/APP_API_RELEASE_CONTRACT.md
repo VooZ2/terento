@@ -1,5 +1,77 @@
 # App–API compatibility and release contract
 
+## Release candidate 1.0.0-rc.1 build 41 (staged, unpublished)
+
+The next public app is the first release candidate, staged in
+`Packaging/release-candidate.json` and the Xcode Release label `1.0.0-rc.1`
+(Debug `1.0.0-rc.1-local`). It bundles every unreleased app section below, so
+the API must first be deployed with migrations 067–072 (statistics integrity,
+acquisition purpose, reported identity facts, app funnel events, support
+reports, inventory metrics) and verified per the publication order. Then
+deploy the site, then publish the app. The API already validates release labels
+as SemVer, so `1.0.0-rc.1` is stored as public (`is_local_test=false`) and
+`1.0.0-rc.1-local` as local test data without an API change. The release
+candidate is published on the existing `beta` update channel
+([versioning](../VERSIONING.md)); the manifest schema and channel values are
+unchanged, so installed beta builds are offered it by build number.
+
+## Unreleased statistics integrity and acquisition purpose
+
+Schema-1 download map events add optional `acquisitionPurpose=install|update`
+with the existing acquisition ID/component pair. Absent/null historical values
+remain unknown; no missing terminal event implies a fresh installation.
+Migration 068 adds only a nullable constrained column and preserves old writers.
+Deploy migration and API acceptance, then verify old-client intake and freshly
+encoded install/update downloads before distributing the native producer.
+An API rollback must retain acceptance of the field after client distribution.
+There is no schema-version, device identifier, compatibility authority or map
+write policy change. Strict event-type/outcome agreement also covers legacy
+requests; map result indices reject Boolean, fractional and out-of-range values.
+These are local candidate changes, not a deployed API or released app claim.
+
+## Rejected telemetry parking (unreleased app candidate)
+
+Every durable telemetry queue (map usage, compatibility/update diagnostics and
+the app funnel) treats HTTP 4xx except 408/425/429 as a rejection of that one
+event. The client parks the event locally with its rejection status, count, time
+and app build, and continues with independent later events in order. A parked
+event is offered again only by a different app build or after a 24-hour back-off,
+at most three times per build and ten times overall, and is dropped after the
+24-month telemetry retention window. Retryable failures (network, 408, 425, 429,
+5xx) never park or drop an event: they keep queue order and stop the current send
+attempt, so a rate limit is not burned by later reports. Opt-out clears parked
+events with pending ones. Parked reports keep their original event ID and kind;
+a server rollback that rejects a field therefore delays, but never blocks, other
+telemetry. Replays remain idempotent by event ID. No payload field changes.
+
+Finished compatibility/update diagnostics are written to the durable outbox
+synchronously at the operation result boundary, before delivery is scheduled,
+like map events. Acquisition phases from the download context are persisted in
+callback order from that context, so a fast terminal cannot be dropped behind its
+start and a quit cannot lose an already observed phase. Installation
+`writeStarted` becomes true immediately before the device transfer call; a local
+recovery-record failure before it is a not-started manifest failure. A Safe
+Update cancelled before it enters the transaction is not reported; a busy
+lifecycle lease reports `UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING`; only a
+disconnect or eject that invalidated the operation reports
+`UPDATE_FAILED_DEVICE_DISCONNECTED`. Existing codes and fields are unchanged.
+
+The Install plan accepts at most 100 selected maps per operation ("Select up to
+100 maps at a time."), equal to the API's `selectedMapCount <= 100` diagnostic
+bound; the native map-selection runner fails if the two constants diverge.
+
+## Catalog and installation-policy decoder tolerance (unreleased app candidate)
+
+The next app candidate accepts `/maps/catalog-v4.json` per package and tolerates
+additive installation-policy fields; both rules are owned by
+[`contracts/README.md`](README.md#responses-and-client-compatibility) and
+[`INSTALLATION_AUTHORIZATION.md`](INSTALLATION_AUTHORIZATION.md). Released
+beta.14–beta.18 clients remain strict, so the API must keep the schema-3 policy
+projection key-exact and every published catalog package strictly valid until
+those clients are retired. A breaking policy change ships as a higher
+`schemaVersion`, which the new client reports as update required (no write).
+No payload, route or schema version changes in this candidate.
+
 ## Beta.16 build 38 — provider recovery and update diagnostics
 
 Beta.16 build 38 accepts both reviewed BBBike README date forms in
@@ -40,9 +112,9 @@ identity remain unassigned instead of being backfilled by name.
 Update diagnostics send measured cleanup attempt/result facts. An unmeasured
 `transferProgressBucket` is omitted only for explicit update reports; the
 existing installation contract still requires it. If a rolled-back backend
-returns HTTP 400 for an update report, the client retains its original ID and
-kind for a later flush and continues sending supported installation reports.
-It never removes the discriminator or recasts the update as an installation.
+rejects an update report, the client parks it under its original ID and kind
+(see "Rejected telemetry parking") and continues sending supported installation
+reports. It never removes the discriminator or recasts the update as an installation.
 
 Local update reports and their pending/uploaded IDs are stored separately in
 `update-evidence.json`. The legacy `installation-evidence.json` contains only
@@ -208,7 +280,19 @@ them. Live semantic behavior still needs the separate read-only review above.
 4. Never release a client against an API known to reject its payloads. If a server
    rollback is needed after client publication, retain additive acceptance for
    every distributed client. Prefer a compatible forward fix over rejecting
-   queued reports. Retried event IDs must retain idempotency.
+   queued reports. Retried event IDs must retain idempotency. Released beta.9
+   (builds 10/11) map events have no `releaseLabel`; the API keeps accepting that
+   exact legacy shape and stores the release as unknown (NULL), never local.
+   `contracts/fixtures/map-event.valid-beta9-legacy.json` guards it.
+
+App first-run funnel events (`POST /app-funnel/events`, migration 070,
+[`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md)) follow the same order: deploy
+the API that accepts schema version 1 before any client build emits them.
+Support reports (`POST /support/reports`, migration 071,
+[`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) likewise require the
+API and its migration to be deployed and verified before an app build shows
+"Send report to Terento"; until then a client must keep the report locally and
+only offer the GitHub option.
 
 For build31, `INSTALL_FAILED_UNKNOWN` is the additive compatibility-event code;
 existing schema versions and fields remain unchanged. `MAP_UPDATE_SUCCEEDED` and
@@ -218,6 +302,18 @@ public client can emit them. Initial operation context
 is in memory and terminal reports enter the existing durable outbox. This does
 not add crash journaling before a result exists, and cannot recover a historical
 missing report or infer an unknown user's watch.
+
+## Server-first inventory metrics
+
+Schema version 4 additionally accepts an optional top-level `inventoryMetrics`
+object (`scope` `FULL|GARMIN`, `prewriteObjectCount` 0…10,000,000,
+`prewriteDurationMs` 0…86,400,000, optional `postwriteObjectCount` and
+`postwriteDurationMs`; unknown nested keys are `400`, null means absent;
+versions 1–3 reject it). Migration 072 stores it in the nullable
+`compatibility_evidence_event.inventory_metrics` column; update reports keep it
+in their payload. The metrics are diagnostics only and never counts. Deploy and
+verify the API before an app build emits the field; an older API rejects the
+unknown key with `400`.
 
 ## Server-first structured failure context
 
@@ -268,9 +364,57 @@ kind; session handles are not cross-session identity. Whole-device equality is
 not an installation invariant. Existing protection booleans describe the bounded
 protected scope, not proof that every device byte stayed fixed.
 Unknown objects remain protected; only evidence-scoped runtime categories outside
-map and operation scope are diagnostic. Incomplete authorization/journal evidence,
+map and operation scope are diagnostic. Same-path duplicate plain files outside
+`/GARMIN` without a map suffix stay protected and are compared as a multiset
+instead of blocking as ambiguous. Incomplete authorization/journal evidence,
 ambiguous targets and uncertain cleanup identity fail closed. No automatic retry
 or name-plus-size cleanup authority is introduced.
+
+The pre-write and post-write protected comparisons of fresh installation and
+Safe Update cover the map scope: every storage-root entry on every storage plus
+the complete subtree of the single root folder named `GARMIN` (ASCII case
+ignored). Objects inside other top-level folders (for example `/Music/**`) are
+no longer compared. This is sufficient because every Terento mutation is
+object-scoped inside that subtree: a fresh object is sent into the verified
+`/GARMIN` folder handle under native authorization and a same-session
+no-overwrite check, and every native delete resolves the same folder and
+removes one exact verified object in it (the replaced map or a managed map
+after its recorded sampled removal proof, or full SHA-256 comparison when the
+manifest entry has no proof; a user-confirmed external map always after full
+SHA-256 comparison; automatic cleanup after a lost creation session is refused). The scan only recognizes, manages or
+offers Remove for maps in `/GARMIN` and `/GARMIN/Map`, and storage-root map
+files remain compared. When the native session cannot prove exactly one root
+folder, or the scoped listing fails, it answers with the previous full walk;
+each comparison uses the narrowest scope both sides cover. Map scan, detection,
+Remove, the post-update rescan and prefix reads keep the full walk. The exact
+boundary is described in `app/TerentoCore/README.md` (map-scope protection
+inventory).
+
+Safe Update content checks are app-local and change no payload, schema or
+accepted value. For a Terento-managed map whose manifest entry carries a removal
+proof bound to its recorded size and SHA-256, the installed map is checked
+before writing by that recorded sampled proof in one native read-only session
+(exact same-session object in `/GARMIN`, recorded regions, IMG header, recorded
+digest, re-resolved identity) plus its IMG identity and version; an entry
+without a bound proof (maps installed by earlier versions) keeps the full read
+and SHA-256 of the installed map. The new map is always verified, before the old
+map is touched, by the same sampled read-back as fresh installation against the
+validated local artifact. A sampled mismatch, identity change or read failure
+blocks the update as a full mismatch does and is never retried as another check.
+The residual limitation is the one of installation and removal: same-name,
+same-size content that differs only outside the sampled regions is not detected.
+The exact rules are in `app/TerentoCore/README.md` (Safety and verification).
+
+Compatibility events (installation and `operationKind=update`) may carry an
+optional top-level `inventoryMetrics` object: `scope` (`FULL` or `GARMIN`;
+`GARMIN` only when every measured read was scoped), `prewriteObjectCount`,
+`prewriteDurationMs` and, once a post-write read completed,
+`postwriteObjectCount` and `postwriteDurationMs` (non-negative integers). It
+contains no path, name, size or object handle and is omitted when no inventory
+was measured. Older APIs reject unknown fields, so API acceptance of exactly
+this shape must be deployed before a client that emits it is distributed; until
+then the client parks rejected reports under the existing telemetry parking
+rules.
 
 Durable local ownership is independent of app version and mutation-journal lifetime.
 Without a reliable device/map manifest, managed Update is unavailable and no silent

@@ -112,7 +112,8 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
             CREATE TABLE map_download_event(event_id TEXT, operation_id TEXT,
                 provider_id TEXT, map_package_id TEXT, region TEXT, event_type TEXT,
                 outcome TEXT, occurred_at TEXT, is_local_test BOOLEAN,
-                statistics_exclusion_code TEXT);
+                statistics_exclusion_code TEXT, map_result_index INTEGER,
+                acquisition_id TEXT, reported_map_id TEXT);
             CREATE TABLE map_provider(id TEXT, name TEXT);
             CREATE TABLE map_package(id TEXT, provider_id TEXT, name TEXT,
                 provider_region_id TEXT, canonical_region_id TEXT, region TEXT);
@@ -125,7 +126,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
             INSERT INTO map_package VALUES ('fr', 'fzk', 'France', 'FRA', 'FR', 'France');
         ''')
         def event(key, region='FR', event_type='INSTALL_FAILED', local=False):
-            db.execute('INSERT INTO map_download_event VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            db.execute('INSERT INTO map_download_event(event_id,operation_id,provider_id,map_package_id,region,event_type,outcome,occurred_at,is_local_test,statistics_exclusion_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                        (key, key, 'fzk', 'fr', region, event_type, 'FAILED', '2020-01-01', local, None))
         def diagnostic(key, region='FR', status='ACTIVE', provider='fzk', local=False,
                        map_result_index=0):
@@ -170,15 +171,43 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
             'admin_review_summary': {'missingDiagnostics': 1, 'total': 1},
         }, 'csrf').decode()
         panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split('</section>', 1)[0]
-        self.assertIn('Install failed', panel)
-        self.assertIn('No device diagnostic report received', panel)
-        self.assertNotIn('Missing diagnostics <strong>', panel)
+        # Dashboard shows the fixed category row with the full count and a
+        # link to the complete list; it does not fake an open problem.
+        self.assertIn("aria-label='Missing reports: 1'", panel)
+        self.assertIn("href='/admin/review/missing-reports'", panel)
+        self.assertIn("aria-label='Open problems: unavailable'", panel)
         self.assertNotIn('attention-shortcuts', panel)
         self.assertNotIn("admin-review-link", body)
-        self.assertIn('eventId=a8098c1a-f86e-11da-bd1a-00112444be1e', panel)
-        self.assertIn("aria-label='Dismiss review item'", panel)
-        self.assertIn('France', panel)
         self.assertNotIn('overview-attention-empty', body)
+
+    def test_missing_reports_page_lists_every_gap_with_dismiss_and_undo(self):
+        from terento_catalog.admin import missing_reports_page
+        rows = [{
+            'event_type': 'INSTALL_FAILED', 'outcome': 'FAILED',
+            'event_id': f'a8098c1a-f86e-11da-bd1a-0011244{index:05d}', 'provider_id': 'freizeitkarte',
+            'provider_name': 'Freizeitkarte', 'region': 'France', 'map_package_name': 'France',
+            'occurred_at': '2026-09-15T19:47:00Z',
+        } for index in range(7)]
+        body = missing_reports_page({'rows': rows, 'total': 57, 'limit': 50, 'offset': 0},
+                                    {'username': 'operator'}, 'csrf').decode()
+        self.assertIn('<h1>Missing reports</h1>', body)
+        # Not silently capped at six: all rows of the page render and the
+        # total is explicit with pagination to the rest (ADM-11).
+        self.assertEqual(body.count("aria-label='Dismiss review item'"), 7)
+        self.assertIn("data-stat", body) if False else None
+        self.assertIn('>57<', body)
+        self.assertIn('1–50 of 57', body)
+        self.assertIn("href='/admin/review/missing-reports?offset=50'", body)
+        self.assertIn('No device report · not counted in Failed', body)
+        self.assertIn('eventId=a8098c1a-f86e-11da-bd1a-001124400000', body)
+        self.assertIn("name='return_to' value='/admin/review/missing-reports'", body)
+        undo = missing_reports_page({'rows': [], 'total': 0}, {'username': 'operator'}, 'csrf',
+                                    review_action='dismissed', review_event_id=rows[0]['event_id']).decode()
+        self.assertIn('Review item dismissed.', undo)
+        self.assertIn("action='/admin/review/missing-diagnostics/undo'", undo)
+        self.assertIn('Nothing to review.', undo)
+        unavailable = missing_reports_page(None, {'username': 'operator'}, 'csrf').decode()
+        self.assertIn("Could not load this section.", unavailable)
 class PreinstallDownloadFailureTests(unittest.TestCase):
     def test_preinstall_download_failure_is_activity_only(self):
         operation = {

@@ -171,6 +171,25 @@ class GithubDownloadTests(unittest.TestCase):
         }])
         self.assertEqual(totals["release_markers"][0]["label"], "beta.15 · build 36")
 
+    def test_release_candidate_label_keeps_rc_number_and_tag_build(self):
+        totals = release_download_totals([{
+            "id": 41,
+            "tag_name": "v1.0.0-rc.1-build41",
+            "name": "Terento 1.0.0-rc.1",
+            "published_at": "2026-10-07T10:00:00Z",
+            "assets": [],
+        }, {
+            "id": 40,
+            "tag_name": "v1.0.0-beta.18-build40",
+            "name": "Terento 1.0.0-beta.18",
+            "published_at": "2026-10-05T10:00:00Z",
+            "assets": [],
+        }])
+        self.assertEqual(
+            [marker["label"] for marker in totals["release_markers"]],
+            ["rc.1 · build 41", "beta.18 · build 40"],
+        )
+
     def test_historical_release_markers_backfill_snapshot_boundaries(self):
         previous = {
             "observed_at": datetime(2026, 9, 11, 19, tzinfo=timezone.utc),
@@ -498,7 +517,11 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(sum(item["dmg_count"] or 0 for item in views["24h"]), 8)
         self.assertEqual(sum(item["dmg_count"] or 0 for item in views["7d"]), 13)
         self.assertEqual(sum(item["dmg_count"] or 0 for item in views["all"]), 13)
-        self.assertEqual(views["all"][0]["dmg_count"], 13)
+        # All time uses the shared adaptive rule: a 6-day observed span is daily.
+        self.assertEqual(
+            database.github_downloads_snapshot(now=now, period="all")["bucket"], "day",
+        )
+        self.assertEqual(database.github_downloads_snapshot(now=now, period="30d")["bucket"], "week")
 
     def test_collection_failure_does_not_replace_last_successful_snapshot(self):
         database = CollectDatabase()

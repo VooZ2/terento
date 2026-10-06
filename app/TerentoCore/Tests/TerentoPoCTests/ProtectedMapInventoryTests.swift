@@ -95,6 +95,32 @@ struct ProtectedMapInventoryTests {
         for rows in invalidRows {
             check((try? ProtectedMapInventory(files: rows)) == nil, "ambiguous/malformed inventory fails closed")
         }
+        // Duplicate or alias plain files outside /GARMIN stay protected as a multiset.
+        let musicFolder = file(30, "/Music", size: 0, folder: true)
+        let trackA = file(31, "/Music/a.mp3", size: 5)
+        let trackB = file(32, "/Music/a.mp3", size: 5)
+        let trackC = file(33, "/Music/A.mp3", size: 9)
+        let musicBase = try ProtectedMapInventory(files: base + [musicFolder, trackA, trackB, trackC])
+        check(musicBase.toleratedDuplicateLocationCount == 1, "one tolerated duplicate/alias location is counted")
+        check(musicBase.protected.count == base.count + 4, "every duplicate music entry stays protected")
+        check(unchanged(base + [file(130, "/Music", size: 0, folder: true), file(131, "/Music/a.mp3", size: 5),
+                                file(132, "/Music/a.mp3", size: 5), file(133, "/Music/A.mp3", size: 9)], from: musicBase),
+              "re-enumerated duplicate music entries compare equal")
+        check(!unchanged(base + [musicFolder, trackA, trackC], from: musicBase), "losing one identical duplicate is a change")
+        check(!unchanged(base + [musicFolder, trackA, file(32, "/Music/a.mp3", size: 6), trackC], from: musicBase),
+              "resizing one duplicate is a change")
+        check(ProtectedMapInventory.toleratedDuplicateLocations(in: base + [musicFolder, trackA]) == 0,
+              "an unambiguous inventory has no tolerated duplicates")
+        let strictDuplicates: [[DeviceFile]] = [
+            base + [file(40, "/GARMIN/D123.img")],
+            base + [file(40, "/GARMIN/Activity", size: 0, folder: true), file(41, "/GARMIN/Activity/x.fit"), file(42, "/GARMIN/Activity/x.fit")],
+            [root, map, file(40, "/Maps", size: 0, folder: true), file(41, "/Maps/x.img"), file(42, "/Maps/x.IMG")],
+            [root, map, file(40, "/Music", size: 0, folder: true), file(41, "/music", size: 0, folder: true)],
+            base + [musicFolder, trackA, file(31, "/Music/a.mp3", size: 5)]
+        ]
+        for rows in strictDuplicates {
+            check((try? ProtectedMapInventory(files: rows)) == nil, "map, GARMIN, folder and handle duplicates still fail closed")
+        }
         print("PASS: \(checks) protected inventory checks")
     }
 }

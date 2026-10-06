@@ -28,16 +28,19 @@ class IdentificationWorkspaceTests(unittest.TestCase):
 
     def test_workspace_name_is_specific_and_duplicate_intro_is_removed(self):
         body = self.render([device()], device_id='watch')
-        self.assertIn('<title>Model source review · Terento</title>', body)
-        self.assertIn('<h1>Model source review</h1>', body)
+        self.assertIn('<title>Model sources · Terento</title>', body)
+        self.assertIn('<h1>Model sources</h1>', body)
         self.assertNotIn('Review required', body)
         self.assertNotIn('identification-next', body)
         self.assertNotIn('Model codes', body)
         self.assertNotIn('Review guidance', body)
         self.assertIn('<summary>Technical details</summary>', body)
         self.assertIn('Missing imported sources:', body)
-        for heading in ('Source reported', 'Match to', 'Confirm match'):
+        for heading in ('Source says', 'Catalog model', 'Confirm'):
             self.assertIn(f'<h3>{heading}</h3>', body)
+        # Source and catalog model are compared side by side.
+        compare = body.split("class='identification-compare'", 1)[1].split("</div>\n", 1)[0]
+        self.assertLess(compare.index('Source says'), compare.index('Catalog model'))
 
     def test_pending_models_sort_first_and_codes_are_searchable(self):
         rows = [device('approved', model='AAA', identityMappings=[mapping('APPROVED')]), device('pending', model='ZZZ')]
@@ -50,7 +53,7 @@ class IdentificationWorkspaceTests(unittest.TestCase):
         rows = [device(), device('other', variant='51 mm', identityMappings=[mapping('REJECTED')])]
         before = deepcopy(rows)
         body = self.render(rows, device_id='watch')
-        for text in ('Other models using this code', 'device=other', 'Rejected', 'Source reported',
+        for text in ('Same code', 'device=other', 'Rejected', 'Source says',
                      'fenix® 9 Pro - inReach 47 mm', 'Missing imported sources:', 'USB connection code'):
             self.assertIn(text, body)
         self.assertNotIn('Compare 1 other model', body)
@@ -100,7 +103,7 @@ class IdentificationWorkspaceTests(unittest.TestCase):
 
     def test_review_feedback_and_singular_counts_are_wired(self):
         body = self.render([device()])
-        self.assertIn('1 model needs source review.', body)
+        self.assertIn("data-source-filter='pending' aria-pressed='true'>Needs review · 1</button>", body)
         self.assertNotIn('model shown', body)
         self.assertIn("document.querySelectorAll('.identity-mapping-review')", body)
         self.assertIn('controller.abort(), 20000', body)

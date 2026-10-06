@@ -39,7 +39,7 @@ class AdminMapActivityTests(unittest.TestCase):
                               dict(type='DOWNLOAD_SUCCEEDED', at='2026-09-16T00:01:30Z')])
         markup = _overview_map_activity_row(row)
         summary = markup.split('<summary>')[1].split('</summary>')[0]
-        self.assertIn('Download completed', summary)
+        self.assertIn('Download successful', summary)
         self.assertIn('download-context', summary)
         self.assertNotIn('<a ', summary)
         self.assertNotIn('Download history', markup)

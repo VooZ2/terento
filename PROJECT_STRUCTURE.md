@@ -98,7 +98,7 @@ migrations and service replacement under one lock. GitHub does not select a
 migration target or call a separate migration operation.
 
 `build-and-test` remains the required aggregate. Documentation-only changes use
-shared/CI checks plus specific release/legal checks when relevant. Schema and
+shared/CI checks plus the suites whose tests read the changed document. Schema and
 fixture changes still select all suites. See [CI policy](Tests/README.md).
 
 The [historical evidence index](history/README.md) preserves links to superseded

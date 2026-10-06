@@ -133,7 +133,7 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
         let notStarted = outcome == .notStarted
         let context = notStarted ? nil : item.failureContext
         let optionalFailed = !notStarted && item.failedComponentKind == .contours
-        return InstallationEvidenceEvent(
+        var event = InstallationEvidenceEvent(
             id: item.eventID, identity: identity, package: item.package, outcome: outcome,
             finishingResult: outcome == .succeeded ? .verified : (notStarted ? .notReached : .failed),
             errorCategory: failed ? Self.category(for: failure) : nil,
@@ -157,9 +157,19 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
             optionalComponentFailureCode: optionalFailed ? failure?.rawValue : nil,
             optionalComponentNativeFailureCode: optionalFailed ? native : nil
         )
+        // Timing evidence of the main component, else of the first measured
+        // component in artifact order; absent when nothing was measured.
+        if !notStarted {
+            let ordered = item.package.artifacts.filter { $0.kind == .main } + item.package.artifacts.filter { $0.kind != .main }
+            event.inventoryMetrics = ordered.lazy.compactMap { item.results[$0.id]?.diagnostics.inventoryMetrics }.first
+        }
+        return event
     }
 
     private func enqueue(_ events: [InstallationEvidenceEvent]) {
+        // Persist synchronously at the result boundary, like map events, so a
+        // quit before the delivery task runs cannot lose the diagnostics.
+        controller.persistResults(events)
         // This task belongs to delivery, not to the screen or cancelled native task.
         let controller = controller
         let task = Task { @MainActor in

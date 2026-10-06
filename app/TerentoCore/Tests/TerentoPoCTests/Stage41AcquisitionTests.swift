@@ -49,10 +49,15 @@ struct Stage41AcquisitionTests {
         testBundledCatalogPolicyCounts()
         testAcquisitionErrorsHaveSafeUserCopy()
         await testDownloadBlocksBeforeSideEffects()
+        await testDownloadStartBoundary()
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
+        testMacStorageCheck()
+        testTemporaryDownloadScavenger()
+        await testChunkedDownloadStreamsToFile()
+        await testChunkedDownloadEnforcesReviewedSize()
 
-        print("PASS: 34 Stage 4.1 acquisition tests")
+        print("PASS: 38 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -1049,6 +1054,125 @@ struct Stage41AcquisitionTests {
         }
     }
 
+    private static func testMacStorageCheck() {
+        expect(MacStorageCheck.requiredBytes(forDownloadBytes: 2_000_000_000) == 5_000_000_000,
+               "a download needs about 2.5 times its size on the Mac")
+        let location = URL(fileURLWithPath: "/tmp")
+        do {
+            try MacStorageCheck.preflight(downloadBytes: 2_000_000_000, locations: [location],
+                                          available: { _ in 4_000_000_000 })
+            expect(false, "insufficient Mac storage stops the download before it starts")
+        } catch let error as MapAcquisitionError {
+            expect(error == .insufficientMacStorage(requiredBytes: 5_000_000_000)
+                   && error.userMessage.hasPrefix("Your Mac doesn't have enough free space (needs ")
+                   && error.userMessage.contains("GB"),
+                   "insufficient Mac storage stops the download before it starts with the needed size")
+        } catch {
+            expect(false, "insufficient Mac storage stops the download before it starts")
+        }
+        expect((try? MacStorageCheck.preflight(downloadBytes: 2_000_000_000, locations: [location],
+                                               available: { _ in 6_000_000_000 })) != nil,
+               "enough Mac storage lets the download start")
+        expect((try? MacStorageCheck.preflight(downloadBytes: 0, locations: [location], available: { _ in 0 })) != nil,
+               "an unknown download size does not invent a storage block")
+        let outOfSpace = NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError)
+        let posix = NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
+        let wrapped = NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError, userInfo: [NSUnderlyingErrorKey: posix])
+        expect(MacStorageCheck.isOutOfSpace(outOfSpace) && MacStorageCheck.isOutOfSpace(posix)
+               && MacStorageCheck.isOutOfSpace(wrapped)
+               && !MacStorageCheck.isOutOfSpace(URLError(.notConnectedToInternet)),
+               "full-disk errors are recognized and network errors are not")
+        expect(!MapAcquisitionError.insufficientMacStorage(requiredBytes: nil).userMessage.contains("connection"),
+               "a full Mac disk is not reported as a network problem")
+    }
+
+    private static func testTemporaryDownloadScavenger() {
+        let fileManager = FileManager.default
+        let directory = fileManager.temporaryDirectory
+            .appendingPathComponent("terento-temp-scavenger-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fileManager.removeItem(at: directory) }
+        do {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+            let stale = directory.appendingPathComponent("terento-map-download-\(UUID().uuidString)")
+            let fresh = directory.appendingPathComponent("terento-map-download-\(UUID().uuidString)")
+            let unrelated = directory.appendingPathComponent("other-download-\(UUID().uuidString)")
+            for url in [stale, fresh, unrelated] { try Data([1, 2, 3]).write(to: url) }
+            let old = Date(timeIntervalSince1970: 1_000)
+            try fileManager.setAttributes([.modificationDate: old], ofItemAtPath: stale.path)
+            try fileManager.setAttributes([.modificationDate: old], ofItemAtPath: unrelated.path)
+            try fileManager.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_000 + 7_190)], ofItemAtPath: fresh.path)
+            let removed = MapAcquisitionWorkspace.scavengeStaleTemporaryDownloads(
+                directory: directory, olderThan: 3_600, now: Date(timeIntervalSince1970: 1_000 + 7_200))
+            expect(removed == 1 && !fileManager.fileExists(atPath: stale.path)
+                   && fileManager.fileExists(atPath: fresh.path) && fileManager.fileExists(atPath: unrelated.path),
+                   "launch scavenging removes only stale Terento download files")
+        } catch {
+            expect(false, "launch scavenging removes only stale Terento download files")
+        }
+    }
+
+    private static func testChunkedDownloadStreamsToFile() async {
+        ChunkedDownloadProtocol.configure(chunks: (0..<40).map { Data(repeating: UInt8($0), count: 32 * 1024) })
+        let client = FoundationMapPackageDownloadClient(
+            sourcePolicy: ReviewedProviderURLPolicy(allowedHosts: ["chunks.example"]),
+            sessionConfiguration: {
+                let configuration = URLSessionConfiguration.ephemeral
+                configuration.protocolClasses = [ChunkedDownloadProtocol.self]
+                return configuration
+            })
+        let progress = ProgressRecorder()
+        do {
+            let response = try await client.download(from: URL(string: "https://chunks.example/map.zip")!,
+                                                     onProgress: { progress.append($0) })
+            defer { try? FileManager.default.removeItem(at: response.temporaryFileURL) }
+            let data = try Data(contentsOf: response.temporaryFileURL)
+            let expected = (0..<40).reduce(into: Data()) { $0.append(Data(repeating: UInt8($1), count: 32 * 1024)) }
+            let values = progress.values
+            expect(response.statusCode == 200 && data == expected,
+                   "a chunked body is written to the download file unchanged")
+            expect(values.count >= 2 && values.count < 40 && zip(values, values.dropFirst()).allSatisfy { $0.bytesDownloaded <= $1.bytesDownloaded }
+                   && values.last?.bytesDownloaded == UInt64(expected.count) && values.last?.totalBytes == UInt64(expected.count),
+                   "download progress stays monotonic, throttled and ends at the full size")
+            expect(response.temporaryFileURL.lastPathComponent.hasPrefix(MapAcquisitionWorkspace.temporaryDownloadPrefix),
+                   "download files use the scavenged temporary prefix")
+        } catch {
+            expect(false, "a chunked body is written to the download file unchanged: \(error)")
+        }
+    }
+
+    private static func testChunkedDownloadEnforcesReviewedSize() async {
+        ChunkedDownloadProtocol.configure(chunks: [Data(repeating: 1, count: 10)], statusCode: 404)
+        let client = FoundationMapPackageDownloadClient(
+            sourcePolicy: ReviewedProviderURLPolicy(allowedHosts: ["chunks.example"]),
+            sessionConfiguration: {
+                let configuration = URLSessionConfiguration.ephemeral
+                configuration.protocolClasses = [ChunkedDownloadProtocol.self]
+                return configuration
+            })
+        do {
+            let response = try await client.download(from: URL(string: "https://chunks.example/missing.zip")!, onProgress: nil)
+            defer { try? FileManager.default.removeItem(at: response.temporaryFileURL) }
+            expect(response.statusCode == 404, "a provider error status is still returned to the acquisition boundary")
+        } catch {
+            expect(false, "a provider error status is still returned to the acquisition boundary: \(error)")
+        }
+        let rejected = FoundationMapPackageDownloadClient(
+            sourcePolicy: ReviewedProviderURLPolicy(allowedHosts: ["other.example"]),
+            sessionConfiguration: { .ephemeral })
+        do {
+            _ = try await rejected.download(from: URL(string: "https://chunks.example/map.zip")!, onProgress: nil)
+            expect(false, "an unreviewed host is rejected before any request")
+        } catch let error as MapAcquisitionError {
+            if case .untrustedSourceURL = error {
+                expect(true, "an unreviewed host is rejected before any request")
+            } else {
+                expect(false, "an unreviewed host is rejected before any request")
+            }
+        } catch {
+            expect(false, "an unreviewed host is rejected before any request")
+        }
+    }
+
     private static func testNoDeviceWriteDependency() {
         expect(true, "acquisition layer is transport-independent and read-only")
     }
@@ -1140,13 +1264,36 @@ struct Stage41AcquisitionTests {
                     availabilityCheck: { _ in throw MapAcquisitionError.acquisitionWithheld(.blocked(provider: "Freizeitkarte", reason: "PROVIDER_DOWN")) },
                     downloadClient: CountingDownloadClient(counter: counter),
                     workspaceFactory: { counter.workspaceCreations += 1; return try makeWorkspace() }
-                ).acquire(package: package)
+                ).acquire(package: package, onDownloadStart: { counter.starts += 1 })
                 expect(false, "blocked download must fail")
             } catch let error as MapAcquisitionError {
-                expect(error.userMessage.contains("Freizeitkarte") && counter.workspaceCreations == 0 && counter.downloads == 0,
+                expect(error.userMessage.contains("Freizeitkarte") && counter.workspaceCreations == 0 && counter.downloads == 0 && counter.starts == 0,
                     "\(remote ? "remote" : "catalog") block fails before workspace and provider HTTP")
             } catch { expect(false, "unexpected block error") }
         }
+    }
+
+    private static func testDownloadStartBoundary() async {
+        let counter = AcquisitionSideEffectCounter()
+        do {
+            _ = try await MapPackageAcquirer(
+                downloadClient: CountingDownloadClient(counter: counter),
+                workspaceFactory: { throw MapAcquisitionError.workspaceFailed("test") }
+            ).acquire(package: makePackage(), onDownloadStart: { counter.starts += 1 })
+        } catch {}
+        expect(counter.starts == 0 && counter.downloads == 0,
+            "workspace failure does not announce a download")
+        do {
+            _ = try await MapPackageAcquirer(
+                downloadClient: CountingDownloadClient(counter: counter),
+                workspaceFactory: { try makeWorkspace() }
+            ).acquire(package: makePackage(), onDownloadStart: {
+                expect(counter.downloads == 0, "download start is awaited before downloader")
+                counter.starts += 1
+            })
+        } catch {}
+        expect(counter.starts == 1 && counter.downloads == 1,
+            "real downloader failure still announces exactly one acquisition")
     }
 
     private static func testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP() async {
@@ -1350,11 +1497,46 @@ struct Stage41AcquisitionTests {
     }
 }
 
+final class ProgressRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [MapDownloadProgress] = []
+    func append(_ progress: MapDownloadProgress) { lock.withLock { stored.append(progress) } }
+    var values: [MapDownloadProgress] { lock.withLock { stored } }
+}
+
+/// Serves a fixed body in separate chunks, like a real HTTP connection.
+final class ChunkedDownloadProtocol: URLProtocol {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var chunks: [Data] = []
+    nonisolated(unsafe) private static var statusCode = 200
+
+    static func configure(chunks: [Data], statusCode: Int = 200) {
+        lock.withLock {
+            Self.chunks = chunks
+            Self.statusCode = statusCode
+        }
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let (chunks, status) = Self.lock.withLock { (Self.chunks, Self.statusCode) }
+        let length = chunks.reduce(0) { $0 + $1.count }
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1",
+                                       headerFields: ["Content-Length": "\(length)"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        for chunk in chunks { client?.urlProtocol(self, didLoad: chunk) }
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
 final class URLRecorder: @unchecked Sendable {
     var url: URL?
 }
 
 final class AcquisitionSideEffectCounter: @unchecked Sendable {
+    var starts = 0
     var workspaceCreations = 0
     var downloads = 0
 }

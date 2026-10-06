@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 from .telemetry import validate_release_label
 from .failure_context import validate_event_contexts
@@ -16,7 +17,7 @@ MAX_EVENT_BYTES = 16_384
 SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "maprando", "bbbike", "custom"})
 ALLOWED_KEYS = {
     "operationKind", "oldMapPreserved",
-    "failureContext", "originalFailureContext",
+    "failureContext", "originalFailureContext", "inventoryMetrics",
     "garminModelDescription", "garminModelPartNumber",
     "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
@@ -35,6 +36,82 @@ FORBIDDEN_KEY_PARTS = ("serial", "unitid", "unit_id", "path", "manifest", "usern
 
 class EvidenceValidationError(ValueError):
     pass
+
+
+# Optional pre-/post-write inventory timing (diagnostics only, never counts).
+INVENTORY_METRIC_SCOPES = ("FULL", "GARMIN")
+INVENTORY_OBJECT_COUNT_MAX = 10_000_000
+INVENTORY_DURATION_MS_MAX = 86_400_000
+INVENTORY_METRIC_KEYS = {
+    "scope", "prewriteObjectCount", "prewriteDurationMs", "postwriteObjectCount", "postwriteDurationMs",
+}
+
+
+def validate_inventory_metrics(value: Any) -> dict[str, Any]:
+    """Return the closed inventoryMetrics object or raise ``EvidenceValidationError``."""
+    if not isinstance(value, dict) or set(value) - INVENTORY_METRIC_KEYS:
+        raise EvidenceValidationError("invalid_inventory_metrics")
+    value = {key: item for key, item in value.items() if item is not None}
+    if not {"scope", "prewriteObjectCount", "prewriteDurationMs"} <= set(value):
+        raise EvidenceValidationError("invalid_inventory_metrics")
+    if value["scope"] not in INVENTORY_METRIC_SCOPES:
+        raise EvidenceValidationError("invalid_inventory_metrics")
+    for key, maximum in (
+        ("prewriteObjectCount", INVENTORY_OBJECT_COUNT_MAX), ("prewriteDurationMs", INVENTORY_DURATION_MS_MAX),
+        ("postwriteObjectCount", INVENTORY_OBJECT_COUNT_MAX), ("postwriteDurationMs", INVENTORY_DURATION_MS_MAX),
+    ):
+        if key in value and (type(value[key]) is not int or not 0 <= value[key] <= maximum):
+            raise EvidenceValidationError("invalid_inventory_metrics")
+    return value
+
+
+POSTGRES_INTEGER_MAX = 2_147_483_647
+UUID_TEXT = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+FAILURE_STAGES = frozenset({"download", "extract", "source-validation", "preflight", "write", "verify", "cleanup", "manifest"})
+
+
+def _is_uuid_text(value: Any) -> bool:
+    """A 36-character UUID string that PostgreSQL's uuid type accepts."""
+    if not isinstance(value, str) or not UUID_TEXT.fullmatch(value):
+        return False
+    try:
+        UUID(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _validate_storable_fields(event: dict[str, Any]) -> None:
+    """Reject values the typed evidence columns cannot store, for every schema.
+
+    Versions 1-2 do not validate diagnostic semantics, but a value that the
+    database would refuse is a client error (400), not a retryable 503.
+    """
+    if "operationId" in event and event["operationId"] is not None and not _is_uuid_text(event["operationId"]):
+        raise EvidenceValidationError("invalid_operation_id")
+    for key, minimum in (("mapResultIndex", 0), ("selectedMapCount", 1)):
+        value = event.get(key)
+        if value is not None and (
+            type(value) is not int or not minimum <= value <= POSTGRES_INTEGER_MAX
+        ):
+            raise EvidenceValidationError(f"invalid_{key}")
+    for key in ("writeStarted", "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded",
+                "optionalComponentSelected"):
+        if event.get(key) is not None and not isinstance(event[key], bool):
+            raise EvidenceValidationError(f"invalid_{key}")
+    if event.get("transferProgressBucket") not in {None, "0", "1-24", "25-99", "100"}:
+        raise EvidenceValidationError("invalid_transfer_progress_bucket")
+    for key in ("failureStage", "optionalComponentFailureStage"):
+        if event.get(key) not in FAILURE_STAGES | {None}:
+            raise EvidenceValidationError(f"invalid_{key}")
+    if event.get("optionalComponentOutcome") not in {None, "VERIFIED", "FAILED", "NOT_STARTED", "UNKNOWN"}:
+        raise EvidenceValidationError("invalid_optional_component_outcome")
+    if event.get("identityResolutionCode") not in {None, "MTP_SERIAL", "GARMIN_UNIT_ID", "UNAVAILABLE"}:
+        raise EvidenceValidationError("invalid_identity_resolution_code")
+    for key in ("appBuild", "releaseLabel", "failureCode", "nativeFailureCode"):
+        value = event.get(key)
+        if value is not None and not isinstance(value, str):
+            raise EvidenceValidationError(f"invalid_{key}")
 
 
 def validate_event(raw: bytes) -> dict[str, Any]:
@@ -67,7 +144,7 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         required.add("deletionToken")
     if required - set(event):
         raise EvidenceValidationError("missing_fields")
-    if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(event["id"])):
+    if not _is_uuid_text(event["id"]):
         raise EvidenceValidationError("invalid_event_id")
     for key in ("model", "transport", "provider", "region", "mapRelease", "terentoVersion", "macOSVersion"):
         if not isinstance(event[key], str) or not event[key].strip() or len(event[key]) > 160:
@@ -170,6 +247,13 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         raise EvidenceValidationError("deletion_not_supported")
     if schema_version in {3, 4}:
         _validate_v3(event)
+    if event.get("inventoryMetrics") is not None:
+        if schema_version != 4:
+            raise EvidenceValidationError("invalid_inventory_metrics")
+        event["inventoryMetrics"] = validate_inventory_metrics(event["inventoryMetrics"])
+    else:
+        event.pop("inventoryMetrics", None)
+    _validate_storable_fields(event)
     try:
         validate_event_contexts(event)
     except ValueError as exc:
@@ -187,7 +271,7 @@ def _validate_v3(event: dict[str, Any]) -> None:
         required.discard("transferProgressBucket")
     if required - set(event):
         raise EvidenceValidationError("missing_diagnostic_fields")
-    if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(event["operationId"])):
+    if not _is_uuid_text(event["operationId"]):
         raise EvidenceValidationError("invalid_operation_id")
     if not isinstance(event["mapResultIndex"], int) or isinstance(event["mapResultIndex"], bool):
         raise EvidenceValidationError("invalid_map_result_index")

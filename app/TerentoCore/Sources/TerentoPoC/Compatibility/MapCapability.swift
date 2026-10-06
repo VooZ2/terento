@@ -10,7 +10,8 @@ enum GarminMapSupportStatus: Equatable, Sendable {
 
     /// This local registry is presentation evidence only. Installation is
     /// authorized by the server-owned internal device policy and by the live
-    /// physical/profile checks; this property is not an installation gate.
+    /// physical/profile checks; this property is not an installation gate and
+    /// no view may use it to disable a server-approved install.
     var canAttemptTerentoMapInstall: Bool {
         if case .unsupported = self { return false }
         return true

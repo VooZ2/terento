@@ -199,6 +199,9 @@ struct MapLifecycleContext: Sendable {
     let profile: DeviceInstallProfile?
     let deviceKey: String
     let expectedSHA256ByItemID: [UInt32: String]
+    /// Sampled removal proofs from the same manifest entries that supplied
+    /// the hashes. Missing entries keep the full content check.
+    let removalProofByItemID: [UInt32: ManagedRemovalProof]
     /// Custom maps have no provider metadata in the IMG header. The exact
     /// manifest identity is carried separately for safe lifecycle operations.
     let mapIdentity: MapIdentity?
@@ -215,7 +218,8 @@ struct MapLifecycleContext: Sendable {
         expectedSHA256ByItemID: [UInt32: String],
         mapIdentity: MapIdentity? = nil,
         failedInstallRecovery: TerentoFailedInstallRecoveryRecord? = nil,
-        expectedStorageID: UInt32 = 0
+        expectedStorageID: UInt32 = 0,
+        removalProofByItemID: [UInt32: ManagedRemovalProof] = [:]
     ) {
         self.item = item
         self.comparison = comparison
@@ -226,6 +230,7 @@ struct MapLifecycleContext: Sendable {
         self.profile = profile
         self.deviceKey = deviceKey
         self.expectedSHA256ByItemID = expectedSHA256ByItemID
+        self.removalProofByItemID = removalProofByItemID
         self.mapIdentity = mapIdentity ?? failedInstallRecovery.flatMap {
             guard MapIdentity.normalizeProvider($0.providerId) == "custom" else { return nil }
             return MapIdentity(provider: $0.providerId, region: $0.regionId)
@@ -250,6 +255,7 @@ enum MapLifecycleOperationPhase: Equatable, Sendable {
     case updating
     case verifying
     case downloading
+    case preparing
     case checking
     case installing
     case removingOld
@@ -265,6 +271,7 @@ enum MapLifecycleOperationPhase: Equatable, Sendable {
         case .updating: return "Updating"
         case .verifying: return "Verifying"
         case .downloading: return "Downloading"
+        case .preparing: return "Preparing"
         case .checking: return "Checking"
         case .installing: return "Installing"
         case .removingOld: return "Removing old"
@@ -281,4 +288,87 @@ struct MapLifecycleOperationState: Equatable, Sendable {
     let phase: MapLifecycleOperationPhase
     let progress: SafeUpdateProgress?
     let message: String
+}
+
+/// Decides when the Mac must stay awake and when quitting would interrupt a
+/// device write. Pure presentation policy; it starts or stops nothing itself.
+enum DeviceOperationActivityPolicy {
+    /// Download, preparation, write, verification, Update and Remove keep the
+    /// Mac from idle-sleeping; a sleeping Mac interrupts USB transfers.
+    static func keepsMacAwake(
+        installationPhase: InstallationProcessPhase,
+        mapPreparationActive: Bool,
+        lifecyclePhases: [MapLifecycleOperationPhase]
+    ) -> Bool {
+        let installActive: Bool
+        switch installationPhase {
+        case .downloading, .preparing, .awaitingConfirmation, .installing, .finishing:
+            installActive = true
+        case .idle, .completed, .failed:
+            installActive = false
+        }
+        return installActive || mapPreparationActive || lifecyclePhases.contains { phase in
+            switch phase {
+            case .removing, .updating, .verifying, .downloading, .preparing, .checking,
+                 .installing, .removingOld, .finishing:
+                return true
+            case .idle, .awaitingConfirmation, .completed, .failed:
+                return false
+            }
+        }
+    }
+
+    /// True while quitting could leave an incomplete map on the watch.
+    static func writesToDevice(
+        mapInstallActive: Bool,
+        lifecyclePhases: [MapLifecycleOperationPhase]
+    ) -> Bool {
+        mapInstallActive || lifecyclePhases.contains { phase in
+            switch phase {
+            case .removing, .updating, .verifying, .installing, .removingOld, .finishing:
+                return true
+            case .idle, .awaitingConfirmation, .downloading, .preparing, .checking, .completed, .failed:
+                return false
+            }
+        }
+    }
+}
+
+/// What to tell the user when the watch disconnects during Remove or Update.
+/// Pure: derived from the last reported phase and progress, so the message
+/// only promises what the safety order guarantees at that point.
+enum MapLifecycleInterruption {
+    /// Removal sends the delete command only after the full content check
+    /// (reported up to 0.90); before that nothing can have been removed.
+    static let removalDeleteBoundary = 0.90
+
+    /// `fraction` is the operation's last reported completed fraction (0...1).
+    static func notice(action: MapLifecycleAction, phase: MapLifecycleOperationPhase, fraction: Double) -> String? {
+        switch phase {
+        case .idle, .awaitingConfirmation, .completed, .failed:
+            return nil
+        default:
+            break
+        }
+        switch action {
+        case .remove:
+            if fraction < removalDeleteBoundary {
+                return "Removal didn't finish because your Garmin was disconnected. Nothing was removed, so the map is still on your watch."
+            }
+            return "Your Garmin was disconnected while Terento was confirming the removal. Plug it back in and open Manage maps to check whether the map was removed."
+        case .update:
+            switch phase {
+            case .downloading, .preparing, .checking, .removing, .updating:
+                return "The update didn't finish because your Garmin was disconnected. Your current map is unchanged."
+            case .installing, .verifying:
+                return "The update didn't finish because your Garmin was disconnected. Your current map is kept. Plug the watch back in and open Manage maps to check for an unfinished copy."
+            case .removingOld, .finishing:
+                return "Your Garmin was disconnected after the new version was installed. Plug it back in and open Manage maps to check whether the old version is still there."
+            case .idle, .awaitingConfirmation, .completed, .failed:
+                return nil
+            }
+        case .transferOwnership, .recoverOwnership:
+            return "Your Garmin was disconnected before Terento finished. No map was changed. Plug it back in and try again."
+        }
+    }
 }

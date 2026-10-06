@@ -27,6 +27,12 @@ Pokud nám napíšete, obdržíme adresu, zprávu a přílohy pro odpověď a pr
 
 GitHub issue je oddělené od automatické diagnostiky: sami jej zkontrolujete a odešlete; obsah a jméno účtu mohou být veřejné. Platí [pravidla GitHubu](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Dobrovolné příspěvky probíhají přes [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), které zpracovává platební údaje podle vlastních podmínek.
 
+## Zprávy podpoře
+
+Pokud aplikace nabízí odeslání zprávy podpoře Terento, zpráva se odešle jen tehdy, když se tak rozhodnete po zobrazení jejího obsahu. Obsahuje očištěné údaje o problému, které se používají i pro hlášení na GitHubu: verze aplikace a macOS, model a variantu hodinek, neúspěšný krok, kategorii a zprávu chyby, poskytovatele a oblast mapy a časové údaje, spolu s volitelným popisem. Neobsahuje sériová čísla, Unit IDs, účty, místní cesty, surové protokoly ani mapy; účet na GitHubu není potřeba. Do popisu neuvádějte osobní údaje.
+
+Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužívají se pro statistiky a uchovávají se 12 měsíců. Přístup má správa projektu; vaše IP adresa se se zprávou neukládá. Základem jsou oprávněné zájmy na vyřízení vašeho požadavku a údržbě aplikace podle čl. 6 odst. 1 písm. f GDPR.
+
 ## Statistiky a úložiště prohlížeče
 
 Umami se načítá všem návštěvníkům pro měření zobrazení, kliknutí a stažení. Nepoužívá sledovací cookies. Může zpracovávat URL stránky a odkazujícího webu, prohlížeč, systém, zařízení a přibližnou polohu. UTM v odkazech popisují zdroje kampaní. Terento je předává v URL bez ukládání kampaní do prohlížeče. Statistiky slouží zlepšování webu a měření kampaní na základě oprávněných zájmů, čl. 6 odst. 1 písm. f GDPR. Na webu není analytický souhlasový banner ani přepínač; pro námitku nás kontaktujte. Statistiky webu jsou oddělené od nastavení diagnostiky aplikace.
@@ -51,4 +57,4 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 13. září 2026.
+Aktualizováno: 6. října 2026.

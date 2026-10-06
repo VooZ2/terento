@@ -13,6 +13,7 @@ from email.utils import format_datetime, parsedate_to_datetime
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import ipaddress
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 from uuid import UUID, uuid4
@@ -28,6 +29,10 @@ from .admin import (
     device_identification_page,
     diagnostics_page,
     github_issue_queue_page,
+    glossary_page,
+    admin_error_page,
+    _ADMIN_NONCE_PLACEHOLDER,
+    missing_reports_page,
     devices_page,
     map_statistics_page,
     local_test_data_page,
@@ -54,6 +59,7 @@ from .admin import (
 from .asset_storage import AssetStorage
 from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
+from .config import DEFAULT_TRUSTED_PROXIES
 from .db import Database, IdentityResolutionError
 from .device_catalog import (
     CONTROLLED_ASSET_PREFIX,
@@ -73,6 +79,19 @@ from .compatibility_evidence import (
 )
 from .compatibility_status import calculate_compatibility_status
 from .collect import collect_provider_once
+from .app_funnel import (
+    FUNNEL_OUTCOMES,
+    MAX_FUNNEL_EVENT_BYTES,
+    FunnelValidationError,
+    validate_funnel_event,
+)
+from .support_reports import (
+    MAX_SUPPORT_REPORT_BYTES,
+    SupportReportValidationError,
+    normalise_admin_note,
+    normalise_reference,
+    validate_support_report,
+)
 from .map_events import (
     MapEventValidationError,
     validate_map_event,
@@ -91,6 +110,27 @@ from .provider_catalog import (
 from .provider_health import check_provider as run_provider_health_check
 
 LOGGER = logging.getLogger(__name__)
+
+# Per-client anonymous intake limits (requests per 60 s). One multi-map install
+# with optional contours emits about seven map events and one diagnostic per
+# map, and a selection may contain up to 100 maps; sequential client uploads
+# take tens of milliseconds each. These limits absorb such a burst, plus
+# retries and users sharing one NAT address, while still bounding abuse.
+MAP_EVENT_RATE_LIMIT = 600
+COMPATIBILITY_EVENT_RATE_LIMIT = 300
+# A session sends at most one event per (stage, outcome, baseModel).
+APP_FUNNEL_EVENT_RATE_LIMIT = 120
+APP_FUNNEL_PERIODS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30), "all": None}
+# A user sends a support report only by explicit choice; retries reuse the id.
+SUPPORT_REPORT_RATE_LIMIT = 10
+RATE_LIMIT_WINDOW_SECONDS = 60
+# Socket timeout for one blocking read or write. A stalled or slow-loris client
+# cannot pin a server thread indefinitely; large bodies and responses still
+# progress as long as each chunk arrives within this interval.
+REQUEST_SOCKET_TIMEOUT_SECONDS = 60
+# Idle keys are swept periodically so the in-memory limiter cannot grow without bound.
+RATE_LIMIT_SWEEP_INTERVAL = 1000
+RATE_LIMIT_MAX_WINDOW_SECONDS = 900
 
 
 def _admin_time_zone(value: Any) -> str:
@@ -121,8 +161,12 @@ class CatalogService:
         operations_ingest_secret: str | None = None,
         opentopomap_contour_mode: str = "off",
         opentopomap_contour_allowlist: tuple[str, ...] = (),
+        trusted_proxies: tuple[str, ...] = DEFAULT_TRUSTED_PROXIES,
     ) -> None:
         self.database = database
+        self.trusted_proxy_networks = tuple(
+            ipaddress.ip_network(item, strict=False) for item in trusted_proxies
+        )
         self.asset_storage = asset_storage
         self.admin_bootstrap_secret = admin_bootstrap_secret
         self.admin_session_ttl_seconds = admin_session_ttl_seconds
@@ -133,6 +177,32 @@ class CatalogService:
 
     def health(self) -> bool:
         return self.database.health()
+
+    def trusts_proxy(self, address: str) -> bool:
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError:
+            return False
+        return any(ip in network for network in self.trusted_proxy_networks)
+
+    def client_address_for(self, peer: str, forwarded_for: list[str]) -> str:
+        """Return the rate-limit client address behind a trusted proxy.
+
+        The rightmost X-Forwarded-For hop that is not itself a trusted proxy is
+        the client the proxy saw. Headers from an untrusted peer, or malformed
+        hops, are never trusted.
+        """
+        if not self.trusts_proxy(peer):
+            return peer
+        hops = [hop.strip() for value in forwarded_for for hop in value.split(",") if hop.strip()]
+        for hop in reversed(hops):
+            try:
+                address = str(ipaddress.ip_address(hop))
+            except ValueError:
+                return peer
+            if not self.trusts_proxy(address):
+                return address
+        return peer
 
     def receive_operational_observation(self, document: dict[str, Any]) -> bool:
         return self.database.record_operational_observation(validate_observation(document))
@@ -413,6 +483,46 @@ class CatalogService:
             return None
         return {"id": provider_id, "status": status}
 
+    def receive_support_report(self, body: bytes) -> tuple[dict[str, Any], str]:
+        report = validate_support_report(body)
+        return report, self.database.insert_support_report(report)
+
+    def receive_app_funnel_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
+        event = validate_funnel_event(body)
+        return event, self.database.insert_app_funnel_event(event)
+
+    def app_funnel(self, query: dict[str, str]) -> dict[str, Any]:
+        """Admin JSON read model for the app first-run funnel (distinct sessions)."""
+        if set(query) - {"period"}:
+            raise FunnelValidationError("unknown_filter")
+        period = query.get("period") or "7d"
+        if period not in APP_FUNNEL_PERIODS:
+            raise FunnelValidationError("invalid_period")
+        until = datetime.now(timezone.utc)
+        delta = APP_FUNNEL_PERIODS[period]
+        since = until - delta if delta is not None else None
+        summary = self.database.app_funnel_summary(since, until)
+        counts = {(row["stage"], row["outcome"]): row["sessionCount"] for row in summary["stages"]}
+        return {
+            "schemaVersion": 1,
+            "period": period,
+            "since": since.isoformat() if since else None,
+            "until": until.isoformat(),
+            "population": "distinct app sessions; local test builds excluded; separate from install, update and download statistics",
+            "sessionCount": summary["sessionCount"],
+            "stages": [
+                {
+                    "stage": stage,
+                    "outcomes": [
+                        {"outcome": outcome, "sessionCount": counts.get((stage, outcome), 0)}
+                        for outcome in sorted(outcomes)
+                    ],
+                }
+                for stage, outcomes in FUNNEL_OUTCOMES.items()
+            ],
+            "modelsNeedingReview": summary["modelsNeedingReview"],
+        }
+
     def receive_map_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
         event = validate_map_event(body)
         if event["providerId"] not in KNOWN_PROVIDER_DEFINITIONS:
@@ -496,6 +606,8 @@ class CatalogService:
         detail_rows = [
             {
                 **row,
+                "first_occurred_at": row.get("first_event_at", row.get("first_occurred_at")),
+                "last_occurred_at": row.get("last_event_at", row.get("last_occurred_at")),
                 "display_name": _admin_map_display_name(
                     row.get("map_package_name"),
                     row.get("region"),
@@ -571,15 +683,27 @@ class CatalogService:
             else datetime(1970, 1, 1, tzinfo=timezone.utc)
         )
         downloads_getter = getattr(self.database, "github_downloads_snapshot", None)
-        downloads = downloads_getter(
-            time_zone=time_zone, period=period,
-        ) if callable(downloads_getter) else {
-            "hasData": False,
-            "dmgTotal": None,
-            "zipTotal": None,
-            "lastObservedAt": None,
-            "trend": [],
-        }
+
+        def section(name: str, reader: Any, fallback: Any) -> Any:
+            # Section-level resilience (ADM-26): one failing read model marks
+            # only its card unavailable; the Dashboard keeps rendering.
+            try:
+                return reader()
+            except Exception:
+                LOGGER.exception("admin overview section %s failed", name)
+                return fallback
+
+        unavailable = {"available": False}
+        providers_payload = section("providers", self.admin_providers, None)
+        providers = (providers_payload or {}).get("providers", []) if providers_payload else []
+
+        def system_health() -> dict[str, Any]:
+            snapshot = self.database.operational_health_snapshot()
+            return {
+                "schemaVersion": 1, "api": "HEALTHY", "database": "HEALTHY",
+                **snapshot, "providers": providers,
+            }
+
         return {
             "schemaVersion": 1,
             "period": period,
@@ -588,13 +712,33 @@ class CatalogService:
             # Keep map-operation telemetry and compatibility evidence as
             # distinct stored domains. The read model may reconcile a missing
             # provider success without changing either public API payload.
-            "data": self.database.admin_overview_map_snapshot(
+            "data": section("map", lambda: self.database.admin_overview_map_snapshot(
                 since, period=period, time_zone=time_zone,
+            ), dict(unavailable)),
+            "compatibility": section("compatibility", lambda: self.database.admin_overview_snapshot(since), dict(unavailable)),
+            "downloads": section("downloads", lambda: downloads_getter(
+                time_zone=time_zone, period=period,
+            ) if callable(downloads_getter) else {
+                "hasData": False,
+                "dmgTotal": None,
+                "zipTotal": None,
+                "lastObservedAt": None,
+                "trend": [],
+            }, dict(unavailable)),
+            "providers": providers,
+            "providersAvailable": providers_payload is not None,
+            "system": section("system", system_health, dict(unavailable)),
+            "funnel": section("funnel", lambda: self.app_funnel({"period": period}), dict(unavailable)),
+            "supportReports": section(
+                "supportReports",
+                lambda: {"openCount": self.database.support_report_open_count()},
+                dict(unavailable),
             ),
-            "compatibility": self.database.admin_overview_snapshot(since),
-            "downloads": downloads,
-            "providers": self.admin_providers().get("providers", []),
-            "system": self.operational_health(),
+            "mapsUnknown": section(
+                "mapsUnknown",
+                lambda: {"modelCount": self.database.maps_unknown_model_count()},
+                dict(unavailable),
+            ),
         }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:
@@ -613,10 +757,33 @@ class CatalogService:
         if not callable(getter):
             return _diagnostic_summary_by_identity(self.compatibility_operation_details(), self.compatibility_resolved_operation_details())
         rows = getter()
-        return _diagnostic_summary_by_identity(
+        summary = _diagnostic_summary_by_identity(
             [r for r in rows if r["diagnostic_status"] == "ACTIVE"],
             [r for r in rows if r["diagnostic_status"] == "RESOLVED"],
         )
+        problems = self.installation_problem_counts()
+        if problems is not None:
+            # Open problems use the canonical Needs attention predicate and unit
+            # (operations), never the per-result twin above.
+            by_identity = problems["byIdentity"]
+            for identity, values in summary.items():
+                values["open_errors"] = values["errors"] = int(by_identity.get(identity, 0))
+            for identity, count in by_identity.items():
+                summary.setdefault(identity, {
+                    "errors": count, "open_errors": count, "failed": 0,
+                    "attempts": 0, "successful": 0, "identity_pending": 0,
+                })
+        return summary
+
+    def installation_problem_counts(self) -> dict[str, Any] | None:
+        getter = getattr(self.database, "installation_problem_counts", None)
+        return getter() if callable(getter) else None
+
+    def installation_problem_count(self, identity_key: str) -> int | None:
+        problems = self.installation_problem_counts()
+        if problems is None:
+            return None
+        return int(problems["byIdentity"].get(identity_key, 0))
 
     def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
         getter = getattr(self.database, "compatibility_identity_details", None)
@@ -764,15 +931,29 @@ class CatalogService:
         )
 
     def local_test_data(self) -> dict[str, Any]:
-        return self.database.local_test_telemetry_summary()
+        summary = dict(self.database.local_test_telemetry_summary())
+        reader = getattr(self.database, "support_reports", None)
+        if callable(reader):
+            # Local support reports appear only here; a failed read marks only
+            # their card unavailable.
+            try:
+                summary["supportReports"] = reader(status="ALL", local=True, limit=50)
+            except Exception:
+                LOGGER.exception("local support report summary failed")
+                summary["supportReports"] = {"available": False}
+        return summary
 
     def purge_local_test_data(
         self, *, admin_user_id: int | None, request_id: str | None = None,
     ) -> dict[str, int]:
-        return self.database.purge_local_test_telemetry(
+        counts = dict(self.database.purge_local_test_telemetry(
             admin_user_id=admin_user_id,
             request_id=request_id,
-        )
+        ))
+        purge_reports = getattr(self.database, "purge_local_support_reports", None)
+        if callable(purge_reports):
+            counts["supportReportCount"] = purge_reports(admin_user_id=admin_user_id, request_id=request_id)
+        return counts
 
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
@@ -857,10 +1038,17 @@ class CatalogService:
 
 def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
     request_times: dict[str, deque[float]] = defaultdict(deque)
+    sweep_counter = [0]
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "TerentoCatalog"
         sys_version = ""
+        timeout = REQUEST_SOCKET_TIMEOUT_SECONDS
+
+        def _client_ip(self) -> str:
+            return service.client_address_for(
+                self.client_address[0], self.headers.get_all("X-Forwarded-For") or [],
+            )
 
         def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
             self._handle_request(send_body=True)
@@ -876,6 +1064,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/map-events":
                 self._handle_map_event()
                 return
+            if request_path == "/app-funnel/events":
+                self._handle_app_funnel_event()
+                return
+            if request_path == "/support/reports":
+                self._handle_support_report()
+                return
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
                 return
@@ -888,7 +1082,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 
         def _handle_operational_observation(self) -> None:
-            client = f"operational-observation:{self.client_address[0]}"
+            client = f"operational-observation:{self._client_ip()}"
             if self._rate_limited(client, limit=30, window=60):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store", noindex=True)
                 return
@@ -927,8 +1121,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             )
 
         def _handle_map_event(self) -> None:
-            client = f"map-event:{self.client_address[0]}"
-            if self._rate_limited(client, limit=60, window=60):
+            client = f"map-event:{self._client_ip()}"
+            if self._rate_limited(client, limit=MAP_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
                 self._send_json(
                     HTTPStatus.TOO_MANY_REQUESTS,
                     {"error": "rate_limited"},
@@ -1063,16 +1257,83 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 cache_control="no-store",
             )
 
-        def _handle_compatibility_event(self) -> None:
-            client = self.client_address[0]
-            now = time.monotonic()
-            recent = request_times[client]
-            while recent and recent[0] < now - 60:
-                recent.popleft()
-            if len(recent) >= 30:
+        def _handle_support_report(self) -> None:
+            # The trusted-proxy client address is used only for this in-memory
+            # limiter; it is never stored with the report.
+            client = f"support-report:{self._client_ip()}"
+            if self._rate_limited(client, limit=SUPPORT_REPORT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
-            recent.append(now)
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_SUPPORT_REPORT_BYTES:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
+                return
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type != "application/json":
+                self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"}, send_body=True, cache_control="no-store")
+                return
+            request_times[client].append(time.monotonic())
+            try:
+                report, result = service.receive_support_report(self.rfile.read(length))
+            except SupportReportValidationError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
+                return
+            except Exception:
+                LOGGER.exception("support report storage failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "support_reports_unavailable"}, send_body=True, cache_control="no-store")
+                return
+            if result == "conflict":
+                self._send_json(HTTPStatus.CONFLICT, {"error": "reference_conflict"}, send_body=True, cache_control="no-store")
+                return
+            self._send_json(
+                HTTPStatus.CREATED if result == "stored" else HTTPStatus.OK,
+                {"reference": report["reference"], "status": "stored" if result == "stored" else "duplicate"},
+                send_body=True,
+                cache_control="no-store",
+            )
+
+        def _handle_app_funnel_event(self) -> None:
+            client = f"app-funnel:{self._client_ip()}"
+            if self._rate_limited(client, limit=APP_FUNNEL_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_FUNNEL_EVENT_BYTES:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
+                return
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type != "application/json":
+                self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"}, send_body=True, cache_control="no-store")
+                return
+            request_times[client].append(time.monotonic())
+            try:
+                _, inserted = service.receive_app_funnel_event(self.rfile.read(length))
+            except FunnelValidationError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
+                return
+            except Exception:
+                LOGGER.exception("app funnel event storage failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "funnel_unavailable"}, send_body=True, cache_control="no-store")
+                return
+            self._send_json(
+                HTTPStatus.CREATED if inserted else HTTPStatus.OK,
+                {"status": "stored" if inserted else "duplicate"},
+                send_body=True,
+                cache_control="no-store",
+            )
+
+        def _handle_compatibility_event(self) -> None:
+            client = self._client_ip()
+            if self._rate_limited(client, limit=COMPATIBILITY_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+                return
+            request_times[client].append(time.monotonic())
             try:
                 length = int(self.headers.get("Content-Length", "0"))
             except ValueError:
@@ -1160,6 +1421,35 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     cache_control="no-store",
                     noindex=True,
                 )
+                return
+            if request_path in {"/admin/inventory-metrics.json", "/admin/inventory-metrics.json/"}:
+                try:
+                    models = service.database.inventory_metrics_distribution()
+                except Exception:
+                    LOGGER.exception("admin inventory metrics failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "inventory_metrics_unavailable"},
+                                    send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                self._send_json(HTTPStatus.OK, {
+                    "schemaVersion": 1,
+                    "population": "non-local installation reports with inventoryMetrics; diagnostics only, never counts",
+                    "models": models,
+                }, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            if request_path in {"/admin/app-funnel.json", "/admin/app-funnel.json/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                try:
+                    payload = service.app_funnel({key: values[-1] for key, values in query.items()})
+                except FunnelValidationError as exc:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=send_body,
+                                    cache_control="no-store", noindex=True)
+                    return
+                except Exception:
+                    LOGGER.exception("admin app funnel failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "app_funnel_unavailable"},
+                                    send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                self._send_json(HTTPStatus.OK, payload, send_body=send_body, cache_control="no-store", noindex=True)
                 return
             if request_path in {"/admin/map-statistics.json", "/admin/map-statistics.json/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
@@ -1269,20 +1559,43 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     noindex=True,
                 )
                 return
-            try:
-                session = {**session, "admin_review_summary": service.admin_review_summary()}
-            except Exception:
-                LOGGER.exception("admin review summary failed")
-                session = {**session, "admin_review_summary": {
-                    "available": False,
-                    "installationIssues": None,
-                    "githubIssuesInProgress": None,
-                    "identityPending": None,
-                    "readyToPublish": None,
-                    "missingDiagnostics": None,
-                    "pendingReviewTasks": None,
-                    "total": None,
-                }}
+            if request_path in {"/admin", "/admin/"}:
+                # Only the Dashboard shows Needs attention; other pages no
+                # longer pay for the review summary query (ADM-27).
+                try:
+                    session = {**session, "admin_review_summary": service.admin_review_summary()}
+                except Exception:
+                    LOGGER.exception("admin review summary failed")
+                    session = {**session, "admin_review_summary": {
+                        "available": False,
+                        "installationIssues": None,
+                        "githubIssuesInProgress": None,
+                        "identityPending": None,
+                        "readyToPublish": None,
+                        "missingDiagnostics": None,
+                        "pendingReviewTasks": None,
+                        "total": None,
+                    }}
+            if request_path in {"/admin/review/missing-reports", "/admin/review/missing-reports/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                try:
+                    offset = int(query.get("offset", ["0"])[-1] or 0)
+                    if offset < 0:
+                        raise ValueError("invalid_offset")
+                except ValueError:
+                    self._send_admin_error(HTTPStatus.BAD_REQUEST, "This page link is not valid.", session, csrf_token, send_body=send_body)
+                    return
+                try:
+                    payload = service.database.missing_diagnostic_failures(limit=50, offset=offset)
+                except Exception:
+                    LOGGER.exception("missing report list failed")
+                    payload = None
+                self._send_admin_html(missing_reports_page(
+                    payload, session, csrf_token,
+                    review_action=query.get("reviewAction", [""])[-1],
+                    review_event_id=query.get("eventId", [""])[-1],
+                ), send_body=send_body)
+                return
             if request_path in {"/admin/review/github-issues", "/admin/review/github-issues/"}:
                 try:
                     payload = service.admin_devices()
@@ -1295,15 +1608,53 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                 except Exception:
                     LOGGER.exception("GitHub issue review queue failed")
-                    self._send_json(
-                        HTTPStatus.SERVICE_UNAVAILABLE,
-                        {"error": "github_issue_queue_unavailable"},
-                        send_body=send_body,
-                        cache_control="no-store",
-                        noindex=True,
-                    )
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "The GitHub issue list could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path in {"/admin/support-reports", "/admin/support-reports/"}:
+                from .support_report_admin import SUPPORT_REPORT_PAGE_SIZE, support_reports_page
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                status = (query.get("status", ["open"])[-1] or "open").strip().lower()
+                try:
+                    offset = int(query.get("offset", ["0"])[-1] or 0)
+                    if offset < 0 or status not in {"open", "handled"}:
+                        raise ValueError("invalid_support_report_filter")
+                except ValueError:
+                    self._send_admin_error(HTTPStatus.BAD_REQUEST, "This page link is not valid.", session, csrf_token, send_body=send_body)
+                    return
+                try:
+                    payload = service.database.support_reports(
+                        status=status.upper(), limit=SUPPORT_REPORT_PAGE_SIZE, offset=offset,
+                    )
+                except Exception:
+                    LOGGER.exception("support report list failed")
+                    payload = None
+                self._send_admin_html(
+                    support_reports_page(payload, session, csrf_token, status=status.upper()),
+                    send_body=send_body,
+                )
+                return
+            support_match = re.fullmatch(r"/admin/support-reports/([^/]+)/?", request_path)
+            if support_match:
+                from .support_report_admin import support_report_detail_page
+                reference = normalise_reference(support_match[1])
+                if reference is None:
+                    self._send_admin_error(HTTPStatus.BAD_REQUEST, "This support report link is not valid.", session, csrf_token, send_body=send_body)
+                    return
+                try:
+                    detail = service.database.support_report_detail(reference)
+                except Exception:
+                    LOGGER.exception("support report detail failed")
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "This support report could not be loaded.", session, csrf_token, send_body=send_body)
+                    return
+                if detail is None:
+                    self._send_admin_error(HTTPStatus.NOT_FOUND, "This support report does not exist.", session, csrf_token, send_body=send_body)
+                    return
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                self._send_admin_html(support_report_detail_page(
+                    detail, session, csrf_token, action=query.get("action", [""])[-1],
+                ), send_body=send_body)
                 return
             if request_path in {"/admin/test-data", "/admin/test-data/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
@@ -1319,13 +1670,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                 except Exception:
                     LOGGER.exception("admin local test data page failed")
-                    self._send_json(
-                        HTTPStatus.SERVICE_UNAVAILABLE,
-                        {"error": "local_test_data_unavailable"},
-                        send_body=send_body,
-                        cache_control="no-store",
-                        noindex=True,
-                    )
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Local test data could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1334,13 +1679,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     body = providers_page(service.admin_providers(), session, csrf_token)
                 except Exception:
                     LOGGER.exception("admin provider page failed")
-                    self._send_json(
-                        HTTPStatus.SERVICE_UNAVAILABLE,
-                        {"error": "providers_unavailable"},
-                        send_body=send_body,
-                        cache_control="no-store",
-                        noindex=True,
-                    )
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Providers could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1362,23 +1701,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         selected_filters=selected_filters,
                     )
                 except MapEventValidationError as exc:
-                    self._send_json(
-                        HTTPStatus.BAD_REQUEST,
-                        {"error": str(exc)},
-                        send_body=send_body,
-                        cache_control="no-store",
-                        noindex=True,
-                    )
+                    self._send_admin_error(HTTPStatus.BAD_REQUEST, "This link is not valid.", session, csrf_token, send_body=send_body)
                     return
                 except Exception:
                     LOGGER.exception("admin map statistics page failed")
-                    self._send_json(
-                        HTTPStatus.SERVICE_UNAVAILABLE,
-                        {"error": "map_statistics_unavailable"},
-                        send_body=send_body,
-                        cache_control="no-store",
-                        noindex=True,
-                    )
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Map statistics could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1395,15 +1722,21 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         device_id=query.get('deviceId',[''])[-1], lifecycle=query.get('lifecycle',[''])[-1])
                     self._send_admin_html(update_diagnostics_page(data, session, csrf_token), send_body=send_body)
                 except ValueError:
-                    self._send_json(HTTPStatus.BAD_REQUEST, {"error":"invalid_update_filter"}, send_body=send_body, cache_control="no-store", noindex=True)
+                    self._send_admin_error(HTTPStatus.BAD_REQUEST, "This update report link is not valid.", session, csrf_token, send_body=send_body)
                 except Exception:
                     LOGGER.exception("update diagnostics unavailable")
-                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error":"update_diagnostics_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Update reports could not be loaded.", session, csrf_token, send_body=send_body)
                 return
             recheck_match = re.fullmatch(r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/rechecks", request_path)
             if recheck_match:
                 from .provider_rechecks import jobs
-                self._send_json(HTTPStatus.OK, {"jobs": _format_json_value(jobs(service.database, recheck_match[1]))}, send_body=send_body, cache_control="no-store", noindex=True)
+                try:
+                    recheck_jobs = jobs(service.database, recheck_match[1])
+                except Exception:
+                    LOGGER.exception("provider recheck status failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "provider_rechecks_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                self._send_json(HTTPStatus.OK, {"jobs": _format_json_value(recheck_jobs)}, send_body=send_body, cache_control="no-store", noindex=True)
                 return
             provider_page_match = re.fullmatch(
                 r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})",
@@ -1414,13 +1747,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 try:
                     detail = service.admin_provider_detail(provider_id)
                     if detail is None:
-                        self._send_json(
-                            HTTPStatus.NOT_FOUND,
-                            {"error": "provider_not_found"},
-                            send_body=send_body,
-                            cache_control="no-store",
-                            noindex=True,
-                        )
+                        self._send_admin_error(HTTPStatus.NOT_FOUND, "This provider does not exist.", session, csrf_token, send_body=send_body)
                         return
                     runs_payload = service.provider_runs(provider_id) or {}
                     audits = service.database.audit_rows(provider_id)
@@ -1433,13 +1760,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                 except Exception:
                     LOGGER.exception("admin provider detail page failed")
-                    self._send_json(
-                        HTTPStatus.SERVICE_UNAVAILABLE,
-                        {"error": "provider_unavailable"},
-                        send_body=send_body,
-                        cache_control="no-store",
-                        noindex=True,
-                    )
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "This provider could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1477,6 +1798,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         session,
                         csrf_token,
                         identity=identity,
+                        open_problem_count=service.installation_problem_count(f"identity:{identity}"),
                         operations=service.compatibility_identity_details("ACTIVE", identity=identity),
                         resolved_operations=service.compatibility_identity_details("RESOLVED", identity=identity),
                         identity_devices=identity_devices,
@@ -1485,7 +1807,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                 except Exception:
                     LOGGER.exception("compatibility diagnostics failed")
-                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "diagnostics_unavailable"}, send_body=send_body, cache_control="no-store")
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Installation details could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1499,7 +1821,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")
-                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Installations could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1510,13 +1832,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                 except Exception:
                     LOGGER.exception("system health page failed")
-                    self._send_json(
-                        HTTPStatus.SERVICE_UNAVAILABLE,
-                        {"error": "system_health_unavailable"},
-                        send_body=send_body,
-                        cache_control="no-store",
-                        noindex=True,
-                    )
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Health could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1534,23 +1850,23 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                 except Exception:
                     LOGGER.exception("admin overview failed")
-                    self._send_json(
-                        HTTPStatus.SERVICE_UNAVAILABLE,
-                        {"error": "overview_unavailable"},
-                        send_body=send_body,
-                        cache_control="no-store",
-                        noindex=True,
-                    )
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "The Dashboard could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
             if request_path == "/admin/device-identification":
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
-                payload = service.admin_devices()
-                self._send_admin_html(device_identification_page(
-                    payload.get("devices", []), session, csrf_token,
-                    device_id=query.get("device", [""])[-1], query=query.get("q", [""])[-1],
-                ), send_body=send_body)
+                try:
+                    payload = service.admin_devices()
+                    body = device_identification_page(
+                        payload.get("devices", []), session, csrf_token,
+                        device_id=query.get("device", [""])[-1], query=query.get("q", [""])[-1],
+                    )
+                except Exception:
+                    LOGGER.exception("model sources page failed")
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Model sources could not be loaded.", session, csrf_token, send_body=send_body)
+                    return
+                self._send_admin_html(body, send_body=send_body)
                 return
             if request_path == "/admin/devices/identity-audit.json":
                 try:
@@ -1564,7 +1880,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path.startswith("/admin/devices/") and request_path != "/admin/devices/":
                 device_id = unquote(request_path.removeprefix("/admin/devices/")).strip()
                 if not device_id or "/" in device_id:
-                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
+                    self._send_admin_error(HTTPStatus.NOT_FOUND, "This admin page does not exist.", session, csrf_token, send_body=send_body)
                     return
                 try:
                     payload = service.admin_devices()
@@ -1573,7 +1889,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         None,
                     )
                     if device is None:
-                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "device_not_found"}, send_body=send_body, cache_control="no-store")
+                        self._send_admin_error(HTTPStatus.NOT_FOUND, "This device does not exist.", session, csrf_token, send_body=send_body)
                         return
                     query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                     origin = query.get("from", ["devices"])[0]
@@ -1583,12 +1899,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                             outcome=query.get('updateOutcome',[''])[-1], offset=int(query.get('updateOffset',['0'])[-1]),
                             lifecycle=query.get('updateLifecycle',[''])[-1])
                     except ValueError:
-                        self._send_json(HTTPStatus.BAD_REQUEST, {'error':'invalid_update_filter'}, send_body=True, cache_control='no-store')
+                        self._send_admin_error(HTTPStatus.BAD_REQUEST, "This update report link is not valid.", session, csrf_token, send_body=send_body)
                         return
                     device['update_statistics'] = update_history['summary']
                     body = device_detail_page(
                         device, session, csrf_token,
                         update_history=update_history,
+                        open_problem_count=service.installation_problem_count(f"canonical:{device_id}"),
                         operations=service.compatibility_identity_details("ACTIVE", device_id=device_id),
                         resolved_operations=service.compatibility_identity_details("RESOLVED", device_id=device_id),
                         identity_devices=payload.get("devices", []),
@@ -1597,7 +1914,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                 except Exception:
                     LOGGER.exception("admin device detail failed")
-                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_device_unavailable"}, send_body=send_body, cache_control="no-store")
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "This device could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1607,7 +1924,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     body = devices_page(rows, sync, session, csrf_token)
                 except Exception:
                     LOGGER.exception("admin device catalog failed")
-                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_devices_unavailable"}, send_body=send_body, cache_control="no-store")
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "Devices could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -1618,13 +1935,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     LOGGER.exception("admin device API failed")
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_devices_unavailable"}, send_body=send_body, cache_control="no-store")
                 return
+            if request_path in {"/admin/glossary", "/admin/glossary/"}:
+                self._send_admin_html(glossary_page(session, csrf_token), send_body=send_body)
+                return
             if request_path in {"/admin/campaign-links", "/admin/campaign-links/"}:
                 self._send_admin_html(campaign_links_page(session, csrf_token), send_body=send_body)
                 return
             if request_path == "/admin/account":
                 self._send_admin_html(account_page(session, csrf_token), send_body=send_body)
                 return
-            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
+            self._send_admin_error(HTTPStatus.NOT_FOUND, "This admin page does not exist.", session, csrf_token, send_body=send_body)
 
         def _handle_provider_post(self, request_path: str) -> None:
             match = re.fullmatch(
@@ -1669,7 +1989,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     noindex=True,
                 )
                 return
-            rate_key = f"admin-provider:{action}:{provider_id}:{self.client_address[0]}"
+            rate_key = f"admin-provider:{action}:{provider_id}:{self._client_ip()}"
             if action in {"check", "collect"} and self._rate_limited(
                 rate_key, limit=5, window=60
             ):
@@ -1840,6 +2160,44 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 self._redirect("/admin/test-data?purged=1", send_body=True)
                 return
             if request_path in {
+                "/admin/support-reports/handle",
+                "/admin/support-reports/reopen",
+                "/admin/support-reports/issue",
+            }:
+                action = request_path.rsplit("/", 1)[-1]
+                reference = normalise_reference(form.get("reference", ""))
+                try:
+                    if reference is None:
+                        raise ValueError("invalid_support_report_reference")
+                    issue = (
+                        _normalise_github_issue_reference(form.get("linked_github_issue", ""))
+                        if action == "issue" else None
+                    )
+                    changed = service.database.review_support_report(
+                        reference,
+                        action=action,
+                        admin_user_id=int(session["id"]),
+                        note=normalise_admin_note(form.get("note")) if action != "issue" else None,
+                        linked_github_issue=issue,
+                        request_id=self._request_id(),
+                    )
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_support_report_review"}, send_body=True, cache_control="no-store")
+                    return
+                except Exception:
+                    LOGGER.exception("support report review failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "support_report_review_unavailable"}, send_body=True, cache_control="no-store")
+                    return
+                if not changed:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "support_report_not_found"}, send_body=True, cache_control="no-store")
+                    return
+                notice = {"handle": "handled", "reopen": "reopened"}.get(action) or ("linked" if issue else "unlinked")
+                self._redirect(
+                    f"/admin/support-reports/{quote(reference, safe='')}?action={notice}",
+                    send_body=True,
+                )
+                return
+            if request_path in {
                 "/admin/review/missing-diagnostics/dismiss",
                 "/admin/review/missing-diagnostics/undo",
             }:
@@ -1879,8 +2237,15 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                     return
                 action = "dismissed" if is_dismiss else "reopened"
+                # The full list is the primary home of these tasks; the
+                # Dashboard keeps accepting the notice for compatibility.
+                base = (
+                    "/admin/review/missing-reports"
+                    if form.get("return_to", "").strip() == "/admin/review/missing-reports"
+                    else "/admin"
+                )
                 self._redirect(
-                    f"/admin?reviewAction={action}&eventId={quote(event_id, safe='')}",
+                    f"{base}?reviewAction={action}&eventId={quote(event_id, safe='')}",
                     send_body=True,
                 )
                 return
@@ -2100,7 +2465,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             return default
 
         def _admin_setup(self, form: dict[str, str]) -> None:
-            client = f"admin-setup:{self.client_address[0]}"
+            client = f"admin-setup:{self._client_ip()}"
             if self._rate_limited(client, limit=10, window=900):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
@@ -2117,7 +2482,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self._redirect("/admin/login", send_body=True)
 
         def _admin_login(self, form: dict[str, str]) -> None:
-            client = f"admin-login:{self.client_address[0]}"
+            client = f"admin-login:{self._client_ip()}"
             if self._rate_limited(client, limit=10, window=900):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
@@ -2326,12 +2691,22 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self.send_header("Set-Cookie", f"terento_admin_session={session_token}; {attributes}")
             self.send_header("Set-Cookie", f"terento_admin_csrf={csrf_token}; {attributes}")
 
+        def _send_admin_error(
+            self, status: HTTPStatus, message: str, session: dict[str, Any] | None = None,
+            csrf_token: str | None = None, *, send_body: bool,
+        ) -> None:
+            """HTML routes answer with an HTML page inside the admin chrome (ADM-26)."""
+            self._send_admin_html(
+                admin_error_page(int(status), message, session, csrf_token or ""),
+                send_body=send_body, status=status,
+            )
+
         def _send_admin_html(
             self, body: bytes, *, send_body: bool, status: HTTPStatus = HTTPStatus.OK
         ) -> None:
             nonce = secrets.token_urlsafe(18)
             body = body.replace(
-                b"__TERENTO_ADMIN_NONCE__", nonce.encode("ascii")
+                _ADMIN_NONCE_PLACEHOLDER.encode("ascii"), nonce.encode("ascii")
             )
             self.send_response(status)
             self._admin_headers(content_length=len(body), nonce=nonce)
@@ -2370,6 +2745,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _rate_limited(self, key: str, *, limit: int, window: int) -> bool:
             now = time.monotonic()
+            sweep_counter[0] += 1
+            if sweep_counter[0] % RATE_LIMIT_SWEEP_INTERVAL == 0:
+                for stale_key, stale in list(request_times.items()):
+                    if not stale or stale[-1] < now - RATE_LIMIT_MAX_WINDOW_SECONDS:
+                        request_times.pop(stale_key, None)
             recent = request_times[key]
             while recent and recent[0] < now - window:
                 recent.popleft()

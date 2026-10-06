@@ -25,10 +25,10 @@ static int fake_partial(LIBMTP_mtpdevice_t *, uint32_t, uint64_t, uint32_t, unsi
 
 static LIBMTP_mtpdevice_t device;
 static LIBMTP_devicestorage_t storage;
-static int scenario, reads, opens, closes;
+static int scenario, reads, opens, closes, listings, music_listings, fail_next_activity;
 static uint32_t ids[8];
 void terento_prefix_test_reset(int value) {
-    scenario=value; reads=opens=closes=0;
+    scenario=value; reads=opens=closes=listings=music_listings=0; fail_next_activity=value==22;
     memset(&device,0,sizeof(device)); memset(&storage,0,sizeof(storage));
     storage.id=1; device.storage=&storage;
 }
@@ -41,14 +41,80 @@ static char *fake_manufacturer(LIBMTP_mtpdevice_t *d) { return strdup("Garmin");
 static char *fake_model(LIBMTP_mtpdevice_t *d) { return strdup("Test Watch"); }
 static int fake_storage(LIBMTP_mtpdevice_t *d,int sort) { return 0; }
 static void fake_release(LIBMTP_mtpdevice_t *d) { ++closes; }
-static void fake_clear(LIBMTP_mtpdevice_t *d) {}
-static LIBMTP_error_t *fake_error(LIBMTP_mtpdevice_t *d) { return NULL; }
+static void fake_clear_error(void);
+static void fake_clear(LIBMTP_mtpdevice_t *d) { fake_clear_error(); }
+static int error_pending;
+static LIBMTP_error_t scoped_error={LIBMTP_ERROR_GENERAL,"Synthetic listing failure",NULL};
+static void fake_clear_error(void) { error_pending=0; }
+static LIBMTP_error_t *fake_error(LIBMTP_mtpdevice_t *d) { return error_pending ? &scoped_error : NULL; }
 static LIBMTP_file_t *entry(const char *name,uint32_t id,int folder,uint64_t size) {
     LIBMTP_file_t *f=LIBMTP_new_file_t(); assert(f); f->filename=strdup(name); f->item_id=id;
     f->parent_id=90; f->storage_id=1; f->filetype=folder?LIBMTP_FILETYPE_FOLDER:LIBMTP_FILETYPE_UNKNOWN;
     f->filesize=size; return f;
 }
+/* Scenario 18: a heavy watch with years of activities and a music library,
+ * including two music objects listed under one name. */
+static LIBMTP_file_t *heavy_files(uint32_t parent) {
+    LIBMTP_file_t *head=NULL, **tail=&head;
+    char name[64];
+    if(parent==LIBMTP_FILES_AND_FOLDERS_ROOT) {
+        *tail=entry("GARMIN",90,1,0); tail=&(*tail)->next;
+        *tail=entry("Music",91,1,0); return head;
+    }
+    if(parent==90) return entry("Activity",92,1,0);
+    if(parent==92) {
+        for(int i=0;i<6000;++i) { snprintf(name,sizeof(name),"%d.fit",i);
+            *tail=entry(name,1000+i,0,1000+i); tail=&(*tail)->next; }
+        return head;
+    }
+    if(parent==91) {
+        for(int i=0;i<6000;++i) { snprintf(name,sizeof(name),"track-%d.mp3",i);
+            *tail=entry(name,10000+i,0,3000000+i); tail=&(*tail)->next; }
+        *tail=entry("dup.mp3",20000,0,5000); tail=&(*tail)->next;
+        *tail=entry("dup.mp3",20001,0,5000);
+        return head;
+    }
+    return NULL;
+}
+/* Scenarios 19-23: a heavy watch whose bulk (12,000 music tracks) is outside
+ * /GARMIN, a map-like file at the storage root and maps inside /GARMIN.
+ * 20: a second case-alias root; 21: no root; 22: one failed scoped listing;
+ * 23: a root-level file named like the root next to the root folder. */
+static LIBMTP_file_t *scoped_files(uint32_t parent) {
+    LIBMTP_file_t *head=NULL, **tail=&head;
+    char name[64];
+    if(parent==LIBMTP_FILES_AND_FOLDERS_ROOT) {
+        if(scenario!=21) { *tail=entry("GARMIN",90,1,0); tail=&(*tail)->next; }
+        if(scenario==20) { *tail=entry("Garmin",89,1,0); tail=&(*tail)->next; }
+        if(scenario==23) { *tail=entry("garmin",88,0,4); tail=&(*tail)->next; }
+        *tail=entry("Music",91,1,0); tail=&(*tail)->next;
+        *tail=entry("rootmap.img",95,0,4096);
+        return head;
+    }
+    if(parent==90) {
+        *tail=entry("Activity",92,1,0); tail=&(*tail)->next;
+        *tail=entry("terento_a.img",96,0,8192);
+        return head;
+    }
+    if(parent==89) return entry("other.img",97,0,16);
+    if(parent==92) {
+        if(fail_next_activity) { fail_next_activity=0; error_pending=1; return NULL; }
+        for(int i=0;i<50;++i) { snprintf(name,sizeof(name),"%d.fit",i);
+            *tail=entry(name,1000+i,0,1000+i); tail=&(*tail)->next; }
+        return head;
+    }
+    if(parent==91) {
+        ++music_listings;
+        for(int i=0;i<12000;++i) { snprintf(name,sizeof(name),"track-%d.mp3",i);
+            *tail=entry(name,10000+i,0,3000000+i); tail=&(*tail)->next; }
+        return head;
+    }
+    return NULL;
+}
 static LIBMTP_file_t *fake_files(LIBMTP_mtpdevice_t *d,uint32_t store,uint32_t parent) {
+    ++listings;
+    if(scenario==18) return heavy_files(parent);
+    if(scenario>=19 && scenario<=23) return scoped_files(parent);
     if(parent==LIBMTP_FILES_AND_FOLDERS_ROOT) return entry(scenario==16?"Garmin":scenario==17?"garmin":"GARMIN",90,1,0);
     if(parent!=90) return NULL;
     LIBMTP_file_t *other=entry("unrelated.img",10,0,8);
@@ -101,6 +167,47 @@ static void test_root_projection(void) {
     puts("PASS: native root projection is storage-bound, preserves suffix case and refuses ambiguity/invalid roots");
 }
 
+static int has_path(const TerentoMTPFileInventory *inv,const char *path) {
+    for(size_t i=0;i<inv->file_count;++i) if(!strcmp(inv->files[i].path,path)) return 1;
+    return 0;
+}
+static void test_map_scope_inventory(const TerentoMTPMapOperationProfile *p) {
+    TerentoMTPFileInventory inv={0}; char error[256]={0}; int category=0, scope=-1, fallback=-1;
+    /* Full walk of the heavy watch: every music track is listed. */
+    terento_prefix_test_reset(19);
+    assert(terento_mtp_read_file_inventory_bound(p,&inv,error,sizeof(error),&category)==0);
+    size_t full_count=inv.file_count;
+    assert(full_count==12055 && music_listings==1);
+    terento_mtp_free_file_inventory(&inv);
+    /* Scoped walk: root entries + the GARMIN subtree only; Music is never listed. */
+    terento_prefix_test_reset(19);
+    assert(terento_mtp_read_map_scope_inventory_bound(p,&inv,&scope,&fallback,error,sizeof(error),&category)==0);
+    assert(scope==TERENTO_INVENTORY_SCOPE_GARMIN && fallback==TERENTO_INVENTORY_FALLBACK_NONE);
+    assert(inv.file_count==55 && music_listings==0 && listings==3 && opens==1 && closes==1 && reads==0);
+    assert(has_path(&inv,"/rootmap.img") && has_path(&inv,"/Music") && has_path(&inv,"/GARMIN/terento_a.img")
+        && has_path(&inv,"/GARMIN/Activity/49.fit") && !has_path(&inv,"/Music/track-0.mp3"));
+    terento_mtp_free_file_inventory(&inv);
+    printf("PASS: map-scope inventory visits 55 of %zu objects, keeps the storage-root map and skips music\n",full_count);
+    /* Missing, ambiguous or failed scope answers with the full walk in the same session. */
+    int cases[][3]={{20,TERENTO_INVENTORY_FALLBACK_AMBIGUOUS_ROOT,12057},{21,TERENTO_INVENTORY_FALLBACK_NO_ROOT,12002},
+        {22,TERENTO_INVENTORY_FALLBACK_SCOPED_FAILED,12055},{23,TERENTO_INVENTORY_FALLBACK_AMBIGUOUS_ROOT,12056}};
+    for(size_t i=0;i<sizeof(cases)/sizeof(cases[0]);++i) {
+        terento_prefix_test_reset(cases[i][0]); scope=fallback=-1; error[0]=0;
+        int rc=terento_mtp_read_map_scope_inventory_bound(p,&inv,&scope,&fallback,error,sizeof(error),&category);
+        if(rc!=0 || (int)inv.file_count!=cases[i][2]) fprintf(stderr,"scenario=%d rc=%d count=%zu fallback=%d\n",cases[i][0],rc,inv.file_count,fallback);
+        assert(rc==0 && scope==TERENTO_INVENTORY_SCOPE_FULL && fallback==cases[i][1]);
+        assert((int)inv.file_count==cases[i][2] && music_listings==1 && opens==1 && closes==1 && error[0]==0);
+        assert(has_path(&inv,"/Music/track-11999.mp3"));
+        terento_mtp_free_file_inventory(&inv);
+        printf("PASS: map-scope fallback scenario %d returns the full walk (fallback=%d)\n",cases[i][0],fallback);
+    }
+    /* A wrong physical device is refused before any listing, as for the full read. */
+    terento_prefix_test_reset(8); scope=fallback=-1;
+    assert(terento_mtp_read_map_scope_inventory_bound(p,&inv,&scope,&fallback,error,sizeof(error),&category)!=0);
+    assert(inv.file_count==0 && listings==0 && scope==TERENTO_INVENTORY_SCOPE_FULL);
+    puts("PASS: map-scope inventory validates the opened physical device");
+}
+
 #ifndef TERENTO_PREFIX_SWIFT_DRIVER
 int main(void) {
     test_root_projection();
@@ -140,6 +247,18 @@ int main(void) {
     assert(terento_mtp_read_file_inventory_bound(&p,&inventory,error,sizeof(error),&category)==0);
     assert(inventory.file_count==4 && reads==0); terento_mtp_free_file_inventory(&inventory);
     puts("PASS: bound raw inventory validates the opened physical device");
+    terento_prefix_test_reset(18);
+    assert(terento_mtp_read_file_inventory_bound(&p,&inventory,error,sizeof(error),&category)==0);
+    assert(inventory.file_count==12005 && reads==0 && opens==1 && closes==1);
+    size_t duplicates=0, activities=0;
+    for(size_t i=0;i<inventory.file_count;++i) {
+        if(!strcmp(inventory.files[i].path,"/Music/dup.mp3")) ++duplicates;
+        if(!strncmp(inventory.files[i].path,"/GARMIN/Activity/",17)) ++activities;
+    }
+    assert(duplicates==2 && activities==6000);
+    terento_mtp_free_file_inventory(&inventory);
+    puts("PASS: heavy-watch inventory walks 12,005 objects and surfaces duplicate music entries unchanged");
+    test_map_scope_inventory(&p);
     return 0;
 }
 #endif

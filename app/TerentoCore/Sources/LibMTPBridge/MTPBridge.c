@@ -21,6 +21,9 @@
 #if defined(TERENTO_BUNDLED_MTP)
 extern void LIBMTP_Terento_End_Operation(void);
 extern void LIBMTP_Terento_Abort_Device(void *usbinfo);
+extern int LIBMTP_Terento_GetPartialObject_Validated(LIBMTP_mtpdevice_t *device,
+    uint32_t const id, uint64_t offset, uint32_t maxbytes,
+    unsigned char **data, unsigned int *size);
 #endif
 
 void terento_mtp_end_operation(void) {
@@ -576,12 +579,42 @@ static void canonicalize_garmin_inventory_root(TerentoMTPFileInventory *inventor
     }
 }
 
+static int walk_file_tree_in_scope(
+    LIBMTP_mtpdevice_t *device,
+    uint32_t storage_id,
+    uint32_t parent_id,
+    const char *parent_path,
+    size_t depth,
+    int garmin_root_only,
+    TerentoMTPFileInventory *inventory,
+    char *error_message,
+    size_t error_message_capacity, int *category
+);
+
 static int walk_file_tree(
     LIBMTP_mtpdevice_t *device,
     uint32_t storage_id,
     uint32_t parent_id,
     const char *parent_path,
     size_t depth,
+    TerentoMTPFileInventory *inventory,
+    char *error_message,
+    size_t error_message_capacity, int *category
+) {
+    return walk_file_tree_in_scope(device, storage_id, parent_id, parent_path, depth, 0,
+        inventory, error_message, error_message_capacity, category);
+}
+
+/* With garmin_root_only, the storage-root listing is kept complete but only
+ * root folders named GARMIN (ASCII case ignored) are descended into. Entry
+ * order matches the full walk restricted to the same scope. */
+static int walk_file_tree_in_scope(
+    LIBMTP_mtpdevice_t *device,
+    uint32_t storage_id,
+    uint32_t parent_id,
+    const char *parent_path,
+    size_t depth,
+    int garmin_root_only,
     TerentoMTPFileInventory *inventory,
     char *error_message,
     size_t error_message_capacity, int *category
@@ -620,7 +653,9 @@ static int walk_file_tree(
             error_message_capacity, category
         );
 
-        if (result == 0 && child->filetype == LIBMTP_FILETYPE_FOLDER) {
+        if (result == 0 && child->filetype == LIBMTP_FILETYPE_FOLDER
+            && (!garmin_root_only || depth != 0
+                || (child->filename != NULL && strcasecmp(child->filename, "GARMIN") == 0))) {
             result = walk_file_tree(
                 device,
                 storage_id,
@@ -659,10 +694,59 @@ int terento_mtp_read_file_inventory_diagnostic(
     return terento_mtp_read_file_inventory_bound(NULL, inventory, error_message, error_message_capacity, category);
 }
 
+/* The scoped walk is used only when it proves exactly one storage-root entry
+ * named GARMIN (ASCII case ignored), and that entry is a folder with nonzero
+ * storage and object IDs. Anything else is answered by the full walk. */
+static int map_scope_root_state(const TerentoMTPFileInventory *inventory) {
+    size_t named = 0;
+    const TerentoMTPFile *root = NULL;
+    for (size_t i = 0; i < inventory->file_count; ++i) {
+        const TerentoMTPFile *file = &inventory->files[i];
+        if (file->path == NULL || file->path[0] != '/' || strchr(file->path + 1, '/') != NULL
+            || strcasecmp(file->path + 1, "GARMIN") != 0) continue;
+        ++named;
+        root = file;
+    }
+    if (named == 0) return TERENTO_INVENTORY_FALLBACK_NO_ROOT;
+    if (named != 1 || !root->is_folder || root->storage_id == 0 || root->item_id == 0
+        || root->filename == NULL || strcasecmp(root->filename, "GARMIN") != 0) {
+        return TERENTO_INVENTORY_FALLBACK_AMBIGUOUS_ROOT;
+    }
+    return TERENTO_INVENTORY_FALLBACK_NONE;
+}
+
+static int read_file_inventory_session(
+    const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
+    int map_scope, int *scope, int *fallback_reason,
+    char *error_message, size_t error_message_capacity, int *category
+);
+
 int terento_mtp_read_file_inventory_bound(
     const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
     char *error_message, size_t error_message_capacity, int *category
 ) {
+    return read_file_inventory_session(profile, inventory, 0, NULL, NULL,
+        error_message, error_message_capacity, category);
+}
+
+int terento_mtp_read_map_scope_inventory_bound(
+    const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
+    int *scope, int *fallback_reason,
+    char *error_message, size_t error_message_capacity, int *category
+) {
+    return read_file_inventory_session(profile, inventory, 1, scope, fallback_reason,
+        error_message, error_message_capacity, category);
+}
+
+static int read_file_inventory_session(
+    const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
+    int map_scope, int *scope, int *fallback_reason,
+    char *error_message, size_t error_message_capacity, int *category
+) {
+    if (scope != NULL) *scope = TERENTO_INVENTORY_SCOPE_FULL;
+    if (fallback_reason != NULL) *fallback_reason = TERENTO_INVENTORY_FALLBACK_NONE;
+    int used_scope = TERENTO_INVENTORY_SCOPE_FULL;
+    int fallback = TERENTO_INVENTORY_FALLBACK_NONE;
     read_category(category, TERENTO_READ_INVALID_ARGUMENT);
     if (inventory == NULL) {
         set_error(error_message, error_message_capacity, "File inventory output is unavailable");
@@ -713,8 +797,30 @@ int terento_mtp_read_file_inventory_bound(
         goto cleanup;
     }
 
+    if (map_scope) {
+        for (LIBMTP_devicestorage_t *storage = device->storage;
+             storage != NULL;
+             storage = storage->next) {
+            read_category(category, TERENTO_READ_INVENTORY);
+            result = walk_file_tree_in_scope(device, storage->id, LIBMTP_FILES_AND_FOLDERS_ROOT,
+                "", 0, 1, inventory, error_message, error_message_capacity, category);
+            if (result != 0) break;
+        }
+        fallback = result != 0 ? TERENTO_INVENTORY_FALLBACK_SCOPED_FAILED
+            : map_scope_root_state(inventory);
+        if (fallback == TERENTO_INVENTORY_FALLBACK_NONE) {
+            used_scope = TERENTO_INVENTORY_SCOPE_GARMIN;
+        } else {
+            /* Never return a partial or ambiguous scope: answer with the full
+             * walk in this same session instead. */
+            clear_file_inventory(inventory);
+            set_error(error_message, error_message_capacity, "");
+            result = 0;
+        }
+    }
+
     for (LIBMTP_devicestorage_t *storage = device->storage;
-         storage != NULL;
+         used_scope == TERENTO_INVENTORY_SCOPE_FULL && storage != NULL;
          storage = storage->next) {
         read_category(category, TERENTO_READ_INVENTORY);
         result = walk_file_tree(
@@ -733,6 +839,7 @@ int terento_mtp_read_file_inventory_bound(
     }
 
     if (result == 0) canonicalize_garmin_inventory_root(inventory);
+    if (map_scope) terento_trace_event(&trace, "inventory_scope", 0, fallback, (uint64_t)used_scope);
 
 cleanup:
     if (list_started) {
@@ -749,6 +856,10 @@ cleanup:
     }
     terento_trace_event(&trace, "native_cleanup_end", 0, result, inventory->file_count);
     terento_trace_finish(&trace);
+    if (result == 0) {
+        if (scope != NULL) *scope = used_scope;
+        if (fallback_reason != NULL) *fallback_reason = fallback;
+    }
     return result;
 }
 
@@ -1853,26 +1964,50 @@ static int map_short_packet_reads(const TerentoMTPMapOperationProfile *profile) 
 #endif
 }
 
-/* Full selected-content proof, in the deletion session; not creation provenance. */
-static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
-    const TerentoMTPMapOperationProfile *profile, uint32_t object_id,
-    uint64_t size, const char *expected_hash) {
-    if (!expected_hash || strnlen(expected_hash, 65) != 64 || size < 512) return 0;
+/* Full-object reads only: the caller resolved this exact object and size in the
+ * current session and bounds each request by it. The bundled extension skips
+ * libmtp's per-chunk metadata transactions for every Garmin; content proof is
+ * still the caller's exact byte count and full hash. */
+static int read_validated_partial_object(LIBMTP_mtpdevice_t *device, uint32_t object_id,
+    uint64_t offset, uint32_t length, unsigned char **bytes, unsigned int *count) {
+#if defined(TERENTO_BUNDLED_MTP)
+    return LIBMTP_Terento_GetPartialObject_Validated(device, object_id, offset, length, bytes, count);
+#else
+    /* Legacy Homebrew harness lacks the bundled extension. */
+    return LIBMTP_GetPartialObject(device, object_id, offset, length, bytes, count);
+#endif
+}
+
+/* A 64-digit hexadecimal SHA-256 that is not all zeroes. */
+static int valid_content_hash(const char *expected_hash) {
+    if (!expected_hash || strnlen(expected_hash, 65) != 64) return 0;
     int nonzero_hash = 0;
     for (size_t i = 0; i < 64; ++i) {
         if (!isxdigit((unsigned char)expected_hash[i])) return 0;
         if (expected_hash[i] != '0') nonzero_hash = 1;
     }
-    if (!nonzero_hash) return 0;
+    return nonzero_hash;
+}
+
+/* Full selected-content proof, in the deletion session; not creation provenance. */
+static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id,
+    uint64_t size, const char *expected_hash,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
+    if (!valid_content_hash(expected_hash) || size < 512) return 0;
     CC_SHA256_CTX hash;
     if (!CC_SHA256_Init(&hash)) return 0;
     uint64_t offset = 0;
+    uint64_t reported = 0;
+    /* Observation only: completion of reads never authorizes deletion. */
+    if (progress_callback) progress_callback(0, size, progress_context);
     while (offset < size) {
         uint32_t remaining = (uint32_t)((size - offset) > 65536 ? 65536 : (size - offset));
         uint32_t requested = terento_sample_read_request(remaining, map_short_packet_reads(profile));
         unsigned char *bytes = NULL;
         unsigned int count = 0;
-        int result = LIBMTP_GetPartialObject(device, object_id, offset, requested, &bytes, &count);
+        int result = read_validated_partial_object(device, object_id, offset, requested,
+            &bytes, &count);
         int valid = result == 0 && bytes && count == requested;
         if (valid && offset == 0) valid = count >= 0x48 && bytes[0] == 0
             && !memcmp(bytes + 0x10, "DSKIMG", 6) && !memcmp(bytes + 0x41, "GARMIN", 6);
@@ -1880,12 +2015,137 @@ static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
         if (bytes) LIBMTP_FreeMemory(bytes);
         if (!valid) return 0;
         offset += count;
+        if (progress_callback && (reported == 0 || offset - reported >= 1024 * 1024 || offset == size)) {
+            progress_callback(offset, size, progress_context);
+            reported = offset;
+        }
     }
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];
     if (!CC_SHA256_Final(digest, &hash)) return 0;
     char actual[65];
     for (size_t i = 0; i < sizeof(digest); ++i) snprintf(actual + i * 2, 3, "%02x", digest[i]);
     return strcasecmp(actual, expected_hash) == 0;
+}
+
+/* Any proof field set means a sampled proof was requested; it is then
+ * validated completely and never silently replaced by another check. */
+static int removal_proof_requested(const TerentoMTPMutationAuthorization *authorization) {
+    return authorization->removal_sample_offsets != NULL || authorization->removal_sample_count != 0
+        || authorization->removal_sample_length != 0 || authorization->removal_sample_sha256 != NULL;
+}
+
+/* Exact format-1 geometry recorded by Terento: sorted, non-overlapping regions
+ * of the fixed length, the first at offset 0 and the last ending at the final
+ * byte. Files longer than the full plan use exactly the fixed region count;
+ * shorter files are tiled completely, which is the full content. */
+static int validate_removal_plan(uint64_t file_size, const uint64_t *offsets,
+    uint32_t count, uint32_t length, uint64_t *total) {
+    if (!offsets || !total || file_size < 512 || length != TERENTO_REMOVAL_PROOF_REGION_LENGTH
+        || count == 0 || count > TERENTO_REMOVAL_PROOF_REGION_COUNT || offsets[0] != 0) return 0;
+    uint64_t covered_end = 0, sum = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        uint64_t start = offsets[i];
+        if (start >= file_size || (i > 0 && start < covered_end)) return 0;
+        uint64_t available = file_size - start;
+        uint64_t region = available < length ? available : length;
+        covered_end = start + region;
+        sum += region;
+    }
+    uint64_t full_plan = (uint64_t)TERENTO_REMOVAL_PROOF_REGION_COUNT * length;
+    if (covered_end != file_size) return 0;
+    if (file_size > full_plan ? (count != TERENTO_REMOVAL_PROOF_REGION_COUNT || sum != full_plan)
+                              : sum != file_size) return 0;
+    *total = sum;
+    return 1;
+}
+
+/* Outcome of reading a recorded sampled proof from a live object. */
+enum {
+    TERENTO_RECORDED_SAMPLES_MATCH = 1,
+    TERENTO_RECORDED_SAMPLES_CONTENT_MISMATCH = 0,
+    TERENTO_RECORDED_SAMPLES_INVALID_PROOF = -1,
+    TERENTO_RECORDED_SAMPLES_READ_FAILED = -2
+};
+
+/* Recorded sampled proof for a map Terento wrote and verified: the recorded
+ * regions of the live object must reproduce the digest computed from the
+ * verified local artifact at install time. The IMG header is checked exactly
+ * as in the full proof. Only the recorded regions are read. */
+static int verify_recorded_samples(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id, uint64_t size,
+    const char *expected_sha256, const uint64_t *offsets, uint32_t count, uint32_t region_length,
+    const char *sample_sha256, uint64_t *sampled_bytes,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
+    uint64_t total = 0;
+    if (sampled_bytes) *sampled_bytes = 0;
+    if (!valid_content_hash(expected_sha256) || !valid_content_hash(sample_sha256)
+        || !validate_removal_plan(size, offsets, count, region_length, &total)) {
+        return TERENTO_RECORDED_SAMPLES_INVALID_PROOF;
+    }
+    CC_SHA256_CTX hash;
+    if (!CC_SHA256_Init(&hash)) return TERENTO_RECORDED_SAMPLES_INVALID_PROOF;
+    uint64_t done = 0;
+    /* Observation only: completion of reads never authorizes anything. */
+    if (progress_callback) progress_callback(0, total, progress_context);
+    for (uint32_t index = 0; index < count; ++index) {
+        uint64_t start = offsets[index];
+        uint64_t available = size - start;
+        uint32_t length = (uint32_t)(available < region_length ? available : region_length);
+        for (uint32_t consumed = 0; consumed < length;) {
+            uint64_t offset = start + consumed;
+            uint32_t requested = terento_sample_read_request(length - consumed, map_short_packet_reads(profile));
+            unsigned char *bytes = NULL;
+            unsigned int received = 0;
+            int result = LIBMTP_GetPartialObject(device, object_id, offset, requested, &bytes, &received);
+            if (result != 0 || !bytes || received != requested) {
+                if (bytes) LIBMTP_FreeMemory(bytes);
+                return TERENTO_RECORDED_SAMPLES_READ_FAILED;
+            }
+            int valid = 1;
+            if (offset == 0) valid = received >= 0x48 && bytes[0] == 0
+                && !memcmp(bytes + 0x10, "DSKIMG", 6) && !memcmp(bytes + 0x41, "GARMIN", 6);
+            int hashed = CC_SHA256_Update(&hash, bytes, received);
+            LIBMTP_FreeMemory(bytes);
+            if (!hashed) return TERENTO_RECORDED_SAMPLES_INVALID_PROOF;
+            if (!valid) return TERENTO_RECORDED_SAMPLES_CONTENT_MISMATCH;
+            consumed += received;
+            done += received;
+            if (sampled_bytes) *sampled_bytes = done;
+            if (progress_callback) progress_callback(done, total, progress_context);
+        }
+    }
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    if (done != total || !CC_SHA256_Final(digest, &hash)) return TERENTO_RECORDED_SAMPLES_INVALID_PROOF;
+    char actual[65];
+    for (size_t i = 0; i < sizeof(digest); ++i) snprintf(actual + i * 2, 3, "%02x", digest[i]);
+    return strcasecmp(actual, sample_sha256) == 0
+        ? TERENTO_RECORDED_SAMPLES_MATCH : TERENTO_RECORDED_SAMPLES_CONTENT_MISMATCH;
+}
+
+/* Sampled removal proof, in the deletion session: only an exact match permits
+ * deletion; every other outcome refuses. */
+static int verify_deletion_samples(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id, uint64_t size,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
+    return verify_recorded_samples(device, profile, object_id, size, authorization->expected_sha256,
+        authorization->removal_sample_offsets, authorization->removal_sample_count,
+        authorization->removal_sample_length, authorization->removal_sample_sha256, NULL,
+        progress_callback, progress_context) == TERENTO_RECORDED_SAMPLES_MATCH;
+}
+
+/* Managed deletion content check: the recorded sampled proof when one was
+ * supplied, otherwise the full SHA-256 of the selected content. */
+static int verify_managed_deletion_content(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id, uint64_t size,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
+    if (removal_proof_requested(authorization)) {
+        return verify_deletion_samples(device, profile, object_id, size, authorization,
+            progress_callback, progress_context);
+    }
+    return verify_deletion_content(device, profile, object_id, size, authorization->expected_sha256,
+        progress_callback, progress_context);
 }
 
 static int deletion_target_still_matches(LIBMTP_mtpdevice_t *device, uint32_t storage,
@@ -2424,6 +2684,113 @@ sample_cleanup:
     return result;
 }
 
+int terento_mtp_verify_managed_map_proof(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint64_t expected_size_bytes,
+    const char *expected_sha256,
+    const uint64_t *sample_offsets,
+    uint32_t sample_count,
+    uint32_t sample_length,
+    const char *sample_sha256,
+    uint32_t *resolved_item_id,
+    uint64_t *sampled_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
+    char *error_message,
+    size_t error_message_capacity
+) {
+    if (validate_map_operation_profile(profile, error_message, error_message_capacity) != 0) {
+        return TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+    }
+    if (expected_size_bytes == 0 || resolved_item_id == NULL || sampled_bytes == NULL
+        || !valid_content_hash(expected_sha256) || !valid_content_hash(sample_sha256)
+        || sample_offsets == NULL || sample_count == 0) {
+        set_error(error_message, error_message_capacity, "The recorded map proof request is invalid");
+        return -1;
+    }
+    *resolved_item_id = 0;
+    *sampled_bytes = 0;
+    uint64_t planned = 0;
+    if (!validate_removal_plan(expected_size_bytes, sample_offsets, sample_count, sample_length, &planned)) {
+        set_error(error_message, error_message_capacity, "The recorded map proof does not match the map size");
+        return -1;
+    }
+    set_error(error_message, error_message_capacity, "");
+    if (validate_stage42_target(target_filename, error_message, error_message_capacity) != 0) {
+        return -2;
+    }
+
+    uint16_t vendor_id = 0;
+    uint16_t product_id = 0;
+    LIBMTP_mtpdevice_t *device = open_single_garmin_device(
+        &vendor_id, &product_id, error_message, error_message_capacity, 1);
+    if (device == NULL) {
+        return -3;
+    }
+
+    int result = validate_live_map_operation_device(
+        profile, vendor_id, product_id, device, error_message, error_message_capacity);
+    if (result != 0) {
+        result = map_live_validation_error(result);
+        goto cleanup;
+    }
+
+    uint32_t storage_id = 0;
+    uint32_t folder_id = 0;
+    result = find_single_garmin_folder(device, &storage_id, &folder_id, error_message, error_message_capacity);
+    if (result != 0) {
+        goto cleanup;
+    }
+
+    /* The exact object in this session: one regular file of this name and
+     * size in the single /GARMIN folder of the profile storage. */
+    uint32_t actual_item_id = 0;
+    uint64_t remote_size = 0;
+    size_t match_count = 0;
+    result = find_stage42_map_file(device, storage_id, folder_id, target_filename,
+        &actual_item_id, &remote_size, &match_count, error_message, error_message_capacity);
+    if (result != 0) {
+        goto cleanup;
+    }
+    if (match_count != 1 || actual_item_id == 0 || remote_size != expected_size_bytes
+        || storage_id != profile->expected_storage_id) {
+        set_error(error_message, error_message_capacity, "The installed map identity changed during validation");
+        result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
+        goto cleanup;
+    }
+
+    LIBMTP_Clear_Errorstack(device);
+    int samples = verify_recorded_samples(device, profile, actual_item_id, remote_size, expected_sha256,
+        sample_offsets, sample_count, sample_length, sample_sha256, sampled_bytes,
+        progress_callback, progress_context);
+    if (samples == TERENTO_RECORDED_SAMPLES_READ_FAILED) {
+        set_device_error(error_message, error_message_capacity, device,
+            "The installed map could not be read for verification");
+        result = -5;
+        goto cleanup;
+    }
+    if (samples != TERENTO_RECORDED_SAMPLES_MATCH) {
+        set_error(error_message, error_message_capacity, "The installed map content did not match its install record");
+        result = TERENTO_MTP_MAP_CONTENT_MISMATCH;
+        goto cleanup;
+    }
+    /* The same object must still be the only one at this location. */
+    if (!deletion_target_still_matches(device, storage_id, folder_id, target_filename,
+            actual_item_id, remote_size)) {
+        set_error(error_message, error_message_capacity, "The installed map identity changed during validation");
+        result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
+        goto cleanup;
+    }
+
+    *resolved_item_id = actual_item_id;
+    result = 0;
+
+cleanup:
+    LIBMTP_Release_Device(device);
+    return result;
+}
+
 int terento_mtp_delete_managed_map_authorized(
     const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPMutationAuthorization *authorization,
@@ -2431,6 +2798,8 @@ int terento_mtp_delete_managed_map_authorized(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 ) {
@@ -2507,7 +2876,7 @@ int terento_mtp_delete_managed_map_authorized(
     if (match_count != 1 || actual_item_id == 0 || expected_size_bytes == 0
         || remote_size != expected_size_bytes || storage_id != profile->expected_storage_id
         || authorization->expected_size != remote_size
-        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256)
+        || !verify_managed_deletion_content(device, profile, actual_item_id, remote_size, authorization, progress_callback, progress_context)
         || !deletion_target_still_matches(device, storage_id, folder_id, target_filename,
             actual_item_id, remote_size)) {
         set_error(error_message, error_message_capacity, "Managed map cleanup refused: exact target identity did not match");
@@ -2551,12 +2920,16 @@ int terento_mtp_delete_external_map_authorized(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 ) {
     if (record) { memset(record, 0, sizeof(*record)); record->native_result = TERENTO_MTP_MUTATION_REFUSED; }
     if (!authorization || !record) return TERENTO_MTP_MUTATION_REFUSED;
     if (authorization->purpose != TERENTO_MUTATION_REMOVE_EXTERNAL) return TERENTO_MTP_MUTATION_REFUSED;
+    /* External maps have no Terento install record: always the full content check. */
+    if (removal_proof_requested(authorization)) return TERENTO_MTP_MUTATION_REFUSED;
     if (validate_map_operation_profile(
             profile,
             error_message,
@@ -2627,7 +3000,7 @@ int terento_mtp_delete_external_map_authorized(
     if (match_count != 1 || actual_item_id == 0 || expected_size_bytes == 0
         || remote_size != expected_size_bytes || storage_id != profile->expected_storage_id
         || authorization->expected_size != remote_size
-        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256)
+        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256, progress_callback, progress_context)
         || !deletion_target_still_matches(device, storage_id, folder_id, target_filename,
             actual_item_id, remote_size)) {
         set_error(error_message, error_message_capacity, "External map removal refused: exact target identity did not match");

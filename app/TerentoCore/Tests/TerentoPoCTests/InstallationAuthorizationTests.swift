@@ -565,6 +565,63 @@ struct InstallationAuthorizationTests {
         try require(contradictoryState.blockReason == .outOfScope,
                     "Maps=No blocks even when redundant scope/authorization labels still say approved")
 
+        let additive = try modifiedPolicy(allMapsYesPolicy) { document in
+            document["generatedBy"] = "catalog-api"
+            document["notes"] = ["nested": true]
+            var devices = document["devices"] as! [[String: Any]]
+            devices = devices.map { var row = $0; row["marketingName"] = "fēnix 8"; return row }
+            document["devices"] = devices
+        }
+        let additiveState = await client(for: additive).resolve(identity: identity())
+        try require(additiveState.canInstall,
+                    "additive unknown document and record fields do not block a valid policy")
+        let missingDocumentKey = try modifiedPolicy(additive) { $0.removeValue(forKey: "updatedAt") }
+        let missingDocumentKeyState = await client(for: missingDocumentKey).resolve(identity: identity())
+        try require(missingDocumentKeyState.blockReason == .catalogUnavailable,
+                    "a missing known document field still fails closed")
+        let missingRecordKey = try modifiedPolicy(additive) { document in
+            var devices = document["devices"] as! [[String: Any]]
+            devices[0].removeValue(forKey: "caseSizeMm")
+            document["devices"] = devices
+        }
+        let missingRecordKeyState = await client(for: missingRecordKey).resolve(identity: identity())
+        try require(missingRecordKeyState.blockReason == .catalogUnavailable,
+                    "a missing known nullable record field still fails closed")
+        for newer in [4, 7] {
+            let future = try modifiedPolicy(allMapsYesPolicy) { $0["schemaVersion"] = newer }
+            let futureState = await client(for: future).resolve(identity: identity())
+            try require(futureState.blockReason == .updateRequired && !futureState.canInstall,
+                        "schema \(newer) is a distinct update-required block, never a write")
+            try require(futureState.userMessage?.contains("Update Terento") == true
+                        && futureState.userMessage?.contains("connection") == false
+                        && futureState.blockReason?.isRetryable == false,
+                        "update-required tells the user to update Terento, not to check the connection")
+        }
+        let futureWithNewShape = try JSONSerialization.data(withJSONObject: [
+            "schemaVersion": 4, "rules": ["unknown"]])
+        let futureShapeState = await client(for: futureWithNewShape).resolve(identity: identity())
+        try require(futureShapeState.blockReason == .updateRequired,
+                    "a newer schema with a different shape is update-required, not a connection problem")
+        for malformed in [Data("{not json".utf8),
+                          try JSONSerialization.data(withJSONObject: ["schemaVersion": true]),
+                          try modifiedPolicy(allMapsYesPolicy) { $0["schemaVersion"] = 2 },
+                          try modifiedPolicy(allMapsYesPolicy) { $0["devices"] = "none" }] {
+            let state = await client(for: malformed).resolve(identity: identity())
+            try require(state.blockReason == .catalogUnavailable,
+                        "malformed or older-schema policy stays blocked as unavailable")
+        }
+        do {
+            let future = try modifiedPolicy(allMapsYesPolicy) { $0["schemaVersion"] = 4 }
+            try await InstallationAuthorizationAcquisitionGate.run(identity: identity(), client: client(for: future),
+                onAuthorized: { _ in }) {
+                throw AuthorizationTestError.failed("update-required policy must not start acquisition")
+            }
+            throw AuthorizationTestError.failed("update-required policy must block acquisition")
+        } catch let error as InstallationAuthorizationAcquisitionError {
+            try require(error.authorization.blockReason == .updateRequired,
+                        "the acquisition gate preserves update-required for the visible message")
+        }
+
         let wrongMediaType = InstallationAuthorizationClient(dataLoader: { _ in
             response(allMapsYesPolicy, contentType: "text/html")
         })

@@ -30,6 +30,15 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.0.0-rc.1 / build 41**, the first release candidate
+for 1.0.0 (see [versioning](../VERSIONING.md)). It is published on the existing
+`beta` update channel so installed beta builds are offered it by the in-app
+update check. Public metadata continues to identify beta.18 until signed,
+notarized artifacts exist, and the draft release-note section stays marked as a
+draft until the owner approves it. Unlike beta.18 it depends on API changes:
+deploy the catalog API with migrations 067–072 first, then the site, then
+publish the app.
+
 The published release is **1.0.0-beta.18 / build 40**, from signed source
 `e0f0e7041e4aed9e53bdeebb226dff4cd2b6b8c5`. Its ZIP and DMG passed Apple
 notarization, stapling, Gatekeeper and launch validation. This release corrects
@@ -40,10 +49,11 @@ The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
 labels never use `-local`; local device-test candidates do.
 
-For a same-beta replacement or the next numbered beta,
+For a same-label replacement, the next numbered beta or release candidate,
 `Packaging/release-candidate.json` records only the reviewed marketing version,
 release label and next build number. The label must stay unchanged or advance
-exactly one beta; marketing-version changes require a separate contract review. Xcode
+exactly one step: `beta.N` to `beta.N+1` or `rc.1`, and `rc.N` to `rc.N+1`;
+marketing-version changes require a separate contract review. Xcode
 must match that candidate exactly; its build must be newer than the public
 manifest. This permits a clean verified source merge before signing, without
 publishing unavailable download links or invented checksums. After the real
@@ -142,8 +152,8 @@ counts and public compatibility evidence. This is a logical partition in the
 existing API/database, not a separate telemetry host. Raw local diagnostic
 logs remain local and are not uploaded by this mechanism.
 
-A public beta must use its public semantic label with no `-local` suffix and
-is stored with `is_local_test=false`. The Release guard and release-documentation
+A public beta or release candidate must use its public semantic label with no
+`-local` suffix and is stored with `is_local_test=false`. The Release guard and release-documentation
 gate reject local public labels. Keep `CFBundleVersion` numeric and monotonically
 increasing for public distribution; the `-local` marker belongs to the displayed
 release label and diagnostic identity, not to the public build-order counter.
@@ -200,7 +210,8 @@ Before distributing a public build:
   suitable machine is available; until then, keep that future-OS result
   explicitly pending rather than inferring it from the current macOS run;
 - increment `CFBundleVersion` monotonically and set the public release label;
-- set the intended `TERENTO_RELEASE_CHANNEL` (`beta` or `stable`);
+- set the intended `TERENTO_RELEASE_CHANNEL` (`beta` or `stable`); beta and
+  release-candidate labels both use `beta`;
 - update `site/updates/macos-arm64.json` with the matching version, build,
   minimum macOS, channel, release tag, and canonical DMG `downloadURL`;
 - provide a plain-text `summary` of at most 240 characters and the canonical
@@ -223,6 +234,29 @@ Before distributing a public build:
   release health report to pass, then confirm System health shows matching
   release and website build numbers. A published DMG or successful site deploy
   alone does not complete this operational release gate.
+
+### Release notes format
+
+Every `RELEASE_NOTES.md` section from `1.0.0-rc.1` onward, draft or published,
+has exactly this structure:
+
+1. The title `# Terento v<release label> (build <build>)`. A draft keeps its
+   `DRAFT` and `TODO` comments directly below the title.
+2. A short intro: one or two short paragraphs saying what the release is, its
+   public status, and the real-device validation it actually has.
+3. `## WHAT'S NEW?`: new capabilities and visible improvements.
+4. `## WHAT'S FIXED?`: corrected behavior.
+5. `## KNOWN ISSUES`: limitations, pending real-device validation and
+   unresolved issues.
+
+The three blocks appear in this order, with these exact headings, as bullet
+lists, and no other `##` headings. A block with nothing to report keeps its
+heading and one bullet saying so, for example `- No fixes in this release.`
+Describe outcomes users notice, not implementation mechanics. Deferred
+validation gates belong in KNOWN ISSUES and are never described as passed (see
+[VERSIONING.md](../VERSIONING.md)). Sections published before `1.0.0-rc.1` keep
+their original structure. `Tests/release-documentation-tests.cjs` enforces this
+format.
 
 ### Documentation and help synchronization
 

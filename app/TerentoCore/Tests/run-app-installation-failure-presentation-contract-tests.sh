@@ -65,7 +65,12 @@ reject_active 'SecondaryButton(title: "Report issue")' 'active installation foot
 require_source '@State private var isShowingInstallationFailure = false' 'terminal failure has no modal presentation state'
 require_source 'if phase == .failed {' 'terminal failure does not present the failure modal'
 require_source 'isPresented: $isShowingInstallationFailure' 'failure modal is not attached to the app shell'
-require_source 'onDismiss: returnToDeviceAfterFailure' 'Escape or sheet dismissal does not recover to Device'
+require_source 'onDismiss: handleInstallationFailureDismissed' 'Escape or sheet dismissal does not recover to Device'
+require_source 'installationFailureFollowUp = .backToDevice' 'sheet dismissal does not default to Device recovery'
+require_source 'case .backToDevice:
+            returnToDeviceAfterFailure()' 'Device recovery path is missing'
+require_source 'onTryAgain: mapEngine.canRetryFailedInstallation' 'Try again is not limited to retryable failures'
+require_source 'onManageMaps: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true' 'leftover-map failures do not offer Manage maps'
 require_source 'selectedSection = .device' 'failure recovery does not navigate to Device'
 require_source 'title: "Installation stopped"' 'failure modal title is incorrect'
 require_source 'message: "The map could not be installed."' 'failure modal lacks the concise outcome'
@@ -74,7 +79,8 @@ require_source '"Your existing maps were not changed."' 'failure modal has no co
 require_source 'secondaryLabel: "Report issue"' 'failure modal has no Report issue action'
 require_source 'secondaryAssetIcon: "GitHubMark"' 'Report issue has no canonical GitHub mark'
 require_source 'secondaryUsesCancelShortcut: false' 'Escape incorrectly activates Report issue'
-require_source 'primaryLabel: "Back to device"' 'failure modal lacks the explicit primary recovery action'
+require_source 'primaryLabel: primaryAction?.label ?? "Back to device"' 'failure modal lacks the explicit primary recovery action'
+require_source 'tertiaryLabel: primaryAction == nil ? nil : "Back to device"' 'Back to device is not kept beside Try again or Manage maps'
 require_source '.keyboardShortcut(.defaultAction)' 'Back to device is not the safe default action'
 require_source 'InstallationIssueReport.openGitHub(draft)' 'Report issue is not connected to the reviewable GitHub flow'
 test -f "$github_asset" || { print -u2 'FAIL: canonical GitHub mark asset is missing'; exit 1; }

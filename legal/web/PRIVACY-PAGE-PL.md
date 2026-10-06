@@ -27,6 +27,12 @@ Gdy piszesz do nas, otrzymujemy adres, wiadomość i załączniki, aby odpowiedz
 
 Zgłoszenie GitHub jest oddzielne od automatycznej diagnostyki: sprawdzasz i wysyłasz je samodzielnie, a treść i nazwa konta mogą być publiczne. Obowiązuje [polityka GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Dobrowolne wsparcie odbywa się przez [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), przetwarzające dane płatnicze na własnych zasadach.
 
+## Raporty pomocy
+
+Gdy aplikacja oferuje wysłanie raportu pomocy do Terento, raport jest wysyłany tylko wtedy, gdy zdecydujesz się go wysłać po zapoznaniu się z jego treścią. Zawiera oczyszczone informacje o problemie używane także w raportach GitHub: wersje aplikacji i macOS, model i wariant zegarka, etap, który się nie powiódł, kategorię i komunikat błędu, dostawcę i region mapy oraz czasy, a także opcjonalny opis. Nie zawiera numerów seryjnych, Unit IDs, danych kont, lokalnych ścieżek, surowych logów ani map; konto GitHub nie jest potrzebne. Nie podawaj w opisie danych osobowych.
+
+Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są używane w statystykach i są przechowywane przez 12 miesięcy. Dostęp ma administracja projektu; adres IP nie jest zapisywany z raportem. Podstawą jest uzasadniony interes w odpowiedzi na zgłoszenie i utrzymaniu aplikacji, zgodnie z art. 6 ust. 1 lit. f RODO.
+
 ## Statystyki i pamięć przeglądarki
 
 Umami jest ładowane dla wszystkich odwiedzających, aby mierzyć odsłony, kliknięcia i pobrania. Nie używa śledzących plików cookie. Może przetwarzać adresy stron i odsyłaczy, przeglądarkę, system, urządzenie i przybliżoną lokalizację. Wartości UTM w linkach opisują źródła kampanii. Terento przekazuje je w adresach URL bez zapisywania kampanii w przeglądarce. Statystyki służą ulepszaniu witryny i pomiarowi kampanii na podstawie uzasadnionego interesu, art. 6 ust. 1 lit. f RODO. Nie ma banera zgody ani przełącznika analityki w witrynie; skontaktuj się, aby zgłosić sprzeciw. Statystyki są oddzielne od ustawień diagnostyki aplikacji.
@@ -51,4 +57,4 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 13 września 2026 r.
+Aktualizacja: 6 października 2026 r.

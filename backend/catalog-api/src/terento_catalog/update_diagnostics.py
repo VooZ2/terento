@@ -115,6 +115,22 @@ def load_update_diagnostics(db: Any, *, event_id: str = '', diagnostic_id: str =
                   AND (%s = '' OR d.diagnostic_status = %s)
                 ORDER BY d.occurred_at DESC, d.event_id LIMIT 51 OFFSET %s''',
                 (outcome.upper(),outcome.upper(),device_id,device_id,lifecycle,lifecycle,offset)).fetchall()
+        # Report totals for the list scope (raw report rows, the update report
+        # stream), independent of the outcome filter and pagination (ADM-09).
+        try:
+            totals = connection.execute('''SELECT count(*) AS total,
+                    count(*) FILTER (WHERE d.outcome = 'SUCCEEDED') AS succeeded,
+                    count(*) FILTER (WHERE d.outcome = 'FAILED') AS failed,
+                    count(*) FILTER (WHERE d.outcome = 'NOT_STARTED') AS not_started,
+                    count(*) FILTER (WHERE d.outcome = 'FAILED' AND d.diagnostic_status = 'ACTIVE') AS open_failed
+                FROM map_update_diagnostic d
+                WHERE d.is_local_test IS FALSE
+                  AND (%s = '' OR d.canonical_device_model_id = %s)
+                  AND (%s = '' OR d.diagnostic_status = %s)''',
+                (device_id, device_id, lifecycle, lifecycle)).fetchone()
+            data['totals'] = dict(totals) if isinstance(totals, dict) else None
+        except Exception:
+            data['totals'] = None
     data['has_more'] = len(data['rows']) > 50
     data['rows'] = data['rows'][:50]
     if device_id:
@@ -257,14 +273,27 @@ def _update_review_controls(row: dict[str, Any], csrf_token: str, return_to: str
 
 
 def update_summary_markup(summary: dict[str, Any], device_id: str) -> str:
-    def count(field: str, outcome: str, label: str) -> str:
+    """Update reports for one model: diagnostic stream, all time, linked counts."""
+    from .admin import _glossary_link, _metric_row, _metric_tile, _scope_chip
+
+    def count(field: str, outcome: str, label: str, *, failure: bool = False, glossary: str | None = None) -> str:
         href = '/admin/update-diagnostics?' + urlencode({'deviceId': device_id, 'outcome': outcome})
         value = int(summary.get(field) or 0)
-        return f"<div class='map-statistics-kpi-value'><span>{label}</span><strong><a href='{html.escape(href, quote=True)}'>{value}</a></strong></div>"
-    values = count('successfulUpdateCount', 'succeeded', 'Successful') + count('failedUpdateCount', 'failed', 'Failed') + count('notStartedCount', 'not_started', 'Not started')
+        return _metric_tile(label, value, failure=failure, glossary=glossary,
+                            value_html=f"<a href='{html.escape(href, quote=True)}'>{value}</a>", data_stat=field)
+
+    values = _metric_row([
+        count('successfulUpdateCount', 'succeeded', 'Successful', glossary='successful'),
+        count('failedUpdateCount', 'failed', 'Failed', failure=True, glossary='failed'),
+        count('notStartedCount', 'not_started', 'Blocked before writing', glossary='blocked-before-writing'),
+    ], label='Update reports for this model')
     conflicts = int(summary.get('ambiguousUpdateCount') or 0)
     note = f"<p class='table-help'>{conflicts} conflicting reported results excluded from attempt totals. Inspect update history.</p>" if conflicts else ''
-    return f"<section class='provider-card map-statistics-kpi-panel admin-kpi-panel' aria-labelledby='model-update-kpis-title'><h2 id='model-update-kpis-title'>Map updates</h2><p class='table-help'>Reported results · All time</p><div class='map-statistics-kpi-values'>{values}</div>{note}</section>"
+    return (
+        "<section class='admin-card admin-kpi-panel model-update-statistics' aria-labelledby='model-update-kpis-title'>"
+        f"<header class='admin-card-head'><h2 id='model-update-kpis-title'>Update reports</h2>{_glossary_link('update-report')}{_scope_chip('all')}</header>"
+        f"{values}{note}</section>"
+    )
 
 
 def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/update-diagnostics', embedded: bool = False) -> str:
@@ -276,15 +305,21 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
         if embedded:
             parameters = {'updateOutcome': parameters['outcome'], 'updateOffset': parameters.get('offset', 0)}
         return base_url + ('&' if '?' in base_url else '?') + urlencode({k: v for k, v in parameters.items() if v != ''}) + ('#updates' if embedded else '')
-    result = "<section class='model-page-section' id='updates' aria-labelledby='update-history-title'><div class='section-heading'><h2 id='update-history-title'>Update history</h2></div><p class='table-help'>Reported results · All time. Diagnostic sharing is independent of map activity reporting, so these counts can differ from Map statistics. Updates do not change installation totals or public compatibility.</p>"
-    result += "<nav class='provider-problem-actions' aria-label='Filter update history'>"
-    for value, label in (('', 'All'), ('succeeded', 'Successful'), ('failed', 'Failed'), ('not_started', 'Not started')):
-        result += f"<a class='secondary-button' href='{html.escape(url(outcome=value, offset=0), quote=True)}'{' aria-current="true"' if selected == value else ''}>{label}</a>"
+    from .admin import _glossary_link, _operation_map_label, _scope_chip
+    title = 'Update history' if embedded else 'Reports'
+    result = (
+        f"<section class='model-page-section admin-card' id='updates' aria-labelledby='update-history-title'><header class='admin-card-head'><h2 id='update-history-title'>{title}</h2>"
+        f"{_glossary_link('update-report')}{_scope_chip('all')}</header>"
+    )
+    result += "<nav class='quick-filter-group' aria-label='Filter update reports'>"
+    for value, label in (('', 'All'), ('succeeded', 'Successful'), ('failed', 'Failed'), ('not_started', 'Blocked before writing')):
+        active = selected == value
+        result += f"<a class='quick-filter{' active' if active else ''}' href='{html.escape(url(outcome=value, offset=0), quote=True)}'{' aria-current="true"' if active else ''}>{label}</a>"
     result += "</nav><div class='table-wrap'><table class='diagnostic-list-table mobile-record-table'><caption class='sr-only'>Reported map update results</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody>"
     for row in data.get('rows', []):
         payload = row.get('payload') if isinstance(row.get('payload'), dict) else {}
         link = '/admin/update-diagnostics?' + urlencode({'diagnosticId': str(row['event_id'])})
-        result += f"<tr><td data-label='Date'>{_timestamp_markup(row.get('occurred_at'))}</td><td data-label='Map'>{_escape(row.get('region'))} · {_escape(row.get('provider'))}</td><td data-label='Result'>{_diagnostic_result(row.get('outcome'))}</td><td data-label='GitHub issue'>{_github_issue_link(row.get('linked_github_issue'))}</td><td data-label='App version'>{_escape(_admin_app_version_label(payload.get('terentoVersion'), payload.get('appBuild')))}</td><td data-label='Action'><a href='{html.escape(link, quote=True)}'>Inspect update</a></td></tr>"
+        result += f"<tr><td data-label='Date'>{_timestamp_markup(row.get('occurred_at'))}</td><td data-label='Map'>{_escape(_operation_map_label([row]))}</td><td data-label='Result'>{_diagnostic_result(row.get('outcome'))}</td><td data-label='GitHub issue'>{_github_issue_link(row.get('linked_github_issue'))}</td><td data-label='App version'>{_escape(_admin_app_version_label(payload.get('terentoVersion'), payload.get('appBuild')))}</td><td data-label='Action'><a href='{html.escape(link, quote=True)}'>Inspect update</a></td></tr>"
     if not data.get('rows'):
         result += "<tr><td colspan='6'>No update reports match this filter. Reports appear when diagnostic sharing is enabled.</td></tr>"
     result += '</tbody></table></div><nav class="provider-pagination" aria-label="Update history pages">'
@@ -295,12 +330,36 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
     return result + '</nav></section>'
 
 
+def _update_totals_markup(totals: dict[str, Any] | None) -> str:
+    """Report tiles for the list scope; the stream is update reports, not Maps updates."""
+    from .admin import _metric_row, _metric_tile
+    state = None if totals is not None else 'unavailable'
+    totals = totals or {}
+
+    def tile(label: str, key: str, *, failure: bool = False, glossary: str | None = None, href: str | None = None) -> str:
+        return _metric_tile(label, totals.get(key), scope='all', state=state, failure=failure, glossary=glossary,
+                            href=href, data_stat=key)
+
+    return _metric_row([
+        tile('Reports', 'total', glossary='update-report'),
+        tile('Successful', 'succeeded', glossary='successful'),
+        tile('Failed', 'failed', failure=True, glossary='failed'),
+        tile('Blocked', 'not_started', glossary='blocked-before-writing'),
+        tile('Open', 'open_failed', failure=True, href='/admin/update-diagnostics?outcome=failed&lifecycle=ACTIVE'),
+    ], label='Update report totals')
+
+
 def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_token: str) -> bytes:
-    from .admin import _admin_header, _layout, _timestamp_markup, _diagnostic_result, _diagnostics_script, _admin_app_version_label, _operation_map_label, _diagnostic_state_badge, _diagnostic_heading
+    from .admin import _admin_header, _admin_icon, _layout, _timestamp_markup, _diagnostic_result, _diagnostics_script, _admin_app_version_label, _operation_map_label, _diagnostic_state_badge, _diagnostic_heading
     content = _admin_header(user, csrf_token, active='map-statistics')
-    content += "<main id='main-content' class='dashboard provider-detail update-diagnostics-page'><div class='heading-row'><h1>Update diagnostics</h1></div><nav class='provider-problem-actions' aria-label='Update report navigation'><a class='secondary-button' href='/admin/update-diagnostics'>All update reports</a><a class='secondary-button' href='/admin/map-statistics'>Map statistics</a></nav>"
+    content += (
+        "<main id='main-content' class='dashboard provider-detail update-diagnostics-page'>"
+        f"<p class='back-link'><a href='/admin/map-statistics'>{_admin_icon('arrow-left')} Maps</a></p>"
+        "<div class='heading-row'><h1>Update reports</h1>"
+        "<a class='section-link' href='/admin/update-diagnostics'>All update reports</a></div>"
+    )
     if data.get('status'):
-        content += f"<section class='provider-card'><h2>Diagnostic availability</h2><p>{_escape(data['status'])}</p></section>"
+        content += f"<section class='provider-card admin-card'><h2>Report status</h2><p>{_escape(data['status'])}</p></section>"
     detail = data.get('detail')
     event = data.get('event')
     if detail or event:
@@ -337,5 +396,8 @@ def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_tok
             content += f"<p><a href='{html.escape(_device_detail_url(data['device_id']), quote=True)}'>{_escape(model)} · {_escape(variant)}</a></p>"
         if data.get('device_id'):
             content += update_summary_markup(data.get('summary') or {}, data['device_id'])
+        else:
+            content += _update_totals_markup(data.get('totals'))
         content += update_history_markup(data)
-    return _layout('Update diagnostics', content + f'</main><script>{_diagnostics_script()}</script>')
+    from .admin import _script_tag
+    return _layout('Update reports', content + '</main>' + _script_tag(_diagnostics_script()))

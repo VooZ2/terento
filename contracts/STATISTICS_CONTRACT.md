@@ -40,13 +40,25 @@ reports can be lost, and old releases emitted less information.
 
 ## Populations
 
-Terento keeps four related but separate populations:
+Terento keeps four related but separate populations. App first-run funnel
+sessions ([`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md)) are a fifth,
+independent population: they are never mixed into acquisition, fresh-install,
+update, download, compatibility or Needs attention counts. User-sent support
+reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
+statistical population at all: they are review work only and never change any
+count, rate or chart. Optional installation-report `inventoryMetrics`
+(pre-/post-write inventory object counts and durations) are diagnostics only:
+they never add, remove or reclassify any acquisition, install, update, download
+or compatibility count.
 
 - **Acquisitions** are provider-download attempts. Only terminal
   `DOWNLOAD_SUCCEEDED` and `DOWNLOAD_FAILED` events count. `STARTED`,
   `PROCESSING`, `CANCELLED`, `INTERRUPTED`, missing, and unknown terminal
   states are excluded. A custom `.img` import is not an external provider
-  acquisition.
+  acquisition. `acquisitionPurpose` records `install` or `update` independently
+  of the eventual device outcome. Missing historical purpose stays unknown.
+  Downloads totals and charts include all purposes; their breakdown explicitly
+  separates install, update and unknown acquisitions. A download is not an install.
 - **Fresh main-map installs** are independent main-map results. One result is
   identified by `operationId + mapResultIndex` and retains provider, region,
   package/map, and component/acquisition correlations where available. An
@@ -57,7 +69,9 @@ Terento keeps four related but separate populations:
 - **Optional components** (for example OpenTopoMap contours) belong to the
   selected main map. They are never another fresh install. Their selected,
   verified, failed, not-started, and unknown state remains visible as an
-  addon/component warning or diagnostic fact.
+  addon/component warning or diagnostic fact. An independently selectable catalog
+  package with a main artifact (including MapRando France IGN contours) is its
+  own main-map result; a provider/name heuristic must not exclude it.
 - **Updates** are a separate population. Only confirmed terminal
   `MAP_UPDATE_SUCCEEDED` and `MAP_UPDATE_FAILED` results count, and only an
   update that reached its write boundary can be a failed update. An update
@@ -91,7 +105,11 @@ identity, cancellation, or unknown failures do not create a fresh attempt or a
 fresh failure. They remain available in diagnostics and acquisition/activity
 history. An unambiguous legacy record with no write field may retain its
 historical attempted-write interpretation; current missing or conflicting
-facts are excluded from the fresh denominator.
+facts are excluded from the fresh denominator. A record is an unambiguous legacy
+record when it has no write fact and its stored evidence schema version is 1 or 2;
+rows received before the schema version was stored (NULL) qualify only when they
+also carry no app build and no release label. One SQL function,
+`terento_fresh_result_classification`, implements this for every read model.
 
 For every read model:
 
@@ -103,10 +121,21 @@ F_success_rate = F_success / F_completed, when F_completed > 0
 ```
 
 When `F_completed = 0`, the UI displays an em dash rather than zero percent.
+The pure reference classifier (`statistics_semantics.py`) and the SQL read models
+(`compatibility_model_statistics`, `map_statistics`, `admin_overview_snapshot`)
+run the same fixture cases in a PostgreSQL parity test; when they disagree, this
+contract decides which side is corrected. Conflicts are detected per logical
+result over classification, provider, region and assessed device, and legacy
+acquisitions without an acquisition ID keep their event identity in both.
 The identities are stable across views: two selected provider maps produce two
 fresh results; a provider map plus contours produces one; a provider map plus a
 custom `.img` produces two; a fresh install plus an update produces one fresh
 result and one update result; two updates produce no fresh result.
+
+Administrative Resolve/Reopen changes review work, never historical verified
+successes, started failures or model coverage. Classify conflicts at the logical
+result level before aggregating by exact model, so a conflicting identity cannot
+create two attempts.
 
 Replay of the same event ID is zero additional work. A real retry must carry a
 new operation/result identity and counts as a new result. The read model never
@@ -123,10 +152,22 @@ result, including `operationId` and `mapResultIndex`, plus optional-component
 outcomes and write-boundary facts. The two streams may describe the same result
 but are independently consented, delivered, stored, and deduplicated.
 
+Producer rule for fresh map results (app candidate after beta.18): the map stream
+emits `INSTALL_SUCCEEDED` when the selected map's main component is verified, even
+if an optional component failed; that warning remains a diagnostic fact.
+`INSTALL_FAILED` is emitted only when the main component reached its device write
+boundary and failed. Identity, preflight, acquisition and other pre-write failures
+emit no `INSTALL_*` map event; a provider download keeps its own acquisition
+terminal. Maps completed earlier in a batch keep their result when a later
+boundary read fails. Older clients' events are not reclassified, and the read
+model's write-boundary filters above still apply to them.
+
 When both streams contain a trustworthy shared operation identity, linkage also
 requires an unambiguous provider/region and map/package match. An operation ID
 alone is not enough; provider + region alone is not enough when sibling maps or
-custom images are possible. A missing or delayed stream preserves the received
+custom images are possible. A legacy map terminal with multiple possible diagnostic results remains ambiguous;
+it does not add another completed result on top of those retained diagnostics.
+A missing or delayed stream preserves the received
 map-only or device-only fact and does not synthesize the missing side. A custom
 import can contribute a common fresh result without becoming an external
 provider acquisition or receiving guessed catalog geography.
@@ -179,8 +220,11 @@ reinterpreted as a per-map count.
 Session counts are reported separately. Custom activity without a map-usage
 stream is not a missing map-telemetry observation, and a provider event plus a
 custom result does not invalidate a reliable provider link. A diagnostic that
-arrives late can change linkage for that map result, but never changes the
-selected map-event denominator.
+arrives late can change linkage for that map result. For a map-side success it
+never changes the selected fresh-attempt (coverage) denominator. A map-side
+`INSTALL_FAILED` needs write-boundary evidence, so it enters fresh attempts —
+`F_failed` and the coverage denominator — only once its linked started-failure
+diagnostic has arrived; until then it remains a raw activity fact.
 
 ## Update and acquisition formulas
 
@@ -205,7 +249,7 @@ Provider acquisition failures before the device write boundary are acquisition
 facts only. A `write_started=false` diagnostic with download stage or
 `INSTALL_BLOCKED_DOWNLOAD_FAILED` is classified as `PRE-INSTALL` /
 `NOT_STARTED`: it is excluded from fresh-install attempts, failures, model
-compatibility statistics, open errors, and installation review tasks. Raw
+compatibility statistics, open installation problems, and installation review tasks. Raw
 diagnostic and map-event facts remain retained and visible in acquisition
 activity. `STARTED`, `PROCESSING`, `CANCELLED`, `INTERRUPTED`, stale and
 missing terminal outcomes do not enter the acquisition failure denominator.
@@ -245,16 +289,36 @@ populations. Updates must never change fresh-install counts or success rates.
 
 Its fresh series are provider fresh successes, custom fresh successes, and
 confirmed fresh-install failures (including custom). Successful updates and
-failed updates are separate series. Successful updates are solid green; failed
-updates use green diagonal stripes in bars and legends, while fresh-install
-failures remain red. Fresh attempt totals are `F_success + F_failed`; download,
-pre-install, device-check, not-started, cancelled, and unknown events are not
-chart series.
+failed updates are separate series. Colours (owner decision 2026-10-05; existing
+brand tokens only, and every series also has a text label and legend entry):
+provider fresh install successful uses the existing slate/sky series; custom
+`.img` fresh install successful is its own green (Lichen family) series and
+legend entry; install failed is solid red; update successful is Warm Stone
+(ochre, drawn with a stone-dark outline because Warm Stone alone is below 3:1);
+update failed uses red diagonal stripes in bars and legends. This supersedes
+every earlier chart colour rule. Fresh attempt totals are
+`F_success + F_failed`; download, pre-install, device-check, not-started,
+cancelled, and unknown events are not chart series.
 
 The map-statistics read model keeps fresh-install outcomes, acquisition
 outcomes, and update outcomes separate. Period views use the selected period;
 all-time views say so explicitly. Period boundaries use the server/read-model
 timezone supplied by the request, and timestamps remain immutable source facts.
+Client clocks can run ahead: when a reported time is more than 10 minutes after
+the server receipt time, the map-statistics read model uses the receipt time for
+that event (map events and diagnostics alike) in period filters, KPIs, canonical
+result time and chart buckets, so a KPI never counts an event that no chart bucket
+shows. Smaller skew keeps the reported time, and the stored fact is unchanged.
+The read model selects one representative terminal result before bucketing:
+acquisitions use their acquisition ID, current installs operation/result index,
+and legacy records without that identity retain their event identity. Contradictory
+terminal facts stay inspectable but do not enter completed totals. Repeated
+identical reports use the earliest terminal time. For a reliably matched fresh
+map/diagnostic pair the earliest of their terminal times is the canonical result
+time, so a later matching map report cannot move a diagnostic result out of its
+original period. Ambiguous matches cannot supply another result's timestamp.
+An explicit dateTo bounds both bucket selection and display filling. Repeated
+local hours at DST rollback retain distinct real-hour bucket identities.
 The 24-hour trend is hourly, seven-day trends are daily, and 30-day trends are
 weekly. All-time trends use the observed span: up to 14 days is daily, 15–60
 days is weekly, and longer spans are monthly. Missing display buckets keep the
@@ -302,6 +366,11 @@ without a retained marker, asset-only changes, and counter decreases remain
 unattributed boundaries.
 
 The GitHub read model uses these meanings:
+
+GitHub download trends use the same bucket rule as the map trends, so one
+Dashboard period selects one grid for every chart: 24 hours hourly, seven days
+daily, 30 days weekly, and all time adaptive by the observed span since the first
+retained snapshot (up to 14 days daily, 15–60 days weekly, longer monthly).
 
 For the 24-hour trend read model, `hour_start` is the canonical hourly floor of
 an observation. The exact `observed_at` remains available as factual interval
@@ -352,6 +421,17 @@ observed interval, retaining the previous observation time, the actual ending
 time is invented. Failed collection leaves the last successful snapshot and
 its timestamp unchanged.
 
+The Providers view reports separate last successful install and update dates.
+Popularity dates remain fresh-install-only. Diagnostic-only update NOT_STARTED
+outcomes appear in Activity as blocked before writing with a retained report
+link/reason when reports agree. They do not fabricate map telemetry, write
+failures, or additional successful/failed update totals. Missing, disabled or
+unassigned diagnostics cannot be reconstructed from acquisition completion.
+
+A map event whose `mapId` was not yet in the catalog keeps that exact reported ID;
+when the package is published later, read models attribute the event to it by
+exact identity. This is not a provider + region guess.
+
 Recent map activity remains mixed and may show provider downloads, fresh
 install outcomes, optional-component warnings, and updates. Map history keeps
 the installed map and version facts, including unknown or unmapped values.
@@ -359,7 +439,10 @@ Fresh popularity and country coverage use only successful main-map fresh
 installs. Custom fresh results may be included in common fresh totals but do
 not acquire a guessed provider, region, country, or map package. Unknown and
 unmapped results remain visible as unknown/unmapped rather than being silently
-discarded or assigned by provider + region heuristics.
+discarded or assigned by provider + region heuristics. In particular a
+diagnostic-only fresh result (no matching map event) keeps an unknown package and
+geography even when exactly one catalog package currently has its region; it
+counts in fresh totals but never in popularity or country coverage.
 
 Provider problems are three separate current-state populations: affected
 packages (unique current package IDs with at least one failed or unavailable
@@ -376,7 +459,15 @@ Installation failure-diagnostic review and GitHub handling for one operation are
 states of one task; linking an issue moves that task between categories and
 does not add a second task. Identity review is an independent task, and
 publication review is counted per exact model. Installation queue entries use
-operation-level grouping. Linked update review adds one entry per active,
+operation-level grouping. This installation task is the single definition of an
+open installation problem: one operation with an active, nonlocal, non-excluded
+`phaseOutcome=FAILED` diagnostic that is not a provider download/pre-install
+failure and has no linked GitHub issue. Pre-write preflight/storage blocks are
+open problems (they need review) even though they are not fresh failures.
+Installations `Open problems`, its per-identity column and model detail use this
+same predicate and unit; each operation is attributed to exactly one identity so
+the rows sum to the total, and Dashboard `Installation problems` equals
+Installations `Open problems` for the same population. Linked update review adds one entry per active,
 nonlocal diagnostic UUID; the GitHub badge includes those same entries. Unlinked
 update reports do not enter installation issue counts. Both scopes exclude
 resolved work and are not labelled as a count of unique GitHub issues. A failed queue query is
@@ -392,7 +483,11 @@ audited with administrator, time, transition and exact target; it never edits
 map telemetry, install outcomes, coverage, or compatibility evidence. The
 Dashboard dismiss action is idempotent, requires no reason, and offers Undo.
 Dismissed gaps are excluded from the active queue, while a later matching
-diagnostic independently removes the gap through normal reconciliation. A
+diagnostic independently removes the gap through normal reconciliation. Any
+retained nonlocal diagnostic for the result is present evidence, including a
+statistics-excluded one; an `OUT_OF_SCOPE_PREWRITE` diagnostic for the same
+operation result (or the same operation when the map event has no result index)
+is a policy block and suppresses the gap instead of creating a review task. A
 statistics link for a gap carries the exact `eventId` and opens Event detail;
 aggregate population KPIs remain unchanged.
 

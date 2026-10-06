@@ -39,6 +39,22 @@ unsupported. A future reliably identified, active Edge catalog model with
 Maps=Yes follows the same rule without a dedicated blacklist, whitelist, or
 feature flag. Public product claims remain independently evidence-gated.
 
+The stored catalog Maps value of a **new** collector-managed model comes only
+from the official Garmin product specifications the collector already reads:
+an explicit `yes` on a map-support row (`Ability to add maps`, `Preloaded maps`,
+`TopoActive maps`, `Maps`, `Map support`) stores `true`; an explicit `no` on a
+whole-support row (`Ability to add maps`, `Maps`, `Map support`) with no
+conflicting `yes` stores `false`; missing, conflicting or per-SKU-disagreeing
+information stores NULL (Unknown → `PENDING`). A model-name prefix never stores
+a value, so a future maps-capable model in a family the native display registry
+calls non-map (for example a new Venu) is never silently `BLOCKED`. The
+evidence row, source page and check time are recorded in
+`specification_evidence.map_capable`. A stored `true`/`false` (reviewed,
+backfilled or set by an administrator) is never replaced by the collector; an
+Unknown row may be filled later from the same specification evidence.
+Administrators still set Maps manually, and Dashboard → Needs attention →
+Maps unknown counts active models whose value is Unknown.
+
 Installation checks current policy before provider/custom acquisition or
 extraction and again at the final write boundary. Safe Update checks when the
 operation starts and immediately before its first remote write, comparing the
@@ -60,7 +76,21 @@ hardware evidence for the tested model and behavior.
 
 `installation-policy.schema.json` defines the response shape. The backend
 code serves a public-read, metadata-only `GET /devices/installation-policy.json`
-projection with `schemaVersion: 3`. The implementation requires a fresh
+projection with `schemaVersion: 3`.
+
+Client schema tolerance: beta.14–beta.18 clients require the exact schema-3
+document and record key sets, so the server must not add fields to the
+schema-3 projection while those clients are supported. From the next app
+candidate, the client still requires every known document and record field to
+be present (nullable fields as explicit null) and valid, keeps the exact
+`manufacturer: "Garmin"` and unique-ID checks, and tolerates additive unknown
+fields at both levels. A field that can narrow or revoke write authority must
+never be added to schema 3; it requires a new `schemaVersion`. A client that
+receives a higher `schemaVersion` reports the distinct `UPDATE_REQUIRED` block
+("This Terento version needs an update before it can install maps.") and never
+writes; a malformed, older-schema or unreachable response remains
+`CATALOG_UNAVAILABLE`. Mid-operation re-checks keep their existing failure
+codes; the visible review and acquisition messages use the update text. The implementation requires a fresh
 response and uses `Cache-Control: no-store`; conditional requests return a
 new 200 policy rather than 304. The deploy smoke check now includes this
 endpoint. Live route validation is independent of app packaging and publication;
@@ -81,8 +111,26 @@ The complete profile is checked before acquisition and again against the final
 live inventory before installation writes. The bounded inventory worker carries
 the physical operation profile into its native session. Safe Update also checks
 the unique root and expected storage on its physically bound live inventories.
+These pre/post-write inventories are map-scope reads (every storage-root entry
+plus the single `GARMIN` root subtree; see `app/TerentoCore/README.md`), so root
+uniqueness and storage binding are checked on the same root entries as a full
+walk, and any missing or ambiguous root makes the native session fall back to
+the full walk.
 The existing native mutation grant, same-session identity, ownership, protected
 objects, source verification, free-space and no-overwrite checks remain required.
+A delete grant for a Terento-managed map (Remove, Update's old map) may carry the
+sampled removal proof recorded in that map's manifest entry; the native delete
+then reads and compares only the recorded regions of the exact same-session
+object. Without a proof, and always for external maps, it compares the full
+SHA-256. The proof never grants write or delete permission by itself; see
+`app/TerentoCore/README.md` (Safety and verification).
+Safe Update's pre-write check of the installed managed map uses the same
+recorded proof read-only when the entry has one (otherwise the full SHA-256),
+and its verification of the new map before the old map is removed is the
+fresh-install sampled read-back against the validated local artifact. Neither
+check grants permission: the update still needs fresh authorization, the old
+map is bound to its recorded size and SHA-256 only after the check passes, and
+the old-map delete grant is issued only after the new map was verified.
 
 Native inventory and exact-read resolution project only the verified root and
 its descendants in the selected storage to logical `/GARMIN` paths. Original

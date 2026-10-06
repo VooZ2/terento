@@ -177,7 +177,9 @@ Include your exact watch model and variant, Terento version, what you tried,
 and what happened. A report that a map installed and works on your watch is
 useful too.
 
-For connection or map-visibility problems, see the
+For connection, storage, download or leftover-map problems, see the
+[troubleshooting guide](https://terento.app/guides/troubleshooting/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_help_troubleshooting).
+For first-time setup and map visibility, see the
 [Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_help_guide).
 
 ## Contributing

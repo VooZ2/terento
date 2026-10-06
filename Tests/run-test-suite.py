@@ -43,10 +43,16 @@ def main() -> int:
     module_cache.mkdir(parents=True, exist_ok=True)
     environment.setdefault("CLANG_MODULE_CACHE_PATH", str(module_cache))
     environment.setdefault("SWIFT_MODULECACHE_PATH", str(module_cache))
+    # Keep test runs away from the user's real ~/Library/Logs/Terento files.
+    log_sandbox = Path(tempfile.mkdtemp(prefix="terento-test-logs-"))
+    environment.setdefault("TERENTO_LOG_DIRECTORY", str(log_sandbox))
     print(f"Terento test plan: {', '.join(selected)} ({total} runners)", flush=True)
 
     log_root = Path(os.environ.get("TERENTO_TEST_LOG_DIR", str(REPO_ROOT / "test-results")))
     log_root.mkdir(parents=True, exist_ok=True)
+    # CI reports every failing runner in one run; local runs stop at the first.
+    keep_going = os.environ.get("CI", "").lower() == "true"
+    failures: list[tuple[str, int]] = []
     for suite in selected:
         suite_started = time.monotonic()
         print(f"\n[{suite}] {len(suites[suite])} runners", flush=True)
@@ -67,13 +73,22 @@ def main() -> int:
                     file=sys.stderr,
                     flush=True,
                 )
-                return code
+                if not keep_going:
+                    return code
+                failures.append((runner_text, code))
+                continue
             completed += 1
             print(f"  PASS {runner_text}", flush=True)
         print(
-            f"[{suite}] PASS in {time.monotonic() - suite_started:.1f}s",
+            f"[{suite}] {'FAIL' if failures else 'PASS'} in {time.monotonic() - suite_started:.1f}s",
             flush=True,
         )
+
+    if failures:
+        print(f"\nFAILED: {len(failures)}/{total} runners", file=sys.stderr, flush=True)
+        for runner_text, code in failures:
+            print(f"  FAIL {runner_text} (exit {code})", file=sys.stderr, flush=True)
+        return failures[0][1]
 
     print(
         f"\nALL PASS: {completed}/{total} runners in "

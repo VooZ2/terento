@@ -71,10 +71,12 @@ struct MapLifecycleViewModelBehaviorTests {
         engine = nil
         try await Task.sleep(nanoseconds: 1_100_000_000)
         let actualEntry = Date()
-        observer(.started); observer(.processing); observer(.failed)
-        // The production bridge queues recording on MainActor; wait for those tasks.
-        for _ in 0..<100 where store.pendingEvents().count < 3 { await Task.yield() }
+        await Task.detached { observer(.started); observer(.processing); observer(.failed) }.value
+        // Phases are persisted in callback order on the download context, before
+        // any main-actor hop, so a fast terminal cannot overtake its start.
         let events = store.pendingEvents()
+        precondition(events.map(\.eventType) == [.downloadStarted, .downloadProcessing, .downloadFailed],
+            "update acquisition phases are durable and ordered when the observer returns")
         // The durable store uses ISO8601 seconds, so compare at persisted precision.
         let started = events.first { $0.eventType == .downloadStarted }!.timestamp
         precondition(started.timeIntervalSince1970 >= floor(actualEntry.timeIntervalSince1970)

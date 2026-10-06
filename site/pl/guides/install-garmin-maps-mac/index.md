@@ -32,6 +32,8 @@ Przebieg instalacji
 
 Podłącz zegarek kablem USB do transmisji danych. Terento go rozpozna i sprawdzi, czy można bezpiecznie kontynuować.
 
+[Mac nie widzi zegarka Garmin](https://terento.app/pl/guides/troubleshooting/#connect-watch)
+
 Terento pokazuje podłączony zegarek Garmin i stan wykrywania
 Terento rozpoznaje podłączony zegarek Garmin przed instalacją.
 
@@ -63,19 +65,21 @@ Potrzebujesz pomocy?
 
 ### Terento nie wykrywa zegarka
 
-Odczekaj 1–2 minuty po podłączeniu. Jeśli zegarek nadal się nie pojawia, podłącz go ponownie, sprawdź kabel do transmisji danych i zamknij inne aplikacje, które mogą z niego korzystać.
+Odczekaj 1–2 minuty po podłączeniu. Jeśli zegarek nadal się nie pojawia, podłącz go ponownie, sprawdź kabel do transmisji danych i zamknij inne aplikacje, które mogą z niego korzystać. Więcej pomocy: [Mac nie widzi zegarka Garmin](https://terento.app/pl/guides/troubleshooting/#connect-watch), [Garmin Express lub inna aplikacja używa zegarka](https://terento.app/pl/guides/troubleshooting/#garmin-busy), [Mac nie rozpoznaje zegarka Garmin: tryb USB (MTP)](https://terento.app/pl/guides/troubleshooting/#usb-mode).
 
 ### Instalacja lub aktualizacja jest niedostępna
 
-Tymczasowo niedostępne mapy pozostają widoczne. Przeczytaj powód podany obok mapy. Jeśli dostawca jest niedostępny lub pobieranie zostało wstrzymane, spróbuj później. Jeśli Terento nie może sprawdzić bieżącej dostępności, sprawdź połączenie internetowe i spróbuj ponownie. Zainstalowane mapy pozostają dostępne.
+Tymczasowo niedostępne mapy pozostają widoczne. Przeczytaj powód podany obok mapy. Jeśli dostawca jest niedostępny lub pobieranie zostało wstrzymane, spróbuj później. Jeśli Terento nie może sprawdzić bieżącej dostępności, sprawdź połączenie internetowe i spróbuj ponownie. Zainstalowane mapy pozostają dostępne. Więcej pomocy: [Lista map Garmin się nie wczytuje lub Terento wymaga aktualizacji](https://terento.app/pl/guides/troubleshooting/#catalog-unavailable), [Nie udało się pobrać mapy Garmin](https://terento.app/pl/guides/troubleshooting/#download-failed).
 
 ### Instalacja nie powiodła się
 
-Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.
+Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało. Więcej pomocy: [Instalacja mapy nie powiodła się: pozostałość mapy na zegarku](https://terento.app/pl/guides/troubleshooting/#leftover-map), [Jak zgłosić problem z Terento](https://terento.app/pl/guides/troubleshooting/#send-report).
 
 ### Mapa została zainstalowana, ale jej nie widać
 
 Podłącz zegarek ponownie lub uruchom go ponownie i sprawdź ustawienia map. Jeśli mapa nadal się nie pojawia, wyślij do pomocy technicznej dokładny model zegarka, region mapy i opis problemu. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+[Zobacz wszystkie rozwiązania](https://terento.app/pl/guides/troubleshooting/)
 
 Gotowe, gdy Ty będziesz
 

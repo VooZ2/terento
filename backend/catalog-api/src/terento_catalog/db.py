@@ -22,7 +22,6 @@ from .compatibility_status import calculate_compatibility_status
 from .models import CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
 from .historical_devices import historical_device_for_event
-from .map_capability import classify_map_capable
 from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
@@ -32,6 +31,135 @@ from .statistics_exclusions import classify_compatibility_event
 
 OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
 ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS = 4
+
+# One predicate for the "install failed · no device diagnostic" review task,
+# shared by the Needs attention count and the Dashboard item list. Expects the
+# aliases e (map_download_event), mp (its package) and review_task.
+MISSING_DIAGNOSTIC_GAP_WHERE = """
+    e.is_local_test IS NOT TRUE
+    AND e.statistics_exclusion_code IS NULL
+    AND e.event_type = 'INSTALL_FAILED'
+    AND e.outcome = 'FAILED'
+    AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
+    -- An OUT_OF_SCOPE_PREWRITE diagnostic for this result is a policy block:
+    -- it contributes no review task (STATISTICS_CONTRACT), so it suppresses
+    -- the gap instead of counting as a missing diagnostic.
+    AND NOT EXISTS (
+        SELECT 1 FROM compatibility_evidence_event AS excluded
+        WHERE excluded.is_local_test IS NOT TRUE
+          AND excluded.statistics_exclusion_code = 'OUT_OF_SCOPE_PREWRITE'
+          AND excluded.operation_id = e.operation_id
+          AND (e.map_result_index IS NULL OR excluded.map_result_index = e.map_result_index)
+    )
+    AND (
+        NOT EXISTS (
+            -- Any retained nonlocal diagnostic for the result is present
+            -- evidence, including a statistics-excluded one.
+            SELECT 1 FROM compatibility_evidence_event AS diagnostic
+            WHERE diagnostic.is_local_test IS NOT TRUE
+              AND diagnostic.operation_id = e.operation_id
+              AND diagnostic.map_result_index IS NOT NULL
+              AND (e.map_result_index IS NULL OR diagnostic.map_result_index=e.map_result_index)
+              AND diagnostic.provider = e.provider_id
+              AND (
+                  diagnostic.region IS NOT DISTINCT FROM e.region
+                  OR (
+                      mp.provider_id = e.provider_id
+                      AND diagnostic.region IN (
+                          mp.provider_region_id, mp.canonical_region_id, mp.region
+                      )
+                      AND e.region IN (
+                          mp.provider_region_id, mp.canonical_region_id, mp.region
+                      )
+                  )
+              )
+        )
+        OR EXISTS (
+            -- A sibling package in the same region makes a region-only
+            -- diagnostic match ambiguous. Surface the gap instead of
+            -- claiming either sibling.
+            SELECT 1
+            FROM map_download_event AS sibling
+            LEFT JOIN map_package AS sibling_package
+              ON sibling_package.id = COALESCE(sibling.map_package_id, sibling.reported_map_id)
+            WHERE sibling.is_local_test IS NOT TRUE
+              AND sibling.statistics_exclusion_code IS NULL
+              AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+              -- Install terminals never carry an acquisition ID (intake rejects
+              -- it); stating it lets PostgreSQL use the operation index.
+              AND sibling.acquisition_id IS NULL
+              AND sibling.operation_id = e.operation_id
+              AND sibling.provider_id = e.provider_id
+              AND COALESCE(sibling.map_package_id, sibling.reported_map_id)
+                  IS DISTINCT FROM COALESCE(e.map_package_id, e.reported_map_id)
+              AND COALESCE(
+                  sibling_package.canonical_region_id,
+                  sibling_package.provider_region_id,
+                  sibling_package.region,
+                  sibling.region
+              ) IS NOT DISTINCT FROM COALESCE(
+                  mp.canonical_region_id,
+                  mp.provider_region_id,
+                  mp.region,
+                  e.region
+              )
+        )
+    )
+"""
+
+# The single canonical "open installation problem" population (STATISTICS_CONTRACT,
+# Needs attention). Unit: one operation (batch). An operation is an open problem
+# when it has an ACTIVE, nonlocal, non-excluded diagnostic with phase FAILED that
+# is not a provider download/pre-install failure, and no linked GitHub issue
+# (a linked issue moves the same task to the GitHub category). Each operation is
+# attributed to exactly one identity so per-identity counts sum to the total.
+INSTALLATION_PROBLEM_OPERATIONS_CTE = """
+    installation_review_rows AS (
+        SELECT
+            COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
+            CASE WHEN NULLIF(btrim(canonical_device_model_id), '') IS NOT NULL
+                 THEN 'canonical:' || btrim(canonical_device_model_id)
+                 ELSE 'identity:' || COALESCE(NULLIF(btrim(compatibility_identity), ''),
+                                              NULLIF(btrim(model), ''), 'Unknown')
+            END AS identity_key,
+            (
+                phase_outcome = 'FAILED'
+                AND NOT (
+                    write_started IS FALSE
+                    AND (
+                        failure_stage = 'download'
+                        OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                    )
+                )
+            ) AS is_failure,
+            NULLIF(btrim(linked_github_issue), '') IS NOT NULL AS has_github_issue,
+            (
+                canonical_device_model_id IS NULL
+                AND COALESCE(identity_resolution_state, 'UNRESOLVED')
+                    NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
+                AND NOT (
+                    write_started IS FALSE
+                    AND (
+                        failure_stage = 'download'
+                        OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                    )
+                )
+            ) AS identity_pending
+        FROM compatibility_evidence_event
+        WHERE diagnostic_status = 'ACTIVE'
+          AND is_local_test IS NOT TRUE
+          AND statistics_exclusion_code IS NULL
+    ), operation_reviews AS (
+        SELECT
+            operation_key,
+            bool_or(is_failure) AS has_failure,
+            bool_or(has_github_issue) AS has_github_issue,
+            bool_or(identity_pending) AS identity_pending,
+            min(identity_key) FILTER (WHERE is_failure) AS problem_identity_key
+        FROM installation_review_rows
+        GROUP BY operation_key
+    )
+"""
 
 
 class IdentityResolutionError(ValueError):
@@ -59,7 +187,7 @@ def _overview_bucket_floor(
     )
     value = value.astimezone(_overview_time_zone(time_zone))
     if bucket == "hour":
-        return value.replace(minute=0, second=0, microsecond=0)
+        return value.replace(minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     if bucket == "week":
         return (value - timedelta(days=value.weekday())).replace(
             hour=0, minute=0, second=0, microsecond=0
@@ -74,7 +202,7 @@ def _next_overview_bucket(
 ) -> datetime:
     value = value.astimezone(_overview_time_zone(time_zone))
     if bucket == "hour":
-        return value + timedelta(hours=1)
+        return value.astimezone(timezone.utc) + timedelta(hours=1)
     if bucket == "week":
         return value + timedelta(days=7)
     if bucket == "month":
@@ -215,6 +343,21 @@ def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, A
 
     downloads = count("DOWNLOAD_SUCCEEDED", "SUCCEEDED")
     failed_downloads = count("DOWNLOAD_FAILED", "FAILED")
+    purposes = {
+        purpose: {
+            outcome_key: sum(
+                int(row.get("operation_count") or 0)
+                for row in rows
+                if row.get("event_type") == event_type and row.get("outcome") == outcome
+                and (row.get("acquisition_purpose") or "unknown") == purpose
+            )
+            for outcome_key, event_type, outcome in (
+                ("succeeded", "DOWNLOAD_SUCCEEDED", "SUCCEEDED"),
+                ("failed", "DOWNLOAD_FAILED", "FAILED"),
+            )
+        }
+        for purpose in ("install", "update", "unknown")
+    }
     installs = count("INSTALL_SUCCEEDED", "SUCCEEDED")
     failed_installs = count("INSTALL_FAILED", "FAILED")
     successful_updates = count("MAP_UPDATE_SUCCEEDED", "SUCCEEDED")
@@ -232,10 +375,39 @@ def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, A
             downloads / (downloads + failed_downloads) * 100
             if downloads + failed_downloads else None
         ),
+        # Downloads include every purpose; this breakdown keeps install,
+        # update and unrecorded acquisitions separate (never inferred).
+        "downloadPurposes": purposes,
         "completedMapUpdateCount": successful_updates,
         "failedMapUpdateCount": failed_updates,
         "mapUpdateCount": successful_updates + failed_updates,
     }
+
+
+# Client clocks can run ahead. A reported time more than this tolerance after
+# the server received the event is replaced by the receipt time in the
+# statistics read model, so KPIs, charts and period filters agree (an event can
+# never land in a future chart bucket that the zero-filled trend does not show).
+# The stored occurred_at fact is unchanged.
+FUTURE_TIMESTAMP_TOLERANCE = "10 minutes"
+
+
+def _effective_occurred_at_sql(alias: str) -> str:
+    return (
+        f"CASE WHEN {alias}.occurred_at > {alias}.received_at + interval '{FUTURE_TIMESTAMP_TOLERANCE}' "
+        f"THEN {alias}.received_at ELSE {alias}.occurred_at END"
+    )
+
+
+def _prefer_hash_joins(connection: Any) -> None:
+    """Steer full-history statistics queries away from nested loops.
+
+    The read models aggregate materialized CTEs whose row counts PostgreSQL
+    cannot estimate (it assumes about 200 groups), so it picks nested loops that
+    rescan a whole CTE per outer row and grow quadratically with history. This
+    transaction-local planner setting changes only the plan, never the result.
+    """
+    connection.execute("SET LOCAL enable_nestloop = off")
 
 
 def _enrich_activity_models(connection, rows):
@@ -267,7 +439,7 @@ def _enrich_activity_models(connection, rows):
             continue
         targets.append({'index':index,'operation_id':operation,'provider_id':row['provider_id'],
                         'region':row.get('region'),'map_package_id':row.get('map_package_id'),
-                        'event_type':row['event_type'],'outcome':row['outcome'],'trusted_model_id':trusted_id})
+                        'event_type':row['event_type'],'outcome':row['outcome'],'trusted_model_id':trusted_id,'map_result_index':row.get('map_result_index')})
     if not targets:
         return rows
     matches = connection.execute("""
@@ -275,12 +447,13 @@ def _enrich_activity_models(connection, rows):
         WITH targets AS (
             SELECT * FROM jsonb_to_recordset(%s::jsonb) AS t(
                 index integer,operation_id uuid,provider_id text,region text,map_package_id text,
-                event_type text,outcome text,trusted_model_id text)
+                event_type text,outcome text,trusted_model_id text,map_result_index integer)
         ), candidates AS (
             SELECT t.index,t.outcome AS expected_outcome,d.phase_outcome AS outcome,d.canonical_device_model_id
             FROM targets t
             LEFT JOIN map_package p ON p.id=t.map_package_id AND p.provider_id=t.provider_id
             JOIN compatibility_evidence_event d ON d.operation_id=t.operation_id AND d.provider=t.provider_id
+              AND (t.map_result_index IS NULL OR d.map_result_index=t.map_result_index)
               AND (lower(d.region)=lower(t.region) OR (
                 lower(t.region) IN (lower(p.region),lower(p.provider_region_id),lower(p.canonical_region_id))
                 AND lower(d.region) IN (lower(p.region),lower(p.provider_region_id),lower(p.canonical_region_id))))
@@ -590,10 +763,12 @@ class Database:
         }
         if period not in periods:
             period = "24h"
+        # One bucket rule for every Admin trend (map charts use the same grid):
+        # 24h hourly, 7d daily, 30d weekly, all time adaptive by observed span.
         bucket = {
             "24h": "hour",
             "7d": "day",
-            "30d": "day",
+            "30d": "week",
             "all": "month",
         }[period]
         now = now or datetime.now(timezone.utc)
@@ -654,6 +829,13 @@ class Database:
             if isinstance(row.get("observed_at"), datetime)
         ]
         authoritative_markers = [dict(row) for row in release_markers]
+        if period == "all" and observations:
+            observed_span = now - observations[0]["observed_at"].astimezone(timezone.utc)
+            bucket = (
+                "day" if observed_span <= timedelta(days=14)
+                else "week" if observed_span <= timedelta(days=60)
+                else "month"
+            )
         period_observations = [row for row in observations if row["observed_at"] >= start]
         first_period_index = observations.index(period_observations[0]) if period_observations else len(observations)
         raw_trend: list[dict[str, Any]] = []
@@ -861,8 +1043,9 @@ class Database:
                 cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,
                 raw_mtp_model, identity_resolution_code, is_local_test,
                 garmin_model_description, garmin_model_part_number, identity_assessment,
-                failure_context, original_failure_context,
-                statistics_exclusion_code, statistics_exclusion_reason, security_issue_code
+                failure_context, original_failure_context, inventory_metrics,
+                statistics_exclusion_code, statistics_exclusion_reason, security_issue_code,
+                schema_version
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
                 %(displayType)s, %(canonicalDeviceId)s, %(identityResolutionState)s,
@@ -876,8 +1059,9 @@ class Database:
                 %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
                 %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s,
                 %(isLocalTest)s, %(garminModelDescription)s, %(garminModelPartNumber)s, %(identityAssessment)s::jsonb,
-                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb,
-                %(statisticsExclusionCode)s, %(statisticsExclusionReason)s, %(securityIssueCode)s
+                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb, %(inventoryMetrics)s::jsonb,
+                %(statisticsExclusionCode)s, %(statisticsExclusionReason)s, %(securityIssueCode)s,
+                %(schemaVersion)s
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -900,6 +1084,7 @@ class Database:
             **event,
             "failureContext": json.dumps(event['failureContext']) if event.get('failureContext') is not None else None,
             "originalFailureContext": json.dumps(event['originalFailureContext']) if event.get('originalFailureContext') is not None else None,
+            "inventoryMetrics": json.dumps(event['inventoryMetrics']) if event.get('inventoryMetrics') is not None else None,
             # Swift Codable omits nil optional fields. PostgreSQL still needs
             # explicit NULL parameters for the named placeholders below.
             "family": event.get("family"),
@@ -939,6 +1124,7 @@ class Database:
             "statisticsExclusionCode": None,
             "statisticsExclusionReason": None,
             "securityIssueCode": None,
+            "schemaVersion": event.get("schemaVersion"),
         }
         with self.connection() as connection:
             devices = list(connection.execute("SELECT * FROM device_model").fetchall())
@@ -1004,6 +1190,10 @@ class Database:
     def prune_compatibility_events(self) -> int:
         with self.connection() as connection:
             connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
+            # App funnel events follow the same 24-month receipt-time retention.
+            connection.execute("DELETE FROM app_funnel_event WHERE received_at < now() - interval '24 months'")
+            # Support reports are kept 12 months after receipt, whatever their status.
+            connection.execute("DELETE FROM support_report WHERE received_at < now() - interval '12 months'")
             result = connection.execute(
                 "DELETE FROM compatibility_evidence_event WHERE received_at < now() - interval '24 months'"
             )
@@ -1021,7 +1211,12 @@ class Database:
             return list(connection.execute(query).fetchall())
 
     def compatibility_diagnostic_population(self) -> list[dict[str, Any]]:
-        """Full narrow diagnostic population; aggregated on server, never sent to clients."""
+        """Full narrow diagnostic population; aggregated on server, never sent to clients.
+
+        Uses the same population as the compatibility statistics view:
+        local-test and statistics-excluded (for example OUT_OF_SCOPE_PREWRITE)
+        evidence never enters attempts, failures or identity-pending counts.
+        """
         with self.connection() as connection:
             return list(connection.execute("""
                 SELECT event_id, operation_id, map_result_index,
@@ -1030,9 +1225,11 @@ class Database:
                             ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text) END AS operation_key,
                        canonical_device_model_id, compatibility_identity, model,
                        diagnostic_status, identity_resolution_state, phase_outcome,
-                       automatic_finishing_result, write_started, app_build, release_label
+                       automatic_finishing_result, write_started, app_build, release_label,
+                       failure_stage, failure_code, schema_version
                 FROM compatibility_evidence_event
                 WHERE is_local_test IS NOT TRUE
+                  AND statistics_exclusion_code IS NULL
             """).fetchall())
 
     def compatibility_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
@@ -1073,9 +1270,9 @@ class Database:
                 END AS operation_key,
                 operation_id, event_id, occurred_at, model, compatibility_identity,
                 variant, firmware_version, provider, region, map_release, terento_version,
-                app_build, release_label, map_result_index, selected_map_count,
+                app_build, release_label, schema_version, map_result_index, selected_map_count,
                 phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
-                failure_context, original_failure_context,
+                failure_context, original_failure_context, inventory_metrics,
                 write_started,
                 remote_object_created,
                 cleanup_attempted,
@@ -1234,39 +1431,7 @@ class Database:
         publication review is counted per model. Resolved evidence is excluded.
         """
         query = """
-            WITH operation_reviews AS (
-                SELECT
-                    COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
-                    bool_or(
-                        phase_outcome = 'FAILED'
-                        AND NOT (
-                            write_started IS FALSE
-                            AND (
-                                failure_stage = 'download'
-                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                            )
-                        )
-                    ) AS has_failure,
-                    bool_or(NULLIF(btrim(linked_github_issue), '') IS NOT NULL)
-                        AS has_github_issue,
-                    bool_or(
-                        canonical_device_model_id IS NULL
-                        AND COALESCE(identity_resolution_state, 'UNRESOLVED')
-                            NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
-                        AND NOT (
-                            write_started IS FALSE
-                            AND (
-                                failure_stage = 'download'
-                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                            )
-                        )
-                    ) AS identity_pending
-                FROM compatibility_evidence_event
-                WHERE diagnostic_status = 'ACTIVE'
-                  AND is_local_test IS NOT TRUE
-                  AND statistics_exclusion_code IS NULL
-                GROUP BY COALESCE(operation_id::text, 'legacy:' || event_id::text)
-            ), publication_reviews AS (
+            WITH """ + INSTALLATION_PROBLEM_OPERATIONS_CTE + """, publication_reviews AS (
                 SELECT count(*) AS ready_to_publish
                 FROM compatibility_model_statistics
                 WHERE canonical_device_model_id IS NOT NULL
@@ -1281,61 +1446,11 @@ class Database:
             ), missing_diagnostic_reviews AS (
                 SELECT count(*) AS missing_diagnostics
                 FROM map_download_event AS e
-                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
                 LEFT JOIN admin_map_review_task AS review_task
                   ON review_task.event_id = e.event_id
                  AND review_task.task_type = 'MISSING_DIAGNOSTIC'
-                WHERE e.is_local_test IS NOT TRUE
-                  AND e.statistics_exclusion_code IS NULL
-                  AND e.event_type = 'INSTALL_FAILED'
-                  AND e.outcome = 'FAILED'
-                  AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
-                  AND (
-                      NOT EXISTS (
-                          SELECT 1
-                          FROM compatibility_evidence_event AS diagnostic
-                          WHERE diagnostic.is_local_test IS NOT TRUE
-                            AND diagnostic.statistics_exclusion_code IS NULL
-                            AND diagnostic.operation_id = e.operation_id
-                            AND diagnostic.map_result_index IS NOT NULL
-                            AND diagnostic.provider = e.provider_id
-                            AND (
-                                diagnostic.region IS NOT DISTINCT FROM e.region
-                                OR (
-                                    mp.provider_id = e.provider_id
-                                    AND diagnostic.region IN (
-                                        mp.provider_region_id, mp.canonical_region_id, mp.region
-                                    )
-                                    AND e.region IN (
-                                        mp.provider_region_id, mp.canonical_region_id, mp.region
-                                    )
-                                )
-                            )
-                      )
-                      OR EXISTS (
-                          SELECT 1
-                          FROM map_download_event AS sibling
-                          LEFT JOIN map_package AS sibling_package
-                            ON sibling_package.id = sibling.map_package_id
-                          WHERE sibling.is_local_test IS NOT TRUE
-                            AND sibling.statistics_exclusion_code IS NULL
-                            AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
-                            AND sibling.operation_id = e.operation_id
-                            AND sibling.provider_id = e.provider_id
-                            AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
-                            AND COALESCE(
-                                sibling_package.canonical_region_id,
-                                sibling_package.provider_region_id,
-                                sibling_package.region,
-                                sibling.region
-                            ) IS NOT DISTINCT FROM COALESCE(
-                                mp.canonical_region_id,
-                                mp.provider_region_id,
-                                mp.region,
-                                e.region
-                            )
-                      )
-                  )
+                WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE + """
             )
             SELECT
                 count(*) FILTER (WHERE has_failure AND NOT has_github_issue)
@@ -1374,6 +1489,67 @@ class Database:
         )
         summary["total"] = summary["pendingReviewTasks"]
         return summary
+
+    def installation_problem_counts(self) -> dict[str, Any]:
+        """Return open installation problems (operations) in total and per identity.
+
+        Uses the exact predicate and unit of the Needs attention installation
+        task, so ``total`` equals ``admin_review_summary()['installationIssues']``
+        and the per-identity values sum to it.
+        """
+        query = """
+            WITH """ + INSTALLATION_PROBLEM_OPERATIONS_CTE + """
+            SELECT problem_identity_key AS identity_key, count(*) AS problem_count
+            FROM operation_reviews
+            WHERE has_failure AND NOT has_github_issue
+            GROUP BY problem_identity_key
+        """
+        with self.connection() as connection:
+            rows = list(connection.execute(query).fetchall())
+        by_identity = {
+            str(row["identity_key"]): int(row["problem_count"] or 0)
+            for row in rows if row.get("identity_key")
+        }
+        return {"total": sum(by_identity.values()), "byIdentity": by_identity}
+
+    def missing_diagnostic_failures(self, *, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+        """Every active install failure without a matching device report (newest first).
+
+        Same population as the Needs attention ``missingDiagnostics`` count, so
+        the list total equals the Dashboard row. Read-only and paginated.
+        """
+        limit = max(1, min(int(limit), 200))
+        offset = max(0, int(offset))
+        with self.connection() as connection:
+            rows = list(connection.execute(
+                """
+                SELECT e.*, p.name AS provider_name, mp.name AS map_package_name,
+                       count(*) OVER () AS total_missing_diagnostics
+                FROM map_download_event AS e
+                LEFT JOIN map_provider AS p ON p.id = e.provider_id
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
+                LEFT JOIN admin_map_review_task AS review_task
+                  ON review_task.event_id = e.event_id
+                 AND review_task.task_type = 'MISSING_DIAGNOSTIC'
+                WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE + """
+                ORDER BY e.occurred_at DESC, e.event_id
+                LIMIT %s OFFSET %s
+                """, (limit, offset),
+            ).fetchall())
+            total = int(rows[0].get("total_missing_diagnostics") or 0) if rows else None
+            if total is None:
+                count_row = connection.execute(
+                    """
+                    SELECT count(*) AS total
+                    FROM map_download_event AS e
+                    LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
+                    LEFT JOIN admin_map_review_task AS review_task
+                      ON review_task.event_id = e.event_id
+                     AND review_task.task_type = 'MISSING_DIAGNOSTIC'
+                    WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE,
+                ).fetchone()
+                total = int((count_row or {}).get("total") or 0)
+        return {"rows": [dict(row) for row in rows], "total": total, "limit": limit, "offset": offset}
 
     def set_missing_diagnostic_review(
         self,
@@ -1499,22 +1675,10 @@ class Database:
                             THEN e.operation_id::text || ':' || e.map_result_index::text
                         ELSE 'event:' || e.event_id::text
                     END AS result_key,
-                    CASE
-                        WHEN e.phase_outcome = 'SUCCEEDED'
-                             AND e.automatic_finishing_result = 'VERIFIED'
-                            THEN 'SUCCESS'
-                        WHEN e.phase_outcome = 'FAILED'
-                             AND (e.write_started IS TRUE OR (
-                                 e.write_started IS NULL
-                                 AND e.app_build IS NULL
-                                 AND e.release_label IS NULL
-                             ))
-                            THEN 'FAILURE'
-                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                             AND e.write_started IS FALSE
-                            THEN 'NOT_STARTED'
-                        ELSE 'UNKNOWN'
-                    END AS result_classification
+                    terento_fresh_result_classification(
+                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
+                        e.schema_version, e.app_build, e.release_label
+                    ) AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.statistics_exclusion_code IS NULL
@@ -1523,7 +1687,8 @@ class Database:
                     result_key,
                     bool_or(result_classification = 'SUCCESS') AS has_success,
                     bool_or(result_classification = 'FAILURE') AS has_failure,
-                    count(DISTINCT result_classification) > 1 AS has_conflict
+                    count(DISTINCT (result_classification, provider, region, canonical_device_model_id)) > 1
+                        AS has_conflict
                 FROM classified_results
                 GROUP BY result_key
             ), deduplicated_results AS (
@@ -1762,6 +1927,54 @@ class Database:
             "reviewRequired": [dict(row) for row in review_required],
         }
 
+    @staticmethod
+    def _update_not_started_activity(connection, since: datetime, limit: int) -> list[dict[str, Any]]:
+        """Retained pre-write update outcomes for Activity only, never KPI evidence."""
+        from .update_diagnostics import _update_reason
+        rows = list(connection.execute("""
+            WITH reports AS (
+                SELECT * FROM map_update_diagnostic WHERE is_local_test IS FALSE
+            ), agreed AS (
+                SELECT operation_id, provider, lower(region) AS region_key
+                FROM reports
+                GROUP BY operation_id, provider, lower(region)
+                HAVING count(DISTINCT (COALESCE(canonical_device_model_id, ''), outcome,
+                    COALESCE(payload->>'writeStarted', ''),
+                    COALESCE(payload->>'automaticFinishingResult', ''),
+                    COALESCE(payload->>'failureCode', ''),COALESCE(payload->>'failureStage', ''))) = 1
+                  AND bool_and(outcome='NOT_STARTED' AND payload->>'writeStarted'='false')
+            ), latest AS (
+                SELECT DISTINCT ON (r.operation_id, r.provider, lower(r.region)) r.*
+                FROM reports r JOIN agreed g ON g.operation_id=r.operation_id
+                    AND g.provider=r.provider AND g.region_key=lower(r.region)
+                ORDER BY r.operation_id, r.provider, lower(r.region), r.occurred_at DESC, r.event_id
+            )
+            SELECT r.event_id, r.event_id AS diagnostic_report_id, r.operation_id,
+                r.occurred_at, r.provider AS provider_id, p.name AS provider_name,
+                r.region, 'MAP_UPDATE_NOT_STARTED' AS event_type,
+                'UNKNOWN' AS outcome, r.payload, r.canonical_device_model_id,
+                m.model, m.variant, m.case_size_mm, m.screen_technology
+            FROM latest r LEFT JOIN map_provider p ON p.id=r.provider
+            LEFT JOIN device_model m ON m.id=r.canonical_device_model_id
+            WHERE r.occurred_at >= %s
+              AND NOT EXISTS (
+                SELECT 1 FROM map_download_event e
+                WHERE e.operation_id=r.operation_id AND e.provider_id=r.provider
+                  AND lower(e.region)=lower(r.region) AND e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
+                  AND ((e.event_type='MAP_UPDATE_SUCCEEDED' AND e.outcome='SUCCEEDED')
+                    OR (e.event_type='MAP_UPDATE_FAILED' AND e.outcome='FAILED'))
+              )
+            ORDER BY r.occurred_at DESC, r.event_id LIMIT %s
+        """, (since, limit)).fetchall())
+        result = []
+        for row in rows:
+            row = dict(row)
+            row['reason_summary'] = _update_reason(row)[0]
+            row.pop('payload', None)
+            result.append(row)
+        return result
+
     def admin_overview_map_snapshot(
         self,
         since: datetime,
@@ -1777,8 +1990,9 @@ class Database:
         random operation ID when both are available. Match provider and region
         within that session before suppressing a compatibility result. Custom
         IMG results count in Overview totals and their own success chart series.
-        Map statistics keeps custom results visible with unknown catalog
-        geography when no unambiguous package match exists. No records are changed.
+        Map statistics keeps diagnostic-only and custom results visible with
+        unknown package and geography; provider + region is never a package
+        identity. No records are changed.
         """
         # Dashboard metrics and trends are projections of the same canonical
         # map-statistics read model used by the Maps page. Keep raw map-event
@@ -1811,7 +2025,7 @@ class Database:
         event_scope = """
             FROM map_download_event AS e
             LEFT JOIN map_provider AS p ON p.id = e.provider_id
-            LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+            LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
             WHERE e.occurred_at >= %s
               AND e.is_local_test IS NOT TRUE
               AND e.statistics_exclusion_code IS NULL
@@ -1830,32 +2044,19 @@ class Database:
                             THEN e.operation_id::text || ':' || e.map_result_index::text
                         ELSE 'event:' || e.event_id::text
                     END AS operation_key,
-                    CASE
-                        WHEN e.phase_outcome = 'SUCCEEDED'
-                             AND e.automatic_finishing_result = 'VERIFIED'
-                            THEN 'SUCCESS'
-                        WHEN e.phase_outcome = 'FAILED'
-                             AND (e.write_started IS TRUE OR (
-                                 e.write_started IS NULL
-                                 AND e.app_build IS NULL
-                                 AND e.release_label IS NULL
-                             ))
-                            THEN 'FAILURE'
-                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                             AND e.write_started IS FALSE
-                            THEN 'NOT_STARTED'
-                        ELSE 'UNKNOWN'
-                    END AS result_classification
+                    terento_fresh_result_classification(
+                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
+                        e.schema_version, e.app_build, e.release_label
+                    ) AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.statistics_exclusion_code IS NULL
-                  AND e.occurred_at >= %s
             ), result_flags AS (
                 SELECT
                     result_key,
                     bool_or(result_classification = 'SUCCESS') AS has_success,
                     bool_or(result_classification = 'FAILURE') AS has_failure,
-                    count(DISTINCT result_classification) > 1 AS has_conflict
+                    count(DISTINCT (result_classification,provider,region,canonical_device_model_id)) > 1 AS has_conflict
                 FROM classified_fallback
                 GROUP BY result_key
             ), deduplicated_fallback AS (
@@ -1886,6 +2087,7 @@ class Database:
                          THEN 'FAILED' ELSE 'SUCCEEDED' END AS outcome
                 FROM deduplicated_fallback AS e
                 WHERE e.result_classification_effective IN ('SUCCESS', 'FAILURE')
+                  AND e.occurred_at >= %s
                    -- A final compatibility failure is an installation
                    -- outcome only when writing actually started. False and
                    -- current unknown write facts remain outside installs.
@@ -1893,9 +2095,17 @@ class Database:
                        SELECT 1
                        FROM map_download_event AS installed
                        LEFT JOIN map_package AS installed_package
-                         ON installed_package.id = installed.map_package_id
+                         ON installed_package.id = COALESCE(installed.map_package_id, installed.reported_map_id)
                        WHERE installed.operation_id = e.operation_id
                          AND installed.provider_id = e.provider
+                         AND (installed.map_result_index=e.map_result_index OR (
+                             installed.map_result_index IS NULL AND
+                             (SELECT count(*) FROM deduplicated_fallback sibling
+                              WHERE sibling.operation_id=e.operation_id AND sibling.provider=e.provider
+                                AND sibling.region IS NOT DISTINCT FROM e.region)=1))
+                         AND installed.component_kind IS DISTINCT FROM 'contours'
+                         AND ((installed.event_type='INSTALL_SUCCEEDED' AND installed.outcome='SUCCEEDED')
+                           OR (installed.event_type='INSTALL_FAILED' AND installed.outcome='FAILED'))
                          AND (
                              installed.region IS NOT DISTINCT FROM e.region
                              OR (
@@ -1929,6 +2139,7 @@ class Database:
                     SELECT
                         e.*,
                         CASE
+                            WHEN e.event_type NOT LIKE 'DOWNLOAD_%%' THEN 'event:' || e.event_id::text
                             WHEN e.acquisition_id IS NOT NULL
                                 THEN 'acquisition:' || e.acquisition_id::text || ':'
                                      || COALESCE(e.operation_id::text, '') || ':'
@@ -1964,11 +2175,12 @@ class Database:
                 SELECT
                     e.event_id::text AS event_id,
                     e.operation_id::text AS operation_id,
+                    e.map_result_index,
                     e.provider_id,
                     p.name AS provider_name,
                     e.map_package_id,
-                    COALESCE(mp.name, e.map_package_id) AS map_package_name,
-                    COALESCE(mp.name, e.region, e.map_package_id) AS display_name,
+                    COALESCE(mp.name, e.map_package_id, e.reported_map_id) AS map_package_name,
+                    COALESCE(mp.name, e.region, e.map_package_id, e.reported_map_id) AS display_name,
                     COALESCE(e.region, mp.region) AS region,
                     mp.country AS region_country,
                     e.event_type,
@@ -1992,6 +2204,7 @@ class Database:
                 SELECT
                     NULL::text AS event_id,
                     c.operation_id::text AS operation_id,
+                    c.map_result_index,
                     c.provider_id,
                     p.name AS provider_name,
                     NULL AS map_package_id,
@@ -2020,6 +2233,9 @@ class Database:
                 (since, since, recent_limit),
             ).fetchall())
             recent = _enrich_activity_models(connection, recent)
+            recent.extend(self._update_not_started_activity(connection, since, recent_limit))
+            recent.sort(key=lambda row: (row['occurred_at'], str(row.get('event_id') or '')), reverse=True)
+            recent = recent[:recent_limit]
             # A failed install can arrive without compatibility diagnostics
             # (the streams have separate sharing controls and delivery). Surface
             # this evidence gap, but never resurrect a linked resolved report.
@@ -2030,62 +2246,11 @@ class Database:
                        count(*) OVER () AS total_missing_diagnostics
                 FROM map_download_event AS e
                 LEFT JOIN map_provider AS p ON p.id = e.provider_id
-                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
                 LEFT JOIN admin_map_review_task AS review_task
                   ON review_task.event_id = e.event_id
                  AND review_task.task_type = 'MISSING_DIAGNOSTIC'
-                WHERE e.is_local_test IS NOT TRUE
-                  AND e.statistics_exclusion_code IS NULL
-                  AND e.event_type = 'INSTALL_FAILED' AND e.outcome = 'FAILED'
-                  AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
-                  AND (
-                      NOT EXISTS (
-                          SELECT 1 FROM compatibility_evidence_event AS diagnostic
-                          WHERE diagnostic.is_local_test IS NOT TRUE
-                            AND diagnostic.statistics_exclusion_code IS NULL
-                            AND diagnostic.operation_id = e.operation_id
-                            AND diagnostic.map_result_index IS NOT NULL
-                            AND diagnostic.provider = e.provider_id
-                            AND (
-                                diagnostic.region IS NOT DISTINCT FROM e.region
-                                OR (
-                                    mp.provider_id = e.provider_id
-                                    AND diagnostic.region IN (
-                                        mp.provider_region_id, mp.canonical_region_id, mp.region
-                                    )
-                                    AND e.region IN (
-                                        mp.provider_region_id, mp.canonical_region_id, mp.region
-                                    )
-                                )
-                            )
-                      )
-                      OR EXISTS (
-                          -- A sibling package in the same region makes a
-                          -- region-only diagnostic match ambiguous. Surface
-                          -- the gap instead of claiming either sibling.
-                          SELECT 1
-                          FROM map_download_event AS sibling
-                          LEFT JOIN map_package AS sibling_package
-                            ON sibling_package.id = sibling.map_package_id
-                          WHERE sibling.is_local_test IS NOT TRUE
-                            AND sibling.statistics_exclusion_code IS NULL
-                            AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
-                            AND sibling.operation_id = e.operation_id
-                            AND sibling.provider_id = e.provider_id
-                            AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
-                            AND COALESCE(
-                                sibling_package.canonical_region_id,
-                                sibling_package.provider_region_id,
-                                sibling_package.region,
-                                sibling.region
-                            ) IS NOT DISTINCT FROM COALESCE(
-                                mp.canonical_region_id,
-                                mp.provider_region_id,
-                                mp.region,
-                                e.region
-                            )
-                      )
-                  )
+                WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE + """
                 ORDER BY e.occurred_at DESC, e.event_id
                 LIMIT %s
                 """, (attention_limit,),
@@ -2121,6 +2286,7 @@ class Database:
             "completedDownloadCount": completed_downloads,
             "failedDownloadCount": failed_downloads,
             "downloadSuccessRate": period_metrics["downloadSuccessRate"],
+            "downloadPurposes": period_metrics["downloadPurposes"],
             "completedMapUpdateCount": completed_updates,
             "failedMapUpdateCount": failed_updates,
             "mapUpdateCount": completed_updates + failed_updates,
@@ -2136,6 +2302,10 @@ class Database:
                 if row.get("event_type") == "INSTALL_SUCCEEDED"
                 and row.get("outcome") == "SUCCEEDED"
                 and row.get("provider_id") == "custom"
+            ),
+            "allTimeMapUpdateSuccessRate": (
+                all_time_update_successes / (all_time_update_successes + all_time_update_failures) * 100
+                if all_time_update_successes + all_time_update_failures else None
             ),
             "allTimeMapUpdateCount": all_time_update_successes + all_time_update_failures,
             "allTimeMapUpdateSuccessCount": all_time_update_successes,
@@ -2712,11 +2882,18 @@ class Database:
             return len(rows)
 
     @staticmethod
-    def enrich_device_specifications(connection, device_id: str, specifications: dict, source: str, version: str, skus=()) -> None:
-        values = {k: v for k, v in specifications.items() if k in {"screen_technology", "solar", "inreach"} and v is not None}
+    def enrich_device_specifications(connection, device_id: str, specifications: dict, source: str, version: str, skus=(),
+                                     evidence_fields: dict | None = None) -> None:
+        # map_capable is recorded as evidence only: its column is written by the
+        # catalog upsert (new rows / Unknown rows) and never overwritten here.
+        values = {k: v for k, v in specifications.items()
+                  if k in {"screen_technology", "solar", "inreach", "map_capable"} and v is not None}
         if values:
             checked = datetime.now(timezone.utc).isoformat()
             evidence = {key: {"value": value, "source": source, "version": version, "checkedAt": checked} for key, value in values.items()}
+            for key, field in (evidence_fields or {}).items():
+                if key in evidence and field:
+                    evidence[key]["field"] = field
             connection.execute("""UPDATE device_model SET screen_technology=COALESCE(%s,screen_technology),
                 solar=COALESCE(%s,solar), inreach=COALESCE(%s,inreach), specification_source=%s,
                 specification_checked_at=now(), specification_evidence=specification_evidence || %s::jsonb,
@@ -4118,14 +4295,17 @@ class Database:
                     (event["mapId"],),
                 ).fetchone()
                 map_package_id = package["id"] if package else None
+            # Keep the exact reported map ID when the catalog does not know it
+            # yet, so a later-published package can be attributed by identity.
+            reported_map_id = event.get("mapId") if event.get("mapId") and map_package_id is None else None
             row = connection.execute(
                 """
                 INSERT INTO map_download_event (
                     event_id, operation_id, provider_id, map_package_id,
                     region, event_type, outcome, occurred_at, app_build,
                     release_label, is_local_test, acquisition_id, component_kind,
-                    map_result_index
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    map_result_index, acquisition_purpose, reported_map_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 RETURNING event_id
                 """,
@@ -4133,12 +4313,389 @@ class Database:
                     event["id"], event["operationId"], event["providerId"],
                     map_package_id, event.get("region"), event["eventType"],
                     event["outcome"], event["timestamp"], event.get("appBuild"),
-                    event["releaseLabel"], is_local_release_label(event.get("releaseLabel")),
+                    event.get("releaseLabel"), is_local_release_label(event.get("releaseLabel")),
                     event.get("acquisitionId"), event.get("componentKind"),
-                    event.get("mapResultIndex"),
+                    event.get("mapResultIndex"), event.get("acquisitionPurpose"),
+                    reported_map_id,
                 ),
             ).fetchone()
         return row is not None
+
+    # --- Support reports (contracts/SUPPORT_REPORT_CONTRACT.md) -------------
+    # A separate, operator-only population: never statistics, never an input
+    # to install, update, download, compatibility or funnel counts.
+
+    def insert_support_report(self, report: dict[str, Any]) -> str:
+        """Store one validated report: ``stored``, ``duplicate`` (same id) or ``conflict``.
+
+        ``conflict`` means another report already owns the deterministic
+        reference; the client must create a new report id.
+        """
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                INSERT INTO support_report (
+                    id, reference, created_at, app_build, release_label, is_local_test,
+                    category, operation_id, user_message, report
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                ON CONFLICT DO NOTHING
+                RETURNING id
+                """,
+                (
+                    report["id"], report["reference"], report["createdAt"], report["appBuild"],
+                    report["releaseLabel"], report["isLocalTest"], report["category"],
+                    report.get("operationId"), report.get("userMessage"),
+                    json.dumps(report["report"], ensure_ascii=False, sort_keys=True),
+                ),
+            ).fetchone()
+            if row is not None:
+                return "stored"
+            existing = connection.execute(
+                "SELECT id FROM support_report WHERE id = %s", (report["id"],),
+            ).fetchone()
+        return "duplicate" if existing else "conflict"
+
+    def inventory_metrics_distribution(self, *, model_limit: int = 100) -> list[dict[str, Any]]:
+        """Pre-write inventory timing per exact model and scope (non-local installation reports).
+
+        Diagnostics only: never an input to install, update, download or
+        compatibility counts.
+        """
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT COALESCE(e.canonical_device_model_id, '') AS canonical_device_model_id,
+                       e.compatibility_identity,
+                       e.inventory_metrics->>'scope' AS scope,
+                       count(*) AS report_count,
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteDurationMs')::bigint) AS duration_median,
+                       percentile_cont(0.9) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteDurationMs')::bigint) AS duration_p90,
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteObjectCount')::bigint) AS objects_median,
+                       percentile_cont(0.9) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteObjectCount')::bigint) AS objects_p90,
+                       max(e.occurred_at) AS last_reported_at
+                FROM compatibility_evidence_event AS e
+                WHERE e.inventory_metrics IS NOT NULL AND e.is_local_test IS NOT TRUE
+                GROUP BY 1, 2, 3
+                ORDER BY report_count DESC, e.compatibility_identity, scope
+                LIMIT %s
+                """,
+                (max(1, min(int(model_limit), 500)),),
+            ).fetchall()
+        def number(value: Any) -> float | None:
+            return round(float(value), 1) if value is not None else None
+        return [
+            {
+                "canonicalDeviceId": row["canonical_device_model_id"] or None,
+                "compatibilityIdentity": row["compatibility_identity"],
+                "scope": row["scope"],
+                "reportCount": int(row["report_count"] or 0),
+                "prewriteDurationMs": {"median": number(row["duration_median"]), "p90": number(row["duration_p90"])},
+                "prewriteObjectCount": {"median": number(row["objects_median"]), "p90": number(row["objects_p90"])},
+                "lastReportedAt": row["last_reported_at"].isoformat() if hasattr(row["last_reported_at"], "isoformat") else row["last_reported_at"],
+            }
+            for row in rows
+        ]
+
+    def maps_unknown_model_count(self) -> int:
+        """Needs attention: active catalog models whose Maps value is Unknown (NULL)."""
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT count(*) AS n FROM device_model WHERE active IS TRUE AND map_capable IS NULL"
+            ).fetchone() or {}
+        return int(row.get("n") or 0)
+
+    def support_report_open_count(self) -> int:
+        """Needs attention: open reports from public (non-local) builds."""
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT count(*) AS n FROM support_report WHERE status = 'OPEN' AND is_local_test IS FALSE"
+            ).fetchone() or {}
+        return int(row.get("n") or 0)
+
+    def support_reports(
+        self, *, status: str = "OPEN", limit: int = 50, offset: int = 0, local: bool = False,
+    ) -> dict[str, Any]:
+        """One page of reports (newest receipt first) plus totals independent of the page."""
+        if status not in {"OPEN", "HANDLED", "ALL"}:
+            raise ValueError("invalid_support_report_status")
+        limit = max(1, min(int(limit), 200))
+        offset = max(0, int(offset))
+        local_clause = "is_local_test IS TRUE" if local else "is_local_test IS FALSE"
+        with self.connection() as connection:
+            counts = connection.execute(
+                f"""
+                SELECT count(*) FILTER (WHERE status = 'OPEN') AS open_count,
+                       count(*) FILTER (WHERE status = 'HANDLED') AS handled_count,
+                       count(*) AS total_count
+                FROM support_report WHERE {local_clause}
+                """
+            ).fetchone() or {}
+            rows = list(connection.execute(
+                f"""
+                SELECT id, reference, received_at, created_at, app_build, release_label,
+                       is_local_test, category, operation_id, status, handled_at,
+                       linked_github_issue,
+                       report->>'title' AS title,
+                       report->'device'->>'model' AS device_model,
+                       report->'device'->>'variant' AS device_variant,
+                       (user_message IS NOT NULL) AS has_user_message
+                FROM support_report
+                WHERE {local_clause} AND (%s = 'ALL' OR status = %s)
+                ORDER BY received_at DESC, id
+                LIMIT %s OFFSET %s
+                """,
+                (status, status, limit, offset),
+            ).fetchall())
+        open_count = int(counts.get("open_count") or 0)
+        handled_count = int(counts.get("handled_count") or 0)
+        return {
+            "rows": [dict(row) for row in rows],
+            "status": status,
+            "limit": limit,
+            "offset": offset,
+            "openCount": open_count,
+            "handledCount": handled_count,
+            "totalCount": int(counts.get("total_count") or 0),
+            "filteredTotal": {"OPEN": open_count, "HANDLED": handled_count}.get(status, open_count + handled_count),
+        }
+
+    def support_report_detail(self, reference: str) -> dict[str, Any] | None:
+        """One report with its audit history and the diagnostics sharing its operation ID."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT r.*, u.username AS handled_by_username
+                FROM support_report AS r
+                LEFT JOIN admin_user AS u ON u.id = r.handled_by
+                WHERE r.reference = %s
+                """,
+                (reference,),
+            ).fetchone()
+            if not row:
+                return None
+            detail = dict(row)
+            if isinstance(detail.get("report"), str):
+                detail["report"] = json.loads(detail["report"])
+            detail["audit"] = [dict(item) for item in connection.execute(
+                """
+                SELECT a.action, a.previous_status, a.new_status, a.previous_github_issue,
+                       a.new_github_issue, a.note, a.changed_at, u.username AS changed_by_username
+                FROM support_report_audit AS a
+                LEFT JOIN admin_user AS u ON u.id = a.changed_by
+                WHERE a.support_report_id = %s
+                ORDER BY a.id DESC
+                LIMIT 50
+                """,
+                (detail["id"],),
+            ).fetchall()]
+            installations: list[dict[str, Any]] = []
+            updates: list[dict[str, Any]] = []
+            # Only public diagnostics are linked: local-test diagnostics are
+            # not shown in the Admin diagnostic views.
+            if detail.get("operation_id") and not detail.get("is_local_test"):
+                installations = [dict(item) for item in connection.execute(
+                    """
+                    SELECT compatibility_identity, model, canonical_device_model_id,
+                           count(*) AS result_count, max(occurred_at) AS last_occurred_at
+                    FROM compatibility_evidence_event
+                    WHERE operation_id = %s AND is_local_test IS NOT TRUE
+                    GROUP BY compatibility_identity, model, canonical_device_model_id
+                    ORDER BY last_occurred_at DESC
+                    LIMIT 5
+                    """,
+                    (detail["operation_id"],),
+                ).fetchall()]
+                updates = [dict(item) for item in connection.execute(
+                    """
+                    SELECT event_id, outcome, provider, region, occurred_at
+                    FROM map_update_diagnostic
+                    WHERE operation_id = %s AND is_local_test IS FALSE
+                    ORDER BY occurred_at DESC, event_id
+                    LIMIT 5
+                    """,
+                    (detail["operation_id"],),
+                ).fetchall()]
+            detail["installationDiagnostics"] = installations
+            detail["updateDiagnostics"] = updates
+        return detail
+
+    def review_support_report(
+        self,
+        reference: str,
+        *,
+        action: str,
+        admin_user_id: int | None,
+        note: str | None = None,
+        linked_github_issue: str | None = None,
+        request_id: str | None = None,
+    ) -> bool:
+        """Mark handled, reopen, or link/unlink a GitHub issue; audited, report content unchanged."""
+        if action not in {"handle", "reopen", "issue"}:
+            raise ValueError("invalid_support_report_action")
+        if note is not None and (not note or len(note) > 2000):
+            raise ValueError("invalid_support_report_note")
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT id, status, linked_github_issue, note FROM support_report WHERE reference = %s FOR UPDATE",
+                (reference,),
+            ).fetchone()
+            if not row:
+                return False
+            previous_status = str(row["status"])
+            previous_issue = row.get("linked_github_issue")
+            new_status, new_issue, new_note = previous_status, previous_issue, row.get("note")
+            if action == "handle":
+                new_status = "HANDLED"
+                new_note = note if note is not None else new_note
+            elif action == "reopen":
+                new_status = "OPEN"
+                new_note = note if note is not None else new_note
+            else:
+                new_issue = linked_github_issue
+            if (new_status, new_issue, new_note) == (previous_status, previous_issue, row.get("note")):
+                return True
+            connection.execute(
+                """
+                UPDATE support_report
+                SET status = %s,
+                    handled_at = CASE WHEN %s = 'HANDLED' THEN COALESCE(handled_at, now()) ELSE NULL END,
+                    handled_by = CASE WHEN %s = 'HANDLED' THEN COALESCE(handled_by, %s) ELSE NULL END,
+                    linked_github_issue = %s, note = %s, updated_at = now()
+                WHERE id = %s
+                """,
+                (new_status, new_status, new_status, admin_user_id, new_issue, new_note, row["id"]),
+            )
+            audit_action = {
+                "handle": "HANDLED", "reopen": "REOPENED",
+                "issue": "ISSUE_LINKED" if new_issue else "ISSUE_UNLINKED",
+            }[action]
+            connection.execute(
+                """
+                INSERT INTO support_report_audit (
+                    support_report_id, action, previous_status, new_status,
+                    previous_github_issue, new_github_issue, note, changed_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (row["id"], audit_action, previous_status, new_status, previous_issue, new_issue,
+                 note, admin_user_id),
+            )
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="support_report." + audit_action.lower(),
+                target=f"support-report:{reference}",
+                request_id=request_id,
+                old_status=previous_status,
+                new_status=new_status,
+                reason=note,
+                details={"reference": reference, "previousIssue": previous_issue, "issue": new_issue},
+            )
+        return True
+
+    def purge_local_support_reports(
+        self, *, admin_user_id: int | None, request_id: str | None = None,
+    ) -> int:
+        """Delete only server-classified local test support reports (Test data purge)."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                WITH deleted AS (
+                    DELETE FROM support_report WHERE is_local_test IS TRUE RETURNING id
+                )
+                SELECT count(*) AS report_count FROM deleted
+                """
+            ).fetchone() or {}
+            count = int(row.get("report_count") or 0)
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="support_report.local_test_purged",
+                target="local-test-support-reports",
+                request_id=request_id,
+                reason="Authenticated admin purge of server-classified local support reports",
+                details={"supportReportCount": count},
+            )
+        return count
+
+    def insert_app_funnel_event(self, event: dict[str, Any]) -> bool:
+        """Store one validated funnel event; a replayed event ID is a no-op."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                INSERT INTO app_funnel_event (
+                    event_id, session_id, occurred_at, app_build, release_label,
+                    is_local_test, stage, outcome, base_model, dropped_package_count
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (event_id) DO NOTHING
+                RETURNING event_id
+                """,
+                (
+                    event["id"], event["sessionId"], event["occurredAt"], event["appBuild"],
+                    event["releaseLabel"], event["isLocalTest"], event["stage"], event["outcome"],
+                    event.get("baseModel"), event.get("droppedPackageCount"),
+                ),
+            ).fetchone()
+        return row is not None
+
+    def app_funnel_summary(
+        self, since: datetime | None, until: datetime | None = None, *, model_limit: int = 10,
+    ) -> dict[str, Any]:
+        """Distinct-session funnel counts for a period (local test builds excluded).
+
+        A separate population: it never enters install, update, download or
+        compatibility counts. Period membership uses the same receipt-time rule
+        for far-future client clocks as the map-statistics read model.
+        """
+        effective = _effective_occurred_at_sql("e")
+        clauses = ["e.is_local_test IS NOT TRUE"]
+        values: list[Any] = []
+        if since is not None:
+            clauses.append(f"{effective} >= %s")
+            values.append(since)
+        if until is not None:
+            clauses.append(f"{effective} <= %s")
+            values.append(until)
+        where = " AND ".join(clauses)
+        with self.connection() as connection:
+            totals = connection.execute(
+                f"SELECT count(DISTINCT e.session_id) AS session_count FROM app_funnel_event AS e WHERE {where}",
+                values,
+            ).fetchone() or {}
+            stages = list(connection.execute(
+                f"""
+                SELECT e.stage, e.outcome, count(DISTINCT e.session_id) AS session_count
+                FROM app_funnel_event AS e
+                WHERE {where}
+                GROUP BY e.stage, e.outcome
+                """,
+                values,
+            ).fetchall())
+            models = list(connection.execute(
+                f"""
+                SELECT e.base_model, e.outcome, count(DISTINCT e.session_id) AS session_count
+                FROM app_funnel_event AS e
+                WHERE {where}
+                  AND e.stage = 'AUTHORIZATION'
+                  AND e.outcome IN ('PENDING', 'UNKNOWN_MODEL', 'AMBIGUOUS')
+                  AND e.base_model IS NOT NULL
+                GROUP BY e.base_model, e.outcome
+                ORDER BY session_count DESC, e.base_model, e.outcome
+                LIMIT %s
+                """,
+                values + [model_limit],
+            ).fetchall())
+        return {
+            "sessionCount": int(totals.get("session_count") or 0),
+            "stages": [
+                {"stage": row["stage"], "outcome": row["outcome"], "sessionCount": int(row["session_count"] or 0)}
+                for row in stages
+            ],
+            "modelsNeedingReview": [
+                {"baseModel": row["base_model"], "outcome": row["outcome"],
+                 "sessionCount": int(row["session_count"] or 0)}
+                for row in models
+            ],
+        }
 
     def local_test_telemetry_summary(self) -> dict[str, Any]:
         """Return only purgeable local-test telemetry for the admin screen."""
@@ -4301,7 +4858,7 @@ class Database:
             clauses.append(f"{alias}.provider_id = %s")
             values.append(filters["provider"])
         if filters.get("map"):
-            clauses.append(f"{alias}.map_package_id = %s")
+            clauses.append(f"COALESCE({alias}.map_package_id, {alias}.reported_map_id) = %s")
             values.append(filters["map"])
         if filters.get("region"):
             clauses.append(f"{alias}.region = %s")
@@ -4338,11 +4895,6 @@ class Database:
         clauses = [
             f"{alias}.is_local_test IS NOT TRUE",
             f"{alias}.statistics_exclusion_code IS NULL",
-            # MapRando exposes France IGN contours as a standalone catalog
-            # package, but it is an optional component of the France map and
-            # never an independent fresh-install result.
-            f"({alias}.provider <> 'maprando' "
-            f"OR {alias}.region IS DISTINCT FROM 'FRANCECOURBESIGN')",
         ]
         values: list[Any] = []
         if filters.get("provider"):
@@ -4383,10 +4935,35 @@ class Database:
     ) -> list[dict[str, Any]]:
         clauses, values = self._map_statistics_filter(filters)
         compatibility_clauses, compatibility_values = self._compatibility_map_statistics_filter(filters)
+        effective = _effective_occurred_at_sql
+        compatibility_clauses = [
+            clause.replace("e.occurred_at", effective("e")) for clause in compatibility_clauses
+        ]
         query = f"""
-            WITH classified_compatibility AS (
+            WITH identified_map_events AS (
+                SELECT e.*, {effective("e")} AS effective_occurred_at,
+                    CASE
+                        WHEN e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED') AND e.acquisition_id IS NOT NULL
+                            THEN 'acquisition:' || e.acquisition_id::text
+                        WHEN e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED') AND e.map_result_index IS NOT NULL
+                            THEN 'install:' || e.operation_id::text || ':' || e.map_result_index::text
+                        ELSE 'event:' || e.event_id::text
+                    END AS logical_key
+                FROM map_download_event e
+                WHERE e.is_local_test IS NOT TRUE AND e.statistics_exclusion_code IS NULL
+            ), map_result_flags AS (
+                SELECT logical_key,
+                    count(DISTINCT (provider_id, COALESCE(map_package_id, reported_map_id), region, component_kind,
+                                    acquisition_purpose, event_type, outcome)) > 1 AS conflict
+                FROM identified_map_events GROUP BY logical_key
+            ), normalized_map_events AS (
+                SELECT e.*, f.conflict AS map_conflict,
+                       row_number() OVER (PARTITION BY e.logical_key ORDER BY e.effective_occurred_at, e.event_id) AS result_rank
+                FROM identified_map_events e JOIN map_result_flags f USING (logical_key)
+            ), classified_compatibility AS (
                 SELECT
                     e.*,
+                    {effective("e")} AS effective_occurred_at,
                     CASE
                         WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
                             THEN e.operation_id::text || ':' || e.map_result_index::text
@@ -4397,22 +4974,10 @@ class Database:
                             THEN e.operation_id::text || ':' || e.map_result_index::text
                         ELSE 'event:' || e.event_id::text
                     END AS operation_key,
-                    CASE
-                        WHEN e.phase_outcome = 'SUCCEEDED'
-                             AND e.automatic_finishing_result = 'VERIFIED'
-                            THEN 'SUCCESS'
-                        WHEN e.phase_outcome = 'FAILED'
-                             AND (e.write_started IS TRUE OR (
-                                 e.write_started IS NULL
-                                 AND e.app_build IS NULL
-                                 AND e.release_label IS NULL
-                             ))
-                            THEN 'FAILURE'
-                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                             AND e.write_started IS FALSE
-                            THEN 'NOT_STARTED'
-                        ELSE 'UNKNOWN'
-                    END AS result_classification
+                    terento_fresh_result_classification(
+                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
+                        e.schema_version, e.app_build, e.release_label
+                    ) AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.statistics_exclusion_code IS NULL
@@ -4421,7 +4986,7 @@ class Database:
                     result_key,
                     bool_or(result_classification = 'SUCCESS') AS has_success,
                     bool_or(result_classification = 'FAILURE') AS has_failure,
-                    count(DISTINCT result_classification) > 1 AS has_conflict
+                    count(DISTINCT (result_classification, provider, region, canonical_device_model_id)) > 1 AS has_conflict
                 FROM classified_compatibility
                 GROUP BY result_key
             ), deduplicated_compatibility AS (
@@ -4435,22 +5000,39 @@ class Database:
                     END AS result_classification_effective
                 FROM classified_compatibility AS c
                 JOIN result_flags AS f USING (result_key)
-                ORDER BY c.result_key, c.occurred_at DESC NULLS LAST, c.event_id DESC
+                ORDER BY c.result_key, c.effective_occurred_at ASC NULLS LAST, c.event_id
+            ), map_peer_counts AS (
+                -- Legacy map terminals without a result index: how many main-map
+                -- install terminals share their operation, provider and region.
+                SELECT peer.operation_id, peer.provider_id,
+                       COALESCE(peer_package.canonical_region_id, peer.region) AS region_key,
+                       count(*) AS peer_count
+                FROM normalized_map_events peer
+                LEFT JOIN map_package peer_package ON peer_package.id = COALESCE(peer.map_package_id, peer.reported_map_id)
+                WHERE peer.event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
+                  AND peer.component_kind IS DISTINCT FROM 'contours'
+                GROUP BY peer.operation_id, peer.provider_id,
+                         COALESCE(peer_package.canonical_region_id, peer.region)
             ), map_event_evidence AS (
                 -- A direct failed map event enters the fresh denominator only
                 -- when exactly one compatible diagnostic proves a started
                 -- failure. Raw map events remain in Event detail regardless.
                 SELECT
                     installed.event_id,
+                    CASE WHEN installed.map_result_index IS NOT NULL THEN 1
+                         ELSE COALESCE(max(peer_counts.peer_count), 0)
+                    END AS map_candidate_count,
                     count(DISTINCT evidence.result_key) FILTER (
                         WHERE evidence.result_key IS NOT NULL
                     ) AS diagnostic_result_count,
                     bool_or(
                         evidence.result_classification_effective = 'FAILURE'
-                    ) AS has_confirmed_failure
+                    ) AS has_confirmed_failure,
+                    bool_or(evidence.result_classification_effective <> 'SUCCESS') AS contradicts_success,
+                    min(evidence.effective_occurred_at) AS diagnostic_occurred_at
                 FROM map_download_event AS installed
                 LEFT JOIN map_package AS installed_package
-                  ON installed_package.id = installed.map_package_id
+                  ON installed_package.id = COALESCE(installed.map_package_id, installed.reported_map_id)
                 LEFT JOIN deduplicated_compatibility AS evidence
                   ON evidence.operation_id = installed.operation_id
                  AND evidence.provider = installed.provider_id
@@ -4475,10 +5057,21 @@ class Database:
                          )
                      )
                  )
+                LEFT JOIN map_peer_counts AS peer_counts
+                  ON installed.map_result_index IS NULL
+                 AND peer_counts.operation_id = installed.operation_id
+                 AND peer_counts.provider_id = installed.provider_id
+                 AND peer_counts.region_key IS NOT DISTINCT FROM
+                     COALESCE(installed_package.canonical_region_id, installed.region)
                 WHERE installed.is_local_test IS NOT TRUE
                   AND installed.statistics_exclusion_code IS NULL
                   AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
-                GROUP BY installed.event_id
+                GROUP BY installed.event_id, installed_package.canonical_region_id
+            ), compatibility_sibling_counts AS (
+                SELECT operation_id, provider, region, count(*) AS sibling_count
+                FROM deduplicated_compatibility
+                WHERE operation_id IS NOT NULL
+                GROUP BY operation_id, provider, region
             ), complete_compatibility_operations AS (
                 SELECT
                     e.operation_key,
@@ -4486,14 +5079,30 @@ class Database:
                     e.provider, e.region,
                     e.result_classification_effective
                 FROM deduplicated_compatibility AS e
+                LEFT JOIN compatibility_sibling_counts AS siblings
+                  ON siblings.operation_id = e.operation_id
+                 AND siblings.provider = e.provider
+                 AND siblings.region IS NOT DISTINCT FROM e.region
                 WHERE e.result_classification_effective IN ('SUCCESS', 'FAILURE')
                 AND NOT EXISTS (
                     SELECT 1
                     FROM map_download_event AS installed
                     LEFT JOIN map_package AS installed_package
-                      ON installed_package.id = installed.map_package_id
+                      ON installed_package.id = COALESCE(installed.map_package_id, installed.reported_map_id)
+                    LEFT JOIN map_event_evidence AS installed_evidence
+                      ON installed_evidence.event_id = installed.event_id
                     WHERE installed.operation_id = e.operation_id
                       AND installed.provider_id = e.provider
+                      AND (installed.map_result_index = e.map_result_index OR (
+                          installed.map_result_index IS NULL AND
+                          installed_evidence.map_candidate_count = 1 AND
+                          COALESCE(siblings.sibling_count, 0) = 1
+                      ))
+                      AND installed.statistics_exclusion_code IS NULL
+                      AND installed.component_kind IS DISTINCT FROM 'contours'
+
+                      AND ((installed.event_type = 'INSTALL_SUCCEEDED' AND installed.outcome = 'SUCCEEDED')
+                        OR (installed.event_type = 'INSTALL_FAILED' AND installed.outcome = 'FAILED'))
                       AND (
                           installed.region IS NOT DISTINCT FROM e.region
                           OR (
@@ -4512,18 +5121,15 @@ class Database:
                       )
                       AND installed.is_local_test IS NOT TRUE
                       AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
-                      AND ((e.result_classification_effective = 'SUCCESS'
-                            AND installed.event_type = 'INSTALL_SUCCEEDED')
-                           OR (e.result_classification_effective = 'FAILURE'
-                               AND installed.event_type = 'INSTALL_FAILED'))
+
                 )
             ), compatibility_fallback AS (
                 -- Each retained map result counts independently of its siblings.
                 SELECT c.operation_key, c.provider AS provider_id, c.region,
                        CASE WHEN c.result_classification_effective = 'FAILURE'
                             THEN 'FAILED' ELSE 'SUCCEEDED' END AS outcome,
-                       min(e.occurred_at) AS first_occurred_at,
-                       max(e.occurred_at) AS last_occurred_at
+                       min({effective("e")}) AS first_occurred_at,
+                       max({effective("e")}) AS last_occurred_at
                 FROM complete_compatibility_operations AS c
                 JOIN compatibility_evidence_event AS e
                   ON e.event_id = c.event_id
@@ -4531,37 +5137,33 @@ class Database:
                 GROUP BY c.operation_key, c.provider, c.region, c.result_classification_effective
             ), event_rows AS (
                 SELECT
-                    CASE
-                        WHEN e.event_type LIKE 'DOWNLOAD_%%'
-                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
-                        ELSE 'event:' || e.event_id::text
-                    END AS operation_key,
+                    e.logical_key AS operation_key,
+                    e.occurred_at AS source_occurred_at,
                     e.provider_id,
                     p.name AS provider_name,
-                    e.map_package_id,
+                    COALESCE(e.map_package_id, mp.id) AS map_package_id,
                     mp.name AS map_package_name,
                     mp.map_type,
                     COALESCE(e.region, mp.region) AS region,
                     COALESCE(mp.geographic_region_id, mp.canonical_region_id) AS canonical_region_id,
                     mp.country AS region_country,
                     e.component_kind,
+                    e.acquisition_purpose,
                     e.event_type,
                     e.outcome,
-                    e.occurred_at,
+                    CASE WHEN evidence.diagnostic_result_count=1 AND evidence.map_candidate_count=1
+                         THEN LEAST(e.effective_occurred_at, evidence.diagnostic_occurred_at) ELSE e.effective_occurred_at END AS occurred_at,
                     CASE
+                        WHEN e.map_conflict OR e.result_rank <> 1 THEN FALSE
+                        WHEN e.event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
+                             AND evidence.diagnostic_result_count > 0
+                             AND (evidence.diagnostic_result_count <> 1 OR evidence.map_candidate_count <> 1) THEN FALSE
                         WHEN e.event_type NOT IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                             THEN TRUE
                         WHEN e.component_kind = 'contours' THEN FALSE
-                        WHEN (
-                            e.provider_id = 'maprando'
-                            AND (
-                                e.map_package_id = 'maprando-france-courbes-ign'
-                                OR e.region = 'FRANCECOURBESIGN'
-                                OR mp.provider_region_id = 'france-courbes-ign'
-                            )
-                        ) THEN FALSE
                         WHEN e.event_type = 'INSTALL_SUCCEEDED'
                              AND e.outcome = 'SUCCEEDED'
+                             AND COALESCE(evidence.contradicts_success, FALSE) IS FALSE
                             THEN TRUE
                         WHEN e.event_type = 'INSTALL_FAILED'
                              AND e.outcome = 'FAILED'
@@ -4570,23 +5172,29 @@ class Database:
                             THEN TRUE
                         ELSE FALSE
                     END AS canonical_result
-                FROM map_download_event AS e
-                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                FROM normalized_map_events AS e
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
                 LEFT JOIN map_provider AS p ON p.id = e.provider_id
                 LEFT JOIN map_event_evidence AS evidence ON evidence.event_id = e.event_id
-                WHERE {' AND '.join(clauses)}
+                WHERE {' AND '.join(clauses).replace('e.occurred_at', 'CASE WHEN evidence.diagnostic_result_count=1 AND evidence.map_candidate_count=1 THEN LEAST(e.effective_occurred_at, evidence.diagnostic_occurred_at) ELSE e.effective_occurred_at END')}
                 UNION ALL
                 SELECT
                     c.operation_key,
+                    c.last_occurred_at AS source_occurred_at,
                     c.provider_id,
                     p.name AS provider_name,
-                    mp.id AS map_package_id,
-                    COALESCE(mp.name, geography.name) AS map_package_name,
-                    mp.map_type,
-                    COALESCE(c.region, mp.region) AS region,
-                    COALESCE(mp.geographic_region_id, mp.canonical_region_id, geography.geographic_region_id) AS canonical_region_id,
-                    COALESCE(mp.country, geography.country) AS region_country,
+                    -- Diagnostic-only results carry no map identity. Provider +
+                    -- region is never a package or geography identity, so the
+                    -- package, name, type, canonical region and country stay
+                    -- unknown; only the reported region is retained.
+                    NULL::text AS map_package_id,
+                    NULL::text AS map_package_name,
+                    NULL::text AS map_type,
+                    c.region AS region,
+                    NULL::text AS canonical_region_id,
+                    NULL::text AS region_country,
                     NULL AS component_kind,
+                    NULL::text AS acquisition_purpose,
                     CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
                          ELSE 'INSTALL_SUCCEEDED' END AS event_type,
                     c.outcome,
@@ -4594,35 +5202,6 @@ class Database:
                     TRUE AS canonical_result
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
-                LEFT JOIN LATERAL (
-                    SELECT min(package.id) AS id, min(package.name) AS name,
-                           min(package.region) AS region, min(package.map_type) AS map_type,
-                           min(package.canonical_region_id) AS canonical_region_id,
-                           min(package.geographic_region_id) AS geographic_region_id,
-                           min(package.country) AS country
-                    FROM map_package AS package
-                    WHERE package.provider_id = c.provider_id
-                      AND (
-                          package.canonical_region_id = c.region
-                          OR package.provider_region_id = c.region
-                          OR package.region = c.region
-                      )
-                      AND (package.provider_id <> 'bbbike'
-                           OR package.canonical_region_id = c.region
-                           OR package.region = c.region)
-                    HAVING count(*) = 1
-                ) AS mp ON TRUE
-                LEFT JOIN LATERAL (
-                    -- Untyped BBBike evidence may establish geography but cannot
-                    -- establish which of two independent map types was installed.
-                    SELECT min(package.name) AS name, min(package.country) AS country,
-                           min(package.geographic_region_id) AS geographic_region_id
-                    FROM map_package AS package
-                    WHERE c.provider_id = 'bbbike' AND package.provider_id = c.provider_id
-                      AND (package.geographic_region_id = c.region
-                           OR package.provider_region_id = c.region)
-                    HAVING count(DISTINCT package.geographic_region_id) = 1
-                ) AS geography ON TRUE
             )
         """
         if trend_bucket is not None:
@@ -4634,13 +5213,16 @@ class Database:
             }.get(trend_bucket)
             if bucket_expression is None:
                 raise ValueError("invalid map statistics trend bucket")
+            bucket_sql = ("occurred_at - (local_occurred_at - date_trunc('hour', local_occurred_at))"
+                          if trend_bucket == "hour" else f"({bucket_expression} AT TIME ZONE %s)")
+            group_sql = bucket_sql if trend_bucket == "hour" else bucket_expression
             query += f"""
             , localized_events AS (
                 SELECT event_rows.*, timezone(%s, occurred_at) AS local_occurred_at
                 FROM event_rows
             )
             SELECT
-                ({bucket_expression} AT TIME ZONE %s) AS bucket,
+                {bucket_sql} AS bucket,
                 count(DISTINCT operation_key) FILTER (
                     WHERE event_type = 'INSTALL_SUCCEEDED'
                       AND outcome = 'SUCCEEDED'
@@ -4658,10 +5240,10 @@ class Database:
                       AND provider_id = 'custom'
                 ) AS custom_count,
                 count(DISTINCT operation_key) FILTER (
-                    WHERE event_type = 'DOWNLOAD_SUCCEEDED' AND outcome = 'SUCCEEDED'
+                    WHERE event_type = 'DOWNLOAD_SUCCEEDED' AND outcome = 'SUCCEEDED' AND canonical_result
                 ) AS download_success_count,
                 count(DISTINCT operation_key) FILTER (
-                    WHERE event_type = 'DOWNLOAD_FAILED' AND outcome = 'FAILED'
+                    WHERE event_type = 'DOWNLOAD_FAILED' AND outcome = 'FAILED' AND canonical_result
                 ) AS download_failed_count,
                 count(DISTINCT operation_key) FILTER (
                     WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
@@ -4669,11 +5251,12 @@ class Database:
                 count(DISTINCT operation_key) FILTER (WHERE event_type = 'MAP_UPDATE_SUCCEEDED' AND outcome = 'SUCCEEDED') AS map_update_success_count,
                 count(DISTINCT operation_key) FILTER (WHERE event_type = 'MAP_UPDATE_FAILED' AND outcome = 'FAILED') AS map_update_failed_count
             FROM localized_events
-            GROUP BY {bucket_expression}
+            GROUP BY {group_sql}
             ORDER BY bucket
             """
-            values = compatibility_values + values + [time_zone, time_zone]
+            values = compatibility_values + values + ([time_zone] if trend_bucket == "hour" else [time_zone, time_zone])
             with self.connection() as connection:
+                _prefer_hash_joins(connection)
                 return list(connection.execute(query, values).fetchall())
 
         query += """
@@ -4687,21 +5270,24 @@ class Database:
                 canonical_region_id,
                 region_country,
                 component_kind,
+                acquisition_purpose,
                 event_type,
                 outcome,
                 count(*) AS event_count,
                 count(DISTINCT operation_key) FILTER (WHERE canonical_result)
                     AS operation_count,
-                min(occurred_at) AS first_occurred_at,
-                max(occurred_at) AS last_occurred_at
+                min(occurred_at) FILTER (WHERE canonical_result) AS first_occurred_at,
+                max(occurred_at) FILTER (WHERE canonical_result) AS last_occurred_at,
+                min(source_occurred_at) AS first_event_at, max(source_occurred_at) AS last_event_at
             FROM event_rows
                 GROUP BY provider_id, provider_name, map_package_id, map_package_name, map_type,
-                     region, canonical_region_id, region_country, component_kind, event_type, outcome
+                     region, canonical_region_id, region_country, component_kind, acquisition_purpose, event_type, outcome
             ORDER BY last_occurred_at DESC, provider_id,
                      map_package_id NULLS LAST, event_type, outcome
         """
         values = compatibility_values + values
         with self.connection() as connection:
+            _prefer_hash_joins(connection)
             return list(connection.execute(query, values).fetchall())
 
     def map_statistics_trend(
@@ -4712,11 +5298,12 @@ class Database:
         time_zone: str = "UTC",
     ) -> tuple[list[dict[str, Any]], str]:
         now = datetime.now(timezone.utc)
+        until = filters.get("dateTo") or now
         since = filters.get("dateFrom")
         if isinstance(since, datetime) and since.tzinfo is None:
             since = since.replace(tzinfo=timezone.utc)
         if period == "all" and isinstance(since, datetime):
-            span = now - since.astimezone(timezone.utc)
+            span = until - since.astimezone(timezone.utc)
             bucket = (
                 "day" if span <= timedelta(days=14)
                 else "week" if span <= timedelta(days=60)
@@ -4743,7 +5330,7 @@ class Database:
             [dict(row) for row in rows],
             bucket=bucket,
             since=since,
-            until=now,
+            until=until,
             all_time=period == "all",
             time_zone=time_zone,
         ), bucket
@@ -4764,12 +5351,46 @@ class Database:
         }
         clauses, values = self._map_statistics_filter(population_filters)
         query = f"""
-            WITH map_operations AS (
+            WITH conflicting_map_results AS (
+                SELECT operation_id, map_result_index
+                FROM map_download_event
+                WHERE is_local_test IS NOT TRUE AND statistics_exclusion_code IS NULL
+                  AND map_result_index IS NOT NULL AND component_kind IS DISTINCT FROM 'contours'
+                  AND event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED')
+                GROUP BY operation_id,map_result_index
+                HAVING count(DISTINCT (provider_id,COALESCE(map_package_id,reported_map_id),region,event_type,outcome)) > 1
+            ), dated_map_events AS (
+                SELECT e.*, LEAST(e.occurred_at,
+                    min(e.occurred_at) OVER (PARTITION BY
+                        CASE WHEN e.event_type IN ('INSTALL_SUCCEEDED','INSTALL_FAILED') AND e.map_result_index IS NOT NULL
+                             THEN e.operation_id::text || ':' || e.map_result_index::text
+                             ELSE 'event:' || e.event_id::text END),
+                    (SELECT CASE WHEN count(DISTINCT CASE WHEN d.map_result_index IS NOT NULL
+                                         THEN d.operation_id::text || ':' || d.map_result_index::text
+                                         ELSE 'event:' || d.event_id::text END)=1 THEN min(d.occurred_at) END
+                     FROM compatibility_evidence_event d
+                     LEFT JOIN map_package package ON package.id=COALESCE(e.map_package_id,e.reported_map_id)
+                     WHERE d.operation_id=e.operation_id AND d.provider=e.provider_id
+                       AND d.is_local_test IS NOT TRUE AND d.statistics_exclusion_code IS NULL
+                       AND (e.map_result_index IS NULL OR d.map_result_index=e.map_result_index)
+                       AND (d.region IS NOT DISTINCT FROM e.region OR (
+                           package.provider_id=e.provider_id
+                           AND d.region IN (package.region,package.provider_region_id,package.canonical_region_id)
+                           AND e.region IN (package.region,package.provider_region_id,package.canonical_region_id))))
+                ) AS canonical_occurred_at
+                FROM map_download_event e
+                WHERE e.is_local_test IS NOT TRUE AND e.statistics_exclusion_code IS NULL
+            ), map_operations AS (
                 SELECT
                     e.operation_id,
+                    e.map_result_index AS reported_result_index,
+                    CASE WHEN e.map_result_index IS NOT NULL
+                         THEN 'result:' || e.map_result_index::text
+                         WHEN e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                         THEN 'event:' || e.event_id::text ELSE 'acquisition' END AS result_identity,
                     COALESCE(e.operation_id::text, 'event:' || e.event_id::text) AS map_operation_key,
                     e.provider_id,
-                    e.map_package_id,
+                    COALESCE(e.map_package_id, e.reported_map_id) AS map_package_id,
                     mp.provider_region_id AS map_provider_region,
                     mp.canonical_region_id AS map_canonical_region,
                     mp.region AS map_package_region,
@@ -4781,13 +5402,22 @@ class Database:
                     ) AS map_region_key,
                     array_agg(DISTINCT e.region) FILTER (WHERE e.region IS NOT NULL)
                         AS map_reported_regions,
-                    bool_or(e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED'))
-                        AS has_install_event
-                FROM map_download_event AS e
-                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
-                WHERE {' AND '.join(clauses)}
-                GROUP BY e.operation_id, COALESCE(e.operation_id::text, 'event:' || e.event_id::text),
-                         e.provider_id, e.map_package_id, mp.provider_region_id,
+                    bool_or(e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')) AS has_terminal,
+                    bool_or(e.event_type = 'INSTALL_SUCCEEDED' AND e.outcome = 'SUCCEEDED') AS map_succeeded,
+                    bool_or(e.event_type = 'INSTALL_FAILED' AND e.outcome = 'FAILED') AS map_failed,
+                    count(DISTINCT (e.event_type, e.outcome)) FILTER (WHERE e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')) > 1 AS map_conflict
+                FROM dated_map_events AS e
+                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
+                WHERE {' AND '.join(clauses).replace('e.occurred_at', 'e.canonical_occurred_at')}
+                  AND (e.event_type NOT IN ('INSTALL_SUCCEEDED','INSTALL_FAILED') OR e.component_kind IS DISTINCT FROM 'contours')
+                  AND NOT EXISTS (SELECT 1 FROM conflicting_map_results conflict
+                                  WHERE conflict.operation_id=e.operation_id AND conflict.map_result_index=e.map_result_index)
+                GROUP BY e.operation_id, e.map_result_index,
+                         CASE WHEN e.map_result_index IS NOT NULL THEN 'result:' || e.map_result_index::text
+                              WHEN e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                              THEN 'event:' || e.event_id::text ELSE 'acquisition' END,
+                         COALESCE(e.operation_id::text, 'event:' || e.event_id::text),
+                         e.provider_id, COALESCE(e.map_package_id, e.reported_map_id), mp.provider_region_id,
                          mp.canonical_region_id, mp.region,
                          COALESCE(
                              mp.canonical_region_id,
@@ -4803,26 +5433,15 @@ class Database:
             ), classified_compatibility AS (
                 SELECT
                     e.*,
-                    CASE
-                        WHEN e.phase_outcome = 'SUCCEEDED'
-                             AND e.automatic_finishing_result = 'VERIFIED'
-                            THEN 'SUCCESS'
-                        WHEN e.phase_outcome = 'FAILED'
-                             AND (e.write_started IS TRUE OR (
-                                 e.write_started IS NULL
-                                 AND e.app_build IS NULL
-                                 AND e.release_label IS NULL
-                             ))
-                            THEN 'FAILURE'
-                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                             AND e.write_started IS FALSE
-                            THEN 'NOT_STARTED'
-                        ELSE 'UNKNOWN'
-                    END AS result_classification
+                    terento_fresh_result_classification(
+                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
+                        e.schema_version, e.app_build, e.release_label
+                    ) AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.operation_id IS NOT NULL
                   AND e.map_result_index IS NOT NULL
                   AND e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
             ), compatibility_result_identities AS (
                 SELECT DISTINCT operation_id, map_result_index, provider, region
                 FROM classified_compatibility
@@ -4830,7 +5449,8 @@ class Database:
                 SELECT operation_id, map_result_index
                 FROM classified_compatibility
                 GROUP BY operation_id, map_result_index
-                HAVING count(DISTINCT provider) = 1
+                HAVING count(DISTINCT COALESCE(canonical_device_model_id, '')) = 1
+                   AND count(DISTINCT provider) = 1
                    AND count(DISTINCT region) = 1
             ), compatibility_aggregates AS (
                 SELECT
@@ -4854,9 +5474,46 @@ class Database:
                 JOIN compatibility_result_identities AS i
                   ON i.operation_id = a.operation_id
                  AND i.map_result_index = a.map_result_index
+            ), numbered_map_operations AS (
+                SELECT m.*, row_number() OVER () AS map_operation_row
+                FROM map_operations AS m
+            ), linkage_candidates AS (
+                -- Exactly one compatible diagnostic result may link a map result.
+                SELECT m.map_operation_row, c.*,
+                       count(*) OVER (PARTITION BY m.map_operation_row) AS candidate_count
+                FROM numbered_map_operations AS m
+                JOIN compatibility_operations AS c
+                  ON c.operation_id = m.operation_id
+                 AND c.provider_id = m.provider_id
+                LEFT JOIN map_region_counts AS region_counts
+                  ON region_counts.operation_id = m.operation_id
+                 AND region_counts.provider_id = m.provider_id
+                 AND region_counts.map_region_key = m.map_region_key
+                WHERE (m.reported_result_index IS NULL OR c.map_result_index = m.reported_result_index)
+                  AND (
+                      c.region = ANY(COALESCE(m.map_reported_regions, ARRAY[]::text[]))
+                      OR (
+                          m.map_package_id IS NOT NULL
+                          AND c.region IN (
+                              m.map_provider_region,
+                              m.map_canonical_region,
+                              m.map_package_region
+                          )
+                          AND m.map_region_key IN (
+                              m.map_provider_region,
+                              m.map_canonical_region,
+                              m.map_package_region
+                          )
+                      )
+                  )
+                  AND (m.reported_result_index IS NOT NULL OR region_counts.map_count = 1)
             ), linked_operations AS (
                 SELECT
                     m.*,
+                    (m.has_terminal AND NOT m.map_conflict AND
+                      ((m.map_succeeded AND (c.operation_id IS NULL OR
+                         (c.has_success AND NOT c.has_failure AND NOT c.has_not_started AND NOT c.has_unknown)))
+                       OR (m.map_failed AND c.has_failure AND NOT c.has_success AND NOT c.has_not_started AND NOT c.has_unknown))) AS has_install_event,
                     c.operation_id AS compatibility_operation_id,
                     c.map_result_index,
                     c.write_started,
@@ -4864,30 +5521,10 @@ class Database:
                         AND NOT c.has_unknown) AS operation_succeeded,
                     (c.has_failure AND NOT c.has_success AND NOT c.has_not_started
                         AND NOT c.has_unknown) AS fresh_failure
-                FROM map_operations AS m
-                LEFT JOIN compatibility_operations AS c
-                   ON c.operation_id = m.operation_id
-                   AND c.provider_id = m.provider_id
-                   AND (
-                       c.region = ANY(COALESCE(m.map_reported_regions, ARRAY[]::text[]))
-                       OR (
-                           m.map_package_id IS NOT NULL
-                           AND c.region IN (
-                               m.map_provider_region,
-                               m.map_canonical_region,
-                               m.map_package_region
-                           )
-                           AND m.map_region_key IN (
-                               m.map_provider_region,
-                               m.map_canonical_region,
-                               m.map_package_region
-                           )
-                       )
-                   )
-                   AND (SELECT map_count FROM map_region_counts
-                        WHERE operation_id = m.operation_id
-                          AND provider_id = m.provider_id
-                          AND map_region_key = m.map_region_key) = 1
+                FROM numbered_map_operations AS m
+                LEFT JOIN linkage_candidates AS c
+                  ON c.map_operation_row = m.map_operation_row
+                 AND c.candidate_count = 1
             )
             SELECT
                 count(DISTINCT map_operation_key) AS map_operation_count,
@@ -4966,6 +5603,7 @@ class Database:
             FROM linked_operations
         """
         with self.connection() as connection:
+            _prefer_hash_joins(connection)
             row = connection.execute(query, values).fetchone() or {}
 
         def integer(key: str) -> int:
@@ -5334,9 +5972,19 @@ class Database:
                     s.failed_install_count AS failed,
                     (SELECT min(e.occurred_at) FROM compatibility_evidence_event e
                      WHERE e.canonical_device_model_id = dm.id
-                       AND e.is_local_test IS NOT TRUE AND e.diagnostic_status = 'ACTIVE'
+                       AND e.is_local_test IS NOT TRUE AND e.statistics_exclusion_code IS NULL
                        AND e.phase_outcome = 'SUCCEEDED'
-                       AND e.automatic_finishing_result = 'VERIFIED') AS first_success,
+                       AND e.automatic_finishing_result = 'VERIFIED'
+                       AND NOT EXISTS (
+                           SELECT 1 FROM compatibility_evidence_event other
+                           WHERE e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
+                             AND other.operation_id=e.operation_id AND other.map_result_index=e.map_result_index
+                             AND other.is_local_test IS NOT TRUE AND other.statistics_exclusion_code IS NULL
+                             AND (other.canonical_device_model_id IS DISTINCT FROM e.canonical_device_model_id
+                               OR other.provider IS DISTINCT FROM e.provider OR other.region IS DISTINCT FROM e.region
+                               OR other.phase_outcome IS DISTINCT FROM 'SUCCEEDED'
+                               OR other.automatic_finishing_result IS DISTINCT FROM 'VERIFIED')
+                       )) AS first_success,
                     s.last_success, s.last_evidence
                 FROM compatibility_model_statistics AS s
                 WHERE s.canonical_device_model_id = dm.id
@@ -5476,7 +6124,8 @@ class Database:
                     """
                     SELECT id, family_id, manufacturer, model, canonical_model, variant,
                            case_size_mm, display_type, part_number, product_url,
-                           source_url, source_image_url, active, screen_technology, solar, inreach
+                           source_url, source_image_url, active, screen_technology, solar, inreach,
+                           map_capable
                     FROM device_model
                     WHERE id = ANY(%s)
                     """,
@@ -5511,6 +6160,10 @@ class Database:
                     ))
                     specifications_changed = any(value is not None and value != existing.get(key)
                         for key, value in (("screen_technology", record.screen_technology), ("solar", record.solar), ("inreach", record.inreach)))
+                    # An Unknown Maps value filled from specification evidence is a change.
+                    specifications_changed = specifications_changed or (
+                        existing.get("map_capable") is None and record.map_capable is not None
+                    )
                     if existing["active"] is False or incoming_values != existing_values or specifications_changed:
                         updated_ids.append(record.id)
                 connection.execute(
@@ -5539,13 +6192,20 @@ class Database:
                         record.product_url,
                         record.source_url,
                         record.source_image_url,
-                        classify_map_capable(record.canonical_model, record.manufacturer),
+                        # Owner rule 2026-10-06: a new model's Maps value comes
+                        # only from official specification evidence (True or
+                        # False); without it the model stays Unknown (NULL,
+                        # installation PENDING). A model-name prefix never
+                        # stores a value, and a stored value is never replaced.
+                        record.map_capable,
                     ),
                 )
 
                 self.enrich_device_specifications(connection, record.id,
-                    {"screen_technology": record.screen_technology, "solar": record.solar, "inreach": record.inreach},
-                    record.product_url, "official-product-specifications", record.retail_skus)
+                    {"screen_technology": record.screen_technology, "solar": record.solar, "inreach": record.inreach,
+                     "map_capable": record.map_capable},
+                    record.product_url, "official-product-specifications", record.retail_skus,
+                    evidence_fields={"map_capable": record.map_evidence_row} if record.map_capable is not None else None)
 
                 connection.execute(
                     """

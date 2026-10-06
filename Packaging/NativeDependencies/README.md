@@ -85,6 +85,30 @@ The bundled recovery behavior is public; it is not a proven fix for
 the initiating USB transaction error. Context reinitialization, resource abort,
 platform/product scope and gate ordering have synthetic regression coverage.
 
+## Validated partial reads
+
+Upstream `LIBMTP_GetPartialObject` calls `LIBMTP_Get_Filemetadata` before
+every chunk. Without a cached property list each call adds
+`GetObjectPropsSupported` and `GetObjectPropValue(ObjectSize)` transactions, and
+`obj2file()` silently continues after a failed `GetObjectPropsSupported`. The
+Garmin entries in libmtp's device table carry
+`DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST`, so this applies to every chunk. A full
+433 MB map read in 64 KiB chunks needs about three USB transactions per chunk
+instead of one.
+
+`patch-validated-partial-read.py` runs after the other patches and exports
+`LIBMTP_Terento_GetPartialObject_Validated`, which issues only the
+`GetPartialObject`/`GetPartialObject64` transaction and records a failed PTP
+response with the same `Terento partial read response` text. Bundled builds use
+it for full-object reads on every Garmin model; it has no model or product-ID
+condition. Callers must already have resolved the exact object and its size in
+the same session. They must bound every request by that size, require the exact
+requested byte count and keep full-content hashing. Read sizes keep their
+existing device policy. The cache revision suffix is `validated-partial-v1`.
+Legacy Homebrew harnesses keep the upstream call. This reduces transaction
+count but is not a proven fix for the observed post-upload `02ff` failure; a
+real Update hardware run remains the gate.
+
 ## SDK availability and startup gate
 
 The macOS build forces `ac_cv_func_pipe2=no`, selecting upstream libusb's

@@ -41,7 +41,7 @@ def main():
             continue  # staged cleanup can remove a tracked file before commit
         source = file.read_text()
         if not name.startswith("history/") and "/Fixtures/" not in name:
-            for label in re.findall(r"\bcurrent\s+(beta\.\d+)\b", source, flags=re.I):
+            for label in re.findall(r"\bcurrent\s+((?:beta|rc)\.\d+)\b", source, flags=re.I):
                 if label.lower() != current.lower():
                     errors.append(f"{name}: current release reference {label} differs from {current}")
         for target in re.findall(r"!?\[[^\]]*\]\(([^)]+)\)", source):

@@ -158,6 +158,9 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let optionalComponentNativeFailureCode: EvidenceNativeFailureCode?
     var operationKind: String? = nil
     var oldMapPreserved: Bool? = nil
+    /// Optional pre/post-write inventory scope, object counts and durations.
+    /// Older APIs reject unknown fields; deploy API acceptance first.
+    var inventoryMetrics: InstallationInventoryMetrics? = nil
 
     init(
         id: UUID = UUID(),
@@ -256,7 +259,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case operationKind, oldMapPreserved
+        case operationKind, oldMapPreserved, inventoryMetrics
         case failureContext
         case originalFailureContext
         case optionalComponentSelected
@@ -278,6 +281,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         operationKind = try container.decodeIfPresent(String.self, forKey: .operationKind)
         oldMapPreserved = try container.decodeIfPresent(Bool.self, forKey: .oldMapPreserved)
+        inventoryMetrics = try container.decodeIfPresent(InstallationInventoryMetrics.self, forKey: .inventoryMetrics)
         schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
         id = try container.decode(UUID.self, forKey: .id)
         timestamp = try container.decode(Date.self, forKey: .timestamp)
@@ -425,11 +429,20 @@ enum CompatibilityEvidenceCalculator {
     }
 }
 
+/// A report the server rejected with a non-retryable status. Its event stays
+/// in local history; only its upload is parked outside the ordered queue.
+struct ParkedEvidenceUpload: Codable, Equatable, Sendable {
+    let eventID: UUID
+    let rejection: TelemetryRejection
+}
+
 private struct InstallationEvidenceFile: Codable {
     var events: [InstallationEvidenceEvent] = []
     var pendingUploadEventIDs: [UUID] = []
     var uploadedEventIDs: [UUID]?
     var consent: VersionedEvidenceConsent?
+    // Optional for backwards-compatible decoding of existing files.
+    var parkedUploads: [ParkedEvidenceUpload]?
 }
 
 final class LocalInstallationEvidenceStore: @unchecked Sendable {
@@ -477,6 +490,7 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
             )
             if choice == .declined {
                 file.pendingUploadEventIDs.removeAll()
+                file.parkedUploads = nil
             }
             try saveUnlocked(file)
         }
@@ -496,6 +510,7 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
             )
             if consent.choice == .declined {
                 file.pendingUploadEventIDs.removeAll()
+                file.parkedUploads = nil
             }
             try saveUnlocked(file)
         }
@@ -507,10 +522,65 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
         return file.events.filter { ids.contains($0.id) }
     }
 
+    func parkedUploads() -> [ParkedEvidenceUpload] {
+        lockedLoad().parkedUploads ?? []
+    }
+
+    /// Parked reports whose back-off elapsed or that were rejected by another
+    /// app build, in local history order.
+    func parkedUploadsEligibleForRetry(now: Date, appBuild: String) -> [InstallationEvidenceEvent] {
+        let file = lockedLoad()
+        let eligible = Set((file.parkedUploads ?? []).filter {
+            TelemetryDeliveryPolicy.isEligibleForRetry($0.rejection, now: now, appBuild: appBuild)
+        }.map(\.eventID))
+        return file.events.filter { eligible.contains($0.id) }
+    }
+
+    /// Move one rejected report out of the ordered upload queue, or record
+    /// another rejection of an already parked report.
+    func parkUpload(eventID: UUID, statusCode: Int, now: Date, appBuild: String) throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            guard file.consent?.choice != .declined,
+                  file.events.contains(where: { $0.id == eventID }) else { return }
+            var parked = file.parkedUploads ?? []
+            let previous = parked.first { $0.eventID == eventID }?.rejection
+            guard previous != nil || file.pendingUploadEventIDs.contains(eventID) else { return }
+            parked.removeAll { $0.eventID == eventID }
+            parked.append(ParkedEvidenceUpload(eventID: eventID,
+                rejection: TelemetryDeliveryPolicy.rejection(after: previous,
+                    statusCode: statusCode, now: now, appBuild: appBuild)))
+            if parked.count > TelemetryDeliveryPolicy.maximumParkedEvents {
+                parked.removeFirst(parked.count - TelemetryDeliveryPolicy.maximumParkedEvents)
+            }
+            file.pendingUploadEventIDs.removeAll { $0 == eventID }
+            file.parkedUploads = parked
+            try saveUnlocked(file)
+        }
+    }
+
+    /// Expired parked reports stop being offered; the local report remains.
+    func expireParkedUploads(now: Date) throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            guard let parked = file.parkedUploads, !parked.isEmpty else { return }
+            let timestamps = Dictionary(file.events.map { ($0.id, $0.timestamp) },
+                                        uniquingKeysWith: { first, _ in first })
+            let retained = parked.filter { entry in
+                guard let occurredAt = timestamps[entry.eventID] else { return false }
+                return !TelemetryDeliveryPolicy.isExpired(entry.rejection, occurredAt: occurredAt, now: now)
+            }
+            guard retained.count != parked.count else { return }
+            file.parkedUploads = retained
+            try saveUnlocked(file)
+        }
+    }
+
     func markUploaded(eventID: UUID) throws {
         try lock.withLock {
             var file = try loadUnlocked()
             file.pendingUploadEventIDs.removeAll { $0 == eventID }
+            file.parkedUploads?.removeAll { $0.eventID == eventID }
             var uploaded = file.uploadedEventIDs ?? []
             if !uploaded.contains(eventID) {
                 uploaded.append(eventID)
@@ -532,7 +602,9 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
         // Discard old pending updates conservatively; retained reports stay local.
         if updates.consent != installation.consent || installation.consent?.choice == .declined {
             let changed = !updates.pendingUploadEventIDs.isEmpty || updates.consent != installation.consent
+                || !(updates.parkedUploads ?? []).isEmpty
             updates.pendingUploadEventIDs.removeAll()
+            updates.parkedUploads = nil
             updates.consent = installation.consent
             if changed { try writeUnlocked(updates, to: updateFileURL) }
         }
@@ -544,11 +616,17 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
             return seen.insert(event.id).inserted
         }
         let uploaded = Set((installation.uploadedEventIDs ?? []) + (updates.uploadedEventIDs ?? []))
+        var parkedIDs = Set<UUID>()
+        let parked = installation.consent?.choice == .declined ? [] :
+            ((installation.parkedUploads ?? []) + (updates.parkedUploads ?? [])).filter {
+                seen.contains($0.eventID) && !uploaded.contains($0.eventID) && parkedIDs.insert($0.eventID).inserted
+            }
         let pending = installation.consent?.choice == .declined ? [] : Array(
             Set(installation.pendingUploadEventIDs + updates.pendingUploadEventIDs)
-                .intersection(seen).subtracting(uploaded))
+                .intersection(seen).subtracting(uploaded).subtracting(parkedIDs))
         let merged = InstallationEvidenceFile(events: events, pendingUploadEventIDs: pending,
-            uploadedEventIDs: Array(uploaded.intersection(seen)), consent: installation.consent)
+            uploadedEventIDs: Array(uploaded.intersection(seen)), consent: installation.consent,
+            parkedUploads: parked.isEmpty ? nil : parked)
         // Recover unreleased mixed-file candidates without leaving update rows
         // visible to an older app. Update-first writes make retries idempotent.
         if installation.events.contains(where: { $0.operationKind == "update" })
@@ -567,10 +645,12 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
         func partition(update: Bool) -> InstallationEvidenceFile {
             let events = file.events.filter { ($0.operationKind == "update") == update }
             let ids = Set(events.map(\.id))
+            let parked = file.parkedUploads?.filter { ids.contains($0.eventID) }
             return InstallationEvidenceFile(events: events,
                 pendingUploadEventIDs: file.pendingUploadEventIDs.filter { ids.contains($0) },
                 uploadedEventIDs: file.uploadedEventIDs?.filter { ids.contains($0) },
-                consent: file.consent)
+                consent: file.consent,
+                parkedUploads: parked?.isEmpty == false ? parked : nil)
         }
         try writeUnlocked(partition(update: true), to: updateFileURL)
         try writeUnlocked(partition(update: false), to: fileURL)
@@ -579,7 +659,7 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
     private func writeUnlocked(_ file: InstallationEvidenceFile, to url: URL) throws {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try encoder.encode(file).write(to: url, options: [.atomic, .completeFileProtection])
+        try encoder.encode(file).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
 }
@@ -684,15 +764,21 @@ final class InstallationEvidenceController: ObservableObject {
     private var activeUploadTaskGeneration: UUID?
     @Published private(set) var uploadStatus: InstallationEvidenceUploadStatus = .idle
     @Published private(set) var latestDeliveryStatus: InstallationEvidenceDeliveryStatus = .idle
+    private let now: @Sendable () -> Date
+    private let appBuild: String
 
     init(
         store: LocalInstallationEvidenceStore = LocalInstallationEvidenceStore(),
         uploader: any InstallationEvidenceUploading = HTTPInstallationEvidenceUploader(),
-        automaticRetryDelays: [UInt64] = [0, 5_000_000_000, 30_000_000_000]
+        automaticRetryDelays: [UInt64] = [0, 5_000_000_000, 30_000_000_000],
+        now: @escaping @Sendable () -> Date = { Date() },
+        appBuild: String = TerentoTelemetryMetadata.eventBuild
     ) {
         self.store = store
         self.uploader = uploader
         self.automaticRetryDelays = automaticRetryDelays
+        self.now = now
+        self.appBuild = appBuild
         try? store.migrateConsentToCurrentNotice()
         if uploadEnabled {
             schedulePendingUploadFlush()
@@ -713,12 +799,17 @@ final class InstallationEvidenceController: ObservableObject {
         currentConsentChoice != .declined
     }
 
+    /// Notified when device-compatibility reporting is turned off, so other
+    /// streams governed by the same preference (the app funnel) clear too.
+    var onSharingDeclined: (() -> Void)?
+
     func decideConsent(_ choice: EvidenceConsentChoice) {
         objectWillChange.send()
         try? store.setConsent(choice)
         if choice == .accepted {
             schedulePendingUploadFlush()
         } else {
+            onSharingDeclined?()
             uploadTask?.cancel()
             uploadTask = nil
             uploadTaskGeneration = nil
@@ -736,6 +827,22 @@ final class InstallationEvidenceController: ObservableObject {
         if upload { schedulePendingUploadFlush() }
     }
 
+    /// Persists finished results at the operation result boundary, from any
+    /// context, before delivery is scheduled on the main actor. Quitting the
+    /// app after this returns cannot lose the reports. Opted-out reports stay
+    /// in local history only, exactly as `recordAndUpload` stores them.
+    /// Returns false when the local write failed; delivery then retries it.
+    @discardableResult
+    nonisolated func persistResults(_ events: [InstallationEvidenceEvent]) -> Bool {
+        let queueForUpload = store.consent()?.choice != .declined
+        do {
+            for event in events { try store.append(event, queueForUpload: queueForUpload) }
+            return true
+        } catch {
+            return false
+        }
+    }
+
     /// Records the events for the just-finished operation and waits for their
     /// first upload attempt. The existing background retry path remains in
     /// place, but the UI now gets a definitive immediate state for this
@@ -748,12 +855,12 @@ final class InstallationEvidenceController: ObservableObject {
         }
 
         let shouldUpload = uploadEnabled
-        var insertedCount = 0
+        // Results may already be durable through `persistResults`; the count
+        // describes this operation's reports, not only newly inserted rows.
+        let insertedCount = events.count
         do {
             for event in events {
-                if try store.append(event, queueForUpload: shouldUpload) {
-                    insertedCount += 1
-                }
+                try store.append(event, queueForUpload: shouldUpload)
             }
         } catch {
             TerentoDiagnosticLog.recordCompatibilityReportDeliveryFailure(
@@ -817,7 +924,8 @@ final class InstallationEvidenceController: ObservableObject {
     }
 
     private func schedulePendingUploadFlush() {
-        guard uploadEnabled, uploadTask == nil, !store.pendingUploads().isEmpty else {
+        guard uploadEnabled, uploadTask == nil, !store.pendingUploads().isEmpty
+            || !store.parkedUploadsEligibleForRetry(now: now(), appBuild: appBuild).isEmpty else {
             return
         }
 
@@ -885,15 +993,20 @@ final class InstallationEvidenceController: ObservableObject {
 
     private func performUploadPendingEventsOnce() async -> UploadAttemptResult {
         guard uploadEnabled else { return .empty }
+        let currentTime = now()
+        try? store.expireParkedUploads(now: currentTime)
         let pending = store.pendingUploads()
-        guard !pending.isEmpty else {
+        let parked = store.parkedUploadsEligibleForRetry(now: currentTime, appBuild: appBuild)
+        guard !pending.isEmpty || !parked.isEmpty else {
             uploadStatus = .uploaded
             return .empty
         }
 
-        uploadStatus = .uploading(count: pending.count)
-        var deferredUpdate = false
-        for event in pending {
+        uploadStatus = .uploading(count: pending.count + parked.count)
+        let parkedRetryIDs = Set(parked.map(\.id))
+        var parkedPendingReport = false
+        // Ordered pending reports first; parked retries never delay them.
+        for event in pending + parked {
             // Opt-out during an in-flight upload must stop the remaining snapshot.
             guard uploadEnabled else { return .empty }
             do {
@@ -909,12 +1022,19 @@ final class InstallationEvidenceController: ObservableObject {
                     willRetry: willRetry,
                     pendingCount: remaining
                 )
-                if event.operationKind == "update",
-                   case InstallationEvidenceUploadError.httpStatus(let code, _) = error,
-                   code == 400 {
-                    // A backend rollback may reject additive update fields. Retain the
-                    // exact report for a later attempt without blocking older installs.
-                    deferredUpdate = true
+                if case InstallationEvidenceUploadError.httpStatus(let code, _) = error,
+                   TelemetryDeliveryPolicy.isNonRetryableRejection(statusCode: code) {
+                    // Park the exact rejected report under its original ID and
+                    // kind without blocking independent reports. It is retried
+                    // only after a new app build or the shared back-off.
+                    do {
+                        try store.parkUpload(eventID: event.id, statusCode: code,
+                                             now: now(), appBuild: appBuild)
+                    } catch {
+                        uploadStatus = .waiting(count: remaining, reason: reason, willRetry: false)
+                        return .permanentFailure
+                    }
+                    if !parkedRetryIDs.contains(event.id) { parkedPendingReport = true }
                     continue
                 }
                 uploadStatus = .waiting(count: remaining, reason: reason, willRetry: willRetry)
@@ -922,9 +1042,9 @@ final class InstallationEvidenceController: ObservableObject {
             }
         }
 
-        if deferredUpdate {
-            uploadStatus = .waiting(count: store.pendingUploads().count,
-                reason: "Update reports are waiting for a compatible server.", willRetry: false)
+        if parkedPendingReport {
+            uploadStatus = .waiting(count: store.parkedUploads().count,
+                reason: "Some reports were rejected by the server and remain saved for a later retry.", willRetry: false)
             return .permanentFailure
         }
         uploadStatus = .uploaded

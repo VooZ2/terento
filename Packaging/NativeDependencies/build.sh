@@ -12,7 +12,7 @@ LIBMTP_VERSION="1.1.23"
 LIBMTP_ARCHIVE="libmtp-${LIBMTP_VERSION}.tar.gz"
 LIBMTP_URL="https://downloads.sourceforge.net/project/libmtp/libmtp/${LIBMTP_VERSION}/${LIBMTP_ARCHIVE}"
 LIBMTP_SHA256="74a2b6e8cb4a0304e95b995496ea3ac644c29371649b892b856e22f12a0bdeed"
-LIBMTP_LOCAL_PATCH="partial-read-diagnostics-v1-usb-session-v1-recovery-v1-references-v1"
+LIBMTP_LOCAL_PATCH="partial-read-diagnostics-v1-usb-session-v1-recovery-v1-references-v1-validated-partial-v1"
 script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 deployment_target="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
@@ -211,6 +211,7 @@ if [ ! -f "$build_marker" ]; then
     /usr/bin/perl "$script_dir/patch-usb-session-lifecycle.pl" "$libmtp_source/src/libusb1-glue.c"
     /usr/bin/python3 "$script_dir/patch-usb-recovery.py" "$libmtp_source/src/libusb1-glue.c" "$libmtp_source/src/libmtp.sym"
     /usr/bin/python3 "$script_dir/patch-usb-device-references.py" "$libmtp_source/src/libusb1-glue.c"
+    /usr/bin/python3 "$script_dir/patch-validated-partial-read.py" "$libmtp_source/src/libmtp.c" "$libmtp_source/src/libmtp.sym"
 
     common_cflags="-arch $architecture -mmacosx-version-min=$deployment_target"
 

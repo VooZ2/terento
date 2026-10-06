@@ -32,6 +32,8 @@ Der Ablauf
 
 Verbinde deine Uhr mit einem USB-Datenkabel. Terento erkennt sie und prüft, ob du sicher fortfahren kannst.
 
+[Garmin-Uhr wird am Mac nicht erkannt](https://terento.app/de/guides/troubleshooting/#connect-watch)
+
 Terento zeigt eine verbundene Garmin-Uhr und den Gerätestatus
 Terento erkennt die verbundene Garmin-Uhr vor der Installation.
 
@@ -63,19 +65,21 @@ Hilfe nötig?
 
 ### Terento erkennt die Uhr nicht
 
-Warte nach dem Verbinden bis zu 1–2 Minuten. Wenn die Uhr weiterhin nicht erscheint, verbinde sie erneut, prüfe das Datenkabel und schließe andere Programme, die sie verwenden könnten.
+Warte nach dem Verbinden bis zu 1–2 Minuten. Wenn die Uhr weiterhin nicht erscheint, verbinde sie erneut, prüfe das Datenkabel und schließe andere Programme, die sie verwenden könnten. Weitere Hilfe: [Garmin-Uhr wird am Mac nicht erkannt](https://terento.app/de/guides/troubleshooting/#connect-watch), [Garmin Express oder eine andere App blockiert die Uhr](https://terento.app/de/guides/troubleshooting/#garmin-busy), [Garmin-Uhr nicht erkannt: USB-Modus (MTP)](https://terento.app/de/guides/troubleshooting/#usb-mode).
 
 ### Installieren oder Aktualisieren ist nicht verfügbar
 
-Vorübergehend nicht verfügbare Karten bleiben sichtbar. Lies den Hinweis neben der Karte. Wenn der Kartenanbieter nicht erreichbar ist oder Downloads pausiert sind, versuche es später erneut. Kann Terento die aktuelle Verfügbarkeit nicht prüfen, überprüfe deine Internetverbindung und versuche es erneut. Bereits installierte Karten bleiben verfügbar.
+Vorübergehend nicht verfügbare Karten bleiben sichtbar. Lies den Hinweis neben der Karte. Wenn der Kartenanbieter nicht erreichbar ist oder Downloads pausiert sind, versuche es später erneut. Kann Terento die aktuelle Verfügbarkeit nicht prüfen, überprüfe deine Internetverbindung und versuche es erneut. Bereits installierte Karten bleiben verfügbar. Weitere Hilfe: [Garmin-Kartenliste lädt nicht oder Terento braucht ein Update](https://terento.app/de/guides/troubleshooting/#catalog-unavailable), [Garmin-Karte: Download fehlgeschlagen](https://terento.app/de/guides/troubleshooting/#download-failed).
 
 ### Installation fehlgeschlagen
 
-Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler.
+Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler. Weitere Hilfe: [Karteninstallation fehlgeschlagen: Kartenrest auf der Uhr](https://terento.app/de/guides/troubleshooting/#leftover-map), [Problem mit Terento melden](https://terento.app/de/guides/troubleshooting/#send-report).
 
 ### Die Karte ist installiert, aber nicht sichtbar
 
 Verbinde die Uhr erneut oder starte sie neu und prüfe die Karteneinstellungen. Fehlt die Karte weiterhin, nenne dem Support per E-Mail dein genaues Uhrenmodell, die Kartenregion und das Problem. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+[Alle Lösungsschritte ansehen](https://terento.app/de/guides/troubleshooting/)
 
 Bereit, wenn du es bist
 

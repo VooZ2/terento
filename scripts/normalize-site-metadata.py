@@ -103,6 +103,8 @@ def page_group(page: dict) -> str:
         return "about"
     if path.endswith("/guides/install-garmin-maps-mac"):
         return "guide"
+    if path.endswith("/guides/troubleshooting"):
+        return "troubleshooting"
     return "home"
 
 

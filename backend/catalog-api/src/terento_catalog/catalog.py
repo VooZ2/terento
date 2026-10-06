@@ -281,7 +281,16 @@ def _build_provider_neutral_catalog(
                     row.get("artifact_validation_status") or "NOT_VALIDATED"
                 ),
             }
-            if row.get("artifact_source_proof"):
+            # A failed BBBike check keeps its stored proof as evidence, but an
+            # unavailable main artifact is published without proof: released
+            # clients accept such a package only as one proof-free artifact
+            # and otherwise reject the whole catalog.
+            bbbike_unavailable_main = (
+                provider_id == "bbbike"
+                and str(row.get("artifact_kind") or "") == "main"
+                and str(row.get("artifact_validation_status") or "") in ("UNAVAILABLE", "FAILED")
+            )
+            if row.get("artifact_source_proof") and not bbbike_unavailable_main:
                 artifact["sourceProof"] = row["artifact_source_proof"]
                 artifact["sourceUpdatedAt"] = _format_optional_date(row.get("artifact_source_updated_at"))
                 artifact["installPayloadPath"] = row.get("artifact_install_payload_path")

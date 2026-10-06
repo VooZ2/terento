@@ -35,6 +35,7 @@ def run_server(settings: Settings, database: Database) -> None:
             operations_ingest_secret=settings.operations_ingest_secret,
             opentopomap_contour_mode=settings.opentopomap_contour_mode,
             opentopomap_contour_allowlist=settings.opentopomap_contour_allowlist,
+            trusted_proxies=settings.trusted_proxies,
         ),
         settings.host,
         settings.port,

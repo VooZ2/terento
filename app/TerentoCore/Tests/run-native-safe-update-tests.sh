@@ -34,6 +34,8 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
     "$project_root/Sources/TerentoPoC/Installation/SafeDeleteAdapter.swift" \
     "$project_root/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/MapInventoryScope.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/TransferVerification.swift" \
     "$project_root/Sources/TerentoPoC/Installation/SafeUpdateTransaction.swift" \
     "$project_root/Tests/TerentoPoCTests/Stage53SafeUpdateTests.swift" \
     -o "$binary_path"

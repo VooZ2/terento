@@ -365,6 +365,13 @@ def site_token_block(tokens: dict) -> str:
     return "\n".join(lines)
 
 
+def implementation_radius(tokens: dict, name: str) -> str:
+    value = tokens.get("implementationDefaults", {}).get("radius", {}).get(name)
+    if not isinstance(value, str) or not value.endswith("px"):
+        raise ValueError(f"Missing implementation radius: {name}")
+    return value
+
+
 def admin_token_css(tokens: dict) -> str:
     shared = {
         "off-white": color(tokens, "brand", "offWhite"),
@@ -385,7 +392,15 @@ def admin_token_css(tokens: dict) -> str:
         "danger": semantic(tokens, "admin", "light", "destructiveText"),
         "success-bg": semantic(tokens, "admin", "light", "successSurface"),
         "admin-placeholder": semantic(tokens, "admin", "light", "placeholderText"),
-        "admin-focus-ring": "3px solid color-mix(in srgb,var(--sky) 58%,white)",
+        "admin-focus-color": color(tokens, "light", "focusRing"),
+        "admin-focus-ring": "3px solid var(--admin-focus-color)",
+        "lichen-dark": color(tokens, "functional", "lichenDark"),
+        "stone-dark": color(tokens, "functional", "stoneDark"),
+        "selected-tint": color(tokens, "functional", "selectedTint"),
+        "status-warning-text": color(tokens, "status", "light", "warning"),
+        "radius-control": implementation_radius(tokens, "control"),
+        "radius-card": implementation_radius(tokens, "card"),
+        "radius-large": implementation_radius(tokens, "large"),
     }
     lines = [
         f"/* {GENERATED_HEADER} */",

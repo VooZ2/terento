@@ -109,7 +109,7 @@ def test_sitemap_contract() -> None:
     rendered = sitemap.render_sitemap(manifest)
     assert rendered == (ROOT / "site/sitemap.xml").read_text(encoding="utf-8")
     indexable = [page for page in manifest["pages"] if page["indexable"]]
-    assert len(indexable) == 30
+    assert len(indexable) == 36
     assert all(page.get("lastmod") or page.get("lastmodOmittedReason") ==
                "uncommitted content has no reliable Git date" for page in indexable)
     assert "https://terento.app/legal/" not in rendered

@@ -32,8 +32,10 @@ class AdminAuditTests(unittest.TestCase):
         from terento_catalog.admin import ADMIN_STYLES, overview_page
         body = overview_page({}, {"username": "operator"}, "csrf").decode()
         panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split("</section>", 1)[0]
-        self.assertTrue(panel.startswith("<div class='section-heading'>"))
+        self.assertTrue(panel.startswith("<header class='admin-card-head'>"))
         self.assertIn("Needs attention</h2>", panel)
+        # No review summary means unavailable, never an empty zero queue.
+        self.assertIn("Review counts are unavailable.", panel)
         self.assertNotIn("attention-shortcuts", panel)
         self.assertNotIn(".overview-attention-empty h2", ADMIN_STYLES)
         self.assertNotIn(".overview-attention-empty{display:grid", ADMIN_STYLES)
@@ -56,9 +58,15 @@ class AdminAuditTests(unittest.TestCase):
         from terento_catalog.admin import ADMIN_STYLES
 
         self.assertIn('.overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
-        self.assertIn('.overview-primary-grid{align-items:start}', ADMIN_STYLES)
+        # Cards sharing a row stretch to one height (review 2026-10-06).
+        self.assertIn('.overview-primary-grid{align-items:stretch}', ADMIN_STYLES)
+        self.assertIn('.map-statistics-coverage-layout{align-items:stretch;', ADMIN_STYLES)
         self.assertIn('.overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}', ADMIN_STYLES)
-        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'downloads activity';", ADMIN_STYLES)
+        # Needs attention | Activity, then First run | App downloads; a lone
+        # last card spans the row so no grid cell stays empty.
+        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;", ADMIN_STYLES)
+        self.assertIn(".overview-composition-grid>.overview-panel:last-child:nth-child(odd){grid-column:1/-1}", ADMIN_STYLES)
+        self.assertNotIn("grid-template-areas:'attention activity'", ADMIN_STYLES)
         self.assertNotIn('.overview-tertiary-grid', ADMIN_STYLES)
 
     def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):
@@ -129,10 +137,17 @@ class AdminAuditTests(unittest.TestCase):
         ids = [node.attrib['id'] for chart in charts for node in chart.iter() if 'id' in node.attrib]
         self.assertEqual(len(ids), len(set(ids)))
         for chart in charts:
-            bars = [node for node in chart.iter('rect') if node.attrib.get('class') == 'overview-chart-success']
+            bars = [node for node in chart.iter('rect') if node.attrib.get('class') == 'overview-chart-custom']
             self.assertEqual(len(bars), 1)
-            self.assertIn('Install succeeded: 1', bars[-1].attrib['aria-label'])
-            self.assertIn('23:00', bars[-1].attrib['aria-label'])
+            # Segments are presentational; the bucket group is the one focusable,
+            # labelled element (ADM-22).
+            self.assertEqual(bars[-1].attrib.get('aria-hidden'), 'true')
+            self.assertNotIn('tabindex', bars[-1].attrib)
+            groups = [node for node in chart.iter('g') if node.attrib.get('class') == 'overview-chart-group']
+            self.assertEqual(len(groups), 24)
+            self.assertTrue(all(group.attrib.get('tabindex') == '0' for group in groups))
+            self.assertIn('Custom .img install: 1', groups[-1].attrib['aria-label'])
+            self.assertIn('23:00', groups[-1].attrib['aria-label'])
             self.assertFalse(any(node.tag in {'circle', 'polyline'} for node in chart.iter()))
         self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
         self.assertIn('No map installations', _overview_trend_chart([], 'hour'))
@@ -172,9 +187,9 @@ class AdminAuditTests(unittest.TestCase):
         rows = [{"provider_id": "p", "map_package_id": "m", "region": "LT", "region_country": "LT",
                  "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1}]
         body = map_statistics_page({"rows": rows}, [{"id": "p", "name": "Provider"}], {"username": "audit"}, "csrf").decode()
-        for text in ("Downloads", "Successful", "Success rate", "Installs",
-                     "Top countries", "Maps by provider",
-                     "min-width:880px"):
+        for text in ("Downloads", "Successful", "Failed", "Installs",
+                     "Top countries", "Top maps",
+                     "min-width:560px"):
             self.assertIn(text, body)
         self.assertNotIn("Diagnostic coverage", body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)
@@ -321,12 +336,20 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_build_guard_separates_debug_and_public_release(self):
         guard=Path(__file__).resolve().parents[3]/'Packaging'/'verify-release-label.sh'
-        for configuration,label,allowed in [('Debug','1.0.0-beta.10-local',True),('Debug','1.0.0-beta.9',False),('Debug','',False),('Release','1.0.0-beta.9',True),('Release','1.0.0-beta.10-local',False),('Release','development',False)]:
+        for configuration,label,allowed in [('Debug','1.0.0-beta.10-local',True),('Debug','1.0.0-beta.9',False),('Debug','',False),('Release','1.0.0-beta.9',True),('Release','1.0.0-beta.10-local',False),('Release','development',False),('Debug','1.0.0-rc.1-local',True),('Debug','1.0.0-rc.1',False),('Release','1.0.0-rc.1',True),('Release','1.0.0-rc.1-local',False)]:
             with self.subTest(configuration=configuration,label=label):
                 result=subprocess.run(['/bin/sh',str(guard)],env={**os.environ,'CONFIGURATION':configuration,'TERENTO_RELEASE_LABEL':label},capture_output=True)
                 self.assertEqual(result.returncode==0,allowed)
                 if allowed:
                     self.assertEqual(is_local_release_label(label),configuration=='Debug')
+
+    def test_app_version_label_shortens_beta_and_release_candidate_labels(self):
+        from terento_catalog.admin import _admin_app_version_label
+        self.assertEqual(_admin_app_version_label('1.0.0-beta.18', '40'), 'beta.18 · build 40')
+        self.assertEqual(_admin_app_version_label('1.0.0-rc.1', '41'), 'rc.1 · build 41')
+        self.assertEqual(_admin_app_version_label('beta.9 RC'), 'beta.9 RC')
+        self.assertEqual(_admin_app_version_label('1.0.0', '50'), '1.0.0 · build 50')
+        self.assertEqual(_admin_app_version_label(None), '—')
 
     def test_clear_handlers_resolve_their_form_before_registering(self):
         from terento_catalog.admin import _map_statistics_script, _diagnostics_script
@@ -411,7 +434,8 @@ class AdminAuditTests(unittest.TestCase):
         class Result:
             def fetchall(self): return []
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query.startswith('SET LOCAL'): return Result()
                 calls.append((query, parameters)); return Result()
         class QueryDatabase(Database):
             @contextmanager
@@ -428,8 +452,11 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn('e.region = %s', complete)
         self.assertIn('e.region = %s', filtered)
         self.assertIn('GROUP BY c.operation_key, c.provider, c.region, c.result_classification_effective', filtered)
-        self.assertIn("e.phase_outcome = 'SUCCEEDED'", complete)
-        self.assertIn("e.write_started IS TRUE", complete)
+        self.assertIn("terento_fresh_result_classification(", complete)
+        self.assertIn("e.schema_version, e.app_build, e.release_label", complete)
+        classifier = (Path(__file__).resolve().parents[1] / "src/terento_catalog/migrations/069_reported_identity_facts.sql").read_text()
+        self.assertIn("write_started IS TRUE", classifier)
+        self.assertNotIn("write_started IS NOT FALSE", classifier)
         self.assertNotIn("e.write_started IS NOT FALSE", complete)
         self.assertNotIn("e.phase_outcome = 'NOT_STARTED'", complete)
         self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", complete)
@@ -440,7 +467,8 @@ class AdminAuditTests(unittest.TestCase):
         class Result:
             def fetchall(self): return []
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query.startswith('SET LOCAL'): return Result()
                 calls.append((query, parameters)); return Result()
         class QueryDatabase(Database):
             @contextmanager
@@ -464,7 +492,8 @@ class AdminAuditTests(unittest.TestCase):
             def fetchall(self): return []
 
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query.startswith('SET LOCAL'): return Result()
                 calls.append((query, parameters)); return Result()
 
         class QueryDatabase(Database):
@@ -473,15 +502,16 @@ class AdminAuditTests(unittest.TestCase):
 
         QueryDatabase('unused').map_statistics({})
         query, _ = calls[0]
-        self.assertIn("e.write_started IS TRUE", query)
-        self.assertIn("e.write_started IS FALSE", query)
-        self.assertIn("e.app_build IS NULL", query)
-        self.assertIn("e.release_label IS NULL", query)
+        self.assertIn("terento_fresh_result_classification(", query)
+        classifier = (Path(__file__).resolve().parents[1] / "src/terento_catalog/migrations/069_reported_identity_facts.sql").read_text()
+        for predicate in ("write_started IS TRUE", "write_started IS FALSE", "app_build IS NULL",
+                          "release_label IS NULL", "schema_version IN (1, 2)"):
+            self.assertIn(predicate, classifier)
         self.assertIn("evidence.diagnostic_result_count = 1", query)
         self.assertIn("evidence.has_confirmed_failure IS TRUE", query)
         self.assertIn("e.component_kind = 'contours'", query)
-        self.assertIn("maprando-france-courbes-ign", query)
-        self.assertIn("FRANCECOURBESIGN", query)
+        self.assertNotIn("maprando-france-courbes-ign", query)
+        self.assertNotIn("FRANCECOURBESIGN", query)
         self.assertIn("count(*) AS event_count", query)
         self.assertIn(
             "count(DISTINCT operation_key) FILTER (WHERE canonical_result)", query,
@@ -563,7 +593,8 @@ class AdminAuditTests(unittest.TestCase):
         class Result:
             def fetchall(self): return []
         class Connection:
-            def execute(self, query, parameters):
+            def execute(self, query, parameters=None):
+                if query.startswith('SET LOCAL'): return Result()
                 calls.append((query, parameters)); return Result()
         class QueryDatabase(Database):
             @contextmanager

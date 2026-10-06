@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "id": "6f1d2c3b-8a4e-4f60-9b7a-2c1d0e9f8a71",
+  "createdAt": "2026-10-06T09:41:07Z",
+  "appBuild": "42",
+  "releaseLabel": "1.0.0-beta.19",
+  "category": "INSTALL_FAILED",
+  "operationId": "0b9a8c7d-6e5f-4a3b-9c2d-1e0f9a8b7c6d",
+  "userMessage": "The watch disconnected near the end of the transfer.\nIt was on the charging cable.",
+  "report": {
+    "title": "Installation stopped during Finishing — MapRando / Lithuania",
+    "operation": "INSTALLATION",
+    "stage": "Finishing",
+    "failureStages": ["verify"],
+    "errorCategory": "device",
+    "errorCodes": ["READBACK_FAILED", "verificationRequired"],
+    "message": "The map was written, but Terento could not confirm it on the watch.",
+    "macOSVersion": "Version 15.6 (Build 24G84)",
+    "device": {
+      "model": "fēnix 8",
+      "variant": "51 mm, AMOLED",
+      "family": "fēnix",
+      "firmware": "20.26",
+      "mtpModel": "fenix 8 - 51mm"
+    },
+    "maps": [
+      {
+        "provider": "maprando",
+        "region": "Lithuania",
+        "package": "maprando-lituanie",
+        "release": "2026-09-02",
+        "plannedBytes": 182239232
+      }
+    ],
+    "writeStarted": true,
+    "objectCreated": true,
+    "cleanupAttempted": false,
+    "cleanupSucceeded": false,
+    "transferProgressPercent": 100,
+    "verification": {
+      "originalFailure": "verificationRequired",
+      "transportClassification": "READBACK_FAILED",
+      "failedComponent": "main",
+      "sourceBytes": 182239232,
+      "remoteBytes": 182239232,
+      "transferredBytes": 182239232,
+      "elapsedMilliseconds": 418211,
+      "sampledBytes": 29229056,
+      "sampleCount": 12,
+      "matchedSampleCount": 4
+    },
+    "lifecycleFacts": ["Technical detail: readback stopped after 4 of 12 samples"],
+    "failureContext": {
+      "boundary": "readback",
+      "classificationSource": "native",
+      "devicePresence": "present",
+      "lastSuccessfulBoundary": "write",
+      "operation": "file_range",
+      "executionMode": "worker",
+      "resultKind": "native_error",
+      "nativeCategory": "object_read",
+      "nativeCodeNamespace": "terento_file_range",
+      "nativeResultCode": -1,
+      "retryCount": 2,
+      "componentKind": "main"
+    },
+    "finishingTrace": [
+      "FINISH_TRACE swift event=installation_begin",
+      "FINISH_TRACE swift event=readback_attempt worker=true attempt=1 delay=0.5",
+      "FINISH_TRACE native event=read_failed offset=182108160 rc=-1 detail=0 last_verified_end=182108160 verified_bytes=29229056",
+      "FINISH_TRACE swift event=readback_failed worker=true attempt=3 error=operationFailed"
+    ]
+  }
+}

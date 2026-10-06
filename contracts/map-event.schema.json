@@ -6,11 +6,8 @@
   "type": "object",
   "properties": {
     "schemaVersion": {
-      "enum": [
-        1,
-        true
-      ],
-      "description": "Current server compares with 1 and also accepts true; this documents existing behavior without changing validation."
+      "const": 1,
+      "description": "Integer 1 only; a boolean true is rejected with 400 (it is not a schema version)."
     },
     "id": {
       "type": "string",
@@ -26,7 +23,8 @@
         "null"
       ],
       "minimum": 0,
-      "description": "Optional zero-based index of the independent map result within the operation."
+      "description": "Optional zero-based index of the independent map result within the operation.",
+      "maximum": 2147483647
     },
     "timestamp": {
       "type": "string",
@@ -89,7 +87,7 @@
     },
     "releaseLabel": {
       "$ref": "#/$defs/releaseLabel",
-      "description": "SemVer app release identity. Local debug builds end in -local and are purgeable only in the authenticated admin test-data flow."
+      "description": "SemVer app release identity. Local debug builds end in -local and are purgeable only in the authenticated admin test-data flow. Required for every client except the exact released beta.9 shape (builds 10/11), which predates this field and is stored with an unknown release."
     },
     "acquisitionId": {
       "type": [
@@ -104,6 +102,14 @@
         "contours",
         null
       ]
+    },
+    "acquisitionPurpose": {
+      "enum": [
+        "install",
+        "update",
+        null
+      ],
+      "description": "Optional explicit reason for a component download. Absent/null historical values remain unknown; never infer from a missing install/update result."
     }
   },
   "required": [
@@ -112,7 +118,6 @@
     "operationId",
     "timestamp",
     "providerId",
-    "releaseLabel",
     "eventType",
     "outcome"
   ],
@@ -129,6 +134,63 @@
     }
   },
   "allOf": [
+    {
+      "description": "releaseLabel is required unless the body is the exact released beta.9 (builds 10/11) shape, which predates it.",
+      "anyOf": [
+        {
+          "required": [
+            "releaseLabel"
+          ]
+        },
+        {
+          "required": [
+            "appBuild",
+            "mapId"
+          ],
+          "properties": {
+            "eventType": {
+              "enum": [
+                "DOWNLOAD_STARTED",
+                "DOWNLOAD_SUCCEEDED",
+                "DOWNLOAD_FAILED",
+                "INSTALL_SUCCEEDED",
+                "INSTALL_FAILED"
+              ]
+            },
+            "appBuild": {
+              "type": "string"
+            },
+            "mapId": {
+              "type": "string"
+            }
+          },
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "acquisitionId"
+                ]
+              },
+              {
+                "required": [
+                  "componentKind"
+                ]
+              },
+              {
+                "required": [
+                  "acquisitionPurpose"
+                ]
+              },
+              {
+                "required": [
+                  "mapResultIndex"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
     {
       "if": {
         "properties": {
@@ -218,15 +280,11 @@
     {
       "if": {
         "properties": {
-          "acquisitionId": {
-            "type": "string"
-          },
           "eventType": {
             "const": "DOWNLOAD_STARTED"
           }
         },
         "required": [
-          "acquisitionId",
           "eventType"
         ]
       },
@@ -241,15 +299,11 @@
     {
       "if": {
         "properties": {
-          "acquisitionId": {
-            "type": "string"
-          },
           "eventType": {
             "const": "DOWNLOAD_SUCCEEDED"
           }
         },
         "required": [
-          "acquisitionId",
           "eventType"
         ]
       },
@@ -264,15 +318,11 @@
     {
       "if": {
         "properties": {
-          "acquisitionId": {
-            "type": "string"
-          },
           "eventType": {
             "const": "DOWNLOAD_FAILED"
           }
         },
         "required": [
-          "acquisitionId",
           "eventType"
         ]
       },
@@ -280,6 +330,82 @@
         "properties": {
           "outcome": {
             "const": "FAILED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "enum": [
+              "INSTALL_SUCCEEDED",
+              "MAP_UPDATE_SUCCEEDED"
+            ]
+          }
+        },
+        "required": [
+          "eventType"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "SUCCEEDED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "enum": [
+              "INSTALL_FAILED",
+              "MAP_UPDATE_FAILED"
+            ]
+          }
+        },
+        "required": [
+          "eventType"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "FAILED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "acquisitionPurpose": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "acquisitionPurpose"
+        ]
+      },
+      "then": {
+        "required": [
+          "acquisitionId",
+          "componentKind"
+        ],
+        "properties": {
+          "acquisitionId": {
+            "type": "string"
+          },
+          "componentKind": {
+            "enum": [
+              "main",
+              "contours"
+            ]
+          },
+          "eventType": {
+            "pattern": "^DOWNLOAD_"
           }
         }
       }

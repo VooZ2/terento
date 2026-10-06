@@ -25,8 +25,12 @@ This describes the local implementation, not deployed route availability.
   `lifecycle=ACTIVE|RESOLVED` and nonnegative `offset` paginate 50 reports.
   `eventId` accepts a map-update statistics UUID; `diagnosticId` accepts a
   diagnostic UUID. These identifiers are mutually exclusive and cannot be
-  combined with list filters or pagination.
-  Invalid filters return 400; unavailable storage returns 503. No matching
+  combined with list filters or pagination. The list page (`Update reports`)
+  adds report totals for the list scope (`total`, `succeeded`, `failed`,
+  `not_started`, `open_failed` raw report rows for the `deviceId`/`lifecycle`
+  scope, independent of `outcome` and `offset`); a failed totals query leaves
+  the list usable with unavailable tiles.
+  Invalid filters return 400 as an HTML page; unavailable storage returns 503. No matching
   or ambiguous diagnostic renders an explicit availability message.
 - `POST /admin/update-diagnostics/issue|resolve|reopen|workflow`: authenticated,
   CSRF-protected form actions targeting one `diagnostic_id` UUID. Issue actions
@@ -100,7 +104,8 @@ normal review before its compatibility events are accepted. `custom` is a
 fixed local-IMG source label, not a provider, and only accepts literal
 `custom` region and release values. New schema-version-4 clients do not send
 deletion credentials; schema versions 1–3 remain readable for backward
-compatibility. The endpoint is rate limited and stores allowlisted columns in
+compatibility. The endpoint is rate limited to 300 reports per client address
+per minute (derived behind the trusted reverse proxy) and stores allowlisted columns in
 the separate compatibility table. The original JSON body is not retained.
 New clients do not send a post-install
 confirmation signal; legacy `userConfirmed` fields are tolerated only for
@@ -193,36 +198,77 @@ Context does not change statistical populations, event idempotency, sharing,
 retention or device-operation authority. Missing or explicitly null fields remain
 unavailable in authenticated diagnostics and generated issue reports.
 
+### Optional `inventoryMetrics` and `GET /admin/inventory-metrics.json`
+
+Schema-version-4 events may carry the optional `inventoryMetrics` object
+defined in `contracts/compatibility-event.schema.json` (`scope` `FULL|GARMIN`,
+pre-write object count and duration, optional post-write count and duration;
+unknown nested keys and out-of-range values are `400 invalid_inventory_metrics`).
+Installation reports store it in `inventory_metrics` and show it in the Admin
+installation report Technical details; update reports keep it in their stored
+payload. `GET /admin/inventory-metrics.json` (admin session) returns, per exact
+model identity and scope, the non-local report count, median/p90 pre-write
+duration and object count, and the last report time. Diagnostics only; never
+an input to counts.
+
 ## `GET https://api.terento.app/admin`
 
 Returns the authenticated operator Dashboard. The default period is the last 24
 hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
 
-The first row contains always-visible Map downloads and Map installs trends. The
-Successful, Failed, and Success rate badges use all retained history; the period
-selector changes only the trend series and Activity. Needs attention covers
-unresolved work across all dates. App downloads is the separate Terento `.dmg`
-and `.zip` cumulative-counter trend and is omitted without usable data. Activity
-is bounded and internally scrollable. Generic rows have no Maps link unless an
-exact event/detail destination exists.
+The first row is four tiles: Installs, Updates and Downloads for the selected
+period (successful, failed and rate, with a visible period chip) and Needs
+attention (Now). The Downloads and Installs chart cards follow, each with a
+legend naming its series (period totals stay in the tiles; only the custom
+`.img` split is counted) and, unless the period is All time, an `All time`
+line with the all-time totals; the Downloads card adds the period purpose
+breakdown (`downloadPurposes`: install, update, unknown). Needs attention covers unresolved work across all dates in
+nine fixed rows read only from `admin_review_summary()`, the open public
+support-report count (`support_report_open_count()`), the active Maps-unknown
+model count (`maps_unknown_model_count()`), the shared
+provider-problem definition and the system checks; an unavailable query shows
+`—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
+for the period. App downloads is the separate Terento `.dmg` and `.zip`
+cumulative-counter trend and is omitted without usable data. Activity is bounded
+and internally scrollable. Generic rows have no Maps link unless an exact
+event/detail destination exists.
+
+`admin_overview` reads every section independently (map snapshot,
+compatibility snapshot, GitHub downloads, providers, system health, funnel);
+one failing read model is logged and renders that card as unavailable while the
+page returns 200. The review summary query runs only for `/admin`.
 
 Activity presents installation/update status followed by one context row:
 map/region, provider (except Custom .img), and a catalog-assessed model and
 variant when an exact diagnostic relationship exists. Missing or ambiguous
 identity is omitted. This display enrichment does not alter event populations,
 installation/update counters or compatibility evidence.
+Retained, agreeing update diagnostics with `NOT_STARTED` and `writeStarted=false`
+also appear as “Update blocked before writing”, with the authored reason and an
+exact diagnostic-detail link. Their history remains visible after review is
+resolved. Conflicting outcome, model, write or reason reports remain unclassified;
+no device identity is guessed. These read-only Activity rows do not increment
+update failures or fresh-install counters and do not manufacture map events.
 
 Map/package reconciliation requires shared operation, provider, and exact or
 unambiguous package-region identity. Operation ID alone is not a unique map.
 Historical acquisition failures remain activity and Maps evidence. A failure
 with `write_started=false` is not projected as `INSTALL_FAILED` or a fresh
 installation attempt. Existing explicit map events and eligible fallback rows
-are deduplicated by logical map result.
+are deduplicated by logical map result. A diagnostic-only fallback result keeps
+its reported region but an unknown package, map name, map type, canonical region
+and country: provider + region never establishes a package or geography, so it
+counts in fresh totals but not in Popular maps, Top countries or All maps, and a
+later catalog change cannot rewrite its history.
 
-A map install failure without a matching device diagnostic appears in Needs
-attention across all dates and is keyed by the immutable event ID. Authenticated,
+A map install failure without a matching device diagnostic is counted in Needs
+attention (Missing reports) across all dates and is keyed by the immutable event
+ID. `GET /admin/review/missing-reports?offset=N` lists every task, 50 per page,
+from `Database.missing_diagnostic_failures()` with the same predicate and total
+as the count; an invalid offset returns an HTML 400 page. Authenticated,
 CSRF-protected dismiss and undo routes change only operator review state and its
-audit. An exact event link opens collapsed Maps Event detail without changing
+audit; with `return_to=/admin/review/missing-reports` they redirect back to the
+list (any other value returns to `/admin`). An exact event link opens collapsed Maps Event detail without changing
 aggregate statistics. Compatibility evidence remains the source for exact-device
 facts and actionable diagnostic work.
 
@@ -230,8 +276,19 @@ App download counter history keeps `.dmg` and `.zip` separate. The first valid
 snapshot is a baseline; unchanged counters are observed zero; missing snapshots
 are unknown. Counter decreases or confirmed population changes are discontinuity.
 Gap and period-boundary increases are retained as uncertain intervals, and
-aggregated partial buckets stay marked partial. A failed GitHub read does not
+aggregated partial buckets stay marked partial. Buckets follow the map trend rule
+(24h hourly, 7d daily, 30d weekly, all time adaptive by observed span). A failed GitHub read does not
 erase the last successful observation or timestamp.
+
+Authenticated HTML routes answer errors with an HTML page inside the admin
+chrome (400 invalid link, 404 not found, 503 unavailable); JSON routes
+(`*.json`, provider JSON resources and `/admin/providers/{id}/rechecks`) keep JSON
+errors, and the recheck status route now returns `503
+provider_rechecks_unavailable` instead of dropping the connection. Inline
+scripts carry the CSP nonce only at their template sites through a per-process
+unguessable placeholder; the assembled body is never post-processed for
+`<script>`. Open pages check freshness every two minutes while visible and once
+when the tab becomes visible again.
 
 Production `/admin*` is first protected by Cloudflare Access and the trusted
 origin assertion. The application then requires its native admin session and
@@ -245,12 +302,19 @@ noindex.
 ## `GET https://api.terento.app/admin/installations`
 
 Returns the authenticated all-time model installation evidence view. Its summary
-order is Attempts, Successful, Failed, Success rate, and Open errors. `Failed`
-includes resolved historical failures; `Open errors` is active actionable work.
-Positive Failed values use the shared danger styling.
+tiles are Attempts, Successful, Failed, Success rate (All time) and Open problems
+(Now). `Failed`
+includes resolved historical failures. `Open problems` counts installs
+(operations) with an active, nonlocal, non-excluded failed diagnostic that is not a
+provider download/pre-install failure and has no linked GitHub issue — the
+Dashboard Needs attention `Installation problems` predicate and unit, read from
+`Database.installation_problem_counts()`. Each operation is attributed to one
+identity, the KPI is the sum of the rendered rows, and an identity with an open
+problem stays listed even with zero attempts. Positive Failed values use the
+shared danger styling.
 
-The page supports All, Failed, Open errors, Successful, and Identity review
-filters plus sorting and search. True no-evidence omits metrics, filters, table,
+The page supports All, Failed, Open problems, Identity review and Successful
+quick filters (also as `?state=identity-pending`) plus sorting and search. True no-evidence omits metrics, filters, table,
 and pagination. Filtered-empty preserves the active controls and clear action.
 Pagination appears only for multiple pages. Known exact models group by canonical
 ID; unresolved identities remain visible. Historical catalog provenance is
@@ -290,7 +354,7 @@ queue until the read-only GitHub synchronizer observes the issue as closed;
 closure then moves the diagnostic to resolved history.
 
 The device detail history keeps the exact model/variant scope, supports All,
-Successful, Failed, Open errors, and Resolved errors filters, and uses a
+Successful, Failed, Open problems, and Resolved errors filters, and uses a
 25/50-row presentation page. The provider detail primary health disclosure
 shows the newest observation even when stale; its compact history disclosure contains at most 10 previous checks from the last 30 days,
 so the newest row is not repeated.
@@ -305,6 +369,17 @@ keeps the canonical parameter order `utm_source`, `utm_medium`,
 `utm_campaign`, `utm_content`, `utm_term`. The page uses the same private
 admin session, CSRF cookie, no-store response policy, and noindex policy as
 `GET https://api.terento.app/admin`.
+
+## `GET https://api.terento.app/admin/glossary`
+
+Returns the authenticated Tools → Glossary page: one anchored definition per
+Admin term (Attempt, Successful, Failed, Blocked before writing, Open problem,
+Provider download, Install, Installation report, Map update, Update report,
+Terento app download, Task and the review/evidence terms). Definitions follow
+`contracts/STATISTICS_CONTRACT.md`, `contracts/APP_FUNNEL_CONTRACT.md` and
+`docs/admin-behavior-contract.md`; metric labels link to `#anchor` entries. The
+page reads no data and uses the shared admin session, no-store and noindex
+policy.
 
 ## `GET https://api.terento.app/admin/devices`
 
@@ -546,21 +621,20 @@ provider binaries or executable adapter configuration.
 ## `GET /admin/providers` and `GET /admin/providers/{id}`
 
 These authenticated, no-store/noindex HTML pages provide the operator views
-for the provider registry and each registered provider. The list shows provider name and
-secondary ID, lifecycle/health state, package count, current problems and catalog sync,
-and current Problems (affected packages · problematic sources), with a compact
-total/active/healthy/package/problem summary. The
-detail page shows metadata, license/attribution, provider-level original
-source links, and progressive-disclosure sections for download sources,
-regions/packages, health details/history, collection history, and retained
-provider history. Large source and package lists have client-side search,
-broken-only filters, 25/50-row pagination, and no zero-item package-source
-disclosure. An empty collection uses a compact `Collection · No runs yet`
-state. It also provides `Check provider health`, `Refresh catalog`,
-`Recheck affected packages`, targeted package rechecks, `Pause`/`Activate`,
-and an overflow `Retire` control. A request
-without a valid admin session redirects to `/admin/login`; the page never
-serves map binaries.
+for the provider registry and each registered provider. The list opens with
+Active, Healthy, Package problems, Provider problems and Last sync tiles, then a
+table of provider name, lifecycle/health state, package count, Problems
+(affected packages · problematic sources; unknown is `—`) and catalog sync. The
+detail page shows Health, Catalog, Package problems and Downloads tiles, one
+Problems card grouped by recorded reason (five rows per group and `Show all N in
+Packages`), one Packages list with search, Problems/Available filter, 25/50-row
+pagination and a per-row actions menu, Checks and Syncs cards with collapsed
+history, and sibling disclosures for History, Sources (download links with
+search, broken-only filter and pagination), Releases, Attribution and Original
+links. It provides `Check provider health`, `Refresh catalog`, `Recheck affected
+packages`, targeted package rechecks, Disable/Enable downloads, `Pause`/`Activate`,
+and an overflow `Retire` control. A request without a valid admin session
+redirects to `/admin/login`; the page never serves map binaries.
 
 `GET /admin/providers/{id}.json` and `GET /admin/providers/{id}/audit` are
 private JSON projections for operator tooling and carry the same session gate.
@@ -662,20 +736,63 @@ Equivalent to a CSRF-protected state change to `RETIRED`; it accepts an empty
 JSON body or an optional bounded `reason`, and writes an audit record.
 Retiring a provider does not delete its historical metadata.
 
+## `POST /app-funnel/events` and `GET /admin/app-funnel.json`
+
+First-run funnel telemetry; meaning, fields and limits are owned by
+[`APP_FUNNEL_CONTRACT.md`](../../../contracts/APP_FUNNEL_CONTRACT.md). Intake
+accepts at most 4 KiB of schema-version-1 JSON, rejects unknown fields (`400`),
+is idempotent by event `id` (`201` stored, `200` duplicate), and allows 120 events
+per client address per minute. `GET /admin/app-funnel.json?period=24h|7d|30d|all`
+requires an admin session and returns distinct non-local session counts per
+stage/outcome (zero-filled) plus the top base models with authorization outcome
+`PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`. The visual Admin presentation is not
+part of this route.
+
+## `POST /support/reports`
+
+User-sent support reports; meaning, the exact `report` keys and limits are owned
+by [`SUPPORT_REPORT_CONTRACT.md`](../../../contracts/SUPPORT_REPORT_CONTRACT.md).
+Intake accepts at most 64 KiB of schema-version-1 JSON, rejects unknown fields at
+every level (`400`), is idempotent by report `id` (`201` stored, `200` replay,
+both with `{"reference":"TR-XXXXXX","status":...}`), returns `409
+reference_conflict` if another report owns the deterministic reference, and
+allows 10 reports per client address per minute (`429`). The client address is
+used only by the in-memory limiter and is never stored. A `-local` release label
+stores the report as local test data. Reports are kept 12 months after receipt.
+
+The Admin routes are `GET /admin/support-reports?status=open|handled&offset=N`
+(list, 50 per page, public builds only), `GET /admin/support-reports/TR-XXXXXX`
+(detail, including local test reports reached from Test data) and the
+CSRF-protected form posts `/admin/support-reports/handle`, `/reopen` and
+`/issue` (`reference`, optional `note` ≤ 2000 characters, `linked_github_issue`
+as `#123` or empty to unlink). Each action writes `support_report_audit` and
+`admin_audit_log` and redirects to the detail; an unknown reference is `404`,
+invalid input `400`. Local test reports are listed on `/admin/test-data` and
+deleted by its purge.
+
 ## `POST /map-events`
 
-Accepts at most 8 KiB of schema-version-1 JSON and is rate limited per source
-address. This is deliberately separate from `/compatibility/events` and does
+Accepts at most 8 KiB of schema-version-1 JSON and is rate limited to 600
+events per client address per minute (the client address is derived behind the
+trusted reverse proxy; see `operations.md`). This is deliberately separate from `/compatibility/events` and does
 not accept compatibility, device, manifest, path, serial, Unit ID, raw log, or
 raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
 `providerId`, `releaseLabel`, optional `mapId`/`region`, `eventType`, `outcome`,
-and optional `appBuild`. `releaseLabel` must be a strict SemVer app identity;
+optional `appBuild`/`mapResultIndex`, and the download acquisition fields described below. `releaseLabel` must be a strict SemVer app identity;
 the exact `-local` suffix classifies the row server-side as local test data.
+The released beta.9 client (builds 10/11) predates `releaseLabel`; its exact
+shape (`schemaVersion`, `id`, `operationId`, `timestamp`, `providerId`, string
+`mapId`, optional `region`, a download/install event type, `outcome` and string
+`appBuild`, with no acquisition or result-index fields) is accepted and stored
+with an unknown (NULL) release label, never as local test data. Any other body
+without `releaseLabel` is rejected with `400`.
 Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
 `DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, `INSTALL_FAILED`,
 `MAP_UPDATE_SUCCEEDED`, and `MAP_UPDATE_FAILED`; event IDs are
 UUIDs and are idempotent. The server stores only the normalized columns in
-`map_download_event`; it does not retain the raw JSON body. A successful
+`map_download_event`; it does not retain the raw JSON body. A `mapId` that is
+not yet a catalog package is kept as `reported_map_id` so the event can be
+attributed exactly once the package is published. A successful
 insert returns `201`, a duplicate returns `200`, and both return the
 `operationId`. Local rows are excluded from production map statistics and can
 be removed only by an authenticated, CSRF-protected admin action at
@@ -685,8 +802,9 @@ be removed only by an authenticated, CSRF-protected admin action at
 Terento-owned provider map. They are counted separately from first
 installations; they do not increase installation totals, country coverage, or
 map popularity counts. Admin Dashboard and Map statistics render successful
-and failed updates separately: solid green for success and green diagonal
-stripes for failure. Fresh-install failures remain red. Map statistics supports
+and failed updates as separate series; their colours follow the statistics
+contract (update successful Warm Stone, update failed red diagonal stripes,
+install failed solid red). Map statistics supports
 filtering by either update event type.
 
 This endpoint receives map-usage diagnostics while the independent map-usage
@@ -764,10 +882,9 @@ provider-table columns, and chart presentation are defined in
 [`admin-behavior-contract.md`](admin-behavior-contract.md); statistical
 populations and formulas are defined in
 [`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
-In the current HTML runtime, Provider comparison groups Downloads, Installs,
-and Updates under Successful, Failed, and Rate subcolumns, with Provider and
-Last install outside those groups. The API populations and payload are
-unchanged.
+In the current HTML runtime, Providers shows one stream at a time (Installs,
+Updates or Downloads) with Successful, Failed, Rate and the stream's last
+success date. The API populations and payload are unchanged.
 Popular-map grouping still uses only the eligible successful fresh main-map
 population, and the response searches the complete eligible set before any
 All maps pagination. Provider activity is an independent projection and does
@@ -788,11 +905,14 @@ Returns the authenticated, no-store/noindex Maps page for the aggregate read
 model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time, plus
 provider, map, region, event-type, outcome, and exact `eventId` detail filters.
 
-The visible primary order is summary, world map with Top countries, Provider
-comparison, Maps by provider, Map downloads trend, Map installs trend, and
-Updates. These analytics remain visible. Diagnostic linkage coverage is retained
-in the private JSON contract but is not rendered as an Admin block. Raw Event
-detail remains collapsed and secondary.
+The visible order is the period tiles (Downloads, Installs, Updates from
+`summary`, with the purpose breakdown and an `All time` line from
+`allTimeSummary`), the Downloads and Installs trend cards, Countries and Top
+countries, Providers (one stream at a time), Top maps and the collapsed Events
+disclosure. These analytics remain visible. Diagnostic linkage coverage is
+retained in the private JSON contract but is not rendered as an Admin block.
+The filter form sends `timeZone`; the page reloads with the browser-selected zone
+so trend buckets and period boundaries match the Dashboard.
 
 Provider, map, region, and date filters define the summary population. Event
 type, outcome, exact event, and detail pagination affect Event detail only.
@@ -1091,7 +1211,14 @@ README day; same-day republishes do not invent a new version ordering.
 
 Unavailable BBBike entries may have unknown ZIP bytes represented as0, unknown
 install size, unavailable artifact validation and no source proof. They are
-catalog metadata only and cannot be acquired. Ready-region pages for Cambodia, Jordan and Luxembourg point to the provider's
+catalog metadata only and cannot be acquired. This also holds after a failed
+recheck of a previously validated package: publication omits `sourceProof`,
+`sourceUpdatedAt` and `installPayloadPath` from an unavailable BBBike main
+artifact while the stored proof remains database evidence, because released
+clients reject the whole catalog when such an artifact carries a proof. The
+backend release gate `test_catalog_native_acceptance` mirrors the native
+per-package acceptance rules for every published package; provider IMG identity
+matching remains covered by the native released-client gate. Ready-region pages for Cambodia, Jordan and Luxembourg point to the provider's
 separate example namespace. Exactly those six URLs (three regions × two types)
 are reviewed aliases: source README/IMG identity, complete country input-PBF
 bounds and ready-region polygon bounds were checked for both styles. No other
@@ -1111,7 +1238,16 @@ Schema1 additionally accepts paired optional `acquisitionId` (random UUID) and
 `componentKind` (`main` or `contours`) for download events. Earlier client
 requests remain valid. `DOWNLOAD_PROCESSING`, `DOWNLOAD_CANCELLED`, and `DOWNLOAD_INTERRUPTED`
 require this pair and outcome `UNKNOWN`; new successes/failures require the
-corresponding outcome. These are metadata only, never filenames or device IDs.
+corresponding outcome. Every event type must agree with its outcome, including
+legacy payloads without acquisition identity. `mapResultIndex` is an optional
+non-Boolean integer from 0 through 2147483647.
+
+Download events with the acquisition pair may also carry optional
+`acquisitionPurpose` (`install` or `update`). Omitted or null means unknown;
+historical purpose is never inferred from missing install/update results.
+Migration 068 stores this nullable value without rewriting old rows. An update
+may download successfully and stop before device writing; the download outcome
+and update outcome remain separate facts. These are metadata only, never filenames or device IDs.
 A repeated event/phase is idempotent and one acquisition admits one terminal.
 Recent activity groups the new acquisition phases with component and history;
 non-terminal observations are explicitly labelled `Outcome not received`.
@@ -1139,12 +1275,13 @@ and release distributions. Download history uses a compact wrapping timeline;
 full timestamps remain in markup and accessible labels, with time-only visible
 labels when all phases occur on the same day in the selected timezone.
 
-### Model source review
+### Model sources
 
 `GET /admin/device-identification` is the authenticated, no-store Model
-source review tool under Tools. Its primary workflow is `Source reported` →
-`Match to` → `Other models using this code` → `Confirm match` → `Technical
-details`. Raw codes, mapping/catalog IDs, source revision, policy internals,
+sources tool under Tools (`?q=` searches models and codes, `?device=` opens one
+model). The list has state filters and a paginated table; the detail workflow is
+`Source says` ⇄ `Catalog model` → `Same code` → `Confirm` → `Technical details`
+with a `Next in queue` link. Raw codes, mapping/catalog IDs, source revision, policy internals,
 missing-source inventory, reasons, and history remain secondary. Existing
 CSRF-protected `POST /admin/devices/identity-mapping` remains the mutation route.
 Saved installation assignments and compatibility approval semantics are

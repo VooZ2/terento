@@ -32,6 +32,8 @@ Postup
 
 Připojte hodinky datovým USB kabelem. Terento je rozpozná a ověří, zda lze bezpečně pokračovat.
 
+[Mac nevidí hodinky Garmin](https://terento.app/cs/guides/troubleshooting/#connect-watch)
+
 Terento zobrazuje připojené hodinky Garmin a stav rozpoznání
 Terento před instalací rozpozná připojené hodinky Garmin.
 
@@ -63,19 +65,21 @@ Potřebujete pomoc?
 
 ### Terento hodinky nerozpozná
 
-Po připojení počkejte 1–2 minuty. Pokud se hodinky stále nezobrazí, připojte je znovu, ověřte datový kabel a ukončete ostatní aplikace, které je mohou používat.
+Po připojení počkejte 1–2 minuty. Pokud se hodinky stále nezobrazí, připojte je znovu, ověřte datový kabel a ukončete ostatní aplikace, které je mohou používat. Další pomoc: [Mac nevidí hodinky Garmin](https://terento.app/cs/guides/troubleshooting/#connect-watch), [Hodinky používá Garmin Express nebo jiná aplikace](https://terento.app/cs/guides/troubleshooting/#garmin-busy), [Hodinky Garmin nejsou rozpoznány: režim USB (MTP)](https://terento.app/cs/guides/troubleshooting/#usb-mode).
 
 ### Instalace nebo aktualizace není dostupná
 
-Dočasně nedostupné mapy zůstávají viditelné. Přečtěte si důvod uvedený vedle mapy. Pokud je poskytovatel nedostupný nebo je stahování pozastavené, zkuste to později. Pokud Terento nemůže ověřit aktuální dostupnost, zkontrolujte připojení k internetu a zkuste to znovu. Nainstalované mapy zůstávají dostupné.
+Dočasně nedostupné mapy zůstávají viditelné. Přečtěte si důvod uvedený vedle mapy. Pokud je poskytovatel nedostupný nebo je stahování pozastavené, zkuste to později. Pokud Terento nemůže ověřit aktuální dostupnost, zkontrolujte připojení k internetu a zkuste to znovu. Nainstalované mapy zůstávají dostupné. Další pomoc: [Seznam map Garmin se nenačte nebo Terento potřebuje aktualizaci](https://terento.app/cs/guides/troubleshooting/#catalog-unavailable), [Stažení mapy Garmin se nezdařilo](https://terento.app/cs/guides/troubleshooting/#download-failed).
 
 ### Instalace se nezdařila
 
-Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.
+Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému. Další pomoc: [Instalace mapy selhala: v hodinkách zůstal zbytek mapy](https://terento.app/cs/guides/troubleshooting/#leftover-map), [Jak nahlásit potíž s Terento](https://terento.app/cs/guides/troubleshooting/#send-report).
 
 ### Mapa je nainstalovaná, ale není vidět
 
 Hodinky znovu připojte nebo restartujte a zkontrolujte nastavení map. Pokud mapa stále chybí, pošlete podpoře přesný model hodinek, oblast mapy a popis problému. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+[Zobrazit všechna řešení](https://terento.app/cs/guides/troubleshooting/)
 
 Připraveno, až budete
 
