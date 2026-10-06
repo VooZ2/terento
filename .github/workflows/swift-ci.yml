@@ -25,6 +25,11 @@ on:
         required: false
         type: boolean
         default: false
+      selection_base:
+        description: Optional base branch (beta or main); select suites from changes since it instead of running everything
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -52,9 +57,22 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          SELECTION_BASE: ${{ inputs.selection_base }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] \
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "${SELECTION_BASE:-}" ]; then
+            # A dispatched branch check (for example the IndexNow state PR)
+            # tests only what differs from its base branch.
+            case "$SELECTION_BASE" in
+              beta|main) ;;
+              *) echo "selection_base must be beta or main" >&2; exit 1 ;;
+            esac
+            case "$GITHUB_REF" in
+              refs/heads/beta|refs/heads/main|refs/tags/*) echo "selection_base is only for task branches" >&2; exit 1 ;;
+            esac
+            BASE_SHA="$(git merge-base "origin/$SELECTION_BASE" "$GITHUB_SHA")"
+          fi
+          if { [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -z "${SELECTION_BASE:-}" ]; } \
             || [[ "$GITHUB_REF" == refs/tags/* ]] \
             || [ -z "$BASE_SHA" ] \
             || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
@@ -279,7 +297,7 @@ jobs:
   live-catalog-contract:
     name: Candidate source catalog contract
     needs: changes
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    if: (github.event_name == 'workflow_dispatch' && inputs.selection_base == '') || startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-15
     timeout-minutes: 15
     steps:
@@ -308,7 +326,7 @@ jobs:
       - name: Enforce selected quality gates
         env:
           SELECTED_SUITES: ${{ needs.changes.outputs.suites }}
-          LIVE_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+          LIVE_REQUIRED: ${{ (github.event_name == 'workflow_dispatch' && inputs.selection_base == '') || startsWith(github.ref, 'refs/tags/v') }}
           CHANGES_RESULT: ${{ needs.changes.result }}
           SITE_RESULT: ${{ needs.site-tests.result }}
           BACKEND_RESULT: ${{ needs.backend-tests.result }}
