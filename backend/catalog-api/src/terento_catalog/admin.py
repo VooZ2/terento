@@ -8639,7 +8639,11 @@ ADMIN_STYLES += """
 .support-report-filters{margin:0 0 12px}
 .support-report-filters a.quick-filter{display:inline-flex;align-items:center;text-decoration:none}
 .support-report-table code,.support-report-page h1 code{font-family:var(--font-mono);font-size:inherit}
-.support-report-summary{max-width:42ch;overflow-wrap:anywhere}
+.support-report-table{min-width:760px}
+.support-report-table td{white-space:normal;overflow-wrap:anywhere}
+.support-report-table td.column-date,.support-report-table td.column-status{white-space:nowrap}
+.support-report-table th:nth-child(1){width:104px}.support-report-table th:nth-child(2){width:112px}
+.support-report-table th:nth-child(5){width:124px}.support-report-table th:nth-child(7){width:104px}
 .support-report-has-message,.support-report-meta,.support-report-optional{color:var(--secondary);font-size:12px}
 .support-report-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:16px;align-items:start}
 .support-report-main,.support-report-side{display:grid;gap:16px;min-width:0}
