@@ -91,68 +91,19 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
 
     func inspectCurrentObject(_ expected: SafeUpdateRemoteObject,
                               onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
-        guard let itemID = expected.file.itemID, itemID != 0 else {
-            throw SafeUpdateTransportError.operationFailed(
-                "The installed map does not have an exact device object identity."
-            )
-        }
-
-        let temporaryURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("terento-update-inspect-\(UUID().uuidString).img")
-        defer { try? FileManager.default.removeItem(at: temporaryURL) }
-
-        do {
-            let transfer = try readExistingFile(
-                file: expected.file,
-                to: temporaryURL,
-                onProgress: { onProgress?($0.fractionCompleted * 0.85) }
-            )
-            guard transfer.itemID != 0,
-                  transfer.sourcePath == expected.file.path,
-                  transfer.reportedSizeBytes == expected.file.sizeBytes else {
-                throw SafeUpdateTransportError.operationFailed(
-                    "The installed map identity changed during validation."
-                )
-            }
-
-            let metadata = try metadata(for: expected.file)
-            guard let identity = MapIdentity(provider: metadata.provider, region: metadata.region) else {
-                throw SafeUpdateTransportError.metadataMismatch
-            }
-            let hash = try sha256(of: temporaryURL, onProgress: { onProgress?(0.85 + 0.14 * $0) })
-            guard MapIdentityMatcher.matches(
-                      actual: identity,
-                      expected: expected.identity
-                  ),
-                  metadata.version == expected.version else {
-                throw SafeUpdateTransportError.metadataMismatch
-            }
-
+        let method = SafeUpdateCurrentMapCheck.method(for: expected)
+        FinishingTrace.event("update_current_check", "method=\(method.traceName) "
+            + "bytes=\(method.contentBytes(fileSizeBytes: expected.file.sizeBytes))")
+        return try mapReadErrors("The installed map could not be read for verification.") {
+            let current = try SafeUpdateContentVerifier(reader: contentReader)
+                .inspectCurrent(expected, onProgress: onProgress)
             if let expectedHash = expected.sha256 {
-                guard hash.caseInsensitiveCompare(expectedHash) == .orderedSame else {
-                    throw SafeUpdateTransportError.metadataMismatch
-                }
                 try mapTransport.bindUpdateOldTarget(
                     filename: expected.file.filename,
                     size: expected.file.sizeBytes, sha256: expectedHash
                 )
             }
-            onProgress?(1)
-            return SafeUpdateRemoteObject(
-                file: expected.file,
-                identity: identity,
-                version: metadata.version,
-                ownership: expected.ownership,
-                sha256: hash
-            )
-        } catch let error as SafeUpdateTransportError {
-            throw error
-        } catch let error as MapLifecycleReadTransportError {
-            throw readError(error)
-        } catch {
-            throw SafeUpdateTransportError.operationFailed(
-                "The installed map could not be read for verification."
-            )
+            return current
         }
     }
 
@@ -212,45 +163,90 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
 
     func verifyTransactionObject(_ object: SafeUpdateRemoteObject, expected: SafeUpdateSourceArtifact,
                                  onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
-        guard let expectedIdentity = MapIdentity(
-            provider: expected.provider,
-            region: expected.region
-        ) else {
-            throw SafeUpdateTransportError.metadataMismatch
+        let regions = SampledReadBackPlan.offsets(fileSizeBytes: expected.installSizeBytes,
+                                                  sourceSHA256: expected.sha256).count
+        FinishingTrace.event("update_new_check", "method=sampled regions=\(regions) bytes="
+            + "\(UInt64(regions) * min(UInt64(SampledReadBackPlan.sampleLength), expected.installSizeBytes))")
+        let verified = try mapReadErrors("The new map could not be read back for verification.") {
+            try SafeUpdateContentVerifier(reader: contentReader).verifyNew(object, expected: expected,
+                                                                          onProgress: onProgress)
         }
-
-        let inspected = try inspectCurrentObject(
-            SafeUpdateRemoteObject(
-                file: object.file,
-                identity: expectedIdentity,
-                version: expected.version,
-                ownership: .managedByTerento,
-                sha256: nil
-            ),
-            onProgress: onProgress
-        )
-
-        guard inspected.file.sizeBytes == expected.installSizeBytes,
-              inspected.sha256?.caseInsensitiveCompare(expected.sha256) == .orderedSame,
-              MapIdentityMatcher.matches(
-                  actual: inspected.identity,
-                  expected: expectedIdentity
-              ),
-              inspected.version == expected.version else {
-            throw SafeUpdateTransportError.metadataMismatch
-        }
-
         try mapTransport.markUpdateVerified(
-            filename: inspected.file.filename, size: inspected.file.sizeBytes,
-            sha256: inspected.sha256 ?? ""
+            filename: verified.file.filename, size: verified.file.sizeBytes,
+            sha256: verified.sha256 ?? ""
         )
-        return SafeUpdateRemoteObject(
-            file: inspected.file,
-            identity: inspected.identity,
-            version: inspected.version,
-            ownership: .managedByTerento,
-            sha256: inspected.sha256
+        return verified
+    }
+
+    private var contentReader: LiveSafeUpdateContentReader {
+        LiveSafeUpdateContentReader(transport: self)
+    }
+
+    /// The error mapping of the content checks: device read failures keep
+    /// their disconnect classification, anything unexpected blocks.
+    private func mapReadErrors<T>(_ fallback: String, _ body: () throws -> T) throws -> T {
+        do {
+            return try body()
+        } catch let error as SafeUpdateTransportError {
+            throw error
+        } catch let error as MapLifecycleReadTransportError {
+            throw readError(error)
+        } catch let error as InstallationTransportError {
+            throw mapError(error)
+        } catch {
+            throw SafeUpdateTransportError.operationFailed(fallback)
+        }
+    }
+
+    fileprivate func readFullContent(_ file: InstalledMapFile,
+                                     onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateFullContentRead {
+        let temporaryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-update-inspect-\(UUID().uuidString).img")
+        defer { try? FileManager.default.removeItem(at: temporaryURL) }
+        let transfer = try readExistingFile(
+            file: file,
+            to: temporaryURL,
+            onProgress: { onProgress?($0.fractionCompleted * 0.86) }
         )
+        let hash = try sha256(of: temporaryURL, onProgress: { onProgress?(0.86 + 0.14 * $0) })
+        return SafeUpdateFullContentRead(itemID: transfer.itemID, sourcePath: transfer.sourcePath,
+                                         reportedSizeBytes: transfer.reportedSizeBytes, sha256: hash)
+    }
+
+    fileprivate func readRecordedProof(_ file: InstalledMapFile, sha256: String, proof: ManagedRemovalProof,
+                                       onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRecordedProofRead {
+        try MTPMapReadAdapter(
+            operationProfile: operationProfile,
+            operationGate: operationGate,
+            lifecycleLease: lifecycleLease
+        ).readRecordedProof(file: file, sha256: sha256, proof: proof,
+                            onProgress: { onProgress?($0.fractionCompleted) })
+    }
+
+    fileprivate func readMetadata(_ file: InstalledMapFile) throws -> GarminIMGMetadata {
+        try metadata(for: file)
+    }
+
+    fileprivate func readInstallSamples(_ file: InstalledMapFile, artifact: SafeUpdateSourceArtifact,
+                                        offsets: [UInt64], sampleLength: UInt32,
+                                        onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateSampledReadBack {
+        // Exactly the fresh-install read-back: the same bounded settle after
+        // the write session closes, then a fresh read-only session that
+        // compares the regions with the validated local artifact.
+        Thread.sleep(forTimeInterval: 3.0)
+        let readBack = try mapTransport.readBack(
+            sourceURL: artifact.localIMGURL,
+            targetFilename: file.filename,
+            expectedItemID: file.itemID ?? 0,
+            targetPath: file.path,
+            expectedSizeBytes: artifact.installSizeBytes,
+            sampleOffsets: offsets,
+            sampleLength: sampleLength,
+            progress: { onProgress?($0.fractionCompleted) }
+        )
+        return SafeUpdateSampledReadBack(itemID: readBack.itemID, reportedSizeBytes: readBack.reportedSizeBytes,
+                                         sampledBytes: readBack.sampledBytes, sampleCount: readBack.sampleCount,
+                                         matchedSampleCount: readBack.matchedSampleCount)
     }
 
     func cleanupTransactionObject(_ object: SafeUpdateRemoteObject) throws {
@@ -445,5 +441,31 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         }
 
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// The live device reads behind `SafeUpdateContentVerifier`.
+private struct LiveSafeUpdateContentReader: SafeUpdateContentReader {
+    let transport: MTPSafeUpdateTransport
+
+    func readFullContent(_ file: InstalledMapFile,
+                         onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateFullContentRead {
+        try transport.readFullContent(file, onProgress: onProgress)
+    }
+
+    func readRecordedProof(_ file: InstalledMapFile, sha256: String, proof: ManagedRemovalProof,
+                           onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRecordedProofRead {
+        try transport.readRecordedProof(file, sha256: sha256, proof: proof, onProgress: onProgress)
+    }
+
+    func readMetadata(_ file: InstalledMapFile) throws -> GarminIMGMetadata {
+        try transport.readMetadata(file)
+    }
+
+    func readInstallSamples(_ file: InstalledMapFile, artifact: SafeUpdateSourceArtifact,
+                            offsets: [UInt64], sampleLength: UInt32,
+                            onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateSampledReadBack {
+        try transport.readInstallSamples(file, artifact: artifact, offsets: offsets,
+                                         sampleLength: sampleLength, onProgress: onProgress)
     }
 }

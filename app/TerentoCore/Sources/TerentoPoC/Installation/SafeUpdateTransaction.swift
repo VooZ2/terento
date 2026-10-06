@@ -1224,3 +1224,216 @@ struct SafeUpdateTransaction: Sendable {
         )
     }
 }
+
+// MARK: - Content checks
+
+/// How Safe Update checks the installed map's content before it writes. The
+/// method is chosen from the local record before any device read; once
+/// chosen, every mismatch or read failure blocks the update and is never
+/// retried as the other method.
+enum SafeUpdateCurrentMapCheck: Equatable, Sendable {
+    /// A Terento-managed map whose manifest entry carries a sampled proof
+    /// bound to the recorded size and SHA-256: exact same-session identity plus
+    /// the recorded regions and their digest.
+    case recordedProof(ManagedRemovalProof)
+    /// Entries without a proof (installed by earlier versions), unbound
+    /// proofs and anything else: the whole object is read and its SHA-256
+    /// compared with the record.
+    case fullContent
+
+    static func method(for expected: SafeUpdateRemoteObject) -> SafeUpdateCurrentMapCheck {
+        guard expected.ownership == .managedByTerento,
+              let hash = expected.sha256?.lowercased(), hash.count == 64,
+              hash.allSatisfy({ $0.isASCII && $0.isHexDigit }),
+              hash != String(repeating: "0", count: 64),
+              let itemID = expected.file.itemID, itemID != 0,
+              expected.file.path == "/GARMIN/\(expected.file.filename)",
+              let proof = ManagedRemovalProof.forNativeRemoval(expected.removalProof, managed: true,
+                  fileSizeBytes: expected.file.sizeBytes, fileSHA256: hash) else {
+            return .fullContent
+        }
+        return .recordedProof(proof)
+    }
+
+    var traceName: String {
+        switch self {
+        case .recordedProof: return "sampled"
+        case .fullContent: return "full"
+        }
+    }
+
+    /// Bytes this check reads over MTP for the installed map (excluding the
+    /// small IMG header read used for the identity and version).
+    func contentBytes(fileSizeBytes: UInt64) -> UInt64 {
+        switch self {
+        case .recordedProof(let proof): return proof.sampledBytes(fileSizeBytes: fileSizeBytes)
+        case .fullContent: return fileSizeBytes
+        }
+    }
+}
+
+/// A recorded sampled proof that did not verify. Both block the update.
+enum SafeUpdateRecordedProofError: Error, Equatable, Sendable {
+    case contentMismatch
+    case identityMismatch
+}
+
+/// The whole-object read of the installed map and its SHA-256.
+struct SafeUpdateFullContentRead: Equatable, Sendable {
+    let itemID: UInt32
+    let sourcePath: String
+    let reportedSizeBytes: UInt64
+    let sha256: String
+}
+
+/// The recorded-proof read of the installed map in one device session.
+struct SafeUpdateRecordedProofRead: Equatable, Sendable {
+    let itemID: UInt32
+    let sampledBytes: UInt64
+}
+
+/// The install-equivalent sampled read-back of the new map.
+struct SafeUpdateSampledReadBack: Equatable, Sendable {
+    let itemID: UInt32
+    let reportedSizeBytes: UInt64
+    let sampledBytes: UInt64
+    let sampleCount: Int
+    let matchedSampleCount: Int
+}
+
+/// Read-only device operations behind Safe Update's content checks.
+protocol SafeUpdateContentReader: Sendable {
+    func readFullContent(_ file: InstalledMapFile,
+                         onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateFullContentRead
+    /// Throws `SafeUpdateRecordedProofError` for a content or identity mismatch.
+    func readRecordedProof(_ file: InstalledMapFile, sha256: String, proof: ManagedRemovalProof,
+                           onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRecordedProofRead
+    func readMetadata(_ file: InstalledMapFile) throws -> GarminIMGMetadata
+    /// Compares the regions of `offsets` of the written object with the
+    /// validated local artifact (the fresh-install read-back).
+    func readInstallSamples(_ file: InstalledMapFile, artifact: SafeUpdateSourceArtifact,
+                            offsets: [UInt64], sampleLength: UInt32,
+                            onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateSampledReadBack
+}
+
+/// Safe Update's two content checks, independent of the transport.
+struct SafeUpdateContentVerifier: Sendable {
+    let reader: any SafeUpdateContentReader
+
+    /// The installed map before writing: the recorded proof for a managed
+    /// entry that has one, otherwise the full read and SHA-256.
+    func inspectCurrent(_ expected: SafeUpdateRemoteObject,
+                        onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        guard let itemID = expected.file.itemID, itemID != 0 else {
+            throw SafeUpdateTransportError.operationFailed(
+                "The installed map does not have an exact device object identity."
+            )
+        }
+        switch SafeUpdateCurrentMapCheck.method(for: expected) {
+        case .recordedProof(let proof):
+            return try inspectCurrentByProof(expected, proof: proof, onProgress: onProgress)
+        case .fullContent:
+            return try inspectCurrentFully(expected, onProgress: onProgress)
+        }
+    }
+
+    private func inspectCurrentFully(_ expected: SafeUpdateRemoteObject,
+                                     onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        let transfer = try reader.readFullContent(expected.file, onProgress: { onProgress?(0.99 * $0) })
+        guard transfer.itemID != 0,
+              transfer.sourcePath == expected.file.path,
+              transfer.reportedSizeBytes == expected.file.sizeBytes else {
+            throw SafeUpdateTransportError.operationFailed(
+                "The installed map identity changed during validation."
+            )
+        }
+        let identity = try checkedIdentity(of: expected.file, expected: expected.identity, version: expected.version)
+        if let expectedHash = expected.sha256 {
+            guard transfer.sha256.caseInsensitiveCompare(expectedHash) == .orderedSame else {
+                throw SafeUpdateTransportError.metadataMismatch
+            }
+        }
+        onProgress?(1)
+        return SafeUpdateRemoteObject(file: expected.file, identity: identity.identity, version: identity.version,
+                                      ownership: expected.ownership, sha256: transfer.sha256)
+    }
+
+    private func inspectCurrentByProof(_ expected: SafeUpdateRemoteObject, proof: ManagedRemovalProof,
+                                       onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        guard let hash = expected.sha256 else { throw SafeUpdateTransportError.metadataMismatch }
+        let read: SafeUpdateRecordedProofRead
+        do {
+            read = try reader.readRecordedProof(expected.file, sha256: hash, proof: proof,
+                                                onProgress: { onProgress?(0.95 * $0) })
+        } catch SafeUpdateRecordedProofError.contentMismatch {
+            // Exactly as a full SHA-256 mismatch: the update is blocked.
+            throw SafeUpdateTransportError.metadataMismatch
+        } catch SafeUpdateRecordedProofError.identityMismatch {
+            throw SafeUpdateTransportError.operationFailed(
+                "The installed map identity changed during validation."
+            )
+        }
+        guard read.itemID != 0 else {
+            throw SafeUpdateTransportError.operationFailed(
+                "The installed map identity changed during validation."
+            )
+        }
+        guard read.sampledBytes == proof.sampledBytes(fileSizeBytes: expected.file.sizeBytes) else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        let identity = try checkedIdentity(of: expected.file, expected: expected.identity, version: expected.version)
+        onProgress?(1)
+        // The recorded SHA-256 is the one the proof is bound to; the live
+        // regions reproduced its recorded digest in this session.
+        return SafeUpdateRemoteObject(file: expected.file, identity: identity.identity, version: identity.version,
+                                      ownership: expected.ownership, sha256: hash)
+    }
+
+    /// The new map after writing: the fresh-install sampled read-back against
+    /// the validated local artifact, with its size and sample-count rules,
+    /// then the IMG identity and version of the written object.
+    func verifyNew(_ object: SafeUpdateRemoteObject, expected artifact: SafeUpdateSourceArtifact,
+                   onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        guard let expectedIdentity = MapIdentity(provider: artifact.provider, region: artifact.region) else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        guard let itemID = object.file.itemID, itemID != 0,
+              object.file.sizeBytes == artifact.installSizeBytes else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        let offsets = SampledReadBackPlan.offsets(fileSizeBytes: artifact.installSizeBytes,
+                                                  sourceSHA256: artifact.sha256)
+        let readBack = try reader.readInstallSamples(object.file, artifact: artifact, offsets: offsets,
+            sampleLength: SampledReadBackPlan.sampleLength, onProgress: { onProgress?(0.95 * $0) })
+        let verification = TransferVerification.sampled(
+            sourceSizeBytes: artifact.installSizeBytes,
+            sourceSHA256: artifact.sha256,
+            remoteSizeBytes: readBack.reportedSizeBytes,
+            sampledBytes: readBack.sampledBytes,
+            sampleCount: readBack.sampleCount,
+            matchedSampleCount: readBack.matchedSampleCount
+        )
+        guard verification.isVerified, readBack.sampleCount == offsets.count else {
+            throw verification.status == .sizeMismatch
+                ? SafeUpdateTransportError.sizeMismatch : SafeUpdateTransportError.hashMismatch
+        }
+        guard readBack.itemID != 0 else { throw SafeUpdateTransportError.metadataMismatch }
+        let identity = try checkedIdentity(of: object.file, expected: expectedIdentity, version: artifact.version)
+        onProgress?(1)
+        // Verified as fresh installation verifies: the written object's
+        // sampled regions equal the validated artifact of this SHA-256.
+        return SafeUpdateRemoteObject(file: object.file, identity: identity.identity, version: identity.version,
+                                      ownership: .managedByTerento, sha256: artifact.sha256)
+    }
+
+    private func checkedIdentity(of file: InstalledMapFile, expected: MapIdentity,
+                                 version: MapVersion?) throws -> (identity: MapIdentity, version: MapVersion?) {
+        let metadata = try reader.readMetadata(file)
+        guard let identity = MapIdentity(provider: metadata.provider, region: metadata.region),
+              MapIdentityMatcher.matches(actual: identity, expected: expected),
+              metadata.version == version else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+        return (identity, metadata.version)
+    }
+}

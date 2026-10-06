@@ -154,6 +154,65 @@ struct MTPMapReadAdapter: MapLifecycleReadTransport, Sendable {
         )
     }
 
+    /// Read-only check of a Terento-managed map against its recorded sampled
+    /// proof: exact object in one native session, only the recorded regions.
+    /// Throws `SafeUpdateRecordedProofError` for a content or identity
+    /// mismatch and `MapLifecycleReadTransportError` for read failures.
+    func readRecordedProof(
+        file: InstalledMapFile,
+        sha256: String,
+        proof: ManagedRemovalProof,
+        onProgress: (@Sendable (TransferProgress) -> Void)?
+    ) throws -> SafeUpdateRecordedProofRead {
+        try operationGate.withOperation(kind: .read, lifecycleLease: lifecycleLease) {
+            guard let operationProfile else {
+                throw MapLifecycleReadTransportError.readFailed(
+                    "The connected Garmin does not have a live map operation profile."
+                )
+            }
+            var resolvedItemID: UInt32 = 0
+            var sampledBytes: UInt64 = 0
+            var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
+            let progressBox = MTPReadProgressBox(callback: onProgress ?? { _ in })
+            let result: Int32 = withExtendedLifetime(progressBox) {
+                withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                    proof.offsets.withUnsafeBufferPointer { offsets in
+                        file.filename.withCString { filename in
+                            sha256.withCString { fileHash in
+                                proof.sha256.withCString { sampleHash in
+                                    errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                                        terento_mtp_verify_managed_map_proof(
+                                            nativeProfile, filename, file.sizeBytes, fileHash,
+                                            offsets.baseAddress, UInt32(offsets.count), proof.regionLength,
+                                            sampleHash, &resolvedItemID, &sampledBytes,
+                                            terentoMTPReadProgressCallback,
+                                            UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                            errorPointer.baseAddress, errorPointer.count
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            switch result {
+            case 0:
+                return SafeUpdateRecordedProofRead(itemID: resolvedItemID, sampledBytes: sampledBytes)
+            case Int32(TERENTO_MTP_MAP_CONTENT_MISMATCH):
+                throw SafeUpdateRecordedProofError.contentMismatch
+            case Int32(TERENTO_MTP_MAP_OBJECT_ID_MISMATCH):
+                throw SafeUpdateRecordedProofError.identityMismatch
+            default:
+                let message = errorMessage(from: errorBuffer)
+                if isDisconnect(message) {
+                    throw MapLifecycleReadTransportError.deviceDisconnected(message)
+                }
+                throw MapLifecycleReadTransportError.readFailed(message)
+            }
+        }
+    }
+
     private func errorMessage(from buffer: [CChar]) -> String {
         buffer.withUnsafeBufferPointer { buffer in
             let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
