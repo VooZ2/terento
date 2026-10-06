@@ -75,6 +75,26 @@ class AdminTokenAndFocusTests(unittest.TestCase):
         # Warm Stone itself is below 3:1, so update marks carry a stone-dark outline.
         self.assertLess(_contrast(TOKENS["color"]["brand"]["stone"]["$value"], white), 3.0)
 
+    def test_one_colour_has_one_meaning_across_chart_series(self):
+        """App download series never reuse an install/update series colour."""
+        def fill(series: str) -> str:
+            match = re.search(rf"\.overview-chart-{re.escape(series)}\{{fill:var\(--([a-z-]+)\)", ADMIN_STYLES)
+            self.assertIsNotNone(match, series)
+            return match.group(1)
+
+        install_series = {fill(name) for name in ("success", "custom", "failed", "update", "update-failed")}
+        install_series.add("stone-dark")  # the update outline
+        app_series = {"download-dmg": fill("download-dmg"), "download-zip": fill("download-zip")}
+        self.assertEqual(app_series, {"download-dmg": "graphite", "download-zip": "secondary"})
+        self.assertFalse(set(app_series.values()) & install_series)
+        self.assertEqual(len(set(app_series.values())), 2)
+        white = _token_variable("surface")
+        for token in app_series.values():
+            self.assertGreaterEqual(_contrast(_token_variable(token), white), 3.0, token)
+        # Map download charts keep the shared success/failure meaning.
+        self.assertEqual(fill("download-success"), fill("success"))
+        self.assertEqual(fill("download-failed"), fill("failed"))
+
 
 
 class AdminComponentKitTests(unittest.TestCase):
