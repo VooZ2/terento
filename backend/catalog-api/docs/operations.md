@@ -133,6 +133,10 @@ inside one renderer process at the lowest CPU priority; on an otherwise idle
 2 vCPU / 8 GB host the first fill can use `MAP_PREVIEW_RENDER_JOBS=2` with
 `cpus: 2.0` and `mem_limit: 4g`, then return to the limits above. Each extra
 job raises the renderer's address-space limit by 512 MiB.
+Only one renderer runs at a time: it holds a 15-minute lease that it renews
+while it works, so a renderer stopped by a deploy blocks the next one for at
+most 15 minutes, and the next renderer removes the downloads and staged tiles
+the stopped one left behind.
 
 Then switch providers on one at a time under Admin › Providers › Map style
 previews and check the `map-preview-renderer` heartbeat, the provider's
