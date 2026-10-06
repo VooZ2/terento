@@ -297,7 +297,7 @@ exists; until then the manifest and tiles have no public consumer. It is
 off unless `MAP_PREVIEW_ENABLED=true`, and only providers an operator switched
 on under Admin › Providers › Map style previews are rendered.
 
-Inside the nightly UTC window (`MAP_PREVIEW_WINDOW_UTC`, default `00:00-06:00`)
+Inside the UTC rendering window (`MAP_PREVIEW_WINDOW_UTC`, default `00:00-06:00`)
 it renders layers that are missing, failed earlier, use an outdated package
 version or are older than `MAP_PREVIEW_REFRESH_DAYS` (default 90). For each
 area and style it picks catalog packages by country and the area's
@@ -305,15 +305,18 @@ area and style it picks catalog packages by country and the area's
 paths (no redirects, the Terento user agent, `Retry-After` honoured, size and
 free-disk limits), checks that the map covers the area, renders WebP tiles
 with the bundled `terento-preview-render`, and deletes the download in a
-`finally` block. A window that drew new tiles publishes a release under
-`<TERENTO_ASSET_ROOT>/previews/releases/<id>`; unchanged layers are hard-linked
-from the previous release and the newest two releases are kept.
+`finally` block. Newly drawn layers are published as a release under
+`<TERENTO_ASSET_ROOT>/previews/releases/<id>` at most every
+`MAP_PREVIEW_PUBLISH_MINUTES` while the window runs and once more when it
+ends; unchanged layers are hard-linked from the previous release and the
+newest two releases are kept.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `MAP_PREVIEW_ENABLED` | `false` | Start the preview thread in the scheduler. |
-| `MAP_PREVIEW_WINDOW_UTC` | `00:00-06:00` | Nightly rendering window. |
+| `MAP_PREVIEW_WINDOW_UTC` | `00:00-06:00` | Rendering window; equal start and end (`00:00-00:00`) renders around the clock. |
 | `MAP_PREVIEW_REFRESH_DAYS` | `90` | Redraw unchanged layers after this many days. |
+| `MAP_PREVIEW_PUBLISH_MINUTES` | `30` | Publish finished layers at most this often during a window. |
 | `MAP_PREVIEW_MAX_TOTAL_BYTES` | `55000000000` | Disk budget for all preview releases. |
 | `MAP_PREVIEW_MAX_SOURCE_BYTES` | `5368709120` | Largest provider download accepted. |
 | `MAP_PREVIEW_MIN_FREE_BYTES` | `20000000000` | Free disk space that must remain. |

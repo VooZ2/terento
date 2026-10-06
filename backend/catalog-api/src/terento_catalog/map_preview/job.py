@@ -1,10 +1,11 @@
-"""Nightly map style preview rendering.
+"""Map style preview rendering inside a UTC window.
 
 Inside the configured UTC window the worker picks preview layers that are
 missing, failed earlier, use an outdated package version or are older than
 the refresh period. Layers that share a provider package are rendered from
 one temporary download; the download is deleted as soon as its tiles exist.
-Each window that changes anything publishes a new release.
+Finished layers are published as a new release at most every
+``publish_interval`` during a window and once more when the window ends.
 """
 from __future__ import annotations
 
@@ -45,6 +46,7 @@ class PreviewSettings:
     min_free_bytes: int
     renderer: Path
     public_base_url: str
+    publish_interval: timedelta = timedelta(minutes=30)
 
     def limits(self) -> Limits:
         return Limits(max_source_bytes=self.max_source_bytes, min_free_bytes=self.min_free_bytes)
@@ -75,8 +77,7 @@ def parse_window(value: str) -> tuple[day_time, day_time]:
         end = day_time.fromisoformat(end_text.strip())
     except ValueError as exc:
         raise RuntimeError("MAP_PREVIEW_WINDOW_UTC must use HH:MM-HH:MM") from exc
-    if start == end:
-        raise RuntimeError("MAP_PREVIEW_WINDOW_UTC must not be empty")
+    # Equal start and end (for example 00:00-00:00) is a window around the clock.
     return start, end
 
 
@@ -179,6 +180,7 @@ class PreviewRun:
             LOGGER.info("map previews: %d layers to render, %d not covered", len(work), len(uncovered))
             staging = self.store.staging_dir(job)
             queue = list(work)
+            last_publish = self.clock()
             while queue:
                 if (stop is not None and stop.is_set()) or self.clock() >= deadline:
                     break
@@ -199,6 +201,12 @@ class PreviewRun:
                 result.rendered += outcome["rendered"]
                 result.failed += outcome["failed"]
                 queue.extend(outcome["retry"])
+                # Publish finished layers during long windows so previews
+                # appear progressively instead of only when the window ends.
+                if staged and self.clock() - last_publish >= self.settings.publish_interval:
+                    result.release = self._publish(staged)
+                    staged.clear()
+                    last_publish = self.clock()
             # Status-only changes need no new release: the manifest is built
             # from the database on request.
             if staged:
@@ -336,7 +344,7 @@ class PreviewRun:
 
 
 def run_worker(database: Any, stop: Event, settings: PreviewSettings, *, clock=lambda: datetime.now(timezone.utc)) -> None:
-    """Scheduler thread: render inside each nightly window until stopped."""
+    """Scheduler thread: render inside each window until stopped."""
     if not settings.enabled:
         LOGGER.info("map previews are disabled (MAP_PREVIEW_ENABLED=false)")
         return

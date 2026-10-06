@@ -3,7 +3,7 @@
 The catalog service is metadata-only. PostgreSQL is private to the Docker
 network and the service never hosts, proxies, mirrors, caches, or repackages
 provider map archives. The map style preview job is the one place that
-downloads provider maps: one at a time, inside its nightly window, only to draw
+downloads provider maps: one at a time, inside its rendering window, only to draw
 preview tiles, and each download is deleted as soon as its tiles exist.
 
 ## One stable deployment path
@@ -124,9 +124,14 @@ the `api` project needs, once:
   database;
 - `MAP_PREVIEW_ENABLED=true` in the release environment.
 
+For the first fill, `MAP_PREVIEW_WINDOW_UTC=00:00-00:00` renders around the
+clock inside the CPU limit; finished layers appear in the manifest at most
+`MAP_PREVIEW_PUBLISH_MINUTES` (default 30) after they are drawn. A nightly
+window such as the default `00:00-06:00` is enough for later refreshes.
+
 Then switch providers on one at a time under Admin › Providers › Map style
-previews and check the next morning's `map-preview-renderer` heartbeat, the
-provider's preview layer table and `/maps/previews/manifest.json`. Turning a
+previews and check the `map-preview-renderer` heartbeat, the provider's
+preview layer table and `/maps/previews/manifest.json`. Turning a
 provider off hides its layers from the manifest immediately; its tiles leave
 the disk with the next releases. `MAP_PREVIEW_MAX_TOTAL_BYTES` (default 55 GB)
 caps all preview releases and `MAP_PREVIEW_MIN_FREE_BYTES` (default 20 GB) is
