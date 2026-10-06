@@ -576,12 +576,42 @@ static void canonicalize_garmin_inventory_root(TerentoMTPFileInventory *inventor
     }
 }
 
+static int walk_file_tree_in_scope(
+    LIBMTP_mtpdevice_t *device,
+    uint32_t storage_id,
+    uint32_t parent_id,
+    const char *parent_path,
+    size_t depth,
+    int garmin_root_only,
+    TerentoMTPFileInventory *inventory,
+    char *error_message,
+    size_t error_message_capacity, int *category
+);
+
 static int walk_file_tree(
     LIBMTP_mtpdevice_t *device,
     uint32_t storage_id,
     uint32_t parent_id,
     const char *parent_path,
     size_t depth,
+    TerentoMTPFileInventory *inventory,
+    char *error_message,
+    size_t error_message_capacity, int *category
+) {
+    return walk_file_tree_in_scope(device, storage_id, parent_id, parent_path, depth, 0,
+        inventory, error_message, error_message_capacity, category);
+}
+
+/* With garmin_root_only, the storage-root listing is kept complete but only
+ * root folders named GARMIN (ASCII case ignored) are descended into. Entry
+ * order matches the full walk restricted to the same scope. */
+static int walk_file_tree_in_scope(
+    LIBMTP_mtpdevice_t *device,
+    uint32_t storage_id,
+    uint32_t parent_id,
+    const char *parent_path,
+    size_t depth,
+    int garmin_root_only,
     TerentoMTPFileInventory *inventory,
     char *error_message,
     size_t error_message_capacity, int *category
@@ -620,7 +650,9 @@ static int walk_file_tree(
             error_message_capacity, category
         );
 
-        if (result == 0 && child->filetype == LIBMTP_FILETYPE_FOLDER) {
+        if (result == 0 && child->filetype == LIBMTP_FILETYPE_FOLDER
+            && (!garmin_root_only || depth != 0
+                || (child->filename != NULL && strcasecmp(child->filename, "GARMIN") == 0))) {
             result = walk_file_tree(
                 device,
                 storage_id,
@@ -659,10 +691,59 @@ int terento_mtp_read_file_inventory_diagnostic(
     return terento_mtp_read_file_inventory_bound(NULL, inventory, error_message, error_message_capacity, category);
 }
 
+/* The scoped walk is used only when it proves exactly one storage-root entry
+ * named GARMIN (ASCII case ignored), and that entry is a folder with nonzero
+ * storage and object IDs. Anything else is answered by the full walk. */
+static int map_scope_root_state(const TerentoMTPFileInventory *inventory) {
+    size_t named = 0;
+    const TerentoMTPFile *root = NULL;
+    for (size_t i = 0; i < inventory->file_count; ++i) {
+        const TerentoMTPFile *file = &inventory->files[i];
+        if (file->path == NULL || file->path[0] != '/' || strchr(file->path + 1, '/') != NULL
+            || strcasecmp(file->path + 1, "GARMIN") != 0) continue;
+        ++named;
+        root = file;
+    }
+    if (named == 0) return TERENTO_INVENTORY_FALLBACK_NO_ROOT;
+    if (named != 1 || !root->is_folder || root->storage_id == 0 || root->item_id == 0
+        || root->filename == NULL || strcasecmp(root->filename, "GARMIN") != 0) {
+        return TERENTO_INVENTORY_FALLBACK_AMBIGUOUS_ROOT;
+    }
+    return TERENTO_INVENTORY_FALLBACK_NONE;
+}
+
+static int read_file_inventory_session(
+    const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
+    int map_scope, int *scope, int *fallback_reason,
+    char *error_message, size_t error_message_capacity, int *category
+);
+
 int terento_mtp_read_file_inventory_bound(
     const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
     char *error_message, size_t error_message_capacity, int *category
 ) {
+    return read_file_inventory_session(profile, inventory, 0, NULL, NULL,
+        error_message, error_message_capacity, category);
+}
+
+int terento_mtp_read_map_scope_inventory_bound(
+    const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
+    int *scope, int *fallback_reason,
+    char *error_message, size_t error_message_capacity, int *category
+) {
+    return read_file_inventory_session(profile, inventory, 1, scope, fallback_reason,
+        error_message, error_message_capacity, category);
+}
+
+static int read_file_inventory_session(
+    const TerentoMTPMapOperationProfile *profile, TerentoMTPFileInventory *inventory,
+    int map_scope, int *scope, int *fallback_reason,
+    char *error_message, size_t error_message_capacity, int *category
+) {
+    if (scope != NULL) *scope = TERENTO_INVENTORY_SCOPE_FULL;
+    if (fallback_reason != NULL) *fallback_reason = TERENTO_INVENTORY_FALLBACK_NONE;
+    int used_scope = TERENTO_INVENTORY_SCOPE_FULL;
+    int fallback = TERENTO_INVENTORY_FALLBACK_NONE;
     read_category(category, TERENTO_READ_INVALID_ARGUMENT);
     if (inventory == NULL) {
         set_error(error_message, error_message_capacity, "File inventory output is unavailable");
@@ -713,8 +794,30 @@ int terento_mtp_read_file_inventory_bound(
         goto cleanup;
     }
 
+    if (map_scope) {
+        for (LIBMTP_devicestorage_t *storage = device->storage;
+             storage != NULL;
+             storage = storage->next) {
+            read_category(category, TERENTO_READ_INVENTORY);
+            result = walk_file_tree_in_scope(device, storage->id, LIBMTP_FILES_AND_FOLDERS_ROOT,
+                "", 0, 1, inventory, error_message, error_message_capacity, category);
+            if (result != 0) break;
+        }
+        fallback = result != 0 ? TERENTO_INVENTORY_FALLBACK_SCOPED_FAILED
+            : map_scope_root_state(inventory);
+        if (fallback == TERENTO_INVENTORY_FALLBACK_NONE) {
+            used_scope = TERENTO_INVENTORY_SCOPE_GARMIN;
+        } else {
+            /* Never return a partial or ambiguous scope: answer with the full
+             * walk in this same session instead. */
+            clear_file_inventory(inventory);
+            set_error(error_message, error_message_capacity, "");
+            result = 0;
+        }
+    }
+
     for (LIBMTP_devicestorage_t *storage = device->storage;
-         storage != NULL;
+         used_scope == TERENTO_INVENTORY_SCOPE_FULL && storage != NULL;
          storage = storage->next) {
         read_category(category, TERENTO_READ_INVENTORY);
         result = walk_file_tree(
@@ -733,6 +836,7 @@ int terento_mtp_read_file_inventory_bound(
     }
 
     if (result == 0) canonicalize_garmin_inventory_root(inventory);
+    if (map_scope) terento_trace_event(&trace, "inventory_scope", 0, fallback, (uint64_t)used_scope);
 
 cleanup:
     if (list_started) {
@@ -749,6 +853,10 @@ cleanup:
     }
     terento_trace_event(&trace, "native_cleanup_end", 0, result, inventory->file_count);
     terento_trace_finish(&trace);
+    if (result == 0) {
+        if (scope != NULL) *scope = used_scope;
+        if (fallback_reason != NULL) *fallback_reason = fallback;
+    }
     return result;
 }
 

@@ -155,6 +155,21 @@ int terento_mtp_read_file_inventory_diagnostic(TerentoMTPFileInventory *inventor
     char *error_message, size_t error_message_capacity, int *category);
 int terento_mtp_read_file_inventory_bound(const TerentoMTPMapOperationProfile *profile,
     TerentoMTPFileInventory *inventory, char *error_message, size_t error_message_capacity, int *category);
+
+/* Map-scope inventory for pre/post-write protection: every storage-root entry
+ * plus the complete subtree of the single root folder named GARMIN (ASCII case
+ * ignored). Missing or ambiguous roots, or a failed scoped walk, fall back to
+ * the full walk in the same session; scope/fallback report what was returned. */
+enum {
+    TERENTO_INVENTORY_SCOPE_FULL = 0, TERENTO_INVENTORY_SCOPE_GARMIN = 1
+};
+enum {
+    TERENTO_INVENTORY_FALLBACK_NONE = 0, TERENTO_INVENTORY_FALLBACK_NO_ROOT = 1,
+    TERENTO_INVENTORY_FALLBACK_AMBIGUOUS_ROOT = 2, TERENTO_INVENTORY_FALLBACK_SCOPED_FAILED = 3
+};
+int terento_mtp_read_map_scope_inventory_bound(const TerentoMTPMapOperationProfile *profile,
+    TerentoMTPFileInventory *inventory, int *scope, int *fallback_reason,
+    char *error_message, size_t error_message_capacity, int *category);
 int terento_mtp_read_file_prefix_diagnostic(const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPFileDescriptor *target, uint64_t offset,
     uint32_t max_length, TerentoMTPByteBuffer *buffer, char *error_message,
