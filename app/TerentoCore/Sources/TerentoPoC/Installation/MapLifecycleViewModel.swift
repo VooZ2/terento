@@ -929,7 +929,8 @@ final class MapLifecycleViewModel: ObservableObject {
                         "Available device bytes: \(result.storagePlan.map { String($0.currentFreeSpace) } ?? "Unavailable")",
                         "Required temporary bytes: \(result.storagePlan.map { String($0.requiredTemporarySpace) } ?? "Unavailable")"],
                     error: result.message, operationID: mapStatisticsOperationID,
-                    errorCodes: [result.status.rawValue]
+                    errorCodes: [result.status.rawValue],
+                    verification: InstallationIssueVerification(inventoryMetrics: result.inventoryMetrics)
                 ))
             }
             if result.status != .blockedInstallationAuthorization && !result.cancelledBeforeStart {

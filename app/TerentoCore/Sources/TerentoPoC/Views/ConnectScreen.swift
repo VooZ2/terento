@@ -2562,7 +2562,8 @@ struct ConnectScreen: View {
                 elapsedMilliseconds: result?.diagnostics.elapsedMilliseconds,
                 sampledBytes: verification?.sampledBytes,
                 sampleCount: verification?.sampleCount,
-                matchedSampleCount: verification?.matchedSampleCount
+                matchedSampleCount: verification?.matchedSampleCount,
+                inventoryMetrics: result?.diagnostics.inventoryMetrics
             ),
             failureContext: mapEngine.evidenceFailureContext ?? result?.failureContext,
             originalFailureContext: mapEngine.evidenceFailureContext == nil

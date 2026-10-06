@@ -407,6 +407,9 @@ enum SafeUpdateTransportError: LocalizedError, Equatable, Sendable {
 struct SafeUpdateInventorySnapshot: Sendable {
     let storageID: UInt32
     let files: [DeviceFile]
+    /// What the read covers; injected transports default to the full inventory.
+    var scope: DeviceInventoryScope = .full
+    var fallback: DeviceInventoryFallback = .none
 }
 
 /// The Stage 5.3 transport includes only operations needed by this
@@ -619,6 +622,8 @@ struct SafeUpdateResult: Equatable, Sendable {
     var cleanupAttempted: Bool = false
     var cleanupSucceeded: Bool = false
     var acquisitionFailureStage: SafeUpdateAcquisitionStage? = nil
+    /// Pre/post-write protected inventory scope, counts and durations only.
+    var inventoryMetrics: InstallationInventoryMetrics? = nil
     /// The operation stopped before the transaction was entered because the
     /// user or app cancelled it. Nothing was attempted, so it is not reported.
     var cancelledBeforeStart: Bool = false
@@ -678,6 +683,7 @@ struct SafeUpdateTransaction: Sendable {
         var writeStarted = false
         var cleanupAttempted = false
         var cleanupSucceeded = false
+        var inventoryMetrics: InstallationInventoryMetrics?
         func cleanup(_ object: SafeUpdateRemoteObject, transport: any SafeUpdateTransport) -> SafeUpdateStatus {
             cleanupAttempted = true
             let status = self.cleanup(object, transport: transport)
@@ -692,6 +698,7 @@ struct SafeUpdateTransaction: Sendable {
             result.writeStarted = writeStarted
             result.cleanupAttempted = cleanupAttempted
             result.cleanupSucceeded = cleanupSucceeded
+            result.inventoryMetrics = inventoryMetrics
             return result
         }
         let transactionID = UUID()
@@ -888,10 +895,16 @@ struct SafeUpdateTransaction: Sendable {
         let targetPath = "/GARMIN/\(targetFilename)"
 
         let protectedBaseline: ProtectedMapInventory
+        let baselineSnapshot: SafeUpdateInventorySnapshot
         let oldKey: ProtectedMapInventory.Key
         let newKey: ProtectedMapInventory.Key
         do {
+            let baselineStartedAt = ContinuousClock.now
             let snapshot = try transport.readProtectedInventory()
+            inventoryMetrics = InstallationInventoryMetrics(
+                prewrite: DeviceInventoryRead(files: snapshot.files, scope: snapshot.scope, fallback: snapshot.fallback),
+                durationMilliseconds: Self.milliseconds(since: baselineStartedAt))
+            baselineSnapshot = snapshot
             guard snapshot.storageID != 0 else { throw ProtectedMapInventory.Invalid.malformedLocation }
             oldKey = ProtectedMapInventory.Key(storageID: snapshot.storageID,
                 path: current.file.path, filename: current.file.filename,
@@ -1063,14 +1076,24 @@ struct SafeUpdateTransaction: Sendable {
         emit(.postVerifying, onProgress)
         let finalObjects: [SafeUpdateRemoteObject]
         do {
+            let finalStartedAt = ContinuousClock.now
             let snapshot = try transport.readProtectedInventory()
-            let finalInventory = try ProtectedMapInventory(files: snapshot.files,
-                forcedLocations: protectedBaseline.protectedLocations.union([newKey.location]))
+            inventoryMetrics = inventoryMetrics?.withPostwrite(
+                DeviceInventoryRead(files: snapshot.files, scope: snapshot.scope, fallback: snapshot.fallback),
+                durationMilliseconds: Self.milliseconds(since: finalStartedAt))
+            // Compare in the narrowest scope both reads cover. Objects outside
+            // the map scope are not compared when either read is scoped.
+            let compared = MapInventoryScope.comparable(baselineSnapshot.files, scope: baselineSnapshot.scope,
+                                                        snapshot.files, scope: snapshot.scope)
+            let comparableBaseline = compared.scope == baselineSnapshot.scope ? protectedBaseline
+                : try ProtectedMapInventory(files: compared.before, forcedLocations: [oldKey.location, newKey.location])
+            let finalInventory = try ProtectedMapInventory(files: compared.after,
+                forcedLocations: comparableBaseline.protectedLocations.union([newKey.location]))
             guard snapshot.storageID == oldKey.storageID,
                   verified.file.path == newKey.path,
                   verified.file.filename == newKey.filename,
                   verified.file.sizeBytes == newKey.sizeBytes,
-                  finalInventory.isExactReplacement(of: protectedBaseline,
+                  finalInventory.isExactReplacement(of: comparableBaseline,
                       removing: oldKey, adding: newKey) else {
                 return failure(.failedPostVerify,
                     "Existing device content changed during the update. The update was not recorded as complete.",
@@ -1109,8 +1132,16 @@ struct SafeUpdateTransaction: Sendable {
             newObject: verified,
             finalObjects: finalObjects,
             oldMapPreserved: false,
-            writeStarted: true
+            writeStarted: true,
+            inventoryMetrics: inventoryMetrics
         )
+    }
+
+    private static func milliseconds(since start: ContinuousClock.Instant) -> UInt64 {
+        let components = start.duration(to: .now).components
+        let value = Double(components.seconds) * 1_000
+            + Double(components.attoseconds) / 1_000_000_000_000_000
+        return UInt64(max(0, value))
     }
 
     private func matches(_ lhs: SafeUpdateRemoteObject, _ rhs: SafeUpdateRemoteObject) -> Bool {

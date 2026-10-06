@@ -2522,6 +2522,7 @@ final class MapEngine: ObservableObject {
             transferProgressBucket: nil)
         event.operationKind = "update"
         event.oldMapPreserved = result.oldMapPreserved
+        event.inventoryMetrics = result.inventoryMetrics
         evidenceController?.record(event)
     }
 

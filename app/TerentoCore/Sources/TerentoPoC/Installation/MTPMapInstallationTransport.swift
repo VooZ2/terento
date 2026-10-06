@@ -599,6 +599,8 @@ enum MTPFinishingWorker {
         var expectedObjectCount: Int? = nil
         /// Stable descriptors for `.prefixes`; handles are re-resolved natively.
         var files: [DeviceFile]? = nil
+        /// `.inventory` only: read the map scope (storage roots + GARMIN subtree).
+        var mapScope: Bool? = nil
     }
     struct PrefixResult: Codable, Equatable {
         var index: Int
@@ -610,6 +612,9 @@ enum MTPFinishingWorker {
         var snapshot: DeviceSnapshot? = nil
         var prefixes: [PrefixResult]? = nil
         var error: InstallationTransportError? = nil
+        /// Scope actually returned for a map-scope `.inventory` request.
+        var inventoryScope: DeviceInventoryScope? = nil
+        var inventoryFallback: DeviceInventoryFallback? = nil
     }
     /// Bounded request size; prefix requests carry one descriptor per map.
     static let maximumRequestBytes = 256 * 1024
@@ -734,7 +739,14 @@ enum MTPFinishingWorker {
                 }
                 try transport.deleteExact(targetFilename: filename, expectedItemID: itemID, expectedSizeBytes: request.size)
             case .inventory:
-                response.files = try MTPTransport(operationProfile: request.profile).readFileInventory()
+                if request.mapScope == true {
+                    let read = try MTPTransport(operationProfile: request.profile).readMapScopeInventory()
+                    response.files = read.files
+                    response.inventoryScope = read.scope
+                    response.inventoryFallback = read.fallback
+                } else {
+                    response.files = try MTPTransport(operationProfile: request.profile).readFileInventory()
+                }
             case .snapshot:
                 let snapshot = try MTPTransport().readSnapshot()
                 response.snapshot = DeviceSnapshot(manufacturer: snapshot.manufacturer, model: snapshot.model,
@@ -785,6 +797,19 @@ private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
                 throw MTPFinishingWorker.failure(for: .inventory, kind: .invalidResponse)
             }
             return files
+        }
+    }
+    /// Same bounded worker and bound; the native session falls back to the full
+    /// walk itself, so a scoped answer always states the scope it covers.
+    func readMapScopeInventory() throws -> DeviceInventoryRead {
+        try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
+            let response = try MTPFinishingWorker.perform(.init(operation: .inventory, profile: operationProfile,
+                                                                expectedObjectCount: expectedObjectCount, mapScope: true))
+            guard let files = response.files else {
+                throw MTPFinishingWorker.failure(for: .inventory, kind: .invalidResponse)
+            }
+            return DeviceInventoryRead(files: files, scope: response.inventoryScope ?? .full,
+                                       fallback: response.inventoryFallback ?? .none)
         }
     }
     func readSnapshot() throws -> DeviceSnapshot {

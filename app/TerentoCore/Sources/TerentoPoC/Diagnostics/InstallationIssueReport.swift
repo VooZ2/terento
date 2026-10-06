@@ -34,6 +34,8 @@ struct InstallationIssueVerification: Sendable {
     var sampledBytes: UInt64? = nil
     var sampleCount: Int? = nil
     var matchedSampleCount: Int? = nil
+    /// Scope, object counts and durations of the pre/post-write inventories.
+    var inventoryMetrics: InstallationInventoryMetrics? = nil
 }
 
 @MainActor
@@ -114,7 +116,12 @@ enum InstallationIssueReport {
             ("Elapsed at failure (ms)", verification.elapsedMilliseconds.map(String.init)),
             ("Verified sample bytes", verification.sampledBytes.map(String.init)),
             ("Planned samples", verification.sampleCount.map(String.init)),
-            ("Matched samples", verification.matchedSampleCount.map(String.init))
+            ("Matched samples", verification.matchedSampleCount.map(String.init)),
+            ("Inventory scope", verification.inventoryMetrics?.scope.rawValue),
+            ("Pre-write inventory objects", verification.inventoryMetrics.map { String($0.prewriteObjectCount) }),
+            ("Pre-write inventory duration (ms)", verification.inventoryMetrics.map { String($0.prewriteDurationMs) }),
+            ("Post-write inventory objects", verification.inventoryMetrics?.postwriteObjectCount.map(String.init)),
+            ("Post-write inventory duration (ms)", verification.inventoryMetrics?.postwriteDurationMs.map(String.init))
         ]
         let mapLines = reportedMaps.map { map in
             "- \(sanitizedLine(map.provider, fallback: "Unavailable")) / \(sanitizedLine(map.package, fallback: "Unavailable")): release=\(sanitizedLine(map.release ?? "Unavailable", fallback: "Unavailable")), planned installed bytes=\(map.artifactSizeBytes.map(String.init) ?? "Unavailable")"

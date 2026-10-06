@@ -167,7 +167,8 @@ enum TerentoDiagnosticLog {
                 elapsedMilliseconds: result?.diagnostics.elapsedMilliseconds,
                 sampledBytes: result?.verification?.sampledBytes,
                 sampleCount: result?.verification?.sampleCount,
-                matchedSampleCount: result?.verification?.matchedSampleCount)
+                matchedSampleCount: result?.verification?.matchedSampleCount,
+                inventoryMetrics: result?.diagnostics.inventoryMetrics)
         ))
     }
 

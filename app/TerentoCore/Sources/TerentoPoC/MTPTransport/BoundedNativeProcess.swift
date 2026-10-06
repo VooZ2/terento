@@ -195,12 +195,13 @@ extension FinishingTrace {
         "read_chunk_limit", "abort_close_begin", "abort_close_returned", "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
         "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result",
-        "prewrite_inventory_duplicates", "postwrite_inventory_duplicates"
+        "prewrite_inventory_duplicates", "postwrite_inventory_duplicates",
+        "prewrite_inventory_metrics", "postwrite_inventory_metrics", "update_inventory_metrics", "inventory_scope"
     ]
     private static let numericKeys: Set<String> = [
         "t", "pid", "child", "timeout", "attempt", "delay", "status", "reason", "offset", "rc",
         "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded",
-        "duplicates"
+        "duplicates", "objects", "baseline", "duration_ms"
     ]
     static func safeLine(_ line: String) -> String? {
         guard line.utf8.count < 1024 else { return nil }
@@ -226,6 +227,10 @@ extension FinishingTrace {
                 guard ["notExactValidatedArtifact", "sourceUnavailable", "sourceSizeMismatch",
                        "sourceHashMismatch", "sourceFormatMismatch", "unknown"].contains(value) else { return nil }
             } else if key == "worker" { guard ["true", "false"].contains(value) else { return nil } }
+            else if key == "scope" { guard ["FULL", "GARMIN"].contains(value) else { return nil } }
+            else if key == "fallback" {
+                guard ["none", "no_root", "ambiguous_root", "scoped_failed"].contains(value) else { return nil }
+            }
             else if key == "trace" { guard UUID(uuidString: value) != nil else { return nil } }
             else if key == "error" {
                 guard ["other", "deviceDisconnected", "operationFailed", "remoteFileMissing",
