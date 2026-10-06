@@ -21,14 +21,15 @@ enum TroubleshootingAnchor: String, CaseIterable, Sendable {
     case updateRemove = "update-remove"
     case sendReport = "send-report"
 
-    var url: URL { TerentoAppLinks.troubleshooting(self) }
+    var url: URL { TroubleshootingGuide.url(self) }
 }
 
-extension TerentoAppLinks {
-    static let troubleshootingGuide = URL(string: "https://terento.app/guides/troubleshooting/")!
+/// The public guide; kept beside the anchors so this mapping has no UI dependency.
+enum TroubleshootingGuide {
+    static let guideURL = URL(string: "https://terento.app/guides/troubleshooting/")!
 
-    static func troubleshooting(_ anchor: TroubleshootingAnchor) -> URL {
-        var components = URLComponents(url: troubleshootingGuide, resolvingAgainstBaseURL: false)!
+    static func url(_ anchor: TroubleshootingAnchor) -> URL {
+        var components = URLComponents(url: guideURL, resolvingAgainstBaseURL: false)!
         components.fragment = anchor.rawValue
         return components.url!
     }

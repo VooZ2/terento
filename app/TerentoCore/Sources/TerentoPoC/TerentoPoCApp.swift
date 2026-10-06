@@ -94,7 +94,7 @@ struct TerentoPoCApp: App {
                     openExternalURL(TerentoAppLinks.website)
                 }
                 Button("Troubleshooting") {
-                    openExternalURL(TerentoAppLinks.troubleshootingGuide)
+                    openExternalURL(TroubleshootingGuide.guideURL)
                 }
                 Button("Documentation") {
                     openExternalURL(TerentoAppLinks.documentation)
