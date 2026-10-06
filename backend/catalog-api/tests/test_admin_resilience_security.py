@@ -85,7 +85,9 @@ class AdminHttpResilienceTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         nonce = re.search(r"script-src 'nonce-([^']+)'", response.headers["Content-Security-Policy"]).group(1)
         self.assertNotIn(_ADMIN_NONCE_PLACEHOLDER, body)
-        self.assertTrue(all(tag == f'<script nonce="{nonce}">' for tag in re.findall(r"<script[^>]*>", body)))
+        tags = re.findall(r"<script\b[^>]*>", body, re.IGNORECASE)
+        self.assertTrue(tags)
+        self.assertTrue(all(tag == f'<script nonce="{nonce}">' for tag in tags))
 
 
 class GithubIssuesPageTests(unittest.TestCase):

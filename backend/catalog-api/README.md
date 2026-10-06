@@ -641,9 +641,9 @@ only unanimous reviewed specification facts for XML-matching variants.
 New acquisition phases are grouped in Recent activity with component/history;
 missing terminal receipt is explicit rather than treated as an active job.
 
-### Model source review workspace
+### Model sources workspace
 
-`/admin/device-identification` is visibly named `Model source review`. It lists
+`/admin/device-identification` is visibly named `Model sources`. It lists
 models needing source decisions first and searches model names and imported
 codes. Each decision follows Source reported, Match to, Other models using this
 code when relevant, Confirm match, then Technical details. Raw identifiers,
