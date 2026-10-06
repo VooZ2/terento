@@ -85,11 +85,25 @@ assert 'verify_deletion_samples(' in managed_content and 'verify_deletion_conten
 external = body('terento_mtp_delete_external_map_authorized')
 assert 'if (removal_proof_requested(authorization)) return TERENTO_MTP_MUTATION_REFUSED;' in external
 assert external.index('removal_proof_requested(') < external.index('open_single_garmin_device(')
-samples = body('verify_deletion_samples')
-for check in ['validate_removal_plan(', 'valid_content_hash(authorization->removal_sample_sha256)',
-              '"DSKIMG"', '"GARMIN"', 'CC_SHA256_Final', 'strcasecmp(actual, authorization->removal_sample_sha256)']:
+samples = body('verify_recorded_samples')
+for check in ['validate_removal_plan(', 'valid_content_hash(expected_sha256)', 'valid_content_hash(sample_sha256)',
+              '"DSKIMG"', '"GARMIN"', 'CC_SHA256_Final', 'strcasecmp(actual, sample_sha256)']:
     assert check in samples, check
     assert 'actual_item_id != expected_item_id' not in live, base
+deletion_samples = body('verify_deletion_samples')
+for check in ['verify_recorded_samples(', 'authorization->removal_sample_offsets',
+              'authorization->removal_sample_sha256', '== TERENTO_RECORDED_SAMPLES_MATCH']:
+    assert check in deletion_samples, check
+# Safe Update's read-only check of the installed map by its recorded proof:
+# live device, exact same-session object, recorded regions, final identity.
+proof = body('terento_mtp_verify_managed_map_proof')
+for check in ['validate_live_map_operation_device(', 'find_single_garmin_folder(', 'find_stage42_map_file(',
+              'match_count != 1', 'remote_size != expected_size_bytes', 'storage_id != profile->expected_storage_id',
+              'verify_recorded_samples(', 'deletion_target_still_matches(', 'TERENTO_MTP_MAP_CONTENT_MISMATCH']:
+    assert check in proof, check
+assert proof.index('verify_recorded_samples(') < proof.index('deletion_target_still_matches(')
+assert not re.search(r'LIBMTP_Delete_Object|LIBMTP_Send|terento_dispatch_mutation|verify_deletion_content', proof)
+assert re.search(r'int terento_mtp_verify_managed_map_proof\s*\(', header)
 assert '#define TERENTO_MAP_OPERATION_PROFILE_VERSION 2' in source
 for field in ['physical_identifier_source', 'physical_identifier', 'expected_storage_id']:
     assert field in header and field in body('validate_map_operation_profile'), field
