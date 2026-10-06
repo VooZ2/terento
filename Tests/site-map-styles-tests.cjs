@@ -128,6 +128,15 @@ function testPages() {
   assert.equal(titles.size, locales.length);
 }
 
+// A shared Side by side link must not sync the second map before the first has a view.
+function testController() {
+  const controller = read(path.join(root, "site", "map-styles", "map-styles.js"));
+  const syncs = controller.split("\n").filter((line) => line.includes("mapB.setView(mapA.getCenter()"));
+  assert.ok(syncs.length >= 1, "Side by side keeps both maps in sync");
+  syncs.forEach((line) => assert.match(line, /\bframed\b/, "Side by side sync waits for the first view"));
+}
+
 testHelpers();
 testPages();
+testController();
 console.log("Map styles page tests passed for all six locales.");
