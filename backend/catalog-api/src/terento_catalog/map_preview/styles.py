@@ -6,6 +6,7 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from ..bbbike_geography import COUNTRY_CODES as _GEOFABRIK_COUNTRY_CODES
 from .areas import PreviewArea
 
 
@@ -27,6 +28,15 @@ STYLES: tuple[PreviewStyle, ...] = (
     PreviewStyle("bbbike-ontrail", "bbbike", "ontrail-latin1", "BBBike (Ontrail)"),
 )
 STYLE_BY_ID = {style.id: style for style in STYLES}
+
+# OpenTopoMap regions that the BBBike Geofabrik table does not name.
+_OTM_EXTRA_REGIONS = {
+    "british-isles": ("GB", "IE", "IM"),
+    "great-britain": ("GB",),
+    "canada-east": ("CA",),
+    "canada-west": ("CA",),
+    "us-pacific": ("US",),
+}
 
 # Freizeitkarte region identifiers start with ISO 3166-1 alpha-3 codes.
 _FZK_ALPHA3 = {
@@ -71,6 +81,11 @@ def package_country_codes(row: dict[str, Any]) -> set[str]:
                 codes.add(_FZK_ALPHA3[token])
             codes.update(_FZK_GROUPS.get(token, ()))
         codes = {code if len(code) == 2 else _FZK_ALPHA3.get(code, code) for code in codes}
+    elif row.get("provider_id") == "opentopomap":
+        # OpenTopoMap regions use Geofabrik names and carry no country codes.
+        region = str(row.get("provider_region_id") or "").lower()
+        codes.update(_GEOFABRIK_COUNTRY_CODES.get(region, ()))
+        codes.update(_OTM_EXTRA_REGIONS.get(region, ()))
     return codes
 
 

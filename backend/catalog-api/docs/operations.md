@@ -137,7 +137,8 @@ Only one renderer runs at a time: it holds a 15-minute lease that it renews
 while it works, so a renderer stopped by a deploy blocks the next one for at
 most 15 minutes: a renderer that finds the lease taken retries every 2
 minutes. The next renderer removes the downloads and staged tiles the stopped
-one left behind, and redraws layers that were drawn but not yet published.
+one left behind, and redraws layers that were drawn but not yet published or
+whose published tiles still have the transparent land of an earlier renderer.
 
 Then switch providers on one at a time under Admin › Providers › Map style
 previews and check the `map-preview-renderer` heartbeat, the provider's

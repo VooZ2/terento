@@ -272,7 +272,9 @@ int main(int argc, char *argv[])
 		const QRect rect(job.mx * TILE, job.my * TILE, job.w * TILE,
 		  job.h * TILE);
 		QImage img(rect.size(), QImage::Format_ARGB32_Premultiplied);
-		img.fill(Qt::transparent);
+		/* Paper colour under every style: BBBike and MapRando maps have no
+		   land fill and would otherwise leave transparent tiles. */
+		img.fill(Qt::white);
 		QPainter painter(&img);
 		for (int n = 0; n < layers.size(); n++) {
 			IMGData *d = layers.at(n);

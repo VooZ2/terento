@@ -187,10 +187,13 @@ class PreviewRun:
             bounds = self.db.package_bounds()
             enabled = self.db.enabled_providers()
             current = self.store.current_release()
+            published = self.store.layers(current) if current else set()
+            # Layers an earlier renderer left with transparent land are redrawn.
+            published = {key for key in published if not self.store.has_transparency(current, *key)}
             work, uncovered = plan_work(
                 self.areas, packages, layers, bounds, enabled,
                 now=self.clock(), refresh_days=self.settings.refresh_days,
-                published=self.store.layers(current) if current else set(),
+                published=published,
             )
             for area, style in uncovered:
                 self.db.save_layer(area.id, style.id, style.provider_id, "NOT_COVERED")
