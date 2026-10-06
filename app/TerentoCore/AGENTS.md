@@ -122,6 +122,32 @@ native control without an explicit reviewed reason.
   state explicitly whether runtime, resources, release, and deployment files
   were untouched. Do not run destructive hardware tests for visual work.
 
+## Device content checks
+
+Fast removal and fast Safe Update rely on a recorded `removalProof` (32
+regions of 65,535 bytes plus SHA-256, format 1) bound to the manifest entry's
+size and SHA-256. Keep these invariants; `app/TerentoCore/README.md` describes
+the behavior:
+
+- The check method is chosen from the local record before any device read and
+  is never switched afterwards. A sampled mismatch blocks exactly like a full
+  SHA-256 mismatch; never add a fallback to the other method.
+- Entries without a valid bound proof, external maps and legacy entries keep
+  the full read and SHA-256. Never synthesize a proof for a map Terento did not
+  write and verify.
+- The new map in an Update is verified with the fresh-install sampled
+  read-back (`SampledReadBackPlan`) before the old map is touched.
+- The residual limit (a same-name, same-size map that differs only outside the
+  compared regions) is documented and accepted; do not widen it.
+- Changes here need the native fake-libmtp runners
+  (`run-native-removal-proof-tests.sh`, `run-native-fast-update-tests.sh`,
+  `run-native-map-profile-contract-tests.sh`) and a real-watch check before
+  release. Real-watch status is recorded in `RELEASE_NOTES.md` KNOWN ISSUES.
+
+Local test builds use the `-local` release label (Debug
+`TERENTO_RELEASE_LABEL`), so their telemetry is stored as test data and
+excluded from statistics. Never distribute a `-local` build.
+
 ## Documentation impact
 
 Any durable or user-visible app workflow or functionality change must review
