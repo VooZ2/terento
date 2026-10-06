@@ -95,7 +95,7 @@
       bounds: boundsOf(current),
       noWrap: true,
       keepBuffer: 2,
-    });
+    }).on("tileerror", refreshRelease);
   }
 
   function rebuildLayers() {
@@ -470,11 +470,11 @@
   if (window.ResizeObserver) new ResizeObserver(() => { mapA.invalidateSize({pan: false}); mapB.invalidateSize({pan: false}); updateClip(); }).observe(stage);
 
   // Data ------------------------------------------------------------------------
-  async function fetchJson(url) {
+  async function fetchJson(url, cache = "default") {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch(url, {signal: controller.signal, credentials: "omit"});
+      const response = await fetch(url, {signal: controller.signal, credentials: "omit", cache});
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     } finally {
@@ -496,6 +496,28 @@
     }
   }
   $("map-styles-retry").addEventListener("click", loadManifest);
+
+  // The server keeps only the latest preview releases. A page left open across
+  // a new release would ask for removed tiles, so a failed tile or a return to
+  // the tab rechecks the manifest (at most once a minute) and switches release.
+  let releaseCheckedAt = 0;
+  async function refreshRelease() {
+    if (!manifest || Date.now() - releaseCheckedAt < 60000) return;
+    releaseCheckedAt = Date.now();
+    try {
+      const latest = await fetchJson(data.manifestUrl, "no-cache");
+      if (!latest || latest.schemaVersion !== 1 || !Array.isArray(latest.areas)) return;
+      if (latest.release === manifest.release) return;
+      manifest = latest;
+      best = D.bestAreas(areas, manifest);
+      refresh();
+    } catch (error) {
+      // Keep the current view; the next failed tile tries again.
+    }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refreshRelease();
+  });
 
   viewer.classList.add("is-ready");
   refresh({frame: true});
