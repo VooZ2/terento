@@ -65,6 +65,7 @@ def build(root):
         {'stage':'DEVICE_CONNECT','outcomes':[{'outcome':'CONNECTED','sessionCount':38},{'outcome':'TIMEOUT_NO_USB','sessionCount':2},{'outcome':'NOT_MTP_MODE','sessionCount':1},{'outcome':'BUSY','sessionCount':1}]},
         {'stage':'AUTHORIZATION','outcomes':[{'outcome':'APPROVED','sessionCount':30},{'outcome':'PENDING','sessionCount':5},{'outcome':'UNKNOWN_MODEL','sessionCount':2},{'outcome':'AMBIGUOUS','sessionCount':1}]}],
         'modelsNeedingReview':[{'baseModel':'fenix 8','outcome':'PENDING','sessionCount':4},{'baseModel':'Forerunner 965','outcome':'UNKNOWN_MODEL','sessionCount':1}]}
+    overview['supportReports']={'openCount':3}
     overview['system']={'api':'HEALTHY','database':'HEALTHY','providers':providers,'observations':[],'scheduler':None,'weekly':None}
     device=_admin_device_payload([{'device_id':'model-0','model':'fēnix 8','variant':'51 mm, AMOLED','family_name':'fēnix','map_capable':True,'active':True,'support_status':'SUPPORTED','usb_identities':[]}],None)['devices'][0]
     detail=dict(providers[0],maps=[],sources=[],healthStatus='HEALTHY',healthHistory=[{'status':'HEALTHY','checked_at':'2026-09-17T10:30:00Z','http_status':200,'duration_ms':125,'artifact_count':180,**{key:'HEALTHY' for key in ('website_status','catalog_status','redirect_status','download_status','mime_status','magic_status','zip_status','img_status','last_update_status')}}],activationGate={'canActivate':True})

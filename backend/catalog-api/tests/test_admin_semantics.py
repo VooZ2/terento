@@ -1042,7 +1042,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("No pending work.", attention)
         self.assertNotIn("Download failed", attention)
         # Fixed category rows keep their shape whatever the counts are.
-        self.assertEqual(attention.count("class='overview-attention-row'"), 7)
+        self.assertEqual(attention.count("class='overview-attention-row'"), 8)
 
     def test_failure_reason_normalizes_source_validation_variants(self):
         for category, stage, code in (

@@ -21,11 +21,14 @@ def serve(directory: Path, port: int = 8765) -> None:
                 "/admin/providers": "/providers.html",
                 "/admin/system-health": "/health.html",
                 "/admin/diagnostics": "/diagnostics.html",
+                "/admin/support-reports": "/support-reports.html",
             }
             if route in fixture_routes:
                 self.path = fixture_routes[route]
             elif route.startswith("/admin/devices/"):
                 self.path = "/device.html"
+            elif route.startswith("/admin/support-reports/"):
+                self.path = "/support-report.html"
             elif route.startswith("/admin/providers/"):
                 self.path = "/provider.html"
             elif route.startswith("/admin/") and not route.startswith("/admin/map-assets/"):

@@ -36,7 +36,7 @@ const {chromium}=require(process.argv[2]);
     assert.deepEqual(await page.locator('main>.overview-primary-grid, main>.overview-composition-grid').evaluateAll(es=>es.map(e=>e.className)),['overview-primary-grid','overview-composition-grid']);
     assert.equal(await page.locator('.overview-tiles .admin-scope-chip').count(),4,'Every tile shows a visible scope chip');
     assert.equal(await page.locator('.overview-all-time .admin-scope-chip').count(),2,'All-time chart totals are labelled All time');
-    assert.equal(await page.locator('.overview-attention-row').count(),7,'Needs attention keeps seven fixed rows');
+    assert.equal(await page.locator('.overview-attention-row').count(),8,'Needs attention keeps eight fixed rows');
     const visibleTrendCharts=page.locator('.overview-primary-grid .overview-trend-chart:visible');
     assert.equal(await visibleTrendCharts.count(),2,'Both current trend charts remain visible');
     for(const chart of await visibleTrendCharts.all()){

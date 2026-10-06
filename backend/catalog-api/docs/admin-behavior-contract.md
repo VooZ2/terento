@@ -248,10 +248,10 @@ each with its own legend entry; optional components and pre-write failures remai
 excluded by the statistics contract. Each bucket is one keyboard stop with a
 label listing every series; segments are presentational.
 
-Needs attention covers unresolved work across all dates in seven fixed category
+Needs attention covers unresolved work across all dates in eight fixed category
 rows, each with an icon, label, count and arrow: Open problems, GitHub issues,
-Identity review, Publication review, Missing reports, Provider problems and
-System checks. Rows with zero stay listed (muted) so the shape is stable. Counts
+Identity review, Publication review, Missing reports, Support reports, Provider
+problems and System checks. Rows with zero stay listed (muted) so the shape is stable. Counts
 come only from the canonical review read model, the shared provider-problem
 definition and the system checks; there is no fallback from another definition.
 A failed query shows `—` with an explicit `Unavailable` message, never `0` or
@@ -286,6 +286,24 @@ statistics-excluded diagnostic is present evidence, and an
 may open the matching collapsed Maps Event detail; aggregate statistics remain
 unchanged. A received device failure instead opens its actionable diagnostic
 context and is not redirected to aggregate Maps as a substitute.
+
+Support reports counts open reports from public (non-local) builds, read from
+its own query; a failed query shows that row as `Unavailable` (`—`) and the
+Needs attention tile as partial, never `0`. `/admin/support-reports` shows Open
+(`Now`), Handled and Reports (`All time`, i.e. the 12-month retention window)
+tiles, Open/Handled filter chips with their counts, and a table (Reference,
+Category, Report, Model, App version, Received, Status pill) with 50 rows per
+page, newest receipt first. The detail (`/admin/support-reports/TR-XXXXXX`)
+shows Summary, Problem, Description and a collapsed Technical details section
+(IDs, verification, failure context, lifecycle facts, finishing diagnostics),
+with Actions (Mark handled / Reopen with an optional note, GitHub issue link),
+Diagnostics (links to the public installation report model view and update
+report with the same operation ID, or an explicit "not received" state) and
+History. Every action is authenticated, CSRF-protected, idempotent and audited
+and never changes the received report or any count. Local test reports are
+listed only on Tools → Test data, open from there with a `Local test` pill, link
+no diagnostics and are deleted by the Test data purge. Support reports are never
+statistics ([`SUPPORT_REPORT_CONTRACT.md`](../../../contracts/SUPPORT_REPORT_CONTRACT.md)).
 
 Provider acquisition failure remains activity/history, not an installation
 failure, open problem, identity task, or publication task. Never borrow a model from

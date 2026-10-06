@@ -50,6 +50,9 @@ class FakeProviderDatabase:
             "total": 0,
         }
 
+    def support_report_open_count(self):
+        return 0
+
     def local_test_telemetry_summary(self):
         return {
             "diagnosticEventCount": 2,

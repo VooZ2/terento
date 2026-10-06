@@ -729,6 +729,11 @@ class CatalogService:
             "providersAvailable": providers_payload is not None,
             "system": section("system", system_health, dict(unavailable)),
             "funnel": section("funnel", lambda: self.app_funnel({"period": period}), dict(unavailable)),
+            "supportReports": section(
+                "supportReports",
+                lambda: {"openCount": self.database.support_report_open_count()},
+                dict(unavailable),
+            ),
         }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:
@@ -1588,6 +1593,50 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
+            if request_path in {"/admin/support-reports", "/admin/support-reports/"}:
+                from .support_report_admin import SUPPORT_REPORT_PAGE_SIZE, support_reports_page
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                status = (query.get("status", ["open"])[-1] or "open").strip().lower()
+                try:
+                    offset = int(query.get("offset", ["0"])[-1] or 0)
+                    if offset < 0 or status not in {"open", "handled"}:
+                        raise ValueError("invalid_support_report_filter")
+                except ValueError:
+                    self._send_admin_error(HTTPStatus.BAD_REQUEST, "This page link is not valid.", session, csrf_token, send_body=send_body)
+                    return
+                try:
+                    payload = service.database.support_reports(
+                        status=status.upper(), limit=SUPPORT_REPORT_PAGE_SIZE, offset=offset,
+                    )
+                except Exception:
+                    LOGGER.exception("support report list failed")
+                    payload = None
+                self._send_admin_html(
+                    support_reports_page(payload, session, csrf_token, status=status.upper()),
+                    send_body=send_body,
+                )
+                return
+            support_match = re.fullmatch(r"/admin/support-reports/([^/]+)/?", request_path)
+            if support_match:
+                from .support_report_admin import support_report_detail_page
+                reference = normalise_reference(support_match[1])
+                if reference is None:
+                    self._send_admin_error(HTTPStatus.BAD_REQUEST, "This support report link is not valid.", session, csrf_token, send_body=send_body)
+                    return
+                try:
+                    detail = service.database.support_report_detail(reference)
+                except Exception:
+                    LOGGER.exception("support report detail failed")
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "This support report could not be loaded.", session, csrf_token, send_body=send_body)
+                    return
+                if detail is None:
+                    self._send_admin_error(HTTPStatus.NOT_FOUND, "This support report does not exist.", session, csrf_token, send_body=send_body)
+                    return
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                self._send_admin_html(support_report_detail_page(
+                    detail, session, csrf_token, action=query.get("action", [""])[-1],
+                ), send_body=send_body)
+                return
             if request_path in {"/admin/test-data", "/admin/test-data/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 try:
@@ -2090,6 +2139,44 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "local_test_data_purge_unavailable"}, send_body=True, cache_control="no-store")
                     return
                 self._redirect("/admin/test-data?purged=1", send_body=True)
+                return
+            if request_path in {
+                "/admin/support-reports/handle",
+                "/admin/support-reports/reopen",
+                "/admin/support-reports/issue",
+            }:
+                action = request_path.rsplit("/", 1)[-1]
+                reference = normalise_reference(form.get("reference", ""))
+                try:
+                    if reference is None:
+                        raise ValueError("invalid_support_report_reference")
+                    issue = (
+                        _normalise_github_issue_reference(form.get("linked_github_issue", ""))
+                        if action == "issue" else None
+                    )
+                    changed = service.database.review_support_report(
+                        reference,
+                        action=action,
+                        admin_user_id=int(session["id"]),
+                        note=normalise_admin_note(form.get("note")) if action != "issue" else None,
+                        linked_github_issue=issue,
+                        request_id=self._request_id(),
+                    )
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_support_report_review"}, send_body=True, cache_control="no-store")
+                    return
+                except Exception:
+                    LOGGER.exception("support report review failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "support_report_review_unavailable"}, send_body=True, cache_control="no-store")
+                    return
+                if not changed:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "support_report_not_found"}, send_body=True, cache_control="no-store")
+                    return
+                notice = {"handle": "handled", "reopen": "reopened"}.get(action) or ("linked" if issue else "unlinked")
+                self._redirect(
+                    f"/admin/support-reports/{quote(reference, safe='')}?action={notice}",
+                    send_body=True,
+                )
                 return
             if request_path in {
                 "/admin/review/missing-diagnostics/dismiss",

@@ -93,12 +93,12 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("<dt>For updates</dt><dd>6", downloads)
         self.assertIn("<dt>Not recorded</dt><dd>4", downloads)
 
-    def test_needs_attention_has_seven_fixed_rows_and_a_total(self):
-        body = self.render()
+    def test_needs_attention_has_eight_fixed_rows_and_a_total(self):
+        body = self.render(supportReports={"openCount": 2})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
         labels = ["Open problems", "GitHub issues", "Identity review", "Publication review",
-                  "Missing reports", "Provider problems", "System checks"]
-        self.assertEqual(attention.count("class='overview-attention-row'"), 7)
+                  "Missing reports", "Support reports", "Provider problems", "System checks"]
+        self.assertEqual(attention.count("class='overview-attention-row'"), 8)
         positions = [attention.index(f"<span class='overview-attention-label'>{label}</span>") for label in labels]
         self.assertEqual(positions, sorted(positions))
         self.assertIn("aria-label='Missing reports: 57'", attention)
@@ -107,7 +107,9 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("data-state='zero'", attention)
         import re
         rows = [int(value) for value in re.findall(r"aria-label='[A-Za-z ]+: (\d+)'><svg", attention)]
-        self.assertEqual(len(rows), 7)
+        self.assertEqual(len(rows), 8)
+        self.assertIn("aria-label='Support reports: 2'", attention)
+        self.assertIn("href='/admin/support-reports'", attention)
         tiles = body.split("aria-label='Dashboard summary'", 1)[1].split("overview-primary-grid", 1)[0]
         # The tile total is exactly the sum of the rendered category rows.
         self.assertIn(f"aria-label='Needs attention, now: {sum(rows)}'", tiles)

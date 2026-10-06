@@ -209,7 +209,8 @@ attention (Now). The Downloads and Installs chart cards follow, each with a
 legend of period totals and an `All time` line with the all-time totals; the
 Downloads card adds the period purpose breakdown (`downloadPurposes`: install,
 update, unknown). Needs attention covers unresolved work across all dates in
-seven fixed rows read only from `admin_review_summary()`, the shared
+eight fixed rows read only from `admin_review_summary()`, the open public
+support-report count (`support_report_open_count()`), the shared
 provider-problem definition and the system checks; an unavailable query shows
 `—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
 for the period. App downloads is the separate Terento `.dmg` and `.zip`
@@ -743,6 +744,16 @@ reference_conflict` if another report owns the deterministic reference, and
 allows 10 reports per client address per minute (`429`). The client address is
 used only by the in-memory limiter and is never stored. A `-local` release label
 stores the report as local test data. Reports are kept 12 months after receipt.
+
+The Admin routes are `GET /admin/support-reports?status=open|handled&offset=N`
+(list, 50 per page, public builds only), `GET /admin/support-reports/TR-XXXXXX`
+(detail, including local test reports reached from Test data) and the
+CSRF-protected form posts `/admin/support-reports/handle`, `/reopen` and
+`/issue` (`reference`, optional `note` ≤ 2000 characters, `linked_github_issue`
+as `#123` or empty to unlink). Each action writes `support_report_audit` and
+`admin_audit_log` and redirects to the detail; an unknown reference is `404`,
+invalid input `400`. Local test reports are listed on `/admin/test-data` and
+deleted by its purge.
 
 ## `POST /map-events`
 

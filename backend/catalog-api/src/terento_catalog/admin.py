@@ -254,6 +254,7 @@ def _admin_icon(name: str) -> str:
         "question": "<circle cx='8' cy='8' r='6'/><path d='M6.3 6.3a1.8 1.8 0 1 1 2.5 1.6c-.5.2-.8.6-.8 1.1v.3'/><path d='M8 11.4h.01'/>",
         "minus": "<circle cx='8' cy='8' r='6'/><path d='M5.5 8h5'/>",
         "download": "<path d='M8 2.5v8'/><path d='m4.5 7 3.5 3.5L11.5 7'/><path d='M3 13.5h10'/>",
+        "message": "<path d='M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z'/><path d='M5 6.25h6'/><path d='M5 8.5h4'/>",
     }
     path = paths.get(name, "")
     if not path:
@@ -374,6 +375,9 @@ ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
      "A current provider package with at least one failed or unavailable map file."),
     ("health-states", "Health states",
      "Healthy, Degraded, Failed or No data. No data means the check has no evidence yet."),
+    ("support-report", "Support report",
+     "A sanitised issue report that a user chose to send from the app, with an optional "
+     "description. Review work only, never counted in statistics; kept 12 months after receipt."),
     ("first-run", "First run session",
      "One app launch that reported a first-run stage (connect, authorization, catalog or "
      "a blocked install). A separate population, never mixed into install counts."),
@@ -1004,6 +1008,24 @@ def local_test_data_page(
         f"<td class='column-date'>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
         for row in summary.get('activity', [])
     ) or "<tr><td colspan='5'>No local test events recorded.</td></tr>"
+    support_section = ""
+    if "supportReports" in summary:
+        # Local support reports appear only here (SUPPORT_REPORT_CONTRACT.md).
+        from .support_report_admin import support_report_table
+        local_reports = summary.get("supportReports")
+        if not isinstance(local_reports, dict) or local_reports.get("available") is False:
+            support_section = _unavailable_card("Support reports", "test-data-support-reports")
+        else:
+            rows = list(local_reports.get("rows") or [])
+            total = _optional_nonnegative_int(local_reports.get("totalCount")) or 0
+            support_section = _section_card(
+                "Support reports",
+                _metric_row([_metric_tile("Local reports", total, scope="now", glossary="support-report")],
+                            label="Local support reports")
+                + (support_report_table(rows, caption="Local test support reports, newest first, up to 50")
+                   if rows else _empty_state("empty", "No local test support reports.")),
+                card_id="test-data-support-reports", css="test-data-card",
+            )
     content = f"""
       {_admin_header(user, csrf_token, active='test-data')}
       <main id="main-content" class="dashboard test-data-page" aria-labelledby="test-data-title">
@@ -1034,7 +1056,7 @@ def local_test_data_page(
             <div>
 
               <h3>Delete test data</h3>
-              <p class="table-help">This removes only server-classified local test telemetry.</p>
+              <p class="table-help">This removes only server-classified local test telemetry and local test support reports.</p>
             </div>
             <form method="post" action="/admin/test-data/purge" class="admin-danger-form">
               <input type="hidden" name="csrf_token" value="{html.escape(csrf_token, quote=True)}">
@@ -1045,6 +1067,7 @@ def local_test_data_page(
             </form>
           </div>
         </section>
+        {support_section}
       </main>
     """
     return _layout("Test data", content, sections={"testData": summary})
@@ -2273,6 +2296,15 @@ def overview_page(
         # from another definition (ADM-02).
         attention_counts.append(count)
         attention_rows.append(_attention_row(label, count, href, icon, unavailable=count is None))
+    # Support reports have their own read model: a failed count is unavailable
+    # for this row only, never a fallback number (SUPPORT_REPORT_CONTRACT.md).
+    support = overview.get("supportReports")
+    support_count = (
+        _optional_nonnegative_int(support.get("openCount"))
+        if isinstance(support, dict) and support.get("available") is not False else None
+    )
+    attention_counts.append(support_count)
+    attention_rows.append(_attention_row("Support reports", support_count, "/admin/support-reports", "message"))
     provider_states = [_provider_problem_state(provider) for provider in providers]
     provider_problem_count = (
         sum(1 for state in provider_states if state["problem"]) if providers_available else None
@@ -2451,6 +2483,7 @@ def overview_page(
     return _layout("Dashboard", content, sections={
         "mapActivity": data, "compatibility": compatibility, "downloads": downloads,
         "providers": providers, "review": review, "funnel": overview.get("funnel"),
+        "supportReports": overview.get("supportReports"),
         "system": [(card["title"], card["status"], card["reason"]) for card in health_cards],
     })
 
@@ -8599,6 +8632,30 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-trend-chart .overview-chart-group rect.overview-chart-update{stroke:var(--stone-dark)}
 .overview-chart-group:focus{outline:none}
 .overview-chart-group:focus-visible rect{stroke:var(--graphite);stroke-width:2}
+"""
+
+# Support reports (contracts/SUPPORT_REPORT_CONTRACT.md).
+ADMIN_STYLES += """
+.support-report-filters{margin:0 0 12px}
+.support-report-filters a.quick-filter{display:inline-flex;align-items:center;text-decoration:none}
+.support-report-table code,.support-report-page h1 code{font-family:var(--font-mono);font-size:inherit}
+.support-report-summary{max-width:42ch;overflow-wrap:anywhere}
+.support-report-has-message,.support-report-meta,.support-report-optional{color:var(--secondary);font-size:12px}
+.support-report-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:16px;align-items:start}
+.support-report-main,.support-report-side{display:grid;gap:16px;min-width:0}
+.support-report-message{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.support-report-title{margin:0 0 8px;overflow-wrap:anywhere}
+.support-report-form{display:grid;gap:8px;margin:0 0 14px}
+.support-report-form:last-child{margin-bottom:0}
+.support-report-form label{display:grid;gap:4px;font-size:13px;font-weight:600}
+.support-report-form textarea,.support-report-form input{width:100%;min-height:var(--admin-control-height);font:inherit;font-weight:400}
+.support-report-form button{justify-self:start}
+.support-report-links,.support-report-history,.support-report-list{display:grid;gap:8px;margin:0;padding:0;list-style:none;font-size:13px}
+.support-report-history p{margin:4px 0 0;color:var(--secondary);white-space:pre-wrap;overflow-wrap:anywhere}
+.support-report-trace{max-height:320px;overflow:auto;margin:0;padding:10px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);font-family:var(--font-mono);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
+.support-report-technical h3{margin:14px 0 6px;font-size:13px}
+@media(max-width:900px){.support-report-grid{grid-template-columns:minmax(0,1fr)}}
+.support-report-form button.support-report-primary{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}
 """
 
 def _error(message: str | None) -> str:
