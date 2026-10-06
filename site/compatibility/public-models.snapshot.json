@@ -40,8 +40,8 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 9,
-      "lastSuccessfulInstallation": "2026-09-28T20:50:11+00:00"
+      "successfulInstallations": 10,
+      "lastSuccessfulInstallation": "2026-10-06T10:41:01+00:00"
     },
     {
       "model": "Forerunner 970",
@@ -338,5 +338,5 @@
       "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
     }
   ],
-  "generatedAt": "2026-10-05T12:51:14.228794+00:00"
+  "generatedAt": "2026-10-06T12:19:20.567554+00:00"
 }
