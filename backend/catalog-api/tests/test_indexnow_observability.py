@@ -144,18 +144,25 @@ class IndexNowObservationTests(unittest.TestCase):
             card = next(item for item in cards if item["title"] == "Search indexing")
             self.assertEqual(card["status"], expected_status)
             self.assertIn(expected_text, card["html"])
-            visible = card["html"].split("<details class='admin-disclosure system-health-technical'>", 1)[0]
-            self.assertIn("<h2>Search indexing</h2>", visible)
+            # The check row is visible; evidence sits in its hidden Details row.
+            visible = card["html"].split("<tr class='health-details-row'", 1)[0]
+            self.assertIn("<span class='health-check-title'>Search indexing</span>", visible)
             self.assertEqual(visible.count("admin-pill "), 1)
-            self.assertIn("class='system-health-action'", visible)
-            self.assertIn("Last checked", visible)
+            self.assertIn("class='system-health-action", visible)
             self.assertNotIn("Result:", visible)
             self.assertNotIn("Pending URLs", visible)
+        # With a retained deployment run the next action links to it and the
+        # row shows when the check was observed.
+        cards, _, _ = _system_health_cards({"providers": [], "observations": [site_observation()], "scheduler": None})
+        visible = next(item for item in cards if item["title"] == "Search indexing")["html"].split("<tr class='health-details-row'", 1)[0]
+        self.assertIn("<a class='system-health-action section-link' href='https://github.com/VooZ2/terento/actions/runs/123'", visible)
+        self.assertIn("data-admin-timestamp", visible.split("system-health-when'>", 1)[1])
         cards, _, _ = _system_health_cards({"providers": [], "observations": [], "scheduler": None})
         card = next(item for item in cards if item["title"] == "Search indexing")
         self.assertEqual(card["status"], "UNKNOWN")
-        visible = card["html"].split("<details class='admin-disclosure system-health-technical'>", 1)[0]
-        details = card["html"].split("<div class='disclosure-body'>", 1)[1].split("</div></details>", 1)[0]
+        visible = card["html"].split("<tr class='health-details-row'", 1)[0]
+        details = card["html"].split("<tr class='health-details-row'", 1)[1]
+        self.assertIn("<span class='system-health-action'>", visible)
         self.assertIn("No IndexNow production report has been retained.", visible)
         self.assertNotIn("Pending URLs", visible)
         self.assertIn("Result: Not initialized", details)
@@ -193,7 +200,7 @@ class IndexNowObservationTests(unittest.TestCase):
             {"api": "HEALTHY", "database": "HEALTHY", "providers": [], "observations": [], "weekly": None, "scheduler": None},
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertEqual(body.count("Search indexing</h2>"), 1)
+        self.assertEqual(body.count("health-check-title'>Search indexing</span>"), 1)
         self.assertNotIn("Retry", body)
         self.assertNotIn("Submit all", body)
         self.assertNotIn("Bing indexed", body)

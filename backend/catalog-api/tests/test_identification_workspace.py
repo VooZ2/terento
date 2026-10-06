@@ -21,7 +21,7 @@ class IdentificationWorkspaceTests(unittest.TestCase):
 
     def test_rejected_only_is_not_presented_as_approved_or_ready(self):
         body = self.render([device(identityMappings=[mapping('REJECTED')])])
-        content = body.split("class='identification-choices'", 1)[1].split('</main>', 1)[0]
+        content = body.split("id='identification-list'", 1)[1].split('</main>', 1)[0]
         self.assertIn('Rejected', content)
         self.assertNotIn('Sources reviewed', content)
         self.assertNotIn('identification-approved', content)
@@ -95,7 +95,12 @@ class IdentificationWorkspaceTests(unittest.TestCase):
         for status in ('APPROVED', 'REJECTED'):
             body = self.render([device(identityMappings=[mapping(status, history=[dict(previous_status='PENDING', new_status=status,
                               reason='Evidence checked', reviewed_by=1, created_at='2026-09-15')])])], device_id='watch')
-            self.assertIn(f'<strong>Current decision:</strong> {status.title()}', body)
+            # The decision state is a status pill: text plus an icon.
+            decision = body.split("class='identification-existing-decision'>", 1)[1].split('</p>', 1)[0]
+            self.assertIn('<strong>Current decision:</strong>', decision)
+            self.assertIn(f"data-status='{status}'", decision)
+            self.assertIn("class='admin-icon", decision)
+            self.assertIn(f'<span>{status.title()}</span>', decision)
             self.assertIn('Decision history', body)
             self.assertIn('Evidence checked', body)
             self.assertIn('Approve match', body)
@@ -103,10 +108,69 @@ class IdentificationWorkspaceTests(unittest.TestCase):
 
     def test_review_feedback_and_singular_counts_are_wired(self):
         body = self.render([device()])
-        self.assertIn("data-source-filter='pending' aria-pressed='true'>Needs review · 1</button>", body)
+        self.assertIn("data-source-filter='pending' aria-pressed='true'>Needs review</button>", body)
+        self.assertIn("id='identification-results-count' aria-live='polite'>1 model</p>", body)
         self.assertNotIn('model shown', body)
         self.assertIn("document.querySelectorAll('.identity-mapping-review')", body)
         self.assertIn('controller.abort(), 20000', body)
         self.assertIn('Could not confirm the save.', body)
         self.assertIn('Your session expired.', body)
         self.assertIn("if (!response.redirected) throw new Error('save')", body)
+
+    def test_summary_is_one_kpi_card_with_plain_numbers(self):
+        rows = [device('pending'), device('approved', identityMappings=[mapping('APPROVED')]),
+                device('rejected', identityMappings=[mapping('REJECTED')]), device('missing', identityMappings=[])]
+        main = self.render(rows).split('<main', 1)[1]
+        opening = "<section class='admin-card installation-kpis identification-kpis'"
+        self.assertEqual(main.count(opening), 1)
+        card = main.split(opening, 1)[1].split('</section>', 1)[0]
+        for label in ('Needs review', 'Approved', 'Rejected', 'No source'):
+            self.assertIn(f"<span class='admin-metric-label'>{label}</span>", card)
+        self.assertEqual(card.count(">1</strong>"), 4)
+        # Plain numbers: no scope chips, icons or failure tone.
+        for absent in ('admin-scope-chip', 'admin-icon', "data-tone='danger'", '>Now<', 'All time'):
+            self.assertNotIn(absent, card)
+
+    def test_filter_bar_uses_installations_design_with_server_search(self):
+        body = self.render([device(), device('approved', identityMappings=[mapping('APPROVED')])])
+        opening = ("<form method='get' action='/admin/device-identification' class='filter-bar admin-filter-bar "
+                   "identification-filter-bar' id='identification-filters' role='search'>")
+        bar = body.split(opening, 1)[1].split('</form>', 1)[0]
+        self.assertLess(bar.index("class='quick-filter-group'"), bar.index("id='identification-search'"))
+        self.assertLess(bar.index("id='identification-search'"), bar.index("class='results-count'"))
+        self.assertLess(bar.index("class='results-count'"), bar.index('data-filter-clear'))
+        self.assertIn("data-default-filter='pending'", bar)
+        for state, label in (('all', 'All'), ('pending', 'Needs review'), ('approved', 'Approved'),
+                             ('rejected', 'Rejected'), ('missing', 'No source')):
+            pressed = 'true' if state == 'pending' else 'false'
+            self.assertIn(f"data-source-filter='{state}' aria-pressed='{pressed}'>{label}</button>", bar)
+        self.assertIn("name='q'", bar)
+        self.assertIn("aria-label='Clear model source filters' hidden>Clear</a>", bar)
+        searched = self.render([device()], query='fēnix')
+        self.assertIn("value='fēnix'", searched)
+        self.assertIn("data-has-query='true' aria-label='Clear model source filters'>Clear</a>", searched)
+        # Needs review is not preselected when no listed model needs review.
+        reviewed = self.render([device(identityMappings=[mapping('APPROVED')])])
+        self.assertIn("data-source-filter='all' aria-pressed='true'>All</button>", reviewed)
+
+    def test_table_sorts_without_records_line_and_uses_shared_pagination(self):
+        body = self.render([device()])
+        table = body.split("<table class='admin-table identification-table'>", 1)[1].split('</table>', 1)[0]
+        self.assertIn("<th scope='col'>Model</th><th scope='col'>Garmin code</th><th scope='col'>Source</th>"
+                      "<th scope='col' class='column-status'>State</th></tr>", table)
+        self.assertNotIn('Action', table)
+        self.assertIn("data-sort-value='0'", table)
+        self.assertIn("class='provider-pagination' id='identification-pagination'", body)
+        self.assertIn("addEventListener('admin:table-sorted'", body)
+        self.assertNotIn('records', body.split('<main', 1)[1].split('<script', 1)[0])
+
+    def test_detail_is_admin_cards_and_keeps_workflow_and_post_form(self):
+        main = self.render([device(), device('next', model='ZZZ')], device_id='watch').split('<main', 1)[1].split('</main>', 1)[0]
+        self.assertLess(main.index("class='back-link identification-workspace-nav'"), main.index('<h1>Model sources</h1>'))
+        self.assertIn('Next in queue', main)
+        self.assertIn("<article class='admin-card identity-mapping-source'>", main)
+        self.assertIn("<details class='admin-card admin-disclosure identification-technical'>", main)
+        self.assertNotIn('installation-kpis', main)
+        self.assertNotIn('identification-filters', main)
+        self.assertEqual(main.count("method='post' action='/admin/devices/identity-mapping'"), 1)
+        self.assertIn("name='csrf_token' value='csrf-test'", main)

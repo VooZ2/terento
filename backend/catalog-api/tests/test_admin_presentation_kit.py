@@ -8,17 +8,17 @@ import unittest
 from pathlib import Path
 
 from terento_catalog.admin import (
-    ADMIN_GLOSSARY,
     ADMIN_STYLES,
     _FA_ICONS,
     _PILL_ICONS,
+    _admin_header,
     _admin_icon,
     _empty_state,
     _metric_tile,
     _scope_chip,
     _section_card,
     _status_pill,
-    glossary_page,
+    account_page,
 )
 from terento_catalog.admin_brand_tokens_generated import ADMIN_BRAND_TOKENS_CSS
 
@@ -87,7 +87,7 @@ class AdminTableSortTests(unittest.TestCase):
 
     def test_every_admin_page_carries_the_shared_table_sorter(self):
         from terento_catalog.admin import _admin_table_sort_script
-        body = glossary_page({"username": "operator"}, "csrf").decode()
+        body = account_page({"username": "operator"}, "csrf").decode()
         self.assertIn("admin:table-sorted", body)
         script = _admin_table_sort_script()
         for fragment in ("dataset.sortValue", "time[datetime]", "aria-sort", "sort-indicator", "headStyle.clip"):
@@ -156,6 +156,18 @@ class AdminFilterDropdownTests(unittest.TestCase):
         ):
             self.assertIn(fragment, script)
         self.assertNotIn("innerHTML", script)
+
+    def test_dropdown_button_padding_is_owned_by_the_stylesheet(self):
+        # Owner review 2026-10-06: the selected text touched the field's left
+        # edge because the script copied the hidden native select's padding
+        # inline over the stylesheet padding.
+        from terento_catalog.admin import ADMIN_DROPDOWN_STYLES, _admin_dropdown_script
+        button_rule = re.search(r"\.admin-dropdown>button\.admin-dropdown-button\{([^}]*)\}", ADMIN_DROPDOWN_STYLES).group(1)
+        self.assertIn("padding:0 var(--admin-control-padding-x);", button_rule)
+        self.assertIn("gap:8px", button_rule)
+        script = _admin_dropdown_script()
+        self.assertNotRegex(script, r"['.]padding(Left|Right|Inline)?", "the button never copies padding from the native select")
+        self.assertIn("['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing']", script)
 
     def test_dropdown_styles_use_only_admin_tokens_and_font_awesome_icons(self):
         from terento_catalog.admin import ADMIN_DROPDOWN_STYLES
@@ -401,29 +413,19 @@ class AdminComponentKitTests(unittest.TestCase):
         self.assertIn(">Retry</a>", unavailable)
 
 
-class AdminGlossaryTests(unittest.TestCase):
-    REQUIRED = (
-        "Attempt", "Successful", "Failed", "Blocked before writing", "Open problem",
-        "Provider download", "Installation report", "Map update", "Update report",
-        "Terento app download", "Task",
-    )
+class AdminToolsMenuTests(unittest.TestCase):
+    """Owner decisions 2026-10-06: no Glossary and no Assignment log menu items."""
 
-    def test_glossary_defines_every_contract_term_once_with_an_anchor(self):
-        terms = [term for _, term, _ in ADMIN_GLOSSARY]
-        for required in self.REQUIRED:
-            self.assertIn(required, terms)
-        self.assertTrue(any(term.startswith("Install (fresh install)") for term in terms))
-        anchors = [anchor for anchor, _, _ in ADMIN_GLOSSARY]
-        self.assertEqual(len(anchors), len(set(anchors)))
-        for anchor in anchors:
-            self.assertRegex(anchor, r"^[a-z0-9-]+$")
-
-    def test_glossary_page_renders_inside_admin_chrome_and_links_resolve(self):
-        body = glossary_page({"username": "operator"}, "csrf").decode()
-        self.assertIn("<h1 id=\"glossary-title\">Glossary</h1>", body)
-        self.assertIn('href="/admin/glossary"', body)
-        for anchor, term, _ in ADMIN_GLOSSARY:
-            self.assertIn(f"id='{anchor}'", body)
+    def test_tools_menu_has_no_glossary_or_assignment_log_item(self):
+        header = _admin_header({"username": "operator"}, "csrf", active="test-data")
+        tools = header.split('<details class="admin-tools-menu">', 1)[1].split("</details>", 1)[0]
+        self.assertIn('href="/admin/test-data">Test data</a>', tools)
+        self.assertNotIn(">Glossary</a>", tools)
+        # The assignment log stays reachable at its URL but has no menu item.
+        self.assertNotIn("identity-audit.json", header)
+        self.assertNotIn("Assignment log", header)
+        # Neither the desktop nor the mobile menu (one shared header) links it.
+        self.assertNotIn("glossary", header.lower())
 
 
 if __name__ == "__main__":

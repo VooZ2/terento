@@ -26,3 +26,9 @@ def metric_tone(body: str, label: str) -> str | None:
         body,
     )
     return match.group(1) if match else None
+
+
+def visible_text(markup: str) -> str:
+    """Return the sighted-reader text of ``markup``: tags and ``sr-only`` spans removed."""
+    markup = re.sub(r"<span class='sr-only'>[^<]*</span>", "", markup)
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", markup)).strip()

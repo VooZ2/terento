@@ -12,7 +12,6 @@ from terento_catalog.admin import (
     _map_statistics_summary,
     dashboard_page,
     device_detail_page,
-    glossary_page,
     identity_review_page,
     missing_reports_page,
     device_identification_page,
@@ -366,7 +365,14 @@ def create(root: Path) -> None:
         for index in range(8)
     ]
     device = _admin_device_payload([device_row], None)["devices"][0]
-    (root / "devices.html").write_bytes(devices_page([device_row], None, user, "fixture"))
+    # A Maps: Unknown model keeps Pending policy above zero (danger tone).
+    pending_device_row = {
+        "device_id": "instinct-e-40", "model": "Instinct E", "variant": "40 mm",
+        "family_name": "Instinct", "map_capable": None, "active": True,
+        "support_status": "NOT_EVALUATED", "attempted_install_count": 0,
+        "successful_install_count": 0, "failed_install_count": 0, "usb_identities": [],
+    }
+    (root / "devices.html").write_bytes(devices_page([device_row, pending_device_row], None, user, "fixture"))
     (root / "devices-empty.html").write_bytes(devices_page([], None, user, "fixture"))
     update_rows = [
         {
@@ -452,6 +458,27 @@ def create(root: Path) -> None:
     (root / "identification-no-others.html").write_bytes(device_identification_page(
         [identification_device], user, "fixture", device_id="fenix-8-51-amoled",
     ))
+    # Model sources list: every state, more than one 25-row page.
+    source_states = ("PENDING", "APPROVED", "REJECTED", None)
+    source_list = [*ambiguous_devices, *[
+        {
+            "id": f"preview-model-{index}", "model": f"Forerunner {200 + index * 5}",
+            "variant": "AMOLED" if index % 2 else "MIP", "mapCapable": index % 3 != 0,
+            "identityMappings": [] if source_states[index % 4] is None else [{
+                "id": 100 + index, "kind": "XML_PART_NUMBER", "value": f"006-B{4000 + index}-00",
+                "status": source_states[index % 4], "source_url": "https://www.garmin.com/",
+                "source_version": "2026-09 catalog review",
+                "source_names": [f"Forerunner {200 + index * 5}"], "history": [],
+            }],
+        }
+        for index in range(1, 37)
+    ]]
+    (root / "identification-list.html").write_bytes(device_identification_page(
+        source_list, user, "fixture",
+    ))
+    (root / "identification-list-search.html").write_bytes(device_identification_page(
+        source_list, user, "fixture", query="fēnix",
+    ))
     (root / "installations-empty.html").write_bytes(dashboard_page(
         [], user, "fixture", diagnostic_summary={},
     ))
@@ -471,7 +498,6 @@ def create(root: Path) -> None:
         operations=[event for event in identity_operations if event["compatibility_identity"] == "fēnix 8"],
         resolved_operations=identity_resolved, identity_devices=identity_devices, unresolved_only=True,
     ))
-    (root / "glossary.html").write_bytes(glossary_page(user, "fixture"))
     (root / "missing-reports.html").write_bytes(missing_reports_page({
         "rows": [{
             "event_type": "INSTALL_FAILED", "outcome": "FAILED",

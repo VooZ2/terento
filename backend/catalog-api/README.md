@@ -605,9 +605,10 @@ assessment in the append-only decision audit; the original ingestion assessment
 is never overwritten. Neither correction nor mapping approval silently
 reassigns events. Public compatibility approval remains a separate action.
 
-Authenticated model/installation details show checks and provenance; Devices
-links to the read-only `/admin/devices/identity-audit.json` report, including
-classification and hypothetical count/status impact. Old assignments may be
+Authenticated model/installation details show checks and provenance. The
+read-only `/admin/devices/identity-audit.json` report, including classification
+and hypothetical count/status impact, is opened by its URL; Admin menus carry no
+link to it (owner decision 2026-10-06). Old assignments may be
 changed only after the owner separately approves that report. New unresolved
 reports remain reviewable and cannot inherit a text-label public approval.
 Assessment version 2 treats legacy model-field review statuses such as
@@ -696,8 +697,10 @@ missing terminal receipt is explicit rather than treated as an active job.
 
 `/admin/device-identification` is visibly named `Model sources`. It lists
 models needing source decisions first and searches model names and imported
-codes. Each decision follows Source reported, Match to, Other models using this
-code when relevant, Confirm match, then Technical details. Raw identifiers,
+codes, with the summary card, filter bar and table layout of the other Admin
+lists (see `docs/admin-behavior-contract.md`). Each decision follows Source
+says ⇄ Catalog model, Same code when relevant, Confirm, then Technical
+details. Raw identifiers,
 source revision, policy details, missing-source inventory, and decision history
 remain secondary. Shared codes and approved sources are not presented as exact
 matches.

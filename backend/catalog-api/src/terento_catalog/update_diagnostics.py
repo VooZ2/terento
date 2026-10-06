@@ -305,31 +305,9 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
         if embedded:
             parameters = {'updateOutcome': parameters['outcome'], 'updateOffset': parameters.get('offset', 0)}
         return base_url + ('&' if '?' in base_url else '?') + urlencode({k: v for k, v in parameters.items() if v != ''}) + ('#updates' if embedded else '')
-    from .admin import _operation_map_label, _scope_chip
     if embedded:
         return _embedded_update_history_markup(data, url)
-    title = 'Reports'
-    result = (
-        f"<section class='model-page-section admin-card' id='updates' aria-labelledby='update-history-title'><header class='admin-card-head'><h2 id='update-history-title'>{title}</h2>"
-        f"{_scope_chip('all')}</header>"
-    )
-    result += "<div class='filter-bar diagnostic-filter-bar'><nav class='quick-filter-group' aria-label='Filter update reports'>"
-    for value, label in _UPDATE_OUTCOME_FILTERS:
-        active = selected == value
-        result += f"<a class='quick-filter{' active' if active else ''}' href='{html.escape(url(outcome=value, offset=0), quote=True)}'{' aria-current="true"' if active else ''}>{label}</a>"
-    result += "</nav></div><div class='table-wrap'><table class='diagnostic-list-table mobile-record-table'><caption class='sr-only'>Reported map update results</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody>"
-    for row in data.get('rows', []):
-        payload = row.get('payload') if isinstance(row.get('payload'), dict) else {}
-        link = '/admin/update-diagnostics?' + urlencode({'diagnosticId': str(row['event_id'])})
-        result += f"<tr><td data-label='Date'>{_timestamp_markup(row.get('occurred_at'))}</td><td data-label='Map'>{_escape(_operation_map_label([row]))}</td><td data-label='Result'>{_diagnostic_result(row.get('outcome'))}</td><td data-label='GitHub issue'>{_github_issue_link(row.get('linked_github_issue'))}</td><td data-label='App version'>{_escape(_admin_app_version_label(payload.get('terentoVersion'), payload.get('appBuild')))}</td><td data-label='Action'><a href='{html.escape(link, quote=True)}'>Inspect update</a></td></tr>"
-    if not data.get('rows'):
-        result += "<tr><td colspan='6'>No update reports match this filter. Reports appear when diagnostic sharing is enabled.</td></tr>"
-    result += '</tbody></table></div><nav class="provider-pagination" aria-label="Update history pages">'
-    if data.get('offset', 0):
-        result += f"<a class='secondary-button' href='{html.escape(url(offset=max(0, data['offset'] - 50)), quote=True)}'>Previous updates</a>"
-    if data.get('has_more'):
-        result += f"<a class='secondary-button' href='{html.escape(url(offset=data.get('offset', 0) + 50), quote=True)}'>Next updates</a>"
-    return result + '</nav></section>'
+    return _report_list_markup(data, base_url)
 
 
 # Same order and labels as the Installation history quick filters (owner decision 2026-10-06).
@@ -403,42 +381,180 @@ def _embedded_update_history_markup(data: dict[str, Any], url: Any) -> str:
     return result + '</section>'
 
 
+def _linked_issue(row: dict[str, Any]) -> str | None:
+    from .admin import _normalise_github_issue_reference
+    try:
+        return _normalise_github_issue_reference(row.get('linked_github_issue'))
+    except ValueError:
+        return None
+
+
+def _report_list_markup(data: dict[str, Any], base_url: str) -> str:
+    """The Update reports list, laid out like Installations (owner decision 2026-10-06).
+
+    No card or title wraps the list: the quick-filter bar sits directly above the
+    table. Filtering and paging stay server-side, so the quick filters are links
+    marked with ``aria-current`` and Clear appears only while a filter is active.
+    The GitHub issue column appears only when a listed report has a linked issue.
+    """
+    from .admin import (_timestamp_markup, _diagnostic_result, _github_issue_link,
+                        _admin_app_version_label, _operation_map_label)
+    selected = data.get('outcome', '') or ''
+    lifecycle = data.get('lifecycle', '') or ''
+    rows = data.get('rows') or []
+    offset = data.get('offset', 0) or 0
+
+    def url(**values: Any) -> str:
+        parameters = {'deviceId': data.get('device_id', '') or '', 'outcome': selected,
+                      'lifecycle': lifecycle, 'offset': offset}
+        parameters.update(values)
+        query = urlencode({key: value for key, value in parameters.items() if value not in ('', 0, None)})
+        return base_url + ('?' + query if query else '')
+
+    filtered = bool(selected or lifecycle)
+    section = "<section class='update-report-list' id='updates' aria-label='Update report list'>"
+    if not rows and not filtered and not offset:
+        return ("<section class='update-report-list compact-empty-state' id='updates' aria-label='Update report list'>"
+                "<p>No update reports yet. Reports appear when diagnostic sharing is enabled.</p></section>")
+    filters = ''
+    for value, label in _UPDATE_OUTCOME_FILTERS:
+        active = selected == value
+        current = " aria-current='page'" if active else ''
+        filters += (f"<a class='quick-filter{' active' if active else ''}' "
+                    f"href='{html.escape(url(outcome=value, offset=0), quote=True)}'{current}>{label}</a>")
+    clear = (f"<a class='secondary-button filter-clear' href='{html.escape(url(outcome='', lifecycle='', offset=0), quote=True)}' "
+             "aria-label='Clear update report filters'>Clear</a>") if filtered else ''
+    result = (section + "<nav class='filter-bar diagnostic-filter-bar update-report-filters' aria-label='Filter update reports'>"
+              f"<div class='quick-filter-group'>{filters}</div>{clear}</nav>")
+    if rows:
+        show_issue = any(_linked_issue(row) for row in rows)
+        issue_head = "<th scope='col'>GitHub issue</th>" if show_issue else ''
+        result += (
+            "<div class='table-wrap update-report-table-wrap'><table class='diagnostic-list-table update-history-table update-report-table mobile-record-table'>"
+            "<caption class='sr-only'>Reported map update results</caption><thead><tr>"
+            "<th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th>"
+            f"{issue_head}<th scope='col'>App version</th><th scope='col' class='column-status'>Action</th>"
+            "</tr></thead><tbody>"
+        )
+        for index, row in enumerate(rows):
+            payload = row.get('payload') if isinstance(row.get('payload'), dict) else {}
+            link = '/admin/update-diagnostics?' + urlencode({'diagnosticId': str(row['event_id'])})
+            release = _admin_app_version_label(payload.get('terentoVersion'), payload.get('appBuild'))
+            release_markup = _escape(release) if release != '—' else "<span class='muted-value'>—</span>"
+            issue_cell = (f"<td data-label='GitHub issue'>{_github_issue_link(row.get('linked_github_issue'))}</td>"
+                          if show_issue else '')
+            result += (
+                f"<tr><td class='column-date' data-label='Date'>{_timestamp_markup(row.get('occurred_at'))}</td>"
+                f"<td class='history-map' data-label='Map'>{_escape(_operation_map_label([row]))}</td>"
+                f"<td class='column-status' data-label='Result'>{_diagnostic_result(row.get('outcome'))}</td>"
+                f"{issue_cell}<td data-label='App version'>{release_markup}</td>"
+                "<td class='column-status' data-label='Action'><a class='secondary-button update-history-inspect' "
+                f"href='{html.escape(link, quote=True)}' aria-label='Inspect update {offset + index + 1}'>Inspect</a></td></tr>"
+            )
+        result += '</tbody></table></div>'
+    else:
+        result += "<p class='results-count update-report-empty' role='status'>No update reports match this filter.</p>"
+    pages = ''
+    if offset:
+        pages += (f"<a class='secondary-button' href='{html.escape(url(offset=max(0, offset - 50)), quote=True)}' "
+                  "aria-label='Previous update reports'>Previous</a>")
+    if data.get('has_more'):
+        pages += (f"<a class='secondary-button' href='{html.escape(url(offset=offset + 50), quote=True)}' "
+                  "aria-label='Next update reports'>Next</a>")
+    if pages:
+        result += f"<nav class='provider-pagination' aria-label='Update report pages'>{pages}</nav>"
+    return result + '</section>'
+
+
 def _update_totals_markup(totals: dict[str, Any] | None) -> str:
-    """Report tiles for the list scope; the stream is update reports, not Maps updates."""
-    from .admin import _metric_row, _metric_tile
+    """One summary card for the list scope, laid out like the Installations card:
+    plain numbers without scope chips (owner decision 2026-10-06). The stream is
+    update reports, not Maps updates. Failed and Open turn red only when positive;
+    Open links to the open failed reports only when there are any."""
+    from .admin import _metric_row, _metric_tile, _optional_nonnegative_int
     state = None if totals is not None else 'unavailable'
     totals = totals or {}
 
-    def tile(label: str, key: str, *, failure: bool = False, href: str | None = None) -> str:
-        return _metric_tile(label, totals.get(key), scope='all', state=state, failure=failure,
-                            href=href, data_stat=key)
+    def tile(label: str, key: str, *, failure: bool = False, href: str | None = None, hint: str | None = None) -> str:
+        return _metric_tile(label, totals.get(key), state=state, failure=failure,
+                            href=href, data_stat=key, hint=hint)
 
-    return _metric_row([
+    open_href = ('/admin/update-diagnostics?outcome=failed&lifecycle=ACTIVE'
+                 if (_optional_nonnegative_int(totals.get('open_failed')) or 0) > 0 else None)
+    tiles = _metric_row([
         tile('Reports', 'total'),
         tile('Successful', 'succeeded'),
         tile('Failed', 'failed', failure=True),
         tile('Blocked', 'not_started'),
-        tile('Open', 'open_failed', failure=True, href='/admin/update-diagnostics?outcome=failed&lifecycle=ACTIVE'),
+        tile('Open', 'open_failed', failure=True, href=open_href,
+             hint='Failed update reports that are not resolved'),
     ], label='Update report totals')
+    return f"<section class='admin-card installation-kpis update-report-kpis' aria-label='Update report summary'>{tiles}</section>"
+
+
+def _update_identity_section(row: dict[str, Any]) -> str:
+    """Device identity last, as in the installation dialog, but read-only: an
+    update report takes its exact model only from the server assessment and
+    has no identity assignment action."""
+    payload = row.get('payload') if isinstance(row.get('payload'), dict) else {}
+    model_markup, variant, _ = _update_identity(row)
+    if row.get('canonical_device_model_id'):
+        catalog = f"{model_markup}" + (f" · {_escape(variant)}" if variant and variant != 'Unknown' else '')
+        note = 'Exact catalog model from the server assessment of this report.'
+    else:
+        catalog = "<span class='muted-value'>Not assigned</span>"
+        note = ('Exact identity unassigned. Update reports have no identity assignment here; '
+                'the reported model text never links to a device.')
+    facts = ''.join(f'<div><dt>{label}</dt><dd>{value}</dd></div>' for label, value in (
+        ('Catalog model', catalog),
+        ('Reported model', _escape(payload.get('model') or 'Unknown')),
+        ('Reported variant', _escape(payload.get('variant') or 'Unknown'))))
+    return ("<section class='diagnostic-section diagnostic-identity-section update-identity-section' "
+            "aria-labelledby='update-identity-title'><h3 id='update-identity-title'>Device identity</h3>"
+            f"<dl class='diagnostic-detail-summary'>{facts}</dl><p class='table-help'>{note}</p></section>")
 
 
 def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_token: str) -> bytes:
     from .admin import _admin_header, _admin_icon, _layout, _timestamp_markup, _diagnostic_result, _diagnostics_script, _admin_app_version_label, _operation_map_label, _diagnostic_state_badge, _diagnostic_heading, _diagnostic_outcome_sections
     content = _admin_header(user, csrf_token, active='update-diagnostics')
-    content += (
-        "<main id='main-content' class='dashboard provider-detail update-diagnostics-page'>"
-        "<div class='heading-row'><h1>Update reports</h1>"
-        "<a class='section-link' href='/admin/update-diagnostics'>All update reports</a></div>"
-    )
-    if data.get('status'):
-        content += f"<section class='provider-card admin-card'><h2>Report status</h2><p>{_escape(data['status'])}</p></section>"
     detail = data.get('detail')
     event = data.get('event')
-    if detail or event:
+    # A diagnosticId/eventId lookup (found, event-only or not found) is a detail
+    # view: a list response always carries ``totals`` (possibly None).
+    lookup = bool(detail or event) or (bool(data.get('status')) and 'totals' not in data
+                                       and not data.get('device_id') and not data.get('rows'))
+    status = (f"<section class='admin-card update-report-status' aria-labelledby='update-report-status-title'>"
+              f"<h2 id='update-report-status-title'>Report status</h2><p>{_escape(data['status'])}</p></section>"
+              if data.get('status') else '')
+    page_title = 'Update reports'
+    if lookup:
+        row = detail or event
+        heading = _diagnostic_heading(row.get('outcome'), update=True) if row else 'Update report not found'
+        page_title = f'{heading} · Update reports'
+        # Detail pages lead with a back link and the result as the heading,
+        # like the other Admin detail pages (owner decision 2026-10-06).
+        content += (
+            "<main id='main-content' class='dashboard update-diagnostics-page update-report-detail'>"
+            f"<p class='back-link'><a href='/admin/update-diagnostics'>{_admin_icon('arrow-left')} Update reports</a></p>"
+            f"<div class='heading-row'><div><h1>{_escape(heading)}</h1></div></div>"
+        )
+    else:
+        content += "<main id='main-content' class='dashboard update-diagnostics-page update-report-list-page'>"
+        if data.get('device'):
+            from .admin import _identity_parts, _device_detail_url
+            model, variant, _ = _identity_parts(data['device'])
+            content += (f"<p class='back-link'><a href='{html.escape(_device_detail_url(data['device_id']), quote=True)}'>"
+                        f"{_admin_icon('arrow-left')} {_escape(model)} · {_escape(variant)}</a></p>")
+        meta = 'All time · This model' if data.get('device_id') else 'All time · Reports received'
+        content += f"<div class='heading-row'><div><h1>Update reports</h1></div><p class='page-meta'>{meta}</p></div>{status}"
+    if lookup and (detail or event):
         row = detail or event
         payload = row.get('payload') if isinstance(row.get('payload'), dict) else {}
         model, variant, _ = _update_identity(row)
-        content += f"<section class='provider-card'><h2>{_diagnostic_heading(row.get('outcome'), update=True)}</h2><dl class='diagnostic-detail-summary'>"
+        if not row.get('canonical_device_model_id'):
+            # The identity qualification is shown in Device identity, last.
+            model = _escape(payload.get('model') or 'Unknown model')
+        content += "<section class='admin-card update-report-card' aria-labelledby='update-report-summary-title'><h2 id='update-report-summary-title' class='sr-only'>Report summary</h2><dl class='diagnostic-detail-summary'>"
         fields = [('Operation', 'Map update'), ('Device', model), ('Variant', _escape(variant)),
             ('Date', _timestamp_markup(row.get('occurred_at'))),
             ('Map / region', _escape(_operation_map_label([row]))),
@@ -457,20 +573,19 @@ def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_tok
             content += _diagnostic_outcome_sections(_escape(reason), _escape(action), safety)
             provider = row.get('provider')
             if payload.get('failureCode') in {'UPDATE_FAILED_ACQUISITION', 'UPDATE_FAILED_SOURCE_VALIDATION'} and payload.get('failureStage') != 'preflight' and provider in {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike'}:
-                content += f"<p><a class='secondary-button' href='/admin/providers/{provider}'>Review provider packages</a></p>"
+                content += f"<p class='update-provider-action'><a class='secondary-button' href='/admin/providers/{provider}'>Review provider packages</a></p>"
             if _uuid(row.get('event_id')):
                 content += _update_review_controls(row, csrf_token, '/admin/update-diagnostics?' + urlencode({'diagnosticId': str(row['event_id'])}))
+            content += _update_identity_section(row)
         content += '</section>'
+    if lookup:
+        # Summary facts first; a missing or ambiguous report explains itself below them.
+        content += status
     else:
-        device = data.get('device')
-        if device:
-            from .admin import _identity_parts, _device_detail_url
-            model, variant, _ = _identity_parts(device)
-            content += f"<p><a href='{html.escape(_device_detail_url(data['device_id']), quote=True)}'>{_escape(model)} · {_escape(variant)}</a></p>"
         if data.get('device_id'):
             content += update_summary_markup(data.get('summary') or {}, data['device_id'])
         else:
             content += _update_totals_markup(data.get('totals'))
         content += update_history_markup(data)
     from .admin import _script_tag
-    return _layout('Update reports', content + '</main>' + _script_tag(_diagnostics_script()))
+    return _layout(page_title, content + '</main>' + _script_tag(_diagnostics_script()))

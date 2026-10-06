@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from typing import NamedTuple
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
@@ -19,8 +20,15 @@ DESTINATIONS = {
     "compatibility": "https://terento.app/compatibility/",
 }
 
+DESTINATION_OPTIONS = (
+    ("home", "Home"),
+    ("download", "Download"),
+    ("compatibility", "Compatibility"),
+)
+
 SOURCE_OPTIONS = (
     ("reddit", "Reddit"),
+    ("garmin_forum", "Garmin forum"),
     ("github", "GitHub"),
     ("discord", "Discord"),
     ("facebook", "Facebook"),
@@ -40,6 +48,41 @@ MEDIUM_OPTIONS = (
 )
 
 CAMPAIGN_SUGGESTIONS = ("early_beta", "launch", "compatibility", "community")
+
+
+class Channel(NamedTuple):
+    """Where a link is shared, with its fixed ``utm_source`` and ``utm_medium``.
+
+    ``other`` has no fixed pair: the operator types the source and picks a
+    medium.  ``content_hint`` is the example shown for ``utm_content``.
+    """
+
+    key: str
+    label: str
+    source: str
+    medium: str
+    content_hint: str
+
+
+CHANNELS = (
+    Channel("reddit", "Reddit post", "reddit", "community", "Subreddit or thread, e.g. r_garmin"),
+    Channel("garmin_forum", "Garmin forum", "garmin_forum", "community", "Forum section or thread, e.g. fenix_8"),
+    Channel("github", "GitHub", "github", "referral", "Page or issue, e.g. readme"),
+    Channel("discord", "Discord", "discord", "community", "Server or channel, e.g. garmin_hikers"),
+    Channel("facebook", "Facebook group", "facebook", "social", "Group name, e.g. fenix_owners"),
+    Channel("x", "X post", "x", "social", "Post or thread, e.g. launch_thread"),
+    Channel("email", "Email", "email", "email", "Newsletter or message, e.g. october_update"),
+    Channel("other", "Other", "", "", "Placement, e.g. blog_sidebar"),
+)
+
+CHANNEL_BY_KEY = {channel.key: channel for channel in CHANNELS}
+
+# Default medium offered for the ``other`` channel.
+OTHER_CHANNEL_DEFAULT_MEDIUM = "referral"
+
+# The public site forwards a UTM value to Umami only when it matches
+# ``^[A-Za-z0-9._~-]{1,80}$`` (site/privacy-consent.js); longer values are dropped.
+MAX_VALUE_LENGTH = 80
 
 UTM_KEYS = {"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"}
 
@@ -76,23 +119,53 @@ def _destination_url(destination: str, custom_destination: str | None = None) ->
     return urlunsplit(("https", "terento.app", parsed.path or "/", parsed.query, parsed.fragment))
 
 
+def channel_source_medium(
+    channel: str, *, custom_source: str = "", medium: str = "", custom_medium: str = "",
+) -> tuple[str, str]:
+    """Return the normalized ``(utm_source, utm_medium)`` pair for a channel.
+
+    Fixed channels ignore the custom arguments, so one channel is always
+    counted the same way.  ``other`` uses ``custom_source`` and ``medium``
+    (``custom_medium`` when ``medium`` is ``other``).
+    """
+
+    entry = CHANNEL_BY_KEY.get(channel)
+    if entry is None:
+        raise ValueError("Unknown channel")
+    if entry.key != "other":
+        return entry.source, entry.medium
+    medium_value = custom_medium if medium == "other" else medium
+    return normalize_value(custom_source), normalize_value(medium_value)
+
+
 def build_campaign_url(
     *,
     destination: str,
-    source: str,
-    medium: str,
     campaign: str,
+    channel: str = "",
+    source: str = "",
+    medium: str = "",
     content: str = "",
     term: str = "",
     custom_destination: str = "",
     custom_source: str = "",
     custom_medium: str = "",
 ) -> str:
-    """Build a canonical campaign URL or raise ``ValueError`` when incomplete."""
+    """Build a canonical campaign URL or raise ``ValueError`` when incomplete.
+
+    With ``channel`` the source and medium come from :data:`CHANNELS`;
+    without it ``source`` and ``medium`` are used directly (``other`` selects
+    the matching custom value).
+    """
 
     destination_url = _destination_url(destination, custom_destination)
-    source_value = normalize_value(custom_source if source == "other" else source)
-    medium_value = normalize_value(custom_medium if medium == "other" else medium)
+    if channel:
+        source_value, medium_value = channel_source_medium(
+            channel, custom_source=custom_source, medium=medium, custom_medium=custom_medium,
+        )
+    else:
+        source_value = normalize_value(custom_source if source == "other" else source)
+        medium_value = normalize_value(custom_medium if medium == "other" else medium)
     campaign_value = normalize_value(campaign)
     if not source_value or not medium_value or not campaign_value:
         raise ValueError("Source, medium, and campaign are required")
@@ -106,6 +179,8 @@ def build_campaign_url(
     params = existing + [("utm_source", source_value), ("utm_medium", medium_value), ("utm_campaign", campaign_value)]
     content_value = normalize_value(content)
     term_value = normalize_value(term)
+    if any(len(value) > MAX_VALUE_LENGTH for value in (source_value, medium_value, campaign_value, content_value, term_value)):
+        raise ValueError(f"UTM values must be at most {MAX_VALUE_LENGTH} characters")
     if content_value:
         params.append(("utm_content", content_value))
     if term_value:

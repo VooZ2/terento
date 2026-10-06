@@ -6,6 +6,73 @@ from terento_catalog.admin import *
 from terento_catalog.admin import _admin_device_payload, _system_health_card, _indexnow_card, _diagnostic_summary_by_identity, _map_statistics_summary
 
 
+_HEALTH_KEYS=('website_status','catalog_status','redirect_status','download_status','mime_status','magic_status','zip_status','img_status','last_update_status')
+
+
+def _provider_detail_fixture(summary):
+    """A dense provider: package issues, long audit reasons, checks, runs, sources and preview layers."""
+    regions=['Lithuania','Latvia','Estonia','Poland','Germany','Austria','Switzerland','Czechia','Slovakia','Hungary',
+             'Slovenia','Croatia','Italy','France','Spain','Portugal','Belgium','Netherlands','Denmark','Norway',
+             'Sweden','Finland','Iceland','Ireland','Romania','Bulgaria','Greece','Albania']
+    broken={'Germany':'The download server returned HTTP 404 for this file.','Austria':'The download server returned HTTP 404 for this file.',
+            'Italy':'The download server returned HTTP 404 for this file.','France':'The archive is not a valid ZIP file.',
+            'Spain':'The download server returned HTTP 404 for this file.','Norway':'The download server returned HTTP 404 for this file.',
+            'Greece':'The download server returned HTTP 404 for this file.'}
+    maps=[]
+    for index,region in enumerate(regions):
+        slug=region.lower()
+        failed=region in broken
+        artifacts=[{'kind':'main','validation_status':'FAILED' if failed else 'VALIDATED','size_bytes':180_000_000+index,'install_size_bytes':240_000_000,
+                    'source_url':f'https://download.freizeitkarte-osm.de/garmin/latest/freizeitkarte_{slug}.img.zip','source_updated_at':'2026-09-14',
+                    'last_check':{'message':broken[region],'nextAction':'Recheck after the provider publishes a fixed file.','checkedAt':'2026-09-17T09:12:00Z'} if failed else {}}]
+        if index%4==0:
+            artifacts.append({'kind':'contours','validation_status':'VALIDATED','source_url':f'https://download.freizeitkarte-osm.de/garmin/latest/contours_{slug}.img.zip'})
+        maps.append({'id':f'freizeitkarte-{slug}','name':region,'region':region,'release':'2026-09' if index%5 else '2026-08',
+                     'availability':'UNAVAILABLE' if failed else 'AVAILABLE','artifact_count':len(artifacts),'broken_artifact_count':1 if failed else 0,
+                     'artifacts':artifacts,'downloads_disabled':region=='Iceland','downloads_disabled_reason':'Provider asked us to pause this region.' if region=='Iceland' else None})
+    download_sources=[{'source_type':'DOWNLOAD','source_url':a['source_url'],'enabled':True,'validation_status':a['validation_status'],'last_checked_at':'2026-09-17T09:12:00Z'}
+                      for m in maps for a in m['artifacts']]
+    original=[{'source_type':kind,'source_url':url,'enabled':True,'validation_status':'VALIDATED','last_checked_at':f'2026-09-1{7-i}T08:4{i}:00Z'}
+              for i,(kind,url) in enumerate((('WEBSITE','https://www.freizeitkarte-osm.de/garmin/en/'),
+                                            ('CATALOG','https://www.freizeitkarte-osm.de/garmin/en/downloads.html?catalog=europe&format=img&sort=region'),
+                                            ('LICENSE','https://www.freizeitkarte-osm.de/garmin/en/licence.html'),
+                                            ('CATALOG','https://download.freizeitkarte-osm.de/garmin/latest/manifest-europe-with-a-very-long-name.json')))]
+    def check(day,hour,status='HEALTHY',**extra):
+        record={'status':status,'checked_at':f'2026-09-{day:02d}T{hour:02d}:30:00Z','http_status':200,'duration_ms':125+day,'artifact_count':12,**{key:'HEALTHY' for key in _HEALTH_KEYS}}
+        record.update(extra)
+        return record
+    health=[check(17,10),check(17,4),check(16,22,'DEGRADED',download_status='DEGRADED',error_detail='Two sampled downloads answered slower than 20 seconds.'),
+            check(16,16),check(16,10),check(15,22,'DOWN',download_status='DOWN',http_status=503,error_detail='The download server answered 503 Service Unavailable.'),
+            check(15,16),check(15,10)]
+    runs=[{'id':40-i,'status':'FAILED' if i==3 else 'SUCCEEDED','started_at':f'2026-09-{17-i:02d}T10:10:00Z','finished_at':f'2026-09-{17-i:02d}T10:20:00Z',
+           'package_count':28,'artifact_count':35,'new_package_count':0 if i else 1,'updated_package_count':200 if i==1 else 0,
+           'release_change_detected':i==1,'latest_release':'2026-09','error_code':'catalog_timeout' if i==3 else None} for i in range(10)]
+    many=[{'region':f'Region {n:03d}','packageId':f'freizeitkarte-r{n}','previousRelease':'2026-08','release':'2026-09'} for n in range(200)]
+    audits=[
+        {'action':'CATALOG_RELEASES_UPDATED','reason':'200 map releases changed during catalog collection','occurred_at':'2026-09-16T10:20:00Z','target':'freizeitkarte','details':{'packages':many}},
+        {'action':'provider.previews_enabled','old_status':'ACTIVE','new_status':'ACTIVE','reason':'Map styles page needs comparison tiles.','occurred_at':'2026-09-15T18:02:00Z','admin_user_id':1},
+        {'action':'package.downloads_disabled','reason':'Provider asked us to pause Iceland while they rebuild the contour layer; re-enable after their announcement.','occurred_at':'2026-09-15T12:44:00Z','admin_user_id':1,'target':'freizeitkarte-iceland'},
+        {'action':'provider.health_schedule_changed','reason':'Every 6 hours','occurred_at':'2026-09-14T09:00:00Z','admin_user_id':1},
+        {'action':'provider.status_changed','old_status':'PAUSED','new_status':'ACTIVE','reason':'Download server is back.','occurred_at':'2026-09-13T08:15:00Z','admin_user_id':1},
+        {'action':'provider.status_changed','old_status':'ACTIVE','new_status':'PAUSED','reason':'Download server returns 503 for every region.','occurred_at':'2026-09-12T21:40:00Z','admin_user_id':1},
+        {'action':'CATALOG_RELEASES_UPDATED','reason':'6 map releases changed during catalog collection','occurred_at':'2026-09-10T10:20:00Z','details':{'packages':many[:6]}},
+        {'action':'provider.catalog_collected','reason':None,'occurred_at':'2026-09-09T10:20:00Z'},
+        {'action':'provider.health_checked','reason':None,'occurred_at':'2026-09-08T10:20:00Z'},
+        {'action':'package.downloads_enabled','reason':'Fixed upstream.','occurred_at':'2026-09-07T10:20:00Z','target':'freizeitkarte-latvia'},
+    ]
+    styles=('freizeitkarte','opentopomap','outdoor')
+    layers=[{'area_id':f'alps-{n}','style_id':styles[n%3],'status':('AVAILABLE','AVAILABLE','PENDING','FAILED','NOT_COVERED')[n%5],
+             'package_id':f'freizeitkarte-{regions[n].lower()}','package_version':'2026-09','rendered_at':'2026-09-16T02:10:00Z' if n%5<2 else None,
+             'error_code':'render_timeout' if n%5==3 else None,'error_message':'Rendering stopped after 120 seconds.' if n%5==3 else None} for n in range(14)]
+    detail=dict(summary,maps=maps,sources=original+download_sources,healthStatus='HEALTHY',healthHistory=health,activationGate={'canActivate':True},
+                affectedPackageCount=len(broken),adapterId='freizeitkarte',website='https://www.freizeitkarte-osm.de/garmin/en/',
+                license='ODbL 1.0 (map data) · CC BY-SA 4.0 (styles)',attribution='© OpenStreetMap contributors · Freizeitkarte',
+                licenseUrl='https://www.freizeitkarte-osm.de/garmin/en/licence.html',
+                monitoring={'intervalHours':6,'nextCheckAt':'2026-09-17T16:30:00Z','stale':False},
+                previews={'enabled':True,'layers':layers})
+    return detail,runs,audits
+
+
 def build(root):
     root=Path(root); user={'username':'Preview', 'admin_review_summary':{'available':True,'installationIssues':20,'githubIssuesInProgress':5,'identityPending':12,'readyToPublish':3,'missingDiagnostics':8,'total':48}}
     rows=[{'model':f'fēnix {i+1} Very Long Authentic Model Name', 'compatibility_identity':f'model-{i}', 'canonical_device_model_id':f'model-{i}',
@@ -67,13 +134,18 @@ def build(root):
         'modelsNeedingReview':[{'baseModel':'fenix 8','outcome':'PENDING','sessionCount':4},{'baseModel':'Forerunner 965','outcome':'UNKNOWN_MODEL','sessionCount':1}]}
     overview['supportReports']={'openCount':3}
     overview['mapsUnknown']={'modelCount':2}
-    overview['system']={'api':'HEALTHY','database':'HEALTHY','providers':providers,'observations':[],'scheduler':None,'weekly':None}
+    # One failed scheduler heartbeat: Needs attention shows one System checks row.
+    overview['system']={'api':'HEALTHY','database':'HEALTHY','providers':providers,'observations':[],'weekly':None,
+                        'scheduler':{'status':'FAILED','error_summary':'Catalog collector exited with an error.','updated_at':'2026-09-17T10:30:00Z'}}
     device=_admin_device_payload([{'device_id':'model-0','model':'fēnix 8','variant':'51 mm, AMOLED','family_name':'fēnix','map_capable':True,'active':True,'support_status':'SUPPORTED','usb_identities':[]}],None)['devices'][0]
-    detail=dict(providers[0],maps=[],sources=[],healthStatus='HEALTHY',healthHistory=[{'status':'HEALTHY','checked_at':'2026-09-17T10:30:00Z','http_status':200,'duration_ms':125,'artifact_count':180,**{key:'HEALTHY' for key in ('website_status','catalog_status','redirect_status','download_status','mime_status','magic_status','zip_status','img_status','last_update_status')}}],activationGate={'canActivate':True})
+    detail,provider_runs,provider_audits=_provider_detail_fixture(providers[0])
+    # The list exercises a positive Issues cell next to measured zeros.
+    provider_list=[*providers[:2],dict(providers[2],health='DEGRADED',affectedPackageCount=2,problematicSourceCount=2)]
     pages={'overview':overview_page(overview,user,'fixture'),'installations':dashboard_page(rows,user,'fixture',diagnostic_summary=summary),
-       'providers':providers_page(providers,user,'fixture'),'provider':provider_detail_page({'provider':detail},[{'id':1,'status':'SUCCEEDED','package_count':180,'artifact_count':180,'finished_at':'2026-09-17T10:20:00Z'}],[],user,'fixture'),
+       'providers':providers_page(provider_list,user,'fixture'),'provider':provider_detail_page({'provider':detail},provider_runs,provider_audits,user,'fixture'),
        'statistics':map_statistics_page(stats,providers,user,'fixture'),'device':device_detail_page(device,user,'fixture'),'devices':devices_page([],None,user,'fixture')}
-    cards=[_system_health_card(f'Check {i+1}', 'FAILED' if i<5 else 'WARNING' if i<10 else 'HEALTHY', '<p>Packages: 180</p>', {'observed_at':'2026-09-17T10:30:00Z'},reason='Catalog request timed out' if i<10 else '',action='Inspect collection history') for i in range(50)]
+    # 50 checks spread over the four Health groups (Technical details tabs).
+    cards=[_system_health_card(f'Check {i+1}', 'FAILED' if i<5 else 'WARNING' if i<10 else 'HEALTHY', '<p>Packages: 180</p>', {'observed_at':'2026-09-17T10:30:00Z'},reason='Catalog request timed out' if i<10 else '',action='Inspect collection history',group=('service','releases','catalogs','search')[i%4]) for i in range(50)]
     cards.append(_indexnow_card({
         'status':'WARNING', 'observed_at':'2026-09-17T10:30:00Z',
         'source_run_url':'https://github.com/VooZ2/terento/actions/runs/321',

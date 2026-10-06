@@ -225,7 +225,15 @@ class UpdateDiagnosticsHTTPTests(unittest.TestCase):
         for label, value in (('Reports', '52'), ('Successful', '44'), ('Failed', '5'), ('Blocked', '3'), ('Open', '2')):
             self.assertIn(f"<span class='admin-metric-label'>{label}", page)
             self.assertIn(f">{value}</strong>", page)
-        self.assertIn("data-scope='all'>All time</span>", page)
+        # One Installations-style summary card, plain numbers, no scope chips and
+        # no duplicate Reports card title (owner decision 2026-10-06).
+        self.assertIn("<section class='admin-card installation-kpis update-report-kpis' aria-label='Update report summary'>", page)
+        self.assertEqual(page.count("<div class='admin-metric-row'"), 1)
+        self.assertNotIn('All time</span>', page)
+        self.assertNotIn('All update reports', page)
+        self.assertNotIn('update-history-title', page)
+        self.assertIn("data-tone='danger'", page)
+        self.assertIn("href='/admin/update-diagnostics?outcome=failed&amp;lifecycle=ACTIVE'", page)
         self.assertIn('France · BBBike', page)
         self.assertNotIn('FRA · bbbike', page)
         self.assertNotIn('Diagnostic sharing is independent', page)
@@ -233,6 +241,65 @@ class UpdateDiagnosticsHTTPTests(unittest.TestCase):
         degraded = load_update_diagnostics(FakeDatabase([rows]))
         self.assertIsNone(degraded['totals'])
         self.assertIn('<span>Unavailable</span>', update_diagnostics_page(degraded, {'username': 'operator'}, 'csrf').decode())
+
+    def test_report_list_filters_table_and_pages_follow_installations(self):
+        failed = {'event_id': EVENT, 'outcome': 'FAILED', 'provider': 'bbbike', 'region': 'FRA', 'payload': {}}
+        succeeded = {**failed, 'event_id': OPERATION, 'outcome': 'SUCCEEDED'}
+        totals = {'total': 2, 'succeeded': 1, 'failed': 1, 'not_started': 0, 'open_failed': 0}
+        page = update_diagnostics_page({'rows': [failed, succeeded], 'totals': totals, 'has_more': True},
+                                       {'username': 'operator'}, 'csrf').decode()
+        main = page.split('<main', 1)[1].split('</main>', 1)[0]
+        # Filter bar directly above the table, quick-filter links in the shared order.
+        self.assertIn("<nav class='filter-bar diagnostic-filter-bar update-report-filters' aria-label='Filter update reports'>"
+                      "<div class='quick-filter-group'><a class='quick-filter active' href='/admin/update-diagnostics' aria-current='page'>All</a>", main)
+        labels = [part.split('>', 1)[1].split('<', 1)[0] for part in main.split("<a class='quick-filter")[1:]]
+        self.assertEqual(labels, ['All', 'Failed', 'Blocked', 'Successful'])
+        self.assertEqual(main.count("aria-current='page'"), 1)
+        self.assertIn("</nav><div class='table-wrap update-report-table-wrap'>", main)
+        self.assertNotIn('filter-clear', main)
+        self.assertNotIn('records', main)
+        # No linked issue on this page: no GitHub issue column.
+        self.assertNotIn('GitHub issue', main)
+        self.assertIn("<a class='secondary-button update-history-inspect' href='/admin/update-diagnostics?diagnosticId=" + EVENT
+                      + "' aria-label='Inspect update 1'>Inspect</a>", main)
+        self.assertIn("<nav class='provider-pagination' aria-label='Update report pages'><a class='secondary-button' "
+                      "href='/admin/update-diagnostics?offset=50' aria-label='Next update reports'>Next</a></nav>", main)
+        # Zero open reports stay a plain, neutral number.
+        self.assertNotIn('lifecycle=ACTIVE', main)
+        linked = update_diagnostics_page({'rows': [failed, {**succeeded, 'linked_github_issue': '#325'}], 'totals': totals,
+                                          'outcome': 'failed', 'lifecycle': 'ACTIVE', 'offset': 50},
+                                         {'username': 'operator'}, 'csrf').decode()
+        self.assertIn("<th scope='col'>GitHub issue</th>", linked)
+        self.assertEqual(linked.count("<td data-label='GitHub issue'>"), 2)
+        self.assertIn("<a class='quick-filter active' href='/admin/update-diagnostics?outcome=failed&amp;lifecycle=ACTIVE' aria-current='page'>Failed</a>", linked)
+        self.assertIn("<a class='secondary-button filter-clear' href='/admin/update-diagnostics' aria-label='Clear update report filters'>Clear</a>", linked)
+        self.assertIn("aria-label='Previous update reports'>Previous</a>", linked)
+        self.assertIn("aria-label='Inspect update 51'", linked)
+        empty = update_diagnostics_page({'rows': [], 'totals': totals, 'outcome': 'not_started'},
+                                        {'username': 'operator'}, 'csrf').decode()
+        self.assertIn("No update reports match this filter.", empty)
+        self.assertNotIn('<table', empty.split('<main', 1)[1].split('</main>', 1)[0])
+        self.assertIn('filter-clear', empty.split('<main', 1)[1].split('</main>', 1)[0])
+        none = update_diagnostics_page({'rows': [], 'totals': totals}, {'username': 'operator'}, 'csrf').decode()
+        self.assertIn('No update reports yet.', none)
+        self.assertNotIn('quick-filter', none.split('<main', 1)[1].split('</main>', 1)[0])
+
+    def test_detail_states_lead_with_back_link_and_result_heading(self):
+        back = "<p class='back-link'><a href='/admin/update-diagnostics'>"
+        missing = update_diagnostics_page(load_update_diagnostics(FakeDatabase([UpdateDiagnosticsTests.event(self), []]), event_id=EVENT),
+                                          {'username': 'admin'}, 'csrf').decode()
+        self.assertIn(back, missing)
+        self.assertIn('<h1>Map update failed</h1>', missing)
+        self.assertIn('<title>Map update failed · Update reports · Terento</title>', missing)
+        self.assertLess(missing.index('update-report-card'), missing.index('Report status'))
+        self.assertNotIn('All update reports', missing)
+        self.assertNotIn('installation-kpis', missing.split('<main', 1)[1].split('</main>', 1)[0])
+        unknown = update_diagnostics_page(load_update_diagnostics(FakeDatabase([None]), diagnostic_id=EVENT),
+                                          {'username': 'admin'}, 'csrf').decode()
+        self.assertIn(back, unknown)
+        self.assertIn('<h1>Update report not found</h1>', unknown)
+        self.assertIn('Diagnostic not found.', unknown)
+        self.assertNotIn('quick-filter', unknown.split('<main', 1)[1].split('</main>', 1)[0])
 
     def test_update_reports_live_in_the_tools_menu_not_the_maps_heading(self):
         from terento_catalog.admin import map_statistics_page

@@ -22,11 +22,27 @@ casing is normalized to lowercase in both streams; names and aliases are not
 guessed. Missing,
 ambiguous or conflicting evidence is shown explicitly. The list is titled
 `Update reports`, is reached from Tools → Update reports (the Tools menu and
-that item are marked active on it; Maps carries no Update reports link) and shows Reports, Successful, Failed, Blocked and Open tiles
-(`All time`) for the list scope, counted as raw update report rows of the
-diagnostic stream and independent of the outcome filter and pagination, so it is
-never presented as the Maps update total. The list can filter successful, failed
-and blocked-before-writing reports. Detail reports show a closed failure-code explanation,
+that item are marked active on it; Maps carries no Update reports link) and has
+no link to itself. It follows the Installations layout (owner decision
+2026-10-06): one summary card with plain Reports, Successful, Failed, Blocked
+and Open numbers and no scope chips (the heading carries `All time` as page
+meta), counted as raw update report rows of the diagnostic stream and
+independent of the outcome filter and pagination, so it is never presented as
+the Maps update total. Failed and Open are red only when positive; a positive
+Open links to the open failed reports. Below the card, with no wrapping card or
+title, the quick-filter bar (All, Failed, Blocked, Successful; server-side links
+styled exactly like the Installations quick filters, `aria-current` on the
+active one, Clear only while a filter is active) sits directly above the table
+at the shared filter-to-table gap. The table (Date, Map, Result, GitHub issue,
+App version, Action) sorts through the shared sorter, shows the GitHub issue
+column only when a listed report has a linked issue, uses the device Update
+history's compact secondary `Inspect` action, has no `N records` line, and pages
+50 reports with Previous/Next links in the shared pagination row (same height as
+its buttons, never underlined). A report detail (`?diagnosticId=`/`?eventId=`,
+including the event-only and not-found states) starts with a `← Update reports`
+back link and the result (for example `Map update failed`) as the page heading,
+and uses the full content width; its facts grid has two columns on wide screens
+and one on narrow screens. Detail reports show a closed failure-code explanation,
 stage, next action, app version/build and known write/old-map-preservation facts.
 An unconfirmed preservation result is not proof of absence; failed updates say
 “Not confirmed — inspect device.” Acquisition/source-validation failures link
@@ -64,7 +80,10 @@ labelled column through its header button with a Font Awesome sort icon and
 `aria-sort`, `—` always last; server-paginated tables sort the loaded page and
 ranking lists with a visually hidden header keep their ranking order), empty states (empty, filtered,
 unavailable with Retry) and chart legends. Labels and card titles carry no
-inline `?` glossary links; term definitions live only on Tools → Glossary.
+inline `?` help links, and Admin has no separate term-definition page (owner
+decision 2026-10-06); term definitions are owned by
+`contracts/STATISTICS_CONTRACT.md`, `contracts/APP_FUNNEL_CONTRACT.md` and this
+contract.
 Colours, radii and focus rings come only from the generated brand tokens; the
 focus ring is Interactive Primary (≥3:1). Every icon, including chevrons,
 arrows and placeholders, is an unchanged Font Awesome Free solid icon from the
@@ -81,7 +100,22 @@ status, support report status, and the device, diagnostics and update history
 filters. Such a group drives a hidden native select that stays the source of
 truth for page scripts and GET forms. The bar sits 12px above its table. The
 Dashboard period stays a dropdown because the Dashboard replaces its content in
-place.
+place; its lone-dropdown bar keeps equal padding on every side of the field.
+At 760 px and narrower, where Installations and Devices move their sort and
+remaining selects behind a `Filters and sorting` button, More filters and
+`Filters and sorting` share one row at equal widths with the normal 8px gap;
+either panel opens full width below that row without moving the buttons. The
+result count is one tight line below them with Clear beside it when shown, never
+a control-height block; a More filters button without a partner (Maps) keeps
+the full width.
+
+Filter persistence (owner decision 2026-10-06): a page may keep its search,
+sort, More filters selects and page size in the tab's session storage and in
+the URL, but it never restores a single-choice quick filter from a previous
+visit. A plain visit to Installations opens at `All` and a plain visit to
+Devices opens at `Maps: Yes`; only an explicit link (`?state=identity-pending`,
+`?state=open`, `?maps=unknown`, `?new=1` and the like) or the current URL on
+reload preselects another quick filter or the Devices `new` view.
 
 Filter dropdown (owner decision 2026-10-06): every remaining filter-type
 `<select>` — More filters panels (Installations, Devices, Maps), the Maps
@@ -93,7 +127,10 @@ left-aligned and at least the field's width, flips above only when there is no
 room below, and never covers the field. It uses the white surface, a 1px
 border, the control radius, the existing card shadow, Inter at the field's
 size, a check icon plus selected tint on the chosen option, and the Admin focus
-ring; the popover is used at every width and never causes page overflow. The
+ring. The button's horizontal padding is `--admin-control-padding-x` on both
+sides, owned by the stylesheet and never copied from the hidden native select,
+so the selected text never touches the field edge and the chevron sits on the
+right after an 8px gap; the popover is used at every width and never causes page overflow. The
 native select stays in the DOM, labelled and visually hidden, as the source of
 truth: a choice sets its value and dispatches bubbling `input` and `change`
 events, and programmatic value or option changes and `disabled` are mirrored.
@@ -101,8 +138,7 @@ Keyboard follows the ARIA select-only combobox (Enter, Space, Alt+Down or the
 arrows open; arrows, Home, End and type-ahead move; Enter selects; Escape closes
 and keeps focus; an outside click closes). Selects in forms that post data
 (device Administration, diagnostic issue workflow), selects inside dialogs, the
-provider health-check interval, the campaign link builder and the top-bar time
-zone stay native.
+provider health-check interval and the top-bar time zone stay native.
 
 This is the canonical behavioral contract for the private Terento admin surface
 and its diagnostic data dependencies. It complements `api.md` (routes and current
@@ -261,8 +297,7 @@ header with the period scope chip and, top right, the period totals as compact
 value chips (Successful, Failed — danger only when positive — and Success rate;
 Installs counts fresh installs only); the chart; and a legend naming each
 series by colour without counts. No All time line, purpose breakdown or other
-explanatory text is shown in these cards; all-time totals and the purpose
-breakdown live on Maps. Header totals and charts use the same period
+explanatory text is shown in these cards; all-time totals live on Maps. Header totals and charts use the same period
 population, so they agree. A legend elsewhere shows a count only where it adds
 information no total shows (the Maps Custom .img install split and the App
 downloads period increases). The Needs attention header shows its `Now` total
@@ -276,7 +311,7 @@ run, then App downloads.
 Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
 `Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
-`.dmg` and `.zip`; the Glossary defines it), shows its
+`.dmg` and `.zip`, never map downloads), shows its
 period increases in the legend and its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
 population for the period (sessions, connected vs not connected by reason,
@@ -320,13 +355,22 @@ always including the most recent bucket and never overlapping.
 Needs attention covers unresolved work across all dates in six review queues
 (owner decision 2026-10-06), in this order, each row with an icon, label, count
 and arrow: Open problems, GitHub issues, Identity review, Publication review,
-Missing reports and Support reports. Maps unknown models, provider problems and
-system checks are not Needs attention rows; they stay on Devices
-(`/admin/devices?maps=unknown&active=1`), Providers and Health. Only rows with a positive or unavailable
+Missing reports and Support reports, followed by one System checks row (owner
+decision 2026-10-06). System checks appears only when Health has Failed or
+Degraded checks; its count is those checks (the same states Health lists under
+Issues) excluding the Catalogs check, because provider problems stay on
+Providers. It links to `/admin/system-health?status=FAILED`, or
+`?status=WARNING` when no counted check failed, which preselects that Health
+quick filter, and it is counted in the header total. A Health list filtered this
+way can also show a failed or degraded Catalogs row that the Dashboard count
+leaves out. An unavailable Health snapshot adds no row. Maps unknown models and
+provider problems are not Needs attention rows; they stay on Devices
+(`/admin/devices?maps=unknown&active=1`) and Providers. Only rows with a positive or unavailable
 count are listed (owner decision 2026-10-06); a measured zero renders no row,
-and when every count is zero the card shows `Nothing to review.` instead. Counts
-come only from the canonical review read model and the support-report count;
-there is no fallback from another definition.
+and when every count is zero the card shows `Nothing to review.` instead. Review
+counts come only from the canonical review read model and the support-report
+count, and System checks only from the Health check states; there is no
+fallback from another definition.
 A failed query shows `—` with an explicit `Unavailable` message, never `0` or
 "No pending work". Each row links to its work list, and that list shows the same
 total even when it paginates; Identity review links to the Identity review queue
@@ -470,7 +514,9 @@ Maps fact and verified successes; a model-name classifier never sets it.
 The Devices list uses the Installations layout: the last sync line sits in the
 page heading meta, and the tiles (Models, Maps: Yes, Verified, Covered, Pending
 policy) carry no scope chips. Covered reads `covered/eligible (rate)`, for
-example `12/40 (30.0%)`. The filter bar matches Installations: a Maps quick
+example `12/40 (30.0%)`. Pending policy counts active Pending models and uses the
+danger tone when the count is above zero, like other failure tiles; zero stays
+neutral (owner decision 2026-10-06). The filter bar matches Installations: a Maps quick
 filter group (All, Maps: Yes, Maps: No, Maps: Unknown; Maps: Yes by default),
 search, More filters and the result count, separated from the table by the
 filter-to-table gap and still sticky above it; Clear appears only when a filter
@@ -527,12 +573,17 @@ population; event type, outcome, exact event, and detail pagination scope only
 the collapsed Events disclosure. Initial HTML and asynchronous JSON use the same
 server summary.
 
-Maps reads top to bottom: Downloads, Installs and Updates tiles for the selected
-period (each with failed count and rate); then the Downloads and Installs trend
-cards, laid out like the Dashboard charts (period Successful, Failed and Success
-rate totals at the top right, a legend without numbers), with the download
-purpose breakdown under the Downloads legend; then Countries (world map) and Top
-countries; then Providers; then Top maps; then the collapsed Events disclosure.
+Maps reads top to bottom: the filter bar; Downloads, Installs and Updates tiles
+for the selected period (each with failed count and rate); then Countries (world
+map) and Top countries; then Providers; then Top maps; then the collapsed Events
+disclosure; and last, at the very bottom, the Downloads and Installs trend cards,
+laid out like the Dashboard charts (period Successful, Failed and Success rate
+totals at the top right, a legend without numbers, nothing under the legend)
+(owner decision 2026-10-06). The Countries
+card carries no visible country/install count line; the world map's accessible
+name states when coverage is empty or partially unavailable. Top maps names are
+plain text with the provider and last-install date below, not links; Top
+countries names stay buttons that highlight their country on the world map.
 The filter bar names the selected period, so Maps cards carry no scope chips and
 no separate All time line (owner decision 2026-10-06). The Providers stream
 control and the Top maps search sit in the shared filter bar inside their
@@ -541,7 +592,13 @@ screens. At ≤600 px the three tiles form one compact three-column row, and Top
 countries, Providers and Top maps start collapsed behind a Show/Hide button
 (`aria-expanded`, card title in its accessible name) so the page stays short;
 a link to an element inside a collapsed card opens it, and without script or
-above 600 px every card stays open. The world map remains visible and Top
+above 600 px every card stays open. Top countries and Top maps are compact
+ranking lists at every width and never turn into labelled mobile record cards
+(`data-own-mobile-layout`): each row puts the name on the left (Top maps adds
+its provider · date line below) and the install count on the right on the
+name's baseline, with no per-row field labels. At 760 px and narrower Top maps
+hides its column header and its counts name their unit for screen readers;
+wider screens keep the sortable Map and Installs header. The world map remains visible and Top
 countries shows at least 10 rows from the existing country ranking; beside the
 Countries card it adds further rows while they fit its height (up to 30). A period without rows shows measured zero tiles and an empty-scope note;
 it never shows populated all-time numbers as if they were the period. Diagnostic
@@ -565,8 +622,9 @@ require a positive eligible operation count for a known catalog main map;
 excluded or zero-count rows cannot advance them. Download failures include only
 terminal `DOWNLOAD_FAILED`. A zero denominator displays `—`. Downloads totals
 and trends explicitly include all purposes, including updates and components.
-The purpose breakdown shows For installs, For updates and Not recorded, each with
-successful and failed counts. Unknown historical purpose is never inferred from the absence
+The download purpose breakdown (For installs, For updates, Not recorded) stays in
+the statistics payload but is not rendered in Admin (owner decision 2026-10-06).
+Unknown historical purpose is never inferred from the absence
 of an update report. The interface does not synthesize one telemetry stream
 from another.
 
@@ -613,9 +671,14 @@ Review administration holds the resolve/reopen and workflow forms in one
 collapsed disclosure, each form a compact row with its button aligned to its
 fields; it is omitted when no lifecycle or workflow action applies. There is no
 separate "Identity incomplete" notice; the Review state badge and Next action
-point to Device identity. The update report page uses the same sections,
-disclosure presentation and review-form layout; it has no Device identity
-section.
+point to Device identity. The update report page uses the same sections in
+the same order, disclosure presentation and review-form layout, and also ends
+with Device identity; there it is read-only (Catalog model from the server
+assessment or `Not assigned`, Reported model, Reported variant) because update
+reports have no identity assignment action. Its top Device fact is the catalog
+model link or the plain reported model, as in the installation dialog. When an
+event has no matching diagnostic, the Report status explanation follows the
+summary facts.
 
 Device identity is an operator-assisted exact-catalog selection: Selected model
 is shown as a label with a bold value, and Edit, Confirm and (only on conflict)
@@ -656,8 +719,10 @@ Installation and update failures use the same reading order and control patterns
 operation, model/variant, date, provider/map, result and app version; What happened
 with Next action; known safety facts; GitHub issue with visible Prepare GitHub
 issue and expandable preview/link management; then review administration and
-Technical details as disclosures (see Diagnostics). Both use the same
-bounded content width, typography, spacing and button hierarchy. A generic
+Technical details as disclosures (see Diagnostics), then Device identity. Both
+use the same typography, spacing and button hierarchy; the installation dialog
+keeps a bounded width while the update report page uses the full content width
+like other Admin detail pages. A generic
 installation failure explicitly says the specific reason was not received and
 points to the local report; it does not merely repeat “Installation error.”
 An update also shows whether the previous map was confirmed preserved. A failed
@@ -706,15 +771,28 @@ The broad Devices listing keeps its existing compact columns.
 ### Model sources
 
 `/admin/device-identification` is visibly named `Model sources` (Tools menu).
-The list shows Needs review, Approved, Rejected and No source tiles, state
-filter chips (Needs review preselected when any exist), the server-side model or
-code search, and a table (Model, Garmin code, Source, State, Review) with 25-row
-pagination. The detail keeps the human workflow `Source says` ⇄ `Catalog model`
-(side by side) → `Same code` → `Confirm` → `Technical details`, and offers `Next
-in queue` to the next model that needs review. Raw codes, mapping/catalog IDs,
-source revision, policy internals, missing-source inventory, and decision
-history remain secondary in Technical details. Mapping review does not reassign
-historical installations automatically.
+It is a rarely used tool kept aligned with the rest of Admin (owner decision
+2026-10-06). The list opens with one summary card of plain Needs review,
+Approved, Rejected and No source numbers (no scope chips, no icons; Needs review
+stays neutral because a source decision changes no installation, permission or
+public compatibility). Below it the Installations filter bar holds the state
+quick filters (All, Needs review, Approved, Rejected, No source; Needs review is
+preselected when any listed model needs review), the server-side model or code
+search (`?q=`), the result count and Clear, which shows only when the state
+differs from its default or a search is active and then returns to the
+unfiltered list. The table (Model, Garmin code, Source, State) sorts through the
+shared sorter, State in queue order; the model name opens its review. It has no
+records line and uses the shared 25-row pagination. The detail keeps the human
+workflow `Source says` ⇄ `Catalog model` (side by side) → `Same code` →
+`Confirm` → `Technical details`: a `Model sources` back link with `Next in
+queue` (the next model that needs review) sits above the heading, each source is
+one Admin card, Technical details is its own collapsed card, and the cards are
+spaced by `--admin-card-gap`. Approve match is the only Interactive Primary
+control; Same code states and the current decision are status pills (text plus
+icon). Raw codes, mapping/catalog IDs, source revision, policy internals,
+missing-source inventory, and decision history remain secondary in Technical
+details. Mapping review does not reassign historical installations
+automatically.
 
 ### Providers and collection history
 
@@ -723,25 +801,62 @@ remain separate. Updates count newly discovered plus changed packages for that
 run; they do not count every artifact. Unknown historical counts remain unknown.
 Technical source/review controls remain available behind disclosure.
 
-Providers opens with tiles (Active, Healthy, Package problems, Provider problems,
-Last sync) using the shared provider-problem definition. The Problems column
-counts affected packages (with problematic sources as secondary text); an
-unknown count shows `—` with `Unknown` accessible text, never `0`. Retired or
+The Providers list says "Issues", not "Problems", in its visible copy and
+accessible labels. Its heading meta shows `Last sync` with the latest catalog
+sync on the right, like Devices; Last sync is not a tile. One summary card
+(the Installations `installation-kpis` card with one metric row and no scope
+chips) holds Active and Healthy (each with `of N`), Package issues and Provider
+issues, using the shared provider-problem definition. The Issues column counts
+affected packages with problematic sources in the same line ("2 packages · 2
+sources", with "with issues" as screen-reader text). It is a plain right-aligned
+number like the other numeric cells, rendered with the shared error counter:
+danger text for a positive count, plain text for `0`, never a pill or icon. Its
+numeric `data-sort-value` is the affected-package count. An unknown count shows
+`—` with `Unknown` accessible text, never `0`, and sorts last. Retired or
 resolved historical entries do not enter current counts. Measured zero,
 unknown/unavailable, stale, and partial remain distinct.
 
-Provider detail keeps its action bar, then shows tiles (Health, Catalog, Package
-problems, Downloads) and one Problems card grouped by recorded reason. Each group
-shows its package count, one Recheck (a single-package group rechecks that
-package; a larger group's `Recheck affected` and the card's `Recheck affected
-packages` recheck every affected package) and at most five rows with Recheck,
-Open source and Copy details, plus `Show all N in Packages`. Packages is the one
-package list: search, Problems/Available filter (Problems is preselected when
-problems exist), pagination, and a per-row `⋯` menu with Recheck, Disable or
-Enable downloads, Open source and artifact details. Checks and Syncs cards keep
-their latest summary visible and their history collapsed; History, Sources,
-Releases, Attribution and Original links are sibling disclosures. Provider
-names come from the catalog provider name, never from the provider ID.
+Provider detail (owner decision 2026-10-06: shorter, nothing removed) reads top
+to bottom: the action bar, one summary card, Issues, Packages, Checks and Syncs,
+then Technical details. The action bar holds Check provider health (the only
+Interactive Primary action), then secondary Refresh catalog, Pause or Activate,
+Turn previews on/off and More (Retire provider). The previews switch keeps its
+authenticated, CSRF-protected provider action; there is no separate Map style
+previews card. The summary is one card of tiles (`_metric_row`, no scope chips,
+like Installations): Health, Catalog, Package issues, Downloads and Previews
+(On/Off plus only the layer states that occur, for example `6 published · 3
+failed`). On this page the word is **Issues**: the Issues card groups package
+issues by recorded reason; other pages keep Open problems and Package problems.
+Each group shows its package count, one Recheck (a single-package group
+rechecks that package; a larger group's `Recheck affected` and the card's
+`Recheck affected packages` recheck every affected package) and at most five
+rows with Recheck, Open source and Copy details, plus `Show all N in Packages`.
+Packages is the one package list: search, Issues/Available filter (Issues is
+preselected when issues exist), pagination, and a per-row `⋯` menu with
+Recheck, Disable or Enable downloads, Open source and artifact details.
+
+Checks shows the latest result, the Automatic health checks row (label, native
+interval select styled as an Admin control, and Save interval, all one control
+height), View check details, and a link to its history. Syncs shows the latest
+run, the catalog sync time, the latest run's updates (and error, if any) and a
+link to Collection history. The two share a row at one height only when both
+fit (wider than 1180 px) and stack otherwise or while check details are open.
+Tabular content is never placed in a half-width card.
+
+Technical details is one full-width card, collapsed by default, holding the
+rarely needed lists behind one tab switcher (one panel at a time): History
+(admin audit), Health checks, Syncs (collection runs plus Releases), Preview
+layers (with what previews do), Download links (when the provider has any; its
+search, Broken filter and 25/50 pagination stay) and Attribution (attribution
+facts plus Original links). The Checks and Syncs history links open the card on
+their panel. Long lists start short and reveal the rest in place with `Show N
+more` — History and Syncs five rows, Health checks five, Preview layers and
+Original links ten — so no list paginates or scrolls inside the card. Table
+cells wrap inside the full-width card; at 760 px and narrower the tables become
+labelled records. A History release-change reason lists three changes and keeps
+the rest behind `+N more` in the same cell; the full audit record stays behind
+Raw record. Provider names come from the catalog provider name, never from the
+provider ID.
 
 Provider **View check details** shows only the latest observation as labelled
 check/status pairs, its reason, observation time, next scheduled check and stale
@@ -753,10 +868,10 @@ Download-server availability is separate from website and catalog health.
 Automatic checks offer 1, 6 or 24 hours per provider (default one hour). Saving
 uses the authenticated, CSRF-protected provider action. Health check history is
 at most ten previous checks within 30 days, each a compact timestamp, result,
-counts and observed reason. It has no pagination or growing scroll container;
-the latest observation remains available even when stale. Collection and admin
-audit previews likewise show at most ten rows; limiting the preview never deletes
-administrative audit evidence.
+counts and observed reason, five visible before `Show N more`. It has no
+pagination or growing scroll container; the latest observation remains available
+even when stale. Collection and admin audit previews likewise show at most ten
+rows; limiting the preview never deletes administrative audit evidence.
 
 Current, nonretired map rows expose **Disable downloads** / **Enable downloads**
 separately from artifact validation. Disabling requires a nonempty internal
@@ -767,17 +882,87 @@ Retired maps/providers have no usable download control.
 
 ### Health
 
-Health opens with four count tiles (Failed, Degraded, No data, Healthy) that also
-filter the checks; the status filter uses the same labels as the pills. One
-Problems card lists every non-healthy check as a compact row with its short name,
-status, cause, next action, last check time and collapsed Technical details.
-Healthy checks stay collapsed in four groups: Service (API, Database, Scheduler,
-Issue sync), Releases (Website deploy, API deploy, Release match, Weekly tests,
-Email report), Catalogs and Search. Provider catalogs are one Catalogs check
-(worst provider state, each provider linked) that links to Providers instead of
-one card per provider. Vendor and pipeline names (SMTP2GO, IndexNow, manifest)
-stay in Technical details. Search indexing reports IndexNow submission state as
-one independent check and does not imply that a submitted URL was indexed.
+Health (owner decision 2026-10-06) has, top to bottom: one summary card with
+plain Failed, Degraded, No data and Healthy tiles like Installations (no icons,
+no scope chips, not buttons; Failed is red only when positive); the shared filter
+bar with an All/Failed/Degraded/No data/Healthy quick-filter group (the pill
+labels) and search, which is the only filter; one Issues card; and one Technical
+details card.
+
+Issues lists every Failed or Degraded check as one compact table row: Check,
+Status pill, Reason with the next action under it, Last checked and a small
+Details control. The action is a link when a real target exists (Providers for
+Catalogs, the retained GitHub Actions run for workflow-backed checks) and muted
+help text otherwise. Details opens the check's technical evidence inline under
+its row; there is no separate disclosure per check. With no Failed or Degraded
+check the card shows `No issues.`
+
+Technical details is one full-width card, collapsed by default, with ARIA tabs
+(arrow keys, Home and End) in the provider-detail pattern: Service (API,
+Database, Scheduler, Issue sync), Releases (Website deploy, API deploy, Release
+match, Weekly tests, Email report), Catalogs, Search and Weekly results (the
+weekly suite table and run link). Each group tab shows its `N/M healthy` summary
+and every check of the group not already listed under Issues (Healthy and No
+data), each with Status, Last checked and Details; a No data row keeps its
+reason under the name and its next action in Details. Quick filters and search
+hide non-matching rows everywhere; when a match exists only inside a group tab
+the card opens on that tab. `?status=FAILED` (or another status value)
+preselects the quick filter, and changing it keeps the query in sync.
+
+Every check shows a real Last checked time when one exists: the retained
+observation time for workflow-backed checks, the page's snapshot time for the
+live API and Database probes, the scheduler heartbeat's last write, the latest
+issue-sync check, and the latest provider health check or catalog collection for
+Catalogs (each provider's own time is in Details). Only a check with no recorded
+time shows `—` with `Not recorded` accessible text.
+
+Provider catalogs are one Catalogs check (worst provider state, each provider
+linked) that links to Providers instead of one card per provider. Vendor and
+pipeline names (SMTP2GO, IndexNow, manifest) stay in Details. Search indexing
+reports IndexNow submission state as one independent check and does not imply
+that a submitted URL was indexed.
+
+### Campaign links
+
+Tools → Campaign links (owner decision 2026-10-06) is one local, client-side
+builder card: no persistence, no API and no analytics storage. Its vocabulary is
+owned by `src/terento_catalog/campaign_links.py`; the page renders and the
+script embeds those constants, so the browser cannot drift from the tested
+contract. A short `When to use campaign links` note opens the card (use one for
+every terento.app link posted outside the site; pick the channel where it is
+posted; reuse one campaign name per effort). Every control has one muted help
+line saying when to use it; there are no information popovers.
+
+Choices are quick-filter groups in the filter-bar design (buttons with
+`aria-pressed` driving a hidden select), never dropdowns:
+
+| Where will you share this link? | `utm_source` | `utm_medium` |
+|---|---|---|
+| Reddit post (default) | `reddit` | `community` |
+| Garmin forum | `garmin_forum` | `community` |
+| GitHub | `github` | `referral` |
+| Discord | `discord` | `community` |
+| Facebook group | `facebook` | `social` |
+| X post | `x` | `social` |
+| Email | `email` | `email` |
+| Other | typed source | Social, Community, Email, Referral (default), Paid social or a typed medium |
+
+The free-text source and medium fields appear only for Other. Destination is
+Home (default), Download, Compatibility or `Other page…`, which reveals a
+terento.app-only path or URL field. Campaign is one of `early_beta` (default),
+`launch`, `compatibility`, `community` or `Custom…`, whose name is normalized
+live (shown as `Used as …`) and stored canonically when the field loses focus.
+`Where exactly (optional)` fills `utm_content` with a channel-specific example
+hint; `utm_term` sits behind a `More options` disclosure. Every value is
+normalized with `normalize_value` and limited to 80 characters, the longest
+value the public site forwards to Umami (`site/privacy-consent.js`).
+
+The result is always visible: a read-only, wrapping JetBrains Mono link field,
+a `Copy link` Interactive Primary button (Clipboard API, falling back to
+selecting the field), and one inline line `Umami will show: source … · medium …
+· campaign …` (plus content and term when set). Incomplete input disables Copy
+and shows a status line with an icon and text naming the missing value; copy
+success and failure are status lines with their own icons.
 
 ### Resilience
 

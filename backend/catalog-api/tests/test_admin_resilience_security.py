@@ -40,9 +40,9 @@ class AdminHttpResilienceTests(unittest.TestCase):
         self.server.server_close()
         self.thread.join(timeout=2)
 
-    def request(self, path, method="GET"):
+    def request(self, path, method="GET", cookie=COOKIE):
         connection = HTTPConnection(*self.server.server_address)
-        connection.request(method, path, headers={"Cookie": COOKIE})
+        connection.request(method, path, headers={"Cookie": cookie} if cookie else {})
         response = connection.getresponse()
         data = response.read()
         connection.close()
@@ -81,13 +81,24 @@ class AdminHttpResilienceTests(unittest.TestCase):
         self.assertIn("<h1 id='admin-error-title'>Invalid link</h1>", body)
 
     def test_response_nonce_replaces_only_the_template_placeholder(self):
-        response, body = self.request("/admin/glossary")
+        response, body = self.request("/admin/campaign-links")
         self.assertEqual(response.status, 200)
         nonce = re.search(r"script-src 'nonce-([^']+)'", response.headers["Content-Security-Policy"]).group(1)
         self.assertNotIn(_ADMIN_NONCE_PLACEHOLDER, body)
         tags = re.findall(r"<script\b[^>]*>", body, re.IGNORECASE)
         self.assertTrue(tags)
         self.assertTrue(all(tag == f'<script nonce="{nonce}">' for tag in tags))
+
+
+    def test_removed_glossary_url_redirects_to_dashboard_behind_the_admin_gate(self):
+        for path in ("/admin/glossary", "/admin/glossary/"):
+            response, body = self.request(path)
+            self.assertEqual(response.status, 303)
+            self.assertEqual(response.headers["Location"], "/admin")
+            self.assertEqual(body, "")
+            response, _ = self.request(path, cookie=None)
+            self.assertEqual(response.status, 303)
+            self.assertEqual(response.headers["Location"], "/admin/login")
 
 
 class GithubIssuesPageTests(unittest.TestCase):

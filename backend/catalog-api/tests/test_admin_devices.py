@@ -90,7 +90,7 @@ class DeviceInformationLayoutTests(unittest.TestCase):
         listing = device_identification_page([device], {'username': 'operator'}, 'csrf').decode()
         self.assertIn('<h1>Model sources</h1>', listing)
         self.assertIn("data-source-filter='pending'", listing)
-        self.assertIn('>Needs review · 1<', listing)
+        self.assertIn("data-source-filter='pending' aria-pressed='true'>Needs review</button>", listing)
         self.assertNotIn("name='mapping_id'", listing)
         empty = device_identification_page([device], {'username': 'operator'}, 'csrf', query='<missing>').decode()
         self.assertIn('No matching models.', empty)
@@ -583,7 +583,12 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("opacity:.2", body)
         self.assertNotIn("<dialog id='device-dialog'", body)
         self.assertIn("parameters.has(key) ? parameters.get(key) : saved[key]", body)
-        self.assertIn("restoreSelect(map, 'maps', 'yes')", body)
+        # A plain visit opens at Maps: Yes; only an explicit ?maps= link (or the
+        # current URL on reload) selects another Maps quick filter or New view.
+        self.assertNotIn("restoreSelect(map,", body)
+        self.assertIn("parameters.get('maps')) ? parameters.get('maps') : 'yes'", body)
+        self.assertIn("showNew = parameters.get('new') === '1';", body)
+        self.assertNotIn("saved.new", body)
         self.assertIn("if (showNew) return device.catalog?.newInLatestSync === true", body)
         self.assertIn("map.value = 'all'", body)
 

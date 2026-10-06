@@ -91,9 +91,12 @@ const diagnosticID = '22222222-2222-4222-8222-222222222222';
           assert(await surface.getByText('Next action', {exact: true}).isVisible());
           assert(await surface.getByText('Safety facts', {exact: true}).isVisible());
           assert.equal(await surface.getByRole('button', {name: 'Resolve diagnostic', exact: true, includeHidden: true}).isVisible(), false, 'review administration is secondary');
-          if (width === 1440) {
-            const panel = name === 'install-open' ? surface : surface.locator('section.provider-card').first();
-            assert((await panel.boundingBox()).width <= 961, 'shared readable panel width');
+          if (width === 1440 && name === 'install-open') assert((await surface.boundingBox()).width <= 961, 'readable dialog width');
+          if (width === 1440 && name === 'update-open') {
+            // The update report uses the full content width (owner decision 2026-10-06).
+            const panel = await surface.locator('section.update-report-card').boundingBox();
+            const content = await surface.locator('.heading-row').boundingBox();
+            assert(Math.abs(panel.width - content.width) <= 1 && panel.width > 961, 'update report spans the content width');
           }
         }
         if (name === 'update-unknown') assert.equal(await surface.locator(`a[href^='/admin/devices/']`).count(), 0, 'unknown identity has no guessed device route');

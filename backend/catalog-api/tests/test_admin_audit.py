@@ -233,13 +233,16 @@ class AdminAuditTests(unittest.TestCase):
                     {'observed_at':'2026-09-07T16:43:00Z'}, reason='failure', action='inspect')
                 self.assertIn('API &lt;test&gt;',card['html'])
                 self.assertIn('data-admin-timestamp',card['html'])
-                if str(state or '').upper() == 'HEALTHY':
-                    self.assertNotIn('<details', card['html'])
-                else:
-                    self.assertIn("class='system-health-cause'>failure", card['html'])
-                    self.assertIn("class='system-health-action'>inspect", card['html'])
-                    self.assertNotIn("<strong>Inspect:</strong>", card['html'])
-                    self.assertIn('Last checked', card['html'])
+                # Technical details open inline from a small Details control;
+                # there is no separate full-width disclosure per check.
+                self.assertNotIn('<details', card['html'])
+                self.assertIn("data-health-details aria-expanded='false'", card['html'])
+                details = card['html'].split("class='health-details-row'", 1)[1]
+                self.assertIn(' hidden>', details.split('>', 1)[0] + '>')
+                self.assertIn('<p>Live check</p>', details)
+                self.assertIn("class='system-health-cause'>failure", card['html'])
+                self.assertIn("class='system-health-action'>inspect", card['html'])
+                self.assertNotIn("<strong>Inspect:</strong>", card['html'])
 
     def test_provider_explains_mixed_releases_without_relabelling_packages(self):
         body = provider_detail_page({'provider':{'id':'opentopomap','maps':[
