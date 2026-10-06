@@ -13,6 +13,8 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
+| `map-preview-manifest.schema.json` | `GET /maps/previews/manifest.json` | `schemaVersion: 1` |
+| `map-preview-areas.schema.json` | `map-preview-areas.json` (curated preview areas, not an HTTP payload) | `schemaVersion: 1` |
 
 The installation policy contract contains exact Garmin catalog rows and
 `active`, normalized `baseModel` from the catalog model label, nullable
@@ -60,6 +62,13 @@ HTTP 200 with schemaVersion 3 and policyVersion 3 in the 2026-09-24 read-only
 check. Native enforcement remains published in beta.15 build 36; backend
 availability alone was not its release gate. The valid fixture uses a synthetic Maps=No model; it is not a
 live catalog snapshot.
+
+`map-preview-areas.json` is the single curated list of places, trail sections
+and city centres rendered for the public map style comparison page. The
+backend preview job and the site generator both read it; `regionHints` only
+order candidate packages before download, and the job still verifies that
+the downloaded map covers the area. Review coverage and install-based gaps
+with `scripts/select-preview-areas.py` before editing the list.
 
 HTTP authentication, idempotency and rate-limit headers are outside these body
 schemas. Schema versions are independent of Terento app versions and build

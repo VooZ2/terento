@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-06T06:00:00Z",
+  "release": "20261006T010000Z",
+  "tileUrlTemplate": "https://api.terento.app/assets/previews/20261006T010000Z/{area}/{style}/{z}/{x}/{y}.webp",
+  "dataAttribution": "© OpenStreetMap contributors",
+  "dataAttributionUrl": "https://www.openstreetmap.org/copyright",
+  "styles": [
+    {
+      "id": "opentopomap",
+      "providerId": "opentopomap",
+      "mapType": null,
+      "name": "OpenTopoMap",
+      "attribution": "map rendering © OpenTopoMap",
+      "attributionUrl": "https://garmin.opentopomap.org/"
+    },
+    {
+      "id": "bbbike",
+      "providerId": "bbbike",
+      "mapType": "bbbike-latin1",
+      "name": "BBBike",
+      "attribution": "Garmin map styles and source terms provided by BBBike",
+      "attributionUrl": "https://garmin.bbbike.org/"
+    }
+  ],
+  "areas": [
+    {
+      "id": "dolomites-tre-cime",
+      "kind": "place",
+      "name": {"en": "Dolomites – Tre Cime"},
+      "countryCodes": ["IT"],
+      "continent": "europe",
+      "center": [12.3, 46.62],
+      "bbox": [12.19533, 46.548078, 12.40467, 46.691922],
+      "minZoom": 12,
+      "maxZoom": 16,
+      "tags": ["mountains"],
+      "featured": true,
+      "diffScore": 0.41,
+      "layers": [
+        {"style": "opentopomap", "status": "AVAILABLE", "packageVersion": "2026-09-14", "renderedAt": "2026-10-06T02:14:00Z"},
+        {"style": "bbbike", "status": "PENDING", "packageVersion": null, "renderedAt": null}
+      ]
+    }
+  ]
+}
