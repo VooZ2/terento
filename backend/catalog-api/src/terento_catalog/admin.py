@@ -866,13 +866,16 @@ def _diagnostic_result(value: Any) -> str:
     labels = {
         "SUCCEEDED": ("success", "Successful"),
         "FAILED": ("danger", "Failed"),
-        # A pre-write result is not a failed attempt (ADM-13).
-        "NOT_STARTED": ("warning", "Blocked before writing"),
+        # A pre-write result is not a failed attempt (ADM-13). The pill says
+        # "Blocked" so it fits table cells (owner decision 2026-10-06); its
+        # title keeps the full term.
+        "NOT_STARTED": ("warning", "Blocked"),
         "INCOMPLETE": ("warning", "Incomplete"),
         "BLOCKED": ("warning", "Blocked"),
     }
     kind, label = labels.get(raw, ("unknown", raw.title() if raw else "—"))
-    return _status_pill(kind, label, value=raw or "UNKNOWN")
+    title = "Blocked before writing" if raw == "NOT_STARTED" else None
+    return _status_pill(kind, label, value=raw or "UNKNOWN", title=title)
 
 
 def _failure_context_fields(result: dict[str, Any], key: str, *, technical: bool = False) -> list[tuple[str, Any]]:
@@ -976,9 +979,9 @@ def _diagnostic_technical_details(result: dict[str, Any], result_number: int) ->
         "<p class='diagnostic-technical-empty'>Detailed diagnostics were not collected for this installation.</p>"
     )
     return (
-        f"<details class='diagnostic-technical-details'>"
+        f"<details class='{DIAGNOSTIC_DISCLOSURE_CLASS} diagnostic-technical-details'>"
         f"<summary>Technical details <span class='disclosure-meta'>· map result {result_number}</span></summary>"
-        f"{content}</details>"
+        f"<div class='disclosure-body'>{content}</div></details>"
     )
 
 
@@ -2279,7 +2282,7 @@ _ATTENTION_ROWS = (
     # (review key, label, href, icon, glossary anchor)
     ("installationIssues", "Open problems", "/admin/installations?state=open", "x-circle", "open-problem"),
     ("githubIssuesInProgress", "GitHub issues", "/admin/review/github-issues", "external", "task"),
-    ("identityPending", "Identity review", "/admin/installations?state=identity-pending", "question", "identity-review"),
+    ("identityPending", "Identity review", "/admin/review/identity", "question", "identity-review"),
     ("readyToPublish", "Publication review", "/admin/devices?review=publication", "check", "publication-review"),
     ("missingDiagnostics", "Missing reports", "/admin/review/missing-reports", "alert", "missing-report"),
 )
@@ -2547,7 +2550,7 @@ def overview_page(
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
-        <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
         <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
@@ -3131,7 +3134,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
       <main class='dashboard system-health-page' id='main-content'>
         <div class='heading-row'><div><h1>Health</h1></div></div>
         <div class='admin-metric-row health-filter-tiles' role='group' aria-label='Filter checks by status'>{tiles}</div>
-        <form class='filter-bar' id='health-filters' role='search'><label class='filter-search'><span class='sr-only'>Search checks</span><input type='search' id='health-search' placeholder='Search checks'></label><label><span class='sr-only'>Check status</span><select id='health-status'><option value='all'>All statuses</option>{health_options}</select></label></form>
+        <form class='filter-bar' id='health-filters' role='search'><label class='filter-search'><span class='sr-only'>Search checks</span><input type='search' id='health-search' placeholder='Search checks'></label><label><span class='sr-only'>Check status</span><select id='health-status' data-admin-dropdown><option value='all'>All statuses</option>{health_options}</select></label></form>
         <p class='empty' id='health-empty' hidden>No checks match your filters.</p>
         {problems}
         {''.join(groups)}
@@ -3223,6 +3226,15 @@ def dashboard_page(
         for identity in dict.fromkeys(_identity_group_key(row) for row in rows)
     )
     success_rate = (successes / attempts * 100) if attempts else None
+    identity_pending = sum(
+        int((diagnostic_summary.get(identity) or {}).get("identity_pending") or 0)
+        for identity in dict.fromkeys(_identity_group_key(row) for row in rows)
+    )
+    review_identities = (
+        f"<a class='secondary-button identity-review-link' href='{IDENTITY_REVIEW_PATH}'>"
+        f"Review identities&nbsp;{_admin_icon('arrow-right')}</a>"
+        if identity_pending else ""
+    )
     table_rows = "".join(
         _statistics_row(
             row,
@@ -3233,7 +3245,7 @@ def dashboard_page(
     )
     pagination = "" if len(rows) <= 25 else f"""
           <div class='provider-pagination' id='installation-pagination' aria-live='polite'>
-            <label>Rows <select id='installation-page-size' aria-label='Rows per installation page'><option value='25' selected>25</option><option value='50'>50</option></select></label>
+            <label>Rows <select id='installation-page-size' data-admin-dropdown aria-label='Rows per installation page'><option value='25' selected>25</option><option value='50'>50</option></select></label>
             <button type='button' data-installation-page='previous' disabled>Previous</button>
             <span>Showing 1–25 of {len(rows)} · page 1 of {(len(rows) + 24) // 25}</span>
             <button type='button' data-installation-page='next'>Next</button>
@@ -3257,11 +3269,11 @@ def dashboard_page(
         </section>
         <section class="evidence-section" aria-label="Installation evidence table">
           <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search"{' hidden' if len(rows) <= 1 else ''}>
-            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open problems</button><button type="button" class="quick-filter" data-installation-filter="identity-pending" aria-pressed="false">Identity review</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>
+            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open problems</button><button type="button" class="quick-filter" data-installation-filter="identity-pending" aria-pressed="false">Identity review</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>{review_identities}
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <details class="admin-disclosure filter-disclosure" id="installation-more-filters"><summary>More filters</summary><div class="disclosure-body">
-              <label><span class="sr-only">Filter by evidence</span><select id="evidence-status"><option value="all">All evidence</option>{status_options}</select></label>
-            </div></details><label class="device-mobile-sort"><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="latest" selected>Latest activity</option><option value="model:ascending">Model ↑</option><option value="model:descending">Model ↓</option><option value="variant:ascending">Variant ↑</option><option value="variant:descending">Variant ↓</option><option value="status:ascending">Evidence ↑</option><option value="status:descending">Evidence ↓</option><option value="attempts:ascending">Attempts ↑</option><option value="attempts:descending">Attempts ↓</option><option value="successfulCount:ascending">Successful ↑</option><option value="successfulCount:descending">Successful ↓</option><option value="failedCount:ascending">Failed ↑</option><option value="failedCount:descending">Failed ↓</option><option value="errors:ascending">Open problems ↑</option><option value="errors:descending">Open problems ↓</option><option value="lastSuccess:ascending">Last success ↑</option><option value="lastSuccess:descending">Last success ↓</option></select></label>
+              <label><span class="sr-only">Filter by evidence</span><select id="evidence-status" data-admin-dropdown><option value="all">All evidence</option>{status_options}</select></label>
+            </div></details><label class="device-mobile-sort"><span class="sr-only">Sort models</span><select id="evidence-sort" data-admin-dropdown><option value="latest" selected>Latest activity</option><option value="model:ascending">Model ↑</option><option value="model:descending">Model ↓</option><option value="variant:ascending">Variant ↑</option><option value="variant:descending">Variant ↓</option><option value="status:ascending">Evidence ↑</option><option value="status:descending">Evidence ↓</option><option value="attempts:ascending">Attempts ↑</option><option value="attempts:descending">Attempts ↓</option><option value="successfulCount:ascending">Successful ↑</option><option value="successfulCount:descending">Successful ↓</option><option value="failedCount:ascending">Failed ↑</option><option value="failedCount:descending">Failed ↓</option><option value="errors:ascending">Open problems ↑</option><option value="errors:descending">Open problems ↓</option><option value="lastSuccess:ascending">Last success ↑</option><option value="lastSuccess:descending">Last success ↓</option></select></label>
             <p class="results-count" id="results-count" aria-live="polite">{_count_label(len(rows), 'variant')}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters" hidden>Clear</button>
           </form>
@@ -3870,7 +3882,7 @@ def provider_detail_page(
     empty_audits = "<p class='empty'>No provider audit entries recorded yet.</p>" if not audits else ""
     source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Provider-level original sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div>" if provider_sources else ""
     download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Download source URLs</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
-    download_source_section = f"<details class='admin-card admin-disclosure provider-technical-section' id='provider-download-sources'><summary>Sources <span class='disclosure-meta'>· {len(download_sources)} download links</span></summary><div class='disclosure-body'><p>{source_counts}</p><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details>" if download_sources else ""
+    download_source_section = f"<details class='admin-card admin-disclosure provider-technical-section' id='provider-download-sources'><summary>Sources <span class='disclosure-meta'>· {len(download_sources)} download links</span></summary><div class='disclosure-body'><p>{source_counts}</p><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter' data-admin-dropdown><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size' data-admin-dropdown><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details>" if download_sources else ""
     package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-package-table'><caption class='sr-only'>Packages</caption><thead><tr><th scope='col'>Map</th><th scope='col'>Release</th><th scope='col' class='column-number'>Files</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-status'><span class='sr-only'>Actions</span></th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
     latest_health_table = _provider_current_health(latest_health, provider)
     health_history_table = f"<p class='table-help'>Up to 10 previous checks from the last 30 days.</p><ol class='provider-health-history'>{rows_health}</ol>" if previous_health else ""
@@ -3963,7 +3975,7 @@ def provider_detail_page(
     )
     packages_section = _section_card(
         "Packages",
-        f"<div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'{' selected' if groups else ''}>Problems</option><option value='available'>Available</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label><span class='disclosure-meta'>{len(packages)} catalog entries</span></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div>",
+        f"<div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter' data-admin-dropdown><option value='all'>All packages</option><option value='broken'{' selected' if groups else ''}>Problems</option><option value='available'>Available</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size' data-admin-dropdown><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label><span class='disclosure-meta'>{len(packages)} catalog entries</span></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div>",
         card_id="provider-packages", css="provider-card",
     )
     content = f"""
@@ -4295,7 +4307,7 @@ def map_statistics_page(
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
         <div class='heading-row'><div><h1>Maps</h1></div><a class='section-link' href='/admin/update-diagnostics'>Update reports&nbsp;{_admin_icon('arrow-right')}</a></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'><label><span class='sr-only'>Time range</span><select id='map-statistics-range' name='period'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider' name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'><label><span class='sr-only'>Time range</span><select id='map-statistics-range' data-admin-dropdown name='period'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider' data-admin-dropdown name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' data-admin-dropdown name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' data-admin-dropdown name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
         {metrics_section if has_all_time_data else ""}
         {trends}
         {empty_notice}
@@ -5615,6 +5627,11 @@ def _github_issue_url(
     return candidate, True
 
 
+# Every <details> in the installation dialog and the update report uses this one
+# disclosure presentation (owner decision 2026-10-06).
+DIAGNOSTIC_DISCLOSURE_CLASS = "admin-disclosure diagnostic-disclosure"
+
+
 def _github_issue_controls(issue_title: str, issue_body: str, *, issue: str | None,
                            csrf_token: str, identifier: str, return_to: str,
                            action: str = "/admin/diagnostics/issue",
@@ -5625,15 +5642,15 @@ def _github_issue_controls(issue_title: str, issue_body: str, *, issue: str | No
     issue_url = candidate if issue_prefilled else GITHUB_NEW_ISSUE_URL
     return f"""
         <div class='github-actions'><a class='secondary-button' href='{html.escape(issue_url, quote=True)}' data-github-create data-issue-title='{html.escape(issue_title, quote=True)}' data-issue-body='{html.escape(issue_body, quote=True)}' data-prefilled='{'true' if issue_prefilled else 'false'}' data-url-limit='{GITHUB_ISSUE_URL_MAX_LENGTH}' target='_blank' rel='noreferrer'>Prepare GitHub issue</a><button class='secondary-button' type='button' data-copy-issue-report>Copy issue report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'>{'Report is too large to prefill; copy it instead.' if not issue_prefilled else ''}</span></div>
-        <details class='github-issue-preview'><summary>Preview issue report</summary><label>Title<input value='{html.escape(issue_title, quote=True)}' readonly data-issue-preview-title></label><label>Body<textarea rows='8' readonly data-issue-preview-body>{html.escape(issue_body)}</textarea></label><label>Admin note <span class='optional-label'>Optional · maximum {GITHUB_ADMIN_NOTE_MAX_LENGTH} characters</span><textarea rows='3' maxlength='{GITHUB_ADMIN_NOTE_MAX_LENGTH}' data-issue-note></textarea></label></details>
-        <details class='github-link-disclosure'><summary>Link or manage an existing issue</summary><form method='post' action='{html.escape(action, quote=True)}' class='github-link-form admin-async-action'>
+        <details class='{DIAGNOSTIC_DISCLOSURE_CLASS} github-issue-preview'><summary>Preview issue report</summary><div class='disclosure-body'><label>Title<input value='{html.escape(issue_title, quote=True)}' readonly data-issue-preview-title></label><label>Body<textarea rows='8' readonly data-issue-preview-body>{html.escape(issue_body)}</textarea></label><label>Admin note <span class='optional-label'>Optional · maximum {GITHUB_ADMIN_NOTE_MAX_LENGTH} characters</span><textarea rows='3' maxlength='{GITHUB_ADMIN_NOTE_MAX_LENGTH}' data-issue-note></textarea></label></div></details>
+        <details class='{DIAGNOSTIC_DISCLOSURE_CLASS} github-link-disclosure'><summary>Link or manage an existing issue</summary><div class='disclosure-body'><form method='post' action='{html.escape(action, quote=True)}' class='github-link-form admin-async-action'>
           <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
           <input type='hidden' name='{html.escape(identifier_name, quote=True)}' value='{html.escape(identifier, quote=True)}'>
           <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
           <label>{'Change' if issue else 'Link'} issue <span class='optional-label'>e.g. #32</span><input name='linked_github_issue' placeholder='#32' inputmode='numeric' pattern='#?[0-9]{{1,10}}'></label>
           <button type='submit' class='secondary-button'>{'Change linked issue' if issue else 'Link issue'}</button>
         </form>
-        {f"<form method='post' action='{html.escape(action, quote=True)}' class='github-remove-form admin-async-action' data-confirm='Unlink this GitHub issue from this diagnostic?'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='{html.escape(identifier_name, quote=True)}' value='{html.escape(identifier, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Unlink issue</button></form>" if issue else ''}</details>"""
+        {f"<form method='post' action='{html.escape(action, quote=True)}' class='github-remove-form admin-async-action' data-confirm='Unlink this GitHub issue from this diagnostic?'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='{html.escape(identifier_name, quote=True)}' value='{html.escape(identifier, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Unlink issue</button></form>" if issue else ''}</div></details>"""
 
 
 def _installation_explanation(results: list[dict[str, Any]]) -> tuple[str, str]:
@@ -5667,33 +5684,48 @@ def _installation_explanation(results: list[dict[str, Any]]) -> tuple[str, str]:
     }.get(reason, ('The installation did not complete. This report does not establish the cause.', 'Review the technical details and request the local Terento diagnostic report. Prepare an issue with the available evidence.'))
 
 
-def _diagnostic_detail_dialog(
-    identity: str,
+def _diagnostic_outcome_sections(reason_markup: str, action_markup: str, safety_rows: str) -> str:
+    """Shared What happened / Next action summary and Safety facts (escaped markup in)."""
+    return (
+        "<section class='diagnostic-section diagnostic-outcome'><h3>What happened</h3>"
+        f"<p>{reason_markup}</p>"
+        f"<p class='diagnostic-next-action'><strong>Next action</strong><span>{action_markup}</span></p></section>"
+        "<section class='diagnostic-section diagnostic-safety'><h3>Safety facts</h3>"
+        f"<dl class='diagnostic-detail-summary'>{safety_rows}</dl></section>"
+    )
+
+
+def _diagnostic_review_administration(forms: str) -> str:
+    """Resolve/reopen and workflow forms in one collapsed disclosure; omitted when empty."""
+    if not forms.strip():
+        return ""
+    return (
+        f"<details class='{DIAGNOSTIC_DISCLOSURE_CLASS} diagnostic-review-administration'><summary>Review administration</summary>"
+        "<div class='disclosure-body'><p class='table-help'>Resolving marks the diagnostic as reviewed; it does not repair the map or change the original result.</p>"
+        f"<div class='diagnostic-review-forms'>{forms}</div></div></details>"
+    )
+
+
+def _identity_review_form(
     operation_key: str,
     results: list[dict[str, Any]],
     *,
-    resolved: bool,
     csrf_token: str,
     identity_devices: list[dict[str, Any]] | None,
-    canonical_device_model_id: str | None = None,
-    return_to: str | None = None,
+    return_to: str,
+    id_suffix: str,
     catalog_template: bool = False,
+    inline: bool = False,
+    result_label: str = "",
 ) -> str:
+    """The one Device identity form, shared by the diagnostic dialog and the
+    Identity review queue. It posts one exact result to
+    ``/admin/diagnostics/identity`` with the same fields everywhere.
+
+    ``inline`` (the queue) names a preselected model as the suggestion, keeps a
+    whole-catalog picker behind ``Pick model`` and confirms in place.
+    """
     first = results[0]
-    dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
-    model, variant = _display_identity(identity)
-    catalog_device = next((d for d in identity_devices or []
-                           if (d.get('id') or d.get('device_id')) == first.get('canonical_device_model_id')), None)
-    if catalog_device:
-        model, variant, _ = _identity_parts(catalog_device)
-    issue = _operation_issue(results)
-    result_label = _operation_result(results)
-    state = _operation_state(results, resolved=resolved)
-    identity_pending = _identity_is_pending(results)
-    return_to = return_to or _diagnostics_url({
-        "compatibility_identity": identity,
-        "canonical_device_model_id": canonical_device_model_id,
-    })
     recommendation = _identity_recommendation(results)
     selection_id = str(first.get("canonical_device_model_id") or (recommendation or {}).get("deviceId") or "").strip()
     picker_devices = identity_devices or []
@@ -5728,9 +5760,65 @@ def _diagnostic_detail_dialog(
     conflict_detail = " ".join(conflict_lines) if conflict_lines else (
         "The selected model conflicts with reported information." if selection_conflict else ""
     )
-    picker_hidden = bool(selection_id)
-    search_id = f"identity-search-{dialog_id}"
-    canonical_id = f"identity-canonical-{dialog_id}"
+    # The queue keeps every picker closed until Edit / Pick model, so each
+    # pending item stays one compact row.
+    picker_hidden = bool(selection_id) or inline
+    search_id = f"identity-search-{id_suffix}"
+    canonical_id = f"identity-canonical-{id_suffix}"
+    selection_term = (
+        "Suggested model" if inline and not first.get("canonical_device_model_id")
+        else "Selected model"
+    )
+    empty_selection = "No suggestion" if inline else "No model selected"
+    empty_attribute = f" data-identity-empty='{empty_selection}'" if inline else ""
+    edit_label = "Pick model" if inline and not selection_id else "Edit"
+    edit_hidden = not selection_id and not inline
+    for_result = f"<p class='identity-review-for'>{html.escape(result_label)}</p>" if result_label else ""
+    inline_attribute = " data-identity-inline" if inline else ""
+    return f"""
+      <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form admin-async-action' data-identity-form{inline_attribute}>
+        <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
+        <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
+        <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
+        {for_result}<dl class='identity-selection'><div><dt>{selection_term}</dt><dd data-identity-selection{empty_attribute}>{html.escape(current_label) if selection_id else empty_selection}</dd></div></dl>
+        <div class='identity-picker' data-canonical-device-wrap{' hidden' if picker_hidden else ''}>
+          <label for='{search_id}'>Find a catalog model<input id='{search_id}' type='search' data-identity-search role='combobox' aria-expanded='{'false' if picker_hidden else 'true'}' aria-controls='{canonical_id}-options' placeholder='Search model, size or variant' autocomplete='off' value='{html.escape(current_label if selection_id else '', quote=True)}'></label>
+          <input type='hidden' name='canonical_device_model_id' id='{canonical_id}' value='{html.escape(selection_id, quote=True)}'>
+          <div class='identity-search-results' id='{canonical_id}-options' data-identity-results{" data-identity-catalog='page'" if use_page_catalog else ""} role='listbox' aria-label='Matching Garmin catalog models'>{options}</div>
+        </div>
+        {f"<p class='identity-conflict-warning' data-identity-conflict role='alert'>{html.escape(conflict_detail)} Use the explicit manual assignment action if this is the intended correction.</p>" if conflict_detail else ""}
+        <div class='identity-review-actions'><button type='button' class='secondary-button' data-identity-edit{' hidden' if edit_hidden else ''}>{edit_label}</button><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button><button type='submit' name='identity_action' value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm{' hidden' if not selection_conflict else ''}>Confirm manual assignment</button></div>
+        <p class='admin-action-status' data-identity-status role='status' aria-live='polite'></p>
+      </form>"""
+
+
+def _diagnostic_detail_dialog(
+    identity: str,
+    operation_key: str,
+    results: list[dict[str, Any]],
+    *,
+    resolved: bool,
+    csrf_token: str,
+    identity_devices: list[dict[str, Any]] | None,
+    canonical_device_model_id: str | None = None,
+    return_to: str | None = None,
+    catalog_template: bool = False,
+) -> str:
+    first = results[0]
+    dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
+    model, variant = _display_identity(identity)
+    catalog_device = next((d for d in identity_devices or []
+                           if (d.get('id') or d.get('device_id')) == first.get('canonical_device_model_id')), None)
+    if catalog_device:
+        model, variant, _ = _identity_parts(catalog_device)
+    issue = _operation_issue(results)
+    result_label = _operation_result(results)
+    state = _operation_state(results, resolved=resolved)
+    identity_pending = _identity_is_pending(results)
+    return_to = return_to or _diagnostics_url({
+        "compatibility_identity": identity,
+        "canonical_device_model_id": canonical_device_model_id,
+    })
     technical = "".join(
         _diagnostic_technical_details(result, index)
         for index, result in enumerate(results, start=1)
@@ -5765,22 +5853,14 @@ def _diagnostic_detail_dialog(
           </form>"""
     else:
         lifecycle_action = ""
-    identity_form = f"""
-      <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form admin-async-action' data-identity-form>
-        <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
-        <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
-        <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
-        <div class='identity-picker-heading'><h4>Assign model</h4><button type='button' class='secondary-button' data-identity-edit{'' if selection_id else ' hidden'}>Edit</button></div>
-        <div class='identity-picker' data-canonical-device-wrap{' hidden' if picker_hidden else ''}>
-          <label for='{search_id}'>Find a catalog model<input id='{search_id}' type='search' data-identity-search role='combobox' aria-expanded='{'false' if picker_hidden else 'true'}' aria-controls='{canonical_id}-options' placeholder='Search model, size or variant' autocomplete='off' value='{html.escape(current_label if selection_id else '', quote=True)}'></label>
-          <input type='hidden' name='canonical_device_model_id' id='{canonical_id}' value='{html.escape(selection_id, quote=True)}'>
-          <div class='identity-search-results' id='{canonical_id}-options' data-identity-results{" data-identity-catalog='page'" if use_page_catalog else ""} role='listbox' aria-label='Matching Garmin catalog models'>{options}</div>
-        </div>
-        <p class='identity-selection' data-identity-selection>{'Selected model: ' + html.escape(current_label) if selection_id else 'Model not assigned.'}</p>
-        {f"<p class='identity-conflict-warning' data-identity-conflict role='alert'>{html.escape(conflict_detail)} Use the explicit manual assignment action if this is the intended correction.</p>" if conflict_detail else ""}
-        <div class='identity-review-actions'><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button><button type='submit' name='identity_action' value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm{' hidden' if not selection_conflict else ''}>Confirm manual assignment</button></div>
-        <p class='admin-action-status' data-identity-status role='status' aria-live='polite'></p>
-      </form>"""
+    identity_form = _identity_review_form(
+        operation_key, results, csrf_token=csrf_token, identity_devices=identity_devices,
+        return_to=return_to, id_suffix=dialog_id, catalog_template=catalog_template,
+    )
+    identity_section = (
+        f"<section class='diagnostic-section diagnostic-identity-section' aria-labelledby='{dialog_id}-identity-title'>"
+        f"<h3 id='{dialog_id}-identity-title'>Device identity</h3>{identity_form}</section>"
+    )
     report_device = next((
         device for device in (identity_devices or [])
         if str(device.get("id") or device.get("device_id") or "") == str(canonical_device_model_id or "")
@@ -5788,7 +5868,7 @@ def _diagnostic_detail_dialog(
     issue_title, issue_body = _github_issue_report(identity, results, device=report_device)
     issue_controls = _github_issue_controls(issue_title, issue_body, issue=issue,
         csrf_token=csrf_token, identifier=operation_key, return_to=return_to)
-    issue_form = f"<section class='diagnostic-issue-section github-review'><h3>GitHub issue</h3><p class='github-current'>{_github_issue_link(issue) if issue else 'No linked issue'}</p><p class='table-help'>Review the report before sharing. Closed linked issues resolve this diagnostic after synchronization; installation results stay in history.</p><div class='github-issue-controls'>{issue_controls}</div></section>"
+    issue_form = f"<section class='diagnostic-section diagnostic-issue-section github-review'><h3>GitHub issue</h3><p class='github-current'>{_github_issue_link(issue) if issue else 'No linked issue'}</p><p class='table-help'>Review the report before sharing. A closed linked issue resolves this diagnostic after synchronization; the installation result stays in history.</p><div class='github-issue-controls'>{issue_controls}</div></section>"
     workflow_form = ""
     if not resolved and issue:
         workflow_value = {
@@ -5816,24 +5896,12 @@ def _diagnostic_detail_dialog(
         review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('IDENTITY_PENDING')}</dd></div>"
     reason, next_action = _installation_explanation(results)
     if identity_pending:
-        next_action += ' Assign the exact catalog model in Review administration.'
+        next_action += ' Assign the exact catalog model in Device identity below.'
     safety = "".join(f"<div><dt>{label}</dt><dd>{html.escape(_operation_report_boolean(results, field) or 'Unknown')}</dd></div>"
         for label, field in (("Write started", "write_started"), ("Cleanup attempted", "cleanup_attempted"), ("Cleanup succeeded", "cleanup_succeeded")))
-    failure_summary = f"<section class='diagnostic-outcome'><h3>What happened</h3><p>{html.escape(reason)}</p><h3>Next action</h3><p>{html.escape(next_action)}</p><h3>Safety facts</h3><dl class='diagnostic-detail-summary'>{safety}</dl></section>"
-    technical_details = f"<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'><summary>Technical details</summary><div class='disclosure-body'><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</div></details>"
-    identity_state = (
-        "<p class='diagnostic-identity-state'><strong>Identity incomplete.</strong> Assign the exact catalog model.</p>"
-        if identity_pending else ""
-    )
-    secondary_lifecycle = (
-        f"<details class='admin-disclosure diagnostic-secondary-action'><summary>Resolve diagnostic</summary><div class='disclosure-body'>{lifecycle_action}</div></details>"
-        if identity_pending and lifecycle_action else ""
-    )
-    action_markup = (
-        f"{identity_form}{secondary_lifecycle}{workflow_form}"
-        if identity_pending else
-        f"{lifecycle_action}{workflow_form}{identity_form}"
-    )
+    failure_summary = _diagnostic_outcome_sections(html.escape(reason), html.escape(next_action), safety)
+    technical_details = f"<details class='{DIAGNOSTIC_DISCLOSURE_CLASS} diagnostic-technical-section'><summary>Technical details</summary><div class='disclosure-body'><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</div></details>"
+    administration = _diagnostic_review_administration(f"{lifecycle_action}{workflow_form}")
     model_markup = html.escape(model)
     if first.get('canonical_device_model_id'):
         model_markup = f"<a href='{html.escape(_device_detail_url(first['canonical_device_model_id']), quote=True)}'>{model_markup}</a>"
@@ -5852,9 +5920,9 @@ def _diagnostic_detail_dialog(
             {review_state}
           </dl>
           {failure_summary}
-          {identity_state}
           {issue_form}
-          <div class='diagnostic-secondary-grid'><details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'{' open' if identity_pending else ''}><summary>Review administration</summary><div class='disclosure-body'><p class='table-help'>Resolving marks the diagnostic as reviewed; it does not repair the map or change the original result.</p><div class='diagnostic-actions-grid'>{action_markup}</div></div></details>{technical_details}</div>
+          <div class='diagnostic-disclosure-stack'>{administration}{technical_details}</div>
+          {identity_section}
         </div>
       </dialog>"""
 
@@ -6052,7 +6120,7 @@ def device_detail_page(
         ))
     history_rows = "".join(rows_markup) or "<tr><td colspan='7' class='empty'>No installation history for this device.</td></tr>"
     history_pagination = "" if len(history) <= 25 else f"""
-          <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing 1–25 of {len(history)} · page 1 of {(len(history) + 24) // 25}</span><button type='button' data-history-page='next'>Next</button></div>
+          <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' data-admin-dropdown aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing 1–25 of {len(history)} · page 1 of {(len(history) + 24) // 25}</span><button type='button' data-history-page='next'>Next</button></div>
     """
 
     public_copy = (
@@ -6124,7 +6192,7 @@ def device_detail_page(
     history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not history else f"""
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false'>Blocked before writing</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked before writing</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false'>Blocked before writing</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter' data-admin-dropdown><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked before writing</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'></p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table mobile-record-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
           {history_pagination}
@@ -6208,15 +6276,31 @@ def diagnostics_page(
     result_summary = _diagnostic_summary_by_identity(active_events, resolved_events)
     attempts = sum(item["attempts"] for item in result_summary.values())
     successes = sum(item["successful"] for item in result_summary.values())
+    failures = sum(item["failed"] for item in result_summary.values())
     if model_row:
         attempts = int(model_row.get("attempted_install_count") or 0)
         successes = int(model_row.get("successful_install_count") or 0)
+        failures = int(model_row.get("failed_install_count") or 0)
     errors = (
         int(open_problem_count) if open_problem_count is not None
         else _open_problem_operation_count(active_events)
     )
     status = _row_compatibility_status(model_row) if model_row else None
-    filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
+    # Quick filters like the device Installation history (no <select>, owner
+    # decision 2026-10-06); every former select value stays one click away.
+    quick_filters = "".join(
+        f"<button type='button' class='quick-filter{' active' if value == 'all' else ''}' data-history-filter='{value}' "
+        f"aria-pressed='{'true' if value == 'all' else 'false'}'>{label}</button>"
+        for value, label in (
+            ("all", "All"), ("failed", "Failed"), ("open", "Open problems"),
+            ("identity-pending", "Identity review"), ("resolved", "Resolved"),
+            ("with-issue", "With issue"), ("succeeded", "Successful"),
+        )
+    )
+    filters = (
+        f"<div class='quick-filter-group' role='group' aria-label='Quick history filters'>{quick_filters}</div>"
+        "<button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"
+    )
     rows_markup: list[str] = []
     dialogs: list[str] = []
     for index, (operation_key, results, resolved) in enumerate(diagnostic_groups):
@@ -6235,12 +6319,12 @@ def diagnostics_page(
         dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
         rows_markup.append(
             f"<tr data-diagnostic-state='{state}' data-review-open='{'true' if state in {'open', 'in-progress', 'under-review', 'identity-pending'} else 'false'}' data-review-resolved='{'true' if resolved else 'false'}' data-identity-pending='{'true' if identity_pending else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
-            f"<td class='column-date'>{_timestamp_markup(first.get('occurred_at'))}</td>"
-            f"<td>{html.escape(_operation_text(results, 'region'))}</td>"
-            f"<td class='column-status'>{_diagnostic_result(result)}</td>"
-            f"<td>{_github_issue_link(issue)}</td>"
-            f"<td class='column-status'>{review_badge}</td>"
-            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Inspect installation {index + 1}'>Inspect</button></td>"
+            f"<td class='column-date' data-label='Date'>{_timestamp_markup(first.get('occurred_at'))}</td>"
+            f"<td class='history-map' data-label='Map'>{html.escape(_operation_text(results, 'region'))}</td>"
+            f"<td class='column-status' data-label='Result'>{_diagnostic_result(result)}</td>"
+            f"<td data-label='GitHub issue'>{_github_issue_link(issue)}</td>"
+            f"<td class='column-status' data-label='Review'>{review_badge}</td>"
+            f"<td class='column-status' data-label='Action'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Inspect installation {index + 1}'>Inspect</button></td>"
             "</tr>"
         )
         dialogs.append(_diagnostic_detail_dialog(
@@ -6254,19 +6338,26 @@ def diagnostics_page(
       {_admin_header(user, csrf_token, active='installations')}
       <main class='dashboard diagnostics-page' id='main-content'>
         <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
-        <div class='heading-row'><div><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1></div></div>
-        <section class='admin-card diagnostic-model-metrics' aria-label='Model diagnostic summary'>{_metric_row([
-            _metric_tile("Attempts", attempts, scope="all", data_stat="attempts"),
-            _metric_tile("Successful", successes, scope="all", data_stat="successful"),
-            _metric_tile("Open problems", errors, scope="now", failure=True, data_stat="openProblems"),
+        <div class='heading-row'><div><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1></div><a class='section-link identity-review-all-link' href='{IDENTITY_REVIEW_PATH}'>Review all pending identities&nbsp;{_admin_icon('arrow-right')}</a></div>
+        <section class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-labelledby='diagnostic-installation-kpis-title'>
+          <header class='admin-card-head'><h2 id='diagnostic-installation-kpis-title'>Installs</h2></header>
+          {_metric_row([
+            # Same Installs card as the device page: no scope chips under the
+            # numbers and Evidence as a normal status pill (owner decision 2026-10-06).
+            _metric_tile("Attempts", attempts, data_stat="attempts"),
+            _metric_tile("Successful", successes, data_stat="successful"),
+            _metric_tile("Failed", failures, failure=True, data_stat="failed"),
+            _metric_tile("Open problems", errors, failure=True, data_stat="openProblems",
+                         hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
             _metric_tile("Evidence", status.value.title() if status else "Unavailable", fmt="text",
                          value_html=_status_badge(status.value if status else ''), data_stat="evidence"),
-        ], label="Model diagnostic summary")}</section>
-        <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
-          <div class='section-heading'><div><h2 id='diagnostic-list-title'>Installations</h2></div></div>
+        ], label="Model installation statistics")}
+        </section>
+        <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='diagnostic-list-title'>
+          <div class='section-heading'><div><h2 id='diagnostic-list-title'>Installation history</h2></div></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'{' hidden' if len(diagnostic_groups) <= 1 else ''}>{filters}</form>
-          <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(diagnostic_groups)} records</p>
-          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>GitHub issue</th><th scope='col' class='column-status'>Review</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
+          <p class='results-count' id='diagnostic-results-count' aria-live='polite'></p>
+          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table mobile-record-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>GitHub issue</th><th scope='col' class='column-status'>Review</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
         </section>
         {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
       </main>
@@ -6351,6 +6442,190 @@ def github_issue_queue_page(
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
     """
     return _layout("GitHub issues", content, sections={"queue": operations, "updates": update_diagnostics})
+
+
+IDENTITY_REVIEW_PATH = "/admin/review/identity"
+_IDENTITY_CHECK_LABELS = {
+    "model": "model", "size": "size", "screen": "display",
+    "xmlPartNumber": "product code", "usb": "USB code",
+}
+
+
+def _reported_identity(value: dict[str, Any]) -> str:
+    """The reported identity text that groups unresolved evidence (Installations row key)."""
+    return str(value.get("compatibility_identity") or value.get("model") or "Unknown").strip() or "Unknown"
+
+
+def _identity_review_anchor(identity: str) -> str:
+    return "identity-" + hashlib.sha256(identity.strip().encode("utf-8")).hexdigest()[:12]
+
+
+def _identity_review_url(identity: str | None = None) -> str:
+    return IDENTITY_REVIEW_PATH + (f"#{_identity_review_anchor(identity)}" if identity else "")
+
+
+def _identity_pending_reason(results: list[dict[str, Any]]) -> str:
+    """Short, received-facts-only reason why no exact catalog model is assigned."""
+    assessments = [assessment for assessment in _identity_assessments(results) if assessment]
+    if not assessments:
+        return "Not assessed"
+    recommendation = _identity_recommendation(results)
+    if recommendation:
+        missing = list(dict.fromkeys(
+            _IDENTITY_CHECK_LABELS[str(check.get("name"))]
+            for check in recommendation.get("checks", [])
+            if check.get("state") == "MISSING" and str(check.get("name")) in _IDENTITY_CHECK_LABELS
+        ))
+        return f"One match · {', '.join(missing)} not confirmed" if missing else "One match · needs confirmation"
+    possible = {
+        str(candidate.get("deviceId"))
+        for assessment in assessments
+        for candidate in _identity_presentation_candidates(assessment)
+        if candidate.get("deviceId")
+    }
+    if len(possible) > 1:
+        return f"{len(possible)} possible models"
+    if any(assessment.get("candidates") for assessment in assessments):
+        return "Reported details conflict with the catalog"
+    return "No catalog match"
+
+
+def _identity_review_groups(
+    operations: list[dict[str, Any]],
+) -> list[tuple[str, list[tuple[str, list[tuple[str, list[dict[str, Any]]]]]]]]:
+    """Group pending work by reported identity, then by install operation.
+
+    The unit is the Needs attention one: an install operation (operation ID,
+    or the event for legacy rows) with at least one identity-pending result.
+    Each pending result keeps its own exact key for the identity form.
+    """
+    by_identity: dict[str, list[dict[str, Any]]] = {}
+    for event in operations:
+        by_identity.setdefault(_reported_identity(event), []).append(event)
+
+    def latest(rows: list[dict[str, Any]]) -> str:
+        return max(_timestamp_iso(row.get("occurred_at")) for row in rows)
+
+    groups = []
+    for identity, events in by_identity.items():
+        tasks = []
+        for task_key, task_events in _group_operation_tasks(events).items():
+            pending = [
+                (result_key, rows) for result_key, rows in _group_operations(task_events).items()
+                if _identity_is_pending(rows)
+            ]
+            if pending:
+                tasks.append((task_key, pending))
+        tasks.sort(key=lambda task: latest([row for _, rows in task[1] for row in rows]), reverse=True)
+        if tasks:
+            groups.append((identity, tasks))
+    groups.sort(key=lambda group: latest([row for _, rows in group[1][0][1] for row in rows]), reverse=True)
+    return groups
+
+
+def _identity_review_item(
+    identity: str, task_key: str, pending: list[tuple[str, list[dict[str, Any]]]], number: int, *,
+    csrf_token: str, identity_devices: list[dict[str, Any]] | None,
+) -> str:
+    rows = [row for _, result_rows in pending for row in result_rows]
+    first_key, first_rows = pending[0]
+    detail_href = (
+        _diagnostics_url({"compatibility_identity": identity})
+        + "#diagnostic-detail-" + hashlib.sha256(first_key.encode("utf-8")).hexdigest()[:16]
+    )
+    forms = "".join(
+        _identity_review_form(
+            result_key, result_rows, csrf_token=csrf_token, identity_devices=identity_devices,
+            return_to=IDENTITY_REVIEW_PATH,
+            id_suffix="identity-review-" + hashlib.sha256(result_key.encode("utf-8")).hexdigest()[:16],
+            catalog_template=True, inline=True,
+            result_label=_operation_map_label(result_rows) if len(pending) > 1 else "",
+        )
+        for result_key, result_rows in pending
+    )
+    reason = _identity_pending_reason(first_rows) if len(pending) == 1 else "; ".join(dict.fromkeys(
+        _identity_pending_reason(result_rows) for _, result_rows in pending
+    ))
+    return (
+        f"<li class='identity-review-item' data-identity-review-item data-operation='{html.escape(task_key, quote=True)}'>"
+        "<div class='identity-review-facts'>"
+        f"<span class='identity-review-date'>{_timestamp_markup(max((row.get('occurred_at') for row in rows), key=_timestamp_iso))}</span>"
+        f"<span class='identity-review-map'>{html.escape(_operation_map_label(rows))}</span>"
+        f"<span class='identity-review-result'>{_diagnostic_result(_operation_result(rows))}</span>"
+        "<span class='identity-review-why'>"
+        f"<span class='identity-review-reason'>{html.escape(reason)}</span>"
+        f"<a class='section-link identity-review-details' href='{html.escape(detail_href, quote=True)}' "
+        f"aria-label='Details for installation {number}'>Details</a>"
+        "</span></div>"
+        f"<div class='identity-review-decision'>{forms}</div>"
+        "</li>"
+    )
+
+
+def identity_review_page(
+    operations: list[dict[str, Any]] | None,
+    user: dict[str, Any],
+    csrf_token: str,
+    *, identity_devices: list[dict[str, Any]] | None = None,
+) -> bytes:
+    """Every installation operation whose identity is pending, confirmable in place."""
+    total = 0
+    if operations is None:
+        body = _unavailable_card("Identity review", "identity-review-list", retry_href=IDENTITY_REVIEW_PATH)
+        summary = ""
+    else:
+        groups = _identity_review_groups(operations)
+        total = sum(len(tasks) for _, tasks in groups)
+        done = _empty_state("empty", "No installations wait for identity review.")
+        cards: list[str] = []
+        number = 0
+        for identity, tasks in groups:
+            model, variant = _display_identity(identity)
+            anchor = _identity_review_anchor(identity)
+            items = []
+            for task_key, pending in tasks:
+                number += 1
+                items.append(_identity_review_item(
+                    identity, task_key, pending, number,
+                    csrf_token=csrf_token, identity_devices=identity_devices,
+                ))
+            variant_text = variant if variant not in {"—", "Historical"} else "Variant not reported"
+            cards.append(
+                f"<section class='admin-card identity-review-group' id='{anchor}' aria-labelledby='{anchor}-title' data-identity-review-group>"
+                "<header class='admin-card-head'>"
+                f"<h2 id='{anchor}-title'>{html.escape(model)}<small>{html.escape(variant_text)}</small></h2>"
+                f"<span class='table-help' data-identity-review-group-count>{_count_label(len(tasks), 'installation')}</span>"
+                f"<a class='admin-card-action section-link' href='{html.escape(_diagnostics_url({'compatibility_identity': identity}), quote=True)}'>"
+                f"All installations&nbsp;{_admin_icon('arrow-right')}</a>"
+                "</header>"
+                f"<ol class='identity-review-items'>{''.join(items)}</ol>"
+                "</section>"
+            )
+        if cards:
+            body = (
+                "<div class='identity-review-groups'>" + "".join(cards) + "</div>"
+                + f"<div class='admin-card identity-review-done' data-identity-review-done hidden>{done}</div>"
+                + "<template id='identity-review-confirmed'><p class='identity-review-confirmed' tabindex='-1'>"
+                + _status_pill("success", "Confirmed")
+                + " <a class='section-link' data-identity-confirmed-link href='/admin/devices'>Open model</a></p></template>"
+                + _identity_picker_template(identity_devices)
+            )
+        else:
+            body = f"<div class='admin-card identity-review-done'>{done}</div>"
+        summary = (
+            f"<p class='page-meta identity-review-summary'>{_scope_chip('now')}"
+            f"<span data-identity-review-count>{_count_label(total, 'installation')}</span></p>"
+        )
+    content = f"""
+      {_admin_header(user, csrf_token, active='overview')}
+      <main class='dashboard identity-review-page' id='main-content'>
+        <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
+        <div class='heading-row'><div><h1>Identity review</h1></div>{summary}</div>
+        {body}
+      </main>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
+    """
+    return _layout("Identity review", content, sections={"identityReview": operations})
 
 
 def _admin_map_capability(value: Any) -> tuple[str, str]:
@@ -6646,13 +6921,13 @@ def devices_page(
         <section class="evidence-section" aria-label="Device catalog">
           <form class="filter-bar admin-filter-bar device-filter-bar" id="device-filters" role="search">
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
-            <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
+            <label><span class="sr-only">Filter by map capability</span><select id="device-map" data-admin-dropdown><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
             <details class="admin-disclosure filter-disclosure" id="device-more-filters"><summary>More filters</summary><div class="disclosure-body">
-              <label><span class="sr-only">Filter by family</span><select id="device-family"><option value="all">All families</option>{family_options}</select></label>
-              <label><span class="sr-only">Filter by install policy</span><select id="device-support"><option value="all">All policies</option><option value="APPROVED">Approved</option><option value="BLOCKED">Blocked</option><option value="PENDING">Pending</option></select></label>
-              <label><span class="sr-only">Filter by evidence</span><select id="device-status"><option value="all">All evidence</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
+              <label><span class="sr-only">Filter by family</span><select id="device-family" data-admin-dropdown><option value="all">All families</option>{family_options}</select></label>
+              <label><span class="sr-only">Filter by install policy</span><select id="device-support" data-admin-dropdown><option value="all">All policies</option><option value="APPROVED">Approved</option><option value="BLOCKED">Blocked</option><option value="PENDING">Pending</option></select></label>
+              <label><span class="sr-only">Filter by evidence</span><select id="device-status" data-admin-dropdown><option value="all">All evidence</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
             </div></details>
-            <label class="device-mobile-sort"><span class="sr-only">Sort devices</span><select id="device-mobile-sort">{mobile_sort_options}</select></label>
+            <label class="device-mobile-sort"><span class="sr-only">Sort devices</span><select id="device-mobile-sort" data-admin-dropdown>{mobile_sort_options}</select></label>
             <p class="results-count" id="device-results-count" aria-live="polite">{_count_label(summary['mapCapable'], 'result')}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear device filters">Clear</button>
           </form>
@@ -6805,15 +7080,18 @@ def _statistics_row(
         model_cell += " " + _historical_catalog_indicator()
     if variant == "Historical":
         variant = "—"
-    if pending_count:
-        model_cell += (
-            f" <span class='identity-pending-indicator' aria-label='{pending_count} identity review'>"
-            "Identity review</span>"
-        )
     model_cell = (
         f"<a class='device-model-button' href='{html.escape(diagnostics_url, quote=True)}'>"
         f"{model_cell}</a>"
     )
+    if pending_count:
+        # The badge opens the Identity review queue at this reported identity;
+        # the model link keeps its own destination.
+        model_cell += (
+            f" <a class='identity-pending-indicator' href='{html.escape(_identity_review_url(_reported_identity(row)), quote=True)}'"
+            f" aria-label='Identity review: {pending_count} pending'>"
+            "Identity review</a>"
+        )
     open_errors_markup = _admin_error_counter(
         open_errors,
         href=_model_detail_url(row, state="open") if open_errors else None,
@@ -7508,6 +7786,38 @@ def _diagnostics_script() -> str:
           event.preventDefault();
         }
       }));
+      const pluralInstallations = (count) => `${count} ${count === 1 ? 'installation' : 'installations'}`;
+      const refreshIdentityReviewCounts = () => {
+        const open = (scope) => [...scope.querySelectorAll('[data-identity-review-item]')].filter((item) => item.dataset.identityConfirmed !== 'true').length;
+        document.querySelectorAll('[data-identity-review-group]').forEach((group) => {
+          const count = group.querySelector('[data-identity-review-group-count]');
+          if (count) count.textContent = pluralInstallations(open(group));
+        });
+        const remaining = open(document);
+        const total = document.querySelector('[data-identity-review-count]');
+        if (total) total.textContent = pluralInstallations(remaining);
+        const done = document.querySelector('[data-identity-review-done]');
+        if (done) done.hidden = remaining > 0;
+      };
+      const markIdentityConfirmed = (form) => {
+        const deviceId = form.querySelector('input[name="canonical_device_model_id"]')?.value || '';
+        const label = form.querySelector('[data-identity-selection]')?.textContent.trim() || 'Open model';
+        const notice = document.getElementById('identity-review-confirmed')?.content.firstElementChild?.cloneNode(true)
+          || Object.assign(document.createElement('p'), {textContent: 'Confirmed'});
+        const link = notice.querySelector('[data-identity-confirmed-link]');
+        if (link) {
+          link.href = `/admin/devices/${encodeURIComponent(deviceId)}?from=installations#installations`;
+          link.textContent = label;
+        }
+        notice.setAttribute('role', 'status');
+        form.dataset.identityConfirmed = 'true';
+        form.hidden = true;
+        form.after(notice);
+        const item = form.closest('[data-identity-review-item]');
+        if (item && !item.querySelector('[data-identity-form]:not([data-identity-confirmed])')) item.dataset.identityConfirmed = 'true';
+        refreshIdentityReviewCounts();
+        notice.focus();
+      };
       document.querySelectorAll('form.admin-async-action').forEach((form) => form.addEventListener('submit', async (event) => {
         if (event.defaultPrevented) return;
         event.preventDefault();
@@ -7590,7 +7900,11 @@ def _diagnostics_script() -> str:
             error.identityCode = payload.error;
             throw error;
           }
-          if (response.redirected) {
+          const signedOut = response.redirected && /^\/admin\/(login|setup)\b/.test(new URL(response.url).pathname);
+          if (form.matches('[data-identity-inline]') && !signedOut) {
+            // Identity review queue: confirm in place instead of leaving the queue.
+            markIdentityConfirmed(form);
+          } else if (response.redirected) {
             window.location.assign(response.url);
           } else {
             window.location.reload();
@@ -7662,6 +7976,106 @@ def _diagnostics_script() -> str:
       pagination?.querySelector('[data-history-page="next"]')?.addEventListener('click', () => { page += 1; refresh(); });
       document.querySelectorAll('.diagnostic-review').forEach((button) => button.addEventListener('click', () => open(document.getElementById(button.dataset.dialogId), button)));
       document.querySelectorAll('[data-close-dialog]').forEach((button) => button.addEventListener('click', () => close(button.closest('dialog'))));
+      // One Device identity binding for dialog forms and the inline Identity review queue.
+      const bindIdentityForm = (form, dialog) => {
+        const wrap = form.querySelector('[data-canonical-device-wrap]');
+        const search = form.querySelector('[data-identity-search]');
+        const canonical = form.querySelector('input[name="canonical_device_model_id"]');
+        const selection = form.querySelector('[data-identity-selection]');
+        const results = form.querySelector('[data-identity-results]');
+        const edit = form.querySelector('[data-identity-edit]');
+        const confirm = form.querySelector('[data-identity-confirm]');
+        const pageCatalog = results?.dataset.identityCatalog === 'page';
+        const optionSource = pageCatalog
+          ? [...(document.getElementById('identity-picker-catalog')?.content.querySelectorAll('[data-identity-device-id]') || [])]
+          : (results ? [...results.querySelectorAll('[data-identity-device-id]')] : []);
+        const choices = optionSource.map((option) => ({
+          id: option.dataset.identityDeviceId,
+          label: option.dataset.identityDeviceLabel || option.textContent.trim(),
+        }));
+        const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const clearStaleSelectionState = () => {
+          form.querySelector('[data-identity-conflict]')?.setAttribute('hidden', '');
+          form.querySelector('[data-manual-confirm]')?.setAttribute('hidden', '');
+        };
+        const sync = () => {
+          const hasSelection = Boolean(canonical?.value);
+          if (confirm) confirm.disabled = !hasSelection;
+          if (selection) selection.textContent = hasSelection
+            ? (search?.value || canonical.value)
+            : (selection.dataset.identityEmpty || 'No model selected');
+          if (search) search.setAttribute('aria-expanded', wrap?.hidden ? 'false' : 'true');
+        };
+        const render = (query = '') => {
+          if (!results) return [];
+          const matches = choices.filter(choice => normalize(choice.label).includes(normalize(query.trim())));
+          results.replaceChildren(...matches.map(choice => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'identity-picker-option';
+            button.setAttribute('role', 'option');
+            button.dataset.identityDeviceId = choice.id;
+            button.dataset.identityDeviceLabel = choice.label;
+            button.textContent = choice.label;
+            button.addEventListener('click', () => {
+              clearStaleSelectionState();
+              if (canonical) canonical.value = choice.id;
+              if (search) search.value = choice.label;
+              if (results) results.hidden = true;
+              if (edit) { edit.hidden = false; edit.textContent = 'Edit'; }
+              const term = form.querySelector('.identity-selection dt');
+              if (term) term.textContent = 'Selected model';
+              sync();
+              search?.focus();
+            });
+            return button;
+          }));
+          results.hidden = false;
+          if (!matches.length) {
+            const empty = document.createElement('p');
+            empty.className = 'identity-picker-empty';
+            empty.setAttribute('role', 'status');
+            empty.textContent = 'No catalog models match this search.';
+            results.append(empty);
+          }
+          return matches;
+        };
+        edit?.addEventListener('click', () => {
+          clearStaleSelectionState();
+          if (wrap) wrap.hidden = false;
+          if (results) results.hidden = false;
+          render('');
+          search?.focus();
+          sync();
+        });
+        search?.addEventListener('input', () => {
+          clearStaleSelectionState();
+          const selected = choices.find(choice => choice.id === canonical?.value);
+          if (!selected || normalize(search.value) !== normalize(selected.label)) {
+            if (canonical) canonical.value = '';
+            form.querySelector('[data-manual-confirm]')?.setAttribute('hidden', '');
+          }
+          if (wrap) wrap.hidden = false;
+          render(search.value);
+          sync();
+        });
+        search?.addEventListener('keydown', (event) => {
+          const visible = results ? [...results.querySelectorAll('[data-identity-device-id]')] : [];
+          if (event.key === 'ArrowDown' && visible.length) { event.preventDefault(); visible[0].focus(); }
+          if (event.key === 'ArrowUp' && visible.length) { event.preventDefault(); visible[visible.length - 1].focus(); }
+          if (event.key === 'Escape' && wrap) { wrap.hidden = Boolean(canonical?.value); if (results) results.hidden = true; sync(); }
+        });
+        // Bind the initial choices too, before any search input or Edit action.
+        // A page-level catalog is cloned only when its dialog first opens; an
+        // inline (queue) page-catalog picker renders when Edit / Pick model opens it.
+        if (pageCatalog && dialog) {
+          let rendered = false;
+          dialog.addEventListener('terento-dialog-open', () => { if (!rendered) { rendered = true; render(search?.value || ''); if (wrap?.hidden && results) results.hidden = true; } });
+        } else if (!pageCatalog) {
+          render('');
+        }
+        sync();
+      };
       dialogs.forEach((dialog) => {
         dialog.addEventListener('click', (event) => { if (event.target === dialog) close(dialog); });
         dialog.addEventListener('cancel', () => window.setTimeout(() => lastFocused?.focus(), 0));
@@ -7680,103 +8094,12 @@ def _diagnostics_script() -> str:
           if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
         });
-        dialog.querySelectorAll('[data-identity-form]').forEach((form) => {
-          const wrap = form.querySelector('[data-canonical-device-wrap]');
-          const search = form.querySelector('[data-identity-search]');
-          const canonical = form.querySelector('input[name="canonical_device_model_id"]');
-          const selection = form.querySelector('[data-identity-selection]');
-          const results = form.querySelector('[data-identity-results]');
-          const edit = form.querySelector('[data-identity-edit]');
-          const confirm = form.querySelector('[data-identity-confirm]');
-          const pageCatalog = results?.dataset.identityCatalog === 'page';
-          const optionSource = pageCatalog
-            ? [...(document.getElementById('identity-picker-catalog')?.content.querySelectorAll('[data-identity-device-id]') || [])]
-            : (results ? [...results.querySelectorAll('[data-identity-device-id]')] : []);
-          const choices = optionSource.map((option) => ({
-            id: option.dataset.identityDeviceId,
-            label: option.dataset.identityDeviceLabel || option.textContent.trim(),
-          }));
-          const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-          const clearStaleSelectionState = () => {
-            form.querySelector('[data-identity-conflict]')?.setAttribute('hidden', '');
-            form.querySelector('[data-manual-confirm]')?.setAttribute('hidden', '');
-          };
-          const sync = () => {
-            const hasSelection = Boolean(canonical?.value);
-            if (confirm) confirm.disabled = !hasSelection;
-            if (selection) selection.textContent = hasSelection
-              ? `Selected model: ${search?.value || canonical.value}`
-              : 'Select a specific catalog model.';
-            if (search) search.setAttribute('aria-expanded', wrap?.hidden ? 'false' : 'true');
-          };
-          const render = (query = '') => {
-            if (!results) return [];
-            const matches = choices.filter(choice => normalize(choice.label).includes(normalize(query.trim())));
-            results.replaceChildren(...matches.map(choice => {
-              const button = document.createElement('button');
-              button.type = 'button';
-              button.className = 'identity-picker-option';
-              button.setAttribute('role', 'option');
-              button.dataset.identityDeviceId = choice.id;
-              button.dataset.identityDeviceLabel = choice.label;
-              button.textContent = choice.label;
-              button.addEventListener('click', () => {
-                clearStaleSelectionState();
-                if (canonical) canonical.value = choice.id;
-                if (search) search.value = choice.label;
-                if (results) results.hidden = true;
-                if (edit) edit.hidden = false;
-                sync();
-                search?.focus();
-              });
-              return button;
-            }));
-            results.hidden = false;
-            if (!matches.length) {
-              const empty = document.createElement('p');
-              empty.className = 'identity-picker-empty';
-              empty.setAttribute('role', 'status');
-              empty.textContent = 'No catalog models match this search.';
-              results.append(empty);
-            }
-            return matches;
-          };
-          edit?.addEventListener('click', () => {
-            clearStaleSelectionState();
-            if (wrap) wrap.hidden = false;
-            if (results) results.hidden = false;
-            render('');
-            search?.focus();
-            sync();
-          });
-          search?.addEventListener('input', () => {
-            clearStaleSelectionState();
-            const selected = choices.find(choice => choice.id === canonical?.value);
-            if (!selected || normalize(search.value) !== normalize(selected.label)) {
-              if (canonical) canonical.value = '';
-              form.querySelector('[data-manual-confirm]')?.setAttribute('hidden', '');
-            }
-            if (wrap) wrap.hidden = false;
-            render(search.value);
-            sync();
-          });
-          search?.addEventListener('keydown', (event) => {
-            const visible = results ? [...results.querySelectorAll('[data-identity-device-id]')] : [];
-            if (event.key === 'ArrowDown' && visible.length) { event.preventDefault(); visible[0].focus(); }
-            if (event.key === 'ArrowUp' && visible.length) { event.preventDefault(); visible[visible.length - 1].focus(); }
-            if (event.key === 'Escape' && wrap) { wrap.hidden = Boolean(canonical?.value); if (results) results.hidden = true; sync(); }
-          });
-          // Bind the initial choices too, before any search input or Edit action.
-          // A page-level catalog is cloned only when its dialog first opens.
-          if (pageCatalog) {
-            let rendered = false;
-            dialog.addEventListener('terento-dialog-open', () => { if (!rendered) { rendered = true; render(search?.value || ''); if (wrap?.hidden && results) results.hidden = true; } });
-          } else {
-            render('');
-          }
-          sync();
-        });
+        dialog.querySelectorAll('[data-identity-form]').forEach((form) => bindIdentityForm(form, dialog));
       });
+      document.querySelectorAll('[data-identity-form][data-identity-inline]').forEach((form) => bindIdentityForm(form, null));
+      // A Details link may target one diagnostic dialog by its id.
+      const linkedDialog = window.location.hash ? document.getElementById(decodeURIComponent(window.location.hash.slice(1))) : null;
+      if (linkedDialog?.matches('dialog.diagnostic-detail-dialog')) open(linkedDialog, null);
       refresh();
     })();"""
     return script.replace(
@@ -7946,7 +8269,8 @@ td:first-child{font-weight:650}
 td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .muted-value{color:var(--secondary)}
 .error-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:700}
-.evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,var(--surface))}.evidence-model-row:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}.evidence-model-row td.column-number{font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card)}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,var(--surface))}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:var(--radius-card);background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px color-mix(in srgb,var(--graphite) 24%,transparent)}.diagnostic-detail-dialog::backdrop{background:color-mix(in srgb,var(--graphite) 34%,transparent)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:var(--radius-control)}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-summary{font-size:14px;line-height:1.5}.identity-summary h4{font:600 22px/1.3 var(--font-ui);margin:8px 0;text-wrap:balance}.identity-review-form input,.identity-review-form select,.identity-review-form button{min-height:40px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{overflow-wrap:anywhere}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}
+.evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,var(--surface))}.evidence-model-row:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}.evidence-model-row td.column-number{font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card)}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}
+.diagnostic-model-metrics .admin-metric-value{margin-top:0;font:600 24px/32px var(--font-ui)}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,var(--surface))}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:var(--radius-card);background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px color-mix(in srgb,var(--graphite) 24%,transparent)}.diagnostic-detail-dialog::backdrop{background:color-mix(in srgb,var(--graphite) 34%,transparent)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:var(--radius-control)}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-summary{font-size:14px;line-height:1.5}.identity-summary h4{font:600 22px/1.3 var(--font-ui);margin:8px 0;text-wrap:balance}.identity-review-form input,.identity-review-form select,.identity-review-form button{min-height:40px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{overflow-wrap:anywhere}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}
 .diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}.github-issue-controls{margin-top:12px}
 .diagnostic-id{font-size:11px!important;color:var(--secondary)!important}.diagnostic-id code{overflow-wrap:anywhere;font-size:10px;color:var(--secondary)}.diagnostic-technical-details{margin:10px 0 0;padding:9px 11px;background:var(--surface-muted);border-radius:var(--radius-control)}.diagnostic-technical-details>summary{cursor:pointer;color:var(--secondary);font-size:12px;font-weight:700}.diagnostic-technical-details dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;margin:10px 0 0}.diagnostic-technical-details dl div{min-width:0;display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-technical-details dt{min-width:0;overflow-wrap:anywhere;color:var(--secondary);font-size:11px}.diagnostic-technical-details dd{min-width:0;margin:0;text-align:right;font:500 11px var(--font-mono);overflow-wrap:anywhere}
 .empty{margin:0 0 20px;padding:16px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);color:var(--secondary)}
@@ -8020,6 +8344,8 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .device-sort-button:hover{color:var(--graphite)}.device-sort-button:focus-visible{outline:var(--admin-focus-ring);outline-offset:1px}
 .device-sort-button span{min-width:10px;color:var(--secondary);font-size:12px;opacity:.2;transition:color .15s ease,opacity .15s ease}.device-sort-button:hover span,.device-sort-button:focus-visible span{opacity:.6}.device-table-wrap th[aria-sort="ascending"] .device-sort-button,.device-table-wrap th[aria-sort="descending"] .device-sort-button{color:var(--graphite);font-weight:800}.device-table-wrap th[aria-sort="ascending"] .device-sort-button span,.device-table-wrap th[aria-sort="descending"] .device-sort-button span{color:var(--interactive);opacity:1}
 table th[aria-sort="ascending"]>.device-sort-button,table th[aria-sort="descending"]>.device-sort-button{color:var(--graphite)}
+/* Header labels wrap instead of overlapping a neighbour or widening the table (owner decision 2026-10-06). */
+table th>.device-sort-button{white-space:normal;text-align:inherit}
 table th[aria-sort="ascending"]>.device-sort-button span,table th[aria-sort="descending"]>.device-sort-button span{color:var(--interactive);opacity:1}
 .device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7),.device-table-wrap td:nth-child(8){white-space:nowrap}
 .device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}
@@ -8380,8 +8706,6 @@ h1,h2,h3,h4{font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
 .admin-user.active{padding:6px 8px;border-radius:var(--admin-control-radius);background:var(--surface-muted);color:var(--interactive)}
 .filter-clear{align-self:center;flex:0 0 auto;min-width:58px}
 .filter-bar .filter-clear{margin-left:0}
-.diagnostic-secondary-action{grid-column:1/-1;padding-top:2px}
-.diagnostic-secondary-action>summary{padding:8px 0;color:var(--interactive);font-size:12px;font-weight:750}
 .admin-icon{display:inline-block;width:1em;height:1em;flex:0 0 auto;vertical-align:-.15em;fill:currentColor}
 .sort-indicator{display:inline-block;width:.65em;height:1em;vertical-align:-.15em;background:currentColor;-webkit-mask:var(--fa-sort) center/contain no-repeat;mask:var(--fa-sort) center/contain no-repeat;opacity:.55}
 .sort-indicator[data-sort="ascending"]{-webkit-mask-image:var(--fa-sort-up);mask-image:var(--fa-sort-up);opacity:1}
@@ -8441,20 +8765,6 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 @media(max-width:700px){
   .filter-clear{width:100%;min-height:44px}
   .system-health-row>.disclosure-body{padding:0 0 8px}
-}
-/* Mobile card spacing belongs to the containing layout, not both grid and card. */
-@media(max-width:700px){
-  .dashboard{--admin-mobile-card-gap:12px}
-  main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-mobile-card-gap)}
-  .overview-page>.overview-heading{margin:0 0 4px}
-  .overview-page>.overview-panel{margin:0}
-  .overview-primary-grid>.overview-panel{margin:0}
-  .overview-primary-grid,.admin-kpi-grid,.installation-kpis,.model-statistics,.diagnostic-model-metrics,.provider-metrics,.system-health-list,.provider-dashboard-grid,.model-information-columns{gap:var(--admin-mobile-card-gap)}
-  .dashboard>.provider-card,.dashboard>.overview-panel,.dashboard>.model-page-section,.dashboard>.map-statistics-coverage-layout,.dashboard>.model-information-columns{margin-top:var(--admin-mobile-card-gap)}
-  .overview-page>.overview-panel{margin-top:0}
-  .provider-dashboard-grid>.provider-card{margin-top:0}
-  .dashboard>.diagnostic-model-metrics,.dashboard>.provider-metrics{margin-bottom:var(--admin-mobile-card-gap)}
-  .device-filter-bar{margin-bottom:var(--admin-mobile-card-gap)}
 }
 /* Information hierarchy: summaries first, complete evidence on demand. */
 .identity-outcome{padding:16px;background:var(--off-white);border-radius:var(--radius-card);margin:12px 0}
@@ -8558,19 +8868,13 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .overview-activity-panel{margin-top:16px}
 .overview-activity-device{display:inline;overflow-wrap:anywhere;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px}
 .overview-activity-device:hover{text-decoration:underline;text-underline-offset:3px}
-.admin-kpi-panel.model-statistics+.model-review-alert{margin-top:16px}
-.diagnostic-actions-grid>form.diagnostic-action-form{display:flex;flex-direction:column}
-.diagnostic-actions-grid>form.diagnostic-action-form>button[type="submit"],.diagnostic-actions-grid>form.identity-review-form>.identity-review-actions{margin-top:auto}
-.diagnostic-actions-grid .admin-action-status:empty{display:none}
 .dashboard>.heading-row{margin-bottom:20px}
-.system-health-page>#health-filters{margin-bottom:16px}
 .system-health-page .system-health-healthy{margin-top:16px}
 .system-health-page .heading-row+.filter-bar{margin-top:0}
 .system-health-healthy>.disclosure-body{padding-top:12px}
 .provider-table-wrap td.column-status .table-secondary{display:block;min-width:0;overflow-wrap:anywhere;white-space:normal}
 .provider-detail .provider-action-bar{margin-bottom:12px}
 .provider-detail .provider-state-grid{margin-top:4px}
-.map-statistics-page>#map-statistics-metrics{margin-bottom:20px}
 .map-statistics-page>.map-statistics-coverage-layout{margin-top:16px}
 .installation-kpis+.evidence-section{margin-top:16px}
 .device-summary-sync{font-size:var(--admin-type-helper-size)}
@@ -8651,8 +8955,6 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .model-evidence-summary{display:grid;align-content:start;gap:16px}
 .model-evidence-summary>.model-statistics,.model-evidence-summary>.model-review-alert,.model-evidence-summary>.model-page-section,.model-evidence-summary>.model-information-columns{margin:0}
 .model-evidence-history>.model-page-section{margin-top:0}
-.diagnostic-secondary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px;margin-top:16px}
-.diagnostic-secondary-grid>.diagnostic-secondary-disclosure{min-width:0;margin:0}
 @media(min-width:901px) and (max-width:1023px){
   .model-evidence-history .table-wrap:has(.mobile-record-table){border:0;background:transparent;overflow:visible;border-radius:0}
   .model-evidence-history table.mobile-record-table{display:block;min-width:0!important;width:100%;border:0;table-layout:auto}
@@ -8862,6 +9164,103 @@ ADMIN_STYLES += """
   [data-mobile-collapse][data-mobile-collapsed]>.admin-card-head{margin-bottom:0}
 }
 .overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}
+/* Card spacing belongs to the containing layout, not both grid and card (admin-behavior-contract.md,
+   Responsive and layout invariants). Separate cards, tables and sections keep one vertical gap:
+   --admin-card-gap, 24px, 16px at 700px and narrower. A filter bar directly above its own table keeps
+   12px; rows inside one table or list are not cards. Block stacks put the gap on the following block
+   only; card grids own their gap and their children carry no block margins, so the two never add up. */
+:root{--admin-card-gap:24px;--admin-filter-table-gap:12px}
+main.dashboard:not(.overview-page)>:not(.heading-row,.back-link,.model-page-header,.provider-action-bar,h1){margin-bottom:0}
+main.dashboard:not(.overview-page)>:not(.heading-row,.back-link,.model-page-header,.provider-action-bar,h1)+*,
+main.overview-page>.overview-primary-grid+.overview-composition-grid,
+.model-evidence-grid>.model-evidence-history>*+*{margin-top:var(--admin-card-gap)}
+:is(.overview-primary-grid,.overview-composition-grid,.model-evidence-grid,.model-evidence-summary,.model-information-columns,.map-statistics-coverage-layout,.provider-dashboard-grid,.provider-state-grid,.provider-technical-grid,.support-report-grid,.support-report-main,.support-report-side,.diagnostic-secondary-grid){gap:var(--admin-card-gap)}
+main.dashboard :is(.overview-primary-grid,.overview-composition-grid,.model-evidence-grid,.model-evidence-summary,.model-information-columns,.map-statistics-coverage-layout,.provider-dashboard-grid,.provider-state-grid,.provider-technical-grid,.support-report-grid,.support-report-main,.support-report-side,.diagnostic-secondary-grid)>*{margin-top:0;margin-bottom:0}
+.filter-bar:not(.device-filter-bar):has(~.table-wrap){margin-bottom:var(--admin-filter-table-gap)}
+@media(max-width:760px){.device-filter-bar{margin-bottom:var(--admin-filter-table-gap)}}
+@media(max-width:700px){
+  :root{--admin-card-gap:16px}
+  main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-card-gap)}
+  .overview-page>.overview-heading{margin:0}
+  main.overview-page>.overview-primary-grid+.overview-composition-grid{margin-top:0}
+  .admin-kpi-grid,.installation-kpis,.model-statistics,.diagnostic-model-metrics,.provider-metrics,.system-health-list{gap:12px}
+}
+"""
+
+# Device detail Update history mirrors Installation history (owner decision
+# 2026-10-06): link quick filters look like the button quick filters, and the
+# six-column table fits the history column at >=1024 px (record cards below).
+ADMIN_STYLES += """
+.update-history-filters a.quick-filter{display:inline-flex;align-items:center;text-decoration:none}
+.update-history-inspect{white-space:nowrap}
+.model-evidence-history>.model-page-section+#updates{margin-top:16px}
+@media(min-width:1024px){
+  .model-evidence-history .update-history-table{min-width:0;width:100%;table-layout:fixed}
+  .model-evidence-history .update-history-table th,.model-evidence-history .update-history-table td{padding:8px 6px;font-size:12px;line-height:16px;vertical-align:middle;white-space:normal;overflow-wrap:anywhere}
+  .model-evidence-history .update-history-table th{overflow-wrap:normal}
+  .model-evidence-history .update-history-table th>.device-sort-button{max-width:100%;flex-wrap:wrap;white-space:normal;text-align:left}
+  .model-evidence-history .update-history-table .admin-pill{max-width:100%;white-space:normal}
+  .model-evidence-history .update-history-table th:nth-child(1){width:16%}.model-evidence-history .update-history-table th:nth-child(2){width:17%}
+  .model-evidence-history .update-history-table th:nth-child(3){width:29%}.model-evidence-history .update-history-table th:nth-child(4){width:12%}
+  .model-evidence-history .update-history-table th:nth-child(5){width:13%}.model-evidence-history .update-history-table th:nth-child(6){width:13%}
+  .model-evidence-history .update-history-table .column-date{text-align:left;overflow-wrap:normal}
+  .model-evidence-history .update-history-table:not(:has(td[data-label='GitHub issue'] a)) :is(th,td):nth-child(4){display:none}
+  .model-evidence-history .update-history-table td.column-status:last-child{text-align:right}
+  .model-evidence-history .update-history-inspect{min-height:32px;padding:4px 8px}
+}
+@media(max-width:760px){.update-history-table tbody td:last-child{grid-column:1/-1}.update-history-table .update-history-inspect{width:100%}}
+@media(min-width:901px) and (max-width:1023px){.model-evidence-history .update-history-table tbody td:last-child{grid-column:1/-1}.model-evidence-history .update-history-inspect{width:100%}}
+"""
+
+# Identity review queue and the tidied reported-identity page (owner decision
+# 2026-10-06, admin-behavior-contract.md "Identity review"). One scoped block.
+ADMIN_STYLES += """
+.identity-review-summary{display:inline-flex;align-items:center;gap:8px}
+.identity-review-groups{display:grid;gap:var(--admin-card-gap)}
+.identity-review-group .admin-card-head>h2{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;min-width:0;overflow-wrap:anywhere}
+.identity-review-group .admin-card-head>h2>small{color:var(--secondary);font:500 13px/18px var(--font-ui)}
+.identity-review-group .admin-card-head{margin-bottom:4px}
+.identity-review-items{margin:0;padding:0;list-style:none}
+.identity-review-item{display:grid;grid-template-columns:minmax(0,1fr);gap:10px 24px;padding:14px 0;border-top:1px solid var(--border)}
+.identity-review-item:first-child{border-top:0}
+.identity-review-facts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;min-width:0;font-size:13px;line-height:18px}
+.identity-review-date{color:var(--secondary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.identity-review-map{color:var(--graphite);font-weight:600;overflow-wrap:anywhere}
+.identity-review-why{display:flex;flex-basis:100%;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.identity-review-reason{color:var(--secondary);font-size:12px;line-height:16px}
+.identity-review-details{display:inline-flex;align-items:center;min-height:32px}
+.identity-review-decision{display:grid;gap:10px;min-width:0}
+.identity-review-decision .identity-review-form{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:0;background:transparent}
+.identity-review-decision .identity-review-form[hidden]{display:none}
+.identity-review-decision .identity-review-for{flex-basis:100%;margin:0;color:var(--secondary);font-size:12px;line-height:16px}
+.identity-review-decision .identity-selection{flex:1 1 220px;min-width:0;margin:0}
+.identity-review-decision .identity-selection div{display:grid;gap:2px}
+.identity-review-decision .identity-selection dt{color:var(--secondary);font-size:12px;line-height:16px;font-weight:600}
+.identity-review-decision .identity-selection dd{margin:0;color:var(--graphite);font-size:14px;line-height:20px;font-weight:700;overflow-wrap:anywhere}
+.identity-review-decision .identity-picker,.identity-review-decision .identity-conflict-warning{flex-basis:100%;order:3;margin:0}
+.identity-review-decision .identity-picker label{margin:0}
+.identity-review-decision .identity-review-actions{flex:0 0 auto;margin:0}
+.identity-review-decision .identity-review-actions button{margin:0}
+.identity-review-decision .admin-action-status{flex-basis:100%;order:4;margin:0}
+.identity-review-decision .admin-action-status:empty{display:none}
+.identity-review-confirmed{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;font-size:13px}
+.identity-review-confirmed:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px;border-radius:var(--admin-control-radius)}
+.identity-review-item[data-identity-confirmed='true'] .identity-review-facts{color:var(--secondary)}
+.identity-review-done[hidden]{display:none}
+a.identity-pending-indicator{text-decoration:none;vertical-align:middle}
+a.identity-pending-indicator:hover{border-color:var(--interactive);color:var(--interactive)}
+.identity-review-link{display:inline-flex;align-items:center;gap:4px;text-decoration:none;white-space:nowrap}
+.identity-review-all-link{display:inline-flex;align-items:center;gap:4px;align-self:center}
+.diagnostic-model-metrics .admin-metric .admin-pill{display:inline-flex;width:auto;max-width:100%;margin:0}
+.diagnostic-model-metrics .admin-metric .admin-pill>span{display:inline;margin:0;color:inherit;font:inherit}
+@media(min-width:900px){
+  .identity-review-item{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}
+}
+@media(max-width:700px){
+  .identity-review-all-link{align-self:flex-start}
+  .identity-review-decision .identity-review-actions{display:flex;flex-basis:100%;gap:8px}
+  .identity-review-decision .identity-review-actions button{flex:1 1 0;width:auto;min-width:0}
+}
 """
 
 
@@ -8872,11 +9271,116 @@ def _fa_mask_css() -> str:
         view_box, path = _FA_ICONS[name]
         svg = f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='{view_box}'><path d='{path}'/></svg>"
         return 'url("data:image/svg+xml,' + quote(svg, safe="/:=' ") + '")'
-    names = ("chevron-down", "chevron-right", "arrow-right", "image", "sort", "sort-up", "sort-down")
+    names = ("chevron-down", "chevron-right", "arrow-right", "image", "sort", "sort-up", "sort-down", "check")
     return ":root{" + ";".join(f"--fa-{name}:{url(name)}" for name in names) + "}\n"
 
 
+ADMIN_STYLES += """
+/* Diagnostic detail (installation dialog and update report): one section rhythm,
+   one disclosure style, compact review forms and Device identity last
+   (owner decision 2026-10-06). Scoped so global card spacing stays untouched. */
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-section{margin:24px 0 0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-section>h3{margin:0 0 8px;color:var(--graphite);font:650 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui)}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-outcome>p{margin:0;max-width:75ch;font-size:var(--admin-type-body-size);line-height:var(--admin-type-body-line)}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-outcome>.diagnostic-next-action{display:grid;gap:2px;margin-top:12px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-next-action>strong{color:var(--secondary);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line);font-weight:650}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-safety>.diagnostic-detail-summary{margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-issue-section>.github-current{margin:0 0 2px;font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line);font-weight:650}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-issue-section>.table-help{margin:0;max-width:75ch}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-issue-controls{margin-top:12px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-actions>.copy-status:empty{display:none}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure{min-width:0;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure+.diagnostic-disclosure{margin-top:8px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure .diagnostic-disclosure{margin-top:12px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure>summary{display:block;min-height:44px;margin:0;padding:10px 16px 10px 38px;border-radius:calc(var(--radius-card) - 1px);color:var(--interactive);font:650 var(--admin-type-control-size)/24px var(--font-ui);cursor:pointer}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure>summary::before{left:16px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure[open]>summary{border-bottom-left-radius:0;border-bottom-right-radius:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure>summary .disclosure-meta{color:var(--secondary);font-weight:500}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure>.disclosure-body{margin:0;padding:4px 16px 16px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure-stack{display:grid;gap:8px;margin-top:24px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure-stack:empty{display:none}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure-stack>.diagnostic-disclosure{margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure .table-help{margin:0 0 12px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-issue-preview label{display:block;margin:0 0 12px;color:var(--graphite);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line);font-weight:650}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-issue-preview label:last-child{margin-bottom:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-issue-preview :is(input,textarea){display:block;width:100%;margin-top:6px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-link-disclosure>.disclosure-body{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-link-form{display:flex;flex-wrap:nowrap;align-items:flex-end;gap:12px;margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-link-form label{flex:0 1 240px;min-width:0;margin:0;color:var(--graphite);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line);font-weight:650}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-link-form input{display:block;width:100%;margin-top:6px;min-height:var(--admin-control-height)}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) :is(.github-link-form,.github-remove-form) button{width:auto;margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-remove-form{display:block;margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-technical-section .technical-copy-actions{margin:0 0 12px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-technical-section .diagnostic-id{margin:0 0 8px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-technical-details>.disclosure-body>dl{margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms{display:grid;gap:16px}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px;margin:0;padding:0;border-radius:0;background:none}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form+.diagnostic-action-form{padding-top:16px;border-top:1px solid var(--border)}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form>:is(h3,h4,p,dl,.admin-action-status){flex:1 0 100%;margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form>:is(h3,h4){color:var(--graphite);font:650 var(--admin-type-table-primary-size)/var(--admin-type-table-primary-line) var(--font-ui)}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form>label{flex:1 1 220px;margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form>button{flex:0 0 auto;margin:0}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms textarea{height:var(--admin-control-height)}
+:is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms .admin-action-status:empty{display:none}
+.diagnostic-detail-dialog .identity-review-form{margin:0;padding:0;border-radius:0;background:none}
+.diagnostic-detail-dialog .identity-review-form>.identity-selection{display:block;margin:0;border-top:1px solid var(--border);color:var(--graphite);font-size:inherit}
+.diagnostic-detail-dialog .identity-selection>div{display:grid;grid-template-columns:minmax(95px,.4fr) minmax(0,1.6fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}
+.diagnostic-detail-dialog .identity-selection dt{color:var(--secondary);font-size:var(--admin-type-label-size)}
+.diagnostic-detail-dialog .identity-selection dd{margin:0;overflow-wrap:anywhere;font-size:var(--admin-type-table-primary-size);font-weight:650;text-align:right}
+.diagnostic-detail-dialog .identity-review-form .identity-picker{margin-top:12px}
+.diagnostic-detail-dialog .identity-review-form .identity-picker label{display:block;margin:0;color:var(--graphite);font-size:var(--admin-type-label-size);font-weight:650}
+.diagnostic-detail-dialog .identity-review-form .identity-review-actions{margin-top:12px}
+.diagnostic-detail-dialog .identity-review-form .identity-review-actions button{margin:0}
+.diagnostic-detail-dialog .identity-review-form .admin-action-status:empty{display:none}
+@media(max-width:700px){
+  :is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form>button,:is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-link-disclosure :is(form,label,button){flex:1 1 100%;width:100%}
+  :is(.diagnostic-detail-dialog,.update-diagnostics-page) .github-link-form{flex-wrap:wrap}
+  .diagnostic-detail-dialog .identity-selection>div{grid-template-columns:minmax(80px,.7fr) minmax(0,1fr)}
+}
+"""
+
+
 ADMIN_STYLES += _fa_mask_css()
+# Above the labelled-record breakpoint, tables fit their card instead of
+# scrolling sideways behind a fixed minimum width; header labels wrap
+# (owner decision 2026-10-06). Devices keeps its width for the sticky header.
+ADMIN_STYLES += "@media(min-width:761px){.table-wrap:not(.device-table-wrap)>table{min-width:0}.evidence-table-wrap>table{table-layout:fixed}}\n"
+# Provider detail: an open Collection history needs the full row for its run table.
+ADMIN_STYLES += ".provider-state-grid:has(#provider-collection-history[open]){grid-template-columns:minmax(0,1fr)}\n"
+
+# Filter dropdown (docs/admin-behavior-contract.md, "Shared component kit").
+# One block scoped to the component classes: the hidden native select keeps
+# sizing the field through the existing rules; the button paints over it and
+# the listbox popover opens below the field.
+ADMIN_DROPDOWN_STYLES = """
+.admin-dropdown{position:relative;display:inline-grid;min-width:0;max-width:100%}
+.admin-dropdown>select{grid-area:1/1;opacity:0;pointer-events:none}
+.filter-bar label>.admin-dropdown,.inline-filter-row label>.admin-dropdown{flex:none}
+.inline-filter-row label>.admin-dropdown,.inline-filter-row .admin-dropdown>select{width:100%}
+.overview-period-form .admin-dropdown{flex:1 1 auto}
+.admin-dropdown>button.admin-dropdown-button{position:absolute;inset:0;display:flex;align-items:center;gap:8px;box-sizing:border-box;width:100%;height:100%;min-width:0;min-height:0;margin:0;padding:0 10px 0 var(--admin-control-padding-x);border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);line-height:1.2;text-align:left;cursor:pointer;opacity:1;transform:none}
+.admin-dropdown>button.admin-dropdown-button:hover:not(:disabled){border-color:color-mix(in srgb,var(--interactive) 45%,var(--border));background:var(--surface)}
+.admin-dropdown>button.admin-dropdown-button[aria-expanded="true"]{border-color:var(--interactive)}
+.admin-dropdown>button.admin-dropdown-button:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px}
+.admin-dropdown>button.admin-dropdown-button:disabled{border-color:color-mix(in srgb,var(--border) 78%,var(--surface-muted));background:var(--surface-muted);color:var(--secondary);cursor:not-allowed;opacity:1}
+.admin-dropdown .admin-dropdown-value{flex:1 1 auto;min-width:0;max-width:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-dropdown .admin-dropdown-chevron{flex:none;width:10px;height:10px;max-width:none;background:var(--secondary);-webkit-mask:var(--fa-chevron-down) center/contain no-repeat;mask:var(--fa-chevron-down) center/contain no-repeat}
+.admin-dropdown>button[aria-expanded="true"] .admin-dropdown-chevron{background:var(--interactive);transform:rotate(180deg)}
+.admin-dropdown-list{position:fixed;z-index:50;top:0;left:0;box-sizing:border-box;width:max-content;max-height:320px;margin:0;padding:4px;overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);color:var(--graphite);font-family:var(--font-ui);font-size:var(--admin-control-font-size);line-height:1.3;box-shadow:0 16px 44px color-mix(in srgb,var(--graphite) 8%,transparent)}
+.admin-dropdown-list[hidden]{display:none}
+.admin-dropdown-option{display:flex;align-items:center;gap:8px;min-height:32px;padding:6px 12px 6px 8px;border-radius:calc(var(--radius-control) - 4px);font-weight:500;cursor:pointer;user-select:none}
+.admin-dropdown-option.is-active{background:var(--surface-muted)}
+.admin-dropdown-option[aria-selected="true"]{background:var(--selected-tint);font-weight:650}
+.admin-dropdown-list.is-keyboard .admin-dropdown-option.is-active{outline:var(--admin-focus-ring);outline-offset:-3px}
+.admin-dropdown-option[aria-disabled="true"]{color:var(--secondary);cursor:not-allowed}
+.admin-dropdown-option-text{min-width:0;overflow-wrap:anywhere}
+.admin-dropdown-check{flex:none;width:12px;height:12px;background:var(--interactive);-webkit-mask:var(--fa-check) center/contain no-repeat;mask:var(--fa-check) center/contain no-repeat;visibility:hidden}
+.admin-dropdown-option[aria-selected="true"] .admin-dropdown-check{visibility:visible}
+.admin-dropdown-group{padding:8px 8px 4px;color:var(--secondary);font-size:11px;font-weight:750;letter-spacing:.07em;text-transform:uppercase}
+@media(max-width:760px){.admin-dropdown-option{min-height:44px}}
+"""
+ADMIN_STYLES += ADMIN_DROPDOWN_STYLES
 
 def _error(message: str | None) -> str:
     return f"<p class='error'>{html.escape(message)}</p>" if message else ""
@@ -8896,7 +9400,7 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script())
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script() + _admin_dropdown_script())
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
@@ -9168,6 +9672,312 @@ def _admin_filter_clear_script() -> str:
           form.dispatchEvent(new CustomEvent('change'));
         });
       });
+    })();"""
+
+
+def _admin_dropdown_script() -> str:
+    """Admin filter dropdown (owner decision 2026-10-06).
+
+    Native ``<select>`` popups cannot be styled and macOS draws them over the
+    field, so every filter ``select[data-admin-dropdown]`` is enhanced with a
+    combobox button and a listbox popover that opens below the field (above
+    only when there is no room below) and never covers it. The native select
+    stays in the DOM, labelled, as the source of truth: picking an option sets
+    its value and dispatches bubbling ``input`` and ``change`` events, and
+    programmatic value changes, option changes and ``disabled`` are mirrored.
+    Selects in forms that post data are never marked.
+    """
+    return r"""(() => {
+      const GAP = 4, MARGIN = 8;
+      const descriptors = ['value', 'selectedIndex'].map((key) => [key, Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, key)]);
+      const instances = new Set();
+      let counter = 0, current = null, frame = 0;
+      const nameOf = (select) => {
+        const explicit = (select.getAttribute('aria-label') || '').trim();
+        if (explicit) return explicit;
+        const label = select.labels && select.labels[0];
+        if (label) {
+          const copy = label.cloneNode(true);
+          copy.querySelectorAll('select, .admin-dropdown').forEach((node) => node.remove());
+          const text = copy.textContent.replace(/\s+/g, ' ').trim();
+          if (text) return text;
+        }
+        return (select.title || '').trim();
+      };
+      const copyFont = (state) => {
+        const style = getComputedStyle(state.select);
+        ['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing', 'paddingLeft'].forEach((key) => { state.button.style[key] = style[key]; });
+      };
+      const sync = (state) => {
+        const option = state.select.selectedOptions[0];
+        state.value.textContent = option ? option.label : '';
+        state.button.disabled = state.select.matches(':disabled');
+        if (current === state) {
+          if (state.button.disabled) close(state, false);
+          else state.options.forEach((entry) => entry.item.setAttribute('aria-selected', String(entry.index === state.select.selectedIndex)));
+        }
+      };
+      const render = (state) => {
+        const {select, list} = state;
+        list.replaceChildren();
+        state.options = [];
+        let group = null, container = list;
+        [...select.options].forEach((option, index) => {
+          if (option.hidden) return;
+          const parent = option.parentElement && option.parentElement.tagName === 'OPTGROUP' ? option.parentElement : null;
+          if (parent !== group) {
+            group = parent; container = list;
+            if (parent) {
+              container = document.createElement('div');
+              container.setAttribute('role', 'group');
+              container.setAttribute('aria-label', parent.label);
+              const heading = document.createElement('div');
+              heading.className = 'admin-dropdown-group';
+              heading.setAttribute('aria-hidden', 'true');
+              heading.textContent = parent.label;
+              container.append(heading);
+              list.append(container);
+            }
+          }
+          const item = document.createElement('div');
+          item.className = 'admin-dropdown-option';
+          item.id = `${list.id}-option-${index}`;
+          item.setAttribute('role', 'option');
+          item.setAttribute('aria-selected', String(index === select.selectedIndex));
+          const disabled = option.disabled || Boolean(parent && parent.disabled);
+          if (disabled) item.setAttribute('aria-disabled', 'true');
+          const check = document.createElement('span');
+          check.className = 'admin-dropdown-check';
+          check.setAttribute('aria-hidden', 'true');
+          const text = document.createElement('span');
+          text.className = 'admin-dropdown-option-text';
+          text.textContent = option.label;
+          item.append(check, text);
+          container.append(item);
+          state.options.push({item, index, disabled, text: option.label.trim().toLowerCase()});
+        });
+      };
+      const place = (state) => {
+        const {button, list} = state;
+        const rect = button.getBoundingClientRect();
+        const viewportWidth = document.documentElement.clientWidth, viewportHeight = window.innerHeight;
+        if (rect.bottom < 0 || rect.top > viewportHeight || (!rect.width && !rect.height)) { close(state, false); return; }
+        list.style.minWidth = `${Math.round(rect.width)}px`;
+        list.style.maxWidth = `${Math.max(Math.round(rect.width), viewportWidth - 2 * MARGIN)}px`;
+        list.style.maxHeight = '';
+        const height = list.offsetHeight, width = list.offsetWidth;
+        const below = viewportHeight - rect.bottom - GAP - MARGIN, above = rect.top - GAP - MARGIN;
+        let top;
+        if (height <= below || below >= above) {
+          if (height > below) list.style.maxHeight = `${Math.max(below, 0)}px`;
+          top = rect.bottom + GAP;
+          list.dataset.placement = 'below';
+        } else {
+          if (height > above) list.style.maxHeight = `${above}px`;
+          top = rect.top - GAP - Math.min(height, above);
+          list.dataset.placement = 'above';
+        }
+        let left = rect.left;
+        if (left + width > viewportWidth - MARGIN) left = Math.max(MARGIN, viewportWidth - MARGIN - width);
+        list.style.left = `${Math.round(left)}px`;
+        list.style.top = `${Math.round(top)}px`;
+      };
+      const reveal = (state, item) => {
+        const list = state.list;
+        if (item.offsetTop < list.scrollTop) list.scrollTop = item.offsetTop - GAP;
+        else if (item.offsetTop + item.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = item.offsetTop + item.offsetHeight - list.clientHeight + GAP;
+      };
+      const activate = (state, position) => {
+        const entries = state.options;
+        if (!entries.length) return;
+        state.active = Math.max(0, Math.min(entries.length - 1, position));
+        entries.forEach((entry, index) => entry.item.classList.toggle('is-active', index === state.active));
+        const item = entries[state.active].item;
+        state.button.setAttribute('aria-activedescendant', item.id);
+        reveal(state, item);
+      };
+      const enabledFrom = (state, start, direction) => {
+        for (let index = start; index >= 0 && index < state.options.length; index += direction) {
+          if (!state.options[index].disabled) return index;
+        }
+        return -1;
+      };
+      const move = (state, target, direction) => {
+        const limit = Math.max(0, Math.min(state.options.length - 1, target));
+        let next = enabledFrom(state, limit, direction);
+        if (next < 0) next = enabledFrom(state, limit, -direction);
+        if (next >= 0) activate(state, next);
+      };
+      const typeahead = (state, character) => {
+        clearTimeout(state.typeTimer);
+        state.typed += character.toLowerCase();
+        state.typeTimer = setTimeout(() => { state.typed = ''; }, 600);
+        const repeated = state.typed.split('').every((value) => value === state.typed[0]);
+        const search = repeated ? state.typed[0] : state.typed;
+        const count = state.options.length;
+        const start = repeated ? state.active + 1 : Math.max(state.active, 0);
+        for (let offset = 0; offset < count; offset++) {
+          const index = (start + offset) % count;
+          const entry = state.options[index];
+          if (!entry.disabled && entry.text.startsWith(search)) { activate(state, index); return; }
+        }
+      };
+      const open = (state, keyboard, position) => {
+        if (state.button.disabled) return;
+        if (current && current !== state) close(current, false);
+        render(state);
+        if (!state.options.length) return;
+        copyFont(state);
+        ['fontSize', 'fontFamily'].forEach((key) => { state.list.style[key] = state.button.style[key]; });
+        state.list.classList.toggle('is-keyboard', keyboard);
+        state.list.hidden = false;
+        state.button.setAttribute('aria-expanded', 'true');
+        current = state;
+        place(state);
+        if (current !== state) return;
+        const selected = state.options.findIndex((entry) => entry.index === state.select.selectedIndex);
+        if (position === 'first') move(state, 0, 1);
+        else if (position === 'last') move(state, state.options.length - 1, -1);
+        else if (selected >= 0) activate(state, selected);
+        else move(state, 0, 1);
+      };
+      const close = (state, focus) => {
+        state.list.hidden = true;
+        state.list.classList.remove('is-keyboard');
+        state.button.setAttribute('aria-expanded', 'false');
+        state.button.removeAttribute('aria-activedescendant');
+        if (current === state) current = null;
+        if (focus) state.button.focus();
+      };
+      const choose = (state, entry) => {
+        if (!entry || entry.disabled) return;
+        const select = state.select;
+        close(state, true);
+        if (select.selectedIndex === entry.index) return;
+        select.selectedIndex = entry.index;
+        select.dispatchEvent(new Event('input', {bubbles: true}));
+        select.dispatchEvent(new Event('change', {bubbles: true}));
+      };
+      const printable = (event) => event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
+      const onKey = (state, event) => {
+        const key = event.key, isOpen = current === state;
+        if (!isOpen) {
+          if (['Enter', ' ', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(key) || printable(event)) {
+            event.preventDefault();
+            state.keyAt = performance.now();
+            open(state, true, key === 'Home' ? 'first' : key === 'End' ? 'last' : null);
+            if (printable(event) && key !== ' ') typeahead(state, key);
+          }
+          return;
+        }
+        state.list.classList.add('is-keyboard');
+        const active = state.options[state.active];
+        if (key === 'ArrowDown') move(state, state.active + 1, 1);
+        else if (key === 'ArrowUp' && event.altKey) choose(state, active);
+        else if (key === 'ArrowUp') move(state, state.active - 1, -1);
+        else if (key === 'Home') move(state, 0, 1);
+        else if (key === 'End') move(state, state.options.length - 1, -1);
+        else if (key === 'PageDown') move(state, state.active + 10, 1);
+        else if (key === 'PageUp') move(state, state.active - 10, -1);
+        else if (key === 'Enter' || (key === ' ' && !state.typed)) { state.keyAt = performance.now(); choose(state, active); }
+        else if (key === 'Escape') { event.stopPropagation(); close(state, true); }
+        else if (key === 'Tab') { close(state, false); return; }
+        else if (printable(event)) typeahead(state, key);
+        else return;
+        event.preventDefault();
+      };
+      const enhance = (select) => {
+        if (select.dataset.adminDropdownReady === 'true') return;
+        select.dataset.adminDropdownReady = 'true';
+        const id = `admin-dropdown-${++counter}`;
+        const name = document.createElement('span');
+        name.id = `${id}-name`; name.hidden = true; name.textContent = nameOf(select);
+        const wrapper = document.createElement('span');
+        wrapper.className = 'admin-dropdown';
+        const button = document.createElement('button');
+        button.type = 'button'; button.id = `${id}-button`; button.className = 'admin-dropdown-button';
+        button.setAttribute('role', 'combobox');
+        button.setAttribute('aria-haspopup', 'listbox');
+        button.setAttribute('aria-expanded', 'false');
+        button.setAttribute('aria-controls', `${id}-list`);
+        button.setAttribute('aria-labelledby', name.id);
+        const value = document.createElement('span');
+        value.className = 'admin-dropdown-value';
+        const chevron = document.createElement('span');
+        chevron.className = 'admin-dropdown-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        button.append(value, chevron);
+        const list = document.createElement('div');
+        list.id = `${id}-list`; list.className = 'admin-dropdown-list'; list.hidden = true;
+        list.setAttribute('role', 'listbox');
+        list.setAttribute('aria-labelledby', name.id);
+        select.before(wrapper);
+        wrapper.append(select, name, button);
+        (select.closest('dialog') || document.body).append(list);
+        select.tabIndex = -1;
+        select.setAttribute('aria-hidden', 'true');
+        const state = {select, wrapper, button, value, list, options: [], active: -1, typed: '', typeTimer: 0, keyAt: 0};
+        instances.add(state);
+        descriptors.forEach(([key, descriptor]) => {
+          if (!descriptor || !descriptor.set) return;
+          Object.defineProperty(select, key, {
+            configurable: true, enumerable: descriptor.enumerable,
+            get() { return descriptor.get.call(this); },
+            set(next) { descriptor.set.call(this, next); sync(state); },
+          });
+        });
+        select.addEventListener('change', () => sync(state));
+        select.addEventListener('input', () => sync(state));
+        select.addEventListener('focus', () => { if (!button.disabled) button.focus(); });
+        select.form?.addEventListener('reset', () => setTimeout(() => sync(state)));
+        new MutationObserver(() => sync(state)).observe(select, {subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label', 'hidden']});
+        button.addEventListener('click', (event) => {
+          if (event.detail === 0 && performance.now() - state.keyAt < 500) return;
+          if (current === state) close(state, true);
+          else open(state, event.detail === 0, null);
+        });
+        button.addEventListener('keydown', (event) => onKey(state, event));
+        button.addEventListener('keyup', (event) => { if (event.key === ' ') event.preventDefault(); });
+        button.addEventListener('focusout', (event) => {
+          if (current === state && !list.contains(event.relatedTarget)) close(state, false);
+        });
+        list.addEventListener('mousedown', (event) => event.preventDefault());
+        list.addEventListener('mousemove', (event) => {
+          const item = event.target instanceof Element ? event.target.closest('[role="option"]') : null;
+          const position = state.options.findIndex((entry) => entry.item === item);
+          if (position < 0 || position === state.active) return;
+          list.classList.remove('is-keyboard');
+          activate(state, position);
+        });
+        list.addEventListener('click', (event) => {
+          const item = event.target instanceof Element ? event.target.closest('[role="option"]') : null;
+          choose(state, state.options.find((entry) => entry.item === item));
+        });
+        copyFont(state);
+        sync(state);
+      };
+      const scan = () => {
+        instances.forEach((state) => {
+          if (state.select.isConnected) return;
+          if (current === state) current = null;
+          state.list.remove();
+          instances.delete(state);
+        });
+        document.querySelectorAll('select[data-admin-dropdown]').forEach(enhance);
+      };
+      const refresh = () => {
+        frame = 0;
+        instances.forEach(copyFont);
+        if (current) place(current);
+      };
+      document.addEventListener('pointerdown', (event) => {
+        if (current && !current.wrapper.contains(event.target) && !current.list.contains(event.target)) close(current, false);
+      }, true);
+      window.addEventListener('resize', () => { if (!frame) frame = requestAnimationFrame(refresh); });
+      document.addEventListener('scroll', (event) => { if (current && event.target !== current.list && !frame) frame = requestAnimationFrame(refresh); }, true);
+      window.addEventListener('terento-admin-content-changed', scan);
+      new MutationObserver(scan).observe(document.body, {childList: true, subtree: true});
+      scan();
     })();"""
 
 

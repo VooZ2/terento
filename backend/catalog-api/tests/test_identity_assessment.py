@@ -253,9 +253,12 @@ class IdentityAssessmentTests(unittest.TestCase):
         summary = markup.split("<dl class='diagnostic-detail-summary'>")[1].split('</dl>')[0]
         for label in ('Device', 'Variant', 'Date', 'Map / region', 'Result', 'App version', 'Review state'):
             self.assertIn('<dt>' + label + '</dt>', summary)
-        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index("class='diagnostic-identity-state'"))
-        self.assertIn("Identity incomplete", markup)
-        self.assertIn("<h4>Assign model</h4>", markup)
+        # Device identity is the last section; the separate "Identity incomplete" notice is gone
+        # (owner decision 2026-10-06).
+        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index("class='diagnostic-section diagnostic-identity-section'"))
+        self.assertNotIn("Identity incomplete", markup)
+        self.assertIn("Assign the exact catalog model in Device identity below.", markup)
+        self.assertIn(">Device identity</h3>", markup)
         self.assertIn("name='canonical_device_model_id'", markup)
         self.assertIn("value='fenix8pro-51-amoled'", markup)
         self.assertNotIn("name='identity_reason'", markup)

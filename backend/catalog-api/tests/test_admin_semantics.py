@@ -25,6 +25,7 @@ from terento_catalog.admin import (
     _admin_timezone_script,
     _admin_freshness_script,
     _admin_mobile_script,
+    _admin_dropdown_script,
     _layout,
     _campaign_links_script,
     _client_issue_note_sanitizer_script,
@@ -277,6 +278,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "provider-detail": _provider_detail_script(),
             "map-statistics": _map_statistics_script(),
             "overview-period": _overview_period_script(),
+            "filter-dropdown": _admin_dropdown_script(),
         }
         for name, script in scripts.items():
             with self.subTest(script=name):
@@ -2378,7 +2380,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             [], {"username": "operator"}, "csrf",
             identity=result["compatibility_identity"], operations=[result],
         ).decode()
-        table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
+        table = body.split("class='diagnostic-list-table", 1)[1].split("</table>", 1)[0]
         for label in ("Map", "Result", "GitHub issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
         self.assertNotIn(">Stage<", table)
@@ -2583,7 +2585,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("Diagnostic ID: <code>pending-operation</code>", diagnostics)
         self.assertNotIn("Diagnostic ID: <code>canonical-operation</code>", diagnostics)
-        self.assertIn("Assign model", diagnostics)
+        self.assertIn(">Device identity</h3>", diagnostics)
         self.assertIn("Confirm", diagnostics)
 
     def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
@@ -2617,7 +2619,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             canonical_device_model_id=canonical_id,
             operations=events,
         ).decode()
-        self.assertIn("2 records", body)
+        self.assertNotIn("2 records", body)
         self.assertIn("Diagnostic ID: <code>operation-1</code>", body)
         self.assertIn("Diagnostic ID: <code>operation-2</code>", body)
         self.assertIn("canonical_device_id=garmin-fenix-8-47-amoled", body)
@@ -2689,7 +2691,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 "familyName": "fēnix",
             }],
         ).decode()
-        table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
+        table = body.split("class='diagnostic-list-table", 1)[1].split("</table>", 1)[0]
         for label in ("Date", "Map", "Result", "GitHub issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
         self.assertNotIn(">Stage<", table)
@@ -2704,16 +2706,19 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Resolve diagnostic", body)
         self.assertIn("Reopen diagnostic", body)
         self.assertIn("HISTORICAL_SUPERSEDED", body)
-        self.assertIn("Filter installation history", body)
-        self.assertIn("Selected model:", body)
+        self.assertIn("aria-label='Quick history filters'", body)
+        self.assertIn("<dt>Selected model</dt><dd data-identity-selection>", body)
         self.assertIn("Prepare GitHub issue", body)
         self.assertIn("Copy issue report", body)
         self.assertIn("Link issue", body)
         self.assertEqual(body.count("<h4 id='github-review-"), 0)
         self.assertEqual(body.count("<h3>GitHub issue</h3>"), 4)
         self.assertIn("No linked issue", body)
-        self.assertIn("class='diagnostic-secondary-grid'", body)
-        self.assertEqual(body.count("<summary>Review administration</summary>"), 4)
+        self.assertNotIn("class='diagnostic-secondary-grid'", body)
+        self.assertEqual(body.count("<div class='diagnostic-disclosure-stack'>"), 4)
+        # Review administration renders only where a lifecycle or workflow form exists
+        # (failed in-progress and resolved here); empty disclosures are omitted.
+        self.assertEqual(body.count("<summary>Review administration</summary>"), 2)
         self.assertEqual(body.count("<summary>Technical details</summary>"), 4)
         self.assertIn(".diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px))", body)
         self.assertNotIn("width:min(860px,calc(100% - 32px))", body)
@@ -2723,18 +2728,22 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn(".diagnostic-id code{overflow-wrap:anywhere", body)
         self.assertIn(".diagnostic-technical-details dd{min-width:0", body)
         self.assertIn(".diagnostic-detail-dialog{width:calc(100% - 32px);max-width:none", body)
-        self.assertIn("<details class='github-link-disclosure'>", body)
+        self.assertIn("<details class='admin-disclosure diagnostic-disclosure github-link-disclosure'>", body)
         self.assertIn("Link or manage an existing issue", body)
         self.assertIn("Change linked issue", body)
         self.assertIn("Unlink issue", body)
         self.assertIn("#32 <svg class='admin-icon admin-icon-external'", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
-        self.assertIn(".diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))", body)
-        self.assertIn(".diagnostic-actions-grid>form.diagnostic-action-form{display:flex;flex-direction:column}", body)
+        self.assertIn(":is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form{display:flex;flex-wrap:wrap;align-items:flex-end", body)
+        self.assertIn(":is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure{min-width:0;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}", body)
+        self.assertNotIn(".diagnostic-actions-grid>form.diagnostic-action-form", body)
         self.assertIn(".identity-review-form{grid-column:auto}", body)
         self.assertNotIn(".identity-review-form{grid-column:1/-1}", body)
-        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option>", body)
+        # The former select values are quick filters now (owner decision 2026-10-06).
+        self.assertIn("data-history-filter='all' aria-pressed='true'>All</button>", body)
+        for value in ('succeeded', 'failed', 'open', 'resolved', 'identity-pending', 'with-issue'):
+            self.assertIn(f"data-history-filter='{value}'", body)
         self.assertEqual(body.count("action='/admin/diagnostics/resolve'"), 1)
         self.assertEqual(body.count("action='/admin/diagnostics/reopen'"), 1)
         self.assertEqual(
@@ -3328,7 +3337,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("data-status='RESOLVED'", body)
         # A resolved pre-write record is "Blocked before writing", not Failed (ADM-13).
         self.assertIn("data-diagnostic-result='not_started'", body)
-        self.assertIn("<span>Blocked before writing</span>", body)
+        self.assertIn("<span>Blocked</span>", body)
         self.assertNotIn("USB identity</dt>", body)
         self.assertNotIn("Firmware</dt>", body)
         self.assertIn("Write failed", body)

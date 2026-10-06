@@ -105,7 +105,7 @@ class BlockedBeforeWritingTests(unittest.TestCase):
                                   open_problem_count=1).decode()
         row = body.split("<tbody id='diagnostic-rows'>", 1)[1].split("</tr>", 1)[0]
         self.assertIn("data-diagnostic-result='not_started'", row)
-        self.assertIn("<span>Blocked before writing</span>", row)
+        self.assertIn("title='Blocked before writing'", row); self.assertIn("<span>Blocked</span>", row)
         # Pre-write storage blocks remain open problems that need review.
         self.assertIn("data-review-open='true'", row)
         self.assertIn("data-status='OPEN'", row)

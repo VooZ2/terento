@@ -94,6 +94,85 @@ class AdminTableSortTests(unittest.TestCase):
             self.assertIn(fragment, script)
 
 
+class AdminFilterDropdownTests(unittest.TestCase):
+    """Owner decision 2026-10-06: filter selects open one styled listbox below the field."""
+
+    FILTER_SELECTS = {
+        "overview-period", "health-status", "installation-page-size", "evidence-status", "evidence-sort",
+        "provider-source-filter", "provider-source-page-size", "provider-package-filter",
+        "provider-package-page-size", "map-statistics-range", "map-statistics-provider",
+        "map-statistics-event", "map-statistics-outcome", "diagnostic-history-page-size",
+        "diagnostic-state-filter", "device-map", "device-family", "device-support", "device-status",
+        "device-mobile-sort",
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        from admin_presentation_preview import create
+        with tempfile.TemporaryDirectory() as directory:
+            create(Path(directory))
+            cls.pages = {path.name: path.read_text(encoding="utf-8") for path in Path(directory).glob("*.html")}
+
+    def test_every_admin_page_carries_the_dropdown_script_with_the_nonce(self):
+        from terento_catalog.admin import _admin_dropdown_script, _layout
+        script = _admin_dropdown_script()
+        self.assertGreater(len(self.pages), 20)
+        for name, body in self.pages.items():
+            with self.subTest(page=name):
+                tags = re.findall(r'<script nonce="[^"]+">([\s\S]*?)</script>', body)
+                self.assertTrue(any(script in tag for tag in tags), "dropdown script missing or without nonce")
+        self.assertTrue(script in _layout("Test", "<main id='main-content'></main>").decode())
+
+    def test_only_filter_selects_are_enhanced(self):
+        marked = set()
+        for name, body in self.pages.items():
+            for tag in re.findall(r"<select\b[^>]*>", body):
+                identifier = re.search(r"\bid=['\"]([^'\"]+)", tag)
+                identifier = identifier.group(1) if identifier else ""
+                with self.subTest(page=name, select=identifier or tag):
+                    self.assertEqual("data-admin-dropdown" in tag, identifier in self.FILTER_SELECTS)
+                    if "data-admin-dropdown" in tag:
+                        marked.add(identifier)
+            for form in re.findall(r"<form\b[^>]*method=['\"]post['\"][\s\S]*?</form>", body):
+                self.assertNotIn("data-admin-dropdown", form, name)
+            for dialog in re.findall(r"<dialog\b[\s\S]*?</dialog>", body):
+                self.assertNotIn("data-admin-dropdown", dialog, name)
+        # Marked selects the preview fixtures render (pagination needs >25 rows,
+        # provider sources need download links).
+        self.assertTrue({"overview-period", "health-status", "evidence-status", "evidence-sort",
+                         "provider-package-filter", "map-statistics-range", "diagnostic-state-filter",
+                         "device-map", "device-mobile-sort"} <= marked, marked)
+
+    def test_dropdown_keeps_the_native_select_as_source_of_truth(self):
+        from terento_catalog.admin import _admin_dropdown_script
+        script = _admin_dropdown_script()
+        for fragment in (
+            "select[data-admin-dropdown]", "'combobox'", "'listbox'", "'option'", "aria-activedescendant",
+            "aria-expanded", "new Event('input', {bubbles: true})", "new Event('change', {bubbles: true})",
+            "'Escape'", "event.altKey", "'Home'", "'End'", "typeahead", "'pointerdown'", ":disabled",
+            "Object.defineProperty(select, key", "terento-admin-content-changed", "select.tabIndex = -1",
+            "list.dataset.placement = 'above'",
+        ):
+            self.assertIn(fragment, script)
+        self.assertNotIn("innerHTML", script)
+
+    def test_dropdown_styles_use_only_admin_tokens_and_font_awesome_icons(self):
+        from terento_catalog.admin import ADMIN_DROPDOWN_STYLES
+        self.assertIn(ADMIN_DROPDOWN_STYLES, ADMIN_STYLES)
+        self.assertNotRegex(ADMIN_DROPDOWN_STYLES, r"#[0-9A-Fa-f]{3,8}\b|rgba?\(")
+        self.assertNotRegex(ADMIN_DROPDOWN_STYLES, r"content:")
+        for fragment in ("background:var(--surface)", "border:1px solid var(--border)", "border-radius:var(--radius-control)",
+                         "font-family:var(--font-ui)", "var(--fa-chevron-down)", "var(--fa-check)", "var(--selected-tint)",
+                         "outline:var(--admin-focus-ring)", ".admin-dropdown-list{position:fixed"):
+            self.assertIn(fragment, ADMIN_DROPDOWN_STYLES)
+        self.assertIn("--fa-check:url(\"data:image/svg+xml,", ADMIN_STYLES)
+        # Every selector in the block is scoped to the component classes.
+        for rule in re.findall(r"([^{}]+)\{[^{}]*\}", ADMIN_DROPDOWN_STYLES.replace("@media(max-width:760px){", "")):
+            for selector in rule.split(","):
+                self.assertIn(".admin-dropdown", selector, selector)
+
+
 class AdminIconTests(unittest.TestCase):
     """Owner decision 2026-10-06: Admin icons are Font Awesome Free, never hand-drawn."""
 

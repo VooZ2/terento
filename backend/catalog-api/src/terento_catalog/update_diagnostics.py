@@ -235,7 +235,8 @@ def _update_issue_report(row: dict[str, Any]) -> tuple[str, str]:
 
 
 def _update_review_controls(row: dict[str, Any], csrf_token: str, return_to: str) -> str:
-    from .admin import _github_issue_controls, _github_issue_link, _normalise_github_issue_reference, _timestamp_markup
+    from .admin import (DIAGNOSTIC_DISCLOSURE_CLASS, _diagnostic_review_administration, _github_issue_controls,
+                        _github_issue_link, _normalise_github_issue_reference, _timestamp_markup)
     try:
         issue = _normalise_github_issue_reference(row.get('linked_github_issue'))
     except ValueError:
@@ -253,23 +254,23 @@ def _update_review_controls(row: dict[str, Any], csrf_token: str, return_to: str
             resolution_rows += f"<div><dt>Resolved at</dt><dd>{_timestamp_markup(row['resolved_at'])}</dd></div>"
         resolution_detail = f"<dl class='diagnostic-detail-summary'>{resolution_rows}</dl>"
     if resolved:
-        lifecycle = f"<form method='post' action='/admin/update-diagnostics/reopen' class='diagnostic-action-form admin-async-action'>{hidden}<h3>Review state</h3><p>Resolved. The original update result remains in history.</p>{resolution_detail}<button type='submit' class='secondary-button'>Reopen diagnostic</button></form>"
+        lifecycle = f"<form method='post' action='/admin/update-diagnostics/reopen' class='diagnostic-action-form admin-async-action'>{hidden}<h4>Review state</h4><p>Resolved. The original update result remains in history.</p>{resolution_detail}<button type='submit' class='secondary-button'>Reopen diagnostic</button></form>"
     elif row.get('outcome') != 'SUCCEEDED':
-        lifecycle = f"<form method='post' action='/admin/update-diagnostics/resolve' class='diagnostic-action-form admin-async-action' data-confirm='Resolve this diagnostic? The original update result remains in history and statistics.'>{hidden}<h3>Resolve diagnostic</h3><label>Reason<select name='resolution_reason' required><option value='FIXED'>Fixed</option><option value='HISTORICAL_SUPERSEDED'>Historical / superseded</option><option value='DUPLICATE'>Duplicate</option><option value='NOT_TERENTO_ISSUE'>Not a Terento issue</option><option value='OTHER'>Other</option></select></label><label>Resolution note <span class='optional-label'>Optional</span><textarea name='resolution_note' rows='3'></textarea></label><button type='submit'>Resolve diagnostic</button></form>"
+        lifecycle = f"<form method='post' action='/admin/update-diagnostics/resolve' class='diagnostic-action-form admin-async-action' data-confirm='Resolve this diagnostic? The original update result remains in history and statistics.'>{hidden}<h4>Resolve diagnostic</h4><label>Reason<select name='resolution_reason' required><option value='FIXED'>Fixed</option><option value='HISTORICAL_SUPERSEDED'>Historical / superseded</option><option value='DUPLICATE'>Duplicate</option><option value='NOT_TERENTO_ISSUE'>Not a Terento issue</option><option value='OTHER'>Other</option></select></label><label>Resolution note <span class='optional-label'>Optional</span><textarea name='resolution_note' rows='3'></textarea></label><button type='submit'>Resolve diagnostic</button></form>"
     workflow = ''
     if issue and not resolved:
         state = row.get('diagnostic_workflow_status')
-        workflow = f"<form method='post' action='/admin/update-diagnostics/workflow' class='diagnostic-action-form admin-async-action'>{hidden}<h3>GitHub issue workflow</h3><label>Status<select name='diagnostic_workflow_status'><option value='IN_PROGRESS'{' selected' if state != 'UNDER_REVIEW' else ''}>In progress</option><option value='UNDER_REVIEW'{' selected' if state == 'UNDER_REVIEW' else ''}>Under review</option></select></label><button type='submit' class='secondary-button'>Save workflow status</button></form>"
+        workflow = f"<form method='post' action='/admin/update-diagnostics/workflow' class='diagnostic-action-form admin-async-action'>{hidden}<h4>GitHub issue workflow</h4><label>Status<select name='diagnostic_workflow_status'><option value='IN_PROGRESS'{' selected' if state != 'UNDER_REVIEW' else ''}>In progress</option><option value='UNDER_REVIEW'{' selected' if state == 'UNDER_REVIEW' else ''}>Under review</option></select></label><button type='submit' class='secondary-button'>Save workflow status</button></form>"
     title, body = _update_issue_report(row)
     controls = _github_issue_controls(title, body, issue=issue, csrf_token=csrf_token,
         identifier=identifier, return_to=return_to, action='/admin/update-diagnostics/issue', identifier_name='diagnostic_id')
-    issue_form = f"<section class='diagnostic-issue-section github-review'><h3>GitHub issue</h3><p class='github-current'>{_github_issue_link(issue) if issue else 'No linked issue'}</p><p class='table-help'>Review the report before sharing. A closed linked issue resolves this diagnostic after synchronization; the update result remains in history.</p><div class='github-issue-controls'>{controls}</div></section>"
+    issue_form = f"<section class='diagnostic-section diagnostic-issue-section github-review'><h3>GitHub issue</h3><p class='github-current'>{_github_issue_link(issue) if issue else 'No linked issue'}</p><p class='table-help'>Review the report before sharing. A closed linked issue resolves this diagnostic after synchronization; the update result remains in history.</p><div class='github-issue-controls'>{controls}</div></section>"
     payload = row.get('payload') if isinstance(row.get('payload'), dict) else {}
     technical_fields = [('Diagnostic ID', identifier), ('Operation ID', row.get('operation_id'))] + _update_technical_fields(row)
     technical = ''.join(f'<div><dt>{_escape(label)}</dt><dd>{_escape(value)}</dd></div>' for label, value in technical_fields)
-    technical_form = f"<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'><summary>Technical details</summary><div class='disclosure-body'><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(identifier, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div><dl class='diagnostic-detail-summary'>{technical}</dl></div></details>"
-    administration = f"<details class='admin-disclosure diagnostic-action-form diagnostic-secondary-disclosure'><summary>Review administration</summary><div class='disclosure-body'><p class='table-help'>Resolving marks the diagnostic as reviewed; it does not repair the map or change the original result.</p><div class='diagnostic-actions-grid'>{lifecycle}{workflow}</div></div></details>" if lifecycle or workflow else ''
-    return f"{issue_form}<div class='diagnostic-secondary-grid'>{administration}{technical_form}</div>"
+    technical_form = f"<details class='{DIAGNOSTIC_DISCLOSURE_CLASS} diagnostic-technical-section'><summary>Technical details</summary><div class='disclosure-body'><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(identifier, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div><dl class='diagnostic-detail-summary'>{technical}</dl></div></details>"
+    administration = _diagnostic_review_administration(f"{lifecycle}{workflow}")
+    return f"{issue_form}<div class='diagnostic-disclosure-stack'>{administration}{technical_form}</div>"
 
 
 def update_summary_markup(summary: dict[str, Any], device_id: str) -> str:
@@ -305,7 +306,9 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
             parameters = {'updateOutcome': parameters['outcome'], 'updateOffset': parameters.get('offset', 0)}
         return base_url + ('&' if '?' in base_url else '?') + urlencode({k: v for k, v in parameters.items() if v != ''}) + ('#updates' if embedded else '')
     from .admin import _operation_map_label, _scope_chip
-    title = 'Update history' if embedded else 'Reports'
+    if embedded:
+        return _embedded_update_history_markup(data, url)
+    title = 'Reports'
     result = (
         f"<section class='model-page-section admin-card' id='updates' aria-labelledby='update-history-title'><header class='admin-card-head'><h2 id='update-history-title'>{title}</h2>"
         f"{_scope_chip('all')}</header>"
@@ -329,6 +332,73 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
     return result + '</nav></section>'
 
 
+_UPDATE_OUTCOME_FILTERS = (('', 'All'), ('succeeded', 'Successful'), ('failed', 'Failed'), ('not_started', 'Blocked before writing'))
+
+
+def _embedded_update_history_markup(data: dict[str, Any], url: Any) -> str:
+    """Device-detail Update history, laid out like Installation history.
+
+    The heading sits outside the card, the filters reuse the quick-filter bar and
+    the table reuses the diagnostic list / mobile record table. Filtering and
+    paging stay server-side (``updateOutcome`` / ``updateOffset``), so the
+    filters are links marked with ``aria-current``.
+    """
+    from .admin import (_timestamp_markup, _diagnostic_result, _github_issue_link,
+                        _admin_app_version_label, _operation_map_label)
+    selected = data.get('outcome', '')
+    rows = data.get('rows') or []
+    offset = data.get('offset', 0) or 0
+    heading = "<h2 id='update-history-title'>Update history</h2>"
+    if not rows and not selected and not offset:
+        return ("<section class='diagnostics-detail-section model-page-section compact-empty-state' id='updates' "
+                f"aria-labelledby='update-history-title'>{heading}<p class='empty'>No update history for this device.</p></section>")
+    filters = ''
+    for value, label in _UPDATE_OUTCOME_FILTERS:
+        active = selected == value
+        current = " aria-current='page'" if active else ''
+        filters += (f"<a class='quick-filter{' active' if active else ''}' "
+                    f"href='{html.escape(url(outcome=value, offset=0), quote=True)}'{current}>{label}</a>")
+    result = (
+        "<section class='diagnostics-detail-section model-page-section' id='updates' aria-labelledby='update-history-title'>"
+        f"<div class='section-heading'><div>{heading}</div></div>"
+        "<nav class='filter-bar diagnostic-filter-bar update-history-filters' aria-label='Filter update history'>"
+        f"<div class='quick-filter-group'>{filters}</div></nav>"
+    )
+    if rows:
+        result += (
+            "<div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table update-history-table mobile-record-table'>"
+            "<caption class='sr-only'>Reported map update results for this exact model and variant</caption><thead><tr>"
+            "<th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th>"
+            "<th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th>"
+            "</tr></thead><tbody>"
+        )
+        for index, row in enumerate(rows):
+            payload = row.get('payload') if isinstance(row.get('payload'), dict) else {}
+            link = '/admin/update-diagnostics?' + urlencode({'diagnosticId': str(row['event_id'])})
+            release = _admin_app_version_label(payload.get('terentoVersion'), payload.get('appBuild'))
+            release_markup = _escape(release) if release != '—' else "<span class='muted-value'>—</span>"
+            result += (
+                f"<tr><td class='column-date' data-label='Date'>{_timestamp_markup(row.get('occurred_at'))}</td>"
+                f"<td class='history-map' data-label='Map'>{_escape(_operation_map_label([row]))}</td>"
+                f"<td class='column-status' data-label='Result'>{_diagnostic_result(row.get('outcome'))}</td>"
+                f"<td data-label='GitHub issue'>{_github_issue_link(row.get('linked_github_issue'))}</td>"
+                f"<td data-label='App version'>{release_markup}</td>"
+                "<td class='column-status' data-label='Action'><a class='secondary-button update-history-inspect' "
+                f"href='{html.escape(link, quote=True)}' aria-label='Inspect update {offset + index + 1}'>Inspect</a></td></tr>"
+            )
+        result += '</tbody></table></div>'
+    else:
+        result += "<p class='results-count'>No update reports match this filter.</p>"
+    pages = ''
+    if offset:
+        pages += f"<a class='secondary-button' href='{html.escape(url(offset=max(0, offset - 50)), quote=True)}'>Previous updates</a>"
+    if data.get('has_more'):
+        pages += f"<a class='secondary-button' href='{html.escape(url(offset=offset + 50), quote=True)}'>Next updates</a>"
+    if pages:
+        result += f"<nav class='provider-pagination' aria-label='Update history pages'>{pages}</nav>"
+    return result + '</section>'
+
+
 def _update_totals_markup(totals: dict[str, Any] | None) -> str:
     """Report tiles for the list scope; the stream is update reports, not Maps updates."""
     from .admin import _metric_row, _metric_tile
@@ -349,7 +419,7 @@ def _update_totals_markup(totals: dict[str, Any] | None) -> str:
 
 
 def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_token: str) -> bytes:
-    from .admin import _admin_header, _admin_icon, _layout, _timestamp_markup, _diagnostic_result, _diagnostics_script, _admin_app_version_label, _operation_map_label, _diagnostic_state_badge, _diagnostic_heading
+    from .admin import _admin_header, _admin_icon, _layout, _timestamp_markup, _diagnostic_result, _diagnostics_script, _admin_app_version_label, _operation_map_label, _diagnostic_state_badge, _diagnostic_heading, _diagnostic_outcome_sections
     content = _admin_header(user, csrf_token, active='map-statistics')
     content += (
         "<main id='main-content' class='dashboard provider-detail update-diagnostics-page'>"
@@ -377,10 +447,11 @@ def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_tok
         content += ''.join(f'<div><dt>{label}</dt><dd>{value}</dd></div>' for label, value in fields) + '</dl>'
         if detail:
             reason, action = _update_reason(row)
-            content += f"<section class='diagnostic-outcome'><h3>What happened</h3><p>{_escape(reason)}</p><h3>Next action</h3><p>{_escape(action)}</p><h3>Safety facts</h3><dl class='diagnostic-detail-summary'>"
-            for label, value in (('Write started', _fact(payload.get('writeStarted'))), ('Cleanup attempted', _fact(payload.get('cleanupAttempted'))), ('Cleanup succeeded', _fact(payload.get('cleanupSucceeded'))), ('Previous map confirmed preserved', _preservation_fact(payload.get('oldMapPreserved'), row.get('outcome')))):
-                content += f'<div><dt>{label}</dt><dd>{_escape(value)}</dd></div>'
-            content += '</dl></section>'
+            safety = ''.join(f'<div><dt>{label}</dt><dd>{_escape(value)}</dd></div>' for label, value in (
+                ('Write started', _fact(payload.get('writeStarted'))), ('Cleanup attempted', _fact(payload.get('cleanupAttempted'))),
+                ('Cleanup succeeded', _fact(payload.get('cleanupSucceeded'))),
+                ('Previous map confirmed preserved', _preservation_fact(payload.get('oldMapPreserved'), row.get('outcome')))))
+            content += _diagnostic_outcome_sections(_escape(reason), _escape(action), safety)
             provider = row.get('provider')
             if payload.get('failureCode') in {'UPDATE_FAILED_ACQUISITION', 'UPDATE_FAILED_SOURCE_VALIDATION'} and payload.get('failureStage') != 'preflight' and provider in {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike'}:
                 content += f"<p><a class='secondary-button' href='/admin/providers/{provider}'>Review provider packages</a></p>"

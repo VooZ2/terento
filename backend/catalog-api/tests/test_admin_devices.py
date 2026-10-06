@@ -512,7 +512,7 @@ class AdminDevicesTests(unittest.TestCase):
             "data-device-sort=\"authorization\"", "data-device-sort=\"status\"",
             "data-device-sort=\"attempts\"", "data-device-sort=\"success\"", "data-device-sort=\"evidence\"",
             "aria-sort=\"ascending\"", "/admin/devices/garmin-fenix-8-47-amoled?from=devices",
-            'id="device-map"><option value="yes" selected', "results",
+            'id="device-map" data-admin-dropdown><option value="yes" selected', "results",
         ):
             self.assertIn(value, body)
         table_header = body[body.index("<thead>"):body.index("</thead>")]
