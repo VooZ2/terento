@@ -616,11 +616,10 @@ class AdminDevicesTests(unittest.TestCase):
             "<details class='model-page-section model-administration admin-disclosure'>", 1,
         )[1].split("</details>", 1)[0]
         self.assertNotIn(" open", administration.split(">", 1)[0])
-        self.assertEqual(administration.count("<article>"), 1)
-        self.assertIn(
-            "<strong>Public compatibility</strong><span>Not shown.</span>",
-            administration,
-        )
+        self.assertEqual(administration.count("<article class='administration-card'>"), 1)
+        self.assertIn("<dt>Public compatibility</dt><dd>Not shown.</dd>", administration)
+        # No optional note fields (owner decision 2026-10-06).
+        self.assertNotIn("name='note'", administration)
 
     def test_device_history_renders_pagination_only_for_multiple_pages(self):
         device = _admin_device_payload([device_row()], None)["devices"][0]

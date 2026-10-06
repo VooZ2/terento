@@ -276,7 +276,7 @@ def update_summary_markup(summary: dict[str, Any], device_id: str) -> str:
     """Update reports for one model: diagnostic stream, all time. Styled like
     the Installs card beside it, with plain (unlinked) counts (owner decision
     2026-10-06); the update history below filters by outcome."""
-    from .admin import _metric_row, _metric_tile, _scope_chip
+    from .admin import _metric_row, _metric_tile
 
     def count(field: str, label: str, *, failure: bool = False) -> str:
         return _metric_tile(label, int(summary.get(field) or 0), failure=failure, data_stat=field)
@@ -290,7 +290,7 @@ def update_summary_markup(summary: dict[str, Any], device_id: str) -> str:
     note = f"<p class='table-help'>{conflicts} conflicting reported results excluded from attempt totals. Inspect update history.</p>" if conflicts else ''
     return (
         "<section class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics model-update-statistics' aria-labelledby='model-update-kpis-title'>"
-        f"<header class='admin-card-head'><h2 id='model-update-kpis-title'>Update reports</h2>{_scope_chip('all')}</header>"
+        f"<header class='admin-card-head'><h2 id='model-update-kpis-title'>Updates</h2></header>"
         f"{values}{note}</section>"
     )
 

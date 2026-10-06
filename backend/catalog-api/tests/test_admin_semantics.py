@@ -2331,7 +2331,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("diagnostic-model-metrics model-statistics'", detail_body)
         self.assertIn("No installation history for this device.", detail_body)
         self.assertIn("Install policy", detail_body)
-        self.assertIn('textarea name=\'note\'', detail_body)
+        self.assertNotIn("textarea name='note'", detail_body)  # no optional notes (owner decision)
         self.assertIn("Save support metadata", detail_body)
         self.assertIn("Device information", detail_body)
         self.assertIn("device-information-section", detail_body)

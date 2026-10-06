@@ -402,7 +402,7 @@ caption and sortable controls.
 
 Empty installation history omits unusable filters, table, and pagination. Above
 900px, the Installs card (Attempts, Successful, Failed, Open problems, Last
-report), Update reports, Administration, Device information, and Technical
+report), Updates, Administration, Device information, and Technical
 details form the left column while Installation history uses the right column.
 A pre-write result (`writeStarted=false`) shows `Blocked before writing`, is not
 in the Failed filter, has its own Blocked before writing filter, and stays an
@@ -551,10 +551,15 @@ rows without an assessment remain unassigned; no adjacent installation or time
 match supplies identity. The cards describe model-and-variant history; no unique
 physical-watch identifier is collected.
 
-The model detail adds a separate Update reports card and Update history, scoped
-to all retained nonlocal reports for that exact identity, labelled as the update
-report stream with an `All time` chip. Successful, Failed and Blocked before
-writing values link to the corresponding update records. Blocked results stay in
+The model detail adds a separate Updates card and Update history, scoped to all
+retained nonlocal reports for that exact identity. The Installs and Updates
+cards share one design (same classes, label and value sizes), carry no `All
+time` chip, and show plain Successful, Failed and Blocked before writing counts
+without links (owner decision 2026-10-06); the Update history outcome filters
+open the matching records. The Administration card has two separated sections,
+Install policy (Install policy and Public compatibility as label/value rows) and
+Support metadata (Support status and Save), with no optional note fields.
+Blocked results stay in
 history and outside the attempt denominator. Summary totals are independent of
 history pagination and diagnostic resolution. Conflicting logical reports remain
 visible with an ambiguity notice and are excluded from completed counts.

@@ -117,7 +117,7 @@ class DiagnosticParityTests(unittest.TestCase):
         body = device_detail_page(device, {'username': 'admin'}, 'csrf',
             update_history={'rows': [self.report()], 'device_id': MODEL, 'offset': 50, 'has_more': True}).decode()
         self.assertIn('Installation history', body); self.assertIn('Update history', body)
-        self.assertIn('>Update reports</h2>', body)
+        self.assertIn('>Updates</h2>', body)
         self.assertNotIn("admin-glossary-link", body)
         # Update report counts are plain numbers styled like Installs (owner decision 2026-10-06).
         reports = body.split("id='model-update-kpis-title'", 1)[1].split('</section>', 1)[0]
