@@ -75,7 +75,7 @@ then
         "$python_bin" -m venv "$local_venv"
         python_bin="$local_venv/bin/python"
     fi
-    "$python_bin" -m pip install --disable-pip-version-check -e "$backend_dir[test]"
+    "$python_bin" -m pip install --disable-pip-version-check -e "${backend_dir}[test]"
 fi
 
 export TERENTO_PYTHON_BIN="$python_bin"
