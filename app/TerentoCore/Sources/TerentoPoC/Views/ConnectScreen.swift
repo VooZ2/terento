@@ -2620,7 +2620,8 @@ struct ConnectScreen: View {
     }
 
     private func reportInstallationIssue(for plan: InstallationPlan?) {
-        diagnosticLogMessage = InstallationIssueReport.openGitHub(installationIssueDraft(for: plan))
+        let draft = installationIssueDraft(for: plan)
+        diagnosticLogMessage = InstallationIssueReport.openGitHub(draft)
             ? nil
             : "GitHub could not be opened. Please try again."
     }
