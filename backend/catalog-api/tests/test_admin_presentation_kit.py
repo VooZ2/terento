@@ -164,6 +164,56 @@ class AdminChartGeometryTests(unittest.TestCase):
         self._assert_no_overlap(self._labels(body, "mobile"), 13, 360)
 
 
+class AdminChartValueStripTests(unittest.TestCase):
+    """Tap/keyboard value strip: works without hover and is announced."""
+
+    def test_every_bucket_carries_its_date_series_values_and_total(self):
+        from terento_catalog.admin import _overview_trend_chart
+        body = _overview_trend_chart([{
+            "bucket": "2026-09-18T00:00:00Z", "success_count": 5, "custom_count": 1,
+            "failed_count": 0, "map_update_success_count": 2, "map_update_failed_count": 1,
+        }], "day")
+        strip = body.split("<p class='overview-chart-values admin-legend'", 1)[1].split("</p>", 1)[0]
+        self.assertIn("data-chart-values-strip aria-live='polite'", strip)
+        self.assertIn("Tap or focus a bar to see its values.", strip)
+        groups = re.findall(r"<g class='overview-chart-group' role='img' tabindex='0' data-chart-values='([^']+)'", body)
+        self.assertEqual(len(groups), 2)  # desktop and compact chart, one strip
+        import html as html_module
+        payload = json.loads(html_module.unescape(groups[0]))
+        self.assertEqual(payload["date"], "18 Sep")
+        self.assertEqual(payload["total"], 9)
+        self.assertEqual(payload["values"], [
+            ["success", "Install successful", 5], ["custom", "Custom .img install", 1],
+            ["failed", "Install failed", 0], ["update", "Update successful", 2],
+            ["update-failed", "Update failed", 1],
+        ])
+        self.assertEqual(body.count("data-chart-values-strip"), 1)
+
+    def test_app_download_buckets_keep_unknown_values_unknown(self):
+        from terento_catalog.admin import _overview_downloads_chart
+        body = _overview_downloads_chart({"hasData": True, "bucket": "day", "trend": [
+            {"bucket": "2026-09-18T00:00:00Z", "observed_at": "2026-09-18T18:00:00Z", "dmg_count": 4, "zip_count": None},
+        ]}, period="7d")
+        import html as html_module
+        payload = json.loads(html_module.unescape(re.search(r"data-chart-values='([^']+)'", body).group(1)))
+        self.assertEqual(payload["values"], [["download-dmg", ".dmg", 4], ["download-zip", ".zip", None]])
+        self.assertIsNone(payload["total"])
+        self.assertIn("data-chart-values-strip aria-live='polite'", body)
+
+    def test_value_strip_script_ships_on_every_admin_page_with_the_nonce(self):
+        from terento_catalog.admin import _admin_chart_values_script, _layout
+        script = _admin_chart_values_script()
+        for event in ("'click'", "'focusin'", "'keydown'"):
+            self.assertIn(event, script)
+        self.assertNotIn("mouseover", script)
+        self.assertNotIn("innerHTML", script)  # values are inserted as text
+        self.assertIn("replaceChildren", script)
+        page = _layout("Test", "<main id='main-content'></main>").decode()
+        self.assertIn("data-chart-values-strip", script)
+        self.assertRegex(page, r'<script nonce="[^"]+">[^<]*\(\(\) => \{[\s\S]*closest\(\'\.overview-chart-group\[data-chart-values\]\'\)')
+        self.assertIn(".overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}", ADMIN_STYLES)
+
+
 class AdminComponentKitTests(unittest.TestCase):
     def test_scope_chip_is_visible_text_for_every_scope(self):
         self.assertEqual(_scope_chip("7d"), "<span class='admin-scope-chip' data-scope='period'>Last 7 days</span>")

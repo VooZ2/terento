@@ -1705,6 +1705,20 @@ def _overview_stacked_segments(
     return segments
 
 
+def _chart_value_attributes(date: str, values: list[tuple[str, str, int | None]], total: int | None) -> str:
+    """Data for the tap/focus value strip: bucket date, every series and total."""
+    payload = {"date": date, "total": total, "values": [list(item) for item in values]}
+    return f" data-chart-values='{html.escape(json.dumps(payload, ensure_ascii=False), quote=True)}'"
+
+
+def _chart_value_strip() -> str:
+    """Small live strip under a chart; filled by the shared chart-values script."""
+    return (
+        "<p class='overview-chart-values admin-legend' data-chart-values-strip aria-live='polite'>"
+        "<span class='overview-chart-values-hint'>Tap or focus a bar to see its values.</span></p>"
+    )
+
+
 def _chart_axis_labels(
     positions: list[float], texts: list[str], *, font_size: float, chart_width: float,
     gap: float = 6.0,
@@ -1844,8 +1858,11 @@ def _overview_trend_chart(
             group_title += " · " + " · ".join(series_titles)
         group_title += f" · {time_zone}"
         # One keyboard stop per bucket; the segments are presentational.
+        strip_data = _chart_value_attributes(
+            bucket_label, [(name, label, count) for count, (name, label, _) in zip(counts, series)], stack_total,
+        )
         bars.append(
-            f"<g class='overview-chart-group' role='img' tabindex='0' aria-label='{html.escape(group_title, quote=True)}'>"
+            f"<g class='overview-chart-group' role='img' tabindex='0'{strip_data} aria-label='{html.escape(group_title, quote=True)}'>"
             f"<title>{html.escape(group_title)}</title>{''.join(group_bars)}</g>"
         )
     axis_texts = [_overview_chart_bucket_label(item.get("bucket"), bucket, time_zone) for item in trend]
@@ -1877,7 +1894,7 @@ def _overview_trend_chart(
             trend, bucket, time_zone, metric=metric,
             has_activity=has_activity, chart_id=chart_id, _compact=True,
         )
-        + legend + "</div>"
+        + _chart_value_strip() + legend + "</div>"
     )
 
 
@@ -2059,8 +2076,14 @@ def _overview_downloads_chart(
             interval_title = "Download interval: " + " · ".join(zero_titles)
             group_title += " · " + interval_title
         # One keyboard stop per bucket; the segments are presentational.
+        strip_data = _chart_value_attributes(
+            _overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone),
+            [(css_class.removeprefix("overview-chart-"), label.removesuffix(" downloads"), count)
+             for (label, css_class), count in zip(series, counts)],
+            stack_total if all(count is not None for count in counts) else None,
+        )
         group_accessibility = (
-            " class='overview-chart-group' role='img' tabindex='0' aria-label='"
+            " class='overview-chart-group' role='img' tabindex='0'" + strip_data + " aria-label='"
             + html.escape(group_title, quote=True)
             + "'"
         )
@@ -2123,6 +2146,7 @@ def _overview_downloads_chart(
         "<div class='overview-chart-wrap'>"
         + svg
         + _overview_downloads_chart(downloads, time_zone, period=period, _compact=True)
+        + _chart_value_strip()
         + _chart_legend(
             [("download-dmg", ".dmg", _sum_known(values, 0)), ("download-zip", ".zip", _sum_known(values, 1))],
             label="Terento app download legend and period increases",
@@ -8758,6 +8782,12 @@ ADMIN_STYLES += """
 .overview-chart-panel>.overview-chart-wrap,.overview-download-panel>.overview-chart-wrap{width:100%}
 .overview-chart-panel>.overview-all-time,.overview-download-panel>.overview-all-time{margin-top:auto;padding-top:10px}
 .overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
+.overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
+.overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
+.overview-chart-values-date{color:var(--graphite)}
+.overview-chart-values-hint{color:var(--secondary)}
+.overview-trend-chart .overview-chart-group{cursor:pointer}
+.overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}
 """
 
 def _error(message: str | None) -> str:
@@ -8778,11 +8808,57 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script())
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script())
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body class="admin-shell">{content}</body></html>""".encode("utf-8")
+
+
+def _admin_chart_values_script() -> str:
+    """Tap, click or keyboard focus on a chart bucket fills the chart's value
+    strip (date, every series and total); no hover is required."""
+    return r"""(() => {
+      const show = (group) => {
+        const wrap = group.closest('.overview-chart-wrap');
+        const strip = wrap && wrap.querySelector('[data-chart-values-strip]');
+        if (!strip) return;
+        let data;
+        try { data = JSON.parse(group.dataset.chartValues || ''); } catch { return; }
+        wrap.querySelectorAll('.overview-chart-group.is-selected').forEach((node) => node.classList.remove('is-selected'));
+        group.classList.add('is-selected');
+        const parts = [];
+        const date = document.createElement('strong');
+        date.className = 'overview-chart-values-date';
+        date.textContent = String(data.date || '');
+        parts.push(date);
+        (data.values || []).forEach(([name, label, value]) => {
+          const item = document.createElement('span');
+          const swatch = document.createElement('i');
+          if (/^[a-z-]+$/.test(String(name))) swatch.className = 'overview-chart-' + name;
+          swatch.setAttribute('aria-hidden', 'true');
+          const count = document.createElement('strong');
+          count.textContent = value === null || value === undefined ? '—' : Number(value).toLocaleString('en-US');
+          item.append(swatch, document.createTextNode(String(label) + ' '), count);
+          parts.push(item);
+        });
+        if (data.total !== null && data.total !== undefined) {
+          const total = document.createElement('span');
+          const count = document.createElement('strong');
+          count.textContent = Number(data.total).toLocaleString('en-US');
+          total.append(document.createTextNode('Total '), count);
+          parts.push(total);
+        }
+        strip.replaceChildren(...parts);
+      };
+      const target = (event) => event.target instanceof Element ? event.target.closest('.overview-chart-group[data-chart-values]') : null;
+      document.addEventListener('click', (event) => { const group = target(event); if (group) show(group); });
+      document.addEventListener('focusin', (event) => { const group = target(event); if (group) show(group); });
+      document.addEventListener('keydown', (event) => {
+        const group = target(event);
+        if (group && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); show(group); }
+      });
+    })();"""
 
 
 def _admin_disclosure_script() -> str:

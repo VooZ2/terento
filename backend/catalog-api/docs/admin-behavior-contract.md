@@ -255,7 +255,12 @@ successful/failed, while map operations distinguish install successful, custom
 `.img` install successful, install failed, update successful and update failed,
 each with its own legend entry; optional components and pre-write failures remain
 excluded by the statistics contract. Each bucket is one keyboard stop with a
-label listing every series; segments are presentational.
+label listing every series; segments are presentational. Tapping, clicking or
+keyboard-focusing a bucket (Enter/Space also select it) fills a small value
+strip under the chart with the bucket date, every series value (`—` when not
+recorded) and the total, announced through `aria-live`; values never require
+hover. The strip uses the shared inline nonce script, no chart library, and the
+charts stay server-rendered SVG.
 
 Chart geometry is truthful with two legibility rules shared by every Admin bar
 chart. Minimum segment: a non-zero stacked segment is drawn at least about
