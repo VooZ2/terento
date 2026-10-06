@@ -8136,8 +8136,8 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-download-panel{padding-top:16px;padding-bottom:16px}
 .overview-download-panel .section-heading{margin-bottom:6px}
-.overview-chart-download-dmg{fill:var(--graphite);background:var(--graphite)}
-.overview-chart-download-zip{fill:var(--secondary);background:var(--secondary)}
+.overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
+.overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
 .overview-chart-download-marker line{stroke-width:2;stroke-dasharray:4 3}.overview-chart-download-marker text{stroke:none;font-size:10px;font-weight:700}.overview-chart-download-release line{stroke:var(--interactive)}.overview-chart-download-release text{fill:var(--interactive)}.overview-chart-download-boundary line{stroke:var(--secondary)}.overview-chart-download-boundary text{fill:var(--secondary)}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}

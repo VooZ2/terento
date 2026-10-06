@@ -40,10 +40,6 @@ Interactive Primary (slate), custom `.img` fresh install successful its own
 Lichen-dark series and legend entry, install failed solid red (destructive
 text), update successful Warm Stone with a stone-dark outline (Warm Stone alone
 is 2.69:1 on white), and update failed red diagonal stripes in bars and legends.
-One colour has one meaning across Admin: map download charts reuse slate for
-successful and red for failed, while the Terento App downloads chart uses
-colours no install or update series uses — `.dmg` Graphite and `.zip` Secondary
-text grey (both ≥3:1 on the surface).
 Stacked segments are separated by a 1 px surface line, every series has a legend
 entry (counts follow the Dashboard legend rule), and each bucket is one keyboard
 stop whose label lists every series. Fresh-install KPI denominators exclude every update.
