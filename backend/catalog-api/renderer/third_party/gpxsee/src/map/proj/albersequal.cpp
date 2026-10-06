@@ -1,0 +1,210 @@
+/*
+ * Based on libgeotrans with the following Source Code Disclaimer:
+
+1. The GEOTRANS source code ("the software") is provided free of charge by
+the National Imagery and Mapping Agency (NIMA) of the United States
+Department of Defense. Although NIMA makes no copyright claim under Title 17
+U.S.C., NIMA claims copyrights in the source code under other legal regimes.
+NIMA hereby grants to each user of the software a license to use and
+distribute the software, and develop derivative works.
+
+2. Warranty Disclaimer: The software was developed to meet only the internal
+requirements of the U.S. National Imagery and Mapping Agency. The software
+is provided "as is," and no warranty, express or implied, including but not
+limited to the implied warranties of merchantability and fitness for
+particular purpose or arising by statute or otherwise in law or from a
+course of dealing or usage in trade, is made by NIMA as to the accuracy and
+functioning of the software.
+
+3. NIMA and its personnel are not required to provide technical support or
+general assistance with respect to the software.
+
+4. Neither NIMA nor its personnel will be liable for any claims, losses, or
+damages arising from or connected with the use of the software. The user
+agrees to hold harmless the United States National Imagery and Mapping
+Agency. The user's sole and exclusive remedy is to stop using the software.
+
+5. NIMA requests that products developed using the software credit the
+source of the software with the following statement, "The product was
+developed using GEOTRANS, a product of the National Imagery and Mapping
+Agency and U.S. Army Engineering Research and Development Center."
+
+6. For any products developed using the software, NIMA requires a disclaimer
+that use of the software does not indicate endorsement or approval of the
+product by the Secretary of Defense or the National Imagery and Mapping
+Agency. Pursuant to the United States Code, 10 U.S.C. Sec. 2797, the name of
+the National Imagery and Mapping Agency, the initials "NIMA", the seal of
+the National Imagery and Mapping Agency, or any colorable imitation thereof
+shall not be used to imply approval, endorsement, or authorization of a
+product without prior written permission from United States Secretary of
+Defense.
+
+*/
+
+#include "map/ellipsoid.h"
+#include "albersequal.h"
+
+#define ONE_MINUS_SQR(x) (1.0 - (x) * (x))
+#define ALBERS_Q(slat, one_minus_sqr_e_sin, es_sin) \
+	(_one_minus_es * ((slat) / (one_minus_sqr_e_sin) - \
+	(1 / (_two_e)) * log((1 - (es_sin)) / (1 + (es_sin)))))
+#define ALBERS_M(clat, one_minus_sqr_e_sin) \
+	((clat) / sqrt(one_minus_sqr_e_sin))
+
+AlbersEqual::AlbersEqual(const Ellipsoid &ellipsoid, double standardParallel1,
+  double standardParallel2, double latitudeOrigin, double longitudeOrigin,
+  double falseEasting, double falseNorthing)
+{
+	_latitudeOrigin = deg2rad(latitudeOrigin);
+	_longitudeOrigin = deg2rad(longitudeOrigin);
+	_falseEasting = falseEasting;
+	_falseNorthing = falseNorthing;
+
+	double sp1 = deg2rad(standardParallel1);
+	double sp2 = deg2rad(standardParallel2);
+
+	_a2 = ellipsoid.radius() * ellipsoid.radius();
+	_es = ellipsoid.es();
+	_e = sqrt(_es);
+	_one_minus_es = 1 - _es;
+	_two_e = 2 * _e;
+
+	double sin_lat = sin(_latitudeOrigin);
+	double e_sin = _e * sin_lat;
+	double q0 = ALBERS_Q(sin_lat, ONE_MINUS_SQR(e_sin), e_sin);
+
+	double sin_lat1 = sin(sp1);
+	double cos_lat1 = cos(sp1);
+	double e_sin1 = _e * sin_lat1;
+	double one_minus_sqr_e_sin1 = ONE_MINUS_SQR(e_sin1);
+	double m1 = ALBERS_M(cos_lat1, one_minus_sqr_e_sin1);
+	double q1 = ALBERS_Q(sin_lat1, one_minus_sqr_e_sin1, e_sin1);
+
+	double sqr_m1 = m1 * m1;
+	if (fabs(sp1 - sp2) > 1.0e-10) {
+		double sin_lat2 = sin(sp2);
+		double cos_lat2 = cos(sp2);
+		double e_sin2 = _e * sin_lat2;
+		double one_minus_sqr_e_sin2 = ONE_MINUS_SQR(e_sin2);
+		double m2 = ALBERS_M(cos_lat2, one_minus_sqr_e_sin2);
+		double q2 = ALBERS_Q(sin_lat2, one_minus_sqr_e_sin2, e_sin2);
+		double sqr_m2 = m2 * m2;
+		_n = (sqr_m1 - sqr_m2) / (q2 - q1);
+	} else
+		_n = sin_lat1;
+
+	_c = sqr_m1 + _n * q1;
+	_a_over_n = ellipsoid.radius() / _n;
+	double nq0 = _n * q0;
+	_rho0 = (_c < nq0) ? 0 : _a_over_n * sqrt(_c - nq0);
+}
+
+PointD AlbersEqual::ll2xy(const Coordinates &c) const
+{
+	double dlam = deg2rad(c.lon()) - _longitudeOrigin;
+	if (dlam > M_PI)
+		dlam -= 2 * M_PI;
+	if (dlam < -M_PI)
+		dlam += 2 * M_PI;
+
+	double sin_lat = sin(deg2rad(c.lat()));
+	double e_sin = _e * sin_lat;
+	double q = ALBERS_Q(sin_lat, ONE_MINUS_SQR(e_sin), e_sin);
+	double nq = _n * q;
+	double rho = (_c < nq) ? 0 : _a_over_n * sqrt(_c - nq);
+	double theta = _n * dlam;
+
+	return PointD(rho * sin(theta) + _falseEasting,
+	  _rho0 - rho * cos(theta) + _falseNorthing);
+}
+
+Coordinates AlbersEqual::xy2ll(const PointD &p) const
+{
+	double lat, lon;
+	double theta = 0.0;
+
+	double dy = p.y() - _falseNorthing;
+	double dx = p.x() - _falseEasting;
+
+	double rho0_minus_dy = _rho0 - dy;
+	double rho = sqrt(dx * dx + rho0_minus_dy * rho0_minus_dy);
+
+	if (_n < 0) {
+		rho *= -1.0;
+		dx *= -1.0;
+		rho0_minus_dy *= -1.0;
+	}
+
+	if (rho != 0.0)
+		theta = atan2(dx, rho0_minus_dy);
+	double rho_n = rho * _n;
+	double q = (_c - (rho_n * rho_n) / _a2) / _n;
+	double qc = 1 - ((_one_minus_es) / (_two_e)) * log((1.0 - _e) / (1.0 + _e));
+
+	if (fabs(fabs(qc) - fabs(q)) > 1.0e-6) {
+		double q_over_2 = q / 2.0;
+		if (q_over_2 > 1.0)
+			lat = M_PI_2;
+		else if (q_over_2 < -1.0)
+			lat = -M_PI_2;
+		else {
+			double phi = asin(q_over_2);
+			if (_e < 1.0e-10)
+				lat = phi;
+			else  {
+				double delta_phi = 1.0;
+				int count = 30;
+				double tolerance = 4.85e-10;
+
+				while ((fabs(delta_phi) > tolerance) && count) {
+					double sin_phi = sin(phi);
+					double e_sin = _e * sin_phi;
+					double one_minus_sqr_e_sin = ONE_MINUS_SQR(e_sin);
+					delta_phi = (one_minus_sqr_e_sin * one_minus_sqr_e_sin)
+					  / (2.0 * cos(phi)) * (q / (_one_minus_es) - sin_phi
+					  / one_minus_sqr_e_sin + (log((1.0 - e_sin)
+					  / (1.0 + e_sin)) / (_two_e)));
+					phi += delta_phi;
+					count --;
+				}
+
+				lat = phi;
+			}
+
+			if (lat > M_PI_2)
+				lat = M_PI_2;
+			else if (lat < -M_PI_2)
+				lat = -M_PI_2;
+		}
+	} else {
+		if (q >= 0.0)
+			lat = M_PI_2;
+		else
+			lat = -M_PI_2;
+	}
+
+	lon = _longitudeOrigin + theta / _n;
+
+	if (lon > M_PI)
+		lon -= 2 * M_PI;
+	if (lon < -M_PI)
+		lon += 2 * M_PI;
+
+	if (lon > M_PI)
+		lon = M_PI;
+	else if (lon < -M_PI)
+		lon = -M_PI;
+
+	return Coordinates(rad2deg(lon), rad2deg(lat));
+}
+
+bool AlbersEqual::operator==(const CT &ct) const
+{
+	const AlbersEqual *other = dynamic_cast<const AlbersEqual*>(&ct);
+	return (other != 0 && _latitudeOrigin == other->_latitudeOrigin
+	  && _longitudeOrigin == other->_longitudeOrigin
+	  && _falseEasting == other->_falseEasting
+	  && _falseNorthing == other->_falseNorthing && _a2 == other->_a2
+	  && _es == other->_es && _rho0 == other->_rho0 && _c == other->_c
+	  && _n == other->_n);
+}

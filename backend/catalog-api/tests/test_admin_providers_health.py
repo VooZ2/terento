@@ -137,13 +137,12 @@ class HealthPageTests(unittest.TestCase):
             self.assertIn(f"data-health-group-card='{group}'", main)
         self.assertIn("status.value = status.value === tile.dataset.healthFilter ? 'all' : tile.dataset.healthFilter", body)
 
-    def test_dashboard_system_checks_exclude_catalogs(self):
+    def test_dashboard_needs_attention_leaves_system_and_provider_checks_to_their_pages(self):
         body = overview_page({"period": "24h", "data": {"hasData": False}, "providers": HEALTH["providers"],
                               "system": HEALTH}, {"username": "operator"}, "csrf").decode()
-        cards, _, _ = _system_health_cards(HEALTH)
-        expected = sum(1 for card in cards if card["status"] != "HEALTHY" and card["group"] != "catalogs")
-        self.assertIn(f"aria-label='System checks: {expected}'", body)
-        self.assertIn("aria-label='Provider problems: 1'", body)
+        attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
+        self.assertNotIn("System checks", attention)
+        self.assertNotIn("Provider problems", attention)
 
 
 if __name__ == "__main__":

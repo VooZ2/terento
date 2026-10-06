@@ -161,6 +161,7 @@ class CatalogService:
         operations_ingest_secret: str | None = None,
         opentopomap_contour_mode: str = "off",
         opentopomap_contour_allowlist: tuple[str, ...] = (),
+        public_base_url: str = "https://api.terento.app",
         trusted_proxies: tuple[str, ...] = DEFAULT_TRUSTED_PROXIES,
     ) -> None:
         self.database = database
@@ -168,6 +169,8 @@ class CatalogService:
             ipaddress.ip_network(item, strict=False) for item in trusted_proxies
         )
         self.asset_storage = asset_storage
+        self.public_base_url = public_base_url
+        self._preview_manifest_cache: tuple[float, bytes] | None = None
         self.admin_bootstrap_secret = admin_bootstrap_secret
         self.admin_session_ttl_seconds = admin_session_ttl_seconds
         self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
@@ -746,6 +749,61 @@ class CatalogService:
             return None
         return self.asset_storage.read_public_path(request_path)
 
+    def attach_provider_previews(self, detail: dict[str, Any], provider_id: str) -> None:
+        """Add the preview switch and layer results to an admin provider detail."""
+        from .map_preview.store import PreviewDatabase
+
+        provider = detail.get("provider", detail)
+        try:
+            db = PreviewDatabase(self.database)
+            provider["previews"] = {
+                "enabled": db.provider_preview_states().get(provider_id, False),
+                "layers": [_format_json_value(row) for row in db.provider_layers(provider_id)],
+            }
+        except Exception:  # pragma: no cover - pre-migration database
+            LOGGER.exception("map preview state unavailable")
+            provider["previews"] = None
+
+    def preview_store(self):
+        from .map_preview.publish import PreviewStore
+
+        if self.asset_storage is None:
+            return None
+        return PreviewStore(self.asset_storage.root)
+
+    def preview_tile_response(self, request_path: str) -> tuple[bytes, str] | None:
+        store = self.preview_store()
+        return None if store is None else store.tile(request_path)
+
+    def preview_manifest_response(self) -> bytes:
+        """Public preview manifest, rebuilt from the database at most once a minute."""
+        cached = self._preview_manifest_cache
+        if cached is not None and time.monotonic() - cached[0] < 60:
+            return cached[1]
+        from .map_preview.areas import load_areas
+        from .map_preview.manifest import build_manifest
+        from .map_preview.store import PreviewDatabase
+
+        store = self.preview_store()
+        release = store.current_release() if store is not None else None
+        db = PreviewDatabase(self.database)
+        enabled = db.enabled_providers()
+        layers = {
+            key: row for key, row in db.layers().items()
+            if row.get("provider_id") in enabled
+        }
+        document = build_manifest(
+            areas=load_areas(),
+            layers=layers,
+            published=store.layers(release) if (store is not None and release) else set(),
+            scores=db.scores(),
+            release=release,
+            public_base_url=self.public_base_url,
+        )
+        body = json.dumps(document, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        self._preview_manifest_cache = (time.monotonic(), body)
+        return body
+
     def receive_compatibility_event(self, body: bytes) -> bool:
         return self.database.insert_compatibility_event(validate_event(body))
 
@@ -1073,7 +1131,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
                 return
-            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire|rechecks|health-schedule|downloads)", request_path):
+            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire|rechecks|health-schedule|downloads|previews)", request_path):
                 self._handle_provider_post(request_path)
                 return
             if request_path.startswith("/admin"):
@@ -1237,6 +1295,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path.startswith("/assets/devices/"):
                 self._handle_asset(request_path, send_body=send_body)
+                return
+            if request_path.startswith("/assets/previews/"):
+                self._handle_preview_tile(request_path, send_body=send_body)
+                return
+            if request_path == "/maps/previews/manifest.json":
+                self._handle_preview_manifest(send_body=send_body)
                 return
             if request_path == "/compatibility/public/top-models.json":
                 self._handle_public_statistics(send_body=send_body)
@@ -1751,6 +1815,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         return
                     runs_payload = service.provider_runs(provider_id) or {}
                     audits = service.database.audit_rows(provider_id)
+                    service.attach_provider_previews(detail, provider_id)
                     body = provider_detail_page(
                         detail,
                         runs_payload.get("runs", []),
@@ -1948,7 +2013,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_provider_post(self, request_path: str) -> None:
             match = re.fullmatch(
-                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire|rechecks|health-schedule|downloads)",
+                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire|rechecks|health-schedule|downloads|previews)",
                 request_path,
             )
             if not match:
@@ -2025,6 +2090,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         raise ValueError("invalid_health_interval")
                     result = service.database.set_provider_health_interval(provider_id,
                         body["intervalHours"], int(session["id"]), request_id)
+                elif action == "previews":
+                    from .map_preview.store import PreviewDatabase
+                    if set(body) != {"enabled"} or type(body["enabled"]) is not bool:
+                        raise ValueError("invalid_preview_control")
+                    result = PreviewDatabase(service.database).set_preview_enabled(
+                        provider_id, body["enabled"], int(session["id"]), request_id)
+                    service._preview_manifest_cache = None
                 elif action == "downloads":
                     if set(body) != {"packageId", "enabled", "reason"}:
                         raise ValueError("invalid_package_download_control")
@@ -2788,6 +2860,44 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 content_length=len(body),
                 etag=etag,
             )
+            self.end_headers()
+            if send_body:
+                self.wfile.write(body)
+
+        def _handle_preview_tile(self, request_path: str, *, send_body: bool) -> None:
+            try:
+                tile = service.preview_tile_response(request_path)
+            except Exception:  # pragma: no cover - filesystem/deployment failure
+                LOGGER.exception("preview tile response failed")
+                tile = None
+            if tile is None:
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "tile_not_found"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            body, etag = tile
+            immutable = "public, max-age=31536000, immutable"
+            if _not_modified(self.headers.get("If-None-Match"), etag):
+                self.send_response(HTTPStatus.NOT_MODIFIED)
+                self._common_headers(cache_control=immutable, content_type="image/webp", etag=etag)
+                self.send_header("X-Robots-Tag", "noindex")
+                self.end_headers()
+                return
+            self.send_response(HTTPStatus.OK)
+            self._common_headers(cache_control=immutable, content_type="image/webp", content_length=len(body), etag=etag)
+            self.send_header("X-Robots-Tag", "noindex")
+            self.end_headers()
+            if send_body:
+                self.wfile.write(body)
+
+        def _handle_preview_manifest(self, *, send_body: bool) -> None:
+            try:
+                body = service.preview_manifest_response()
+            except Exception:
+                LOGGER.exception("preview manifest generation failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "previews_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            self.send_response(HTTPStatus.OK)
+            self._common_headers(cache_control="public, max-age=300", content_length=len(body))
+            self.send_header("X-Robots-Tag", "noindex")
             self.end_headers()
             if send_body:
                 self.wfile.write(body)

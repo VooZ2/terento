@@ -236,33 +236,43 @@ def _count_label(value: Any, singular: str, plural: str | None = None) -> str:
     return f"{count} {noun}"
 
 
+# Admin icons are original Font Awesome Free 7.3.1 solid SVGs (owner decision
+# 2026-10-06: no hand-drawn icons). Font Awesome Free 7.3.1 by @fontawesome -
+# https://fontawesome.com License - https://fontawesome.com/license/free
+# (Icons: CC BY 4.0) Copyright 2026 Fonticons, Inc. Paths are unchanged; see
+# THIRD_PARTY_NOTICES.md. Keys are Admin names, comments the upstream icon.
+_FA_ICONS = {
+    "external": ("0 0 512 512", "M320 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l82.7 0-201.4 201.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L448 109.3 448 192c0 17.7 14.3 32 32 32s32-14.3 32-32l0-160c0-17.7-14.3-32-32-32L320 0zM80 96C35.8 96 0 131.8 0 176L0 432c0 44.2 35.8 80 80 80l256 0c44.2 0 80-35.8 80-80l0-80c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 80c0 8.8-7.2 16-16 16L80 448c-8.8 0-16-7.2-16-16l0-256c0-8.8 7.2-16 16-16l80 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L80 96z"),  # arrow-up-right-from-square
+    "arrow-right": ("0 0 512 512", "M502.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L402.7 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l370.7 0-105.4 105.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z"),  # arrow-right
+    "arrow-left": ("0 0 512 512", "M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 288 480 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-370.7 0 105.4-105.4c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"),  # arrow-left
+    "check": ("0 0 448 512", "M434.8 70.1c14.3 10.4 17.5 30.4 7.1 44.7l-256 352c-5.5 7.6-14 12.3-23.4 13.1s-18.5-2.7-25.1-9.3l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l101.5 101.5 234-321.7c10.4-14.3 30.4-17.5 44.7-7.1z"),  # check
+    "clock": ("0 0 512 512", "M256 0a256 256 0 1 1 0 512 256 256 0 1 1 0-512zM232 120l0 136c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2 280 120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"),  # clock
+    "close": ("0 0 384 512", "M55.1 73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L147.2 256 9.9 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192.5 301.3 329.9 438.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.8 256 375.1 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192.5 210.7 55.1 73.4z"),  # xmark
+    "x-circle": ("0 0 512 512", "M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zM167 167c9.4-9.4 24.6-9.4 33.9 0l55 55 55-55c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-55 55 55 55c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-55-55-55 55c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l55-55-55-55c-9.4-9.4-9.4-24.6 0-33.9z"),  # circle-xmark
+    "alert": ("0 0 512 512", "M256 0c14.7 0 28.2 8.1 35.2 21l216 400c6.7 12.4 6.4 27.4-.8 39.5S486.1 480 472 480L40 480c-14.1 0-27.2-7.4-34.4-19.5s-7.5-27.1-.8-39.5l216-400c7-12.9 20.5-21 35.2-21zm0 352a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm0-192c-18.2 0-32.7 15.5-31.4 33.7l7.4 104c.9 12.5 11.4 22.3 23.9 22.3 12.6 0 23-9.7 23.9-22.3l7.4-104c1.3-18.2-13.1-33.7-31.4-33.7z"),  # triangle-exclamation
+    "info": ("0 0 512 512", "M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zM224 160a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm-8 64l48 0c13.3 0 24 10.7 24 24l0 88 8 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-80 0c-13.3 0-24-10.7-24-24s10.7-24 24-24l24 0 0-64-24 0c-13.3 0-24-10.7-24-24s10.7-24 24-24z"),  # circle-info
+    "question": ("0 0 512 512", "M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zm0-336c-17.7 0-32 14.3-32 32 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-44.2 35.8-80 80-80s80 35.8 80 80c0 47.2-36 67.2-56 74.5l0 3.8c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-8.1c0-20.5 14.8-35.2 30.1-40.2 6.4-2.1 13.2-5.5 18.2-10.3 4.3-4.2 7.7-10 7.7-19.6 0-17.7-14.3-32-32-32zM224 368a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"),  # circle-question
+    "minus": ("0 0 512 512", "M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zM168 232l176 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-176 0c-13.3 0-24-10.7-24-24s10.7-24 24-24z"),  # circle-minus
+    "download": ("0 0 448 512", "M256 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 210.7-41.4-41.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l96 96c12.5 12.5 32.8 12.5 45.3 0l96-96c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 242.7 256 32zM64 320c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l320 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-46.9 0-56.6 56.6c-31.2 31.2-81.9 31.2-113.1 0L110.9 320 64 320zm304 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"),  # download
+    "message": ("0 0 512 512", "M0 352L0 128C0 75 43 32 96 32l320 0c53 0 96 43 96 96l0 224c0 53-43 96-96 96l-120 0c-5.2 0-10.2 1.7-14.4 4.8L166.4 539.2c-4.2 3.1-9.2 4.8-14.4 4.8-13.3 0-24-10.7-24-24l0-72-32 0c-53 0-96-43-96-96z"),  # message
+    "circle-check": ("0 0 512 512", "M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zM374 145.7c-10.7-7.8-25.7-5.4-33.5 5.3L221.1 315.2 169 263.1c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l72 72c5 5 11.8 7.5 18.8 7s13.4-4.1 17.5-9.8L379.3 179.2c7.8-10.7 5.4-25.7-5.3-33.5z"),  # circle-check
+    "circle-exclamation": ("0 0 512 512", "M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-192a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm0-192c-18.2 0-32.7 15.5-31.4 33.7l7.4 104c.9 12.6 11.4 22.3 23.9 22.3 12.6 0 23-9.7 23.9-22.3l7.4-104c1.3-18.2-13.1-33.7-31.4-33.7z"),  # circle-exclamation
+    "chevron-down": ("0 0 448 512", "M201.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 338.7 54.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"),  # chevron-down
+    "chevron-right": ("0 0 320 512", "M311.1 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L243.2 256 73.9 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"),  # chevron-right
+    "image": ("0 0 448 512", "M64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l320 0c35.3 0 64-28.7 64-64l0-320c0-35.3-28.7-64-64-64L64 32zm64 80a48 48 0 1 1 0 96 48 48 0 1 1 0-96zM272 224c8.4 0 16.1 4.4 20.5 11.5l88 144c4.5 7.4 4.7 16.7 .5 24.3S368.7 416 360 416L88 416c-8.9 0-17.2-5-21.3-12.9s-3.5-17.5 1.6-24.8l56-80c4.5-6.4 11.8-10.2 19.7-10.2s15.2 3.8 19.7 10.2l26.4 37.8 61.4-100.5c4.4-7.1 12.1-11.5 20.5-11.5z"),  # image
+}
+
+
 def _admin_icon(name: str) -> str:
-    """Return one small, accessible SVG icon for repeated admin affordances."""
-    paths = {
-        "external": (
-            "<path d='M9.5 2.5h4v4'/><path d='m8 8 5.5-5.5'/><path "
-            "d='M12 9.5v2.75A1.75 1.75 0 0 1 10.25 14h-6.5A1.75 1.75 0 0 1 2 12.25v-6.5A1.75 1.75 0 0 1 3.75 4H6.5'/>"
-        ),
-        "arrow-right": "<path d='M2.5 8h11'/><path d='m9 3.5 4.5 4.5L9 12.5'/>",
-        "arrow-left": "<path d='M13.5 8h-11'/><path d='m7 3.5-4.5 4.5L7 12.5'/>",
-        "check": "<path d='m3 8 3 3 7-7'/>",
-        "clock": "<circle cx='8' cy='8' r='6'/><path d='M8 4v4l3 2'/>",
-        "close": "<path d='m3.5 3.5 9 9'/><path d='m12.5 3.5-9 9'/>",
-        "x-circle": "<circle cx='8' cy='8' r='6'/><path d='m5.75 5.75 4.5 4.5'/><path d='m10.25 5.75-4.5 4.5'/>",
-        "alert": "<path d='M8 2.5 14.5 13.5h-13z'/><path d='M8 6.5v3'/><path d='M8 11.6h.01'/>",
-        "info": "<circle cx='8' cy='8' r='6'/><path d='M8 7.5V11'/><path d='M8 5h.01'/>",
-        "question": "<circle cx='8' cy='8' r='6'/><path d='M6.3 6.3a1.8 1.8 0 1 1 2.5 1.6c-.5.2-.8.6-.8 1.1v.3'/><path d='M8 11.4h.01'/>",
-        "minus": "<circle cx='8' cy='8' r='6'/><path d='M5.5 8h5'/>",
-        "download": "<path d='M8 2.5v8'/><path d='m4.5 7 3.5 3.5L11.5 7'/><path d='M3 13.5h10'/>",
-        "message": "<path d='M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z'/><path d='M5 6.25h6'/><path d='M5 8.5h4'/>",
-    }
-    path = paths.get(name, "")
-    if not path:
+    """Return one small, accessible Font Awesome icon for admin affordances."""
+    icon = _FA_ICONS.get(name)
+    if not icon:
         return ""
+    view_box, path = icon
     css_name = re.sub(r"[^a-z0-9_-]", "-", name.lower())
     return (
-        f"<svg class='admin-icon admin-icon-{css_name}' viewBox='0 0 16 16' "
-        f"fill='none' aria-hidden='true' focusable='false'>{path}</svg>"
+        f"<svg class='admin-icon admin-icon-{css_name}' viewBox='{view_box}' "
+        f"aria-hidden='true' focusable='false'><path fill='currentColor' d='{path}'/></svg>"
     )
 
 
@@ -393,17 +403,6 @@ ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
 _GLOSSARY_TERMS = {anchor: term for anchor, term, _ in ADMIN_GLOSSARY}
 
 
-def _glossary_link(anchor: str) -> str:
-    term = _GLOSSARY_TERMS.get(anchor)
-    if not term:
-        return ""
-    return (
-        f"<a class='admin-glossary-link' href='/admin/glossary#{html.escape(anchor, quote=True)}' "
-        f"title='About {html.escape(term, quote=True)}' aria-label='About {html.escape(term, quote=True)}'>"
-        "<span aria-hidden='true'>?</span></a>"
-    )
-
-
 def _metric_value_text(value: Any, fmt: str) -> str | None:
     if value is None or isinstance(value, bool):
         return None
@@ -419,14 +418,15 @@ def _metric_value_text(value: Any, fmt: str) -> str | None:
 def _metric_tile(
     label: str, value: Any, *, fmt: str = "count", scope: str | None = None,
     state: str | None = None, failure: bool = False, secondary: str = "",
-    href: str | None = None, glossary: str | None = None,
+    href: str | None = None,
     data_stat: str | None = None, hint: str | None = None,
     value_html: str | None = None,
 ) -> str:
     """One metric: label, value, visible scope chip and one optional secondary line.
 
     ``state`` is measured, unknown, unavailable or partial. A failure count uses
-    the danger tone only when it is a measured value above zero.
+    the danger tone only when it is a measured value above zero; tiles carry no
+    icons.
     """
     rendered = _metric_value_text(value, fmt)
     if state is None:
@@ -440,8 +440,6 @@ def _metric_tile(
                     html.escape(rendered) if rendered is not None else (
         "—<span class='sr-only'>" + ("Unavailable" if state == "unavailable" else "Unknown") + "</span>"
     ))
-    if tone == "danger":
-        value_markup = _admin_icon("x-circle") + value_markup
     stat = f" data-stat='{html.escape(data_stat, quote=True)}'" if data_stat else ""
     state_pill = ""
     if state == "unavailable":
@@ -455,9 +453,7 @@ def _metric_tile(
     plain_value = rendered if rendered is not None else ("unavailable" if state == "unavailable" else "unknown")
     title = f" title='{html.escape(hint, quote=True)}'" if hint and state != "partial" else ""
     inner = (
-        f"<span class='admin-metric-label'>{html.escape(label)}"
-        + (_glossary_link(glossary) if glossary and not href else "")
-        + "</span>"
+        f"<span class='admin-metric-label'>{html.escape(label)}</span>"
         f"<strong class='admin-metric-value'{stat}>{value_markup}</strong>"
         + (f"<span class='admin-metric-meta'>{meta}</span>" if meta else "")
     )
@@ -479,7 +475,7 @@ def _metric_row(tiles: list[str], *, label: str, css: str = "") -> str:
 
 def _section_card(
     title: str, body: str, *, card_id: str, action: tuple[str, str] | None = None,
-    scope: str | None = None, css: str = "", glossary: str | None = None,
+    scope: str | None = None, css: str = "", totals: str = "",
     heading_tag: str = "h2", extra_attributes: str = "", mobile_collapse: bool = False,
 ) -> str:
     """A card with a 1–2 word title, an optional scope chip and one action link.
@@ -504,9 +500,8 @@ def _section_card(
     head = (
         f"<header class='admin-card-head'><{heading_tag} id='{html.escape(card_id, quote=True)}-title'>"
         f"{html.escape(title)}</{heading_tag}>"
-        + (_glossary_link(glossary) if glossary else "")
         + (_scope_chip(scope) if scope else "")
-        + action_markup + toggle_markup + "</header>"
+        + totals + action_markup + toggle_markup + "</header>"
     )
     return (
         f"<section class='admin-card{(' ' + css) if css else ''}' id='{html.escape(card_id, quote=True)}' "
@@ -1054,7 +1049,7 @@ def local_test_data_page(
             total = _optional_nonnegative_int(local_reports.get("totalCount")) or 0
             support_section = _section_card(
                 "Support reports",
-                _metric_row([_metric_tile("Local reports", total, scope="now", glossary="support-report")],
+                _metric_row([_metric_tile("Local reports", total, scope="now")],
                             label="Local support reports")
                 + (support_report_table(rows, caption="Local test support reports, newest first, up to 50")
                    if rows else _empty_state("empty", "No local test support reports.")),
@@ -1203,7 +1198,7 @@ def _overview_missing_diagnostic_item(
             f"<input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>"
             f"<input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>{return_field}"
             "<button type='submit' class='overview-dismiss-button' "
-            "aria-label='Dismiss review item' title='Dismiss review item'>×</button>"
+            f"aria-label='Dismiss review item' title='Dismiss review item'>{_admin_icon('close')}</button>"
             "</form>"
         )
     return (
@@ -1725,11 +1720,9 @@ def _chart_value_attributes(date: str, values: list[tuple[str, str, int | None]]
 
 
 def _chart_value_strip() -> str:
-    """Small live strip under a chart; filled by the shared chart-values script."""
-    return (
-        "<p class='overview-chart-values admin-legend' data-chart-values-strip aria-live='polite'>"
-        "<span class='overview-chart-values-hint'>Tap or focus a bar to see its values.</span></p>"
-    )
+    """Small live strip under a chart; empty (and hidden) until the shared
+    chart-values script fills it for a tapped or focused bucket."""
+    return "<p class='overview-chart-values admin-legend' data-chart-values-strip aria-live='polite'></p>"
 
 
 def _chart_axis_labels(
@@ -1801,7 +1794,7 @@ def _chart_legend(items: list[tuple[str, str, Any]], *, label: str) -> str:
 def _overview_trend_chart(
     trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
     *, metric: str = "installs", has_activity: bool = False,
-    chart_id: str = "", _compact: bool = False,
+    chart_id: str = "", counted: frozenset[str] = _LEGEND_COUNTED_SERIES, _compact: bool = False,
 ) -> str:
     if not trend:
         if has_activity:
@@ -1892,11 +1885,11 @@ def _overview_trend_chart(
     )
     if _compact:
         return svg
-    # Tiles carry the period totals; the legend names the series and counts
-    # only the custom .img split, which no tile shows on its own.
+    # Tiles or card headers carry the period totals; the legend names the
+    # series and counts only the ``counted`` series (none on the Dashboard).
     totals = [sum(counts[index] for counts in values) for index in range(len(series))]
     legend = _chart_legend(
-        [(name, label, total if name in _LEGEND_COUNTED_SERIES else _LEGEND_NAME_ONLY)
+        [(name, label, total if name in counted else _LEGEND_NAME_ONLY)
          for (name, label, _), total in zip(series, totals)],
         label=f"{chart_label} legend",
     )
@@ -2288,14 +2281,17 @@ _ATTENTION_ROWS = (
 
 
 def _attention_row(label: str, count: int | None, href: str, icon: str, *, unavailable: bool = False) -> str:
-    """Fixed Needs attention row: icon, label, count (or —) and an arrow."""
+    """Needs attention row: icon, label, count (or —) and an arrow. A measured
+    zero has nothing to act on, so it renders no row."""
+    if not unavailable and count == 0:
+        return ""
     if unavailable or count is None:
         value = "—<span class='sr-only'> unavailable</span>"
         state = "unavailable"
         aria = f"{label}: unavailable"
     else:
         value = f"{count:,}"
-        state = "active" if count else "zero"
+        state = "active"
         aria = f"{label}: {count}"
     return (
         f"<li class='overview-attention-row' data-state='{state}'>"
@@ -2335,7 +2331,7 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
         body = _empty_state("empty", "No first-run sessions in this period.")
     else:
         tiles = _metric_row([
-            _metric_tile("Sessions", sessions, glossary="first-run"),
+            _metric_tile("Sessions", sessions),
             _metric_tile("Connected", connected),
             _metric_tile("Not connected", sum(not_connected.values()), failure=True),
         ], label="First run sessions")
@@ -2373,17 +2369,28 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
         )
     return _section_card(
         "First run", body, card_id="overview-funnel", scope=period,
-        css="overview-panel overview-funnel-panel", glossary="first-run",
+        css="overview-panel overview-funnel-panel",
     )
 
 
-def _rate_secondary(failed: Any, rate: Any) -> str:
-    failed_count = _optional_nonnegative_int(failed)
-    failed_markup = (
-        f"<span class='admin-metric-failed{' is-positive' if failed_count else ''}'>Failed {failed_count:,}</span>"
-        if failed_count is not None else "<span class='admin-metric-failed'>Failed —</span>"
+def _card_totals(items: list[tuple[str, str]], *, label: str) -> str:
+    """Compact value + noun chips that close a card header (Dashboard totals)."""
+    return (
+        f"<div class='overview-card-totals' role='group' aria-label='{html.escape(label, quote=True)}'>"
+        + "".join(f"<span class='overview-card-total'>{value}<small>{html.escape(noun)}</small></span>"
+                  for value, noun in items)
+        + "</div>"
     )
-    return f"{failed_markup} · {html.escape(_format_rate(rate))}"
+
+
+def _period_totals(data: dict[str, Any], completed: str, failed: str, rate: str, *, label: str) -> str:
+    completed_value = _optional_nonnegative_int(data.get(completed))
+    return _card_totals([
+        (f"<strong data-stat='{completed}'>{f'{completed_value:,}' if completed_value is not None else '—'}</strong>",
+         "Successful"),
+        (_admin_error_counter(data.get(failed), data_stat=failed), "Failed"),
+        (f"<strong data-stat='{rate}'>{html.escape(_format_rate(data.get(rate)))}</strong>", "Success rate"),
+    ], label=label)
 
 
 def overview_page(
@@ -2396,7 +2403,6 @@ def overview_page(
     compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
     downloads = overview.get("downloads") if isinstance(overview.get("downloads"), dict) else {}
     providers = list(overview.get("providers") or [])
-    providers_available = overview.get("providersAvailable", True) is not False
     period = str(overview.get("period") or "24h")
     if period not in {"24h", "7d", "30d", "all"}:
         period = "24h"
@@ -2434,29 +2440,11 @@ def overview_page(
     )
     attention_counts.append(support_count)
     attention_rows.append(_attention_row("Support reports", support_count, "/admin/support-reports", "message"))
-    # Active catalog models whose Maps value is Unknown (installation PENDING).
-    maps_unknown = overview.get("mapsUnknown")
-    maps_unknown_count = (
-        _optional_nonnegative_int(maps_unknown.get("modelCount"))
-        if isinstance(maps_unknown, dict) and maps_unknown.get("available") is not False else None
-    )
-    attention_counts.append(maps_unknown_count)
-    attention_rows.append(_attention_row("Maps unknown", maps_unknown_count, "/admin/devices?maps=unknown&active=1", "question"))
-    provider_states = [_provider_problem_state(provider) for provider in providers]
-    provider_problem_count = (
-        sum(1 for state in provider_states if state["problem"]) if providers_available else None
-    )
-    attention_counts.append(provider_problem_count)
-    attention_rows.append(_attention_row("Provider problems", provider_problem_count, "/admin/providers", "alert"))
+    # Needs attention lists six review queues only (owner decision 2026-10-06);
+    # Maps unknown, provider problems and system checks stay on their own pages.
     system = overview.get("system") if isinstance(overview.get("system"), dict) else None
     system_available = isinstance(system, dict) and system.get("available") is not False
     health_cards = _system_health_cards(system)[0] if system_available else []
-    system_count = (
-        sum(1 for card in health_cards if card["status"] != "HEALTHY" and card.get("group") != "catalogs")
-        if system_available else None
-    )
-    attention_counts.append(system_count)
-    attention_rows.append(_attention_row("System checks", system_count, "/admin/system-health", "alert"))
     attention_total = (
         sum(attention_counts) if all(value is not None for value in attention_counts) else None
     )
@@ -2473,69 +2461,16 @@ def overview_page(
         attention_status = _empty_state("empty", "Nothing to review.")
     attention_section = _section_card(
         "Needs attention",
-        review_notice + attention_status + "<ul class='overview-attention-rows'>" + "".join(attention_rows) + "</ul>",
+        review_notice + attention_status
+        + ("<ul class='overview-attention-rows'>" + "".join(attention_rows) + "</ul>" if any(attention_rows) else ""),
         card_id="overview-attention", scope="now",
+        totals=_card_totals([(_admin_error_counter(attention_total, available=attention_total is not None,
+                                                   data_stat="attentionTotal"), "Total")],
+                            label="Needs attention total") if review_available else "",
         css="overview-panel overview-attention-panel" + (" overview-attention-empty" if attention_total == 0 else ""),
     )
 
-    # --- Period tiles ---------------------------------------------------------
-    def stat(key: str) -> Any:
-        return data.get(key) if data_available else None
-
-    tile_state = None if data_available else "unavailable"
-    updates_ok = _optional_nonnegative_int(stat("completedMapUpdateCount"))
-    updates_failed = _optional_nonnegative_int(stat("failedMapUpdateCount"))
-    update_rate = (
-        updates_ok / (updates_ok + updates_failed) * 100
-        if updates_ok is not None and updates_failed is not None and updates_ok + updates_failed else None
-    )
-    tiles = _metric_row([
-        _metric_tile(
-            "Installs", stat("completedInstallCount"), scope=period, state=tile_state,
-            secondary=_rate_secondary(stat("failedInstallCount"), stat("installSuccessRate")) if data_available else "",
-            glossary="fresh-install", data_stat="completedInstallCount",
-        ),
-        _metric_tile(
-            "Updates", stat("completedMapUpdateCount"), scope=period, state=tile_state,
-            secondary=_rate_secondary(stat("failedMapUpdateCount"), update_rate) if data_available else "",
-            glossary="map-update", data_stat="completedMapUpdateCount",
-        ),
-        _metric_tile(
-            "Downloads", stat("completedDownloadCount"), scope=period, state=tile_state,
-            secondary=_rate_secondary(stat("failedDownloadCount"), stat("downloadSuccessRate")) if data_available else "",
-            glossary="provider-download", data_stat="completedDownloadCount",
-        ),
-        _metric_tile(
-            "Needs attention", attention_total, scope="now",
-            state=None if attention_total is not None else "unavailable" if not review_available else "partial",
-            failure=True, href="#overview-attention", glossary="task",
-        ),
-    ], label="Dashboard summary", css="overview-tiles")
-
     # --- Charts with an explicit all-time line -------------------------------
-    def all_time_line(items: list[tuple[str, Any, str]]) -> str:
-        # With All time selected the tiles already show these totals.
-        if period == "all":
-            return ""
-        parts = []
-        for label, value, fmt in items:
-            rendered = _metric_value_text(value, fmt)
-            parts.append(f"{html.escape(label)} <strong>{html.escape(rendered) if rendered is not None else '—'}</strong>")
-        return (
-            f"<p class='overview-all-time'>{_scope_chip('all')}<span>{' · '.join(parts)}</span>"
-            f"<a class='section-link' href='/admin/map-statistics?period=all'>Maps&nbsp;{_admin_icon('arrow-right')}</a></p>"
-        )
-
-    purposes = data.get("downloadPurposes") if isinstance(data.get("downloadPurposes"), dict) else None
-    purpose_line = ""
-    if purposes:
-        purpose_line = "<dl class='overview-purposes' aria-label='Downloads by purpose'>" + "".join(
-            f"<div><dt>{label}</dt><dd>{_optional_count_label((purposes.get(purpose) or {}).get('succeeded'))}"
-            + (f" <span class='admin-metric-failed is-positive'>· Failed {failed:,}</span>"
-               if (failed := _optional_nonnegative_int((purposes.get(purpose) or {}).get('failed'))) else "")
-            + "</dd></div>"
-            for purpose, label in (("install", "For installs"), ("update", "For updates"), ("unknown", "Not recorded"))
-        ) + "</dl>"
     trend = list(data.get("trend") or [])
     bucket = str(data.get("bucket") or "day")
     if data_available:
@@ -2543,28 +2478,23 @@ def overview_page(
             "Downloads",
             _overview_trend_chart(
                 trend, bucket, time_zone, metric="downloads", chart_id="overview-downloads",
+                counted=frozenset(),
                 has_activity=bool((data.get("completedDownloadCount") or 0) + (data.get("failedDownloadCount") or 0)),
-            ) + purpose_line + all_time_line([
-                ("Successful", data.get("allTimeCompletedDownloadCount"), "count"),
-                ("Failed", data.get("allTimeFailedDownloadCount"), "count"),
-                ("Rate", data.get("allTimeDownloadSuccessRate"), "rate"),
-            ]),
-            card_id="overview-download-trend", scope=period, glossary="provider-download",
+            ),
+            card_id="overview-download-trend", scope=period,
+            totals=_period_totals(data, "completedDownloadCount", "failedDownloadCount", "downloadSuccessRate",
+                                  label="Downloads in this period"),
             css="overview-panel overview-chart-panel",
         )
         installs_chart = _section_card(
             "Installs",
             _overview_trend_chart(
-                trend, bucket, time_zone, chart_id="overview-installs",
+                trend, bucket, time_zone, chart_id="overview-installs", counted=frozenset(),
                 has_activity=bool((data.get("completedInstallCount") or 0) + (data.get("failedInstallCount") or 0) + (data.get("mapUpdateCount") or 0)),
-            ) + all_time_line([
-                ("Installs", data.get("allTimeSuccessCount"), "count"),
-                ("Failed", data.get("allTimeFailedCount"), "count"),
-                ("Rate", data.get("allTimeInstallSuccessRate"), "rate"),
-                ("Updates", data.get("allTimeMapUpdateSuccessCount"), "count"),
-                ("Failed", data.get("allTimeMapUpdateFailedCount"), "count"),
-            ]),
-            card_id="overview-trend", scope=period, glossary="fresh-install",
+            ),
+            card_id="overview-trend", scope=period,
+            totals=_period_totals(data, "completedInstallCount", "failedInstallCount", "installSuccessRate",
+                                  label="Installs in this period"),
             css="overview-panel overview-chart-panel",
         )
     else:
@@ -2602,7 +2532,7 @@ def overview_page(
             f"<p class='overview-all-time overview-download-all-time'>{_scope_chip('all')}"
             f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong></span>"
             f"<span class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</span></p>",
-            card_id="overview-downloads", scope=period, glossary="terento-app-download",
+            card_id="overview-downloads", scope=period,
             css="overview-panel overview-download-panel",
         )
     else:
@@ -2613,7 +2543,6 @@ def overview_page(
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
-        {tiles}
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
         <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
@@ -2688,7 +2617,7 @@ def missing_reports_page(
             else _empty_state("empty", "Nothing to review.")
         )
         body = _metric_row([
-            _metric_tile("Missing reports", total, scope="now", glossary="missing-report"),
+            _metric_tile("Missing reports", total, scope="now"),
         ], label="Missing report summary") + _section_card(
             "Reports", list_markup, card_id="missing-report-list", css="overview-attention-panel",
         )
@@ -3052,7 +2981,7 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
             f"<li><a href='/admin/providers/{quote(str(provider.get('id')), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id')))}</a> "
             f"{_health_status_badge(state['status'])} <span>{html.escape(state['reason'])}</span></li>"
             for provider, state in provider_states
-        ) + "</ul><a class='section-link' href='/admin/providers'>Open Providers →</a>"
+        ) + f"</ul><a class='section-link' href='/admin/providers'>Open Providers&nbsp;{_admin_icon('arrow-right')}</a>"
         cards.append(_system_health_card(
             "Catalogs", worst, description,
             reason=(f"{names}: " + "; ".join(state["reason"] for _, state in provider_states if state["status"] != "HEALTHY")) if affected else "All provider catalogs are current.",
@@ -3171,7 +3100,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
         groups.append(
             f"<details class='admin-card admin-disclosure system-health-group system-health-healthy' data-health-group-card='{group}'>"
             f"<summary>{html.escape(title)} {_status_pill(summary_kind, f'{len(healthy)}/{len(members)} healthy')}"
-            + (" <a class='section-link' href='/admin/providers'>Providers →</a>" if group == "catalogs" else "")
+            + (f" <a class='section-link' href='/admin/providers'>Providers&nbsp;{_admin_icon('arrow-right')}</a>" if group == "catalogs" else "")
             + "</summary><div class='disclosure-body system-health-list' aria-label='"
             + html.escape(title, quote=True) + " checks'>"
             + ("".join(card["html"] for card in healthy) or "<p class='table-help'>Every check in this group is listed under Problems.</p>")
@@ -3195,7 +3124,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
     content = f"""
       {_admin_header(user, csrf_token, active='system-health')}
       <main class='dashboard system-health-page' id='main-content'>
-        <div class='heading-row'><div><h1>Health</h1></div>{_glossary_link('health-states')}</div>
+        <div class='heading-row'><div><h1>Health</h1></div></div>
         <div class='admin-metric-row health-filter-tiles' role='group' aria-label='Filter checks by status'>{tiles}</div>
         <form class='filter-bar' id='health-filters' role='search'><label class='filter-search'><span class='sr-only'>Search checks</span><input type='search' id='health-search' placeholder='Search checks'></label><label><span class='sr-only'>Check status</span><select id='health-status'><option value='all'>All statuses</option>{health_options}</select></label></form>
         <p class='empty' id='health-empty' hidden>No checks match your filters.</p>
@@ -3311,11 +3240,11 @@ def dashboard_page(
         <div class="heading-row installation-heading"><div><h1>Installations</h1></div><p class="page-meta">{latest_copy}</p></div>
         <section class="admin-card installation-kpis" aria-label="Installation summary">
           {_metric_row([
-              _metric_tile("Attempts", attempts, scope="all", glossary="attempt", data_stat="attempts"),
-              _metric_tile("Successful", successes, scope="all", glossary="successful", data_stat="successful"),
-              _metric_tile("Failed", failures, scope="all", failure=True, glossary="failed", data_stat="failed"),
-              _metric_tile("Success rate", success_rate, fmt="rate", scope="all", glossary="success-rate", data_stat="successRate"),
-              _metric_tile("Open problems", open_errors, scope="now", failure=True, glossary="open-problem",
+              _metric_tile("Attempts", attempts, scope="all", data_stat="attempts"),
+              _metric_tile("Successful", successes, scope="all", data_stat="successful"),
+              _metric_tile("Failed", failures, scope="all", failure=True, data_stat="failed"),
+              _metric_tile("Success rate", success_rate, fmt="rate", scope="all", data_stat="successRate"),
+              _metric_tile("Open problems", open_errors, scope="now", failure=True,
                            href="/admin/installations?state=open" if open_errors else None, data_stat="openProblems",
                            hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
           ], label="Installation summary")}
@@ -3446,6 +3375,8 @@ def _provider_action_label(value: Any) -> str:
         "provider.status_changed": "Status changed",
         "provider.retired": "Provider retired",
         "provider.health_schedule_changed": "Health check interval changed",
+        "provider.previews_enabled": "Map style previews turned on",
+        "provider.previews_disabled": "Map style previews turned off",
         "package.downloads_disabled": "Map downloads disabled",
         "package.downloads_enabled": "Map downloads enabled",
     }
@@ -3471,6 +3402,65 @@ def _provider_action_button(
         f"<button type='button' class='{class_name}' data-provider-action='{html.escape(action, quote=True)}'"
         f" data-provider-id='{html.escape(provider_id, quote=True)}'{attributes}{disabled_attribute}>"
         f"{html.escape(label)}</button>"
+    )
+
+
+_PREVIEW_STATUS_LABELS = {
+    "AVAILABLE": "Published",
+    "NOT_COVERED": "Not covered",
+    "PENDING": "Waiting",
+    "FAILED": "Failed",
+}
+
+
+def _provider_preview_section(provider_id: str, status: str, previews: dict[str, Any] | None) -> str:
+    """Map style preview switch and per-layer render results for one provider."""
+    previews = previews or {}
+    enabled = bool(previews.get("enabled"))
+    layers = list(previews.get("layers") or [])
+    counts = {key: 0 for key in _PREVIEW_STATUS_LABELS}
+    for layer in layers:
+        key = str(layer.get("status") or "PENDING").upper()
+        counts[key] = counts.get(key, 0) + 1
+    state = (
+        "<span class='provider-status provider-status-active'>Previews on</span>"
+        if enabled else
+        "<span class='provider-status provider-status-paused'>Previews off</span>"
+    )
+    summary = " · ".join(f"{counts[key]} {label.lower()}" for key, label in _PREVIEW_STATUS_LABELS.items())
+    label = "Turn previews off" if enabled else "Turn previews on"
+    disabled = " disabled" if status == "RETIRED" else ""
+    button = (
+        f"<button type='button' class='secondary-button' data-provider-action='previews'"
+        f" data-provider-id='{html.escape(provider_id, quote=True)}'"
+        f" data-previews-enabled='{'false' if enabled else 'true'}'{disabled}>{label}</button>"
+    )
+    rows = "".join(
+        "<tr>"
+        f"<td><code>{html.escape(str(layer.get('area_id') or ''))}</code></td>"
+        f"<td>{html.escape(str(layer.get('style_id') or ''))}</td>"
+        f"<td class='column-status'>{_provider_status_badge(_PREVIEW_STATUS_LABELS.get(str(layer.get('status') or '').upper(), 'Waiting'))}</td>"
+        f"<td>{html.escape(str(layer.get('package_id') or '—'))}<br><small>{html.escape(str(layer.get('package_version') or ''))}</small></td>"
+        f"<td class='column-date'>{_timestamp_markup(layer.get('rendered_at'))}</td>"
+        f"<td>{html.escape(str(layer.get('error_code') or ''))}<br><small>{html.escape(str(layer.get('error_message') or ''))}</small></td>"
+        "</tr>"
+        for layer in layers
+    )
+    table = (
+        "<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map style preview layers</caption>"
+        "<thead><tr><th scope='col'>Area</th><th scope='col'>Style</th><th scope='col' class='column-status'>State</th>"
+        "<th scope='col'>Package</th><th scope='col' class='column-date'>Rendered</th><th scope='col'>Last problem</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table></div>"
+        if layers else "<p class='empty'>No preview layers rendered yet.</p>"
+    )
+    return (
+        "<section class='provider-card' aria-label='Map style previews'>"
+        f"<div class='section-heading'><div><h2>Map style previews</h2></div>{button}</div>"
+        f"<div class='provider-latest-summary'><div>{state} <span>{html.escape(summary)}</span></div></div>"
+        "<p class='table-help'>When on, the scheduler temporarily downloads this provider's maps during the nightly "
+        "preview window to draw comparison tiles for the public Map styles page, then deletes the downloads.</p>"
+        f"<details class='admin-disclosure' id='provider-preview-layers'><summary>Preview layers <span class='disclosure-meta'>· {len(layers)}</span></summary>"
+        f"<div class='disclosure-body'>{table}</div></details></section>"
     )
 
 
@@ -3535,8 +3525,8 @@ def providers_page(
     )
     summary = "" if not provider_rows else _metric_row([
         _metric_tile("Active", active, scope="now", secondary=f"of {len(provider_rows)}"),
-        _metric_tile("Healthy", healthy, scope="now", secondary=f"of {len(provider_rows)}", glossary="health-states"),
-        _metric_tile("Package problems", affected_total, scope="now", failure=True, glossary="package-problem",
+        _metric_tile("Healthy", healthy, scope="now", secondary=f"of {len(provider_rows)}"),
+        _metric_tile("Package problems", affected_total, scope="now", failure=True,
                      state=None if affected_total is not None else "unknown"),
         _metric_tile("Provider problems", sum(1 for state in tracked if state["problem"]), scope="now", failure=True,
                      hint="Active providers with degraded or failed health, a failed or overdue catalog sync, or package problems"),
@@ -3895,13 +3885,13 @@ def provider_detail_page(
     disabled_maps = sum(1 for package in packages if package.get("downloads_disabled"))
     block = str(provider.get("downloadBlockReason") or "")
     tiles = _metric_row([
-        _metric_tile("Health", latest_health_status.title(), fmt="text", glossary="health-states",
+        _metric_tile("Health", latest_health_status.title(), fmt="text",
                      value_html=_provider_status_badge(latest_health_status if latest_health else "UNKNOWN", kind="health"),
                      secondary=f"Last check {_timestamp_markup(latest_health.get('checked_at') or provider.get('lastHealthCheck'))}"),
         _metric_tile("Catalog", latest_run_status.title(), fmt="text",
                      value_html=_provider_status_badge(latest_run_status) if latest_run else _status_pill("unknown", "No runs"),
                      secondary=f"Sync {_timestamp_markup(provider.get('lastCatalogSync'))}"),
-        _metric_tile("Package problems", affected_package_count, failure=True, glossary="package-problem",
+        _metric_tile("Package problems", affected_package_count, failure=True,
                      secondary=f"of {_optional_count_label(len(packages))} packages"),
         _metric_tile("Downloads", "Blocked" if block else "Allowed", fmt="text",
                      value_html=_status_pill("danger", "Blocked", title=block) if block else _status_pill("success", "Allowed"),
@@ -3937,7 +3927,7 @@ def provider_detail_page(
     problems_section = _section_card(
         "Problems",
         f"<p id='provider-recheck-progress' role='status'></p>{problems_body}",
-        card_id="provider-problems", glossary="package-problem",
+        card_id="provider-problems",
         css="provider-card provider-problems-card",
     ).replace(
         "</header>",
@@ -3987,6 +3977,7 @@ def provider_detail_page(
         {problems_section}
         {packages_section}
         <div class='provider-state-grid'>{checks_section}{syncs_section}</div>
+        {_provider_preview_section(provider_id, status, provider.get('previews'))}
         <div class='provider-technical-grid' id='provider-technical-details'>
         <details class='admin-card admin-disclosure provider-technical-section' id='provider-history'><summary>History <span class='disclosure-meta'>· {len(audits)} events</span></summary><div class='disclosure-body'><p class='table-help'>Last 10 actions; older audit records are retained.</p>{empty_audits}{audit_table}</div></details>
         {download_source_section}
@@ -4163,7 +4154,7 @@ def map_statistics_page(
         )
 
     # --- Tiles: the selected period, with all time as a labelled line -------
-    def tile(label: str, value_key: str, failed_key: str, rate_key: str, tile_id: str, glossary: str) -> str:
+    def tile(label: str, value_key: str, failed_key: str, rate_key: str, tile_id: str) -> str:
         rate = summary.get(rate_key)
         secondary = (
             f"Failed {_admin_error_counter(summary.get(failed_key), data_stat=failed_key)} · "
@@ -4172,7 +4163,7 @@ def map_statistics_page(
         return (
             f"<div class='map-statistics-tile' id='{tile_id}'>"
             + _metric_tile(label, summary.get(value_key), scope=selected_period, secondary=secondary,
-                           glossary=glossary, data_stat=value_key)
+                           data_stat=value_key)
             + "</div>"
         )
 
@@ -4201,9 +4192,9 @@ def map_statistics_page(
     metrics_section = (
         "<section class='admin-card map-statistics-metrics' id='map-statistics-metrics' aria-label='Map statistics summary'>"
         + _metric_row([
-            tile("Downloads", "completedDownloads", "failedDownloads", "downloadSuccessRate", "map-statistics-downloads", "provider-download"),
-            tile("Installs", "completedInstalls", "failedInstalls", "installSuccessRate", "map-statistics-installs", "fresh-install"),
-            tile("Updates", "completedMapUpdates", "failedMapUpdates", "mapUpdateSuccessRate", "map-statistics-updates", "map-update"),
+            tile("Downloads", "completedDownloads", "failedDownloads", "downloadSuccessRate", "map-statistics-downloads"),
+            tile("Installs", "completedInstalls", "failedInstalls", "installSuccessRate", "map-statistics-installs"),
+            tile("Updates", "completedMapUpdates", "failedMapUpdates", "mapUpdateSuccessRate", "map-statistics-updates"),
         ], label="Map statistics for the selected period")
         + purpose_line + all_time_line + "</section>"
     )
@@ -4249,14 +4240,14 @@ def map_statistics_page(
             "Downloads",
             _overview_trend_chart(trend, bucket, chart_time_zone, metric='downloads', chart_id='maps-downloads',
                                   has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0))),
-            card_id="map-download-trend", scope=selected_period, glossary="provider-download",
+            card_id="map-download-trend", scope=selected_period,
             css="overview-panel overview-chart-panel",
         )
         + _section_card(
             "Installs",
             _overview_trend_chart(trend, bucket, chart_time_zone, chart_id='maps-installs',
                                   has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0))),
-            card_id="map-install-trend", scope=selected_period, glossary="fresh-install",
+            card_id="map-install-trend", scope=selected_period,
             css="overview-panel overview-chart-panel",
         )
         + "</section>"
@@ -4327,7 +4318,7 @@ def _provider_detail_script() -> str:
             downloadReason = answer.trim();
             if (!downloadReason) { if (status) status.textContent = 'Enter a reason to disable downloads.'; return; }
           }
-          const body = action === 'health-schedule' ? JSON.stringify({intervalHours: Number(document.getElementById('provider-health-interval').value)}) : action === 'downloads' ? JSON.stringify({packageId: button.dataset.packageId, enabled: button.dataset.downloadsEnabled === 'true', reason: downloadReason}) : action === 'rechecks' ? JSON.stringify(button.dataset.packageId ? {packageId: button.dataset.packageId} : {}) : action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
+          const body = action === 'previews' ? JSON.stringify({enabled: button.dataset.previewsEnabled === 'true'}) : action === 'health-schedule' ? JSON.stringify({intervalHours: Number(document.getElementById('provider-health-interval').value)}) : action === 'downloads' ? JSON.stringify({packageId: button.dataset.packageId, enabled: button.dataset.downloadsEnabled === 'true', reason: downloadReason}) : action === 'rechecks' ? JSON.stringify(button.dataset.packageId ? {packageId: button.dataset.packageId} : {}) : action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
           const original = button.textContent;
           button.disabled = true;
           if (status) status.textContent = `${original}…`;
@@ -4700,7 +4691,7 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
             raw_source = str(mapping['source_url'])
             source_host = (urlsplit(raw_source).hostname or '').removeprefix('www.')
             source_link = (
-                f'<a class="section-link" href="{html.escape(raw_source, quote=True)}" target="_blank" rel="noopener noreferrer">Open {html.escape(source_host or "source")} ↗</a>'
+                f'<a class="section-link" href="{html.escape(raw_source, quote=True)}" target="_blank" rel="noopener noreferrer">Open {html.escape(source_host or "source")}&nbsp;{_admin_icon("external")}</a>'
                 if raw_source.startswith('https://') else '<span class="identification-source-unavailable">Source link unavailable</span>'
             )
             names = html.escape('; '.join(mapping.get('source_names') or [])) or 'No model name supplied'
@@ -4811,7 +4802,7 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
             "<section class='admin-card identification-workspace'>"
             f"<div class='identification-workspace-nav'><a class='section-link' href='/admin/device-identification'>{_admin_icon('arrow-left')} Model sources</a>{next_link}</div>"
             f"{_identity_mapping_markup(selected, csrf_token, code_models=code_models)}"
-            f"<a class='section-link identification-model-detail-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence →</a></section>"
+            f"<a class='section-link identification-model-detail-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence&nbsp;{_admin_icon('arrow-right')}</a></section>"
         )
     else:
         if query and not rows:
@@ -4835,7 +4826,7 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
         content = (
             f"{invalid}"
             + _metric_row([
-                _metric_tile("Needs review", pending_models, scope="now", glossary="model-sources"),
+                _metric_tile("Needs review", pending_models, scope="now"),
                 _metric_tile("Approved", counts["approved"], scope="now"),
                 _metric_tile("Rejected", counts["rejected"], scope="now"),
                 _metric_tile("No source", counts["missing"], scope="now"),
@@ -5082,7 +5073,7 @@ def _identity_value(value: Any, *, suffix: str = "") -> str:
 
 
 def _identity_fact_markup(label: str, value: str, state: str, source: str) -> str:
-    icon = {"match": "✓", "conflict": "!", "missing": "?"}.get(state, "?")
+    icon = _admin_icon({"match": "circle-check", "conflict": "circle-exclamation"}.get(state, "question"))
     return (f"<article class='identity-fact identity-fact-{state}'>"
             f"<div class='identity-fact-heading'><span class='identity-fact-icon' aria-hidden='true'>{icon}</span><span>{html.escape(label)}</span></div>"
             f"<strong>{html.escape(value)}</strong><small>{html.escape(source)}</small></article>")
@@ -6102,13 +6093,13 @@ def device_detail_page(
     statistics_section = "" if not history and not attempts and not failed else (
         "<section class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-labelledby='model-installation-kpis-title'>"
         "<header class='admin-card-head'><h2 id='model-installation-kpis-title'>Installs</h2>"
-        f"{_glossary_link('installation-report')}{_scope_chip('all')}</header>"
+        f"{_scope_chip('all')}</header>"
         + _metric_row([
-            _metric_tile("Attempts", attempts, glossary="attempt", data_stat="attempts",
+            _metric_tile("Attempts", attempts, data_stat="attempts",
                          hint="Each map result counts once, including custom .img."),
-            _metric_tile("Successful", successful, glossary="successful", data_stat="successful"),
-            _metric_tile("Failed", failed, failure=True, glossary="failed", data_stat="failed"),
-            _metric_tile("Open problems", open_errors, failure=True, glossary="open-problem", data_stat="openProblems",
+            _metric_tile("Successful", successful, data_stat="successful"),
+            _metric_tile("Failed", failed, failure=True, data_stat="failed"),
+            _metric_tile("Open problems", open_errors, failure=True, data_stat="openProblems",
                          hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
             _metric_tile("Last report", format_timestamp(last_report) if last_report else None, fmt="text",
                          value_html=_timestamp_markup(last_report) if last_report else None,
@@ -6118,7 +6109,7 @@ def device_detail_page(
     )
     history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not history else f"""
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
-          <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div>{_glossary_link('failed')}</div>
+          <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false'>Blocked before writing</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked before writing</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table mobile-record-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
@@ -6127,7 +6118,7 @@ def device_detail_page(
     """
     administration_section = f"""
         <details class='model-page-section model-administration admin-disclosure'><summary id='administration-title'>Administration</summary><div class='administration-grid'>
-          <article><h3>Install policy {_glossary_link('install-policy')}</h3><p class='table-help'>Install policy follows catalog Maps.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>Review metadata only; it never changes write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
+          <article><h3>Install policy</h3><p class='table-help'>Install policy follows catalog Maps.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>Review metadata only; it never changes write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
         </div></details>
     """
     information_sections = f"""
@@ -6251,10 +6242,10 @@ def diagnostics_page(
         <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
         <div class='heading-row'><div><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1></div></div>
         <section class='admin-card diagnostic-model-metrics' aria-label='Model diagnostic summary'>{_metric_row([
-            _metric_tile("Attempts", attempts, scope="all", glossary="attempt", data_stat="attempts"),
-            _metric_tile("Successful", successes, scope="all", glossary="successful", data_stat="successful"),
-            _metric_tile("Open problems", errors, scope="now", failure=True, glossary="open-problem", data_stat="openProblems"),
-            _metric_tile("Evidence", status.value.title() if status else "Unavailable", fmt="text", glossary="evidence",
+            _metric_tile("Attempts", attempts, scope="all", data_stat="attempts"),
+            _metric_tile("Successful", successes, scope="all", data_stat="successful"),
+            _metric_tile("Open problems", errors, scope="now", failure=True, data_stat="openProblems"),
+            _metric_tile("Evidence", status.value.title() if status else "Unavailable", fmt="text",
                          value_html=_status_badge(status.value if status else ''), data_stat="evidence"),
         ], label="Model diagnostic summary")}</section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
@@ -6338,7 +6329,7 @@ def github_issue_queue_page(
         <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
         <div class='heading-row'><div><h1>GitHub issues</h1></div></div>
         <section class='diagnostics-detail-section admin-card' aria-labelledby='github-issue-queue-title'>
-          <div class='section-heading'><div><h2 id='github-issue-queue-title'>Tasks</h2>{_glossary_link('task')}{_scope_chip('now')}<span class='table-help'>{_count_label(len(queue) + len(update_queue), 'task')}</span></div></div>
+          <div class='section-heading'><div><h2 id='github-issue-queue-title'>Tasks</h2>{_scope_chip('now')}<span class='table-help'>{_count_label(len(queue) + len(update_queue), 'task')}</span></div></div>
           <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-date'>Last activity</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
         </section>
         {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
@@ -6629,12 +6620,12 @@ def devices_page(
         <section class="admin-card device-summary-strip" aria-label="Device catalog summary and sync">
           {_metric_row([
               _metric_tile("Models", summary['models'], scope="now"),
-              _metric_tile("Maps: Yes", summary['mapCapable'], scope="now", glossary="install-policy"),
-              _metric_tile("Verified", verified_models, scope="all", glossary="evidence"),
-              _metric_tile("Covered", summary['mapModelsWithSuccess'], scope="all", glossary="evidence",
+              _metric_tile("Maps: Yes", summary['mapCapable'], scope="now"),
+              _metric_tile("Verified", verified_models, scope="all"),
+              _metric_tile("Covered", summary['mapModelsWithSuccess'], scope="all",
                            secondary=f"of {summary['eligibleMapModels']} · {html.escape(_format_rate(summary['mapModelCoverageRate']))}",
                            hint="Active Maps: Yes models with at least one verified installation"),
-              _metric_tile("Pending policy", pending_policy, scope="now", glossary="install-policy"),
+              _metric_tile("Pending policy", pending_policy, scope="now"),
           ], label="Device catalog summary")}
           <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {sync_line}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
@@ -6679,7 +6670,7 @@ def _campaign_info(control_id: str, title: str, body: str) -> str:
     info_id = f"{control_id}-info"
     return (
         f"<button class='info-control' type='button' aria-expanded='false' "
-        f"aria-controls='{info_id}' aria-label='More information about {html.escape(title)}'>i</button>"
+        f"aria-controls='{info_id}' aria-label='More information about {html.escape(title)}'>{_admin_icon('info')}</button>"
         f"<div class='info-popover' id='{info_id}' role='region' aria-label='{html.escape(title)} information' hidden><strong>{html.escape(title)}</strong>{body}</div>"
     )
 
@@ -7969,7 +7960,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .campaign-label{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:0 0 7px;color:var(--graphite);font-size:13px;font-weight:700}
 .required-label,.optional-label{color:var(--secondary);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .required-label{color:var(--danger)}
-.info-control{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;min-height:19px;padding:0;border:1px solid var(--border);border-radius:50%;background:var(--surface);color:var(--interactive);font-size:12px;font-weight:750;line-height:1}
+.info-control{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;min-height:19px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--interactive);font-size:17px;line-height:1}
 .info-control:hover{border-color:var(--interactive);background:var(--success-bg)}
 .info-popover{position:relative;margin:8px 0 10px;padding:10px 12px;background:var(--surface-muted);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--secondary);font-size:12px;font-weight:400}
 .info-popover strong{display:block;margin-bottom:3px;color:var(--graphite);font-size:12px}
@@ -8027,8 +8018,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .device-model-copy strong{min-width:0;overflow-wrap:anywhere}
 .device-thumb{display:block;width:38px;height:38px;flex:0 0 38px;object-fit:contain;border-radius:var(--radius-control);background:var(--surface-muted)}
 .device-thumb-placeholder{position:relative;border:1px solid var(--border)}
-.device-thumb-placeholder:before{content:"";position:absolute;left:10px;top:8px;width:16px;height:21px;border:2px solid var(--sky);border-radius:5px}
-.device-thumb-placeholder:after{content:"";position:absolute;left:15px;top:13px;width:6px;height:2px;border-radius:2px;background:var(--sky);box-shadow:0 8px 0 var(--sky)}
+.device-thumb-placeholder:before{content:"";position:absolute;inset:0;margin:auto;width:18px;height:18px;background:var(--sky);-webkit-mask:var(--fa-image) center/contain no-repeat;mask:var(--fa-image) center/contain no-repeat}
 .new-badge{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--lichen) 65%,var(--border));border-radius:999px;background:var(--new-badge-surface);color:var(--new-badge-text);font-size:10px;font-weight:750;letter-spacing:.06em;white-space:nowrap;text-transform:uppercase}
 .summary-filter-link{margin:0;padding:0;border:0;background:none;color:var(--interactive);font:inherit;font-weight:750;text-decoration:underline;text-underline-offset:3px}
 .admin-state{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;line-height:1;white-space:nowrap}
@@ -8305,8 +8295,8 @@ main.dashboard>.heading-row{align-items:flex-start}
 main.dashboard>.heading-row h1{margin:0}
 .admin-disclosure:not(.filter-disclosure)>summary{position:relative;list-style:none;padding:10px 14px 10px 36px;margin:0;min-height:44px;line-height:24px;font-size:13px;font-weight:650}
 .admin-disclosure:not(.filter-disclosure)>summary::-webkit-details-marker{display:none}
-.admin-disclosure:not(.filter-disclosure)>summary::before{content:'';position:absolute;left:14px;top:50%;width:6px;height:6px;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-50%) rotate(-45deg);transform-origin:center}
-.admin-disclosure[open]:not(.filter-disclosure)>summary::before{transform:translateY(-65%) rotate(45deg)}
+.admin-disclosure:not(.filter-disclosure)>summary::before{content:'';position:absolute;left:13px;top:50%;width:10px;height:10px;background:currentColor;-webkit-mask:var(--fa-chevron-right) center/contain no-repeat;mask:var(--fa-chevron-right) center/contain no-repeat;transform:translateY(-50%);transform-origin:center}
+.admin-disclosure[open]:not(.filter-disclosure)>summary::before{transform:translateY(-50%) rotate(90deg)}
 .admin-disclosure[open]:not(.filter-disclosure)>summary{margin-bottom:0}
 .model-information-columns>details,details.overview-panel,details.model-page-section{padding:0;min-height:0}
 .provider-component-list{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;min-width:200px}.provider-component-list>span{display:grid;grid-template-columns:90px max-content;align-items:center;gap:8px}
@@ -8353,7 +8343,7 @@ h1,h2,h3,h4{font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
 .admin-section-nav details{position:relative;flex:0 0 auto}
 .admin-section-nav details>summary{display:inline-flex;align-items:center;min-height:34px;padding:7px 9px;border-radius:var(--admin-control-radius);color:var(--secondary);cursor:pointer;font-size:var(--admin-type-control-size);font-weight:650;list-style:none;white-space:nowrap}
 .admin-section-nav details>summary::-webkit-details-marker{display:none}
-.admin-section-nav details>summary::after{content:'⌄';margin-inline-start:5px;color:var(--secondary);font-size:12px}
+.admin-section-nav details>summary::after{content:'';display:inline-block;width:10px;height:10px;margin-inline-start:6px;background:var(--secondary);-webkit-mask:var(--fa-chevron-down) center/contain no-repeat;mask:var(--fa-chevron-down) center/contain no-repeat}
 .admin-section-nav details>summary:hover,.admin-section-nav details>summary.active{background:var(--surface-muted);color:var(--interactive)}
 .admin-tools-popover{display:grid;gap:2px;position:absolute;z-index:25;top:calc(100% + 7px);left:0;right:auto;min-width:190px;padding:7px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);box-shadow:0 14px 34px color-mix(in srgb,var(--graphite) 16%,transparent)}
 .admin-tools-popover a{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 9px;color:var(--graphite);font-size:12px;font-weight:650;text-decoration:none}
@@ -8364,7 +8354,7 @@ h1,h2,h3,h4{font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
 .filter-bar .filter-clear{margin-left:0}
 .diagnostic-secondary-action{grid-column:1/-1;padding-top:2px}
 .diagnostic-secondary-action>summary{padding:8px 0;color:var(--interactive);font-size:12px;font-weight:750}
-.admin-icon{display:inline-block;width:1em;height:1em;flex:0 0 auto;vertical-align:-.15em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.admin-icon{display:inline-block;width:1em;height:1em;flex:0 0 auto;vertical-align:-.15em;fill:currentColor}
 .device-table-wrap tbody tr,.evidence-model-row{cursor:default}
 .device-model-button{border-radius:6px}
 .device-model-button:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px}
@@ -8443,10 +8433,10 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .identification-page{max-width:1200px}.identification-page h1{text-wrap:balance}.identification-page summary{cursor:pointer;min-height:44px;align-content:center}.identification-workspace{max-width:900px}.identification-workspace h2{margin-block:20px 12px;font-size:24px}.identification-workspace h3{margin:0 0 7px;font-size:16px;line-height:1.4}.identification-workspace h4{margin:0 0 8px;font-size:14px}.identification-workspace p{max-width:75ch;line-height:1.5}.identification-search{display:flex;align-items:flex-end;gap:12px;margin-block:20px}.identification-search label{display:grid;gap:8px;flex:1;min-width:0;font-weight:600}.identification-search input{width:100%;min-width:0}.identification-page :is(input,textarea)::placeholder{color:var(--secondary);opacity:1}.identification-choice{display:flex;justify-content:space-between;align-items:center;gap:20px;min-height:70px;padding:14px 4px;border-top:1px solid var(--border);text-decoration:none;color:inherit}.identification-choice:hover strong{text-decoration:underline}.identification-badges{display:flex;flex-wrap:wrap;gap:6px}.identification-page :is(.identification-pending,.identification-missing){color:var(--status-tested-text);background:var(--status-tested-surface);border-color:var(--status-tested-border)}.identification-workspace .identity-mappings{display:grid;gap:18px;margin-top:18px;padding:0}.identification-workspace .identity-mapping-source{display:grid;gap:18px;padding:0 0 20px;border-bottom:1px solid var(--border)}.identification-step{min-width:0}.identification-reported-name{display:block;font-size:16px;line-height:1.45}.identification-source-link{margin-top:7px}.identification-source-unavailable{color:var(--secondary);font-size:13px}.identification-match{display:grid;gap:4px}.identification-match>span{color:var(--secondary);font-size:13px}.identification-other-models ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}.identification-other-models li{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--border)}.identification-other-models li>span{color:var(--secondary);font-size:12px}.identification-confirm{padding:16px;border-radius:var(--radius-card);background:var(--surface-muted)}.identification-existing-decision{margin:0 0 12px;font-size:13px}.identification-workspace .identity-mapping-review{display:grid;grid-template-columns:1fr;gap:12px}.identification-workspace .identity-mapping-review label{display:grid;gap:6px;font-weight:600}.identification-workspace .identity-mapping-review textarea{width:100%;min-width:0;font:inherit}.identification-decision-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.identification-decision-actions button{min-height:44px}.identity-mapping-review .identification-decision-actions button.secondary-button{color:var(--interactive);background:var(--surface);border:1px solid var(--border)}.identity-mapping-review .identification-decision-actions button.secondary-button:hover{background:var(--surface-muted)}.identification-workspace .admin-action-status:empty{display:none}.identification-workspace .admin-action-status{margin:0;color:var(--graphite);font-size:13px}.identification-workspace .admin-action-status[data-error="true"]{color:var(--error-text)}.identification-technical{margin-top:0}.identification-technical .disclosure-body{display:grid;gap:16px}.identification-technical .disclosure-body>section{padding-top:16px;border-top:1px solid var(--border)}.identification-technical .model-information-list{margin:0}.identification-technical ul{margin:8px 0 0;padding-inline-start:20px}.identification-model-detail-link{margin-top:2px}.identification-empty{padding-block:20px}.identification-not-found{color:var(--error-text);background:var(--error-surface);padding:16px;border-radius:var(--radius-card)}.identification-page :is(a,button,input,textarea,select,summary):focus-visible{outline:var(--admin-focus-ring);outline-offset:3px}.identification-page :is(a,p,strong,dd){overflow-wrap:anywhere}.identification-page .section-link{color:var(--graphite);text-decoration:underline;text-underline-offset:3px}
 @media(max-width:760px){.identification-choice{align-items:flex-start;flex-direction:column;gap:10px}.identification-workspace .identity-mappings{gap:16px}.identification-other-models li{align-items:flex-start;flex-direction:column;gap:3px}.identification-confirm{padding:14px}.identification-decision-actions{display:grid;grid-template-columns:1fr}.identification-decision-actions button{width:100%}.identification-search{align-items:stretch;flex-direction:column}.identification-search button{align-self:flex-start}.identification-page :is(input,textarea){font-size:16px!important}.identification-workspace h2{font-size:22px}}
 
-.download-history{margin:0;font-size:13px}.download-history>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;list-style:none;cursor:pointer;min-height:44px;align-content:center}.download-history>summary::-webkit-details-marker{display:none}.download-history>summary .overview-activity-label::before{content:'›';display:inline-block;width:14px;margin-right:4px;color:var(--interactive);transform-origin:5px center}.download-history[open]>summary .overview-activity-label::before{transform:rotate(90deg)}.download-history>summary>time{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item .download-history .download-context{grid-column:1;grid-row:2;display:block;margin-left:18px;color:var(--secondary);font-size:12px;font-weight:400;overflow-wrap:anywhere}.download-history>summary:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px;border-radius:4px}.download-history[open]>.download-timeline{margin-top:6px;margin-left:18px}.download-elapsed{font-variant-numeric:tabular-nums}@media(max-width:480px){.download-history>summary{gap:3px 8px}.download-history>summary>time{font-size:11px}}
+.download-history{margin:0;font-size:13px}.download-history>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;list-style:none;cursor:pointer;min-height:44px;align-content:center}.download-history>summary::-webkit-details-marker{display:none}.download-history>summary .overview-activity-label::before{content:'';display:inline-block;width:8px;height:10px;margin-right:8px;background:var(--interactive);-webkit-mask:var(--fa-chevron-right) center/contain no-repeat;mask:var(--fa-chevron-right) center/contain no-repeat;transform-origin:center}.download-history[open]>summary .overview-activity-label::before{transform:rotate(90deg)}.download-history>summary>time{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item .download-history .download-context{grid-column:1;grid-row:2;display:block;margin-left:18px;color:var(--secondary);font-size:12px;font-weight:400;overflow-wrap:anywhere}.download-history>summary:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px;border-radius:4px}.download-history[open]>.download-timeline{margin-top:6px;margin-left:18px}.download-elapsed{font-variant-numeric:tabular-nums}@media(max-width:480px){.download-history>summary{gap:3px 8px}.download-history>summary>time{font-size:11px}}
 
 .download-timeline{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:0 0 4px;font-size:13px}
-.download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'→';color:var(--secondary);margin-right:8px}
+.download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'';display:inline-block;width:10px;height:10px;margin-right:8px;background:var(--secondary);-webkit-mask:var(--fa-arrow-right) center/contain no-repeat;mask:var(--fa-arrow-right) center/contain no-repeat}
 .download-timeline .admin-icon,.download-timeline .download-phase-icon{width:14px;height:14px;flex:none}.download-timeline time{font-size:12px;font-variant-numeric:tabular-nums;position:static}
 @media(max-width:700px){.download-history summary{min-height:44px}}
 
@@ -8463,7 +8453,7 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-activity-row .overview-activity-label>a{color:var(--interactive);text-underline-offset:3px}
 .map-activity-row .overview-activity-label .download-phase-icon{width:14px;height:14px;flex:0 0 14px}
 .map-activity-row .download-history>summary .overview-activity-label::before{content:none}
-.map-activity-row .download-history>summary .overview-activity-label::after{content:'›';display:inline-block;color:var(--secondary);margin-left:2px;line-height:1;transform-origin:center}
+.map-activity-row .download-history>summary .overview-activity-label::after{content:'';display:inline-block;width:8px;height:10px;margin-left:5px;background:var(--secondary);-webkit-mask:var(--fa-chevron-right) center/contain no-repeat;mask:var(--fa-chevron-right) center/contain no-repeat;transform-origin:center}
 .map-activity-row .download-history[open]>summary .overview-activity-label::after{transform:rotate(90deg)}
 .map-activity-row>.map-activity-copy>span:not(.overview-activity-label),.map-activity-row .download-history .download-context{margin:0 0 0 21px;font-size:12px;font-weight:400;line-height:1.4;color:var(--secondary)}
 .map-activity-row .download-history[open]>.download-timeline{margin:6px 0 0 21px}
@@ -8576,15 +8566,15 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .identity-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .identity-fact{min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface)}
 .identity-fact-heading{display:flex;align-items:center;gap:6px;color:var(--secondary);font-size:11px;font-weight:700}
-.identity-fact-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:12px;font-weight:800}
+.identity-fact-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px}
 .identity-fact strong{display:block;margin-top:5px;overflow-wrap:anywhere;font-size:13px;line-height:1.35}
 .identity-fact small{display:block;margin-top:5px;color:var(--secondary);font-size:10px}
 .identity-fact-match{border-color:var(--status-success-border);background:var(--status-success-surface)}
-.identity-fact-match .identity-fact-icon{background:var(--status-success-border);color:var(--status-success-text)}
+.identity-fact-match .identity-fact-icon{color:var(--status-success-text)}
 .identity-fact-conflict{border-color:var(--status-error-border);background:var(--status-error-surface)}
-.identity-fact-conflict .identity-fact-icon{background:var(--status-error-border);color:var(--status-error-text)}
+.identity-fact-conflict .identity-fact-icon{color:var(--status-error-text)}
 .identity-fact-missing{border-color:var(--border);background:var(--surface-muted)}
-.identity-fact-missing .identity-fact-icon{background:var(--surface);color:var(--secondary)}
+.identity-fact-missing .identity-fact-icon{color:var(--secondary)}
 .identity-selected-model{display:grid;gap:3px;margin-top:12px;padding:12px 14px;border-left:3px solid var(--interactive);background:var(--surface-muted)}
 .identity-selected-model strong{overflow-wrap:anywhere}.identity-selected-model small{color:var(--secondary);font-size:11px}
 .identity-picker{margin-top:10px}.identity-picker[hidden]{display:none}
@@ -8666,7 +8656,7 @@ ADMIN_STYLES += """
 .admin-scope-chip{display:inline-flex;align-items:center;min-height:20px;padding:1px 8px;border:1px solid var(--status-neutral-border);border-radius:999px;background:var(--status-neutral-surface);color:var(--status-neutral-text);font:600 12px/16px var(--font-ui);white-space:nowrap}
 .admin-scope-chip[data-scope="period"]{border-color:var(--status-supported-border);background:var(--selected-tint);color:var(--status-supported-text)}
 .admin-pill{display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:3px 8px;border:1px solid var(--status-neutral-border);border-radius:999px;background:var(--status-neutral-surface);color:var(--status-neutral-text);font:600 12px/16px var(--font-ui);letter-spacing:0;text-transform:none;white-space:nowrap;vertical-align:middle}
-.admin-pill .admin-icon{width:14px;height:14px;stroke-width:1.75}
+.admin-pill .admin-icon{width:14px;height:14px}
 .admin-pill-success{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}
 .admin-pill-danger{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}
 .admin-pill-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-warning-text)}
@@ -8691,9 +8681,6 @@ ADMIN_STYLES += """
 .admin-metric-secondary{font-variant-numeric:tabular-nums}
 .admin-metric-link:hover{background:var(--surface-muted)}
 .admin-metric-link:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}
-.admin-glossary-link{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;color:var(--interactive);font:700 11px/1 var(--font-ui);text-decoration:none}
-.admin-glossary-link>span{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid currentColor;border-radius:999px}
-.admin-glossary-link:hover>span{background:var(--selected-tint)}
 .admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
 .admin-card-unavailable{border-style:dashed}
 .identification-compare{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:start}
@@ -8726,7 +8713,12 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .provider-technical-grid>.provider-technical-section{margin:0;padding:0}
 @media(max-width:760px){.provider-technical-grid{grid-template-columns:minmax(0,1fr)}.provider-problem-list>.provider-problem{grid-template-columns:minmax(0,1fr)}}
 .admin-metric-failed{white-space:nowrap}.admin-metric-failed.is-positive{color:var(--danger);font-weight:600}
-.overview-tiles{margin:0 0 16px}
+.overview-card-totals{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;margin-inline-start:auto}
+.overview-card-total{display:inline-flex;align-items:baseline;gap:4px;box-sizing:border-box;height:24px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:22px}
+.overview-card-total strong{color:var(--graphite);font-size:16px;line-height:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.overview-card-total strong.is-positive{color:var(--danger)}
+.overview-card-total small{color:var(--secondary);font-size:var(--admin-type-support-size);line-height:22px}
+@media(max-width:560px){.overview-card-totals{flex-basis:100%;justify-content:flex-start;margin-inline-start:0}}
 .overview-attention-rows{display:grid;gap:2px;margin:0;padding:0;list-style:none}
 .overview-attention-row>a{display:grid;grid-template-columns:18px minmax(0,1fr) auto 14px;align-items:center;gap:10px;min-height:40px;padding:6px 8px;border-radius:var(--radius-control);color:var(--graphite);text-decoration:none}
 .overview-attention-row>a:hover{background:var(--surface-muted)}
@@ -8734,7 +8726,6 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-attention-row>a>.admin-icon:first-child{width:16px;height:16px;color:var(--secondary)}
 .overview-attention-row strong{font-variant-numeric:tabular-nums;font-weight:600}
 .overview-attention-row[data-state="active"]>a>.admin-icon:first-child,.overview-attention-row[data-state="active"] strong{color:var(--danger)}
-.overview-attention-row[data-state="zero"]>a{color:var(--secondary)}
 .overview-attention-row[data-state="unavailable"] strong{color:var(--secondary)}
 .overview-attention-item .admin-pill{align-self:start}
 .overview-all-time{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0;color:var(--secondary);font-size:13px}
@@ -8761,14 +8752,11 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-chart-success{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-custom{fill:var(--lichen-dark);background:var(--lichen-dark)}
 .overview-chart-failed{fill:var(--danger);background:var(--danger)}
-.overview-chart-update{fill:var(--stone);background:var(--stone)}
+.overview-chart-update{fill:var(--stone-dark);background:var(--stone-dark)}
 .overview-chart-update-failed{fill:var(--danger)}
 .overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
-.admin-legend i.overview-chart-update{border-color:var(--stone-dark)}
 .admin-legend i.overview-chart-update-failed{border-color:var(--danger);background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px)}
-.overview-trend-chart .overview-chart-group rect{stroke:var(--surface);stroke-width:1}
-.overview-trend-chart .overview-chart-group rect.overview-chart-update{stroke:var(--stone-dark)}
 .overview-chart-group:focus{outline:none}
 .overview-chart-group:focus-visible rect{stroke:var(--graphite);stroke-width:2}
 """
@@ -8805,6 +8793,7 @@ ADMIN_STYLES += """
 .overview-chart-panel>.overview-all-time,.overview-download-panel>.overview-all-time{margin-top:auto;padding-top:10px}
 .overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
 .overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
+.overview-chart-values:empty{display:none}
 .overview-funnel-breakdown{display:grid;gap:12px;margin:12px 0 0}
 .overview-funnel-group h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
 .overview-funnel-bars{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
@@ -8815,7 +8804,6 @@ ADMIN_STYLES += """
 .overview-funnel-bars strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
 .overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
 .overview-chart-values-date{color:var(--graphite)}
-.overview-chart-values-hint{color:var(--secondary)}
 .overview-trend-chart .overview-chart-group{cursor:pointer}
 /* Model installation history: compact table rows at >=1024 px (cards below). The GitHub issue column shows only when a row has an issue. */
 @media(min-width:1024px){
@@ -8844,6 +8832,20 @@ ADMIN_STYLES += """
 }
 .overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}
 """
+
+
+def _fa_mask_css() -> str:
+    """CSS custom properties holding Font Awesome icons as data: masks for
+    pseudo-element markers (chevrons, timeline arrows, placeholders)."""
+    def url(name: str) -> str:
+        view_box, path = _FA_ICONS[name]
+        svg = f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='{view_box}'><path d='{path}'/></svg>"
+        return 'url("data:image/svg+xml,' + quote(svg, safe="/:=' ") + '")'
+    names = ("chevron-down", "chevron-right", "arrow-right", "image")
+    return ":root{" + ";".join(f"--fa-{name}:{url(name)}" for name in names) + "}\n"
+
+
+ADMIN_STYLES += _fa_mask_css()
 
 def _error(message: str | None) -> str:
     return f"<p class='error'>{html.escape(message)}</p>" if message else ""

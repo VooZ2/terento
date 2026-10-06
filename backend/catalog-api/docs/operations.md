@@ -2,7 +2,9 @@
 
 The catalog service is metadata-only. PostgreSQL is private to the Docker
 network and the service never hosts, proxies, mirrors, caches, or repackages
-provider map archives.
+provider map archives. The map style preview job is the one place that
+downloads provider maps: one at a time, inside its rendering window, only to draw
+preview tiles, and each download is deleted as soon as its tiles exist.
 
 ## One stable deployment path
 
@@ -105,6 +107,45 @@ Only an exceptional migration that is destructive, non-transactional,
 downtime-requiring, or dependent on an external backfill may stop the normal
 path for owner review. It must report the reason and receive a reviewed
 architecture change; it must not create a second routine protocol.
+
+## Map style previews
+
+The preview renderer runs inside the existing `catalog-scheduler` service of
+the same immutable image; it adds no deploy target, migration path or SSH
+command. Migration `073_map_style_previews.sql` is additive and runs through
+the normal helper. Before enabling previews the owner-run configuration for
+the `api` project needs, once:
+
+- the asset volume mounted read-write in `catalog-scheduler` at the same
+  `TERENTO_ASSET_ROOT` the API reads, and a separate work volume at
+  `TERENTO_PREVIEW_WORK_DIR`;
+- a CPU and memory limit on `catalog-scheduler` (for a 2 vCPU / 8 GB host:
+  `cpus: 1.0`, `mem_limit: 2g`) so rendering never competes with the API and
+  database;
+- `MAP_PREVIEW_ENABLED=true` in the release environment.
+
+For the first fill, `MAP_PREVIEW_WINDOW_UTC=00:00-00:00` renders around the
+clock inside the CPU limit; finished layers appear in the manifest at most
+`MAP_PREVIEW_PUBLISH_MINUTES` (default 30) after they are drawn. A nightly
+window such as the default `00:00-06:00` is enough for later refreshes.
+`MAP_PREVIEW_RENDER_JOBS` (default 1) renders that many map tiles in parallel
+inside one renderer process at the lowest CPU priority; on an otherwise idle
+2 vCPU / 8 GB host the first fill can use `MAP_PREVIEW_RENDER_JOBS=2` with
+`cpus: 2.0` and `mem_limit: 4g`, then return to the limits above. Each extra
+job raises the renderer's address-space limit by 512 MiB.
+Only one renderer runs at a time: it holds a 15-minute lease that it renews
+while it works, so a renderer stopped by a deploy blocks the next one for at
+most 15 minutes, and the next renderer removes the downloads and staged tiles
+the stopped one left behind.
+
+Then switch providers on one at a time under Admin › Providers › Map style
+previews and check the `map-preview-renderer` heartbeat, the provider's
+preview layer table and `/maps/previews/manifest.json`. Turning a
+provider off hides its layers from the manifest immediately; its tiles leave
+the disk with the next releases. `MAP_PREVIEW_MAX_TOTAL_BYTES` (default 55 GB)
+caps all preview releases and `MAP_PREVIEW_MIN_FREE_BYTES` (default 20 GB) is
+always left free; a window that would exceed either stops and reports a
+warning instead of downloading.
 
 ## Local checks
 

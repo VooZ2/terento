@@ -216,17 +216,18 @@ an input to counts.
 Returns the authenticated operator Dashboard. The default period is the last 24
 hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
 
-The first row is four tiles: Installs, Updates and Downloads for the selected
-period (successful, failed and rate, with a visible period chip) and Needs
-attention (Now). The Downloads and Installs chart cards follow, each with a
-legend naming its series (period totals stay in the tiles; only the custom
-`.img` split is counted) and, unless the period is All time, an `All time`
-line with the all-time totals; the Downloads card adds the period purpose
-breakdown (`downloadPurposes`: install, update, unknown). Needs attention covers unresolved work across all dates in
-nine fixed rows read only from `admin_review_summary()`, the open public
-support-report count (`support_report_open_count()`), the active Maps-unknown
-model count (`maps_unknown_model_count()`), the shared
-provider-problem definition and the system checks; an unavailable query shows
+There is no summary tile row. The Downloads and Installs chart cards come
+first; each header shows a visible period chip and the period totals
+(successful, failed and success rate; Installs counts fresh installs only),
+then the chart and a legend naming its series without counts; nothing else is
+shown in these cards (all-time totals and the purpose breakdown are on Maps).
+The Needs attention header shows its Now total. The payload still carries the
+period purpose breakdown (`downloadPurposes`: install, update, unknown), which
+the Dashboard does not render. Needs attention covers unresolved work across all dates in
+up to six review-queue rows (zero-count rows are omitted; all zero shows
+`Nothing to review.`) read only from `admin_review_summary()` and the open
+public support-report count (`support_report_open_count()`); Maps unknown,
+provider problems and system checks are not rendered there; an unavailable query shows
 `—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
 for the period. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
@@ -377,9 +378,9 @@ Admin term (Attempt, Successful, Failed, Blocked before writing, Open problem,
 Provider download, Install, Installation report, Map update, Update report,
 Terento app download, Task and the review/evidence terms). Definitions follow
 `contracts/STATISTICS_CONTRACT.md`, `contracts/APP_FUNNEL_CONTRACT.md` and
-`docs/admin-behavior-contract.md`; metric labels link to `#anchor` entries. The
-page reads no data and uses the shared admin session, no-store and noindex
-policy.
+`docs/admin-behavior-contract.md`; it is reached from the Tools menu, and
+Admin labels carry no inline links to it. The page reads no data and uses the
+shared admin session, no-store and noindex policy.
 
 ## `GET https://api.terento.app/admin/devices`
 
@@ -730,6 +731,21 @@ records, records a `catalog_collection_run`, and returns counts. The body is
 an empty JSON object. Provider map binaries remain direct provider → user's
 Mac.
 
+## `POST /admin/providers/{id}/previews`
+
+Turns map style previews on or off for one provider. The JSON body is exactly
+`{"enabled": true}` or `{"enabled": false}`; anything else is rejected with
+`invalid_preview_control`. The action requires the admin session and CSRF
+token, sets `map_provider.preview_enabled` and writes a
+`provider.previews_enabled` or `provider.previews_disabled` audit record.
+Retired providers cannot be changed. Turning previews off hides the provider's
+layers from the public manifest within a minute; it does not change catalog,
+download or installation behaviour.
+
+The provider detail page shows the switch and a "Preview layers" table with
+each area and style, its state (Published, Not covered, Waiting, Failed — text
+badges), package and version, render time and the last problem.
+
 ## `POST /admin/providers/{id}/retire`
 
 Equivalent to a CSRF-protected state change to `RETIRED`; it accepts an empty
@@ -803,7 +819,7 @@ Terento-owned provider map. They are counted separately from first
 installations; they do not increase installation totals, country coverage, or
 map popularity counts. Admin Dashboard and Map statistics render successful
 and failed updates as separate series; their colours follow the statistics
-contract (update successful Warm Stone, update failed red diagonal stripes,
+contract (update successful Stone Dark, update failed red diagonal stripes,
 install failed solid red). Map statistics supports
 filtering by either update event type.
 
@@ -1074,6 +1090,29 @@ Serves only validated WebP runtime assets from the same `api.terento.app`
 origin. Assets use a long-lived immutable cache policy and an SHA-256 ETag.
 Review storage, source images, arbitrary files, and traversal paths are not
 served.
+
+## `GET /maps/previews/manifest.json`
+
+Public map style preview manifest (`contracts/map-preview-manifest.schema.json`).
+It lists every curated area with its extent, zoom range, tags, `featured` flag,
+`diffScore` (0–1, how different the rendered styles look; `null` until two
+layers exist) and one layer per style with status `AVAILABLE`, `NOT_COVERED`
+or `PENDING`. Only providers with previews switched on can report
+`AVAILABLE`, and only for layers present in the current tile release.
+`release` and `tileUrlTemplate` are `null` before the first release. The body
+is rebuilt from PostgreSQL at most once a minute per API process and is served
+with `Cache-Control: public, max-age=300` and `X-Robots-Tag: noindex`.
+
+## `GET /assets/previews/<release>/<area>/<style>/<z>/<x>/<y>.webp`
+
+Serves one preview tile from the current or previous release under
+`<TERENTO_ASSET_ROOT>/previews/releases`. The path must match the release,
+lower-case slug and numeric tile pattern exactly and the file must start with
+a WebP RIFF header; anything else, traversal included, is `404 tile_not_found`.
+Tiles are immutable per release: `Cache-Control: public, max-age=31536000,
+immutable`, an inode/size ETag with `304` support, `X-Robots-Tag: noindex` and
+`Access-Control-Allow-Origin: *`. Tiles are rendered images, not provider map
+binaries.
 
 ## `POST /internal/operations/observations`
 

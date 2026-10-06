@@ -152,12 +152,11 @@ class MapsUnknownAttentionTests(unittest.TestCase):
                              {"username": "operator", "admin_review_summary": {"available": True}}, "csrf").decode()
         return body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
 
-    def test_row_count_link_and_unavailable_state(self):
-        attention = self.attention(mapsUnknown={"modelCount": 5})
-        self.assertIn("aria-label='Maps unknown: 5'", attention)
-        self.assertIn("href='/admin/devices?maps=unknown&amp;active=1'", attention)
-        self.assertIn("aria-label='Maps unknown: unavailable'", self.attention(mapsUnknown={"available": False}))
-        self.assertIn("aria-label='Maps unknown: unavailable'", self.attention())
+    def test_maps_unknown_is_not_a_dashboard_attention_row(self):
+        # Owner decision 2026-10-06: Needs attention lists six review queues;
+        # Maps unknown stays on Devices (?maps=unknown&active=1).
+        for overview in ({"mapsUnknown": {"modelCount": 5}}, {"mapsUnknown": {"available": False}}, {}):
+            self.assertNotIn("Maps unknown", self.attention(**overview))
 
 
 if __name__ == "__main__":

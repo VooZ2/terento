@@ -143,6 +143,31 @@ libraries in `Terento.app/Contents/Frameworks`.
 - Bundled files: original minified JS and CSS in `backend/catalog-api/src/terento_catalog/static/map/`; full notice in `LEAFLET-LICENSE.txt` alongside them.
 - No runtime npm dependencies, remote tiles or CDN calls. No native application linking or source-disclosure requirement is introduced by Leaflet.
 
+## GPXSee Garmin IMG renderer (vendored subset)
+
+- Upstream: <https://github.com/tumic0/GPXSee>, commit
+  `65291cf455793d7d997a885301cb16f3a69cc77c` (2026-10-02)
+- Copyright: Martin Tůma and the GPXSee contributors
+- License: GNU GPL version 3; full text in
+  `backend/catalog-api/renderer/third_party/gpxsee/LICENSE`
+- Use: the Garmin IMG decoder and raster renderer compiled into
+  `terento-preview-render`, which draws map style preview tiles inside the
+  catalog API image. Only the files listed in
+  `backend/catalog-api/renderer/third_party/gpxsee/FILES` are vendored,
+  unmodified; see `VENDORED.md` there.
+- Combined with Terento's GPL-3.0-or-later code, the renderer binary is
+  distributed under GPL version 3.
+
+## Qt 6, libwebp and DejaVu fonts (catalog API image runtime)
+
+- Qt 6 Core, Gui, Concurrent, the offscreen platform plugin and the WebP image
+  format plugin: LGPL-3.0 (Debian bookworm packages, dynamically linked).
+- libwebp (through the Qt WebP plugin): BSD-3-Clause.
+- DejaVu fonts (`fonts-dejavu-core`): Bitstream Vera / DejaVu free license;
+  used to draw map labels in preview tiles.
+- These are installed from Debian packages in the catalog API image only; they
+  are not bundled with the macOS app or the website.
+
 ## GitHub Actions upload-artifact (CI only)
 
 - Version: 4.6.2, pinned commit `ea165f8d65b6e75b540449e92b4886f43607fa02`.
@@ -196,3 +221,16 @@ Paths and attribution comments are unchanged; only CSS/accessibility attributes
 are added. No runtime or font dependency is introduced.
 
 Recent map activity also uses original solid `circle-xmark`, `ban`, `triangle-exclamation`, `circle-check` and `circle-info` assets from the same pinned Font Awesome Free 7.3.1 revision above, under CC BY 4.0, with attribution comments retained.
+
+### Admin interface icons
+
+Every other Admin icon (owner decision 2026-10-06: no hand-drawn icons) uses
+original solid SVGs from the same pinned Font Awesome Free 7.3.1 revision under
+CC BY 4.0: `arrow-up-right-from-square`, `arrow-right`, `arrow-left`, `check`,
+`clock`, `xmark`, `circle-xmark`, `triangle-exclamation`, `circle-info`,
+`circle-question`, `circle-minus`, `download`, `message`, `circle-check`,
+`circle-exclamation`, `chevron-down`, `chevron-right` and `image`. Their
+unchanged viewBox and path data live in `_FA_ICONS` in
+`backend/catalog-api/src/terento_catalog/admin.py` under the Font Awesome
+attribution comment; they are rendered as inline SVG or as `data:` CSS masks.
+No Font Awesome font, CSS or runtime and no external icon origin is used.

@@ -1,0 +1,33 @@
+#ifndef IMG_DELTASTREAM_H
+#define IMG_DELTASTREAM_H
+
+#include "bitstream.h"
+
+namespace IMG {
+
+class DeltaStream : public BitStream1 {
+public:
+	DeltaStream(const SubFile &file, SubFile::Handle &hdl, quint32 length)
+	  : BitStream1(file, hdl, length) {}
+
+	bool init(quint8 info, bool extraBit, bool extended);
+	bool readNext(qint32 &lonDelta, qint32 &latDelta)
+	{
+		return hasNext()
+			? (readDelta(_lonBits, _lonSign, _extraBit, lonDelta)
+			  && readDelta(_latBits, _latSign, false, latDelta)) : false;
+	}
+	bool atEnd() const {return !hasNext();}
+
+private:
+	bool hasNext() const {return bitsAvailable() >= _readBits;}
+	bool sign(int &val);
+	bool readDelta(int bits, int sign, int extraBit, qint32 &delta);
+
+	int _lonSign, _latSign, _extraBit;
+	quint32 _lonBits, _latBits, _readBits;
+};
+
+}
+
+#endif // IMG_DELTASTREAM_H
