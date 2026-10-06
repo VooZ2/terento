@@ -17,7 +17,7 @@ MAX_EVENT_BYTES = 16_384
 SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "maprando", "bbbike", "custom"})
 ALLOWED_KEYS = {
     "operationKind", "oldMapPreserved",
-    "failureContext", "originalFailureContext",
+    "failureContext", "originalFailureContext", "inventoryMetrics",
     "garminModelDescription", "garminModelPartNumber",
     "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
@@ -36,6 +36,33 @@ FORBIDDEN_KEY_PARTS = ("serial", "unitid", "unit_id", "path", "manifest", "usern
 
 class EvidenceValidationError(ValueError):
     pass
+
+
+# Optional pre-/post-write inventory timing (diagnostics only, never counts).
+INVENTORY_METRIC_SCOPES = ("FULL", "GARMIN")
+INVENTORY_OBJECT_COUNT_MAX = 10_000_000
+INVENTORY_DURATION_MS_MAX = 86_400_000
+INVENTORY_METRIC_KEYS = {
+    "scope", "prewriteObjectCount", "prewriteDurationMs", "postwriteObjectCount", "postwriteDurationMs",
+}
+
+
+def validate_inventory_metrics(value: Any) -> dict[str, Any]:
+    """Return the closed inventoryMetrics object or raise ``EvidenceValidationError``."""
+    if not isinstance(value, dict) or set(value) - INVENTORY_METRIC_KEYS:
+        raise EvidenceValidationError("invalid_inventory_metrics")
+    value = {key: item for key, item in value.items() if item is not None}
+    if not {"scope", "prewriteObjectCount", "prewriteDurationMs"} <= set(value):
+        raise EvidenceValidationError("invalid_inventory_metrics")
+    if value["scope"] not in INVENTORY_METRIC_SCOPES:
+        raise EvidenceValidationError("invalid_inventory_metrics")
+    for key, maximum in (
+        ("prewriteObjectCount", INVENTORY_OBJECT_COUNT_MAX), ("prewriteDurationMs", INVENTORY_DURATION_MS_MAX),
+        ("postwriteObjectCount", INVENTORY_OBJECT_COUNT_MAX), ("postwriteDurationMs", INVENTORY_DURATION_MS_MAX),
+    ):
+        if key in value and (type(value[key]) is not int or not 0 <= value[key] <= maximum):
+            raise EvidenceValidationError("invalid_inventory_metrics")
+    return value
 
 
 POSTGRES_INTEGER_MAX = 2_147_483_647
@@ -220,6 +247,12 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         raise EvidenceValidationError("deletion_not_supported")
     if schema_version in {3, 4}:
         _validate_v3(event)
+    if event.get("inventoryMetrics") is not None:
+        if schema_version != 4:
+            raise EvidenceValidationError("invalid_inventory_metrics")
+        event["inventoryMetrics"] = validate_inventory_metrics(event["inventoryMetrics"])
+    else:
+        event.pop("inventoryMetrics", None)
     _validate_storable_fields(event)
     try:
         validate_event_contexts(event)

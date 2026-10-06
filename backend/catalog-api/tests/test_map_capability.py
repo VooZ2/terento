@@ -72,7 +72,8 @@ class MapCapabilityTests(unittest.TestCase):
                 original = deepcopy(row)
                 device = build_device_catalog([row], datetime.now(timezone.utc))['devices'][0]
                 admin = _admin_device_payload([row], None)['devices'][0]
-                self.assertTrue(device['mapCapable'])
+                # Unknown stays null in the public catalog, matching the PENDING policy.
+                self.assertIsNone(device['mapCapable'])
                 self.assertIsNone(admin['mapCapable'])
                 self.assertTrue(admin['observedMapCapability'])
                 self.assertEqual(admin['installationAuthorization'], 'PENDING')

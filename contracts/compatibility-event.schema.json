@@ -264,6 +264,17 @@
     "oldMapPreserved": {
       "type": "boolean",
       "description": "Transaction-reported preservation of the previous map; required only for explicit update evidence."
+    },
+    "inventoryMetrics": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/inventoryMetrics"
+        }
+      ],
+      "description": "Optional pre-/post-write inventory timing (schema version 4 only). Diagnostics only; never counts."
     }
   },
   "required": [
@@ -1450,6 +1461,25 @@
           ]
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "inventoryMetrics": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "inventoryMetrics"
+        ]
+      },
+      "then": {
+        "properties": {
+          "schemaVersion": {
+            "const": 4
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -2041,6 +2071,49 @@
         "UPDATE_FAILED_SOURCE_VALIDATION",
         "UPDATE_FAILED_WRITE"
       ]
+    },
+    "inventoryMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "prewriteObjectCount",
+        "prewriteDurationMs"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "FULL",
+            "GARMIN"
+          ]
+        },
+        "prewriteObjectCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000
+        },
+        "prewriteDurationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "postwriteObjectCount": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000000
+        },
+        "postwriteDurationMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 86400000
+        }
+      }
     }
   }
 }

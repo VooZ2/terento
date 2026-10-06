@@ -77,6 +77,153 @@ class AdminTokenAndFocusTests(unittest.TestCase):
 
 
 
+class AdminChartGeometryTests(unittest.TestCase):
+    """Minimum segment rule and x-axis label density (review 2026-10-06)."""
+
+    def test_tiny_segment_gets_the_minimum_while_the_bar_keeps_its_true_height(self):
+        from terento_catalog.admin import _CHART_MIN_SEGMENT, _overview_stacked_segments
+        segments = _overview_stacked_segments((100, 0, 1), 50, 20, 220, 200, 101)
+        self.assertNotIn(1, segments)  # a zero segment is never drawn
+        self.assertAlmostEqual(segments[2][3], _CHART_MIN_SEGMENT)
+        self.assertAlmostEqual(sum(item[3] for item in segments.values()), 200 * 101 / 101)
+        # Segments stay contiguous from the baseline.
+        self.assertAlmostEqual(segments[0][2] + segments[0][3], 220)
+        self.assertAlmostEqual(segments[2][2] + segments[2][3], segments[0][2])
+
+    def test_bar_shorter_than_the_floor_grows_only_to_the_floor(self):
+        from terento_catalog.admin import _overview_stacked_segments
+        segments = _overview_stacked_segments((1, 1), 50, 20, 220, 200, 1000, minimum=4)
+        self.assertEqual([round(item[3], 2) for item in segments.values()], [4.0, 4.0])
+
+    def test_proportions_are_untouched_when_every_segment_is_visible(self):
+        from terento_catalog.admin import _overview_stacked_segments
+        segments = _overview_stacked_segments((30, 10), 50, 20, 220, 200, 40)
+        self.assertAlmostEqual(segments[0][3], 150)
+        self.assertAlmostEqual(segments[1][3], 50)
+
+    def _labels(self, body: str, chart: str) -> list[tuple[float, str, str]]:
+        svg = body.split(f"overview-trend-{chart}'", 1)[1].split("</svg>", 1)[0]
+        return [(float(x), anchor, text) for x, anchor, text in re.findall(
+            r"<text x='([0-9.]+)' y='\d+' text-anchor='(\w+)'[^>]*>([^<]+)</text>", svg)]
+
+    def _assert_no_overlap(self, labels, font_size, width):
+        extents = []
+        for x, anchor, text in labels:
+            w = len(text) * font_size * 0.6
+            start = x - w / 2 if anchor == "middle" else x if anchor == "start" else x - w
+            extents.append((start, start + w))
+        for (_, end), (start, _) in zip(extents, extents[1:]):
+            self.assertLessEqual(end, start)
+        self.assertGreaterEqual(extents[0][0], 0)
+        self.assertLessEqual(extents[-1][1], width)
+
+    def test_axis_labels_every_bucket_when_they_fit_else_every_second(self):
+        from terento_catalog.admin import _overview_trend_chart
+        daily = [{"bucket": f"2026-09-{day:02d}T00:00:00Z", "success_count": 1} for day in range(18, 25)]
+        body = _overview_trend_chart(daily, "day")
+        desktop = self._labels(body, "desktop")
+        self.assertEqual([text for _, _, text in desktop], [f"{day} Sep" for day in range(18, 25)])
+        self._assert_no_overlap(desktop, 11, 720)
+        mobile = self._labels(body, "mobile")
+        self.assertEqual([text for _, _, text in mobile], ["18 Sep", "20 Sep", "22 Sep", "24 Sep"])
+        self._assert_no_overlap(mobile, 13, 360)
+        hourly = [{"bucket": f"2026-09-18T{hour:02d}:00:00Z", "success_count": 1} for hour in range(24)]
+        desktop = self._labels(_overview_trend_chart(hourly, "hour"), "desktop")
+        self.assertEqual(len(desktop), 12)
+        self.assertEqual(desktop[-1][2], "23:00")  # the most recent bucket is labelled
+        self._assert_no_overlap(desktop, 11, 720)
+
+    def test_app_download_axis_uses_the_same_rule(self):
+        from terento_catalog.admin import _overview_downloads_chart
+        trend = [{"bucket": f"2026-09-{day:02d}T00:00:00Z", "observed_at": f"2026-09-{day:02d}T18:00:00Z",
+                  "dmg_count": 3, "zip_count": 1} for day in range(18, 25)]
+        body = _overview_downloads_chart({"hasData": True, "bucket": "day", "trend": trend}, period="7d")
+        desktop = self._labels(body, "desktop")
+        self.assertEqual(len(desktop), 7)
+        self._assert_no_overlap(desktop, 11, 720)
+        self._assert_no_overlap(self._labels(body, "mobile"), 13, 360)
+
+
+class AdminChartValueStripTests(unittest.TestCase):
+    """Tap/keyboard value strip: works without hover and is announced."""
+
+    def test_every_bucket_carries_its_date_series_values_and_total(self):
+        from terento_catalog.admin import _overview_trend_chart
+        body = _overview_trend_chart([{
+            "bucket": "2026-09-18T00:00:00Z", "success_count": 5, "custom_count": 1,
+            "failed_count": 0, "map_update_success_count": 2, "map_update_failed_count": 1,
+        }], "day")
+        strip = body.split("<p class='overview-chart-values admin-legend'", 1)[1].split("</p>", 1)[0]
+        self.assertIn("data-chart-values-strip aria-live='polite'", strip)
+        self.assertIn("Tap or focus a bar to see its values.", strip)
+        groups = re.findall(r"<g class='overview-chart-group' role='img' tabindex='0' data-chart-values='([^']+)'", body)
+        self.assertEqual(len(groups), 2)  # desktop and compact chart, one strip
+        import html as html_module
+        payload = json.loads(html_module.unescape(groups[0]))
+        self.assertEqual(payload["date"], "18 Sep")
+        self.assertEqual(payload["total"], 9)
+        self.assertEqual(payload["values"], [
+            ["success", "Install successful", 5], ["custom", "Custom .img install", 1],
+            ["failed", "Install failed", 0], ["update", "Update successful", 2],
+            ["update-failed", "Update failed", 1],
+        ])
+        self.assertEqual(body.count("data-chart-values-strip"), 1)
+
+    def test_app_download_buckets_keep_unknown_values_unknown(self):
+        from terento_catalog.admin import _overview_downloads_chart
+        body = _overview_downloads_chart({"hasData": True, "bucket": "day", "trend": [
+            {"bucket": "2026-09-18T00:00:00Z", "observed_at": "2026-09-18T18:00:00Z", "dmg_count": 4, "zip_count": None},
+        ]}, period="7d")
+        import html as html_module
+        payload = json.loads(html_module.unescape(re.search(r"data-chart-values='([^']+)'", body).group(1)))
+        self.assertEqual(payload["values"], [["download-dmg", ".dmg", 4], ["download-zip", ".zip", None]])
+        self.assertIsNone(payload["total"])
+        self.assertIn("data-chart-values-strip aria-live='polite'", body)
+
+    def test_value_strip_script_ships_on_every_admin_page_with_the_nonce(self):
+        from terento_catalog.admin import _admin_chart_values_script, _layout
+        script = _admin_chart_values_script()
+        for event in ("'click'", "'focusin'", "'keydown'"):
+            self.assertIn(event, script)
+        self.assertNotIn("mouseover", script)
+        self.assertNotIn("innerHTML", script)  # values are inserted as text
+        self.assertIn("replaceChildren", script)
+        page = _layout("Test", "<main id='main-content'></main>").decode()
+        self.assertIn("data-chart-values-strip", script)
+        self.assertRegex(page, r'<script nonce="[^"]+">[^<]*\(\(\) => \{[\s\S]*closest\(\'\.overview-chart-group\[data-chart-values\]\'\)')
+        self.assertIn(".overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}", ADMIN_STYLES)
+
+
+class AdminMapsMobileTests(unittest.TestCase):
+    """Maps at ≤600 px: compact KPI row and collapsible long cards."""
+
+    def test_section_card_can_start_collapsed_on_mobile_only(self):
+        card = _section_card("Top maps", "<p>rows</p>", card_id="maps-by-provider", mobile_collapse=True)
+        self.assertIn(" data-mobile-collapse>", card)
+        self.assertIn("<button type='button' class='secondary-button admin-card-toggle' data-mobile-collapse-toggle "
+                      "aria-expanded='true' aria-controls='maps-by-provider' hidden>Hide<span class='sr-only'> Top maps</span></button></header>", card)
+        self.assertNotIn("data-mobile-collapse", _section_card("Top maps", "", card_id="plain"))
+        self.assertIn("[data-mobile-collapse][data-mobile-collapsed]>:not(.admin-card-head){display:none}", ADMIN_STYLES)
+        self.assertIn(".map-statistics-metrics>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}", ADMIN_STYLES)
+        mobile = ADMIN_STYLES.split("@media(max-width:600px){\n  .map-statistics-metrics>.admin-metric-row", 1)[1].split("\n}", 1)[0]
+        self.assertIn("[data-mobile-collapse][data-mobile-collapsed]", mobile)
+
+    def test_maps_page_marks_its_long_lower_cards_collapsible(self):
+        from terento_catalog.admin import _admin_mobile_collapse_script, map_statistics_page
+        rows = [{"provider_id": "opentopomap", "map_package_id": "lt", "region": "LT", "region_country": "LT",
+                 "component_kind": "main", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED",
+                 "operation_count": 3, "event_count": 3, "last_occurred_at": "2026-09-18T09:39:00Z"}]
+        body = map_statistics_page({"rows": rows}, [{"id": "opentopomap", "name": "OpenTopoMap"}],
+                                   {"username": "operator"}, "csrf").decode()
+        collapsible = re.findall(r"<section class='admin-card[^']*' id='([^']+)'[^>]* data-mobile-collapse>", body)
+        self.assertEqual(collapsible, ["top-countries", "map-statistics-provider-table", "maps-by-provider"])
+        self.assertNotIn("id='map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-card-title' data-mobile-collapse", body)
+        script = _admin_mobile_collapse_script()
+        self.assertIn("matchMedia('(max-width: 600px)')", script)
+        self.assertIn("'hashchange'", script)
+        self.assertIn(script, body)
+
+
 class AdminComponentKitTests(unittest.TestCase):
     def test_scope_chip_is_visible_text_for_every_scope(self):
         self.assertEqual(_scope_chip("7d"), "<span class='admin-scope-chip' data-scope='period'>Last 7 days</span>")

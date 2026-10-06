@@ -22,7 +22,6 @@ from .compatibility_status import calculate_compatibility_status
 from .models import CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
 from .historical_devices import historical_device_for_event
-from .map_capability import classify_map_capable
 from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
@@ -1044,7 +1043,7 @@ class Database:
                 cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,
                 raw_mtp_model, identity_resolution_code, is_local_test,
                 garmin_model_description, garmin_model_part_number, identity_assessment,
-                failure_context, original_failure_context,
+                failure_context, original_failure_context, inventory_metrics,
                 statistics_exclusion_code, statistics_exclusion_reason, security_issue_code,
                 schema_version
             ) VALUES (
@@ -1060,7 +1059,7 @@ class Database:
                 %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
                 %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s,
                 %(isLocalTest)s, %(garminModelDescription)s, %(garminModelPartNumber)s, %(identityAssessment)s::jsonb,
-                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb,
+                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb, %(inventoryMetrics)s::jsonb,
                 %(statisticsExclusionCode)s, %(statisticsExclusionReason)s, %(securityIssueCode)s,
                 %(schemaVersion)s
             ) ON CONFLICT (event_id) DO NOTHING
@@ -1085,6 +1084,7 @@ class Database:
             **event,
             "failureContext": json.dumps(event['failureContext']) if event.get('failureContext') is not None else None,
             "originalFailureContext": json.dumps(event['originalFailureContext']) if event.get('originalFailureContext') is not None else None,
+            "inventoryMetrics": json.dumps(event['inventoryMetrics']) if event.get('inventoryMetrics') is not None else None,
             # Swift Codable omits nil optional fields. PostgreSQL still needs
             # explicit NULL parameters for the named placeholders below.
             "family": event.get("family"),
@@ -1192,6 +1192,8 @@ class Database:
             connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
             # App funnel events follow the same 24-month receipt-time retention.
             connection.execute("DELETE FROM app_funnel_event WHERE received_at < now() - interval '24 months'")
+            # Support reports are kept 12 months after receipt, whatever their status.
+            connection.execute("DELETE FROM support_report WHERE received_at < now() - interval '12 months'")
             result = connection.execute(
                 "DELETE FROM compatibility_evidence_event WHERE received_at < now() - interval '24 months'"
             )
@@ -1270,7 +1272,7 @@ class Database:
                 variant, firmware_version, provider, region, map_release, terento_version,
                 app_build, release_label, schema_version, map_result_index, selected_map_count,
                 phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
-                failure_context, original_failure_context,
+                failure_context, original_failure_context, inventory_metrics,
                 write_started,
                 remote_object_created,
                 cleanup_attempted,
@@ -2880,11 +2882,18 @@ class Database:
             return len(rows)
 
     @staticmethod
-    def enrich_device_specifications(connection, device_id: str, specifications: dict, source: str, version: str, skus=()) -> None:
-        values = {k: v for k, v in specifications.items() if k in {"screen_technology", "solar", "inreach"} and v is not None}
+    def enrich_device_specifications(connection, device_id: str, specifications: dict, source: str, version: str, skus=(),
+                                     evidence_fields: dict | None = None) -> None:
+        # map_capable is recorded as evidence only: its column is written by the
+        # catalog upsert (new rows / Unknown rows) and never overwritten here.
+        values = {k: v for k, v in specifications.items()
+                  if k in {"screen_technology", "solar", "inreach", "map_capable"} and v is not None}
         if values:
             checked = datetime.now(timezone.utc).isoformat()
             evidence = {key: {"value": value, "source": source, "version": version, "checkedAt": checked} for key, value in values.items()}
+            for key, field in (evidence_fields or {}).items():
+                if key in evidence and field:
+                    evidence[key]["field"] = field
             connection.execute("""UPDATE device_model SET screen_technology=COALESCE(%s,screen_technology),
                 solar=COALESCE(%s,solar), inreach=COALESCE(%s,inreach), specification_source=%s,
                 specification_checked_at=now(), specification_evidence=specification_evidence || %s::jsonb,
@@ -4311,6 +4320,302 @@ class Database:
                 ),
             ).fetchone()
         return row is not None
+
+    # --- Support reports (contracts/SUPPORT_REPORT_CONTRACT.md) -------------
+    # A separate, operator-only population: never statistics, never an input
+    # to install, update, download, compatibility or funnel counts.
+
+    def insert_support_report(self, report: dict[str, Any]) -> str:
+        """Store one validated report: ``stored``, ``duplicate`` (same id) or ``conflict``.
+
+        ``conflict`` means another report already owns the deterministic
+        reference; the client must create a new report id.
+        """
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                INSERT INTO support_report (
+                    id, reference, created_at, app_build, release_label, is_local_test,
+                    category, operation_id, user_message, report
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                ON CONFLICT DO NOTHING
+                RETURNING id
+                """,
+                (
+                    report["id"], report["reference"], report["createdAt"], report["appBuild"],
+                    report["releaseLabel"], report["isLocalTest"], report["category"],
+                    report.get("operationId"), report.get("userMessage"),
+                    json.dumps(report["report"], ensure_ascii=False, sort_keys=True),
+                ),
+            ).fetchone()
+            if row is not None:
+                return "stored"
+            existing = connection.execute(
+                "SELECT id FROM support_report WHERE id = %s", (report["id"],),
+            ).fetchone()
+        return "duplicate" if existing else "conflict"
+
+    def inventory_metrics_distribution(self, *, model_limit: int = 100) -> list[dict[str, Any]]:
+        """Pre-write inventory timing per exact model and scope (non-local installation reports).
+
+        Diagnostics only: never an input to install, update, download or
+        compatibility counts.
+        """
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT COALESCE(e.canonical_device_model_id, '') AS canonical_device_model_id,
+                       e.compatibility_identity,
+                       e.inventory_metrics->>'scope' AS scope,
+                       count(*) AS report_count,
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteDurationMs')::bigint) AS duration_median,
+                       percentile_cont(0.9) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteDurationMs')::bigint) AS duration_p90,
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteObjectCount')::bigint) AS objects_median,
+                       percentile_cont(0.9) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteObjectCount')::bigint) AS objects_p90,
+                       max(e.occurred_at) AS last_reported_at
+                FROM compatibility_evidence_event AS e
+                WHERE e.inventory_metrics IS NOT NULL AND e.is_local_test IS NOT TRUE
+                GROUP BY 1, 2, 3
+                ORDER BY report_count DESC, e.compatibility_identity, scope
+                LIMIT %s
+                """,
+                (max(1, min(int(model_limit), 500)),),
+            ).fetchall()
+        def number(value: Any) -> float | None:
+            return round(float(value), 1) if value is not None else None
+        return [
+            {
+                "canonicalDeviceId": row["canonical_device_model_id"] or None,
+                "compatibilityIdentity": row["compatibility_identity"],
+                "scope": row["scope"],
+                "reportCount": int(row["report_count"] or 0),
+                "prewriteDurationMs": {"median": number(row["duration_median"]), "p90": number(row["duration_p90"])},
+                "prewriteObjectCount": {"median": number(row["objects_median"]), "p90": number(row["objects_p90"])},
+                "lastReportedAt": row["last_reported_at"].isoformat() if hasattr(row["last_reported_at"], "isoformat") else row["last_reported_at"],
+            }
+            for row in rows
+        ]
+
+    def maps_unknown_model_count(self) -> int:
+        """Needs attention: active catalog models whose Maps value is Unknown (NULL)."""
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT count(*) AS n FROM device_model WHERE active IS TRUE AND map_capable IS NULL"
+            ).fetchone() or {}
+        return int(row.get("n") or 0)
+
+    def support_report_open_count(self) -> int:
+        """Needs attention: open reports from public (non-local) builds."""
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT count(*) AS n FROM support_report WHERE status = 'OPEN' AND is_local_test IS FALSE"
+            ).fetchone() or {}
+        return int(row.get("n") or 0)
+
+    def support_reports(
+        self, *, status: str = "OPEN", limit: int = 50, offset: int = 0, local: bool = False,
+    ) -> dict[str, Any]:
+        """One page of reports (newest receipt first) plus totals independent of the page."""
+        if status not in {"OPEN", "HANDLED", "ALL"}:
+            raise ValueError("invalid_support_report_status")
+        limit = max(1, min(int(limit), 200))
+        offset = max(0, int(offset))
+        local_clause = "is_local_test IS TRUE" if local else "is_local_test IS FALSE"
+        with self.connection() as connection:
+            counts = connection.execute(
+                f"""
+                SELECT count(*) FILTER (WHERE status = 'OPEN') AS open_count,
+                       count(*) FILTER (WHERE status = 'HANDLED') AS handled_count,
+                       count(*) AS total_count
+                FROM support_report WHERE {local_clause}
+                """
+            ).fetchone() or {}
+            rows = list(connection.execute(
+                f"""
+                SELECT id, reference, received_at, created_at, app_build, release_label,
+                       is_local_test, category, operation_id, status, handled_at,
+                       linked_github_issue,
+                       report->>'title' AS title,
+                       report->'device'->>'model' AS device_model,
+                       report->'device'->>'variant' AS device_variant,
+                       (user_message IS NOT NULL) AS has_user_message
+                FROM support_report
+                WHERE {local_clause} AND (%s = 'ALL' OR status = %s)
+                ORDER BY received_at DESC, id
+                LIMIT %s OFFSET %s
+                """,
+                (status, status, limit, offset),
+            ).fetchall())
+        open_count = int(counts.get("open_count") or 0)
+        handled_count = int(counts.get("handled_count") or 0)
+        return {
+            "rows": [dict(row) for row in rows],
+            "status": status,
+            "limit": limit,
+            "offset": offset,
+            "openCount": open_count,
+            "handledCount": handled_count,
+            "totalCount": int(counts.get("total_count") or 0),
+            "filteredTotal": {"OPEN": open_count, "HANDLED": handled_count}.get(status, open_count + handled_count),
+        }
+
+    def support_report_detail(self, reference: str) -> dict[str, Any] | None:
+        """One report with its audit history and the diagnostics sharing its operation ID."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT r.*, u.username AS handled_by_username
+                FROM support_report AS r
+                LEFT JOIN admin_user AS u ON u.id = r.handled_by
+                WHERE r.reference = %s
+                """,
+                (reference,),
+            ).fetchone()
+            if not row:
+                return None
+            detail = dict(row)
+            if isinstance(detail.get("report"), str):
+                detail["report"] = json.loads(detail["report"])
+            detail["audit"] = [dict(item) for item in connection.execute(
+                """
+                SELECT a.action, a.previous_status, a.new_status, a.previous_github_issue,
+                       a.new_github_issue, a.note, a.changed_at, u.username AS changed_by_username
+                FROM support_report_audit AS a
+                LEFT JOIN admin_user AS u ON u.id = a.changed_by
+                WHERE a.support_report_id = %s
+                ORDER BY a.id DESC
+                LIMIT 50
+                """,
+                (detail["id"],),
+            ).fetchall()]
+            installations: list[dict[str, Any]] = []
+            updates: list[dict[str, Any]] = []
+            # Only public diagnostics are linked: local-test diagnostics are
+            # not shown in the Admin diagnostic views.
+            if detail.get("operation_id") and not detail.get("is_local_test"):
+                installations = [dict(item) for item in connection.execute(
+                    """
+                    SELECT compatibility_identity, model, canonical_device_model_id,
+                           count(*) AS result_count, max(occurred_at) AS last_occurred_at
+                    FROM compatibility_evidence_event
+                    WHERE operation_id = %s AND is_local_test IS NOT TRUE
+                    GROUP BY compatibility_identity, model, canonical_device_model_id
+                    ORDER BY last_occurred_at DESC
+                    LIMIT 5
+                    """,
+                    (detail["operation_id"],),
+                ).fetchall()]
+                updates = [dict(item) for item in connection.execute(
+                    """
+                    SELECT event_id, outcome, provider, region, occurred_at
+                    FROM map_update_diagnostic
+                    WHERE operation_id = %s AND is_local_test IS FALSE
+                    ORDER BY occurred_at DESC, event_id
+                    LIMIT 5
+                    """,
+                    (detail["operation_id"],),
+                ).fetchall()]
+            detail["installationDiagnostics"] = installations
+            detail["updateDiagnostics"] = updates
+        return detail
+
+    def review_support_report(
+        self,
+        reference: str,
+        *,
+        action: str,
+        admin_user_id: int | None,
+        note: str | None = None,
+        linked_github_issue: str | None = None,
+        request_id: str | None = None,
+    ) -> bool:
+        """Mark handled, reopen, or link/unlink a GitHub issue; audited, report content unchanged."""
+        if action not in {"handle", "reopen", "issue"}:
+            raise ValueError("invalid_support_report_action")
+        if note is not None and (not note or len(note) > 2000):
+            raise ValueError("invalid_support_report_note")
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT id, status, linked_github_issue, note FROM support_report WHERE reference = %s FOR UPDATE",
+                (reference,),
+            ).fetchone()
+            if not row:
+                return False
+            previous_status = str(row["status"])
+            previous_issue = row.get("linked_github_issue")
+            new_status, new_issue, new_note = previous_status, previous_issue, row.get("note")
+            if action == "handle":
+                new_status = "HANDLED"
+                new_note = note if note is not None else new_note
+            elif action == "reopen":
+                new_status = "OPEN"
+                new_note = note if note is not None else new_note
+            else:
+                new_issue = linked_github_issue
+            if (new_status, new_issue, new_note) == (previous_status, previous_issue, row.get("note")):
+                return True
+            connection.execute(
+                """
+                UPDATE support_report
+                SET status = %s,
+                    handled_at = CASE WHEN %s = 'HANDLED' THEN COALESCE(handled_at, now()) ELSE NULL END,
+                    handled_by = CASE WHEN %s = 'HANDLED' THEN COALESCE(handled_by, %s) ELSE NULL END,
+                    linked_github_issue = %s, note = %s, updated_at = now()
+                WHERE id = %s
+                """,
+                (new_status, new_status, new_status, admin_user_id, new_issue, new_note, row["id"]),
+            )
+            audit_action = {
+                "handle": "HANDLED", "reopen": "REOPENED",
+                "issue": "ISSUE_LINKED" if new_issue else "ISSUE_UNLINKED",
+            }[action]
+            connection.execute(
+                """
+                INSERT INTO support_report_audit (
+                    support_report_id, action, previous_status, new_status,
+                    previous_github_issue, new_github_issue, note, changed_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (row["id"], audit_action, previous_status, new_status, previous_issue, new_issue,
+                 note, admin_user_id),
+            )
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="support_report." + audit_action.lower(),
+                target=f"support-report:{reference}",
+                request_id=request_id,
+                old_status=previous_status,
+                new_status=new_status,
+                reason=note,
+                details={"reference": reference, "previousIssue": previous_issue, "issue": new_issue},
+            )
+        return True
+
+    def purge_local_support_reports(
+        self, *, admin_user_id: int | None, request_id: str | None = None,
+    ) -> int:
+        """Delete only server-classified local test support reports (Test data purge)."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                WITH deleted AS (
+                    DELETE FROM support_report WHERE is_local_test IS TRUE RETURNING id
+                )
+                SELECT count(*) AS report_count FROM deleted
+                """
+            ).fetchone() or {}
+            count = int(row.get("report_count") or 0)
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="support_report.local_test_purged",
+                target="local-test-support-reports",
+                request_id=request_id,
+                reason="Authenticated admin purge of server-classified local support reports",
+                details={"supportReportCount": count},
+            )
+        return count
 
     def insert_app_funnel_event(self, event: dict[str, Any]) -> bool:
         """Store one validated funnel event; a replayed event ID is a no-op."""
@@ -5819,7 +6124,8 @@ class Database:
                     """
                     SELECT id, family_id, manufacturer, model, canonical_model, variant,
                            case_size_mm, display_type, part_number, product_url,
-                           source_url, source_image_url, active, screen_technology, solar, inreach
+                           source_url, source_image_url, active, screen_technology, solar, inreach,
+                           map_capable
                     FROM device_model
                     WHERE id = ANY(%s)
                     """,
@@ -5854,6 +6160,10 @@ class Database:
                     ))
                     specifications_changed = any(value is not None and value != existing.get(key)
                         for key, value in (("screen_technology", record.screen_technology), ("solar", record.solar), ("inreach", record.inreach)))
+                    # An Unknown Maps value filled from specification evidence is a change.
+                    specifications_changed = specifications_changed or (
+                        existing.get("map_capable") is None and record.map_capable is not None
+                    )
                     if existing["active"] is False or incoming_values != existing_values or specifications_changed:
                         updated_ids.append(record.id)
                 connection.execute(
@@ -5882,13 +6192,20 @@ class Database:
                         record.product_url,
                         record.source_url,
                         record.source_image_url,
-                        classify_map_capable(record.canonical_model, record.manufacturer),
+                        # Owner rule 2026-10-06: a new model's Maps value comes
+                        # only from official specification evidence (True or
+                        # False); without it the model stays Unknown (NULL,
+                        # installation PENDING). A model-name prefix never
+                        # stores a value, and a stored value is never replaced.
+                        record.map_capable,
                     ),
                 )
 
                 self.enrich_device_specifications(connection, record.id,
-                    {"screen_technology": record.screen_technology, "solar": record.solar, "inreach": record.inreach},
-                    record.product_url, "official-product-specifications", record.retail_skus)
+                    {"screen_technology": record.screen_technology, "solar": record.solar, "inreach": record.inreach,
+                     "map_capable": record.map_capable},
+                    record.product_url, "official-product-specifications", record.retail_skus,
+                    evidence_fields={"map_capable": record.map_evidence_row} if record.map_capable is not None else None)
 
                 connection.execute(
                     """

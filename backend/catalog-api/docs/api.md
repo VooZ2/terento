@@ -198,6 +198,19 @@ Context does not change statistical populations, event idempotency, sharing,
 retention or device-operation authority. Missing or explicitly null fields remain
 unavailable in authenticated diagnostics and generated issue reports.
 
+### Optional `inventoryMetrics` and `GET /admin/inventory-metrics.json`
+
+Schema-version-4 events may carry the optional `inventoryMetrics` object
+defined in `contracts/compatibility-event.schema.json` (`scope` `FULL|GARMIN`,
+pre-write object count and duration, optional post-write count and duration;
+unknown nested keys and out-of-range values are `400 invalid_inventory_metrics`).
+Installation reports store it in `inventory_metrics` and show it in the Admin
+installation report Technical details; update reports keep it in their stored
+payload. `GET /admin/inventory-metrics.json` (admin session) returns, per exact
+model identity and scope, the non-local report count, median/p90 pre-write
+duration and object count, and the last report time. Diagnostics only; never
+an input to counts.
+
 ## `GET https://api.terento.app/admin`
 
 Returns the authenticated operator Dashboard. The default period is the last 24
@@ -206,10 +219,13 @@ hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
 The first row is four tiles: Installs, Updates and Downloads for the selected
 period (successful, failed and rate, with a visible period chip) and Needs
 attention (Now). The Downloads and Installs chart cards follow, each with a
-legend of period totals and an `All time` line with the all-time totals; the
-Downloads card adds the period purpose breakdown (`downloadPurposes`: install,
-update, unknown). Needs attention covers unresolved work across all dates in
-seven fixed rows read only from `admin_review_summary()`, the shared
+legend naming its series (period totals stay in the tiles; only the custom
+`.img` split is counted) and, unless the period is All time, an `All time`
+line with the all-time totals; the Downloads card adds the period purpose
+breakdown (`downloadPurposes`: install, update, unknown). Needs attention covers unresolved work across all dates in
+nine fixed rows read only from `admin_review_summary()`, the open public
+support-report count (`support_report_open_count()`), the active Maps-unknown
+model count (`maps_unknown_model_count()`), the shared
 provider-problem definition and the system checks; an unavailable query shows
 `—` and `Unavailable`. First run shows the `/admin/app-funnel.json` read model
 for the period. App downloads is the separate Terento `.dmg` and `.zip`
@@ -731,6 +747,28 @@ requires an admin session and returns distinct non-local session counts per
 stage/outcome (zero-filled) plus the top base models with authorization outcome
 `PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`. The visual Admin presentation is not
 part of this route.
+
+## `POST /support/reports`
+
+User-sent support reports; meaning, the exact `report` keys and limits are owned
+by [`SUPPORT_REPORT_CONTRACT.md`](../../../contracts/SUPPORT_REPORT_CONTRACT.md).
+Intake accepts at most 64 KiB of schema-version-1 JSON, rejects unknown fields at
+every level (`400`), is idempotent by report `id` (`201` stored, `200` replay,
+both with `{"reference":"TR-XXXXXX","status":...}`), returns `409
+reference_conflict` if another report owns the deterministic reference, and
+allows 10 reports per client address per minute (`429`). The client address is
+used only by the in-memory limiter and is never stored. A `-local` release label
+stores the report as local test data. Reports are kept 12 months after receipt.
+
+The Admin routes are `GET /admin/support-reports?status=open|handled&offset=N`
+(list, 50 per page, public builds only), `GET /admin/support-reports/TR-XXXXXX`
+(detail, including local test reports reached from Test data) and the
+CSRF-protected form posts `/admin/support-reports/handle`, `/reopen` and
+`/issue` (`reference`, optional `note` ≤ 2000 characters, `linked_github_issue`
+as `#123` or empty to unlink). Each action writes `support_report_audit` and
+`admin_audit_log` and redirects to the detail; an unknown reference is `404`,
+invalid input `400`. Local test reports are listed on `/admin/test-data` and
+deleted by its purge.
 
 ## `POST /map-events`
 

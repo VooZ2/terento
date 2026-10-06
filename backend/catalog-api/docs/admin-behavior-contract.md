@@ -41,8 +41,8 @@ Lichen-dark series and legend entry, install failed solid red (destructive
 text), update successful Warm Stone with a stone-dark outline (Warm Stone alone
 is 2.69:1 on white), and update failed red diagonal stripes in bars and legends.
 Stacked segments are separated by a 1 px surface line, every series has a legend
-entry with its period total, and each bucket is one keyboard stop whose label
-lists every series. Fresh-install KPI denominators exclude every update.
+entry (counts follow the Dashboard legend rule), and each bucket is one keyboard
+stop whose label lists every series. Fresh-install KPI denominators exclude every update.
 Not-started updates are diagnostics, not failed device-write attempts. Charts
 and legends must preserve these distinctions at supported widths.
 
@@ -214,23 +214,30 @@ period, whether activity is changing, and what to inspect next. Its first row is
 four metric tiles: Installs, Updates and Downloads for the selected period (each
 with failed count and success rate) and Needs attention (Now). Below them, the
 Downloads and Installs chart cards share a row; each shows the period scope chip,
-a legend with the period total per series, and one secondary line with the
-all-time totals behind an `All time` chip. Tile values and legend totals use the
-same period population, so they agree. The Downloads card also breaks the period
+a legend naming its series and one compact line with the all-time totals behind
+an `All time` chip (omitted when the period is All time, because the tiles then
+show those totals). Period totals live only in the tiles; a legend shows a count
+only where it adds information no tile shows (the Custom .img install split, and
+the App downloads period increases). Tiles and charts use the same period
+population, so they agree. The Downloads card also breaks the period
 total down by purpose (For installs, For updates, Not recorded). Below the
-charts, Needs attention, First run and App downloads form the leading column
-while Activity spans the trailing column. The narrow order is tiles, Downloads,
-Installs, Needs attention, Activity, First run, then App downloads.
+charts, Needs attention and Activity share a row, then First run and App
+downloads share the next row; when one of those cards is omitted the remaining
+one spans the row, so no Dashboard row leaves an empty grid cell at ≥1024 px.
+The narrow order is tiles, Downloads, Installs, Needs attention, Activity, First
+run, then App downloads.
 
 Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
 `Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`), carries a glossary link with that definition, shows its
-all-time totals with an `All time` chip, and is omitted when no usable counter
-or trend data exists. First run shows the separate app first-run funnel
+period increases in the legend and its all-time totals and last update in one
+`All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
 population for the period (sessions, connected vs not connected by reason,
-authorization outcomes and the top waiting models); it never mixes into install
-counts. A failed sub-query renders that card as `Unavailable` with a Retry link
+authorization outcomes and the top waiting models); each reason, outcome and
+model is one row with its label, a small horizontal bar scaled to its share of
+the period's sessions and its count as text (zero rows are omitted). It never
+mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
 Activity is internally scrollable and must not force page height. A generic
 activity row has no Maps link unless an exact useful destination exists.
@@ -246,12 +253,32 @@ successful/failed, while map operations distinguish install successful, custom
 `.img` install successful, install failed, update successful and update failed,
 each with its own legend entry; optional components and pre-write failures remain
 excluded by the statistics contract. Each bucket is one keyboard stop with a
-label listing every series; segments are presentational.
+label listing every series; segments are presentational. Tapping, clicking or
+keyboard-focusing a bucket (Enter/Space also select it) fills a small value
+strip under the chart with the bucket date, every series value (`—` when not
+recorded) and the total, announced through `aria-live`; values never require
+hover. The strip uses the shared inline nonce script, no chart library, and the
+charts stay server-rendered SVG.
 
-Needs attention covers unresolved work across all dates in seven fixed category
+Chart geometry is truthful with two legibility rules shared by every Admin bar
+chart. Minimum segment: a non-zero stacked segment is drawn at least about
+3 CSS px tall (5 chart units on the desktop chart, 4 on the compact chart); the
+added height is taken proportionally from the larger segments of the same bar,
+so each bar keeps its true total height on the axis scale. Only a bar whose
+true height is below that floor for each of its non-zero segments grows to
+exactly the floor, and exact values always remain in the bucket label and value
+strip. X axis: every bucket is labelled when the labels fit, otherwise every
+second bucket (or the smallest regular step that fits on the compact chart),
+always including the most recent bucket and never overlapping.
+
+Needs attention covers unresolved work across all dates in nine fixed category
 rows, each with an icon, label, count and arrow: Open problems, GitHub issues,
-Identity review, Publication review, Missing reports, Provider problems and
-System checks. Rows with zero stay listed (muted) so the shape is stable. Counts
+Identity review, Publication review, Missing reports, Support reports, Maps
+unknown, Provider problems and System checks. Maps unknown counts active catalog
+models whose stored Maps value is NULL (installation `PENDING`) from its own
+query and opens Devices filtered to `Maps: Unknown` and active models
+(`/admin/devices?maps=unknown&active=1`), which shows the same total; a failed
+query shows that row as unavailable. Rows with zero stay listed (muted) so the shape is stable. Counts
 come only from the canonical review read model, the shared provider-problem
 definition and the system checks; there is no fallback from another definition.
 A failed query shows `—` with an explicit `Unavailable` message, never `0` or
@@ -286,6 +313,24 @@ statistics-excluded diagnostic is present evidence, and an
 may open the matching collapsed Maps Event detail; aggregate statistics remain
 unchanged. A received device failure instead opens its actionable diagnostic
 context and is not redirected to aggregate Maps as a substitute.
+
+Support reports counts open reports from public (non-local) builds, read from
+its own query; a failed query shows that row as `Unavailable` (`—`) and the
+Needs attention tile as partial, never `0`. `/admin/support-reports` shows Open
+(`Now`), Handled and Reports (`All time`, i.e. the 12-month retention window)
+tiles, Open/Handled filter chips with their counts, and a table (Reference,
+Category, Report, Model, App version, Received, Status pill) with 50 rows per
+page, newest receipt first. The detail (`/admin/support-reports/TR-XXXXXX`)
+shows Summary, Problem, Description and a collapsed Technical details section
+(IDs, verification, failure context, lifecycle facts, finishing diagnostics),
+with Actions (Mark handled / Reopen with an optional note, GitHub issue link),
+Diagnostics (links to the public installation report model view and update
+report with the same operation ID, or an explicit "not received" state) and
+History. Every action is authenticated, CSRF-protected, idempotent and audited
+and never changes the received report or any count. Local test reports are
+listed only on Tools → Test data, open from there with a `Local test` pill, link
+no diagnostics and are deleted by the Test data purge. Support reports are never
+statistics ([`SUPPORT_REPORT_CONTRACT.md`](../../../contracts/SUPPORT_REPORT_CONTRACT.md)).
 
 Provider acquisition failure remains activity/history, not an installation
 failure, open problem, identity task, or publication task. Never borrow a model from
@@ -380,9 +425,13 @@ period (each with failed count, rate and a visible period chip) with the downloa
 purpose breakdown and, unless the period is All time, one `All time` line with
 the all-time totals; then the Downloads and Installs trend cards; then Countries
 (world map) and Top countries; then Providers; then Top maps; then the collapsed
-Events disclosure. These analytics are not placed in disclosures. The world map
-remains visible and Top countries shows up to 10 rows from the existing country
-ranking. A period without rows shows measured zero tiles and an empty-scope note;
+Events disclosure. These analytics are not placed in disclosures on wider
+screens. At ≤600 px the three tiles form one compact three-column row, and Top
+countries, Providers and Top maps start collapsed behind a Show/Hide button
+(`aria-expanded`, card title in its accessible name) so the page stays short;
+a link to an element inside a collapsed card opens it, and without script or
+above 600 px every card stays open. The world map remains visible and Top
+countries shows up to 10 rows from the existing country ranking. A period without rows shows measured zero tiles and an empty-scope note;
 it never shows populated all-time numbers as if they were the period. Diagnostic
 linkage coverage may remain in the private API contract but is not shown as an
 Admin block. Events uses human labels (event type, provider, map name) with the
@@ -454,7 +503,10 @@ installation outcomes, device files, telemetry, statistics, or publication.
 
 Diagnostic detail retains the result, time, map/provider, device identity,
 available image, reason, lifecycle actions, issue actions, and one collapsed
-Technical details section. A successful result with pending identity is not a
+Technical details section. When an installation report carries
+`inventoryMetrics`, Technical details lists its scope, pre-write objects and
+check time, and post-write objects and check time; they are diagnostics, never
+counts. A successful result with pending identity is not a
 failure.
 
 ### Shared installation and update review
@@ -496,6 +548,12 @@ visible with an ambiguity notice and are excluded from completed counts.
 Updates never change installation metrics or public compatibility evidence.
 The Installs card labels its timestamp `Last report` (the last installation
 report); it is not a combined installation/update activity timestamp.
+On the model detail page the Installation history sits in the right-hand
+column (two-fifths summary, three-fifths history at ≥1024 px) and renders as
+compact table rows there: Date, Map, Result pill, Error, App version and the
+Inspect action, plus the GitHub issue column whenever a listed row has a linked
+issue. Below 1024 px it keeps the record-card layout. Filters, pagination and
+Inspect dialogs are unchanged.
 The broad Devices listing keeps its existing compact columns.
 
 ### Model sources
@@ -587,9 +645,11 @@ the Dashboard.
 Admin preserves consistent left edges and the existing spacing scale, with no
 block overlap or page-level horizontal overflow. It remains usable at effective
 200% zoom, uses one compact menu column, keeps charts visible rather than
-collapsed, trailing-aligns numbers and dates where practical, and uses
-content-driven heights instead of artificial equal-height whitespace. Controls
-retain keyboard focus, readable labels, and existing `aria-sort` semantics.
+collapsed, and trailing-aligns numbers and dates where practical. Cards that
+share a grid row (Dashboard and Maps) stretch to one height; charts in a row use
+one chart height, the shorter card's spare space sits below its content and an
+`All time` line aligns to the card bottom. Controls retain keyboard focus,
+readable labels, and existing `aria-sort` semantics.
 
 ## Mandatory change and release gate
 

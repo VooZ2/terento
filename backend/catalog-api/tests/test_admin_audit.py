@@ -58,9 +58,15 @@ class AdminAuditTests(unittest.TestCase):
         from terento_catalog.admin import ADMIN_STYLES
 
         self.assertIn('.overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
-        self.assertIn('.overview-primary-grid{align-items:start}', ADMIN_STYLES)
+        # Cards sharing a row stretch to one height (review 2026-10-06).
+        self.assertIn('.overview-primary-grid{align-items:stretch}', ADMIN_STYLES)
+        self.assertIn('.map-statistics-coverage-layout{align-items:stretch;', ADMIN_STYLES)
         self.assertIn('.overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}', ADMIN_STYLES)
-        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'funnel activity' 'downloads activity';", ADMIN_STYLES)
+        # Needs attention | Activity, then First run | App downloads; a lone
+        # last card spans the row so no grid cell stays empty.
+        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;", ADMIN_STYLES)
+        self.assertIn(".overview-composition-grid>.overview-panel:last-child:nth-child(odd){grid-column:1/-1}", ADMIN_STYLES)
+        self.assertNotIn("grid-template-areas:'attention activity'", ADMIN_STYLES)
         self.assertNotIn('.overview-tertiary-grid', ADMIN_STYLES)
 
     def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):

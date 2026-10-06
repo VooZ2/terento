@@ -273,6 +273,11 @@ them. Live semantic behavior still needs the separate read-only review above.
 App first-run funnel events (`POST /app-funnel/events`, migration 070,
 [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md)) follow the same order: deploy
 the API that accepts schema version 1 before any client build emits them.
+Support reports (`POST /support/reports`, migration 071,
+[`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) likewise require the
+API and its migration to be deployed and verified before an app build shows
+"Send report to Terento"; until then a client must keep the report locally and
+only offer the GitHub option.
 
 For build31, `INSTALL_FAILED_UNKNOWN` is the additive compatibility-event code;
 existing schema versions and fields remain unchanged. `MAP_UPDATE_SUCCEEDED` and
@@ -282,6 +287,18 @@ public client can emit them. Initial operation context
 is in memory and terminal reports enter the existing durable outbox. This does
 not add crash journaling before a result exists, and cannot recover a historical
 missing report or infer an unknown user's watch.
+
+## Server-first inventory metrics
+
+Schema version 4 additionally accepts an optional top-level `inventoryMetrics`
+object (`scope` `FULL|GARMIN`, `prewriteObjectCount` 0…10,000,000,
+`prewriteDurationMs` 0…86,400,000, optional `postwriteObjectCount` and
+`postwriteDurationMs`; unknown nested keys are `400`, null means absent;
+versions 1–3 reject it). Migration 072 stores it in the nullable
+`compatibility_evidence_event.inventory_metrics` column; update reports keep it
+in their payload. The metrics are diagnostics only and never counts. Deploy and
+verify the API before an app build emits the field; an older API rejects the
+unknown key with `400`.
 
 ## Server-first structured failure context
 

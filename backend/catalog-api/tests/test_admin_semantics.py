@@ -1042,7 +1042,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("No pending work.", attention)
         self.assertNotIn("Download failed", attention)
         # Fixed category rows keep their shape whatever the counts are.
-        self.assertEqual(attention.count("class='overview-attention-row'"), 7)
+        self.assertEqual(attention.count("class='overview-attention-row'"), 9)
 
     def test_failure_reason_normalizes_source_validation_variants(self):
         for category, stage, code in (
@@ -1477,14 +1477,16 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("Observed download increases between checks.", body)
         self.assertNotIn("overview-info", body)
         self.assertIn("Last update ", body)
-        self.assertIn("overview-download-total' aria-label='.dmg downloads total, all time: 23'><strong>23</strong><small>.dmg", body)
-        self.assertIn("overview-download-total' aria-label='.zip downloads total, all time: 11'><strong>11</strong><small>.zip", body)
-        totals = body.split("class='overview-download-totals'", 1)[1].split("</div><div class='overview-chart-wrap'>", 1)[0]
+        # One compact All time line carries the totals; the legend the period.
+        totals = body.split("class='overview-all-time overview-download-all-time'", 1)[1].split("</p>", 1)[0]
         self.assertIn("data-scope='all'>All time</span>", totals)
+        self.assertIn(".dmg <strong>23</strong> · .zip <strong>11</strong>", totals)
+        self.assertIn("Last update ", totals)
+        self.assertNotIn("overview-download-totals", body)
         self.assertLess(body.index("overview-attention-title"), body.index("overview-activity-title"))
         self.assertLess(body.index("overview-activity-title"), body.index("overview-downloads-title"))
         self.assertNotIn("overview-kpi-panel", body)
-        self.assertLess(body.index("overview-download-totals"), body.index("overview-chart-wrap", body.index("overview-downloads-title")))
+        self.assertLess(body.index("overview-chart-wrap", body.index("overview-downloads-title")), body.index("class='overview-all-time overview-download-all-time'"))
 
     def test_overview_publication_review_opens_filtered_devices_workspace(self):
         body = overview_page(
@@ -1540,7 +1542,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Install successful: 2", body)
         self.assertIn("Custom .img install: 3", body)
         self.assertIn("Install failed: 1", body)
-        # The legend names every series, including custom .img, with period totals.
+        # The legend names every series; custom .img keeps its period count.
         legend = body[body.index("<ul class='overview-chart-legend"):]
         self.assertIn("<span>Custom .img install</span><strong>3</strong>", legend)
         self.assertIn("<i class='overview-chart-custom'", legend)
@@ -1783,7 +1785,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("data-stat='completedInstallCount'>96</strong>", dashboard_body)
         self.assertIn("Failed 10</span> · 90.6%", dashboard_body)
-        self.assertIn("Installs <strong>96</strong> · Failed <strong>10</strong> · Rate <strong>90.6%</strong>", dashboard_body)
+        # With All time selected the tiles are the all-time totals; no
+        # duplicate All time line is rendered under the chart.
+        self.assertNotIn("Installs <strong>96</strong> · Failed <strong>10</strong>", dashboard_body)
         self.assertIn("data-stat='completedInstalls'>96</strong>", maps_body)
         self.assertIn("data-stat='failedInstalls'", maps_body)
         self.assertIn("data-stat='installSuccessRate'>90.6%</strong>", maps_body)

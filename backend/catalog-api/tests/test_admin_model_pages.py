@@ -113,6 +113,34 @@ class BlockedBeforeWritingTests(unittest.TestCase):
         self.assertIn("Installation blocked before writing", body)
 
 
+class ModelHistoryLayoutTests(unittest.TestCase):
+    """Desktop history: compact table rows at >=1024 px, cards below (review 2026-10-06)."""
+
+    def test_history_rows_keep_columns_labels_filters_and_inspect(self):
+        device = _admin_device_payload([DEVICE_ROW], None)["devices"][0]
+        body = device_detail_page(device, {"username": "operator"}, "csrf",
+                                  operations=[BlockedBeforeWritingTests.PREWRITE], open_problem_count=1).decode()
+        table = body.split("<table class='diagnostic-list-table model-history-table mobile-record-table'>", 1)[1].split("</table>", 1)[0]
+        headers = ["Date", "Map", "Result", "Error", "GitHub issue", "App version", "Action"]
+        self.assertEqual([h for h in headers if f">{h}</th>" in table], headers)
+        row = table.split("<tbody id='diagnostic-rows'>", 1)[1].split("</tr>", 1)[0]
+        for label in headers:
+            self.assertIn(f"data-label='{label}'", row)
+        self.assertIn("class='secondary-button diagnostic-review'", row)
+        self.assertIn("data-history-filter='failed'", body)
+
+    def test_desktop_table_rule_and_tablet_card_rule_do_not_overlap(self):
+        from terento_catalog.admin import ADMIN_STYLES
+        desktop = ADMIN_STYLES.split("@media(min-width:1024px){\n  .model-evidence-grid", 1)[1].split("\n}", 1)[0]
+        self.assertIn(".model-evidence-history .model-history-table{min-width:0;width:100%;table-layout:fixed}", desktop)
+        self.assertIn(".model-evidence-grid{grid-template-columns:minmax(0,2fr) minmax(0,3fr)}", "  .model-evidence-grid" + desktop)
+        # The GitHub issue column is shown only when a listed row has an issue.
+        self.assertIn(":not(:has(td[data-label='GitHub issue'] a)) :is(th,td):nth-child(5){display:none}", desktop)
+        self.assertNotIn("tbody tr{display:grid", desktop)
+        self.assertIn("@media(min-width:901px) and (max-width:1023px){\n  .model-evidence-history .table-wrap:has(.mobile-record-table)", ADMIN_STYLES)
+        self.assertNotIn("@media(min-width:901px){\n  .model-evidence-history", ADMIN_STYLES)
+
+
 class PickerTemplateTests(unittest.TestCase):
     def test_model_detail_renders_the_catalog_picker_once_per_page(self):
         device = _admin_device_payload([DEVICE_ROW], None)["devices"][0]

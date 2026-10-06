@@ -254,6 +254,7 @@ def _admin_icon(name: str) -> str:
         "question": "<circle cx='8' cy='8' r='6'/><path d='M6.3 6.3a1.8 1.8 0 1 1 2.5 1.6c-.5.2-.8.6-.8 1.1v.3'/><path d='M8 11.4h.01'/>",
         "minus": "<circle cx='8' cy='8' r='6'/><path d='M5.5 8h5'/>",
         "download": "<path d='M8 2.5v8'/><path d='m4.5 7 3.5 3.5L11.5 7'/><path d='M3 13.5h10'/>",
+        "message": "<path d='M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z'/><path d='M5 6.25h6'/><path d='M5 8.5h4'/>",
     }
     path = paths.get(name, "")
     if not path:
@@ -374,6 +375,13 @@ ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
      "A current provider package with at least one failed or unavailable map file."),
     ("health-states", "Health states",
      "Healthy, Degraded, Failed or No data. No data means the check has no evidence yet."),
+    ("support-report", "Support report",
+     "A sanitised issue report that a user chose to send from the app, with an optional "
+     "description. Review work only, never counted in statistics; kept 12 months after receipt."),
+    ("maps-unknown", "Maps unknown",
+     "An active catalog model whose Maps value is not known yet: the official Garmin "
+     "specifications did not say whether it supports maps, so installation stays Pending "
+     "until an administrator sets Maps to Yes or No."),
     ("first-run", "First run session",
      "One app launch that reported a first-run stage (connect, authorization, catalog or "
      "a blocked install). A separate population, never mixed into install counts."),
@@ -472,9 +480,22 @@ def _metric_row(tiles: list[str], *, label: str, css: str = "") -> str:
 def _section_card(
     title: str, body: str, *, card_id: str, action: tuple[str, str] | None = None,
     scope: str | None = None, css: str = "", glossary: str | None = None,
-    heading_tag: str = "h2", extra_attributes: str = "",
+    heading_tag: str = "h2", extra_attributes: str = "", mobile_collapse: bool = False,
 ) -> str:
-    """A card with a 1–2 word title, an optional scope chip and one action link."""
+    """A card with a 1–2 word title, an optional scope chip and one action link.
+
+    ``mobile_collapse`` lets a long card start collapsed at ≤600 px behind a
+    Show/Hide button (the shared mobile-collapse script); without script or on
+    wider screens it stays fully open.
+    """
+    if mobile_collapse:
+        extra_attributes += " data-mobile-collapse"
+    toggle_markup = (
+        f"<button type='button' class='secondary-button admin-card-toggle' data-mobile-collapse-toggle "
+        f"aria-expanded='true' aria-controls='{html.escape(card_id, quote=True)}' hidden>"
+        f"Hide<span class='sr-only'> {html.escape(title)}</span></button>"
+        if mobile_collapse else ""
+    )
     action_markup = (
         f"<a class='admin-card-action section-link' href='{html.escape(action[0], quote=True)}'>"
         f"{html.escape(action[1])}&nbsp;{_admin_icon('arrow-right')}</a>"
@@ -485,7 +506,7 @@ def _section_card(
         f"{html.escape(title)}</{heading_tag}>"
         + (_glossary_link(glossary) if glossary else "")
         + (_scope_chip(scope) if scope else "")
-        + action_markup + "</header>"
+        + action_markup + toggle_markup + "</header>"
     )
     return (
         f"<section class='admin-card{(' ' + css) if css else ''}' id='{html.escape(card_id, quote=True)}' "
@@ -924,6 +945,23 @@ def _diagnostic_technical_details(result: dict[str, Any], result_number: int) ->
     ):
         if result.get(key) is not None:
             fields.append((label, _diagnostic_boolean(result.get(key))))
+    metrics = result.get("inventory_metrics")
+    if isinstance(metrics, str):
+        try:
+            metrics = json.loads(metrics)
+        except ValueError:
+            metrics = None
+    if isinstance(metrics, dict):
+        # Diagnostics only (inventoryMetrics); never a count.
+        for label, key in (
+            ("Inventory scope", "scope"),
+            ("Pre-write objects", "prewriteObjectCount"),
+            ("Pre-write check (ms)", "prewriteDurationMs"),
+            ("Post-write objects", "postwriteObjectCount"),
+            ("Post-write check (ms)", "postwriteDurationMs"),
+        ):
+            if metrics.get(key) is not None:
+                fields.append((label, metrics[key]))
     for key, prefix in (('failure_context', 'Failure'), ('original_failure_context', 'Original failure')):
         if key == 'original_failure_context' and result.get(key) is None:
             fields.append(('Original failure context', 'unavailable'))
@@ -1004,6 +1042,24 @@ def local_test_data_page(
         f"<td class='column-date'>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
         for row in summary.get('activity', [])
     ) or "<tr><td colspan='5'>No local test events recorded.</td></tr>"
+    support_section = ""
+    if "supportReports" in summary:
+        # Local support reports appear only here (SUPPORT_REPORT_CONTRACT.md).
+        from .support_report_admin import support_report_table
+        local_reports = summary.get("supportReports")
+        if not isinstance(local_reports, dict) or local_reports.get("available") is False:
+            support_section = _unavailable_card("Support reports", "test-data-support-reports")
+        else:
+            rows = list(local_reports.get("rows") or [])
+            total = _optional_nonnegative_int(local_reports.get("totalCount")) or 0
+            support_section = _section_card(
+                "Support reports",
+                _metric_row([_metric_tile("Local reports", total, scope="now", glossary="support-report")],
+                            label="Local support reports")
+                + (support_report_table(rows, caption="Local test support reports, newest first, up to 50")
+                   if rows else _empty_state("empty", "No local test support reports.")),
+                card_id="test-data-support-reports", css="test-data-card",
+            )
     content = f"""
       {_admin_header(user, csrf_token, active='test-data')}
       <main id="main-content" class="dashboard test-data-page" aria-labelledby="test-data-title">
@@ -1034,7 +1090,7 @@ def local_test_data_page(
             <div>
 
               <h3>Delete test data</h3>
-              <p class="table-help">This removes only server-classified local test telemetry.</p>
+              <p class="table-help">This removes only server-classified local test telemetry and local test support reports.</p>
             </div>
             <form method="post" action="/admin/test-data/purge" class="admin-danger-form">
               <input type="hidden" name="csrf_token" value="{html.escape(csrf_token, quote=True)}">
@@ -1045,6 +1101,7 @@ def local_test_data_page(
             </form>
           </div>
         </section>
+        {support_section}
       </main>
     """
     return _layout("Test data", content, sections={"testData": summary})
@@ -1612,21 +1669,97 @@ def _overview_chart_bucket_label(
     return parsed.strftime("%d %b")
 
 
+# Minimum drawn height of a non-zero stacked segment, in chart units: about
+# 3 CSS px at the narrowest supported card width (desktop 720-unit chart at
+# ~0.63 scale, compact 360-unit chart at ~0.9 scale).
+_CHART_MIN_SEGMENT = 5.0
+_CHART_MIN_SEGMENT_COMPACT = 4.0
+
+
 def _overview_stacked_segments(
     counts: tuple[int | None, ...], center: float, bar_width: float,
     baseline: float, plot_height: float, scale_maximum: float,
+    *, minimum: float = _CHART_MIN_SEGMENT,
 ) -> dict[int, tuple[float, float, float, float]]:
-    """Return one shared x/width and cumulative y geometry for each segment."""
+    """Return one shared x/width and cumulative y geometry for each segment.
+
+    The bar keeps its true height (``plot_height * total / scale``). A tiny
+    non-zero segment is drawn at least ``minimum`` tall; the extra height is
+    taken proportionally from the larger segments of the same bar, so the bar
+    total and the axis scale stay truthful. Only when the true bar is shorter
+    than ``minimum`` per non-zero segment does the bar grow to exactly that
+    floor. Exact values remain in each bucket's label and value strip.
+    """
+    present = [(index, count) for index, count in enumerate(counts) if count is not None and count > 0]
+    if not present:
+        return {}
+    total = sum(count for _, count in present)
+    bar_height = max(plot_height * total / scale_maximum, minimum * len(present))
+    heights = {index: bar_height * count / total for index, count in present}
+    lifted: set[int] = set()
+    while True:
+        small = [index for index, height in heights.items() if index not in lifted and height < minimum]
+        if not small:
+            break
+        lifted.update(small)
+        free = [(index, count) for index, count in present if index not in lifted]
+        free_total = sum(count for _, count in free)
+        remaining = bar_height - minimum * len(lifted)
+        for index in lifted:
+            heights[index] = minimum
+        for index, count in free:
+            heights[index] = remaining * count / free_total if free_total else minimum
     x = center - bar_width / 2
     y = baseline
     segments: dict[int, tuple[float, float, float, float]] = {}
-    for index, count in enumerate(counts):
-        if count is None or count <= 0:
-            continue
-        height = max(3.0, plot_height * count / scale_maximum)
-        y -= height
-        segments[index] = (x, bar_width, y, height)
+    for index, _ in present:
+        y -= heights[index]
+        segments[index] = (x, bar_width, y, heights[index])
     return segments
+
+
+def _chart_value_attributes(date: str, values: list[tuple[str, str, int | None]], total: int | None) -> str:
+    """Data for the tap/focus value strip: bucket date, every series and total."""
+    payload = {"date": date, "total": total, "values": [list(item) for item in values]}
+    return f" data-chart-values='{html.escape(json.dumps(payload, ensure_ascii=False), quote=True)}'"
+
+
+def _chart_value_strip() -> str:
+    """Small live strip under a chart; filled by the shared chart-values script."""
+    return (
+        "<p class='overview-chart-values admin-legend' data-chart-values-strip aria-live='polite'>"
+        "<span class='overview-chart-values-hint'>Tap or focus a bar to see its values.</span></p>"
+    )
+
+
+def _chart_axis_labels(
+    positions: list[float], texts: list[str], *, font_size: float, chart_width: float,
+    gap: float = 6.0,
+) -> list[tuple[int, str]]:
+    """X-axis labels without overlap: every bucket when the labels fit, else
+    every second (or the smallest regular step that fits), always keeping the
+    most recent bucket. Returns ``(index, text-anchor)`` pairs."""
+    count = len(texts)
+    if not count:
+        return []
+    widths = [len(text) * font_size * 0.6 for text in texts]
+    spacing = min((b - a for a, b in zip(positions, positions[1:]) if b > a), default=chart_width)
+    widest = max(widths)
+    step = 1
+    while step < count and step * spacing < widest + gap:
+        step += 1
+    placed: list[tuple[int, str, float, float]] = []
+    for index in range(count - 1, -1, -step):
+        x, width = positions[index], widths[index]
+        anchor, start, end = "middle", x - width / 2, x + width / 2
+        if start < 0:
+            anchor, start, end = "start", x, x + width
+        if end > chart_width:
+            anchor, start, end = "end", x - width, x
+        if placed and end + gap > placed[-1][2]:
+            continue  # an edge-anchored label would touch its neighbour
+        placed.append((index, anchor, start, end))
+    return [(index, anchor) for index, anchor, _, _ in reversed(placed)]
 
 
 _INSTALL_CHART_SERIES = (
@@ -1638,18 +1771,24 @@ _INSTALL_CHART_SERIES = (
     ("update", "Update successful", "map_update_success_count"),
     ("update-failed", "Update failed", "map_update_failed_count"),
 )
+_LEGEND_COUNTED_SERIES = frozenset({"custom"})
 _DOWNLOAD_CHART_SERIES = (
     ("download-success", "Download successful", "download_success_count"),
     ("download-failed", "Download failed", "download_failed_count"),
 )
 
 
-def _chart_legend(items: list[tuple[str, str, int | None]], *, label: str) -> str:
-    """One legend for every chart: swatch, noun and the period count."""
+_LEGEND_NAME_ONLY = object()  # legend entry that names its series without a count
+
+
+def _chart_legend(items: list[tuple[str, str, Any]], *, label: str) -> str:
+    """One legend for every chart: swatch, noun and, when it adds information
+    not already in a tile, the period count (``_LEGEND_NAME_ONLY`` omits it)."""
     entries = "".join(
         f"<li><i class='overview-chart-{html.escape(name, quote=True)}' aria-hidden='true'></i>"
         f"<span>{html.escape(text)}</span>"
-        + (f"<strong>{count:,}</strong>" if count is not None else "<strong>—</strong>")
+        + ("" if count is _LEGEND_NAME_ONLY else
+           f"<strong>{count:,}</strong>" if count is not None else "<strong>—</strong>")
         + "</li>"
         for name, text, count in items
     )
@@ -1708,6 +1847,7 @@ def _overview_trend_chart(
         stack_total = sum(counts)
         segments = _overview_stacked_segments(
             counts, center, bar_width, top + plot_height, plot_height, scale_maximum,
+            minimum=_CHART_MIN_SEGMENT_COMPACT if _compact else _CHART_MIN_SEGMENT,
         )
         for series_index, (count, (name, label, field)) in enumerate(zip(counts, series)):
             timestamps = list(item.get(f"{field.removesuffix('_count')}_times") or [])
@@ -1731,23 +1871,20 @@ def _overview_trend_chart(
             group_title += " · " + " · ".join(series_titles)
         group_title += f" · {time_zone}"
         # One keyboard stop per bucket; the segments are presentational.
+        strip_data = _chart_value_attributes(
+            bucket_label, [(name, label, count) for count, (name, label, _) in zip(counts, series)], stack_total,
+        )
         bars.append(
-            f"<g class='overview-chart-group' role='img' tabindex='0' aria-label='{html.escape(group_title, quote=True)}'>"
+            f"<g class='overview-chart-group' role='img' tabindex='0'{strip_data} aria-label='{html.escape(group_title, quote=True)}'>"
             f"<title>{html.escape(group_title)}</title>{''.join(group_bars)}</g>"
         )
-    if _compact:
-        label_indexes = {0, (len(values) - 1) // 2, len(values) - 1}
-    else:
-        label_count = 8 if bucket == "hour" else 6
-        label_step = max(1, math.ceil((len(values) - 1) / max(label_count - 1, 1)))
-        label_indexes = {index for index in range(len(values)) if index % label_step == 0}
-        label_indexes.update({0, len(values) - 1})
-    for index in sorted(label_indexes):
-        item = trend[index]
-        anchor = 'start' if index == 0 else 'end' if index == len(values) - 1 else 'middle'
+    axis_texts = [_overview_chart_bucket_label(item.get("bucket"), bucket, time_zone) for item in trend]
+    for index, anchor in _chart_axis_labels(
+        x_positions, axis_texts, font_size=13 if _compact else 11, chart_width=chart_width,
+    ):
         labels.append(
             f"<text x='{x_positions[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}' aria-hidden='true'>"
-            f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>"
+            f"{html.escape(axis_texts[index])}</text>"
         )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='group' aria-label='{chart_label}'>"
@@ -1755,10 +1892,13 @@ def _overview_trend_chart(
     )
     if _compact:
         return svg
+    # Tiles carry the period totals; the legend names the series and counts
+    # only the custom .img split, which no tile shows on its own.
     totals = [sum(counts[index] for counts in values) for index in range(len(series))]
     legend = _chart_legend(
-        [(name, label, total) for (name, label, _), total in zip(series, totals)],
-        label=f"{chart_label} legend and period totals",
+        [(name, label, total if name in _LEGEND_COUNTED_SERIES else _LEGEND_NAME_ONLY)
+         for (name, label, _), total in zip(series, totals)],
+        label=f"{chart_label} legend",
     )
     return (
         "<div class='overview-chart-wrap'>"
@@ -1767,7 +1907,7 @@ def _overview_trend_chart(
             trend, bucket, time_zone, metric=metric,
             has_activity=has_activity, chart_id=chart_id, _compact=True,
         )
-        + legend + "</div>"
+        + _chart_value_strip() + legend + "</div>"
     )
 
 
@@ -1949,8 +2089,14 @@ def _overview_downloads_chart(
             interval_title = "Download interval: " + " · ".join(zero_titles)
             group_title += " · " + interval_title
         # One keyboard stop per bucket; the segments are presentational.
+        strip_data = _chart_value_attributes(
+            _overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone),
+            [(css_class.removeprefix("overview-chart-"), label.removesuffix(" downloads"), count)
+             for (label, css_class), count in zip(series, counts)],
+            stack_total if all(count is not None for count in counts) else None,
+        )
         group_accessibility = (
-            " class='overview-chart-group' role='img' tabindex='0' aria-label='"
+            " class='overview-chart-group' role='img' tabindex='0'" + strip_data + " aria-label='"
             + html.escape(group_title, quote=True)
             + "'"
         )
@@ -1962,6 +2108,7 @@ def _overview_downloads_chart(
         )
         segments = _overview_stacked_segments(
             tuple(counts), center, bar_width, top + plot_height, plot_height, scale_maximum,
+            minimum=_CHART_MIN_SEGMENT_COMPACT if _compact else _CHART_MIN_SEGMENT,
         )
         for series_index, ((label, css_class), count) in enumerate(zip(series, counts)):
             if count is None:
@@ -1991,20 +2138,15 @@ def _overview_downloads_chart(
         )
         if marker:
             bars.append(marker)
-        label_step = max(1, round((len(values) - 1) / 11))
-        show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
-        if _compact:
-            show_label = index in {0, (len(values) - 1) // 2, len(values) - 1}
-        if show_label:
-            anchor = (
-                'start' if _compact and index == 0
-                else 'end' if _compact and index == len(values) - 1
-                else 'middle'
-            )
-            labels.append(
-                f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>"
-                f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone))}</text>"
-            )
+    centers = [position_center(index) for index in range(len(values))]
+    axis_texts = [_overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone) for item in trend]
+    for index, anchor in _chart_axis_labels(
+        centers, axis_texts, font_size=13 if _compact else 11, chart_width=chart_width,
+    ):
+        labels.append(
+            f"<text x='{centers[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>"
+            f"{html.escape(axis_texts[index])}</text>"
+        )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
         f"viewBox='0 0 {chart_width} {chart_height}' role='group' "
@@ -2017,6 +2159,7 @@ def _overview_downloads_chart(
         "<div class='overview-chart-wrap'>"
         + svg
         + _overview_downloads_chart(downloads, time_zone, period=period, _compact=True)
+        + _chart_value_strip()
         + _chart_legend(
             [("download-dmg", ".dmg", _sum_known(values, 0)), ("download-zip", ".zip", _sum_known(values, 1))],
             label="Terento app download legend and period increases",
@@ -2197,27 +2340,36 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
             _metric_tile("Not connected", sum(not_connected.values()), failure=True),
         ], label="First run sessions")
 
-        def breakdown(items: dict[str, int]) -> str:
-            ordered = sorted(items.items(), key=lambda item: (-item[1], item[0]))
-            return " · ".join(
-                f"{html.escape(_FUNNEL_LABELS.get(key, key.replace('_', ' ').title()))} <strong>{value:,}</strong>"
-                for key, value in ordered
-            ) or "—"
+        def bars(title: str, items: list[tuple[str, int]]) -> str:
+            """Label, a bar scaled to the share of sessions, and the count."""
+            rows = "".join(
+                f"<li><span class='overview-funnel-label'>{html.escape(label)}</span>"
+                f"<span class='overview-funnel-bar' aria-hidden='true'><i style='width:{min(100.0, value / sessions * 100):.1f}%'></i></span>"
+                f"<strong>{value:,}</strong><span class='sr-only'> of {sessions:,} sessions</span></li>"
+                for label, value in items
+            ) or "<li class='overview-funnel-none'><span class='overview-funnel-label'>—</span></li>"
+            return (
+                f"<div class='overview-funnel-group'><h3>{html.escape(title)}</h3>"
+                f"<ul class='overview-funnel-bars' aria-label='{html.escape(title, quote=True)}'>{rows}</ul></div>"
+            )
+
+        def ordered(items: dict[str, int]) -> list[tuple[str, int]]:
+            return [
+                (_FUNNEL_LABELS.get(key, key.replace('_', ' ').title()), value)
+                for key, value in sorted(items.items(), key=lambda item: (-item[1], item[0]))
+            ]
 
         waiting = [
-            item for item in funnel.get("modelsNeedingReview") or []
+            (str(item["baseModel"]), _optional_nonnegative_int(item.get("sessionCount")) or 0)
+            for item in funnel.get("modelsNeedingReview") or []
             if isinstance(item, dict) and item.get("baseModel")
         ][:3]
-        waiting_markup = " · ".join(
-            f"{html.escape(str(item['baseModel']))} <strong>{_optional_nonnegative_int(item.get('sessionCount')) or 0}</strong>"
-            for item in waiting
-        ) or "—"
         body = tiles + (
-            "<dl class='overview-funnel-breakdown'>"
-            f"<div><dt>Not connected</dt><dd>{breakdown(not_connected)}</dd></div>"
-            f"<div><dt>Authorization</dt><dd>{breakdown(authorization)}</dd></div>"
-            f"<div><dt>Waiting models</dt><dd>{waiting_markup}</dd></div>"
-            "</dl>"
+            "<div class='overview-funnel-breakdown'>"
+            + bars("Not connected", ordered(not_connected))
+            + bars("Authorization", ordered(authorization))
+            + bars("Waiting models", waiting)
+            + "</div>"
         )
     return _section_card(
         "First run", body, card_id="overview-funnel", scope=period,
@@ -2273,6 +2425,23 @@ def overview_page(
         # from another definition (ADM-02).
         attention_counts.append(count)
         attention_rows.append(_attention_row(label, count, href, icon, unavailable=count is None))
+    # Support reports have their own read model: a failed count is unavailable
+    # for this row only, never a fallback number (SUPPORT_REPORT_CONTRACT.md).
+    support = overview.get("supportReports")
+    support_count = (
+        _optional_nonnegative_int(support.get("openCount"))
+        if isinstance(support, dict) and support.get("available") is not False else None
+    )
+    attention_counts.append(support_count)
+    attention_rows.append(_attention_row("Support reports", support_count, "/admin/support-reports", "message"))
+    # Active catalog models whose Maps value is Unknown (installation PENDING).
+    maps_unknown = overview.get("mapsUnknown")
+    maps_unknown_count = (
+        _optional_nonnegative_int(maps_unknown.get("modelCount"))
+        if isinstance(maps_unknown, dict) and maps_unknown.get("available") is not False else None
+    )
+    attention_counts.append(maps_unknown_count)
+    attention_rows.append(_attention_row("Maps unknown", maps_unknown_count, "/admin/devices?maps=unknown&active=1", "question"))
     provider_states = [_provider_problem_state(provider) for provider in providers]
     provider_problem_count = (
         sum(1 for state in provider_states if state["problem"]) if providers_available else None
@@ -2345,6 +2514,9 @@ def overview_page(
 
     # --- Charts with an explicit all-time line -------------------------------
     def all_time_line(items: list[tuple[str, Any, str]]) -> str:
+        # With All time selected the tiles already show these totals.
+        if period == "all":
+            return ""
         parts = []
         for label, value, fmt in items:
             rendered = _metric_value_text(value, fmt)
@@ -2425,12 +2597,11 @@ def overview_page(
     elif download_has_data:
         downloads_section = _section_card(
             "App downloads",
-            "<div class='overview-download-totals' aria-label='Terento app downloads total, all time'>"
-            f"<div class='overview-download-total' aria-label='.dmg downloads total, all time: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
-            f"<div class='overview-download-total' aria-label='.zip downloads total, all time: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
-            f"{_scope_chip('all')}</div>"
+            # Legend: period increases; one compact All time line: totals.
             f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
-            f"<p class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</p>",
+            f"<p class='overview-all-time overview-download-all-time'>{_scope_chip('all')}"
+            f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong></span>"
+            f"<span class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</span></p>",
             card_id="overview-downloads", scope=period, glossary="terento-app-download",
             css="overview-panel overview-download-panel",
         )
@@ -2451,6 +2622,7 @@ def overview_page(
     return _layout("Dashboard", content, sections={
         "mapActivity": data, "compatibility": compatibility, "downloads": downloads,
         "providers": providers, "review": review, "funnel": overview.get("funnel"),
+        "supportReports": overview.get("supportReports"), "mapsUnknown": overview.get("mapsUnknown"),
         "system": [(card["title"], card["status"], card["reason"]) for card in health_cards],
     })
 
@@ -4092,7 +4264,7 @@ def map_statistics_page(
     coverage = f"""
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installs by country'>
           {_section_card('Countries', "<p class='table-help' id='map-statistics-world-map-status'>Successful installs</p><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', scope=selected_period, css='provider-card map-statistics-world-map-card')}
-          {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', scope=selected_period, css='provider-card map-statistics-popularity')}
+          {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', scope=selected_period, css='provider-card map-statistics-popularity', mobile_collapse=True)}
         </section>"""
     stream_buttons = "".join(
         f"<button type='button' class='quick-filter{' active' if value == 'installs' else ''}' data-provider-stream='{value}' aria-pressed='{'true' if value == 'installs' else 'false'}'>{label}</button>"
@@ -4105,12 +4277,13 @@ def map_statistics_page(
         "<thead><tr><th scope='col'>Provider</th><th scope='col' class='column-number'>Successful</th><th scope='col' class='column-number'>Failed</th><th scope='col' class='column-number'>Rate</th><th scope='col' class='column-date' id='provider-stream-date'>Last success</th></tr></thead>"
         "<tbody id='provider-statistic-rows'></tbody></table></div>",
         card_id="map-statistics-provider-table", scope=selected_period,
-        css="provider-card map-statistics-provider-table",
+        css="provider-card map-statistics-provider-table", mobile_collapse=True,
     )
     ranking = _section_card(
         "Top maps",
         "<label class='popularity-search-label' for='all-maps-search'>Search</label><input type='search' id='all-maps-search' placeholder='Map or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top maps</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' id='all-maps-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div>",
         card_id="maps-by-provider", scope=selected_period, css="provider-card map-statistics-ranking",
+        mobile_collapse=True,
     )
     events = (
         f"<section class='admin-card provider-card map-events-card'><details class='admin-disclosure' id='map-statistics-event-detail'{event_detail_open}>"
@@ -6729,6 +6902,8 @@ def _devices_script() -> str:
       sortKey = parameters.get('sort') || saved.sort || 'model';
       sortDirection = parameters.get('direction') || saved.direction || 'ascending';
       publicationReview = parameters.get('review') === 'publication';
+      // Needs attention → Maps unknown opens active models only.
+      const activeOnly = parameters.get('active') === '1';
       if (publicationReview) { search.value = ''; family.value = 'all'; map.value = 'all'; support.value = 'all'; status.value = 'all'; }
       showNew = parameters.get('new') === '1' || (!parameters.size && saved.new === true);
       const mapValue = (device) => device.mapCapable === true ? 'yes' : device.mapCapable === false ? 'no' : 'unknown';
@@ -6781,6 +6956,7 @@ def _devices_script() -> str:
         if (sortDirection !== 'ascending') query.set('direction', sortDirection);
         if (showNew) query.set('new', '1');
         if (publicationReview) query.set('review', 'publication');
+        if (activeOnly) query.set('active', '1');
         history.replaceState(null, '', `${window.location.pathname}?${query.toString()}`);
       };
       const matching = () => {
@@ -6788,6 +6964,7 @@ def _devices_script() -> str:
         return devices.filter((device) => {
           if (publicationReview && !(device.publicCompatibility?.eligible && ['TESTED', 'SUPPORTED', 'VERIFIED'].includes(device.evidenceStatus) && !device.publicCompatibility?.published && device.publicCompatibility?.reviewStatus !== 'REJECTED')) return false;
           if (showNew) return device.catalog?.newInLatestSync === true;
+          if (activeOnly && device.active === false) return false;
           const matchesSearch = !query || deviceSearch(device).includes(query);
           const matchesFamily = family.value === 'all' || family.value === (device.familyName || device.family);
           const matchesMap = map.value === 'all' || mapValue(device) === map.value;
@@ -7959,10 +8136,6 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-download-panel{padding-top:16px;padding-bottom:16px}
 .overview-download-panel .section-heading{margin-bottom:6px}
-.overview-download-totals{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
-.overview-download-total{display:inline-flex;align-items:baseline;gap:4px;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
-.overview-download-total strong{color:var(--graphite);font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
-.overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
 .overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
 .overview-chart-download-marker line{stroke-width:2;stroke-dasharray:4 3}.overview-chart-download-marker text{stroke:none;font-size:10px;font-weight:700}.overview-chart-download-release line{stroke:var(--interactive)}.overview-chart-download-release text{fill:var(--interactive)}.overview-chart-download-boundary line{stroke:var(--secondary)}.overview-chart-download-boundary text{fill:var(--secondary)}
@@ -7975,9 +8148,8 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
   .overview-trend-mobile text{font-size:13px}
 }
 @media(max-width:760px){
-  .overview-download-totals{justify-content:flex-start;margin-inline-start:0}
 }
-@media(max-width:560px){.overview-download-totals{flex-basis:100%}.overview-attention-actions{grid-column:2;justify-content:flex-start;flex-wrap:wrap}}
+@media(max-width:560px){.overview-attention-actions{grid-column:2;justify-content:flex-start;flex-wrap:wrap}}
 .device-information-section .model-information-list{max-width:780px}
 .device-information-section .model-information-list div{grid-template-columns:150px minmax(0,1fr);gap:16px}
 .device-information-section .model-information-list dd{text-align:left}
@@ -8042,7 +8214,7 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 
 .model-status-line{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-top:8px}.model-status-line>span{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.model-status-line strong{color:var(--graphite);font-size:12px}.compact-empty-state{margin-top:20px;padding:18px 20px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}.compact-empty-state h2{margin:0 0 4px}.compact-empty-state p{margin:0;color:var(--secondary)}.diagnostic-identity-state{margin:12px 0;padding:10px 12px;border-left:3px solid var(--warning);background:var(--surface-muted);font-size:13px}
-.overview-primary-grid{align-items:start}.overview-primary-grid>.overview-panel{min-height:0}
+.overview-primary-grid{align-items:stretch}.overview-primary-grid>.overview-panel{min-height:0}
 .model-administration>summary,.device-information-section>summary{margin-bottom:12px}
 .model-administration,.device-information-section{padding:0;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}
 .admin-live-update{position:sticky;top:var(--admin-topbar-height);z-index:29;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 24px;background:var(--selected-tint,var(--surface));border-bottom:1px solid var(--border);font-size:14px}
@@ -8165,7 +8337,7 @@ main.dashboard>.heading-row h1{margin:0}
 .world-map-country.is-region-highlight{fill:var(--interactive)!important;stroke:var(--graphite);stroke-width:2}
 .region-map-link{display:inline;padding:0;border:0;border-radius:0;background:none;color:var(--interactive);text-align:left;text-decoration:underline;text-underline-offset:3px;white-space:normal;font:inherit;cursor:pointer}
 .region-map-link:hover{background:none;color:var(--graphite)}
-.map-statistics-coverage-layout{align-items:start;grid-template-columns:minmax(0,3fr) minmax(300px,1fr)}
+.map-statistics-coverage-layout{align-items:stretch;grid-template-columns:minmax(0,3fr) minmax(300px,1fr)}
 @media(max-width:1100px){.map-statistics-coverage-layout{grid-template-columns:minmax(0,1fr)}}
 .system-health-row[hidden]{display:none}
 .test-data-activity-caption{display:block;width:100%;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;text-align:left;padding:12px;font-size:13px;font-weight:650}
@@ -8446,8 +8618,9 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .map-statistics-provider-table .admin-table th,.map-statistics-provider-table .admin-table td{padding-inline:7px}
 .map-statistics-provider-table .admin-table td{white-space:normal;overflow-wrap:anywhere}
 .map-statistics-provider-table .admin-table .column-date{width:142px;overflow-wrap:normal;white-space:nowrap}
-.overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'funnel activity' 'downloads activity';grid-template-rows:auto auto 1fr;align-items:start;gap:16px;margin-top:16px}
-.overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-attention-panel{grid-area:attention}.overview-composition-grid>.overview-activity-panel{grid-area:activity}.overview-composition-grid>.overview-funnel-panel{grid-area:funnel}.overview-composition-grid>.overview-download-panel{grid-area:downloads}
+/* Rows: Needs attention | Activity, then First run | App downloads. Cards in a row stretch to one height; a lone last card spans the row so no grid cell stays empty. */
+.overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:16px;margin-top:16px}
+.overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-panel:last-child:nth-child(odd){grid-column:1/-1}
 .overview-heading+.overview-primary-grid{margin-top:0}
 .overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}
 .map-activity-row>time{grid-row:1}
@@ -8459,7 +8632,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .model-evidence-history>.model-page-section{margin-top:0}
 .diagnostic-secondary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px;margin-top:16px}
 .diagnostic-secondary-grid>.diagnostic-secondary-disclosure{min-width:0;margin:0}
-@media(min-width:901px){
+@media(min-width:901px) and (max-width:1023px){
   .model-evidence-history .table-wrap:has(.mobile-record-table){border:0;background:transparent;overflow:visible;border-radius:0}
   .model-evidence-history table.mobile-record-table{display:block;min-width:0!important;width:100%;border:0;table-layout:auto}
   .model-evidence-history .mobile-record-table colgroup,.model-evidence-history .mobile-record-table thead{display:none}
@@ -8470,7 +8643,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
   .model-evidence-history .mobile-record-table tbody td:first-child,.model-evidence-history .mobile-record-table tbody td:has(button){grid-column:1/-1}
   .model-evidence-history .mobile-record-table td button{width:100%;min-height:44px}
 }
-@media(max-width:900px){.overview-composition-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:'attention' 'activity' 'funnel' 'downloads';grid-template-rows:none}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:900px){.overview-composition-grid{grid-template-columns:minmax(0,1fr)}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:760px){
   .admin-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
   .admin-nav-group{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
@@ -8567,12 +8740,11 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-all-time{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0;color:var(--secondary);font-size:13px}
 .overview-all-time strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600}
 .overview-all-time>.section-link{margin-left:auto}
-.overview-purposes,.overview-funnel-breakdown{display:grid;gap:4px;margin:10px 0 0;font-size:13px}
+.overview-purposes{display:grid;gap:4px;margin:10px 0 0;font-size:13px}
 .overview-purposes{grid-template-columns:repeat(3,minmax(0,max-content));gap:4px 20px}
-.overview-purposes>div,.overview-funnel-breakdown>div{display:flex;flex-wrap:wrap;gap:4px 8px;min-width:0}
-.overview-purposes dt,.overview-funnel-breakdown dt{color:var(--secondary)}
-.overview-purposes dd,.overview-funnel-breakdown dd{margin:0;font-variant-numeric:tabular-nums}
-.overview-funnel-breakdown dt{min-width:110px}
+.overview-purposes>div{display:flex;flex-wrap:wrap;gap:4px 8px;min-width:0}
+.overview-purposes dt{color:var(--secondary)}
+.overview-purposes dd{margin:0;font-variant-numeric:tabular-nums}
 @media(max-width:560px){.overview-purposes{grid-template-columns:minmax(0,1fr)}}
 .admin-glossary{display:grid;gap:0;margin:0}
 .admin-glossary-entry{display:grid;grid-template-columns:minmax(160px,220px) minmax(0,1fr);gap:4px 20px;padding:12px 0;border-top:1px solid var(--border);scroll-margin-top:calc(var(--admin-topbar-height) + 16px)}
@@ -8601,6 +8773,78 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-chart-group:focus-visible rect{stroke:var(--graphite);stroke-width:2}
 """
 
+# Support reports (contracts/SUPPORT_REPORT_CONTRACT.md).
+ADMIN_STYLES += """
+.support-report-filters{margin:0 0 12px}
+.support-report-filters a.quick-filter{display:inline-flex;align-items:center;text-decoration:none}
+.support-report-table code,.support-report-page h1 code{font-family:var(--font-mono);font-size:inherit}
+.support-report-table{min-width:760px}
+.support-report-table td{white-space:normal;overflow-wrap:anywhere}
+.support-report-table td.column-date,.support-report-table td.column-status{white-space:nowrap}
+.support-report-table th:nth-child(1){width:104px}.support-report-table th:nth-child(2){width:112px}
+.support-report-table th:nth-child(5){width:124px}.support-report-table th:nth-child(7){width:104px}
+.support-report-has-message,.support-report-meta,.support-report-optional{color:var(--secondary);font-size:12px}
+.support-report-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:16px;align-items:start}
+.support-report-main,.support-report-side{display:grid;gap:16px;min-width:0}
+.support-report-message{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.support-report-title{margin:0 0 8px;overflow-wrap:anywhere}
+.support-report-form{display:grid;gap:8px;margin:0 0 14px}
+.support-report-form:last-child{margin-bottom:0}
+.support-report-form label{display:grid;gap:4px;font-size:13px;font-weight:600}
+.support-report-form textarea,.support-report-form input{width:100%;min-height:var(--admin-control-height);font:inherit;font-weight:400}
+.support-report-form button{justify-self:start}
+.support-report-links,.support-report-history,.support-report-list{display:grid;gap:8px;margin:0;padding:0;list-style:none;font-size:13px}
+.support-report-history p{margin:4px 0 0;color:var(--secondary);white-space:pre-wrap;overflow-wrap:anywhere}
+.support-report-trace{max-height:320px;overflow:auto;margin:0;padding:10px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);font-family:var(--font-mono);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
+.support-report-technical h3{margin:14px 0 6px;font-size:13px}
+@media(max-width:900px){.support-report-grid{grid-template-columns:minmax(0,1fr)}}
+.support-report-form button.support-report-primary{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}
+/* Admin review fixes 2026-10-06 (admin-behavior-contract.md, Responsive and layout invariants). */
+.overview-chart-panel,.overview-download-panel{display:flex;flex-direction:column}
+.overview-chart-panel>.overview-chart-wrap,.overview-download-panel>.overview-chart-wrap{width:100%}
+.overview-chart-panel>.overview-all-time,.overview-download-panel>.overview-all-time{margin-top:auto;padding-top:10px}
+.overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
+.overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
+.overview-funnel-breakdown{display:grid;gap:12px;margin:12px 0 0}
+.overview-funnel-group h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
+.overview-funnel-bars{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
+.overview-funnel-bars li{display:grid;grid-template-columns:minmax(96px,1.1fr) minmax(0,2fr) minmax(32px,auto);align-items:center;gap:8px;min-width:0}
+.overview-funnel-label{min-width:0;overflow-wrap:anywhere}
+.overview-funnel-bar{display:block;height:8px;border-radius:4px;background:var(--surface-muted)}
+.overview-funnel-bar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--status-neutral-text)}
+.overview-funnel-bars strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
+.overview-chart-values-date{color:var(--graphite)}
+.overview-chart-values-hint{color:var(--secondary)}
+.overview-trend-chart .overview-chart-group{cursor:pointer}
+/* Model installation history: compact table rows at >=1024 px (cards below). The GitHub issue column shows only when a row has an issue. */
+@media(min-width:1024px){
+  .model-evidence-grid{grid-template-columns:minmax(0,2fr) minmax(0,3fr)}
+  .model-evidence-history .model-history-table{min-width:0;width:100%;table-layout:fixed}
+  .model-evidence-history .model-history-table th,.model-evidence-history .model-history-table td{padding:8px 6px;font-size:12px;line-height:16px;vertical-align:middle;white-space:normal;overflow-wrap:anywhere}
+  .model-evidence-history .model-history-table th:nth-child(1){width:16%}.model-evidence-history .model-history-table th:nth-child(2){width:16%}
+  .model-evidence-history .model-history-table th:nth-child(3){width:20%}.model-evidence-history .model-history-table th:nth-child(4){width:21%}
+  .model-evidence-history .model-history-table th:nth-child(5){width:10%}.model-evidence-history .model-history-table th:nth-child(6){width:11%}
+  .model-evidence-history .model-history-table th:nth-child(7){width:13%}
+  .model-evidence-history .model-history-table .column-date{text-align:left;overflow-wrap:normal}
+  .model-evidence-history .model-history-table th{overflow-wrap:normal}
+  .model-evidence-history .model-history-table .diagnostic-review{white-space:nowrap}
+  .model-evidence-history .model-history-table:not(:has(td[data-label='GitHub issue'] a)) :is(th,td):nth-child(5){display:none}
+  .model-evidence-history .model-history-table td.column-status:last-child{text-align:right}
+  .model-evidence-history .model-history-table .diagnostic-review{min-height:32px;padding:4px 8px}
+}
+@media(max-width:600px){
+  .map-statistics-metrics>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .map-statistics-metrics .admin-metric{min-width:0}
+  .map-statistics-metrics .admin-metric-value{font-size:20px;line-height:26px}
+  .map-statistics-metrics .admin-metric-meta{flex-wrap:wrap;font-size:11px}
+  .map-statistics-metrics .admin-metric-label{font-size:12px}
+  [data-mobile-collapse][data-mobile-collapsed]>:not(.admin-card-head){display:none}
+  [data-mobile-collapse][data-mobile-collapsed]>.admin-card-head{margin-bottom:0}
+}
+.overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}
+"""
+
 def _error(message: str | None) -> str:
     return f"<p class='error'>{html.escape(message)}</p>" if message else ""
 
@@ -8619,11 +8863,98 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script())
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_mobile_collapse_script())
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body class="admin-shell">{content}</body></html>""".encode("utf-8")
+
+
+def _admin_chart_values_script() -> str:
+    """Tap, click or keyboard focus on a chart bucket fills the chart's value
+    strip (date, every series and total); no hover is required."""
+    return r"""(() => {
+      const show = (group) => {
+        const wrap = group.closest('.overview-chart-wrap');
+        const strip = wrap && wrap.querySelector('[data-chart-values-strip]');
+        if (!strip) return;
+        let data;
+        try { data = JSON.parse(group.dataset.chartValues || ''); } catch { return; }
+        wrap.querySelectorAll('.overview-chart-group.is-selected').forEach((node) => node.classList.remove('is-selected'));
+        group.classList.add('is-selected');
+        const parts = [];
+        const date = document.createElement('strong');
+        date.className = 'overview-chart-values-date';
+        date.textContent = String(data.date || '');
+        parts.push(date);
+        (data.values || []).forEach(([name, label, value]) => {
+          const item = document.createElement('span');
+          const swatch = document.createElement('i');
+          if (/^[a-z-]+$/.test(String(name))) swatch.className = 'overview-chart-' + name;
+          swatch.setAttribute('aria-hidden', 'true');
+          const count = document.createElement('strong');
+          count.textContent = value === null || value === undefined ? '—' : Number(value).toLocaleString('en-US');
+          item.append(swatch, document.createTextNode(String(label) + ' '), count);
+          parts.push(item);
+        });
+        if (data.total !== null && data.total !== undefined) {
+          const total = document.createElement('span');
+          const count = document.createElement('strong');
+          count.textContent = Number(data.total).toLocaleString('en-US');
+          total.append(document.createTextNode('Total '), count);
+          parts.push(total);
+        }
+        strip.replaceChildren(...parts);
+      };
+      const target = (event) => event.target instanceof Element ? event.target.closest('.overview-chart-group[data-chart-values]') : null;
+      document.addEventListener('click', (event) => { const group = target(event); if (group) show(group); });
+      document.addEventListener('focusin', (event) => { const group = target(event); if (group) show(group); });
+      document.addEventListener('keydown', (event) => {
+        const group = target(event);
+        if (group && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); show(group); }
+      });
+    })();"""
+
+
+def _admin_mobile_collapse_script() -> str:
+    """Long cards marked ``data-mobile-collapse`` start collapsed at ≤600 px;
+    the Show/Hide button and links into the card reopen them."""
+    return r"""(() => {
+      const narrow = matchMedia('(max-width: 600px)');
+      const set = (card, open) => {
+        const button = card.querySelector('[data-mobile-collapse-toggle]');
+        card.toggleAttribute('data-mobile-collapsed', !open);
+        if (!button) return;
+        button.setAttribute('aria-expanded', String(open));
+        button.firstChild.textContent = open ? 'Hide' : 'Show';
+      };
+      const adapt = () => {
+        document.querySelectorAll('[data-mobile-collapse]').forEach((card) => {
+          const button = card.querySelector('[data-mobile-collapse-toggle]');
+          if (button) button.hidden = !narrow.matches;
+          if (!narrow.matches) set(card, true);
+          else if (!card.dataset.mobileCollapseReady) set(card, false);
+          card.dataset.mobileCollapseReady = narrow.matches ? 'true' : '';
+        });
+      };
+      const reveal = () => {
+        let id;
+        try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+        const target = id && document.getElementById(id);
+        const card = target && target.closest('[data-mobile-collapse]');
+        if (card) set(card, true);
+      };
+      document.addEventListener('click', (event) => {
+        const button = event.target instanceof Element ? event.target.closest('[data-mobile-collapse-toggle]') : null;
+        const card = button && button.closest('[data-mobile-collapse]');
+        if (card) set(card, card.hasAttribute('data-mobile-collapsed'));
+      });
+      narrow.addEventListener('change', adapt);
+      window.addEventListener('terento-admin-content-changed', adapt);
+      window.addEventListener('hashchange', reveal);
+      adapt();
+      reveal();
+    })();"""
 
 
 def _admin_disclosure_script() -> str:

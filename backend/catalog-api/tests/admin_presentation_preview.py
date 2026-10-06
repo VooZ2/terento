@@ -1,5 +1,6 @@
 """Build read-only Admin pages with deterministic presentation evidence."""
 
+import json
 from pathlib import Path
 import shutil
 import sys
@@ -18,6 +19,8 @@ from terento_catalog.admin import (
     diagnostics_page,
     map_statistics_page,
 )
+from terento_catalog.support_report_admin import support_report_detail_page, support_reports_page
+from terento_catalog.support_reports import validate_support_report
 
 
 def _daily_trend() -> list[dict[str, object]]:
@@ -370,6 +373,40 @@ def create(root: Path) -> None:
             "occurred_at": f"2026-09-{20 - index:02d}T19:47:00Z",
         } for index, region in enumerate(("France", "Lithuania", "Germany"))],
         "total": 3, "limit": 50, "offset": 0,
+    }, user, "fixture"))
+    support_fixture = json.loads((Path(__file__).parents[3] / "contracts" / "fixtures" / "support-report.valid.json").read_text())
+    support = validate_support_report(json.dumps(support_fixture).encode())
+    support_rows = [{
+        "id": support["id"], "reference": support["reference"], "received_at": "2026-10-06T09:41:09Z",
+        "created_at": "2026-10-06T09:41:07Z", "app_build": "42", "release_label": "1.0.0-beta.19",
+        "is_local_test": False, "category": category, "operation_id": support["operationId"], "status": "OPEN",
+        "handled_at": None, "linked_github_issue": None, "title": title, "device_model": model,
+        "device_variant": variant, "has_user_message": index == 0,
+    } for index, (category, title, model, variant) in enumerate((
+        ("INSTALL_FAILED", support["report"]["title"], "fēnix 8", "51 mm, AMOLED"),
+        ("CONNECTION", None, None, None),
+        ("UPDATE_FAILED", "Map update stopped during failedInsufficientSpace — freizeitkarte / Germany", "Forerunner 965", None),
+    ))]
+    for index, row in enumerate(support_rows[1:], start=1):
+        row["reference"] = "TR-PREV" + "AB"[index - 1] * 2
+    (root / "support-reports.html").write_bytes(support_reports_page({
+        "rows": support_rows, "status": "OPEN", "limit": 50, "offset": 0,
+        "openCount": 3, "handledCount": 12, "totalCount": 15, "filteredTotal": 3,
+    }, user, "fixture"))
+    (root / "support-reports-empty.html").write_bytes(support_reports_page({
+        "rows": [], "status": "OPEN", "limit": 50, "offset": 0,
+        "openCount": 0, "handledCount": 12, "totalCount": 12, "filteredTotal": 0,
+    }, user, "fixture"))
+    (root / "support-report.html").write_bytes(support_report_detail_page({
+        **support_rows[0], "user_message": support["userMessage"], "report": support["report"],
+        "note": None, "handled_by_username": None,
+        "audit": [{"action": "REOPENED", "changed_by_username": "Preview", "changed_at": "2026-10-06T12:10:00Z",
+                   "note": "Waiting for a new report after the cable change."},
+                  {"action": "HANDLED", "changed_by_username": "Preview", "changed_at": "2026-10-06T11:00:00Z", "note": None}],
+        "installationDiagnostics": [{"compatibility_identity": "fēnix 8 · 51 mm, AMOLED", "model": "fēnix 8",
+                                     "canonical_device_model_id": "fenix-8-51-amoled", "result_count": 1,
+                                     "last_occurred_at": "2026-10-06T09:40:00Z"}],
+        "updateDiagnostics": [],
     }, user, "fixture"))
     site_assets = Path(__file__).parents[3] / "site"
     shutil.copytree(site_assets / "assets" / "fonts", root / "fonts", dirs_exist_ok=True)

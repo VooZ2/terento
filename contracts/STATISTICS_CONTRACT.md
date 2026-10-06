@@ -43,7 +43,13 @@ reports can be lost, and old releases emitted less information.
 Terento keeps four related but separate populations. App first-run funnel
 sessions ([`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md)) are a fifth,
 independent population: they are never mixed into acquisition, fresh-install,
-update, download, compatibility or Needs attention counts.
+update, download, compatibility or Needs attention counts. User-sent support
+reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
+statistical population at all: they are review work only and never change any
+count, rate or chart. Optional installation-report `inventoryMetrics`
+(pre-/post-write inventory object counts and durations) are diagnostics only:
+they never add, remove or reclassify any acquisition, install, update, download
+or compatibility count.
 
 - **Acquisitions** are provider-download attempts. Only terminal
   `DOWNLOAD_SUCCEEDED` and `DOWNLOAD_FAILED` events count. `STARTED`,
