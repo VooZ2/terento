@@ -69,17 +69,18 @@ for (const locale of locales) {
   assert.doesNotMatch(entries[5].markup, /href="mailto:hello@terento\.app/);
   assert.match(entries[5].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue"/);
   assert.match(entries[5].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email"/);
-  // Troubleshooting questions deep-link the matching Troubleshooting guide sections.
-  const troubleshootingLinks = (markup) => [...markup.matchAll(/<a href="([^"#]+)#([a-z-]+)" data-umami-event="guide-link-click" data-umami-event-location="home-faq-([a-z-]+)">/g)]
-    .map(([, target, anchor, location]) => {
-      assert.equal(target, localePath(locale, "guides/troubleshooting/"), `${home}: FAQ troubleshooting link target`);
-      assert.equal(location, anchor, `${home}: FAQ troubleshooting link location`);
-      return anchor;
-    });
-  assert.deepEqual(troubleshootingLinks(entries[4].markup), ["connect-watch", "garmin-busy"], `${home}: watch-not-showing-up FAQ links`);
-  assert.deepEqual(troubleshootingLinks(entries[5].markup), ["download-failed", "leftover-map"], `${home}: installation-failed FAQ links`);
-  assert.deepEqual(troubleshootingLinks(entries.slice(0, 4).map((entry) => entry.markup).join("")), [], `${home}: product FAQ answers stay focused`);
-  assert.match(entries[5].answer, /Manage maps/, `${home}: leftover map is removed in Manage maps`);
+  // The FAQ section has one general Troubleshooting link, on the installation-failed answer.
+  const faqSection = source.match(/<section\b[^>]*\bid=["']faq["'][^>]*>([\s\S]*?)<\/section>/i)[1];
+  const troubleshootingLinks = [...faqSection.matchAll(/<a\b[^>]*href="([^"]*guides\/troubleshooting\/[^"]*)"[^>]*>/g)].map((match) => match[0]);
+  assert.equal(troubleshootingLinks.length, 1, `${home}: exactly one Troubleshooting link in the FAQ`);
+  assert.equal(
+    troubleshootingLinks[0],
+    `<a href="${localePath(locale, "guides/troubleshooting/")}" data-umami-event="guide-link-click" data-umami-event-location="home-faq-troubleshooting">`,
+    `${home}: general Troubleshooting link without an anchor`,
+  );
+  assert.match(entries[5].markup, /data-umami-event-location="home-faq-troubleshooting"/, `${home}: Troubleshooting link sits on the installation-failed answer`);
+  assert.doesNotMatch(faqSection, /guides\/troubleshooting\/#/, `${home}: no anchor links inside FAQ answers`);
+  assert.doesNotMatch(entries[4].markup, /<a\b/, `${home}: watch-not-showing-up answer has no inline links`);
   if (locale === "en") {
     assert.match(entries[1].markup, />Read the installation guide\.</);
     assert.match(entries[5].markup, />Open an issue /);

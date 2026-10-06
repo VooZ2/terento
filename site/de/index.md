@@ -109,11 +109,11 @@ Ja. Terento zeigt, wenn neuere Veröffentlichungen verfügbar sind, und hilft di
 
 Warum wird meine Garmin-Uhr am Mac nicht erkannt?
 
-Verbinde die Uhr direkt über ein USB-Kabel mit Datenübertragung, entsperre sie und warte bis zu 2 Minuten. Erscheint sie weiterhin nicht, beende Garmin Express, Android File Transfer, OpenMTP und andere Programme, die die Uhr verwenden können. [Sieh dir die Verbindungsschritte an](https://terento.app/de/guides/troubleshooting/#connect-watch) oder [prüfe, welche Apps die Uhr blockieren können](https://terento.app/de/guides/troubleshooting/#garmin-busy).
+Verbinde die Uhr direkt über ein USB-Kabel mit Datenübertragung, entsperre sie und warte bis zu 2 Minuten. Erscheint sie weiterhin nicht, beende Garmin Express, Android File Transfer, OpenMTP und andere Programme, die die Uhr verwenden können.
 
 Was soll ich tun, wenn die Installation fehlschlägt?
 
-Lies den Grund, den Terento anzeigt. Ist der Kartendownload fehlgeschlagen, [prüfe deine Verbindung und versuche es später erneut](https://terento.app/de/guides/troubleshooting/#download-failed). Wurde die Installation beim Kopieren abgebrochen, [entferne den Kartenrest in „Manage maps“](https://terento.app/de/guides/troubleshooting/#leftover-map) und installiere die Karte erneut. Hilft das nicht, wähle nach der fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler.
+Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler. [Lies die Fehlerbehebung.](https://terento.app/de/guides/troubleshooting/)
 
 [Issue öffnen](https://github.com/VooZ2/terento/issues/new/choose) [Support per E-Mail](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

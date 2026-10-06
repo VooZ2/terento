@@ -109,11 +109,11 @@ Sì. Terento mostra quando sono disponibili versioni più recenti e ti aiuta ad 
 
 Perché il Mac non rileva il mio orologio Garmin?
 
-Collega l’orologio direttamente con un cavo USB che trasferisca i dati, sbloccalo e attendi fino a 2 minuti. Se non appare ancora, chiudi Garmin Express, Android File Transfer, OpenMTP e le altre app che possono usare l’orologio. [Vedi i passaggi di collegamento](https://terento.app/it/guides/troubleshooting/#connect-watch) o [controlla quali app possono bloccare l’orologio](https://terento.app/it/guides/troubleshooting/#garmin-busy).
+Collega l’orologio direttamente con un cavo USB che trasferisca i dati, sbloccalo e attendi fino a 2 minuti. Se non appare ancora, chiudi Garmin Express, Android File Transfer, OpenMTP e le altre app che possono usare l’orologio.
 
 Cosa devo fare se l’installazione non riesce?
 
-Leggi il motivo indicato da Terento. Se il download della mappa non è riuscito, [controlla la connessione e riprova più tardi](https://terento.app/it/guides/troubleshooting/#download-failed). Se l’installazione si è interrotta durante la copia, [rimuovi la mappa rimasta in “Manage maps”](https://terento.app/it/guides/troubleshooting/#leftover-map) e installala di nuovo. Se non riesce ancora, nella schermata di installazione non riuscita scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo.
+Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo. [Leggi la guida alla risoluzione dei problemi.](https://terento.app/it/guides/troubleshooting/)
 
 [Apri una issue](https://github.com/VooZ2/terento/issues/new/choose) [Scrivi all’assistenza](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

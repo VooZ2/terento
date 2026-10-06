@@ -109,11 +109,11 @@ Tak. Terento pokazuje, gdy dostępne są nowsze wydania, i pomaga aktualizować 
 
 Dlaczego Mac nie widzi mojego zegarka Garmin?
 
-Podłącz zegarek bezpośrednio kablem USB do przesyłania danych, odblokuj go i poczekaj do 2 minut. Jeśli nadal się nie pojawia, zamknij Garmin Express, Android File Transfer, OpenMTP i inne aplikacje, które mogą używać zegarka. [Zobacz kroki podłączania](https://terento.app/pl/guides/troubleshooting/#connect-watch) lub [sprawdź, które aplikacje mogą blokować zegarek](https://terento.app/pl/guides/troubleshooting/#garmin-busy).
+Podłącz zegarek bezpośrednio kablem USB do przesyłania danych, odblokuj go i poczekaj do 2 minut. Jeśli nadal się nie pojawia, zamknij Garmin Express, Android File Transfer, OpenMTP i inne aplikacje, które mogą używać zegarka.
 
 Co zrobić, jeśli instalacja się nie powiedzie?
 
-Przeczytaj powód podany przez Terento. Jeśli nie udało się pobrać mapy, [sprawdź połączenie i spróbuj później](https://terento.app/pl/guides/troubleshooting/#download-failed). Jeśli instalacja zatrzymała się podczas kopiowania, [usuń pozostałą mapę w „Manage maps”](https://terento.app/pl/guides/troubleshooting/#leftover-map) i zainstaluj ją ponownie. Jeśli nadal się nie udaje, na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.
+Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało. [Przeczytaj poradnik rozwiązywania problemów.](https://terento.app/pl/guides/troubleshooting/)
 
 [Otwórz zgłoszenie](https://github.com/VooZ2/terento/issues/new/choose) [Napisz do pomocy](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

@@ -109,11 +109,11 @@ Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vá
 
 Proč Mac nevidí moje hodinky Garmin?
 
-Připojte hodinky přímo USB kabelem pro přenos dat, odemkněte je a počkejte až 2 minuty. Pokud se stále nezobrazí, ukončete Garmin Express, Android File Transfer, OpenMTP a další aplikace, které mohou hodinky používat. [Podívejte se na postup připojení](https://terento.app/cs/guides/troubleshooting/#connect-watch) nebo [zjistěte, které aplikace mohou hodinky blokovat](https://terento.app/cs/guides/troubleshooting/#garmin-busy).
+Připojte hodinky přímo USB kabelem pro přenos dat, odemkněte je a počkejte až 2 minuty. Pokud se stále nezobrazí, ukončete Garmin Express, Android File Transfer, OpenMTP a další aplikace, které mohou hodinky používat.
 
 Co mám dělat, když instalace selže?
 
-Přečtěte si důvod, který Terento zobrazí. Pokud se nezdařilo stažení mapy, [zkontrolujte připojení a zkuste to později](https://terento.app/cs/guides/troubleshooting/#download-failed). Pokud se instalace zastavila během kopírování, [odstraňte zbylou mapu v „Manage maps“](https://terento.app/cs/guides/troubleshooting/#leftover-map) a nainstalujte ji znovu. Pokud to stále selhává, zvolte na obrazovce neúspěšné instalace „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.
+Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému. [Přečtěte si průvodce řešením potíží.](https://terento.app/cs/guides/troubleshooting/)
 
 [Otevřít issue](https://github.com/VooZ2/terento/issues/new/choose) [Napsat podpoře](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

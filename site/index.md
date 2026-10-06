@@ -109,11 +109,11 @@ Yes. Terento shows when newer releases are available and helps you update Terent
 
 Why isn’t my Garmin watch showing up on my Mac?
 
-Connect the watch directly with a USB cable that supports data, unlock it and wait up to 2 minutes. If it still doesn’t appear, quit Garmin Express, Android File Transfer, OpenMTP and other apps that can use the watch. [See the connection steps](https://terento.app/guides/troubleshooting/#connect-watch) or [check which apps can block the watch](https://terento.app/guides/troubleshooting/#garmin-busy).
+Connect the watch directly with a USB cable that supports data, unlock it and wait up to 2 minutes. If it still doesn’t appear, quit Garmin Express, Android File Transfer, OpenMTP and other apps that can use the watch.
 
 What should I do if installation fails?
 
-Read the reason Terento shows. If the map download failed, [check your connection and try again later](https://terento.app/guides/troubleshooting/#download-failed). If the installation stopped while copying, [remove the leftover map in “Manage maps”](https://terento.app/guides/troubleshooting/#leftover-map) and install it again. If it still fails, choose “Report issue” on the failed installation screen. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.
+On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened. [Read the troubleshooting guide.](https://terento.app/guides/troubleshooting/)
 
 [Open an issue](https://github.com/VooZ2/terento/issues/new/choose) [Email support](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

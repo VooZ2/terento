@@ -109,9 +109,9 @@ rejects a locale whose anchors differ from `TROUBLESHOOTING_ANCHORS`. Its
 section headings name the symptom the way people search for it (for example
 "Garmin watch not showing up on Mac") and the first sentence answers it. The
 page has no header navigation item; it is reached from the shared footer
-navigation (`scripts/normalize-public-shell.py`, `site/site-shell.js`), the
-Home FAQ and the installation Guide, which deep-link specific anchors, and from
-the app's help links.
+navigation (`scripts/normalize-public-shell.py`, `site/site-shell.js`), one
+general link in the Home FAQ, the installation Guide, which deep-links specific
+anchors, and the app's help links.
 `scripts/validate-structured-data.py` recursively validates nested entities,
 arrays and graphs. Keep existing source/output parity and visible-content tests.
 

@@ -109,11 +109,11 @@ Oui. Terento vous indique lorsqu’une version plus récente est disponible et v
 
 Pourquoi ma montre Garmin n’apparaît-elle pas sur mon Mac ?
 
-Connectez la montre directement avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes. Si elle n’apparaît toujours pas, quittez Garmin Express, Android File Transfer, OpenMTP et les autres apps qui peuvent utiliser la montre. [Consultez les étapes de connexion](https://terento.app/fr/guides/troubleshooting/#connect-watch) ou [vérifiez quelles apps peuvent bloquer la montre](https://terento.app/fr/guides/troubleshooting/#garmin-busy).
+Connectez la montre directement avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes. Si elle n’apparaît toujours pas, quittez Garmin Express, Android File Transfer, OpenMTP et les autres apps qui peuvent utiliser la montre.
 
 Que dois-je faire si l’installation échoue ?
 
-Lisez la raison affichée par Terento. Si le téléchargement de la carte a échoué, [vérifiez votre connexion et réessayez plus tard](https://terento.app/fr/guides/troubleshooting/#download-failed). Si l’installation s’est arrêtée pendant la copie, [supprimez la carte restante dans « Manage maps »](https://terento.app/fr/guides/troubleshooting/#leftover-map) et réinstallez-la. Si cela échoue encore, choisissez « Report issue » sur l’écran d’échec de l’installation. Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.
+Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. [Lisez le guide de dépannage.](https://terento.app/fr/guides/troubleshooting/)
 
 [Ouvrir une issue](https://github.com/VooZ2/terento/issues/new/choose) [Contacter le support](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

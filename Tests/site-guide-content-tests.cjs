@@ -487,10 +487,8 @@ for (const locale of locales) {
   );
   assert.match(guide, new RegExp(`<a class="guide-step-link text-link" href="${publicPath}#connect-watch" data-umami-event="guide-link-click" data-umami-event-location="guide-step-connect-watch">`), `${locale}: Connect step links #connect-watch`);
   const home = read(path.join(root, "site", locale === "en" ? "index.html" : path.join(locale, "index.html")));
-  for (const anchor of ["connect-watch", "garmin-busy", "download-failed", "leftover-map"]) {
-    assert.match(home, new RegExp(`<a href="${publicPath}#${anchor}" data-umami-event="guide-link-click" data-umami-event-location="home-faq-${anchor}">`), `${locale}: Home FAQ links #${anchor}`);
-  }
-  assert.doesNotMatch(home, /home-faq-troubleshooting/, `${locale}: Home FAQ uses specific anchors instead of the generic guide link`);
+  assert.match(home, new RegExp(`<a href="${publicPath}" data-umami-event="guide-link-click" data-umami-event-location="home-faq-troubleshooting">`), `${locale}: Home FAQ links the troubleshooting guide`);
+  assert.doesNotMatch(home, /guides\/troubleshooting\/#/, `${locale}: Home FAQ has no troubleshooting anchor links`);
 
   // The page is reached from the footer, FAQ, guide and app, never from the header navigation.
   const shellPages = ["", "about/", "compatibility/", "download/", slug, troubleshootingSlug].map((suffix) => path.join(root, "site", locale === "en" ? suffix : path.join(locale, suffix), "index.html"));
