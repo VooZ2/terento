@@ -35,6 +35,7 @@ class Settings:
     map_preview_window_utc: str = "00:00-06:00"
     map_preview_refresh_days: int = 90
     map_preview_publish_minutes: int = 30
+    map_preview_render_jobs: int = 1
     map_preview_max_total_bytes: int = 55 * 1000**3
     map_preview_max_source_bytes: int = 5 * 1024**3
     map_preview_min_free_bytes: int = 20 * 1000**3
@@ -73,6 +74,7 @@ class Settings:
             map_preview_window_utc=_preview_window(),
             map_preview_refresh_days=_positive_int("MAP_PREVIEW_REFRESH_DAYS", 90),
             map_preview_publish_minutes=_positive_int("MAP_PREVIEW_PUBLISH_MINUTES", 30),
+            map_preview_render_jobs=min(_positive_int("MAP_PREVIEW_RENDER_JOBS", 1), 16),
             map_preview_max_total_bytes=_positive_int("MAP_PREVIEW_MAX_TOTAL_BYTES", 55 * 1000**3),
             map_preview_max_source_bytes=_positive_int("MAP_PREVIEW_MAX_SOURCE_BYTES", 5 * 1024**3),
             map_preview_min_free_bytes=_positive_int("MAP_PREVIEW_MIN_FREE_BYTES", 20 * 1000**3),
@@ -93,6 +95,7 @@ class Settings:
             window_utc=parse_window(self.map_preview_window_utc),
             refresh_days=self.map_preview_refresh_days,
             publish_interval=timedelta(minutes=self.map_preview_publish_minutes),
+            render_jobs=self.map_preview_render_jobs,
             max_total_bytes=self.map_preview_max_total_bytes,
             max_source_bytes=self.map_preview_max_source_bytes,
             min_free_bytes=self.map_preview_min_free_bytes,

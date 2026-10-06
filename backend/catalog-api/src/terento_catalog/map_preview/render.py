@@ -43,12 +43,16 @@ class Renderer:
         executable: Path = DEFAULT_RENDERER,
         *,
         timeout_seconds: int = 3600,
-        memory_limit_bytes: int = 1536 * 1024 * 1024,
+        memory_limit_bytes: int | None = None,
         quality: int = 78,
+        jobs: int = 1,
     ) -> None:
         self.executable = executable
         self.timeout_seconds = timeout_seconds
-        self.memory_limit_bytes = memory_limit_bytes
+        self.jobs = max(1, min(16, jobs))
+        # Each extra rendering thread needs room for its own tile images and
+        # allocator arena; the decoded map caches are shared.
+        self.memory_limit_bytes = memory_limit_bytes or (1536 + 512 * (self.jobs - 1)) * 1024 * 1024
         self.quality = quality
 
     def available(self) -> bool:
@@ -69,6 +73,7 @@ class Renderer:
             "--zoom", f"{area.min_zoom}-{area.max_zoom}",
             "--out", str(output),
             "--quality", str(self.quality),
+            "--jobs", str(self.jobs),
         ]
         document = self._run(args, timeout=self.timeout_seconds)
         return RenderResult(int(document["tiles"]), int(document["bytes"]), float(document["seconds"]))

@@ -12,7 +12,7 @@ RUN cmake -S renderer -B out -DCMAKE_BUILD_TYPE=Release \
     && cmake --build out --parallel \
     && QT_QPA_PLATFORM=offscreen out/terento-preview-render \
         --img renderer/tests/fixture/synthetic-gmapsupp.img \
-        --bbox 1.52,42.50,1.544,42.524 --zoom 14-14 --out /tmp/smoke \
+        --bbox 1.52,42.50,1.544,42.524 --zoom 14-14 --jobs 2 --out /tmp/smoke \
     && test -n "$(find /tmp/smoke -name '*.webp' -print -quit)"
 
 FROM python:3.12-slim-bookworm

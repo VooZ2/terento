@@ -13,11 +13,19 @@ class PreviewDatabase:
 
     # Lease -----------------------------------------------------------------
     def acquire_lease(self, owner: str, seconds: int) -> bool:
+        """Take or renew the renderer lease.
+
+        Live renderers renew a short lease, so a lease reaching further ahead
+        than one renewal period was left by a renderer that held it for a
+        whole window and is taken over.
+        """
         with self.database.connection() as c:
             row = c.execute(
                 """UPDATE map_preview_lease SET owner=%s, lease_until=now() + make_interval(secs => %s)
-                   WHERE id=1 AND (lease_until < now() OR owner=%s) RETURNING id""",
-                (owner, seconds, owner),
+                   WHERE id=1 AND (lease_until < now() OR owner=%s
+                                   OR lease_until > now() + make_interval(secs => %s))
+                   RETURNING id""",
+                (owner, seconds, owner, seconds + 60),
             ).fetchone()
         return bool(row)
 

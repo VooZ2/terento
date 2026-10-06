@@ -128,6 +128,15 @@ For the first fill, `MAP_PREVIEW_WINDOW_UTC=00:00-00:00` renders around the
 clock inside the CPU limit; finished layers appear in the manifest at most
 `MAP_PREVIEW_PUBLISH_MINUTES` (default 30) after they are drawn. A nightly
 window such as the default `00:00-06:00` is enough for later refreshes.
+`MAP_PREVIEW_RENDER_JOBS` (default 1) renders that many map tiles in parallel
+inside one renderer process at the lowest CPU priority; on an otherwise idle
+2 vCPU / 8 GB host the first fill can use `MAP_PREVIEW_RENDER_JOBS=2` with
+`cpus: 2.0` and `mem_limit: 4g`, then return to the limits above. Each extra
+job raises the renderer's address-space limit by 512 MiB.
+Only one renderer runs at a time: it holds a 15-minute lease that it renews
+while it works, so a renderer stopped by a deploy blocks the next one for at
+most 15 minutes, and the next renderer removes the downloads and staged tiles
+the stopped one left behind.
 
 Then switch providers on one at a time under Admin › Providers › Map style
 previews and check the `map-preview-renderer` heartbeat, the provider's

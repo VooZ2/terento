@@ -44,7 +44,8 @@ again. `map_preview_area_score` keeps each area's 0–1 style difference score.
 `map_preview_release` records each published tile release (`id` such as
 `20261006T010000Z`, `layer_count`, total preview `bytes`). The single-row
 `map_preview_lease` lets only one renderer work at a time across restarts and
-deploy overlap. Tile files live on the asset volume, not in PostgreSQL.
+deploy overlap; a renderer renews a 15-minute lease while it works, and a lease
+reaching further ahead than that is treated as stale and taken over. Tile files live on the asset volume, not in PostgreSQL.
 
 ## `map`
 
