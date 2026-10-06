@@ -224,7 +224,8 @@ shown in these cards (all-time totals and the purpose breakdown are on Maps).
 The Needs attention header shows its Now total. The payload still carries the
 period purpose breakdown (`downloadPurposes`: install, update, unknown), which
 the Dashboard does not render. Needs attention covers unresolved work across all dates in
-nine fixed rows read only from `admin_review_summary()`, the open public
+up to nine rows (zero-count rows are omitted; all zero shows `Nothing to
+review.`) read only from `admin_review_summary()`, the open public
 support-report count (`support_report_open_count()`), the active Maps-unknown
 model count (`maps_unknown_model_count()`), the shared
 provider-problem definition and the system checks; an unavailable query shows

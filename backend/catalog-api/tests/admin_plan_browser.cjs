@@ -40,7 +40,8 @@ const {chromium}=require(process.argv[2]);
     assert.deepEqual(await page.locator('main>.overview-primary-grid, main>.overview-composition-grid').evaluateAll(es=>es.map(e=>e.className)),['overview-primary-grid','overview-composition-grid']);
     assert.equal(await page.locator('.overview-primary-grid .admin-card-head .admin-scope-chip').count(),2,'Each chart header shows its period scope');
     assert.equal(await page.locator('.overview-primary-grid .overview-all-time, .overview-primary-grid .overview-purposes, .overview-primary-grid .admin-legend strong').count(),0,'Chart cards show only header totals, chart and a count-free legend');
-    assert.equal(await page.locator('.overview-attention-row').count(),9,'Needs attention keeps nine fixed rows');
+    assert.equal(await page.locator('.overview-attention-row').count(),await page.locator('.overview-attention-row strong').evaluateAll(es=>es.filter(e=>e.textContent.trim()!=='0').length),'Needs attention lists only rows with work');
+    assert(await page.locator('.overview-attention-row').count()>0,'Fixture has open work');
     const visibleTrendCharts=page.locator('.overview-primary-grid .overview-trend-chart:visible');
     assert.equal(await visibleTrendCharts.count(),2,'Both current trend charts remain visible');
     for(const chart of await visibleTrendCharts.all()){

@@ -277,14 +277,16 @@ strip. X axis: every bucket is labelled when the labels fit, otherwise every
 second bucket (or the smallest regular step that fits on the compact chart),
 always including the most recent bucket and never overlapping.
 
-Needs attention covers unresolved work across all dates in nine fixed category
-rows, each with an icon, label, count and arrow: Open problems, GitHub issues,
+Needs attention covers unresolved work across all dates in nine categories,
+in this order, each row with an icon, label, count and arrow: Open problems, GitHub issues,
 Identity review, Publication review, Missing reports, Support reports, Maps
 unknown, Provider problems and System checks. Maps unknown counts active catalog
 models whose stored Maps value is NULL (installation `PENDING`) from its own
 query and opens Devices filtered to `Maps: Unknown` and active models
 (`/admin/devices?maps=unknown&active=1`), which shows the same total; a failed
-query shows that row as unavailable. Rows with zero stay listed (muted) so the shape is stable. Counts
+query shows that row as unavailable. Only rows with a positive or unavailable
+count are listed (owner decision 2026-10-06); a measured zero renders no row,
+and when every count is zero the card shows `Nothing to review.` instead. Counts
 come only from the canonical review read model, the shared provider-problem
 definition and the system checks; there is no fallback from another definition.
 A failed query shows `—` with an explicit `Unavailable` message, never `0` or

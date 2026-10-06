@@ -2271,14 +2271,17 @@ _ATTENTION_ROWS = (
 
 
 def _attention_row(label: str, count: int | None, href: str, icon: str, *, unavailable: bool = False) -> str:
-    """Fixed Needs attention row: icon, label, count (or —) and an arrow."""
+    """Needs attention row: icon, label, count (or —) and an arrow. A measured
+    zero has nothing to act on, so it renders no row."""
+    if not unavailable and count == 0:
+        return ""
     if unavailable or count is None:
         value = "—<span class='sr-only'> unavailable</span>"
         state = "unavailable"
         aria = f"{label}: unavailable"
     else:
         value = f"{count:,}"
-        state = "active" if count else "zero"
+        state = "active"
         aria = f"{label}: {count}"
     return (
         f"<li class='overview-attention-row' data-state='{state}'>"
@@ -2467,7 +2470,8 @@ def overview_page(
         attention_status = _empty_state("empty", "Nothing to review.")
     attention_section = _section_card(
         "Needs attention",
-        review_notice + attention_status + "<ul class='overview-attention-rows'>" + "".join(attention_rows) + "</ul>",
+        review_notice + attention_status
+        + ("<ul class='overview-attention-rows'>" + "".join(attention_rows) + "</ul>" if any(attention_rows) else ""),
         card_id="overview-attention", scope="now",
         totals=_card_totals([(_admin_error_counter(attention_total, available=attention_total is not None,
                                                    data_stat="attentionTotal"), "Total")],
@@ -8670,7 +8674,6 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-attention-row>a>.admin-icon:first-child{width:16px;height:16px;color:var(--secondary)}
 .overview-attention-row strong{font-variant-numeric:tabular-nums;font-weight:600}
 .overview-attention-row[data-state="active"]>a>.admin-icon:first-child,.overview-attention-row[data-state="active"] strong{color:var(--danger)}
-.overview-attention-row[data-state="zero"]>a{color:var(--secondary)}
 .overview-attention-row[data-state="unavailable"] strong{color:var(--secondary)}
 .overview-attention-item .admin-pill{align-self:start}
 .overview-all-time{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0;color:var(--secondary);font-size:13px}
