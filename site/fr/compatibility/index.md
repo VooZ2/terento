@@ -11,7 +11,7 @@ Terento est conçu pour les montres Garmin prenant en charge les cartes. Vous tr
 
 L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
 
-**24** modèles avec des installations réussies**140** installations réussiesDernière installation réussie 5 octobre 2026
+**24** modèles avec des installations réussies**141** installations réussiesDernière installation réussie 6 octobre 2026
 
 Comment fonctionne cette liste
 
@@ -49,9 +49,9 @@ fēnix
 
 51 mm, AMOLED
 
-9 installations réussies
+10 installations réussies
 
-Dernière installation réussie 28 septembre 2026
+Dernière installation réussie 6 octobre 2026
 
 Forerunner
 
