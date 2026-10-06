@@ -86,6 +86,15 @@ struct BoundedNativeProcessTests {
         precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=target_resolution target_reason=PRIVATE-SERIAL") == nil)
         precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=target_resolution target_reason=/Garmin") == nil)
 
+        // Content-check method and measured byte counts are retained; nothing else.
+        for line in ["FINISH_TRACE swift event=update_current_check method=sampled bytes=2097120",
+                     "FINISH_TRACE swift event=update_current_check method=full bytes=434000000",
+                     "FINISH_TRACE swift event=update_new_check method=sampled regions=7 bytes=29360128",
+                     "FINISH_TRACE swift event=removal_check method=sampled bytes=2097120"] {
+            precondition(FinishingTrace.safeLine(line) == line)
+        }
+        precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=update_current_check method=/Users/x bytes=1") == nil)
+        precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=update_new_check method=sampled bytes=many") == nil)
         let sourceFailure = "FINISH_TRACE swift event=source_validation validation=sourceFormatMismatch"
         precondition(FinishingTrace.safeLine(sourceFailure) == sourceFailure)
         for unsafe in [native + " path=/Users/private/map.img", native + " serial=1234",

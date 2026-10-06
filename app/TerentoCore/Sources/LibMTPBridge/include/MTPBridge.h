@@ -154,7 +154,8 @@ enum {
     TERENTO_MTP_MAP_OBJECT_ID_MISMATCH = -22,
     TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23,
     TERENTO_MTP_MAP_IDENTITY_MISMATCH = -24,
-    TERENTO_MTP_MUTATION_REFUSED = -25
+    TERENTO_MTP_MUTATION_REFUSED = -25,
+    TERENTO_MTP_MAP_CONTENT_MISMATCH = -26
 };
 
 /* Read-only USB presence probe. Zero proves absence only after complete enumeration;
@@ -328,6 +329,36 @@ int terento_mtp_verify_managed_map_samples(
     uint32_t sample_length,
     uint64_t *sampled_bytes,
     uint32_t *matched_samples,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
+    char *error_message,
+    size_t error_message_capacity
+);
+
+/*
+ * Read-only content check of a Terento-managed map against its recorded
+ * sampled proof (the removal proof geometry: TERENTO_REMOVAL_PROOF_* and the
+ * SHA-256 of the concatenated regions), used by Safe Update before it writes.
+ * In one session it validates the live device, resolves the exact object (one
+ * regular file of this name and size in the single /GARMIN folder of the
+ * profile storage), reads only the recorded regions, checks the IMG header
+ * and the digest, and re-resolves the same object. Returns 0 only on an exact
+ * match; TERENTO_MTP_MAP_CONTENT_MISMATCH for different content,
+ * TERENTO_MTP_MAP_OBJECT_ID_MISMATCH for a changed identity, -5 for a read
+ * failure. Never mutates; it is never a substitute for a full check that a
+ * caller chose, and a failure is never retried as another check.
+ */
+int terento_mtp_verify_managed_map_proof(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint64_t expected_size_bytes,
+    const char *expected_sha256,
+    const uint64_t *sample_offsets,
+    uint32_t sample_count,
+    uint32_t sample_length,
+    const char *sample_sha256,
+    uint32_t *resolved_item_id,
+    uint64_t *sampled_bytes,
     TerentoMTPProgressCallback progress_callback,
     const void *progress_context,
     char *error_message,

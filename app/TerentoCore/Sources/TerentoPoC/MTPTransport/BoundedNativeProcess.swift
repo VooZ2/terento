@@ -201,12 +201,13 @@ extension FinishingTrace {
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
         "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result",
         "prewrite_inventory_duplicates", "postwrite_inventory_duplicates",
-        "prewrite_inventory_metrics", "postwrite_inventory_metrics", "update_inventory_metrics", "inventory_scope"
+        "prewrite_inventory_metrics", "postwrite_inventory_metrics", "update_inventory_metrics", "inventory_scope",
+        "removal_check", "update_current_check", "update_new_check"
     ]
     private static let numericKeys: Set<String> = [
         "t", "pid", "child", "timeout", "attempt", "delay", "status", "reason", "offset", "rc",
         "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded",
-        "duplicates", "objects", "baseline", "duration_ms"
+        "duplicates", "objects", "baseline", "duration_ms", "bytes", "regions"
     ]
     static func safeLine(_ line: String) -> String? {
         guard line.utf8.count < 1024 else { return nil }
@@ -233,6 +234,7 @@ extension FinishingTrace {
                        "sourceHashMismatch", "sourceFormatMismatch", "unknown"].contains(value) else { return nil }
             } else if key == "worker" { guard ["true", "false"].contains(value) else { return nil } }
             else if key == "scope" { guard ["FULL", "GARMIN"].contains(value) else { return nil } }
+            else if key == "method" { guard ["sampled", "full"].contains(value) else { return nil } }
             else if key == "fallback" {
                 guard ["none", "no_root", "ambiguous_root", "scoped_failed"].contains(value) else { return nil }
             }

@@ -106,20 +106,22 @@ enum LifecycleRemainingTimeUnits {
             guard progress.phaseFraction == nil, progress.totalBytes > 0 else { return nil }
             return (Double(progress.bytesCompleted), Double(progress.totalBytes))
         case .checking:
-            // Read-back and hash of the installed map: 25–95 % of Checking.
+            // Content check of the installed map (recorded sampled regions, or
+            // the full read and hash without a proof): 25–95 % of Checking.
+            // A short sampled check ends inside the warm-up, so no estimate.
             return band(progress.phaseFraction, lower: 0.25, upper: 0.95)
         case .verifying:
             if progress.phaseFraction == nil, progress.totalBytes > 0 {
                 // Measured read of an external map before its confirmation.
                 return (Double(progress.bytesCompleted), Double(progress.totalBytes))
             }
-            // Remove: full content check before deletion (20–90 %).
-            // Update: read-back of the new map.
+            // Remove: content check before deletion (20–90 %).
+            // Update: sampled read-back of the new map.
             return action == .remove
                 ? band(progress.phaseFraction, lower: 0.20, upper: 0.90)
                 : band(progress.phaseFraction, lower: 0, upper: 0.99)
         case .removing, .removingOld:
-            // Full content check before deletion: 20–90 %.
+            // Content check before deletion: 20–90 %.
             return band(progress.phaseFraction, lower: 0.20, upper: 0.90)
         case .idle, .awaitingConfirmation, .updating, .preparing, .finishing, .completed, .failed:
             return nil

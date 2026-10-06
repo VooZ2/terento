@@ -53,3 +53,32 @@ struct TransferVerification: Equatable, Sendable {
         )
     }
 }
+
+/// The sampled read-back of a written map against its validated local
+/// artifact: the first and last 4 MiB plus up to five regions spread by the
+/// artifact SHA-256 (at most 7 regions, 28 MiB). Fresh installation and Safe
+/// Update's new-map verification use exactly this plan.
+enum SampledReadBackPlan {
+    static let sampleLength: UInt32 = 4 * 1024 * 1024
+
+    static func offsets(fileSizeBytes: UInt64, sourceSHA256: String) -> [UInt64] {
+        let sampleLength = min(UInt64(Self.sampleLength), fileSizeBytes)
+        let maximumOffset = fileSizeBytes - sampleLength
+        guard maximumOffset > 0 else {
+            return [0]
+        }
+
+        var seed: UInt64 = 0xcbf29ce484222325
+        for byte in sourceSHA256.utf8 {
+            seed ^= UInt64(byte)
+            seed = seed &* 0x100000001b3
+        }
+
+        var offsets: Set<UInt64> = [0, maximumOffset]
+        for _ in 0..<5 {
+            seed = seed &* 2862933555777941757 &+ 3037000493
+            offsets.insert(seed % (maximumOffset + 1))
+        }
+        return offsets.sorted()
+    }
+}

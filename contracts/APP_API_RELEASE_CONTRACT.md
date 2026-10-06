@@ -390,6 +390,21 @@ Remove, the post-update rescan and prefix reads keep the full walk. The exact
 boundary is described in `app/TerentoCore/README.md` (map-scope protection
 inventory).
 
+Safe Update content checks are app-local and change no payload, schema or
+accepted value. For a Terento-managed map whose manifest entry carries a removal
+proof bound to its recorded size and SHA-256, the installed map is checked
+before writing by that recorded sampled proof in one native read-only session
+(exact same-session object in `/GARMIN`, recorded regions, IMG header, recorded
+digest, re-resolved identity) plus its IMG identity and version; an entry
+without a bound proof (maps installed by earlier versions) keeps the full read
+and SHA-256 of the installed map. The new map is always verified, before the old
+map is touched, by the same sampled read-back as fresh installation against the
+validated local artifact. A sampled mismatch, identity change or read failure
+blocks the update as a full mismatch does and is never retried as another check.
+The residual limitation is the one of installation and removal: same-name,
+same-size content that differs only outside the sampled regions is not detected.
+The exact rules are in `app/TerentoCore/README.md` (Safety and verification).
+
 Compatibility events (installation and `operationKind=update`) may carry an
 optional top-level `inventoryMetrics` object: `scope` (`FULL` or `GARMIN`;
 `GARMIN` only when every measured read was scoped), `prewriteObjectCount`,

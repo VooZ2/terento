@@ -6,10 +6,6 @@ protocol DeviceFileReader: Sendable {
     func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]]
 }
 
-struct TransferVerification: Equatable, Sendable {
-    let isVerified: Bool
-}
-
 private enum Stage53TestError: Error {
     case failed(String)
 }
@@ -256,7 +252,9 @@ private struct Harness {
     let gate: InstallationTransactionGate
 }
 
-private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false) -> Harness {
+/// `mapSize` models a large map on a virtual device (no bytes are stored).
+private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false,
+                         mapSize: UInt64? = nil) -> Harness {
     let identity = DeviceIdentity(
         manufacturer: "Garmin",
         model: "fenix 8 - 47mm",
@@ -278,16 +276,18 @@ private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false
     let oldFile = InstalledMapFile(
         path: "/GARMIN/\(oldFilename)",
         filename: oldFilename,
-        sizeBytes: UInt64(oldData.count),
+        sizeBytes: mapSize ?? UInt64(oldData.count),
         itemID: 101
     )
     let newFile = InstalledMapFile(
         path: "/GARMIN/terento_freizeitkarte_fra_2026-06.img",
         filename: "terento_freizeitkarte_fra_2026-06.img",
-        sizeBytes: 24,
+        sizeBytes: mapSize ?? 24,
         itemID: 202
     )
-    let oldHash = SHA256.hash(data: oldData).map { String(format: "%02x", $0) }.joined()
+    let oldHash = mapSize == nil
+        ? SHA256.hash(data: oldData).map { String(format: "%02x", $0) }.joined()
+        : String(repeating: "a1", count: 32)
     let sourceHash = String(repeating: "b", count: 64)
     let installedMap = InstalledMap(
         name: "Freizeitkarte FRA",
@@ -299,7 +299,7 @@ private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false
         identifier: nil,
         productId: nil,
         familyId: nil,
-        sizeBytes: UInt64(oldData.count),
+        sizeBytes: mapSize ?? UInt64(oldData.count),
         sourceFile: oldFile,
         metadataStatus: .parsed,
         managementState: .managedByTerento
@@ -311,7 +311,7 @@ private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false
         region: "FRA",
         version: oldVersion,
         rawVersion: "Release 26.05",
-        sizeBytes: UInt64(oldData.count),
+        sizeBytes: mapSize ?? UInt64(oldData.count),
         installedMaps: [installedMap],
         classification: .terentoManaged
     )
@@ -321,11 +321,11 @@ private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false
         regionId: "FRA",
         name: "Freizeitkarte France",
         version: newVersion,
-        sizeBytes: 24,
+        sizeBytes: mapSize ?? 24,
         sourceURL: URL(string: "https://provider.example/fra.zip"),
         releaseDate: nil,
         identifier: nil,
-        installSizeBytes: 24
+        installSizeBytes: mapSize ?? 24
     )
     let workspaceRoot = withWorkspace
         ? FileManager.default.temporaryDirectory
@@ -342,7 +342,7 @@ private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false
         region: "FRA",
         version: newVersion,
         localIMGURL: artifactURL,
-        installSizeBytes: 24,
+        installSizeBytes: mapSize ?? 24,
         sha256: sourceHash,
         sourcePackageURL: package.sourceURL!,
         catalogPackageID: package.id,
@@ -1346,6 +1346,323 @@ private func testMeasuredUpdateProgress() async throws {
     try require(invalid.fractionCompleted == 0, "nonfinite fractions must not reach the UI")
 }
 
+// MARK: - Content checks through the production verifier
+
+/// Virtual old/new map content on a fake device. Counts the bytes each check
+/// would read over MTP; region digests are computed from the virtual bytes.
+private final class VirtualContentReader: SafeUpdateContentReader, @unchecked Sendable {
+    let oldFile: InstalledMapFile
+    let newFile: InstalledMapFile
+    var oldFullHash: String
+    var flippedOld: Set<UInt64> = []
+    var flippedNew: Set<UInt64> = []
+    var proofIdentityChanged = false
+    var proofReadFails = false
+    var oldMetadataRegion = "FRA"
+    var fullBytes: UInt64 = 0
+    var proofBytes: UInt64 = 0
+    var sampleBytes: UInt64 = 0
+    var calls: [String] = []
+
+    init(oldFile: InstalledMapFile, newFile: InstalledMapFile, oldFullHash: String) {
+        self.oldFile = oldFile
+        self.newFile = newFile
+        self.oldFullHash = oldFullHash
+    }
+
+    /// Same generator as the native harness: IMG header, then salted bytes.
+    static func byte(_ offset: UInt64, salt: UInt8) -> UInt8 {
+        if offset < 0x48 {
+            if (0x10..<0x16).contains(offset) { return Array("DSKIMG".utf8)[Int(offset - 0x10)] }
+            if (0x41..<0x47).contains(offset) { return Array("GARMIN".utf8)[Int(offset - 0x41)] }
+            return 0
+        }
+        return UInt8(truncatingIfNeeded: (((offset &* 2654435761) >> 13) ^ (offset >> 20)) &+ UInt64(salt))
+    }
+
+    static func region(_ offset: UInt64, length: UInt64, salt: UInt8, flipped: Set<UInt64> = []) -> Data {
+        Data((offset..<(offset + length)).map { byte($0, salt: salt) ^ (flipped.contains($0) ? 1 : 0) })
+    }
+
+    /// The proof Terento records at install time for the virtual old map.
+    static func recordedProof(size: UInt64, sha256: String) -> ManagedRemovalProof {
+        let offsets = ManagedRemovalProof.plan(fileSizeBytes: size, fileSHA256: sha256)
+        var hasher = SHA256()
+        for offset in offsets {
+            hasher.update(data: region(offset, length: min(UInt64(ManagedRemovalProof.regionLength), size - offset), salt: 0))
+        }
+        return ManagedRemovalProof(offsets: offsets,
+            sha256: hasher.finalize().map { String(format: "%02x", $0) }.joined())
+    }
+
+    func readFullContent(_ file: InstalledMapFile,
+                         onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateFullContentRead {
+        calls.append("full")
+        fullBytes += file.sizeBytes
+        onProgress?(0.5)
+        onProgress?(1)
+        let changed = file == oldFile && !flippedOld.isEmpty
+        return SafeUpdateFullContentRead(itemID: file.itemID ?? 0, sourcePath: file.path,
+            reportedSizeBytes: file.sizeBytes, sha256: changed ? String(repeating: "e", count: 64) : oldFullHash)
+    }
+
+    func readRecordedProof(_ file: InstalledMapFile, sha256: String, proof: ManagedRemovalProof,
+                           onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRecordedProofRead {
+        calls.append("proof")
+        guard file == oldFile, !proofIdentityChanged else { throw SafeUpdateRecordedProofError.identityMismatch }
+        var hasher = SHA256()
+        var read: UInt64 = 0
+        let total = proof.sampledBytes(fileSizeBytes: file.sizeBytes)
+        for (index, offset) in proof.offsets.enumerated() {
+            if proofReadFails && index == 5 {
+                throw MapLifecycleReadTransportError.deviceDisconnected("The Garmin watch was disconnected.")
+            }
+            let length = min(UInt64(proof.regionLength), file.sizeBytes - offset)
+            let bytes = Self.region(offset, length: length, salt: 0, flipped: flippedOld)
+            if offset == 0, bytes[0x10..<0x16] != Data("DSKIMG".utf8) { throw SafeUpdateRecordedProofError.contentMismatch }
+            hasher.update(data: bytes)
+            read += length
+            proofBytes += length
+            onProgress?(Double(read) / Double(total))
+        }
+        let digest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        guard digest == proof.sha256 else { throw SafeUpdateRecordedProofError.contentMismatch }
+        return SafeUpdateRecordedProofRead(itemID: file.itemID ?? 0, sampledBytes: read)
+    }
+
+    func readMetadata(_ file: InstalledMapFile) throws -> GarminIMGMetadata {
+        calls.append("metadata")
+        let old = file == oldFile
+        return GarminIMGMetadata(name: "Freizeitkarte FRA", provider: "freizeitkarte",
+            region: old ? oldMetadataRegion : "FRA", family: "Freizeitkarte", rawVersion: nil,
+            version: MapVersion(year: 2026, month: old ? 5 : 6), identifier: nil, productId: nil, familyId: nil)
+    }
+
+    func readInstallSamples(_ file: InstalledMapFile, artifact: SafeUpdateSourceArtifact,
+                            offsets: [UInt64], sampleLength: UInt32,
+                            onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateSampledReadBack {
+        calls.append("samples")
+        var matched = 0
+        var read: UInt64 = 0
+        let length = min(UInt64(sampleLength), file.sizeBytes)
+        for offset in offsets {
+            read += length
+            sampleBytes += length
+            if !flippedNew.contains(where: { $0 >= offset && $0 < offset + length }) { matched += 1 }
+            onProgress?(Double(read) / Double(UInt64(offsets.count) * length))
+        }
+        return SafeUpdateSampledReadBack(itemID: file.itemID ?? 0, reportedSizeBytes: file.sizeBytes,
+            sampledBytes: read, sampleCount: offsets.count, matchedSampleCount: matched)
+    }
+}
+
+/// The fake device transport with its content checks routed through the
+/// production `SafeUpdateContentVerifier` and a virtual-content reader.
+private final class VerifierBackedTransport: SafeUpdateTransport, @unchecked Sendable {
+    let base: FakeSafeUpdateTransport
+    let reader: VirtualContentReader
+
+    init(base: FakeSafeUpdateTransport, reader: VirtualContentReader) {
+        self.base = base
+        self.reader = reader
+    }
+
+    func inspectCurrentObject(_ expected: SafeUpdateRemoteObject,
+                              onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        base.events.append("inspectCurrentObject")
+        return try SafeUpdateContentVerifier(reader: reader).inspectCurrent(expected, onProgress: onProgress)
+    }
+    func inspectCurrentObject(_ expected: SafeUpdateRemoteObject) throws -> SafeUpdateRemoteObject {
+        try inspectCurrentObject(expected, onProgress: nil)
+    }
+    func verifyTransactionObject(_ object: SafeUpdateRemoteObject, expected: SafeUpdateSourceArtifact,
+                                 onProgress: (@Sendable (Double) -> Void)?) throws -> SafeUpdateRemoteObject {
+        base.events.append("verifyTransactionObject")
+        return try SafeUpdateContentVerifier(reader: reader).verifyNew(object, expected: expected, onProgress: onProgress)
+    }
+    func verifyTransactionObject(_ object: SafeUpdateRemoteObject,
+                                 expected: SafeUpdateSourceArtifact) throws -> SafeUpdateRemoteObject {
+        try verifyTransactionObject(object, expected: expected, onProgress: nil)
+    }
+    func readProtectedInventory() throws -> SafeUpdateInventorySnapshot { try base.readProtectedInventory() }
+    func writeTransactionObject(sourceURL: URL, targetPath: String,
+                                onProgress: (@Sendable (TransferProgress) -> Void)?) throws -> SafeUpdateRemoteObject {
+        try base.writeTransactionObject(sourceURL: sourceURL, targetPath: targetPath, onProgress: onProgress)
+    }
+    func cleanupTransactionObject(_ object: SafeUpdateRemoteObject) throws { try base.cleanupTransactionObject(object) }
+    func readFreeSpace() throws -> UInt64 { try base.readFreeSpace() }
+    func rescanObjects() throws -> [SafeUpdateRemoteObject] { try base.rescanObjects() }
+    func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject { try base.inspectExactObject(target) }
+    func deleteExactObject(_ target: SafeDeleteTarget) throws { try base.deleteExactObject(target) }
+    func deleteExactObject(_ target: SafeDeleteTarget,
+                           onProgress: (@Sendable (TransferProgress) -> Void)?) throws {
+        try base.deleteExactObject(target, onProgress: onProgress)
+    }
+}
+
+private struct ContentCheckRun {
+    let result: SafeUpdateResult
+    let reader: VirtualContentReader
+    let base: FakeSafeUpdateTransport
+    let proof: ManagedRemovalProof?
+    let progress: [SafeUpdateProgress]
+}
+
+private let largeMapSize: UInt64 = 434_000_000
+
+private func runContentChecks(size: UInt64 = largeMapSize, recordedProof: Bool = true,
+                              configure: (VirtualContentReader) -> Void = { _ in }) async -> ContentCheckRun {
+    let harness = makeHarness(mapSize: size)
+    var request = harness.request
+    var proof: ManagedRemovalProof?
+    if recordedProof {
+        var current = request.currentObject
+        let recorded = VirtualContentReader.recordedProof(size: size, sha256: current.sha256!)
+        current.removalProof = recorded
+        proof = recorded
+        request = SafeUpdateRequest(deviceKey: request.deviceKey, identity: request.identity,
+            profile: request.profile, selectedMap: request.selectedMap, comparison: request.comparison,
+            currentItem: request.currentItem, currentObject: current, confirmed: true, deviceConnected: true,
+            installationAuthorization: request.installationAuthorization)
+    }
+    let base = FakeSafeUpdateTransport(oldObject: request.currentObject, newObject: harness.transport.newObject)
+    let reader = VirtualContentReader(oldFile: request.currentObject.file, newFile: harness.transport.newObject.file,
+                                      oldFullHash: request.currentObject.sha256!)
+    configure(reader)
+    let recorder = UpdateProgressRecorder()
+    let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator,
+        manifestReconciler: harness.reconciler).run(request: withFixtureAuthorization(request),
+        provider: harness.provider, transport: VerifierBackedTransport(base: base, reader: reader),
+        onProgress: { recorder.record($0) })
+    return ContentCheckRun(result: result, reader: reader, base: base, proof: proof, progress: recorder.snapshot())
+}
+
+private func testCurrentMapCheckMethodSelection() async throws {
+    let harness = makeHarness(mapSize: largeMapSize)
+    var current = harness.request.currentObject
+    try require(SafeUpdateCurrentMapCheck.method(for: current) == .fullContent,
+        "an entry without a recorded proof keeps the full content check")
+    let proof = VirtualContentReader.recordedProof(size: largeMapSize, sha256: current.sha256!)
+    current.removalProof = proof
+    try require(SafeUpdateCurrentMapCheck.method(for: current) == .recordedProof(proof),
+        "a managed entry with a bound proof uses the recorded sampled check")
+    try require(SafeUpdateCurrentMapCheck.method(for: current).contentBytes(fileSizeBytes: largeMapSize) == 32 * 65_535,
+        "the recorded check reads exactly the 32 recorded regions")
+    var negatives: [(String, SafeUpdateRemoteObject)] = []
+    var other = current
+    other.removalProof = VirtualContentReader.recordedProof(size: largeMapSize, sha256: String(repeating: "c", count: 64))
+    negatives.append(("proof bound to another SHA-256", other))
+    other = current
+    other.removalProof = ManagedRemovalProof(offsets: proof.offsets, sha256: String(repeating: "0", count: 64))
+    negatives.append(("zero proof digest", other))
+    other = current
+    other.removalProof = ManagedRemovalProof(format: 2, offsets: proof.offsets, sha256: proof.sha256)
+    negatives.append(("unknown proof format", other))
+    negatives.append(("external ownership", SafeUpdateRemoteObject(file: current.file, identity: current.identity,
+        version: current.version, ownership: .detectedNotManaged, sha256: current.sha256, removalProof: proof)))
+    negatives.append(("missing hash", SafeUpdateRemoteObject(file: current.file, identity: current.identity,
+        version: current.version, ownership: .managedByTerento, sha256: nil, removalProof: proof)))
+    negatives.append(("other size", SafeUpdateRemoteObject(file: InstalledMapFile(path: current.file.path,
+        filename: current.file.filename, sizeBytes: largeMapSize - 1, itemID: current.file.itemID),
+        identity: current.identity, version: current.version, ownership: .managedByTerento,
+        sha256: current.sha256, removalProof: proof)))
+    negatives.append(("outside the GARMIN folder", SafeUpdateRemoteObject(file: InstalledMapFile(
+        path: "/GARMIN/Other/\(current.file.filename)", filename: current.file.filename,
+        sizeBytes: largeMapSize, itemID: current.file.itemID), identity: current.identity,
+        version: current.version, ownership: .managedByTerento, sha256: current.sha256, removalProof: proof)))
+    for (name, object) in negatives {
+        try require(SafeUpdateCurrentMapCheck.method(for: object) == .fullContent, "\(name) must use the full content check")
+    }
+}
+
+private func testManagedProofUpdateReadsSampledBytes() async throws {
+    let run = await runContentChecks()
+    try require(run.result.status == .success, "managed update with a recorded proof should succeed: \(run.result.message)")
+    let regionBytes = UInt64(32 * 65_535)
+    let installBytes = UInt64(SampledReadBackPlan.offsets(fileSizeBytes: largeMapSize,
+        sourceSHA256: String(repeating: "b", count: 64)).count) * UInt64(SampledReadBackPlan.sampleLength)
+    try require(run.reader.fullBytes == 0, "no full read of either map")
+    try require(run.reader.proofBytes == regionBytes, "the installed map is checked by its 32 recorded regions")
+    try require(run.reader.sampleBytes == installBytes && installBytes <= 7 * 4 * 1024 * 1024,
+        "the new map is verified by the fresh-install sampled read-back")
+    try require(run.reader.proofBytes + run.reader.sampleBytes < largeMapSize / 10, "content reads stay far below the map size")
+    try require(run.base.events.firstIndex(of: "inspectCurrentObject")! < run.base.events.firstIndex(of: "writeTransactionObject")!
+        && run.base.events.firstIndex(of: "verifyTransactionObject")! < run.base.events.firstIndex(of: "deleteExactObject")!,
+        "the old map is checked before writing and kept until the new map is verified")
+    try require(run.base.deletedTargets.first?.removalProof == run.proof,
+        "the old-map removal still carries the sampled removal proof")
+    let checking = run.progress.filter { $0.state == .revalidating }.map(\.fractionCompleted)
+    try require(Set(checking.filter { $0 > 0.25 && $0 < 0.95 }).count >= 10,
+        "the installed-map check reports measured progress per recorded region")
+    let verifying = run.progress.filter { $0.state == .verifying }.map(\.fractionCompleted)
+    try require(Set(verifying.filter { $0 > 0 && $0 < 0.99 }).count >= 3,
+        "the new-map verification reports measured progress per compared region")
+    print("INFO: 434 MB managed update content reads: installed map \(run.reader.proofBytes) bytes, "
+        + "new map \(run.reader.sampleBytes) bytes (previously \(largeMapSize) + \(largeMapSize))")
+}
+
+private func testLegacyEntryUsesFullCurrentMapRead() async throws {
+    let run = await runContentChecks(recordedProof: false)
+    try require(run.result.status == .success, "a legacy managed entry still updates: \(run.result.message)")
+    try require(run.reader.calls.contains("full") && !run.reader.calls.contains("proof") && run.reader.fullBytes == largeMapSize,
+        "an entry without a proof reads the whole installed map and its SHA-256")
+    try require(run.reader.sampleBytes > 0 && run.reader.sampleBytes < largeMapSize / 10,
+        "the new map is still verified by the install read-back")
+    try require(run.base.deletedTargets.first?.removalProof == nil, "the old-map removal keeps the full content check")
+
+    let changed = await runContentChecks(recordedProof: false) { $0.flippedOld = [1234] }
+    try require(changed.result.status == .failedMetadataMismatch && !changed.result.writeStarted
+        && changed.result.oldMapPreserved, "a full SHA-256 mismatch still blocks before writing")
+}
+
+private func testChangedSampledByteBlocksUpdate() async throws {
+    let proof = VirtualContentReader.recordedProof(size: largeMapSize, sha256: String(repeating: "a1", count: 32))
+    var picks: [UInt64] = [0x10] // IMG header
+    for (index, offset) in proof.offsets.enumerated() {
+        picks.append(index == 0 ? 0x1000 : offset + UInt64(index) * 997 % 65_535)
+    }
+    picks.append(proof.offsets.last! + 65_534) // last byte of the map
+    for pick in picks {
+        let run = await runContentChecks { $0.flippedOld = [pick] }
+        try require(run.result.status == .failedMetadataMismatch, "changed byte at \(pick) must block like a full mismatch")
+        try require(!run.result.writeStarted && run.result.oldMapPreserved && !run.base.events.contains("writeTransactionObject"),
+            "a blocked update writes nothing")
+        try require(!run.reader.calls.contains("full"), "a sampled mismatch is never retried as a full read")
+    }
+    let unsampled = proof.offsets[3] + 65_535 + 10
+    let outside = await runContentChecks { $0.flippedOld = [unsampled] }
+    try require(outside.result.status == .success,
+        "documented limitation: a change only outside the recorded regions is not detected")
+}
+
+private func testRecordedProofIdentityAndReadFailuresBlock() async throws {
+    let identity = await runContentChecks { $0.proofIdentityChanged = true }
+    try require(identity.result.status == .failedWrite && !identity.result.writeStarted && identity.result.oldMapPreserved
+        && identity.result.message.contains("identity changed"), "an identity mismatch blocks before writing")
+    let metadata = await runContentChecks { $0.oldMetadataRegion = "ITA" }
+    try require(metadata.result.status == .failedMetadataMismatch && !metadata.result.writeStarted,
+        "a different IMG identity blocks before writing")
+    let failed = await runContentChecks { $0.proofReadFails = true }
+    try require(failed.result.status == .failedDeviceDisconnected && !failed.result.writeStarted,
+        "a read failure blocks before writing")
+    for run in [identity, metadata, failed] {
+        try require(!run.reader.calls.contains("full") && run.base.deletedTargets.isEmpty,
+            "a failed recorded check is never downgraded to another check")
+    }
+}
+
+private func testNewMapSampledFailureKeepsOldMap() async throws {
+    let offsets = SampledReadBackPlan.offsets(fileSizeBytes: largeMapSize, sourceSHA256: String(repeating: "b", count: 64))
+    for offset in [offsets.first!, offsets[offsets.count / 2], offsets.last!] {
+        let run = await runContentChecks { $0.flippedNew = [offset + 100] }
+        try require(run.result.status == .failedHashMismatch, "a changed new-map region fails verification")
+        try require(run.result.oldMapPreserved && run.base.deletedTargets.isEmpty
+            && run.base.events.contains("cleanupTransactionObject") && !run.reader.calls.contains("full"),
+            "the old map stays installed; only the new object is cleaned up")
+        try require(!run.progress.contains { $0.state == .completed }, "a failed verification is never reported complete")
+    }
+}
+
 @main
 struct Stage53SafeUpdateTests {
     static func main() async throws {
@@ -1355,6 +1672,12 @@ struct Stage53SafeUpdateTests {
             ("real update acquisition telemetry", testRealUpdateAcquisitionEvents),
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
             ("sampled removal proof through update", testSampledRemovalProofFlowsThroughUpdate),
+            ("current-map check method selection", testCurrentMapCheckMethodSelection),
+            ("managed proof update reads sampled bytes", testManagedProofUpdateReadsSampledBytes),
+            ("legacy entry uses full current-map read", testLegacyEntryUsesFullCurrentMapRead),
+            ("changed sampled byte blocks update", testChangedSampledByteBlocksUpdate),
+            ("recorded proof identity and read failures block", testRecordedProofIdentityAndReadFailuresBlock),
+            ("new-map sampled failure keeps old map", testNewMapSampledFailureKeepsOldMap),
             ("protected replacement full raw matrix", testProtectedUpdateTransitionMatrix),
             ("protected baseline and binding gate", testProtectedBaselineRefusesBeforeSend),
             ("map-scope protected update inventories", testMapScopeProtectedUpdate),

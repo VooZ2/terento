@@ -2041,51 +2041,79 @@ static int validate_removal_plan(uint64_t file_size, const uint64_t *offsets,
     return 1;
 }
 
-/* Sampled removal proof, in the deletion session, for a map Terento wrote and
- * verified: the recorded regions of the live object must reproduce the digest
- * computed from the verified local artifact at install time. The IMG header is
- * checked exactly as in the full proof. Only the recorded regions are read. */
-static int verify_deletion_samples(LIBMTP_mtpdevice_t *device,
+/* Outcome of reading a recorded sampled proof from a live object. */
+enum {
+    TERENTO_RECORDED_SAMPLES_MATCH = 1,
+    TERENTO_RECORDED_SAMPLES_CONTENT_MISMATCH = 0,
+    TERENTO_RECORDED_SAMPLES_INVALID_PROOF = -1,
+    TERENTO_RECORDED_SAMPLES_READ_FAILED = -2
+};
+
+/* Recorded sampled proof for a map Terento wrote and verified: the recorded
+ * regions of the live object must reproduce the digest computed from the
+ * verified local artifact at install time. The IMG header is checked exactly
+ * as in the full proof. Only the recorded regions are read. */
+static int verify_recorded_samples(LIBMTP_mtpdevice_t *device,
     const TerentoMTPMapOperationProfile *profile, uint32_t object_id, uint64_t size,
-    const TerentoMTPMutationAuthorization *authorization,
+    const char *expected_sha256, const uint64_t *offsets, uint32_t count, uint32_t region_length,
+    const char *sample_sha256, uint64_t *sampled_bytes,
     TerentoMTPProgressCallback progress_callback, const void *progress_context) {
     uint64_t total = 0;
-    if (!valid_content_hash(authorization->expected_sha256)
-        || !valid_content_hash(authorization->removal_sample_sha256)
-        || !validate_removal_plan(size, authorization->removal_sample_offsets,
-            authorization->removal_sample_count, authorization->removal_sample_length, &total)) return 0;
+    if (sampled_bytes) *sampled_bytes = 0;
+    if (!valid_content_hash(expected_sha256) || !valid_content_hash(sample_sha256)
+        || !validate_removal_plan(size, offsets, count, region_length, &total)) {
+        return TERENTO_RECORDED_SAMPLES_INVALID_PROOF;
+    }
     CC_SHA256_CTX hash;
-    if (!CC_SHA256_Init(&hash)) return 0;
+    if (!CC_SHA256_Init(&hash)) return TERENTO_RECORDED_SAMPLES_INVALID_PROOF;
     uint64_t done = 0;
-    /* Observation only: completion of reads never authorizes deletion. */
+    /* Observation only: completion of reads never authorizes anything. */
     if (progress_callback) progress_callback(0, total, progress_context);
-    for (uint32_t index = 0; index < authorization->removal_sample_count; ++index) {
-        uint64_t start = authorization->removal_sample_offsets[index];
+    for (uint32_t index = 0; index < count; ++index) {
+        uint64_t start = offsets[index];
         uint64_t available = size - start;
-        uint32_t length = (uint32_t)(available < authorization->removal_sample_length
-            ? available : authorization->removal_sample_length);
+        uint32_t length = (uint32_t)(available < region_length ? available : region_length);
         for (uint32_t consumed = 0; consumed < length;) {
             uint64_t offset = start + consumed;
             uint32_t requested = terento_sample_read_request(length - consumed, map_short_packet_reads(profile));
             unsigned char *bytes = NULL;
-            unsigned int count = 0;
-            int result = LIBMTP_GetPartialObject(device, object_id, offset, requested, &bytes, &count);
-            int valid = result == 0 && bytes && count == requested;
-            if (valid && offset == 0) valid = count >= 0x48 && bytes[0] == 0
+            unsigned int received = 0;
+            int result = LIBMTP_GetPartialObject(device, object_id, offset, requested, &bytes, &received);
+            if (result != 0 || !bytes || received != requested) {
+                if (bytes) LIBMTP_FreeMemory(bytes);
+                return TERENTO_RECORDED_SAMPLES_READ_FAILED;
+            }
+            int valid = 1;
+            if (offset == 0) valid = received >= 0x48 && bytes[0] == 0
                 && !memcmp(bytes + 0x10, "DSKIMG", 6) && !memcmp(bytes + 0x41, "GARMIN", 6);
-            if (valid) valid = CC_SHA256_Update(&hash, bytes, count);
-            if (bytes) LIBMTP_FreeMemory(bytes);
-            if (!valid) return 0;
-            consumed += count;
-            done += count;
+            int hashed = CC_SHA256_Update(&hash, bytes, received);
+            LIBMTP_FreeMemory(bytes);
+            if (!hashed) return TERENTO_RECORDED_SAMPLES_INVALID_PROOF;
+            if (!valid) return TERENTO_RECORDED_SAMPLES_CONTENT_MISMATCH;
+            consumed += received;
+            done += received;
+            if (sampled_bytes) *sampled_bytes = done;
             if (progress_callback) progress_callback(done, total, progress_context);
         }
     }
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];
-    if (done != total || !CC_SHA256_Final(digest, &hash)) return 0;
+    if (done != total || !CC_SHA256_Final(digest, &hash)) return TERENTO_RECORDED_SAMPLES_INVALID_PROOF;
     char actual[65];
     for (size_t i = 0; i < sizeof(digest); ++i) snprintf(actual + i * 2, 3, "%02x", digest[i]);
-    return strcasecmp(actual, authorization->removal_sample_sha256) == 0;
+    return strcasecmp(actual, sample_sha256) == 0
+        ? TERENTO_RECORDED_SAMPLES_MATCH : TERENTO_RECORDED_SAMPLES_CONTENT_MISMATCH;
+}
+
+/* Sampled removal proof, in the deletion session: only an exact match permits
+ * deletion; every other outcome refuses. */
+static int verify_deletion_samples(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id, uint64_t size,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
+    return verify_recorded_samples(device, profile, object_id, size, authorization->expected_sha256,
+        authorization->removal_sample_offsets, authorization->removal_sample_count,
+        authorization->removal_sample_length, authorization->removal_sample_sha256, NULL,
+        progress_callback, progress_context) == TERENTO_RECORDED_SAMPLES_MATCH;
 }
 
 /* Managed deletion content check: the recorded sampled proof when one was
@@ -2635,6 +2663,113 @@ sample_cleanup:
     }
     terento_trace_finish(&trace);
     fclose(source);
+    return result;
+}
+
+int terento_mtp_verify_managed_map_proof(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint64_t expected_size_bytes,
+    const char *expected_sha256,
+    const uint64_t *sample_offsets,
+    uint32_t sample_count,
+    uint32_t sample_length,
+    const char *sample_sha256,
+    uint32_t *resolved_item_id,
+    uint64_t *sampled_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
+    char *error_message,
+    size_t error_message_capacity
+) {
+    if (validate_map_operation_profile(profile, error_message, error_message_capacity) != 0) {
+        return TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+    }
+    if (expected_size_bytes == 0 || resolved_item_id == NULL || sampled_bytes == NULL
+        || !valid_content_hash(expected_sha256) || !valid_content_hash(sample_sha256)
+        || sample_offsets == NULL || sample_count == 0) {
+        set_error(error_message, error_message_capacity, "The recorded map proof request is invalid");
+        return -1;
+    }
+    *resolved_item_id = 0;
+    *sampled_bytes = 0;
+    uint64_t planned = 0;
+    if (!validate_removal_plan(expected_size_bytes, sample_offsets, sample_count, sample_length, &planned)) {
+        set_error(error_message, error_message_capacity, "The recorded map proof does not match the map size");
+        return -1;
+    }
+    set_error(error_message, error_message_capacity, "");
+    if (validate_stage42_target(target_filename, error_message, error_message_capacity) != 0) {
+        return -2;
+    }
+
+    uint16_t vendor_id = 0;
+    uint16_t product_id = 0;
+    LIBMTP_mtpdevice_t *device = open_single_garmin_device(
+        &vendor_id, &product_id, error_message, error_message_capacity, 1);
+    if (device == NULL) {
+        return -3;
+    }
+
+    int result = validate_live_map_operation_device(
+        profile, vendor_id, product_id, device, error_message, error_message_capacity);
+    if (result != 0) {
+        result = map_live_validation_error(result);
+        goto cleanup;
+    }
+
+    uint32_t storage_id = 0;
+    uint32_t folder_id = 0;
+    result = find_single_garmin_folder(device, &storage_id, &folder_id, error_message, error_message_capacity);
+    if (result != 0) {
+        goto cleanup;
+    }
+
+    /* The exact object in this session: one regular file of this name and
+     * size in the single /GARMIN folder of the profile storage. */
+    uint32_t actual_item_id = 0;
+    uint64_t remote_size = 0;
+    size_t match_count = 0;
+    result = find_stage42_map_file(device, storage_id, folder_id, target_filename,
+        &actual_item_id, &remote_size, &match_count, error_message, error_message_capacity);
+    if (result != 0) {
+        goto cleanup;
+    }
+    if (match_count != 1 || actual_item_id == 0 || remote_size != expected_size_bytes
+        || storage_id != profile->expected_storage_id) {
+        set_error(error_message, error_message_capacity, "The installed map identity changed during validation");
+        result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
+        goto cleanup;
+    }
+
+    LIBMTP_Clear_Errorstack(device);
+    int samples = verify_recorded_samples(device, profile, actual_item_id, remote_size, expected_sha256,
+        sample_offsets, sample_count, sample_length, sample_sha256, sampled_bytes,
+        progress_callback, progress_context);
+    if (samples == TERENTO_RECORDED_SAMPLES_READ_FAILED) {
+        set_device_error(error_message, error_message_capacity, device,
+            "The installed map could not be read for verification");
+        result = -5;
+        goto cleanup;
+    }
+    if (samples != TERENTO_RECORDED_SAMPLES_MATCH) {
+        set_error(error_message, error_message_capacity, "The installed map content did not match its install record");
+        result = TERENTO_MTP_MAP_CONTENT_MISMATCH;
+        goto cleanup;
+    }
+    /* The same object must still be the only one at this location. */
+    if (!deletion_target_still_matches(device, storage_id, folder_id, target_filename,
+            actual_item_id, remote_size)) {
+        set_error(error_message, error_message_capacity, "The installed map identity changed during validation");
+        result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
+        goto cleanup;
+    }
+
+    *resolved_item_id = actual_item_id;
+    result = 0;
+
+cleanup:
+    LIBMTP_Release_Device(device);
     return result;
 }
 

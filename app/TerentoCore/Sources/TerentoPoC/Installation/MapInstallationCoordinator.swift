@@ -1360,30 +1360,13 @@ struct MapInstallationCoordinator: Sendable {
             .joined()
     }
 
-    private static let verificationSampleLength: UInt32 = 4 * 1024 * 1024
+    private static let verificationSampleLength = SampledReadBackPlan.sampleLength
 
     private static func verificationSampleOffsets(
         fileSizeBytes: UInt64,
         sourceSHA256: String
     ) -> [UInt64] {
-        let sampleLength = min(UInt64(verificationSampleLength), fileSizeBytes)
-        let maximumOffset = fileSizeBytes - sampleLength
-        guard maximumOffset > 0 else {
-            return [0]
-        }
-
-        var seed: UInt64 = 0xcbf29ce484222325
-        for byte in sourceSHA256.utf8 {
-            seed ^= UInt64(byte)
-            seed = seed &* 0x100000001b3
-        }
-
-        var offsets: Set<UInt64> = [0, maximumOffset]
-        for _ in 0..<5 {
-            seed = seed &* 2862933555777941757 &+ 3037000493
-            offsets.insert(seed % (maximumOffset + 1))
-        }
-        return offsets.sorted()
+        SampledReadBackPlan.offsets(fileSizeBytes: fileSizeBytes, sourceSHA256: sourceSHA256)
     }
 
     private struct MetadataResult: Sendable {
