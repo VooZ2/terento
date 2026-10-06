@@ -45,7 +45,7 @@ jobs:
     needs: publish
     if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     environment: rukas-site
     permissions:
       actions: write
@@ -226,114 +226,6 @@ jobs:
             --report-result live_verification_failed --error-code live_verification_failed \
             --report-out "$RUNNER_TEMP/indexnow-report.json"
 
-      - name: Persist IndexNow publication state
-        id: persist_indexnow_state
-        if: steps.current.outputs.deploy == 'true' && steps.live_content.outcome == 'success'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          # beta requires all changes to arrive through a pull request. The
-          # state update is deliberately isolated from the site deployment:
-          # its merge changes only this state file, which is excluded from the
-          # deploy-site path filter.
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          latest="$(git ls-remote origin refs/heads/beta | cut -f1)"
-          test "$latest" = "$GITHUB_SHA"
-          cp "$RUNNER_TEMP/indexnow-state.json" .github/indexnow/site-state.json
-          if git diff --quiet -- .github/indexnow/site-state.json; then
-            echo "IndexNow publication state unchanged."
-            exit 0
-          fi
-          git diff --check -- .github/indexnow/site-state.json
-          git config user.name "terento-bot"
-          git config user.email "actions@terento.app"
-          git add -- .github/indexnow/site-state.json
-          test "$(git diff --cached --name-only)" = ".github/indexnow/site-state.json"
-          git commit -m "chore: retain IndexNow publication state"
-          state_branch="terento/indexnow-state"
-          remote_state="$(git ls-remote origin "refs/heads/${state_branch}" | cut -f1)"
-          git push --force-with-lease="refs/heads/${state_branch}:${remote_state}" \
-            origin "HEAD:refs/heads/${state_branch}"
-          state_sha="$(git rev-parse HEAD)"
-          mapfile -t open_prs < <(gh pr list --repo "$GITHUB_REPOSITORY" --base beta \
-            --head "$state_branch" --state open --json number --jq '.[].number')
-          test "${#open_prs[@]}" -le 1
-          if [ "${#open_prs[@]}" -eq 1 ]; then
-            pr_number="${open_prs[0]}"
-            pr_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/${pr_number}"
-          else
-            pr_url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base beta --head "$state_branch" \
-              --title "chore: retain IndexNow publication state" \
-              --body "Automated publication-state update from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}.\n\nOnly .github/indexnow/site-state.json is changed. The site deployment has already completed and no IndexNow request is made by this state update.")"
-            pr_number="${pr_url##*/}"
-          fi
-          echo "IndexNow publication state PR: ${pr_url}"
-          gh workflow run swift-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$state_branch"
-          run_id=''
-          for _ in {1..60}; do
-            run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow swift-ci.yml \
-              --branch "$state_branch" --event workflow_dispatch --limit 20 \
-              --json databaseId,headSha --jq ".[] | select(.headSha == \"${state_sha}\") | .databaseId" | head -1)"
-            [ -n "$run_id" ] && break
-            sleep 5
-          done
-          test -n "$run_id"
-          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 30 --exit-status
-          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json headSha --jq .headSha)" = "$state_sha"
-          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
-          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json jobs \
-            --jq '.jobs[] | select(.name == "build-and-test") | .conclusion')" = success
-          visibility_attempts=18
-          visibility_interval=5
-          required_checks_file="$RUNNER_TEMP/indexnow-required-checks.json"
-          checks_visible=false
-          for attempt in $(seq 1 "$visibility_attempts"); do
-            visible_head="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
-              --json headRefOid --jq .headRefOid)"
-            test "$visible_head" = "$state_sha"
-            checks_status=0
-            : > "$required_checks_file"
-            gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required \
-              --json name,state,bucket > "$required_checks_file" 2>/dev/null || checks_status=$?
-            if jq -e 'type == "array" and length > 0' "$required_checks_file" >/dev/null 2>&1; then
-              if jq -e 'any(.[]; .bucket == "fail" or .bucket == "cancel" or .state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT")' \
-                "$required_checks_file" >/dev/null; then
-                echo "IndexNow state PR has an explicit failed required check; see the fallback artifact." >&2
-                jq -c '.' "$required_checks_file" >&2
-                exit 1
-              fi
-              checks_visible=true
-              break
-            fi
-            if [ "$attempt" -eq "$visibility_attempts" ]; then
-              echo "Timed out waiting for required IndexNow state PR checks to become visible (last gh status: $checks_status); see the fallback artifact." >&2
-              exit 1
-            fi
-            echo "Required IndexNow state PR checks are not visible yet; retrying in ${visibility_interval}s (attempt ${attempt}/${visibility_attempts})."
-            sleep "$visibility_interval"
-          done
-          test "$checks_visible" = true
-          if ! gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch --fail-fast --interval 10; then
-            echo "IndexNow state PR checks did not pass; see the fallback artifact." >&2
-            exit 1
-          fi
-          test "$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$state_sha"
-          gh pr merge "$pr_number" --repo "$GITHUB_REPOSITORY" --merge --delete-branch \
-            --match-head-commit "$state_sha"
-          echo "IndexNow publication state persisted through ${pr_url}."
-
-      - name: Preserve IndexNow state fallback
-        if: steps.persist_indexnow_state.outcome != 'success' && steps.live_content.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: terento-indexnow-state-${{ github.run_id }}
-          path: ${{ runner.temp }}/indexnow-state.json
-          if-no-files-found: error
-          retention-days: 14
-
       - name: Retain website deployment health
         if: steps.current.outputs.deploy == 'true'
         shell: bash
@@ -427,3 +319,116 @@ jobs:
         if: steps.indexnow_observation.outcome != 'success' && steps.current.outputs.deploy == 'true'
         shell: bash
         run: echo 'IndexNow submission result was retained locally, but its operations report was not accepted by the backend.' >> "$GITHUB_STEP_SUMMARY"
+
+      # Runs last: its Swift CI and required-check wait can take longer than
+      # every other step, so a slow state PR must never prevent the website
+      # health and IndexNow observations from being retained.
+      - name: Persist IndexNow publication state
+        id: persist_indexnow_state
+        timeout-minutes: 40
+        if: steps.current.outputs.deploy == 'true' && steps.live_content.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # beta requires all changes to arrive through a pull request. The
+          # state update is deliberately isolated from the site deployment:
+          # its merge changes only this state file, which is excluded from the
+          # deploy-site path filter.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          latest="$(git ls-remote origin refs/heads/beta | cut -f1)"
+          test "$latest" = "$GITHUB_SHA"
+          cp "$RUNNER_TEMP/indexnow-state.json" .github/indexnow/site-state.json
+          if git diff --quiet -- .github/indexnow/site-state.json; then
+            echo "IndexNow publication state unchanged."
+            exit 0
+          fi
+          git diff --check -- .github/indexnow/site-state.json
+          git config user.name "terento-bot"
+          git config user.email "actions@terento.app"
+          git add -- .github/indexnow/site-state.json
+          test "$(git diff --cached --name-only)" = ".github/indexnow/site-state.json"
+          git commit -m "chore: retain IndexNow publication state"
+          state_branch="terento/indexnow-state"
+          remote_state="$(git ls-remote origin "refs/heads/${state_branch}" | cut -f1)"
+          git push --force-with-lease="refs/heads/${state_branch}:${remote_state}" \
+            origin "HEAD:refs/heads/${state_branch}"
+          state_sha="$(git rev-parse HEAD)"
+          mapfile -t open_prs < <(gh pr list --repo "$GITHUB_REPOSITORY" --base beta \
+            --head "$state_branch" --state open --json number --jq '.[].number')
+          test "${#open_prs[@]}" -le 1
+          if [ "${#open_prs[@]}" -eq 1 ]; then
+            pr_number="${open_prs[0]}"
+            pr_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/${pr_number}"
+          else
+            pr_url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base beta --head "$state_branch" \
+              --title "chore: retain IndexNow publication state" \
+              --body "Automated publication-state update from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}.\n\nOnly .github/indexnow/site-state.json is changed. The site deployment has already completed and no IndexNow request is made by this state update.")"
+            pr_number="${pr_url##*/}"
+          fi
+          echo "IndexNow publication state PR: ${pr_url}"
+          gh workflow run swift-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$state_branch" \
+            -f selection_base=beta
+          run_id=''
+          for _ in {1..60}; do
+            run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow swift-ci.yml \
+              --branch "$state_branch" --event workflow_dispatch --limit 20 \
+              --json databaseId,headSha --jq ".[] | select(.headSha == \"${state_sha}\") | .databaseId" | head -1)"
+            [ -n "$run_id" ] && break
+            sleep 5
+          done
+          test -n "$run_id"
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 30 --exit-status
+          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json headSha --jq .headSha)" = "$state_sha"
+          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          test "$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json jobs \
+            --jq '.jobs[] | select(.name == "build-and-test") | .conclusion')" = success
+          visibility_attempts=18
+          visibility_interval=5
+          required_checks_file="$RUNNER_TEMP/indexnow-required-checks.json"
+          checks_visible=false
+          for attempt in $(seq 1 "$visibility_attempts"); do
+            visible_head="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
+              --json headRefOid --jq .headRefOid)"
+            test "$visible_head" = "$state_sha"
+            checks_status=0
+            : > "$required_checks_file"
+            gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required \
+              --json name,state,bucket > "$required_checks_file" 2>/dev/null || checks_status=$?
+            if jq -e 'type == "array" and length > 0' "$required_checks_file" >/dev/null 2>&1; then
+              if jq -e 'any(.[]; .bucket == "fail" or .bucket == "cancel" or .state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT")' \
+                "$required_checks_file" >/dev/null; then
+                echo "IndexNow state PR has an explicit failed required check; see the fallback artifact." >&2
+                jq -c '.' "$required_checks_file" >&2
+                exit 1
+              fi
+              checks_visible=true
+              break
+            fi
+            if [ "$attempt" -eq "$visibility_attempts" ]; then
+              echo "Timed out waiting for required IndexNow state PR checks to become visible (last gh status: $checks_status); see the fallback artifact." >&2
+              exit 1
+            fi
+            echo "Required IndexNow state PR checks are not visible yet; retrying in ${visibility_interval}s (attempt ${attempt}/${visibility_attempts})."
+            sleep "$visibility_interval"
+          done
+          test "$checks_visible" = true
+          if ! gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch --fail-fast --interval 10; then
+            echo "IndexNow state PR checks did not pass; see the fallback artifact." >&2
+            exit 1
+          fi
+          test "$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$state_sha"
+          gh pr merge "$pr_number" --repo "$GITHUB_REPOSITORY" --merge --delete-branch \
+            --match-head-commit "$state_sha"
+          echo "IndexNow publication state persisted through ${pr_url}."
+
+      - name: Preserve IndexNow state fallback
+        if: steps.persist_indexnow_state.outcome != 'success' && steps.live_content.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: terento-indexnow-state-${{ github.run_id }}
+          path: ${{ runner.temp }}/indexnow-state.json
+          if-no-files-found: error
+          retention-days: 14
