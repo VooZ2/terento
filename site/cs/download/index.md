@@ -12,9 +12,9 @@ Nativní aplikace pro Mac k instalaci a správě komunitních map na hodinkách 
 - Zdarma
 - Notarizovaná
 - Apple Silicon
-[Stáhnout DMG Doporučeno](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.dmg) [Stáhnout ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.18-build40/Terento-1.0.0-beta.18-macOS-arm64.zip) [Poznámky k vydání](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.18-build40)
+[Stáhnout DMG Doporučeno](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.1-build41/Terento-1.0.0-rc.1-macOS-arm64.dmg) [Stáhnout ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.1-build41/Terento-1.0.0-rc.1-macOS-arm64.zip) [Poznámky k vydání](https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.1-build41)
 
-Nejnovější beta: **v1.0.0-beta.18** Vydáno 5. října 2026
+Nejnovější kandidát na vydání: **v1.0.0-rc.1** Vydáno 6. října 2026
 
 Terento zobrazuje připojené hodinky Garmin v macOS
 
@@ -31,6 +31,6 @@ Před instalací
 
 ## Stav bety
 
-Jde o aktuální betu Terento. Podporuje mapy od čtyř poskytovatelů. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s úspěšnými sdílenými instalacemi. Chybějící model neznamená, že zařízení není podporováno.
+Jde o aktuálního kandidáta na vydání Terento. Podporuje mapy od čtyř poskytovatelů. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s úspěšnými sdílenými instalacemi. Chybějící model neznamená, že zařízení není podporováno.
 
 [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)

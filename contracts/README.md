@@ -88,11 +88,11 @@ are operator work, never statistics.
 
 ## Responses and client compatibility
 
-The current beta.18 client requests `/maps/catalog-v4.json`. The legacy route
+The current rc.1 client requests `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
 Older clients (beta.18 and earlier) can reject a complete snapshot containing
 an unknown installable provider, so these projections must remain separate.
-From the next app candidate, the native client accepts the remote catalog per
+From rc.1, the native client accepts the remote catalog per
 package: a package that fails its provider adapter, reviewed source host, IMG
 identity or BBBike rules (or names a required artifact of an unknown `kind`) is
 dropped and counted; an optional artifact of an unknown `kind` is ignored.

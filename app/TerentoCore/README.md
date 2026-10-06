@@ -343,7 +343,7 @@ A response already in flight cannot restore the opted-out status. This does not
 add cancellation/interruption events or reconstruct missing historical outcomes;
 a download start without a received outcome is not proof of a failed download.
 
-### First-run additions (local candidate)
+### First-run additions (rc.1/build41)
 
 - **Support reports** (`Diagnostics/SupportReport*.swift`, `POST /support/reports`,
   schema v1; meaning owned by `contracts/SUPPORT_REPORT_CONTRACT.md`). The sheet
@@ -852,7 +852,7 @@ the candidate based on integrated beta `0febd192`. Packaged source `e0f0e704`
 subsequently passed the full 83-runner release suite, signing, notarization,
 Gatekeeper and both ZIP/DMG launch checks before beta.18 publication.
 
-### Local statistics reconciliation candidate
+### Statistics reconciliation (rc.1/build41)
 
 Acquisition events carry an optional `acquisitionPurpose` (`install` or `update`)
 through all phases; legacy saved events without it remain unknown. Fresh events
@@ -864,7 +864,7 @@ are parked (see map-use delivery above) while independent reports continue.
 A preflight component failure is attributed to its owning selected map, not the
 flattened component position. MapRando's standalone France contours catalog entry
 has its own main artifact; it remains a selectable independent map, distinct from
-attached optional component downloads. These are local changes, not release or
+attached optional component downloads. Shipped in rc.1/build41; this is not
 hardware evidence. No Checking UI or device-write sequencing changes are included.
 
 ### Connection and disconnect messages
