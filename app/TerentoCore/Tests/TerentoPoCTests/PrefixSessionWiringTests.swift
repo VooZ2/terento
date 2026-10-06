@@ -64,5 +64,36 @@ struct PrefixSessionWiringTests {
         let bound = MTPFinishingWorker.inventoryTimeout(expectedObjectCount: heavy.count)
         precondition(bound > 60 && bound < 600)
         print("PASS: heavy-watch inventory with duplicate music stays protected; worker bound \(Int(bound)) s scales with 12,005 objects")
+        // The actual Swift transport on the native map-scope walk (12,000 tracks outside /GARMIN).
+        resetFixture(19)
+        let fullHeavy = try MTPTransport(operationGate: MTPOperationGate()).readFileInventory()
+        resetFixture(19)
+        let scoped = try MTPTransport(operationGate: MTPOperationGate()).readMapScopeInventory()
+        precondition(fullHeavy.count == 12_055 && scoped.scope == .garmin && scoped.fallback == .none
+            && scoped.files.count == 55)
+        // The Swift projection of a full scan equals what the native scoped walk returns.
+        precondition(Set(MapInventoryScope.project(fullHeavy).map(\.stableIdentity)) == Set(scoped.files.map(\.stableIdentity))
+            && MapInventoryScope.project(fullHeavy).count == scoped.files.count)
+        precondition(scoped.files.contains { $0.path == "/rootmap.img" }
+            && !scoped.files.contains { $0.path.hasPrefix("/Music/") })
+        let scopedProtected = try ProtectedMapInventory(files: scoped.files)
+        precondition(scopedProtected.protected.count == 55)
+        for (scenario, fallback, count) in [(Int32(20), DeviceInventoryFallback.ambiguousRoot, 12_057),
+                                            (21, .noRoot, 12_002), (22, .scopedFailed, 12_055)] {
+            resetFixture(scenario)
+            let read = try MTPTransport(operationGate: MTPOperationGate()).readMapScopeInventory()
+            precondition(read.scope == .full && read.fallback == fallback && read.files.count == count)
+        }
+        var response = MTPFinishingWorker.Response()
+        response.files = scoped.files
+        response.inventoryScope = scoped.scope
+        response.inventoryFallback = scoped.fallback
+        let decoded = try MTPFinishingWorker.decodeResponse(JSONEncoder().encode(response), operation: .inventory)
+        precondition(decoded.inventoryScope == .garmin && decoded.inventoryFallback == DeviceInventoryFallback.none
+            && decoded.files?.count == 55)
+        let legacy = try MTPFinishingWorker.decodeResponse(JSONEncoder().encode(MTPFinishingWorker.Response(files: [])),
+                                                           operation: .inventory)
+        precondition(legacy.inventoryScope == nil)
+        print("PASS: actual Swift map-scope read returns 55 of 12,055 objects, matches the Swift projection and falls back to the full walk")
     }
 }
