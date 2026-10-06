@@ -85,6 +85,13 @@ from .app_funnel import (
     FunnelValidationError,
     validate_funnel_event,
 )
+from .support_reports import (
+    MAX_SUPPORT_REPORT_BYTES,
+    SupportReportValidationError,
+    normalise_admin_note,
+    normalise_reference,
+    validate_support_report,
+)
 from .map_events import (
     MapEventValidationError,
     validate_map_event,
@@ -114,6 +121,8 @@ COMPATIBILITY_EVENT_RATE_LIMIT = 300
 # A session sends at most one event per (stage, outcome, baseModel).
 APP_FUNNEL_EVENT_RATE_LIMIT = 120
 APP_FUNNEL_PERIODS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30), "all": None}
+# A user sends a support report only by explicit choice; retries reuse the id.
+SUPPORT_REPORT_RATE_LIMIT = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
 # Socket timeout for one blocking read or write. A stalled or slow-loris client
 # cannot pin a server thread indefinitely; large bodies and responses still
@@ -473,6 +482,10 @@ class CatalogService:
         ):
             return None
         return {"id": provider_id, "status": status}
+
+    def receive_support_report(self, body: bytes) -> tuple[dict[str, Any], str]:
+        report = validate_support_report(body)
+        return report, self.database.insert_support_report(report)
 
     def receive_app_funnel_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
         event = validate_funnel_event(body)
@@ -908,15 +921,29 @@ class CatalogService:
         )
 
     def local_test_data(self) -> dict[str, Any]:
-        return self.database.local_test_telemetry_summary()
+        summary = dict(self.database.local_test_telemetry_summary())
+        reader = getattr(self.database, "support_reports", None)
+        if callable(reader):
+            # Local support reports appear only here; a failed read marks only
+            # their card unavailable.
+            try:
+                summary["supportReports"] = reader(status="ALL", local=True, limit=50)
+            except Exception:
+                LOGGER.exception("local support report summary failed")
+                summary["supportReports"] = {"available": False}
+        return summary
 
     def purge_local_test_data(
         self, *, admin_user_id: int | None, request_id: str | None = None,
     ) -> dict[str, int]:
-        return self.database.purge_local_test_telemetry(
+        counts = dict(self.database.purge_local_test_telemetry(
             admin_user_id=admin_user_id,
             request_id=request_id,
-        )
+        ))
+        purge_reports = getattr(self.database, "purge_local_support_reports", None)
+        if callable(purge_reports):
+            counts["supportReportCount"] = purge_reports(admin_user_id=admin_user_id, request_id=request_id)
+        return counts
 
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
@@ -1029,6 +1056,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path == "/app-funnel/events":
                 self._handle_app_funnel_event()
+                return
+            if request_path == "/support/reports":
+                self._handle_support_report()
                 return
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
@@ -1214,6 +1244,44 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 HTTPStatus.NOT_FOUND,
                 {"error": "not_found"},
                 send_body=send_body,
+                cache_control="no-store",
+            )
+
+        def _handle_support_report(self) -> None:
+            # The trusted-proxy client address is used only for this in-memory
+            # limiter; it is never stored with the report.
+            client = f"support-report:{self._client_ip()}"
+            if self._rate_limited(client, limit=SUPPORT_REPORT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_SUPPORT_REPORT_BYTES:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
+                return
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type != "application/json":
+                self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"}, send_body=True, cache_control="no-store")
+                return
+            request_times[client].append(time.monotonic())
+            try:
+                report, result = service.receive_support_report(self.rfile.read(length))
+            except SupportReportValidationError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
+                return
+            except Exception:
+                LOGGER.exception("support report storage failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "support_reports_unavailable"}, send_body=True, cache_control="no-store")
+                return
+            if result == "conflict":
+                self._send_json(HTTPStatus.CONFLICT, {"error": "reference_conflict"}, send_body=True, cache_control="no-store")
+                return
+            self._send_json(
+                HTTPStatus.CREATED if result == "stored" else HTTPStatus.OK,
+                {"reference": report["reference"], "status": "stored" if result == "stored" else "duplicate"},
+                send_body=True,
                 cache_control="no-store",
             )
 

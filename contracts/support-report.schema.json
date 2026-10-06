@@ -1,0 +1,849 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "support-report.schema.json",
+  "title": "Support report request",
+  "description": "POST /support/reports body (schema version 1). Meaning is owned by contracts/SUPPORT_REPORT_CONTRACT.md. Max 64 KiB; unknown fields are rejected at every level; the report id is idempotent. Sent only after explicit per-send user consent. No serial, Unit ID, account, local path, raw log, file content or IP address.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "createdAt",
+    "appBuild",
+    "releaseLabel",
+    "category",
+    "report"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "Random report UUID; replay is idempotent and returns the same reference."
+    },
+    "createdAt": {
+      "type": "string",
+      "pattern": "(Z|\\+00:00)$",
+      "description": "RFC 3339 UTC timestamp."
+    },
+    "appBuild": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+    },
+    "releaseLabel": {
+      "$ref": "#/$defs/releaseLabel",
+      "description": "SemVer app release. A label ending in -local marks a local test report, shown only under Admin Test data."
+    },
+    "category": {
+      "enum": [
+        "INSTALL_FAILED",
+        "UPDATE_FAILED",
+        "REMOVE_FAILED",
+        "CONNECTION",
+        "OTHER"
+      ]
+    },
+    "operationId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "Operation UUID of the failed install/update (the report's Installation ID); links to existing diagnostics."
+    },
+    "userMessage": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))(?=[\\s\\S]*\\S)[^\\x00-\\x08\\x0b-\\x1f\\x7f]*$",
+      "description": "Optional user description, at most 2000 Unicode scalar values, sanitised by the client (DiagnosticReportSanitizer) before sending. Newlines and tabs allowed."
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "macOSVersion"
+      ],
+      "description": "Structured form of the sanitised GitHub issue report (InstallationIssueReport). Unknown values are omitted, never sent as 'Unavailable'. Never a serial, Unit ID, account, local path, raw log or file content.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$",
+          "description": "Issue title, e.g. 'Installation stopped during Finishing — MapRando / Lithuania'."
+        },
+        "operation": {
+          "enum": [
+            "INSTALLATION",
+            "UPDATE",
+            "REMOVAL"
+          ],
+          "description": "DiagnosticMapOperation: Map installation, Map update, Map removal. Omitted when no map operation is involved."
+        },
+        "stage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$",
+          "description": "Sanitised failure stage label (Summary · Failure stage)."
+        },
+        "failureStages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+          }
+        },
+        "errorCategory": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$",
+          "description": "Summary · Error category."
+        },
+        "errorCodes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$"
+          },
+          "description": "Summary · Error code values (closed identifiers)."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$",
+          "description": "The user-facing failure message (Failure details · Detail), sanitised."
+        },
+        "macOSVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$",
+          "description": "ProcessInfo operatingSystemVersionString."
+        },
+        "device": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$",
+              "description": "Presentation model."
+            },
+            "variant": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+            },
+            "family": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+            },
+            "firmware": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+            },
+            "mtpModel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$",
+              "description": "Reported USB model name (not a serial)."
+            }
+          }
+        },
+        "maps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "provider"
+            ],
+            "properties": {
+              "provider": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80,
+                "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+              },
+              "region": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+              },
+              "package": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+              },
+              "release": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80,
+                "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+              },
+              "plannedBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            }
+          }
+        },
+        "writeStarted": {
+          "type": "boolean"
+        },
+        "objectCreated": {
+          "type": "boolean"
+        },
+        "cleanupAttempted": {
+          "type": "boolean"
+        },
+        "cleanupSucceeded": {
+          "type": "boolean"
+        },
+        "transferProgressPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "originalFailure": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$"
+            },
+            "cleanupFailure": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$"
+            },
+            "transportClassification": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$"
+            },
+            "failedComponent": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$"
+            },
+            "sourceBytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "remoteBytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "transferredBytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "elapsedMilliseconds": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "sampledBytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "sampleCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "matchedSampleCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "lifecycleFacts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^(?![\\s\\S]*(/[Uu][Ss][Ee][Rr][Ss]/|[Ff][Ii][Ll][Ee]://|/[Pp][Rr][Ii][Vv][Aa][Tt][Ee]/|/[Vv][Oo][Ll][Uu][Mm][Ee][Ss]/|\\\\[Uu][Ss][Ee][Rr][Ss]\\\\))[^\\s\\x00-\\x1f\\x7f]([^\\x00-\\x1f\\x7f]*[^\\s\\x00-\\x1f\\x7f])?$"
+          }
+        },
+        "failureContext": {
+          "$ref": "#/$defs/failureContext"
+        },
+        "originalFailureContext": {
+          "$ref": "#/$defs/failureContext"
+        },
+        "finishingTrace": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "description": "FinishingTrace.failureReport lines (already filtered by FinishingTrace.safeLine, t/pid/child/trace tokens removed). Lines that do not match are omitted by the client.",
+          "items": {
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "^FINISH_TRACE (swift|native)( [a-z][a-z0-9_]{0,39}=[A-Za-z0-9_.-]{0,80})*( event=[A-Za-z0-9_.-]{1,80})( [a-z][a-z0-9_]{0,39}=[A-Za-z0-9_.-]{0,80})*$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "releaseLabel": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "failureContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary",
+        "classificationSource",
+        "devicePresence"
+      ],
+      "properties": {
+        "boundary": {
+          "enum": [
+            "initial_snapshot",
+            "initial_inventory",
+            "prewrite_inventory",
+            "prewrite_protection",
+            "write",
+            "readback",
+            "postwrite_inventory",
+            "postwrite_snapshot",
+            "target_validation",
+            "postwrite_protection",
+            "cleanup",
+            "manifest",
+            "source_validation_complete",
+            "preflight_policy_passed"
+          ]
+        },
+        "lastSuccessfulBoundary": {
+          "enum": [
+            "initial_snapshot",
+            "initial_inventory",
+            "prewrite_inventory",
+            "prewrite_protection",
+            "write",
+            "readback",
+            "postwrite_inventory",
+            "postwrite_snapshot",
+            "target_validation",
+            "postwrite_protection",
+            "cleanup",
+            "manifest",
+            "source_validation_complete",
+            "preflight_policy_passed"
+          ]
+        },
+        "classificationSource": {
+          "enum": [
+            "native",
+            "derived"
+          ]
+        },
+        "devicePresence": {
+          "enum": [
+            "unknown",
+            "present",
+            "absent"
+          ]
+        },
+        "operation": {
+          "enum": [
+            "snapshot",
+            "inventory",
+            "file_prefix",
+            "file_range",
+            "write",
+            "readback",
+            "cleanup",
+            "manifest",
+            "protection_check"
+          ]
+        },
+        "executionMode": {
+          "enum": [
+            "in_process",
+            "worker"
+          ]
+        },
+        "resultKind": {
+          "enum": [
+            "native_error",
+            "timeout",
+            "cancelled",
+            "process_launch_error",
+            "process_exit",
+            "request_io_error",
+            "response_io_error",
+            "decode_error",
+            "invalid_response",
+            "app_error",
+            "protection_failed"
+          ]
+        },
+        "nativeCategory": {
+          "enum": [
+            "detection",
+            "session_open",
+            "storage_read",
+            "inventory_read",
+            "object_read",
+            "allocation",
+            "invalid_argument",
+            "unspecified"
+          ]
+        },
+        "nativeCodeNamespace": {
+          "enum": [
+            "terento_snapshot",
+            "terento_inventory",
+            "terento_file_prefix",
+            "terento_file_range"
+          ]
+        },
+        "componentKind": {
+          "enum": [
+            "main",
+            "contours"
+          ]
+        },
+        "nativeResultCode": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "protection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "protectionBoundary",
+            "protectionReason"
+          ],
+          "properties": {
+            "protectionBoundary": {
+              "enum": [
+                "pre-write",
+                "post-write"
+              ]
+            },
+            "protectionReason": {
+              "enum": [
+                "target-present-before-write",
+                "non-target-object-added",
+                "preexisting-object-removed",
+                "preexisting-object-changed",
+                "inventory-ambiguous",
+                "target-missing",
+                "target-duplicate",
+                "target-invalid",
+                "target-filename-mismatch",
+                "target-size-mismatch"
+              ]
+            },
+            "stableIdentityComparisonVersion": {
+              "type": "integer",
+              "enum": [
+                1,
+                2
+              ]
+            },
+            "beforeObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "afterObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "addedObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "removedObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "changedObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "targetPresent": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetUnique": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetKindMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetFilenameMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetSizeMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetPathMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetItemIDMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-present-before-write"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetPresent": {
+                    "enum": [
+                      null,
+                      true
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-missing"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetPresent": {
+                    "enum": [
+                      null,
+                      false
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-duplicate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetPresent": {
+                    "enum": [
+                      null,
+                      true
+                    ]
+                  },
+                  "targetUnique": {
+                    "enum": [
+                      null,
+                      false
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-filename-mismatch"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetFilenameMatches": {
+                    "enum": [
+                      null,
+                      false
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-size-mismatch"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetSizeMatches": {
+                    "enum": [
+                      null,
+                      false
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "dependentRequired": {
+        "nativeCodeNamespace": [
+          "nativeResultCode"
+        ],
+        "nativeResultCode": [
+          "nativeCodeNamespace"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "boundary": {
+                "const": "prewrite_protection"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionBoundary": {
+                    "const": "pre-write"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "boundary": {
+                "const": "postwrite_protection"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionBoundary": {
+                    "const": "post-write"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "boundary": {
+                "const": "target_validation"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionBoundary": {
+                    "const": "post-write"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "protection"
+            ]
+          },
+          "then": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "prewrite_protection",
+                  "postwrite_protection",
+                  "target_validation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "protection"
+            ],
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionReason": {
+                    "enum": [
+                      "target-present-before-write"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "prewrite_protection"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "protection"
+            ],
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionReason": {
+                    "enum": [
+                      "target-missing",
+                      "target-duplicate",
+                      "target-invalid",
+                      "target-filename-mismatch",
+                      "target-size-mismatch"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "target_validation",
+                  "postwrite_protection"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "protection"
+            ],
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionReason": {
+                    "enum": [
+                      "non-target-object-added",
+                      "preexisting-object-removed",
+                      "preexisting-object-changed",
+                      "inventory-ambiguous"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "prewrite_protection",
+                  "postwrite_protection"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

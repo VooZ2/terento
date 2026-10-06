@@ -549,3 +549,17 @@ placement, plus occurred/received indexes. It holds no device, account, path or
 address identifiers, is pruned 24 months after receipt, and never feeds install,
 update, download or compatibility read models. Meaning:
 `contracts/APP_FUNNEL_CONTRACT.md`.
+
+### Migration071: support reports
+
+Adds `support_report` (report UUID primary key, unique deterministic
+`reference` `TR-[A-Z2-7]{6}`, `received_at`, client `created_at`, `app_build`,
+`release_label`, `is_local_test`, `category`, optional `operation_id` and
+`user_message` ≤ 2000, structured `report` JSONB object, `status` `OPEN|HANDLED`
+with a matching `handled_at`, `handled_by`, optional `linked_github_issue`
+`#n`, `note` ≤ 2000, `updated_at`) with an open-queue index over public rows, a
+received index and an operation index, plus `support_report_audit` (action,
+previous/new status and issue, note, admin, time; cascades with its report). No
+IP, serial, Unit ID, account or path is stored. Rows are pruned 12 months after
+receipt by `prune_compatibility_events`; local rows are removed by the Test data
+purge. Never read by statistics. Meaning: `contracts/SUPPORT_REPORT_CONTRACT.md`.

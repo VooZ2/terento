@@ -14,6 +14,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
 | `app-funnel-event.schema.json` | `POST /app-funnel/events` request body | `schemaVersion: 1`; meaning owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md) |
+| `support-report.schema.json` | `POST /support/reports` request body | `schemaVersion: 1`; meaning owned by [`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md) |
 
 The installation policy contract contains exact Garmin catalog rows and
 `active`, normalized `baseModel` from the catalog model label, nullable
@@ -73,6 +74,8 @@ contract distinguishes terminal provider acquisitions, fresh main-map results,
 optional components and updates; it does not authorize a production migration
 or claim complete telemetry coverage. App first-run funnel sessions are a
 separate population owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md).
+User-sent support reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md))
+are operator work, never statistics.
 
 ## Responses and client compatibility
 

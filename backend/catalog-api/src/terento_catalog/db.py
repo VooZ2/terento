@@ -1192,6 +1192,8 @@ class Database:
             connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
             # App funnel events follow the same 24-month receipt-time retention.
             connection.execute("DELETE FROM app_funnel_event WHERE received_at < now() - interval '24 months'")
+            # Support reports are kept 12 months after receipt, whatever their status.
+            connection.execute("DELETE FROM support_report WHERE received_at < now() - interval '12 months'")
             result = connection.execute(
                 "DELETE FROM compatibility_evidence_event WHERE received_at < now() - interval '24 months'"
             )
@@ -4311,6 +4313,253 @@ class Database:
                 ),
             ).fetchone()
         return row is not None
+
+    # --- Support reports (contracts/SUPPORT_REPORT_CONTRACT.md) -------------
+    # A separate, operator-only population: never statistics, never an input
+    # to install, update, download, compatibility or funnel counts.
+
+    def insert_support_report(self, report: dict[str, Any]) -> str:
+        """Store one validated report: ``stored``, ``duplicate`` (same id) or ``conflict``.
+
+        ``conflict`` means another report already owns the deterministic
+        reference; the client must create a new report id.
+        """
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                INSERT INTO support_report (
+                    id, reference, created_at, app_build, release_label, is_local_test,
+                    category, operation_id, user_message, report
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                ON CONFLICT DO NOTHING
+                RETURNING id
+                """,
+                (
+                    report["id"], report["reference"], report["createdAt"], report["appBuild"],
+                    report["releaseLabel"], report["isLocalTest"], report["category"],
+                    report.get("operationId"), report.get("userMessage"),
+                    json.dumps(report["report"], ensure_ascii=False, sort_keys=True),
+                ),
+            ).fetchone()
+            if row is not None:
+                return "stored"
+            existing = connection.execute(
+                "SELECT id FROM support_report WHERE id = %s", (report["id"],),
+            ).fetchone()
+        return "duplicate" if existing else "conflict"
+
+    def support_report_open_count(self) -> int:
+        """Needs attention: open reports from public (non-local) builds."""
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT count(*) AS n FROM support_report WHERE status = 'OPEN' AND is_local_test IS FALSE"
+            ).fetchone() or {}
+        return int(row.get("n") or 0)
+
+    def support_reports(
+        self, *, status: str = "OPEN", limit: int = 50, offset: int = 0, local: bool = False,
+    ) -> dict[str, Any]:
+        """One page of reports (newest receipt first) plus totals independent of the page."""
+        if status not in {"OPEN", "HANDLED", "ALL"}:
+            raise ValueError("invalid_support_report_status")
+        limit = max(1, min(int(limit), 200))
+        offset = max(0, int(offset))
+        local_clause = "is_local_test IS TRUE" if local else "is_local_test IS FALSE"
+        with self.connection() as connection:
+            counts = connection.execute(
+                f"""
+                SELECT count(*) FILTER (WHERE status = 'OPEN') AS open_count,
+                       count(*) FILTER (WHERE status = 'HANDLED') AS handled_count,
+                       count(*) AS total_count
+                FROM support_report WHERE {local_clause}
+                """
+            ).fetchone() or {}
+            rows = list(connection.execute(
+                f"""
+                SELECT id, reference, received_at, created_at, app_build, release_label,
+                       is_local_test, category, operation_id, status, handled_at,
+                       linked_github_issue,
+                       report->>'title' AS title,
+                       report->'device'->>'model' AS device_model,
+                       report->'device'->>'variant' AS device_variant,
+                       (user_message IS NOT NULL) AS has_user_message
+                FROM support_report
+                WHERE {local_clause} AND (%s = 'ALL' OR status = %s)
+                ORDER BY received_at DESC, id
+                LIMIT %s OFFSET %s
+                """,
+                (status, status, limit, offset),
+            ).fetchall())
+        open_count = int(counts.get("open_count") or 0)
+        handled_count = int(counts.get("handled_count") or 0)
+        return {
+            "rows": [dict(row) for row in rows],
+            "status": status,
+            "limit": limit,
+            "offset": offset,
+            "openCount": open_count,
+            "handledCount": handled_count,
+            "totalCount": int(counts.get("total_count") or 0),
+            "filteredTotal": {"OPEN": open_count, "HANDLED": handled_count}.get(status, open_count + handled_count),
+        }
+
+    def support_report_detail(self, reference: str) -> dict[str, Any] | None:
+        """One report with its audit history and the diagnostics sharing its operation ID."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT r.*, u.username AS handled_by_username
+                FROM support_report AS r
+                LEFT JOIN admin_user AS u ON u.id = r.handled_by
+                WHERE r.reference = %s
+                """,
+                (reference,),
+            ).fetchone()
+            if not row:
+                return None
+            detail = dict(row)
+            if isinstance(detail.get("report"), str):
+                detail["report"] = json.loads(detail["report"])
+            detail["audit"] = [dict(item) for item in connection.execute(
+                """
+                SELECT a.action, a.previous_status, a.new_status, a.previous_github_issue,
+                       a.new_github_issue, a.note, a.changed_at, u.username AS changed_by_username
+                FROM support_report_audit AS a
+                LEFT JOIN admin_user AS u ON u.id = a.changed_by
+                WHERE a.support_report_id = %s
+                ORDER BY a.id DESC
+                LIMIT 50
+                """,
+                (detail["id"],),
+            ).fetchall()]
+            installations: list[dict[str, Any]] = []
+            updates: list[dict[str, Any]] = []
+            # Only public diagnostics are linked: local-test diagnostics are
+            # not shown in the Admin diagnostic views.
+            if detail.get("operation_id") and not detail.get("is_local_test"):
+                installations = [dict(item) for item in connection.execute(
+                    """
+                    SELECT compatibility_identity, model, canonical_device_model_id,
+                           count(*) AS result_count, max(occurred_at) AS last_occurred_at
+                    FROM compatibility_evidence_event
+                    WHERE operation_id = %s AND is_local_test IS NOT TRUE
+                    GROUP BY compatibility_identity, model, canonical_device_model_id
+                    ORDER BY last_occurred_at DESC
+                    LIMIT 5
+                    """,
+                    (detail["operation_id"],),
+                ).fetchall()]
+                updates = [dict(item) for item in connection.execute(
+                    """
+                    SELECT event_id, outcome, provider, region, occurred_at
+                    FROM map_update_diagnostic
+                    WHERE operation_id = %s AND is_local_test IS FALSE
+                    ORDER BY occurred_at DESC, event_id
+                    LIMIT 5
+                    """,
+                    (detail["operation_id"],),
+                ).fetchall()]
+            detail["installationDiagnostics"] = installations
+            detail["updateDiagnostics"] = updates
+        return detail
+
+    def review_support_report(
+        self,
+        reference: str,
+        *,
+        action: str,
+        admin_user_id: int | None,
+        note: str | None = None,
+        linked_github_issue: str | None = None,
+        request_id: str | None = None,
+    ) -> bool:
+        """Mark handled, reopen, or link/unlink a GitHub issue; audited, report content unchanged."""
+        if action not in {"handle", "reopen", "issue"}:
+            raise ValueError("invalid_support_report_action")
+        if note is not None and (not note or len(note) > 2000):
+            raise ValueError("invalid_support_report_note")
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT id, status, linked_github_issue, note FROM support_report WHERE reference = %s FOR UPDATE",
+                (reference,),
+            ).fetchone()
+            if not row:
+                return False
+            previous_status = str(row["status"])
+            previous_issue = row.get("linked_github_issue")
+            new_status, new_issue, new_note = previous_status, previous_issue, row.get("note")
+            if action == "handle":
+                new_status = "HANDLED"
+                new_note = note if note is not None else new_note
+            elif action == "reopen":
+                new_status = "OPEN"
+                new_note = note if note is not None else new_note
+            else:
+                new_issue = linked_github_issue
+            if (new_status, new_issue, new_note) == (previous_status, previous_issue, row.get("note")):
+                return True
+            connection.execute(
+                """
+                UPDATE support_report
+                SET status = %s,
+                    handled_at = CASE WHEN %s = 'HANDLED' THEN COALESCE(handled_at, now()) ELSE NULL END,
+                    handled_by = CASE WHEN %s = 'HANDLED' THEN COALESCE(handled_by, %s) ELSE NULL END,
+                    linked_github_issue = %s, note = %s, updated_at = now()
+                WHERE id = %s
+                """,
+                (new_status, new_status, new_status, admin_user_id, new_issue, new_note, row["id"]),
+            )
+            audit_action = {
+                "handle": "HANDLED", "reopen": "REOPENED",
+                "issue": "ISSUE_LINKED" if new_issue else "ISSUE_UNLINKED",
+            }[action]
+            connection.execute(
+                """
+                INSERT INTO support_report_audit (
+                    support_report_id, action, previous_status, new_status,
+                    previous_github_issue, new_github_issue, note, changed_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (row["id"], audit_action, previous_status, new_status, previous_issue, new_issue,
+                 note, admin_user_id),
+            )
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="support_report." + audit_action.lower(),
+                target=f"support-report:{reference}",
+                request_id=request_id,
+                old_status=previous_status,
+                new_status=new_status,
+                reason=note,
+                details={"reference": reference, "previousIssue": previous_issue, "issue": new_issue},
+            )
+        return True
+
+    def purge_local_support_reports(
+        self, *, admin_user_id: int | None, request_id: str | None = None,
+    ) -> int:
+        """Delete only server-classified local test support reports (Test data purge)."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                WITH deleted AS (
+                    DELETE FROM support_report WHERE is_local_test IS TRUE RETURNING id
+                )
+                SELECT count(*) AS report_count FROM deleted
+                """
+            ).fetchone() or {}
+            count = int(row.get("report_count") or 0)
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="support_report.local_test_purged",
+                target="local-test-support-reports",
+                request_id=request_id,
+                reason="Authenticated admin purge of server-classified local support reports",
+                details={"supportReportCount": count},
+            )
+        return count
 
     def insert_app_funnel_event(self, event: dict[str, Any]) -> bool:
         """Store one validated funnel event; a replayed event ID is a no-op."""

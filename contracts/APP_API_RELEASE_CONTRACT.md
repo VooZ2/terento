@@ -230,6 +230,11 @@ them. Live semantic behavior still needs the separate read-only review above.
 App first-run funnel events (`POST /app-funnel/events`, migration 070,
 [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md)) follow the same order: deploy
 the API that accepts schema version 1 before any client build emits them.
+Support reports (`POST /support/reports`, migration 071,
+[`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) likewise require the
+API and its migration to be deployed and verified before an app build shows
+"Send report to Terento"; until then a client must keep the report locally and
+only offer the GitHub option.
 
 For build31, `INSTALL_FAILED_UNKNOWN` is the additive compatibility-event code;
 existing schema versions and fields remain unchanged. `MAP_UPDATE_SUCCEEDED` and

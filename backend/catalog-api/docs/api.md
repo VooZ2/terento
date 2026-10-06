@@ -732,6 +732,18 @@ stage/outcome (zero-filled) plus the top base models with authorization outcome
 `PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`. The visual Admin presentation is not
 part of this route.
 
+## `POST /support/reports`
+
+User-sent support reports; meaning, the exact `report` keys and limits are owned
+by [`SUPPORT_REPORT_CONTRACT.md`](../../../contracts/SUPPORT_REPORT_CONTRACT.md).
+Intake accepts at most 64 KiB of schema-version-1 JSON, rejects unknown fields at
+every level (`400`), is idempotent by report `id` (`201` stored, `200` replay,
+both with `{"reference":"TR-XXXXXX","status":...}`), returns `409
+reference_conflict` if another report owns the deterministic reference, and
+allows 10 reports per client address per minute (`429`). The client address is
+used only by the in-memory limiter and is never stored. A `-local` release label
+stores the report as local test data. Reports are kept 12 months after receipt.
+
 ## `POST /map-events`
 
 Accepts at most 8 KiB of schema-version-1 JSON and is rate limited to 600
