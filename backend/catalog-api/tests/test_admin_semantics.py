@@ -370,7 +370,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         )[1].split("\n        </section>", 1)[0]
         self.assertEqual(installation_panel.count("<div class='admin-metric'") + installation_panel.count("<a class='admin-metric "), 5)
         self.assertIn(">Open problems<", installation_panel)
-        self.assertIn("data-scope='all'>All time</span>", installation_panel)
+        self.assertNotIn("admin-scope-chip", installation_panel)
 
         device = _admin_device_payload([{
             "device_id": "garmin-fenix-8-47-amoled", "model": "fēnix 8",

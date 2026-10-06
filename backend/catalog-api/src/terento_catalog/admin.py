@@ -260,6 +260,11 @@ _FA_ICONS = {
     "chevron-down": ("0 0 448 512", "M201.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 338.7 54.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"),  # chevron-down
     "chevron-right": ("0 0 320 512", "M311.1 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L243.2 256 73.9 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"),  # chevron-right
     "image": ("0 0 448 512", "M64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l320 0c35.3 0 64-28.7 64-64l0-320c0-35.3-28.7-64-64-64L64 32zm64 80a48 48 0 1 1 0 96 48 48 0 1 1 0-96zM272 224c8.4 0 16.1 4.4 20.5 11.5l88 144c4.5 7.4 4.7 16.7 .5 24.3S368.7 416 360 416L88 416c-8.9 0-17.2-5-21.3-12.9s-3.5-17.5 1.6-24.8l56-80c4.5-6.4 11.8-10.2 19.7-10.2s15.2 3.8 19.7 10.2l26.4 37.8 61.4-100.5c4.4-7.1 12.1-11.5 20.5-11.5z"),  # image
+    "sort": ("0 0 384 512", "M2.4 204.2c5 12 16.6 19.8 29.6 19.8l320 0c12.9 0 24.6-7.8 29.6-19.8s2.2-25.7-6.9-34.9l-160-160c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-9.2 9.2-11.9 22.9-6.9 34.9zm0 103.5c-5 12-2.2 25.7 6.9 34.9l160 160c12.5 12.5 32.8 12.5 45.3 0l160-160c9.2-9.2 11.9-22.9 6.9-34.9S364.9 288 352 288L32 288c-12.9 0-24.6 7.8-29.6 19.8z"),  # sort
+    "sort-up": ("0 0 384 512", "M32 224c-12.9 0-24.6-7.8-29.6-19.8S.2 178.5 9.4 169.4l160-160c12.5-12.5 32.8-12.5 45.3 0l160 160c9.2 9.2 11.9 22.9 6.9 34.9S364.9 224 352 224L32 224z"),  # sort-up
+    "sort-down": ("0 0 384 512", "M32 288c-12.9 0-24.6 7.8-29.6 19.8S.2 333.5 9.4 342.6l160 160c12.5 12.5 32.8 12.5 45.3 0l160-160c9.2-9.2 11.9-22.9 6.9-34.9S364.9 288 352 288L32 288z"),  # sort-down
+    "ellipsis": ("0 0 448 512", "M0 256a56 56 0 1 1 112 0 56 56 0 1 1 -112 0zm168 0a56 56 0 1 1 112 0 56 56 0 1 1 -112 0zm224-56a56 56 0 1 1 0 112 56 56 0 1 1 0-112z"),  # ellipsis
+    "arrows-left-right": ("0 0 512 512", "M502.6 150.6l-96 96c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L402.7 160 32 160c-17.7 0-32-14.3-32-32S14.3 96 32 96l370.7 0-41.4-41.4c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l96 96c12.5 12.5 12.5 32.8 0 45.3zm-397.3 352l-96-96c-12.5-12.5-12.5-32.8 0-45.3l96-96c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3L109.3 352 480 352c17.7 0 32 14.3 32 32s-14.3 32-32 32l-370.7 0 41.4 41.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0z"),  # arrow-right-arrow-left
 }
 
 
@@ -3240,11 +3245,12 @@ def dashboard_page(
         <div class="heading-row installation-heading"><div><h1>Installations</h1></div><p class="page-meta">{latest_copy}</p></div>
         <section class="admin-card installation-kpis" aria-label="Installation summary">
           {_metric_row([
-              _metric_tile("Attempts", attempts, scope="all", data_stat="attempts"),
-              _metric_tile("Successful", successes, scope="all", data_stat="successful"),
-              _metric_tile("Failed", failures, scope="all", failure=True, data_stat="failed"),
-              _metric_tile("Success rate", success_rate, fmt="rate", scope="all", data_stat="successRate"),
-              _metric_tile("Open problems", open_errors, scope="now", failure=True,
+              # No scope chips under these numbers (owner decision 2026-10-06).
+              _metric_tile("Attempts", attempts, data_stat="attempts"),
+              _metric_tile("Successful", successes, data_stat="successful"),
+              _metric_tile("Failed", failures, failure=True, data_stat="failed"),
+              _metric_tile("Success rate", success_rate, fmt="rate", data_stat="successRate"),
+              _metric_tile("Open problems", open_errors, failure=True,
                            href="/admin/installations?state=open" if open_errors else None, data_stat="openProblems",
                            hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
           ], label="Installation summary")}
@@ -3260,7 +3266,7 @@ def dashboard_page(
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters" hidden>Clear</button>
           </form>
           <p id="installation-empty" class="table-help" role="status" hidden>No matching models.</p>
-          <div class="table-wrap evidence-table-wrap" id="installation-table" tabindex="0" role="region" aria-label="Installation evidence table"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="model" aria-label="Model">Model <span aria-hidden="true">↕</span></button></th><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="status" aria-label="Evidence">Evidence <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="attempts" aria-label="Attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="successfulCount" aria-label="Successful">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="failedCount" aria-label="Failed">Failed <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="errors" aria-label="Open problems">Open problems <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="lastSuccess" aria-label="Last success">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <div class="table-wrap evidence-table-wrap" id="installation-table" tabindex="0" role="region" aria-label="Installation evidence table"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="model" aria-label="Model">Model <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="variant" aria-label="Variant">Variant <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="status" aria-label="Evidence">Evidence <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="attempts" aria-label="Attempts">Attempts <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="successfulCount" aria-label="Successful">Successful <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="failedCount" aria-label="Failed">Failed <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="errors" aria-label="Open problems">Open problems <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-installation-sort="lastSuccess" aria-label="Last success">Last success <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
           {pagination}
         </section>
       </main>
@@ -3631,7 +3637,7 @@ def _provider_package_row(package: dict[str, Any], provider_id: str = "") -> str
             f"<details class='admin-disclosure provider-artifact-details'><summary>Artifact details</summary>{artifact_details}</details>"
         )
     menu = (
-        f"<details class='provider-row-menu'><summary aria-label='Actions for {html.escape(package_name, quote=True)}'>⋯<span class='sr-only'> Actions</span></summary>"
+        f"<details class='provider-row-menu'><summary aria-label='Actions for {html.escape(package_name, quote=True)}'>{_admin_icon('ellipsis')}<span class='sr-only'> Actions</span></summary>"
         f"<div class='provider-row-menu-body'>{''.join(menu_items)}</div></details>"
         if menu_items else ""
     )
@@ -4703,7 +4709,7 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
             items.append(f"""<article class='identity-mapping-source'>
             <div class='identification-compare'>
             <section class='identification-step'><h3>Source says</h3><strong class='identification-reported-name'>{names}</strong><div class='identification-source-link'>{source_link}</div></section>
-            <span class='identification-compare-arrow' aria-hidden='true'>⇄</span>
+            <span class='identification-compare-arrow' aria-hidden='true'>{_admin_icon('arrows-left-right')}</span>
             <section class='identification-step identification-match'><h3>Catalog model</h3><strong>{label}</strong>{map_fact}</section>
             </div>
             {other_models if mapping_index == 0 else ''}
@@ -6659,7 +6665,7 @@ def devices_page(
 
 
 def _device_table_header() -> str:
-    return """<thead><tr><th scope="col" class="column-text" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" class="column-text" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Maps" title="Stored catalog map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Install policy" title="Install policy">Install policy <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Evidence" title="Compatibility evidence">Evidence <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
+    return """<thead><tr><th scope="col" class="column-text" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" class="column-text" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Maps" title="Stored catalog map capability">Maps <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Install policy" title="Install policy">Install policy <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Evidence" title="Compatibility evidence">Evidence <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span class="sort-indicator" aria-hidden="true" data-sort="none"></span></button></th></tr></thead>"""
 
 
 def _device_table_columns() -> str:
@@ -6928,7 +6934,7 @@ def _devices_script() -> str:
         const header = button.closest('th');
         const indicator = button.querySelector('span');
         if (header) header.setAttribute('aria-sort', active ? sortDirection : 'none');
-        if (indicator) indicator.textContent = active ? (sortDirection === 'ascending' ? '↑' : '↓') : '↕';
+        if (indicator) indicator.dataset.sort = active ? sortDirection : 'none';
       });
       const saveState = () => {
         const state = {
@@ -7295,7 +7301,7 @@ def _dashboard_script() -> str:
         sortButtons.forEach(button => {
           const active = button.dataset.installationSort === key;
           button.closest('th').setAttribute('aria-sort', active ? direction : 'none');
-          button.querySelector('span').textContent = active ? (direction === 'ascending' ? '↑' : '↓') : '↕';
+          button.querySelector('span').dataset.sort = active ? direction : 'none';
         });
         const size = pageSize && Number(pageSize.value) === 50 ? 50 : 25;
         const pages = Math.max(1, Math.ceil(visible.length / size));
@@ -8355,6 +8361,9 @@ h1,h2,h3,h4{font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
 .diagnostic-secondary-action{grid-column:1/-1;padding-top:2px}
 .diagnostic-secondary-action>summary{padding:8px 0;color:var(--interactive);font-size:12px;font-weight:750}
 .admin-icon{display:inline-block;width:1em;height:1em;flex:0 0 auto;vertical-align:-.15em;fill:currentColor}
+.sort-indicator{display:inline-block;width:.65em;height:1em;vertical-align:-.15em;background:currentColor;-webkit-mask:var(--fa-sort) center/contain no-repeat;mask:var(--fa-sort) center/contain no-repeat;opacity:.55}
+.sort-indicator[data-sort="ascending"]{-webkit-mask-image:var(--fa-sort-up);mask-image:var(--fa-sort-up);opacity:1}
+.sort-indicator[data-sort="descending"]{-webkit-mask-image:var(--fa-sort-down);mask-image:var(--fa-sort-down);opacity:1}
 .device-table-wrap tbody tr,.evidence-model-row{cursor:default}
 .device-model-button{border-radius:6px}
 .device-model-button:focus-visible{outline:var(--admin-focus-ring);outline-offset:3px}
@@ -8841,7 +8850,7 @@ def _fa_mask_css() -> str:
         view_box, path = _FA_ICONS[name]
         svg = f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='{view_box}'><path d='{path}'/></svg>"
         return 'url("data:image/svg+xml,' + quote(svg, safe="/:=' ") + '")'
-    names = ("chevron-down", "chevron-right", "arrow-right", "image")
+    names = ("chevron-down", "chevron-right", "arrow-right", "image", "sort", "sort-up", "sort-down")
     return ":root{" + ";".join(f"--fa-{name}:{url(name)}" for name in names) + "}\n"
 
 

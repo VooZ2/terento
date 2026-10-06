@@ -303,8 +303,8 @@ noindex.
 ## `GET https://api.terento.app/admin/installations`
 
 Returns the authenticated all-time model installation evidence view. Its summary
-tiles are Attempts, Successful, Failed, Success rate (All time) and Open problems
-(Now). `Failed`
+tiles are Attempts, Successful, Failed, Success rate (all time) and Open problems
+(now), without scope chips under the numbers. `Failed`
 includes resolved historical failures. `Open problems` counts installs
 (operations) with an active, nonlocal, non-excluded failed diagnostic that is not a
 provider download/pre-install failure and has no linked GitHub issue — the

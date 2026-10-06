@@ -62,14 +62,15 @@ class DevicesPageTests(unittest.TestCase):
 
 
 class InstallationsPageTests(unittest.TestCase):
-    def test_tiles_use_scope_chips_and_positive_only_danger(self):
+    def test_tiles_have_no_scope_chips_and_positive_only_danger(self):
         rows = [{"model": "fēnix 8", "compatibility_identity": "fēnix 8", "attempted_install_count": 4,
                  "successful_install_count": 4, "failed_install_count": 0, "recognized_map_capable_evidence": True}]
         body = dashboard_page(rows, {"username": "operator"}, "csrf").decode()
         self.assertEqual(metric_value(body, "Failed"), "0")
         self.assertEqual(metric_tone(body, "Failed"), "neutral")
-        self.assertIn("data-scope='all'>All time</span>", body)
-        self.assertIn(">Evidence <span aria-hidden=\"true\">↕</span>", body)
+        kpis = body.split('class="admin-card installation-kpis"', 1)[1].split("</section>", 1)[0]
+        self.assertNotIn("admin-scope-chip", kpis)  # owner decision 2026-10-06
+        self.assertIn('>Evidence <span class="sort-indicator" aria-hidden="true" data-sort="none"></span>', body)
 
     def test_identity_review_filter_targets_rows_with_pending_identity(self):
         rows = [

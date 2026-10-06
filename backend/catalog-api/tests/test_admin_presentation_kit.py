@@ -97,6 +97,7 @@ class AdminIconTests(unittest.TestCase):
 
     def test_css_draws_no_glyph_or_border_icons(self):
         self.assertNotRegex(ADMIN_STYLES, r"content:\s*['\"][⌄›→↗×✓]")
+        self.assertIn(".sort-indicator[data-sort=\"ascending\"]{-webkit-mask-image:var(--fa-sort-up)", ADMIN_STYLES)
         self.assertNotIn("border-width:0 2px 2px 0", ADMIN_STYLES)  # old drawn chevron
         self.assertIn("--fa-chevron-right:url(\"data:image/svg+xml,", ADMIN_STYLES)
         self.assertNotIn("stroke-linecap:round", ADMIN_STYLES.split(".admin-icon{", 1)[1].split("}", 1)[0])

@@ -349,7 +349,8 @@ another report or nearby timestamp.
 
 Installations is all-time model evidence and is visibly labelled `All time ·
 Model evidence`. Its summary tiles, in order, are Attempts, Successful, Failed,
-Success rate (each with an `All time` chip) and Open problems (`Now`). A positive
+Success rate (all time) and Open problems (now), shown without scope chips under
+the numbers (owner decision 2026-10-06; the page is the all-time evidence view). A positive
 Failed value uses the danger color; a measured zero stays neutral. The status
 column is named Evidence.
 Open problems, the per-identity Open problems column and model detail Open
