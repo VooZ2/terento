@@ -43,8 +43,13 @@ class SpecificationTable(HTMLParser):
 # explicit "no" counts only on a row that states additional-map support as a
 # whole, because a watch without preloaded maps may still accept added maps.
 # Anything else is unknown (NULL), never inferred from the model name.
-MAP_POSITIVE_ROWS = ('ability to add maps', 'preloaded maps', 'topoactive maps', 'maps', 'map support')
-MAP_NEGATIVE_ROWS = ('ability to add maps', 'maps', 'map support')
+# Live Garmin product pages (checked 2026-10-06) mark map watches with
+# "Built-in mapping" and "Full vector map"; watches without maps simply omit
+# those rows (Garmin publishes no explicit "no"), so they stay unknown.
+# "On-screen workout muscle maps" is not map support and is never matched.
+MAP_POSITIVE_ROWS = ('built-in mapping', 'full vector map', 'ability to add maps', 'preloaded maps',
+                     'topoactive maps', 'maps', 'map support')
+MAP_NEGATIVE_ROWS = ('built-in mapping', 'full vector map', 'ability to add maps', 'maps', 'map support')
 
 
 def map_capability_from_rows(rows: dict) -> tuple[bool | None, str | None]:

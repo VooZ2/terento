@@ -37,6 +37,22 @@ class SpecificationParserTests(unittest.TestCase):
         self.assertIs(topo["map_capable"], True)
         self.assertEqual(topo["map_evidence_row"], "topoactive maps")
 
+    def test_live_garmin_row_labels(self):
+        """Row labels as they appear on live Garmin pages (checked 2026-10-06)."""
+        map_watch = parse_specifications(page(sku([
+            ("Display type", "AMOLED"), ("Built-in mapping", "yes"), ("Full vector map", "yes"),
+            ("Preloaded road and trail maps", "yes (Sapphire Editions only)"),
+            ("On-screen workout muscle maps", "yes"), ("Course guidance", "yes")])), "123")
+        self.assertIs(map_watch["map_capable"], True)
+        self.assertEqual(map_watch["map_evidence_row"], "built-in mapping")
+        # Watches without maps omit the mapping rows; muscle maps and courses are not map support.
+        no_rows = parse_specifications(page(sku([
+            ("Display type", "AMOLED"), ("On-screen workout muscle maps", "yes"),
+            ("Course guidance", "yes"), ("Point-to-point navigation", "yes")])), "123")
+        self.assertIsNone(no_rows["map_capable"])
+        self.assertIsNone(no_rows["map_evidence_row"])
+        self.assertEqual(map_capability_from_rows({"built-in mapping": "no"}), (False, "built-in mapping"))
+
     def test_explicit_no_only_from_a_whole_map_support_row(self):
         result = parse_specifications(page(sku([("Display type", "AMOLED"), ("Ability to add maps", "no"),
                                                 ("Preloaded maps", "no")])), "123")
