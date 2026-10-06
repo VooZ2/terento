@@ -4,9 +4,23 @@ import Darwin
 
 /// Small, user-retrievable diagnostics for beta failures. The log is local to
 /// the Mac and contains operation state, not map binaries or credentials.
+/// Optional log folder override used by test runners (`TERENTO_LOG_DIRECTORY`).
+enum TerentoLogLocation {
+    static let overrideDirectory: URL? = {
+        guard let path = ProcessInfo.processInfo.environment["TERENTO_LOG_DIRECTORY"],
+              !path.isEmpty else { return nil }
+        return URL(fileURLWithPath: path, isDirectory: true)
+    }()
+}
+
 @MainActor
 enum TerentoDiagnosticLog {
     static let fileURL: URL = {
+        // Test runners point this at a temporary folder so they never touch
+        // the user's real diagnostic log or saved failure report.
+        if let override = TerentoLogLocation.overrideDirectory {
+            return override.appendingPathComponent("log.txt")
+        }
         let libraryURL = FileManager.default.urls(
             for: .libraryDirectory,
             in: .userDomainMask
