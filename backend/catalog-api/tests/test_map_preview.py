@@ -610,6 +610,44 @@ class RendererBinaryTests(unittest.TestCase):
                 self.assertEqual(tile.read_bytes(), twin.read_bytes())
 
 
+class WorkerTests(unittest.TestCase):
+    def test_busy_lease_is_retried_soon_instead_of_after_the_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            renderer_path = root / "renderer"
+            renderer_path.write_text("#!/bin/sh\n")
+            renderer_path.chmod(0o755)
+            stop = threading.Event()
+            attempts = []
+            waits = []
+
+            class BusyRun:
+                def __init__(self, *args, **kwargs):
+                    pass
+
+                def run(self, deadline, stop_event):
+                    attempts.append(deadline)
+                    if len(attempts) >= 3:
+                        stop.set()
+                    return job_module.WindowResult(lease_busy=True)
+
+            class RecordingStop:
+                def is_set(self):
+                    return stop.is_set()
+
+                def wait(self, seconds):
+                    waits.append(seconds)
+                    return stop.is_set()
+
+            database = mock.Mock()
+            with mock.patch.object(job_module, "PreviewRun", BusyRun):
+                job_module.run_worker(database, RecordingStop(),
+                                      settings(root, renderer=renderer_path, window_utc=(day_time(0), day_time(0))),
+                                      clock=lambda: NOW)
+            self.assertEqual(len(attempts), 3)
+            self.assertTrue(all(seconds == job_module.LEASE_RENEW_SECONDS for seconds in waits))
+
+
 class RendererSettingsTests(unittest.TestCase):
     def test_jobs_scale_the_memory_limit_and_are_bounded(self):
         self.assertEqual(Renderer(jobs=1).memory_limit_bytes, 1536 * 1024 * 1024)

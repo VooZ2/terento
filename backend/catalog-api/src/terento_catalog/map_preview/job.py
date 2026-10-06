@@ -73,6 +73,7 @@ class WindowResult:
     failed: int = 0
     skipped_budget: bool = False
     release: str | None = None
+    lease_busy: bool = False
 
 
 def parse_window(value: str) -> tuple[day_time, day_time]:
@@ -171,6 +172,7 @@ class PreviewRun:
         owner = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
         if not self.db.acquire_lease(owner, LEASE_SECONDS):
             LOGGER.info("map previews: another renderer holds the lease")
+            result.lease_busy = True
             return result
         renewing = Event()
         renewer = Thread(target=self._renew_lease, args=(owner, renewing), name="map-preview-lease", daemon=True)
@@ -397,6 +399,11 @@ def run_worker(database: Any, stop: Event, settings: PreviewSettings, *, clock=l
         _heartbeat(database, status="RUNNING", started_at=now)
         try:
             result = PreviewRun(database, settings, renderer=renderer, clock=clock).run(end, stop)
+            if result.lease_busy:
+                # A renderer stopped by a deploy keeps its lease until it
+                # expires; retry soon instead of waiting for the next window.
+                stop.wait(LEASE_RENEW_SECONDS)
+                continue
             status = "WARNING" if result.failed or result.skipped_budget else "HEALTHY"
             summary = None
             if result.failed or result.skipped_budget:
