@@ -9738,6 +9738,7 @@ ADMIN_STYLES += """
 .provider-row-menu{position:relative}
 .provider-row-menu>summary{display:inline-flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;border:1px solid var(--border);border-radius:var(--radius-control);list-style:none;cursor:pointer}
 .provider-row-menu>summary::-webkit-details-marker{display:none}
+.provider-row-menu-body.is-floating{position:fixed;right:auto;z-index:60}
 .provider-row-menu-body{position:absolute;z-index:5;right:0;display:grid;gap:6px;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);box-shadow:0 4px 16px color-mix(in srgb,var(--graphite) 14%,transparent);text-align:start}
 @media(max-width:760px){.provider-problem-list>.provider-problem{grid-template-columns:minmax(0,1fr)}}
 .admin-metric-failed{white-space:nowrap}.admin-metric-failed.is-positive{color:var(--danger);font-weight:600}
@@ -10174,7 +10175,7 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
         content = re.sub(r'(<main\b)', lambda match: match[0] + f' data-admin-revisions="{revision}"', content, count=1)
-        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_quick_select_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script() + _admin_dropdown_script())
+        content += _script_tag(_admin_freshness_script() + _admin_mobile_script() + _admin_filter_clear_script() + _admin_quick_select_script() + _admin_row_menu_script() + _admin_disclosure_script() + _admin_chart_values_script() + _admin_table_sort_script() + _admin_mobile_collapse_script() + _admin_dropdown_script())
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
@@ -10220,6 +10221,10 @@ def _admin_table_sort_script() -> str:
         headers.forEach((th, index) => {
           const label = (th.textContent || '').trim();
           if (!label || th.colSpan > 1) return;
+          // A column whose header is only screen-reader text (e.g. row Actions) is not sortable.
+          const visible = th.cloneNode?.(true);
+          visible?.querySelectorAll?.('.sr-only').forEach((node) => node.remove());
+          if (visible && !(visible.textContent || '').trim()) return;
           const button = document.createElement('button');
           button.type = 'button';
           button.className = 'device-sort-button';
@@ -10464,6 +10469,61 @@ def _admin_quick_select_script() -> str:
         select.form?.addEventListener('terento-admin-clear-filters', () => setTimeout(sync));
         sync();
       });
+    })();"""
+
+
+def _admin_row_menu_script() -> str:
+    """Row action menus open above the table's clipping box.
+
+    Tables scroll horizontally, so their wrappers clip absolutely positioned
+    popovers. An open ``.provider-row-menu`` body is placed with fixed
+    coordinates below its button, or above it when the viewport has no room
+    below; one menu is open at a time and it closes on Escape, an outside
+    click, scroll or resize.
+    """
+    return r"""(() => {
+      const menus = () => [...document.querySelectorAll('details.provider-row-menu')];
+      const place = (menu) => {
+        const body = menu.querySelector('.provider-row-menu-body');
+        const trigger = menu.querySelector('summary');
+        if (!body || !trigger) return;
+        body.classList.add('is-floating');
+        const anchor = trigger.getBoundingClientRect();
+        const width = Math.max(body.offsetWidth, 200);
+        const height = body.offsetHeight;
+        const gap = 6;
+        const below = window.innerHeight - anchor.bottom - gap;
+        const top = below >= height || anchor.top - gap < height ? anchor.bottom + gap : anchor.top - gap - height;
+        const left = Math.min(Math.max(8, anchor.right - width), window.innerWidth - width - 8);
+        body.style.top = `${Math.max(8, top)}px`;
+        body.style.left = `${Math.max(8, left)}px`;
+      };
+      const closeAll = (except) => menus().forEach((menu) => { if (menu !== except && menu.open) menu.open = false; });
+      document.addEventListener('toggle', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || target.tagName !== 'DETAILS') return;
+        if (target.matches('details.provider-row-menu')) {
+          if (target.open) { closeAll(target); place(target); }
+          return;
+        }
+        // A disclosure inside an open menu changes its height: place it again.
+        const parent = target.closest('details.provider-row-menu');
+        if (parent?.open) place(parent);
+      }, true);
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest?.('details.provider-row-menu')) closeAll(null);
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        const open = menus().find((menu) => menu.open);
+        if (open) { open.open = false; open.querySelector('summary')?.focus(); }
+      });
+      const closeOnMove = (event) => {
+        const open = menus().find((menu) => menu.open);
+        if (open && !(event?.target instanceof Node && open.contains(event.target))) closeAll(null);
+      };
+      window.addEventListener('scroll', closeOnMove, {passive: true, capture: true});
+      window.addEventListener('resize', () => closeAll(null), {passive: true});
     })();"""
 
 

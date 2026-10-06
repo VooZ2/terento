@@ -32,8 +32,9 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}/${width}: page overflow`);
    assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
    assert(!/\bFresh\b/i.test(await page.locator('main').innerText()), `${name}: no Fresh labels`);
-   const unsortable=await page.evaluate(()=>[...document.querySelectorAll('main table')].filter(t=>t.tHead&&t.getAttribute('role')!=='presentation').flatMap(t=>{const style=getComputedStyle(t.tHead);if(style.clip.startsWith('rect(0')||(style.position==='absolute'&&parseFloat(style.height)<=1))return [];const row=t.tHead.rows[t.tHead.rows.length-1];return [...row.cells].filter(th=>th.textContent.trim()&&th.colSpan===1&&!th.querySelector('button')).map(th=>th.textContent.trim());}));
+   const unsortable=await page.evaluate(()=>[...document.querySelectorAll('main table')].filter(t=>t.tHead&&t.getAttribute('role')!=='presentation').flatMap(t=>{const style=getComputedStyle(t.tHead);if(style.clip.startsWith('rect(0')||(style.position==='absolute'&&parseFloat(style.height)<=1))return [];const row=t.tHead.rows[t.tHead.rows.length-1];return [...row.cells].filter(th=>{const visible=th.cloneNode(true);visible.querySelectorAll('.sr-only').forEach(n=>n.remove());return visible.textContent.trim()&&th.colSpan===1&&!th.querySelector('button');}).map(th=>th.textContent.trim());}));
    assert.deepEqual(unsortable,[],`${name}: every visible data-table header sorts`);
+   if(name==='provider'){assert.equal(await page.evaluate(()=>[...document.querySelectorAll('.provider-package-table thead th')].filter(th=>th.querySelector('.sr-only')&&th.querySelector('button')).length),0,'provider: screen-reader-only Actions header gets no sort button');}
    assert.deepEqual(await tightCardGaps(page,width),[],`${name}/${width}: separate cards keep the shared card gap`);
    if(name==='health'){
     // One plain summary card (no icons, chips or filter buttons), Issues, then one Technical details card.

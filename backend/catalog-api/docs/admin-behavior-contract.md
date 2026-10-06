@@ -837,7 +837,11 @@ rechecks that package; a larger group's `Recheck affected` and the card's
 rows with Recheck, Open source and Copy details, plus `Show all N in Packages`.
 Packages is the one package list: search, Issues/Available filter (Issues is
 preselected when issues exist), pagination, and a per-row `⋯` menu with
-Recheck, Disable or Enable downloads, Open source and artifact details.
+Recheck, Disable or Enable downloads, Open source and artifact details. An open
+row menu floats above the table (fixed position below its button, or above it
+when there is no room below), so the table's scroll box never clips it; one
+menu is open at a time and Escape, an outside click, scroll or resize closes
+it. A column whose header is only screen-reader text (Actions) is not sortable.
 
 Checks shows the latest result, the Automatic health checks row (label, native
 interval select styled as an Admin control, and Save interval, all one control
