@@ -138,6 +138,16 @@ function testController() {
   assert.match(controller, /\.on\("tileerror", refreshRelease\)/, "failed tiles recheck the release");
   assert.match(controller, /fetchJson\(data\.manifestUrl, "no-cache"\)/, "the recheck bypasses the browser cache");
   assert.match(controller, /visibilitychange/, "returning to the tab rechecks the release");
+  // Umami: place, style pair, mode and share, with ids only.
+  assert.match(controller, /data-umami-event="map-styles-place-select" data-umami-event-place="\$\{item\.id\}"/);
+  assert.match(controller, /umami\.track\("map-styles-style-change", \{left: state\.a, right:/);
+  for (const locale of locales) {
+    const source = read(localeFile(locale, "map-styles"));
+    for (const mode of ["single", "split", "swipe"]) {
+      assert.ok(source.includes(`data-mode="${mode}" data-umami-event="map-styles-mode-change" data-umami-event-mode="${mode}"`), `${locale}: ${mode} mode is counted`);
+    }
+    assert.ok(source.includes('id="map-styles-copy-link" data-umami-event="map-styles-share-click"'), `${locale}: share is counted`);
+  }
 }
 
 testHelpers();

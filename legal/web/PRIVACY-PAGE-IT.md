@@ -35,7 +35,7 @@ I rapporti di assistenza servono solo a diagnosticare il problema segnalato, non
 
 ## Statistiche e memoria del browser
 
-Umami viene caricato per tutti i visitatori per misurare visualizzazioni, clic e download. Non usa cookie di tracciamento. Può trattare URL di pagina/provenienza, browser, sistema, dispositivo e posizione approssimativa. I valori UTM nei link descrivono le fonti delle campagne. Terento li trasmette tramite URL senza salvare campagne nel browser. Le statistiche servono a migliorare il sito e misurare le campagne sulla base del legittimo interesse, art. 6(1)(f) GDPR. Non ci sono banner di consenso analitico o interruttori sul sito; contattaci per opporti. Le statistiche sono separate dalle impostazioni diagnostiche dell’app.
+Umami viene caricato per tutti i visitatori per misurare visualizzazioni, clic, download e i luoghi, gli stili di mappa e le viste scelti nella pagina Mappe. Non usa cookie di tracciamento. Può trattare URL di pagina/provenienza, browser, sistema, dispositivo e posizione approssimativa. I valori UTM nei link descrivono le fonti delle campagne. Terento li trasmette tramite URL senza salvare campagne nel browser. Le statistiche servono a migliorare il sito e misurare le campagne sulla base del legittimo interesse, art. 6(1)(f) GDPR. Non ci sono banner di consenso analitico o interruttori sul sito; contattaci per opporti. Le statistiche sono separate dalle impostazioni diagnostiche dell’app.
 
 La lingua scelta viene memorizzata come `terento-language` nella memoria locale. Questa preferenza richiesta è separata dall’analisi. Cloudflare può usare cookie di sicurezza secondo le impostazioni di protezione.
 

@@ -35,7 +35,7 @@ Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužív
 
 ## Statistiky a úložiště prohlížeče
 
-Umami se načítá všem návštěvníkům pro měření zobrazení, kliknutí a stažení. Nepoužívá sledovací cookies. Může zpracovávat URL stránky a odkazujícího webu, prohlížeč, systém, zařízení a přibližnou polohu. UTM v odkazech popisují zdroje kampaní. Terento je předává v URL bez ukládání kampaní do prohlížeče. Statistiky slouží zlepšování webu a měření kampaní na základě oprávněných zájmů, čl. 6 odst. 1 písm. f GDPR. Na webu není analytický souhlasový banner ani přepínač; pro námitku nás kontaktujte. Statistiky webu jsou oddělené od nastavení diagnostiky aplikace.
+Umami se načítá všem návštěvníkům pro měření zobrazení, kliknutí, stažení a míst, stylů map a režimů zobrazení zvolených na stránce Mapy. Nepoužívá sledovací cookies. Může zpracovávat URL stránky a odkazujícího webu, prohlížeč, systém, zařízení a přibližnou polohu. UTM v odkazech popisují zdroje kampaní. Terento je předává v URL bez ukládání kampaní do prohlížeče. Statistiky slouží zlepšování webu a měření kampaní na základě oprávněných zájmů, čl. 6 odst. 1 písm. f GDPR. Na webu není analytický souhlasový banner ani přepínač; pro námitku nás kontaktujte. Statistiky webu jsou oddělené od nastavení diagnostiky aplikace.
 
 Vybraný jazyk se ukládá jako `terento-language` do místního úložiště. Tato vyžádaná preference je oddělena od analytiky. Cloudflare může podle nastavení ochrany používat bezpečnostní cookies.
 

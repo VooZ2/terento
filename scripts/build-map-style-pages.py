@@ -23,7 +23,7 @@ SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261006-map-styles-v4"
+SCRIPT_VERSION = "20261006-map-styles-v5"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
 STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail")
 
@@ -448,7 +448,7 @@ def render(locale: str) -> str:
         for key, label in copy["tabs"].items()
     )
     modes = "".join(
-        f'<button type="button" class="map-styles-mode" data-mode="{key}" aria-pressed="{"true" if key == "swipe" else "false"}" aria-label="{esc(label)}">{icon(key)}<span class="map-styles-mode-text">{esc(label)}</span></button>'
+        f'<button type="button" class="map-styles-mode" data-mode="{key}" data-umami-event="map-styles-mode-change" data-umami-event-mode="{key}" aria-pressed="{"true" if key == "swipe" else "false"}" aria-label="{esc(label)}">{icon(key)}<span class="map-styles-mode-text">{esc(label)}</span></button>'
         for key, label in copy["modes"].items()
     )
     return f'''<!doctype html>
@@ -519,7 +519,7 @@ def render(locale: str) -> str:
           <div class="map-styles-overlay map-styles-tools" role="group" aria-label="{esc(copy["view"])}">
             {modes}
             <span class="map-styles-tools-separator" aria-hidden="true"></span>
-            <button type="button" class="map-styles-mode" id="map-styles-copy-link" aria-label="{esc(copy["copy_link"])}" title="{esc(copy["copy_link"])}">{icon("link")}</button>
+            <button type="button" class="map-styles-mode" id="map-styles-copy-link" data-umami-event="map-styles-share-click" aria-label="{esc(copy["copy_link"])}" title="{esc(copy["copy_link"])}">{icon("link")}</button>
           </div>
 
           <div class="map-styles-overlay map-styles-dock" id="map-styles-dock">

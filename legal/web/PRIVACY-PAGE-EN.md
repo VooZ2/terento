@@ -35,7 +35,7 @@ Support reports are used only to diagnose the reported problem, are not used for
 
 ## Website statistics and browser storage
 
-Umami loads for all visitors to measure page visits, link clicks and download events. It does not use tracking cookies. It may process page/referrer URLs, browser, operating system, device and approximate location information. UTM values in links describe campaign sources. Terento passes those values through URLs without storing campaigns in your browser. Statistics support site improvement and campaign measurement under legitimate interests, GDPR Article 6(1)(f). There is no analytics consent banner or on-site analytics switch; contact us to object. Website statistics are separate from the app’s diagnostic settings.
+Umami loads for all visitors to measure page visits, link clicks, download events and the place, map style and view chosen on the Maps page. It does not use tracking cookies. It may process page/referrer URLs, browser, operating system, device and approximate location information. UTM values in links describe campaign sources. Terento passes those values through URLs without storing campaigns in your browser. Statistics support site improvement and campaign measurement under legitimate interests, GDPR Article 6(1)(f). There is no analytics consent banner or on-site analytics switch; contact us to object. Website statistics are separate from the app’s diagnostic settings.
 
 The site remembers a language you choose as `terento-language` in local storage. This requested preference is separate from analytics. Cloudflare may use security cookies depending on its protection settings.
 

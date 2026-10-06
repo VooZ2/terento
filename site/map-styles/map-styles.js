@@ -262,7 +262,7 @@
   function areaButton(item) {
     const covered = D.coveredCount(manifest, item.id, styleIds);
     const meta = item.kind === "route" && item.routeName ? item.routeName : (copy.tags[item.tags[0]] || copy.kind[item.kind]);
-    return `<li><button type="button" class="map-styles-area" data-area="${item.id}" aria-pressed="${item.id === state.area}">`
+    return `<li><button type="button" class="map-styles-area" data-area="${item.id}" aria-pressed="${item.id === state.area}" data-umami-event="map-styles-place-select" data-umami-event-place="${item.id}">`
       + `<span class="map-styles-area-name">${escapeHtml(item.name)}${best.has(item.id) ? `<span class="map-styles-area-best" title="${escapeHtml(copy.best)}">${ICON_STAR}<span class="sr-only">${escapeHtml(copy.best)}</span></span>` : ""}</span>`
       + `<span class="map-styles-area-meta">${escapeHtml(item.countryCodes.map(countryName).join(", "))} · ${escapeHtml(meta)}</span>`
       + `<span class="map-styles-area-styles"><b>${covered}</b>${escapeHtml(copy.styles_short)}</span></button></li>`;
@@ -343,11 +343,24 @@
     announce(D.format(copy.showing, {style: styleById[state.a].name, place: area().name}));
   }
 
+  // Umami counts the chosen style pair; ids only, no personal data. Clicks on
+  // places, modes and the share button are counted through data-umami-event.
+  function trackStyles() {
+    const umami = window.umami;
+    if (!umami || typeof umami.track !== "function") return;
+    try {
+      umami.track("map-styles-style-change", {left: state.a, right: state.mode === "single" ? "none" : state.b});
+    } catch (error) {
+      // Statistics never interrupt the map.
+    }
+  }
+
   function selectStyle(styleId, focus) {
     if (status(styleId) === "NOT_COVERED") return;
     state.a = styleId;
     if (state.b === state.a) state.b = styleIds.find((id) => id !== state.a && status(id) !== "NOT_COVERED") || state.b;
     refresh();
+    trackStyles();
     announce(D.format(copy.showing, {style: styleById[state.a].name, place: area().name}));
     if (focus) {
       const button = document.querySelector(`.map-styles-pill[data-style="${styleId}"]`);
@@ -388,11 +401,12 @@
     const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
     selectStyle(usable[(index + step + usable.length) % usable.length], true);
   });
-  $("map-styles-style-a").addEventListener("change", (event) => { state.a = event.target.value; refresh(); });
-  $("map-styles-style-b").addEventListener("change", (event) => { state.b = event.target.value; refresh(); });
+  $("map-styles-style-a").addEventListener("change", (event) => { state.a = event.target.value; refresh(); trackStyles(); });
+  $("map-styles-style-b").addEventListener("change", (event) => { state.b = event.target.value; refresh(); trackStyles(); });
   $("map-styles-swap").addEventListener("click", () => {
     [state.a, state.b] = [state.b, state.a];
     refresh();
+    trackStyles();
   });
   document.querySelectorAll(".map-styles-tools [data-mode]").forEach((button) => {
     button.addEventListener("click", () => {

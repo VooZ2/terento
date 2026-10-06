@@ -35,7 +35,7 @@ Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są u
 
 ## Statystyki i pamięć przeglądarki
 
-Umami jest ładowane dla wszystkich odwiedzających, aby mierzyć odsłony, kliknięcia i pobrania. Nie używa śledzących plików cookie. Może przetwarzać adresy stron i odsyłaczy, przeglądarkę, system, urządzenie i przybliżoną lokalizację. Wartości UTM w linkach opisują źródła kampanii. Terento przekazuje je w adresach URL bez zapisywania kampanii w przeglądarce. Statystyki służą ulepszaniu witryny i pomiarowi kampanii na podstawie uzasadnionego interesu, art. 6 ust. 1 lit. f RODO. Nie ma banera zgody ani przełącznika analityki w witrynie; skontaktuj się, aby zgłosić sprzeciw. Statystyki są oddzielne od ustawień diagnostyki aplikacji.
+Umami jest ładowane dla wszystkich odwiedzających, aby mierzyć odsłony, kliknięcia, pobrania oraz miejsca, style map i widoki wybierane na stronie Mapy. Nie używa śledzących plików cookie. Może przetwarzać adresy stron i odsyłaczy, przeglądarkę, system, urządzenie i przybliżoną lokalizację. Wartości UTM w linkach opisują źródła kampanii. Terento przekazuje je w adresach URL bez zapisywania kampanii w przeglądarce. Statystyki służą ulepszaniu witryny i pomiarowi kampanii na podstawie uzasadnionego interesu, art. 6 ust. 1 lit. f RODO. Nie ma banera zgody ani przełącznika analityki w witrynie; skontaktuj się, aby zgłosić sprzeciw. Statystyki są oddzielne od ustawień diagnostyki aplikacji.
 
 Wybrany język jest zapisywany jako `terento-language` w pamięci lokalnej. Ta żądana preferencja jest oddzielna od analityki. Cloudflare może używać plików cookie bezpieczeństwa zależnie od ustawień ochrony.
 

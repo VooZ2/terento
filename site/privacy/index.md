@@ -40,7 +40,7 @@ Support reports are used only to diagnose the reported problem, are not used for
 
 ## Website statistics and browser storage
 
-Umami loads for all visitors to measure page visits, link clicks and download events. It does not use tracking cookies. It may process page/referrer URLs, browser, operating system, device and approximate location information. UTM values in links describe campaign sources. Terento passes those values through URLs without storing campaigns in your browser. Statistics support site improvement and campaign measurement under legitimate interests, GDPR Article 6(1)(f). There is no analytics consent banner or on-site analytics switch; contact us to object. Website statistics are separate from the app’s diagnostic settings.
+Umami loads for all visitors to measure page visits, link clicks, download events and the place, map style and view chosen on the Maps page. It does not use tracking cookies. It may process page/referrer URLs, browser, operating system, device and approximate location information. UTM values in links describe campaign sources. Terento passes those values through URLs without storing campaigns in your browser. Statistics support site improvement and campaign measurement under legitimate interests, GDPR Article 6(1)(f). There is no analytics consent banner or on-site analytics switch; contact us to object. Website statistics are separate from the app’s diagnostic settings.
 
 The site remembers a language you choose as `terento-language` in local storage. This requested preference is separate from analytics. Cloudflare may use security cookies depending on its protection settings.
 
@@ -101,7 +101,7 @@ Supportberichte dienen nur der Diagnose des gemeldeten Problems, fließen nicht 
 
 ## Website-Statistik und Browserspeicher
 
-Umami wird für alle Besucher geladen, um Seitenaufrufe, Linkklicks und Downloads zu messen. Es nutzt keine Tracking-Cookies. Verarbeitet werden können Seiten-/Referrer-URLs, Browser, Betriebssystem, Gerät und ungefähre Standortdaten. UTM-Werte in Links beschreiben Kampagnenquellen. Terento reicht sie über URLs weiter, ohne Kampagnen im Browser zu speichern. Die Statistik dient Website-Verbesserung und Kampagnenmessung auf Grundlage berechtigter Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Es gibt weder ein Analyse-Einwilligungsbanner noch einen Analyseschalter auf der Website; für einen Widerspruch kontaktiere uns. Website-Statistik und App-Diagnoseeinstellungen sind getrennt.
+Umami wird für alle Besucher geladen, um Seitenaufrufe, Linkklicks, Downloads sowie die auf der Kartenseite gewählten Orte, Kartenstile und Ansichten zu messen. Es nutzt keine Tracking-Cookies. Verarbeitet werden können Seiten-/Referrer-URLs, Browser, Betriebssystem, Gerät und ungefähre Standortdaten. UTM-Werte in Links beschreiben Kampagnenquellen. Terento reicht sie über URLs weiter, ohne Kampagnen im Browser zu speichern. Die Statistik dient Website-Verbesserung und Kampagnenmessung auf Grundlage berechtigter Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Es gibt weder ein Analyse-Einwilligungsbanner noch einen Analyseschalter auf der Website; für einen Widerspruch kontaktiere uns. Website-Statistik und App-Diagnoseeinstellungen sind getrennt.
 
 Eine von dir gewählte Sprache wird als `terento-language` im lokalen Speicher gespeichert. Diese angeforderte Einstellung ist von der Analytik getrennt. Cloudflare kann je nach Schutzeinstellungen Sicherheits-Cookies einsetzen.
 
@@ -162,7 +162,7 @@ Les rapports d’assistance servent uniquement à diagnostiquer le problème sig
 
 ## Statistiques et stockage du navigateur
 
-Umami est chargé pour tous les visiteurs pour mesurer les pages vues, clics et téléchargements. Il n’utilise pas de cookies de suivi. Il peut traiter les URL de page/provenance, navigateur, système, appareil et localisation approximative. Les valeurs UTM des liens décrivent les sources de campagne. Terento les transmet dans les URL sans stocker les campagnes dans votre navigateur. Les statistiques servent à améliorer le site et mesurer les campagnes sur la base de l’intérêt légitime, article 6(1)(f) du RGPD. Il n’y a ni bandeau de consentement analytique ni interrupteur sur le site ; contactez-nous pour vous opposer. Ces statistiques sont distinctes des réglages de diagnostic de l’app.
+Umami est chargé pour tous les visiteurs pour mesurer les pages vues, clics, téléchargements ainsi que les lieux, styles de carte et vues choisis sur la page Cartes. Il n’utilise pas de cookies de suivi. Il peut traiter les URL de page/provenance, navigateur, système, appareil et localisation approximative. Les valeurs UTM des liens décrivent les sources de campagne. Terento les transmet dans les URL sans stocker les campagnes dans votre navigateur. Les statistiques servent à améliorer le site et mesurer les campagnes sur la base de l’intérêt légitime, article 6(1)(f) du RGPD. Il n’y a ni bandeau de consentement analytique ni interrupteur sur le site ; contactez-nous pour vous opposer. Ces statistiques sont distinctes des réglages de diagnostic de l’app.
 
 Une langue choisie est mémorisée sous `terento-language` dans le stockage local. Cette préférence demandée est distincte de l’analytique. Cloudflare peut utiliser des cookies de sécurité selon ses réglages.
 
@@ -223,7 +223,7 @@ Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są u
 
 ## Statystyki i pamięć przeglądarki
 
-Umami jest ładowane dla wszystkich odwiedzających, aby mierzyć odsłony, kliknięcia i pobrania. Nie używa śledzących plików cookie. Może przetwarzać adresy stron i odsyłaczy, przeglądarkę, system, urządzenie i przybliżoną lokalizację. Wartości UTM w linkach opisują źródła kampanii. Terento przekazuje je w adresach URL bez zapisywania kampanii w przeglądarce. Statystyki służą ulepszaniu witryny i pomiarowi kampanii na podstawie uzasadnionego interesu, art. 6 ust. 1 lit. f RODO. Nie ma banera zgody ani przełącznika analityki w witrynie; skontaktuj się, aby zgłosić sprzeciw. Statystyki są oddzielne od ustawień diagnostyki aplikacji.
+Umami jest ładowane dla wszystkich odwiedzających, aby mierzyć odsłony, kliknięcia, pobrania oraz miejsca, style map i widoki wybierane na stronie Mapy. Nie używa śledzących plików cookie. Może przetwarzać adresy stron i odsyłaczy, przeglądarkę, system, urządzenie i przybliżoną lokalizację. Wartości UTM w linkach opisują źródła kampanii. Terento przekazuje je w adresach URL bez zapisywania kampanii w przeglądarce. Statystyki służą ulepszaniu witryny i pomiarowi kampanii na podstawie uzasadnionego interesu, art. 6 ust. 1 lit. f RODO. Nie ma banera zgody ani przełącznika analityki w witrynie; skontaktuj się, aby zgłosić sprzeciw. Statystyki są oddzielne od ustawień diagnostyki aplikacji.
 
 Wybrany język jest zapisywany jako `terento-language` w pamięci lokalnej. Ta żądana preferencja jest oddzielna od analityki. Cloudflare może używać plików cookie bezpieczeństwa zależnie od ustawień ochrony.
 
@@ -284,7 +284,7 @@ Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužív
 
 ## Statistiky a úložiště prohlížeče
 
-Umami se načítá všem návštěvníkům pro měření zobrazení, kliknutí a stažení. Nepoužívá sledovací cookies. Může zpracovávat URL stránky a odkazujícího webu, prohlížeč, systém, zařízení a přibližnou polohu. UTM v odkazech popisují zdroje kampaní. Terento je předává v URL bez ukládání kampaní do prohlížeče. Statistiky slouží zlepšování webu a měření kampaní na základě oprávněných zájmů, čl. 6 odst. 1 písm. f GDPR. Na webu není analytický souhlasový banner ani přepínač; pro námitku nás kontaktujte. Statistiky webu jsou oddělené od nastavení diagnostiky aplikace.
+Umami se načítá všem návštěvníkům pro měření zobrazení, kliknutí, stažení a míst, stylů map a režimů zobrazení zvolených na stránce Mapy. Nepoužívá sledovací cookies. Může zpracovávat URL stránky a odkazujícího webu, prohlížeč, systém, zařízení a přibližnou polohu. UTM v odkazech popisují zdroje kampaní. Terento je předává v URL bez ukládání kampaní do prohlížeče. Statistiky slouží zlepšování webu a měření kampaní na základě oprávněných zájmů, čl. 6 odst. 1 písm. f GDPR. Na webu není analytický souhlasový banner ani přepínač; pro námitku nás kontaktujte. Statistiky webu jsou oddělené od nastavení diagnostiky aplikace.
 
 Vybraný jazyk se ukládá jako `terento-language` do místního úložiště. Tato vyžádaná preference je oddělena od analytiky. Cloudflare může podle nastavení ochrany používat bezpečnostní cookies.
 
@@ -345,7 +345,7 @@ I rapporti di assistenza servono solo a diagnosticare il problema segnalato, non
 
 ## Statistiche e memoria del browser
 
-Umami viene caricato per tutti i visitatori per misurare visualizzazioni, clic e download. Non usa cookie di tracciamento. Può trattare URL di pagina/provenienza, browser, sistema, dispositivo e posizione approssimativa. I valori UTM nei link descrivono le fonti delle campagne. Terento li trasmette tramite URL senza salvare campagne nel browser. Le statistiche servono a migliorare il sito e misurare le campagne sulla base del legittimo interesse, art. 6(1)(f) GDPR. Non ci sono banner di consenso analitico o interruttori sul sito; contattaci per opporti. Le statistiche sono separate dalle impostazioni diagnostiche dell’app.
+Umami viene caricato per tutti i visitatori per misurare visualizzazioni, clic, download e i luoghi, gli stili di mappa e le viste scelti nella pagina Mappe. Non usa cookie di tracciamento. Può trattare URL di pagina/provenienza, browser, sistema, dispositivo e posizione approssimativa. I valori UTM nei link descrivono le fonti delle campagne. Terento li trasmette tramite URL senza salvare campagne nel browser. Le statistiche servono a migliorare il sito e misurare le campagne sulla base del legittimo interesse, art. 6(1)(f) GDPR. Non ci sono banner di consenso analitico o interruttori sul sito; contattaci per opporti. Le statistiche sono separate dalle impostazioni diagnostiche dell’app.
 
 La lingua scelta viene memorizzata come `terento-language` nella memoria locale. Questa preferenza richiesta è separata dall’analisi. Cloudflare può usare cookie di sicurezza secondo le impostazioni di protezione.
 

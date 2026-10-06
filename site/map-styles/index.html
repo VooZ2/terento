@@ -44,8 +44,8 @@
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
     <script defer src="/assets/vendor/leaflet-1.9.4/leaflet.js"></script>
-    <script defer src="/map-styles/map-styles-data.js?v=20261006-map-styles-v4"></script>
-    <script defer src="/map-styles/map-styles.js?v=20261006-map-styles-v4"></script>
+    <script defer src="/map-styles/map-styles-data.js?v=20261006-map-styles-v5"></script>
+    <script defer src="/map-styles/map-styles.js?v=20261006-map-styles-v5"></script>
 </head>
   <body>
     <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Skip to content</a>
@@ -120,9 +120,9 @@
           </div>
 
           <div class="map-styles-overlay map-styles-tools" role="group" aria-label="View">
-            <button type="button" class="map-styles-mode" data-mode="single" aria-pressed="false" aria-label="One map"><svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/></svg><span class="map-styles-mode-text">One map</span></button><button type="button" class="map-styles-mode" data-mode="split" aria-pressed="false" aria-label="Side by side"><svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M12 4.5v15"/></svg><span class="map-styles-mode-text">Side by side</span></button><button type="button" class="map-styles-mode" data-mode="swipe" aria-pressed="true" aria-label="Swipe"><svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 7-5 5 5 5M15 7l5 5-5 5"/></svg><span class="map-styles-mode-text">Swipe</span></button>
+            <button type="button" class="map-styles-mode" data-mode="single" data-umami-event="map-styles-mode-change" data-umami-event-mode="single" aria-pressed="false" aria-label="One map"><svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/></svg><span class="map-styles-mode-text">One map</span></button><button type="button" class="map-styles-mode" data-mode="split" data-umami-event="map-styles-mode-change" data-umami-event-mode="split" aria-pressed="false" aria-label="Side by side"><svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M12 4.5v15"/></svg><span class="map-styles-mode-text">Side by side</span></button><button type="button" class="map-styles-mode" data-mode="swipe" data-umami-event="map-styles-mode-change" data-umami-event-mode="swipe" aria-pressed="true" aria-label="Swipe"><svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 7-5 5 5 5M15 7l5 5-5 5"/></svg><span class="map-styles-mode-text">Swipe</span></button>
             <span class="map-styles-tools-separator" aria-hidden="true"></span>
-            <button type="button" class="map-styles-mode" id="map-styles-copy-link" aria-label="Copy link to this view" title="Copy link to this view"><svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>
+            <button type="button" class="map-styles-mode" id="map-styles-copy-link" data-umami-event="map-styles-share-click" aria-label="Copy link to this view" title="Copy link to this view"><svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>
           </div>
 
           <div class="map-styles-overlay map-styles-dock" id="map-styles-dock">
