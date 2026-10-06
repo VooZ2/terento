@@ -198,6 +198,11 @@ class PreviewRun:
             for area, style in uncovered:
                 self.db.save_layer(area.id, style.id, style.provider_id, "NOT_COVERED")
                 result.not_covered += 1
+            # A layer marked uncovered that now has a package (for example
+            # after a catalog change) is pending again, not "no map here".
+            for item in work:
+                if item.existing is not None and item.existing.get("status") == "NOT_COVERED":
+                    self.db.save_layer(item.area.id, item.style.id, item.style.provider_id, "PENDING")
             LOGGER.info("map previews: %d layers to render, %d not covered", len(work), len(uncovered))
             staging = self.store.staging_dir(job)
             queue = list(work)

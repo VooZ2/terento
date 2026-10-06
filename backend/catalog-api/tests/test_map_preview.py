@@ -510,6 +510,25 @@ class PreviewRunTests(unittest.TestCase):
             self.assertEqual(list((root / "work").iterdir()), [])
             self.assertIsNone(db.lease)
 
+    def test_previously_uncovered_layer_with_a_package_is_pending_until_drawn(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rows = [snapshot_row("nord-est", region="EUROPE-ITALY-NORD-EST",
+                                 url="https://data.bbbike.org/osm/garmin/region/europe/italy/nord-est.osm.garmin-bbbike-latin1.img")]
+            db = FakePreviewDatabase()
+            db.rows[("a", "bbbike")] = {"status": "NOT_COVERED", "provider_id": "bbbike"}
+            seen = []
+            original = db.save_layer
+
+            def recording_save_layer(area_id, style_id, provider_id, status, **kwargs):
+                seen.append((area_id, style_id, status))
+                return original(area_id, style_id, provider_id, status, **kwargs)
+
+            db.save_layer = recording_save_layer
+            result, db, _, _, _ = self.run_window(Path(directory), rows, db=db)
+            bbbike = [status for area_id, style_id, status in seen if (area_id, style_id) == ("a", "bbbike")]
+            self.assertEqual(bbbike, ["PENDING", "AVAILABLE"])
+            self.assertEqual(db.rows[("a", "bbbike")]["status"], "AVAILABLE")
+
     def test_package_not_covering_area_moves_to_next_candidate(self):
         with tempfile.TemporaryDirectory() as directory:
             rows = [
