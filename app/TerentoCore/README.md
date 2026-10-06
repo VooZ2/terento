@@ -161,11 +161,56 @@ identity; cleanup never expands into heuristic deletion. The write profile is
 bound from the live Garmin USB identity and read-only `/GARMIN` inventory; it
 does not contain a model allowlist.
 
+Safe Update content checks (the transaction order is unchanged: installed map
+checked, protected baseline, write, new map verified while the old map is still
+installed, old map removed, protected final inventory, manifest):
+
+- Installed map, before anything is written. The method is chosen from the
+  local record before any device read and is never switched afterwards:
+  - Terento-managed entry whose recorded removal proof exactly matches the
+    entry's size and SHA-256 (format-1 geometry) at `/GARMIN/<managed name>`:
+    one native read-only session validates the live device, resolves the exact
+    object (one regular file of that name and recorded size in the single
+    `/GARMIN` folder of the bound storage), reads only the 32 recorded regions,
+    checks the `DSKIMG`/`GARMIN` header and the recorded digest, and re-resolves
+    the same handle, name and size; a header read then checks the IMG
+    provider/region and version. A 434 MB map is read as 2,097,120 bytes.
+  - Entry without a proof (maps installed by earlier versions), a proof not
+    bound to the entry, or anything else: the whole object is read and its
+    SHA-256 compared with the record, as before.
+  - A sampled content mismatch blocks the update exactly like a full SHA-256
+    mismatch (`UPDATE_FAILED_METADATA_MISMATCH`); a changed identity or a read
+    failure blocks as well. Nothing is written, and a failure is never retried
+    as the other method.
+- New map, after the write and before the old map is touched: the sampled
+  read-back fresh installation uses (same settle, bounded worker, exact
+  managed name and size, the first and last 4 MiB plus up to five regions
+  spread by the artifact SHA-256, compared byte for byte with the validated
+  local artifact; every planned region must match), then the IMG identity and
+  version of the written object. Any failure cleans up only the new object as
+  before and keeps the old map installed. A 434 MB map is read as 29,360,128
+  bytes instead of 434,000,000.
+- Old-map removal keeps the removal content check above, and the new entry
+  records its removal proof from the validated local artifact as before.
+- Residual limitation, the same as for fresh installation and removal: a
+  same-name, same-size installed map that differs only outside the recorded
+  regions, or a write corruption of the new map only outside the compared
+  regions, is not detected by these checks. Ownership, exact identity,
+  protected-inventory and authorization rules are unchanged.
+- Measured with the fake-libmtp harness (`run-native-fast-update-tests.sh`), a
+  434 MB managed update reads 33,554,368 content bytes over MTP (2,097,120 +
+  29,360,128 + 2,097,120) instead of 870,097,120 (434,000,000 + 434,000,000 +
+  2,097,120); inventory and header reads are unchanged. Local traces show
+  `update_current_check method=sampled|full bytes=…` and
+  `update_new_check method=sampled regions=… bytes=…`.
+
 Manage maps shows a determinate bar, percentage and current action throughout
 Update. Downloading and Installing retain their byte counts and transfer speed.
 Preparing reports completed package checks and measured local hashing; Checking
-combines local source validation with measured read-back/hash validation of the
-installed map. Verifying separately reports validation of the newly written map.
+combines local source validation with the measured content check of the
+installed map (its recorded regions, or the full read and hash without a
+proof). Verifying separately reports the measured sampled read-back of the newly
+written map. Checks that end within the 5-second warm-up show no time estimate.
 Removing old reports measured content verification before deletion (the
 sampled removal proof, or the full read without one), and
 Finishing advances through the existing confirmed checks. Each
@@ -670,8 +715,8 @@ read is scoped, and full-walk answers keep the full comparison. The worker bound
 and libmtp timeouts are unchanged.
 
 Map scan and detection, Remove (its live inspection and post-delete rescan), the
-post-update rescan, header prefix reads and exact content reads keep their full
-walk; none of them performs the protected comparison. A watch whose bulk is
+post-update rescan, header prefix reads and exact full-content reads keep their full
+walk (the sampled checks resolve their object in the single `/GARMIN` folder); none of them performs the protected comparison. A watch whose bulk is
 inside `/GARMIN` (for example years of activities in `/GARMIN/Activity`) still
 walks those objects, so the gain depends on how much content lies outside
 `/GARMIN`.

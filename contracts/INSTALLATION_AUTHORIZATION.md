@@ -108,6 +108,13 @@ then reads and compares only the recorded regions of the exact same-session
 object. Without a proof, and always for external maps, it compares the full
 SHA-256. The proof never grants write or delete permission by itself; see
 `app/TerentoCore/README.md` (Safety and verification).
+Safe Update's pre-write check of the installed managed map uses the same
+recorded proof read-only when the entry has one (otherwise the full SHA-256),
+and its verification of the new map before the old map is removed is the
+fresh-install sampled read-back against the validated local artifact. Neither
+check grants permission: the update still needs fresh authorization, the old
+map is bound to its recorded size and SHA-256 only after the check passes, and
+the old-map delete grant is issued only after the new map was verified.
 
 Native inventory and exact-read resolution project only the verified root and
 its descendants in the selected storage to logical `/GARMIN` paths. Original
