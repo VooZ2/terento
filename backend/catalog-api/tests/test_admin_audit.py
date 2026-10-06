@@ -336,12 +336,20 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_build_guard_separates_debug_and_public_release(self):
         guard=Path(__file__).resolve().parents[3]/'Packaging'/'verify-release-label.sh'
-        for configuration,label,allowed in [('Debug','1.0.0-beta.10-local',True),('Debug','1.0.0-beta.9',False),('Debug','',False),('Release','1.0.0-beta.9',True),('Release','1.0.0-beta.10-local',False),('Release','development',False)]:
+        for configuration,label,allowed in [('Debug','1.0.0-beta.10-local',True),('Debug','1.0.0-beta.9',False),('Debug','',False),('Release','1.0.0-beta.9',True),('Release','1.0.0-beta.10-local',False),('Release','development',False),('Debug','1.0.0-rc.1-local',True),('Debug','1.0.0-rc.1',False),('Release','1.0.0-rc.1',True),('Release','1.0.0-rc.1-local',False)]:
             with self.subTest(configuration=configuration,label=label):
                 result=subprocess.run(['/bin/sh',str(guard)],env={**os.environ,'CONFIGURATION':configuration,'TERENTO_RELEASE_LABEL':label},capture_output=True)
                 self.assertEqual(result.returncode==0,allowed)
                 if allowed:
                     self.assertEqual(is_local_release_label(label),configuration=='Debug')
+
+    def test_app_version_label_shortens_beta_and_release_candidate_labels(self):
+        from terento_catalog.admin import _admin_app_version_label
+        self.assertEqual(_admin_app_version_label('1.0.0-beta.18', '40'), 'beta.18 · build 40')
+        self.assertEqual(_admin_app_version_label('1.0.0-rc.1', '41'), 'rc.1 · build 41')
+        self.assertEqual(_admin_app_version_label('beta.9 RC'), 'beta.9 RC')
+        self.assertEqual(_admin_app_version_label('1.0.0', '50'), '1.0.0 · build 50')
+        self.assertEqual(_admin_app_version_label(None), '—')
 
     def test_clear_handlers_resolve_their_form_before_registering(self):
         from terento_catalog.admin import _map_statistics_script, _diagnostics_script

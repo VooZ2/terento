@@ -1084,7 +1084,7 @@ def local_test_data_page(
             <article><span>Distinct operations</span><strong>{operation_count}</strong></article>
           </section>
           <p class="test-data-release-labels">Release labels <code>{labels}</code></p>
-          <p class="table-help">Local builds end in <code>-local</code> and are stored with <code>is_local_test=true</code>. Public beta builds use a public release label and <code>is_local_test=false</code>. These test events never contribute to user dashboards or public compatibility counts.</p>
+          <p class="table-help">Local builds end in <code>-local</code> and are stored with <code>is_local_test=true</code>. Public beta and release-candidate builds use a public release label and <code>is_local_test=false</code>. These test events never contribute to user dashboards or public compatibility counts.</p>
           <div class="table-wrap"><table class="admin-table"><caption class="test-data-activity-caption">Latest local activity · up to 50 release/outcome groups</caption><thead><tr><th scope="col">Stream</th><th scope="col">Release</th><th scope="col" class="column-status">Result</th><th scope="col" class="column-number">Events</th><th scope="col" class="column-date">Last activity</th></tr></thead><tbody>{activity_rows}</tbody></table></div>
           <div class="test-data-danger-zone">
             <div>
@@ -1642,7 +1642,7 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
 def _admin_app_version_label(value: Any, build: Any = None) -> str:
     release = str(value or "—").strip() or "—"
     if release != "—":
-        match = re.search(r"\b(beta\.\d+)(?:\s*[-·( ]\s*(RC))?\b", release, re.IGNORECASE)
+        match = re.search(r"\b((?:beta|rc)\.\d+)(?:\s*[-·( ]\s*(RC))?\b", release, re.IGNORECASE)
         if match:
             release = match.group(1).lower() + (" RC" if match.group(2) else "")
     if build is not None and str(build).strip():

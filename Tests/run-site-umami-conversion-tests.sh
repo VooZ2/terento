@@ -184,7 +184,7 @@ for path in download_files:
     html = path.read_text(encoding="utf-8")
     update = json.loads((root / "site/updates/macos-arm64.json").read_text(encoding="utf-8"))
     expected_version = f'v{update["releaseLabel"]}'
-    versions = set(re.findall(r"v1\.0\.0-beta\.\d+", html))
+    versions = set(re.findall(r"v1\.0\.0-(?:beta|rc)\.\d+", html))
     assert versions == {expected_version}, f"{path}: expected current release metadata"
     items = anchors(path)
     dmg = [item for item in items if urlparse(item["href"]).path.lower().endswith(".dmg")]
@@ -219,7 +219,7 @@ for path in compatibility_files:
 
 update = json.loads((root / "site/updates/macos-arm64.json").read_text(encoding="utf-8"))
 assert update["build"] > 0
-assert re.fullmatch(r"1\.0\.0-beta\.\d+", update["releaseLabel"])
+assert re.fullmatch(r"1\.0\.0-(?:beta|rc)\.\d+", update["releaseLabel"])
 assert update["downloadURL"].endswith(f'/Terento-{update["releaseLabel"]}-macOS-arm64.dmg')
 assert re.fullmatch(r"[0-9a-f]{64}", update["sha256"])
 

@@ -16,7 +16,9 @@ PAGE_SIZE = 100
 MAX_PAGES = 100
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 REQUEST_TIMEOUT_SECONDS = 10
-_RELEASE_PATTERN = re.compile(r"\b(beta\.\d+)(?:\s*[-·( ]\s*(RC))?\b", re.IGNORECASE)
+# Public pre-release labels are beta.N or release-candidate rc.N
+# (VERSIONING.md); the trailing RC group keeps historical "beta.N RC" names.
+_RELEASE_PATTERN = re.compile(r"\b((?:beta|rc)\.\d+)(?:\s*[-·( ]\s*(RC))?\b", re.IGNORECASE)
 _BUILD_PATTERN = re.compile(r"\bbuild\s*(\d+)\b", re.IGNORECASE)
 
 
