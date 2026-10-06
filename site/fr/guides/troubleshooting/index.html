@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="fr" data-language="fr" data-page="troubleshooting">
+  <head>
+    <script defer src="/site-shell.js?v=20261006-troubleshooting-footer-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261006-troubleshooting-v1">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#F7F3EC">
+    <meta name="description" content="Résolvez les problèmes Garmin sur Mac : montre non détectée, Garmin Express ou Android File Transfer qui utilise la montre, mode USB (MTP), espace insuffisant et échec du téléchargement des cartes.">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://terento.app/fr/guides/troubleshooting/">
+    <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
+    <link rel="alternate" hreflang="de" href="https://terento.app/de/guides/troubleshooting/">
+    <link rel="alternate" hreflang="fr" href="https://terento.app/fr/guides/troubleshooting/">
+    <link rel="alternate" hreflang="pl" href="https://terento.app/pl/guides/troubleshooting/">
+    <link rel="alternate" hreflang="cs" href="https://terento.app/cs/guides/troubleshooting/">
+    <link rel="alternate" hreflang="it" href="https://terento.app/it/guides/troubleshooting/">
+    <link rel="alternate" hreflang="x-default" href="https://terento.app/guides/troubleshooting/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Terento">
+    <meta property="og:title" content="Montre Garmin non détectée sur Mac ? Dépannage — Terento">
+    <meta property="og:description" content="Résolvez les problèmes Garmin sur Mac : montre non détectée, Garmin Express ou Android File Transfer qui utilise la montre, mode USB (MTP), espace insuffisant et échec du téléchargement des cartes.">
+    <meta property="og:url" content="https://terento.app/fr/guides/troubleshooting/">
+    <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Terento affiche une montre Garmin connectée sur macOS">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Montre Garmin non détectée sur Mac ? Dépannage — Terento">
+    <meta name="twitter:description" content="Résolvez les problèmes Garmin sur Mac : montre non détectée, Garmin Express ou Android File Transfer qui utilise la montre, mode USB (MTP), espace insuffisant et échec du téléchargement des cartes.">
+    <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
+    <title>Montre Garmin non détectée sur Mac ? Dépannage — Terento</title>
+
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+
+    <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
+    <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <script defer src="/language.js?v=20260926-static-shell-v1"></script>
+    <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://terento.app/#organization",
+      "name": "Terento",
+      "url": "https://terento.app/",
+      "logo": "https://terento.app/assets/logo-sky.svg",
+      "sameAs": [
+        "https://github.com/VooZ2/terento"
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://terento.app/fr/guides/troubleshooting/#article",
+      "headline": "Résoudre les problèmes de montre Garmin et de cartes sur Mac",
+      "description": "Résolvez les problèmes Garmin sur Mac : montre non détectée, Garmin Express ou Android File Transfer qui utilise la montre, mode USB (MTP), espace insuffisant et échec du téléchargement des cartes.",
+      "datePublished": "2026-10-06T00:00:00Z",
+      "dateModified": "2026-10-06T00:00:00Z",
+      "mainEntityOfPage": {
+        "@id": "https://terento.app/fr/guides/troubleshooting/"
+      },
+      "inLanguage": "fr",
+      "image": "https://terento.app/assets/social/terento-og.png",
+      "publisher": {
+        "@id": "https://terento.app/#organization"
+      },
+      "author": {
+        "@id": "https://terento.app/#organization"
+      },
+      "about": {
+        "@id": "https://terento.app/#software"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://terento.app/fr/guides/troubleshooting/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Accueil",
+          "item": "https://terento.app/fr/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Dépannage",
+          "item": "https://terento.app/fr/guides/troubleshooting/"
+        }
+      ]
+    }
+  ]
+}
+    </script>
+</head>
+  <body>
+    <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Aller au contenu</a>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand-lockup" href="/fr/" data-shell-aria="home" data-shell-root aria-label="Accueil Terento" data-umami-event="home-link-click" data-umami-event-location="header-brand">
+          <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
+          <span>Terento</span>
+        </a>
+        <nav class="primary-nav" data-shell-aria="primary" aria-label="Navigation principale">
+          <a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Guide</a><a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">À propos</a><a class="download-action" href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Télécharger</a>
+          <span class="language-switcher"><details class="language-menu">
+          <summary class="language-trigger" data-shell-aria="language" aria-label="Choisir la langue"><span class="language-code" aria-hidden="true">FR</span></summary>
+          <div class="language-options"><a class="language-option" href="/guides/troubleshooting/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/guides/troubleshooting/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/guides/troubleshooting/" data-language-switch="fr" lang="fr" aria-label="Français" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/guides/troubleshooting/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/guides/troubleshooting/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/guides/troubleshooting/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+        </details></span>
+        </nav>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" data-menu-label="Menu" data-close-label="Fermer le menu" aria-label="Menu">
+          <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="menu-toggle-text" data-shell-copy="menu">Menu</span>
+        </button>
+      </div>
+      <div class="mobile-nav" id="mobile-nav" hidden>
+        <div class="shell mobile-nav-inner">
+          <nav class="mobile-nav-links" data-shell-aria="primary" aria-label="Navigation principale">
+            <a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Guide</a><a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">À propos</a><a href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Télécharger</a>
+          </nav>
+          <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
+            <summary class="language-trigger" data-shell-aria="language" aria-label="Choisir la langue"><span class="mobile-language-label">Français</span></summary>
+            <div class="language-options"><a class="language-option" href="/guides/troubleshooting/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/guides/troubleshooting/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/guides/troubleshooting/" data-language-switch="fr" lang="fr" aria-label="Français" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/guides/troubleshooting/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/guides/troubleshooting/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/guides/troubleshooting/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+          </details></div>
+        </div>
+      </div>
+    </header>
+    <main id="main-content" class="guide-main">
+      <article class="guide-article">
+        <header class="guide-intro">
+          <div class="shell">
+            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Dépannage</p>
+            <h1>Résoudre les problèmes de montre Garmin et de cartes sur Mac</h1>
+            <p class="guide-lede">Trouvez votre problème, d’une montre Garmin que le Mac ne détecte pas à un téléchargement de carte qui échoue, et suivez les étapes courtes. Si rien ne fonctionne, envoyez un rapport pour que nous puissions l’examiner.</p>
+          </div>
+        </header>
+
+        <div class="shell guide-content">
+          <section class="troubleshooting" id="topic-connection" aria-labelledby="topic-connection-title">
+            <div class="guide-section-heading"><p class="eyebrow">Connexion</p><h2 id="topic-connection-title">Problèmes de connexion de la montre Garmin</h2></div>
+            <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
+              <h3 id="connect-watch-title">Montre Garmin non détectée sur Mac</h3>
+              <p>Connectez la montre directement à votre Mac avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes : Terento la détecte automatiquement.</p>
+              <ol class="troubleshooting-steps"><li>Utilisez un câble de données. Les câbles de recharge seule et certains hubs USB ne fonctionnent pas.</li><li>Attendez jusqu’à 2 minutes pendant que Terento vérifie la connexion.</li><li>Si la montre n’apparaît toujours pas, débranchez-la, attendez quelques secondes et reconnectez-la.</li><li>Si une autre app est ouverte, voir <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express ou une autre app utilise la montre</a>.</li></ol>
+            </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
+              <h3 id="garmin-busy-title">Garmin Express ou une autre app utilise la montre</h3>
+              <p>Quittez Garmin Express et les apps de transfert de fichiers comme Android File Transfer, OpenMTP ou MacDroid : une seule app à la fois peut utiliser la connexion de la montre.</p>
+              <ol class="troubleshooting-steps"><li>Quittez Garmin Express, Android File Transfer, OpenMTP, MacDroid et les autres apps MTP. Si Terento nomme une app, quittez-la en premier.</li><li>Fermez aussi Transfert d’images, Photos et Aperçu s’ils sont ouverts.</li><li>Si la montre apparaît dans le Finder, éjectez-la.</li><li>Débranchez la montre, reconnectez-la, puis choisissez « Refresh » dans Terento.</li></ol>
+            </section><section class="troubleshooting-item" id="multiple-garmin" aria-labelledby="multiple-garmin-title">
+              <h3 id="multiple-garmin-title">Plusieurs appareils Garmin connectés</h3>
+              <p>Déconnectez tous les appareils Garmin sauf la montre que vous voulez utiliser : Terento fonctionne avec un seul Garmin à la fois.</p>
+              <ol class="troubleshooting-steps"><li>Débranchez les autres montres, compteurs vélo et appareils portables Garmin.</li><li>Gardez la montre choisie connectée et attendez que Terento la trouve.</li></ol>
+            </section><section class="troubleshooting-item" id="usb-mode" aria-labelledby="usb-mode-title">
+              <h3 id="usb-mode-title">Montre Garmin non reconnue : mode USB (MTP)</h3>
+              <p>Si Terento indique que la montre n’est pas prête pour le transfert de fichiers, réglez le mode USB de la montre sur MTP, si votre modèle dispose de ce réglage.</p>
+              <ol class="troubleshooting-steps"><li>Sur la montre, ouvrez Mode USB, généralement dans Paramètres › Système. Tous les modèles ne l’ont pas.</li><li>Choisissez MTP.</li><li>Déconnectez la montre et reconnectez-la.</li></ol>
+            </section><section class="troubleshooting-item" id="connection-timeout" aria-labelledby="connection-timeout-title">
+              <h3 id="connection-timeout-title">Montre Garmin détectée mais pas prête</h3>
+              <p>Si Terento trouve la montre mais que la connexion n’est pas prête dans les 2 minutes, débranchez la montre et reconnectez-la. Les blocages occasionnels de connexion sont une limite connue de la bêta actuelle.</p>
+              <ol class="troubleshooting-steps"><li>Quittez les autres apps susceptibles d’utiliser la montre. Voir <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express ou une autre app utilise la montre</a>.</li><li>Essayez un autre port USB ou un autre câble.</li><li>Si le problème persiste, redémarrez la montre et reconnectez-la.</li></ol>
+            </section><section class="troubleshooting-item" id="watch-not-responding" aria-labelledby="watch-not-responding-title">
+              <h3 id="watch-not-responding-title">La montre Garmin ne répond plus</h3>
+              <p>Débranchez la montre, attendez quelques secondes et reconnectez-la : la connexion a été perdue ou la montre ne répond plus à Terento.</p>
+              <ol class="troubleshooting-steps"><li>Si Terento installait, mettait à jour ou supprimait une carte, ouvrez « Manage maps » après la reconnexion et vérifiez le résultat avant de réessayer.</li><li>Redémarrez la montre si cela se reproduit.</li></ol>
+            </section></div>
+          </section>
+          <section class="troubleshooting" id="topic-checks" aria-labelledby="topic-checks-title">
+            <div class="guide-section-heading"><p class="eyebrow">Vérifications</p><h2 id="topic-checks-title">Vérifications de la montre et des cartes</h2></div>
+            <div class="troubleshooting-list"><section class="troubleshooting-item" id="model-not-enabled" aria-labelledby="model-not-enabled-title">
+              <h3 id="model-not-enabled-title">Installation de cartes indisponible pour ce modèle Garmin</h3>
+              <p>Terento installe des cartes uniquement sur les montres Garmin prenant en charge les cartes et activées dans Terento. Vous pouvez tout de même connecter la montre et parcourir les cartes.</p>
+              <ol class="troubleshooting-steps"><li>Vérifiez que votre modèle de montre prend en charge les cartes.</li><li>Terento consulte sa liste actuelle à chaque connexion. Si votre modèle est activé plus tard, reconnectez la montre.</li><li>Indiquez-nous votre modèle exact pour que nous puissions l’examiner. Voir <a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Signaler un problème avec Terento</a>.</li></ol>
+            </section><section class="troubleshooting-item" id="couldnt-check" aria-labelledby="couldnt-check-title">
+              <h3 id="couldnt-check-title">Terento n’a pas pu vérifier votre montre Garmin</h3>
+              <p>Vérifiez que votre Mac est connecté à Internet, puis reconnectez la montre : Terento a besoin d’Internet pour vérifier si des cartes peuvent être installées sur cette montre.</p>
+              <ol class="troubleshooting-steps"><li>Ouvrez un site web pour confirmer que votre Mac est en ligne.</li><li>Débranchez la montre et reconnectez-la pour relancer la vérification.</li><li>Si cela échoue encore, attendez quelques minutes et réessayez.</li></ol>
+            </section><section class="troubleshooting-item" id="catalog-unavailable" aria-labelledby="catalog-unavailable-title">
+              <h3 id="catalog-unavailable-title">La liste des cartes Garmin ne se charge pas ou Terento doit être mis à jour</h3>
+              <p>Si Terento ne peut pas charger la liste actuelle des cartes, vérifiez votre connexion Internet et réessayez dans quelques minutes. Les cartes déjà présentes sur votre montre ne sont pas concernées.</p>
+              <ol class="troubleshooting-steps"><li>Si cette version de Terento est trop ancienne pour la liste actuelle et que Terento indique qu’une version plus récente est disponible, installez la mise à jour.</li><li>Tant que Terento affiche une ancienne liste enregistrée, l’installation et la mise à jour des cartes du catalogue restent indisponibles jusqu’à ce que la liste actuelle puisse être vérifiée.</li></ol>
+            </section></div>
+          </section>
+          <section class="troubleshooting" id="topic-storage" aria-labelledby="topic-storage-title">
+            <div class="guide-section-heading"><p class="eyebrow">Téléchargements et espace</p><h2 id="topic-storage-title">Téléchargement des cartes et espace libre</h2></div>
+            <div class="troubleshooting-list"><section class="troubleshooting-item" id="download-failed" aria-labelledby="download-failed-title">
+              <h3 id="download-failed-title">Échec du téléchargement de la carte Garmin</h3>
+              <p>Vérifiez votre connexion Internet et réessayez plus tard : Terento télécharge chaque carte directement auprès de son fournisseur, et les fournisseurs sont parfois lents ou temporairement indisponibles.</p>
+              <ol class="troubleshooting-steps"><li>Lisez la raison affichée à côté de la carte. Si le fournisseur est indisponible ou si les téléchargements sont suspendus, réessayez plus tard.</li><li>Relancez l’installation.</li></ol>
+            </section><section class="troubleshooting-item" id="mac-storage" aria-labelledby="mac-storage-title">
+              <h3 id="mac-storage-title">Pas assez d’espace sur le Mac pour télécharger la carte</h3>
+              <p>Libérez de l’espace sur votre Mac et réessayez : Terento a besoin d’espace temporaire pour télécharger et préparer une carte.</p>
+              <ol class="troubleshooting-steps"><li>Supprimez les fichiers dont vous n’avez plus besoin et videz la corbeille.</li><li>Réessayez. Les grandes régions demandent plus d’espace.</li></ol>
+            </section><section class="troubleshooting-item" id="watch-storage" aria-labelledby="watch-storage-title">
+              <h3 id="watch-storage-title">Pas assez d’espace sur la montre pour les cartes Garmin</h3>
+              <p>Choisissez une région plus petite ou supprimez une carte dont vous n’avez plus besoin : Terento vérifie l’espace libre de la montre avant l’installation et ne commence pas si les cartes ne tiennent pas.</p>
+              <ol class="troubleshooting-steps"><li>Choisissez une région plus petite ou moins de cartes.</li><li>Ouvrez « Manage maps » et supprimez une carte dont vous n’avez plus besoin.</li><li>Une mise à jour demande de l’espace supplémentaire pendant la vérification de la nouvelle carte. Libérez de l’espace si une mise à jour ne peut pas démarrer.</li></ol>
+            </section></div>
+          </section>
+          <section class="troubleshooting" id="topic-maps" aria-labelledby="topic-maps-title">
+            <div class="guide-section-heading"><p class="eyebrow">Installation et mises à jour</p><h2 id="topic-maps-title">Installation, mise à jour et suppression des cartes</h2></div>
+            <div class="troubleshooting-list"><section class="troubleshooting-item" id="leftover-map" aria-labelledby="leftover-map-title">
+              <h3 id="leftover-map-title">Échec de l’installation de la carte : carte restante sur la montre</h3>
+              <p>Supprimez la carte restante dans « Manage maps », puis réinstallez-la. Si une installation s’arrête après le début de la copie, une partie de la carte peut rester sur la montre, et Terento ne la supprime pas automatiquement.</p>
+              <ol class="troubleshooting-steps"><li>Reconnectez la montre et attendez que Terento soit prêt.</li><li>Ouvrez « Manage maps » et vérifiez la liste.</li><li>Si la carte de l’installation échouée y figure, supprimez-la, puis réinstallez-la.</li><li>Si cela échoue encore, <a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">envoyez un rapport</a>.</li></ol>
+            </section><section class="troubleshooting-item" id="update-remove" aria-labelledby="update-remove-title">
+              <h3 id="update-remove-title">La mise à jour ou la suppression d’une carte prend du temps</h3>
+              <p>C’est attendu dans la bêta actuelle : la mise à jour ou la suppression d’une carte peut rester un moment à un pourcentage élevé avant de se terminer. Gardez la montre connectée et votre Mac éveillé.</p>
+              <ol class="troubleshooting-steps"><li>Ne débranchez pas la montre pendant que Terento travaille.</li><li>Attendez que Terento indique que c’est terminé.</li><li>Si Terento signale un échec, reconnectez la montre et vérifiez « Manage maps » avant de réessayer.</li></ol>
+            </section></div>
+          </section>
+          <section class="troubleshooting" id="topic-help" aria-labelledby="topic-help-title">
+            <div class="guide-section-heading"><p class="eyebrow">Toujours bloqué ?</p><h2 id="topic-help-title">Obtenir de l’aide</h2></div>
+            <div class="troubleshooting-list"><section class="troubleshooting-item" id="send-report" aria-labelledby="send-report-title">
+              <h3 id="send-report-title">Signaler un problème avec Terento</h3>
+              <p>Sur l’écran d’échec, choisissez « Report issue » : Terento ouvre GitHub avec le rapport enregistré sur votre Mac déjà rempli.</p>
+              <ol class="troubleshooting-steps"><li>Plus tard, vous pouvez utiliser « Report latest failure » dans « Diagnostics ».</li><li>Si le formulaire GitHub est vide, cliquez dans le champ du rapport, appuyez sur ⌘A puis sur ⌘V.</li><li>Vérifiez le rapport avant de le publier : les issues GitHub sont publiques.</li><li>Pas de compte GitHub ? Écrivez à <a href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="troubleshooting-send-report" data-umami-event-channel="email">hello&#64;terento.app</a> en indiquant le modèle de votre montre, la région de la carte et ce qui s’est passé.</li></ol>
+            </section></div>
+          </section>
+
+          <section class="guide-bottom-cta" aria-labelledby="troubleshooting-bottom-title">
+            <div><p class="eyebrow">Nouveau sur Terento ?</p><h2 id="troubleshooting-bottom-title">Commencez par le guide d’installation en trois étapes.</h2></div>
+            <a class="text-link" href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">Lire le guide d’installation sur Mac <span aria-hidden="true">→</span></a>
+          </section>
+        </div>
+      </article>
+    </main>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div class="footer-identity">
+          <a class="brand-lockup footer-brand" href="/fr/" data-shell-aria="home" data-shell-root aria-label="Accueil Terento" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
+            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
+            <span>Terento</span>
+          </a>
+          <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Projet open source</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+        </div>
+        <nav class="footer-nav" data-shell-aria="footer" aria-label="Navigation du pied de page">
+          <a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">À propos</a><a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide</a><a href="/fr/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/fr/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Dépannage</a><a href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Télécharger</a>
+          <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Mentions légales</a>
+          <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Confidentialité</a>
+        </nav>
+      </div>
+      <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
+      <div class="shell footer-note"><p><span data-footer-copy data-shell-copy="stats">Les statistiques de visites (Umami) n’utilisent pas de cookies.</span></p></div>
+    </footer>
+  </body>
+</html>

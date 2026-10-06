@@ -107,9 +107,13 @@ Puis-je mettre les cartes à jour plus tard ?
 
 Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento.
 
+Pourquoi ma montre Garmin n’apparaît-elle pas sur mon Mac ?
+
+Connectez la montre directement avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes. Si elle n’apparaît toujours pas, quittez Garmin Express, Android File Transfer, OpenMTP et les autres apps qui peuvent utiliser la montre.
+
 Que dois-je faire si l’installation échoue ?
 
-Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.
+Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. [Lisez le guide de dépannage.](https://terento.app/fr/guides/troubleshooting/)
 
 [Ouvrir une issue](https://github.com/VooZ2/terento/issues/new/choose) [Contacter le support](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

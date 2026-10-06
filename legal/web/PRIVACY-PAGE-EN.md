@@ -27,6 +27,12 @@ If you email us, we receive your address, message and anything you attach, to an
 
 A GitHub issue is separate from automatic diagnostics: you review and submit it, and its content and GitHub account name may be public. [GitHub’s privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies. Optional donations take place on [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), which processes payment-related information under its own terms.
 
+## Support reports
+
+Where the app offers to send a support report to Terento, a report is sent only when you choose to send it, after you have seen its content. It contains the sanitised issue details also used for GitHub reports: app and macOS versions, watch model and variant, the failed step, error category and message, map provider and region, and timings, plus any description you add. It excludes serial numbers, Unit IDs, account details, local paths, raw logs and map files, and no GitHub account is needed. Do not include personal information in the description.
+
+Support reports are used only to diagnose the reported problem, are not used for statistics and are kept for 12 months. Access is restricted to project administration; your IP address is not stored with the report. The basis is legitimate interests in answering your request and maintaining the app, under GDPR Article 6(1)(f).
+
 ## Website statistics and browser storage
 
 Umami loads for all visitors to measure page visits, link clicks and download events. It does not use tracking cookies. It may process page/referrer URLs, browser, operating system, device and approximate location information. UTM values in links describe campaign sources. Terento passes those values through URLs without storing campaigns in your browser. Statistics support site improvement and campaign measurement under legitimate interests, GDPR Article 6(1)(f). There is no analytics consent banner or on-site analytics switch; contact us to object. Website statistics are separate from the app’s diagnostic settings.
@@ -51,4 +57,4 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 13 September 2026.
+Updated: 6 October 2026.

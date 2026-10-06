@@ -107,9 +107,13 @@ Mohu mapy aktualizovat později?
 
 Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vám aktualizovat mapy třetích stran spravované aplikací Terento.
 
+Proč Mac nevidí moje hodinky Garmin?
+
+Připojte hodinky přímo USB kabelem pro přenos dat, odemkněte je a počkejte až 2 minuty. Pokud se stále nezobrazí, ukončete Garmin Express, Android File Transfer, OpenMTP a další aplikace, které mohou hodinky používat.
+
 Co mám dělat, když instalace selže?
 
-Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.
+Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému. [Přečtěte si průvodce řešením potíží.](https://terento.app/cs/guides/troubleshooting/)
 
 [Otevřít issue](https://github.com/VooZ2/terento/issues/new/choose) [Napsat podpoře](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

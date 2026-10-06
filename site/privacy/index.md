@@ -32,6 +32,12 @@ If you email us, we receive your address, message and anything you attach, to an
 
 A GitHub issue is separate from automatic diagnostics: you review and submit it, and its content and GitHub account name may be public. [GitHub’s privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies. Optional donations take place on [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), which processes payment-related information under its own terms.
 
+## Support reports
+
+Where the app offers to send a support report to Terento, a report is sent only when you choose to send it, after you have seen its content. It contains the sanitised issue details also used for GitHub reports: app and macOS versions, watch model and variant, the failed step, error category and message, map provider and region, and timings, plus any description you add. It excludes serial numbers, Unit IDs, account details, local paths, raw logs and map files, and no GitHub account is needed. Do not include personal information in the description.
+
+Support reports are used only to diagnose the reported problem, are not used for statistics and are kept for 12 months. Access is restricted to project administration; your IP address is not stored with the report. The basis is legitimate interests in answering your request and maintaining the app, under GDPR Article 6(1)(f).
+
 ## Website statistics and browser storage
 
 Umami loads for all visitors to measure page visits, link clicks and download events. It does not use tracking cookies. It may process page/referrer URLs, browser, operating system, device and approximate location information. UTM values in links describe campaign sources. Terento passes those values through URLs without storing campaigns in your browser. Statistics support site improvement and campaign measurement under legitimate interests, GDPR Article 6(1)(f). There is no analytics consent banner or on-site analytics switch; contact us to object. Website statistics are separate from the app’s diagnostic settings.
@@ -56,7 +62,7 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 13 September 2026.
+Updated: 6 October 2026.
 
 # Datenschutz
 
@@ -87,6 +93,12 @@ Wenn du uns schreibst, erhalten wir deine E-Mail-Adresse, Nachricht und Anhänge
 
 Ein GitHub-Issue ist von automatischer Diagnose getrennt: Du prüfst und sendest es selbst; Inhalt und GitHub-Kontoname können öffentlich sein. Es gilt [GitHubs Datenschutzerklärung](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Freiwillige Spenden erfolgen über [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), das Zahlungsinformationen nach eigenen Bedingungen verarbeitet.
 
+## Supportberichte
+
+Wenn die App anbietet, einen Supportbericht an Terento zu senden, wird er nur gesendet, wenn du dich dafür entscheidest, nachdem du seinen Inhalt gesehen hast. Er enthält die bereinigten Fehlerangaben, die auch für GitHub-Berichte verwendet werden: App- und macOS-Version, Uhrenmodell und -variante, den fehlgeschlagenen Schritt, Fehlerkategorie und -meldung, Kartenanbieter und Region sowie Zeitangaben, dazu eine optionale Beschreibung. Seriennummern, Unit IDs, Kontodaten, lokale Pfade, Rohprotokolle und Kartendateien sind ausgeschlossen; ein GitHub-Konto ist nicht nötig. Gib in der Beschreibung keine personenbezogenen Daten an.
+
+Supportberichte dienen nur der Diagnose des gemeldeten Problems, fließen nicht in Statistiken ein und werden 12 Monate aufbewahrt. Zugriff hat nur die Projektverwaltung; deine IP-Adresse wird nicht mit dem Bericht gespeichert. Grundlage sind berechtigte Interessen an der Beantwortung deiner Anfrage und der Wartung der App nach Art. 6 Abs. 1 lit. f DSGVO.
+
 ## Website-Statistik und Browserspeicher
 
 Umami wird für alle Besucher geladen, um Seitenaufrufe, Linkklicks und Downloads zu messen. Es nutzt keine Tracking-Cookies. Verarbeitet werden können Seiten-/Referrer-URLs, Browser, Betriebssystem, Gerät und ungefähre Standortdaten. UTM-Werte in Links beschreiben Kampagnenquellen. Terento reicht sie über URLs weiter, ohne Kampagnen im Browser zu speichern. Die Statistik dient Website-Verbesserung und Kampagnenmessung auf Grundlage berechtigter Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Es gibt weder ein Analyse-Einwilligungsbanner noch einen Analyseschalter auf der Website; für einen Widerspruch kontaktiere uns. Website-Statistik und App-Diagnoseeinstellungen sind getrennt.
@@ -111,7 +123,7 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 13. September 2026.
+Aktualisiert: 6. Oktober 2026.
 
 # Confidentialité
 
@@ -142,6 +154,12 @@ Si vous nous écrivez, nous recevons votre adresse, message et pièces jointes p
 
 Un ticket GitHub est distinct des diagnostics automatiques : vous le vérifiez et l’envoyez ; son contenu et votre nom de compte peuvent être publics. La [politique de GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) s’applique. Les dons facultatifs passent par [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), qui traite les données de paiement selon ses conditions.
 
+## Rapports d’assistance
+
+Lorsque l’application propose d’envoyer un rapport d’assistance à Terento, le rapport n’est envoyé que si vous choisissez de l’envoyer, après en avoir vu le contenu. Il contient les détails nettoyés également utilisés pour les rapports GitHub : versions de l’application et de macOS, modèle et variante de la montre, étape en échec, catégorie et message d’erreur, fournisseur et région de la carte, durées, ainsi que la description que vous ajoutez. Il exclut les numéros de série, Unit IDs, comptes, chemins locaux, journaux bruts et cartes ; aucun compte GitHub n’est nécessaire. N’indiquez pas de données personnelles dans la description.
+
+Les rapports d’assistance servent uniquement à diagnostiquer le problème signalé, ne sont pas utilisés pour les statistiques et sont conservés 12 mois. L’accès est réservé à l’administration du projet ; votre adresse IP n’est pas enregistrée avec le rapport. Le fondement est l’intérêt légitime à répondre à votre demande et maintenir l’application, selon l’article 6(1)(f) du RGPD.
+
 ## Statistiques et stockage du navigateur
 
 Umami est chargé pour tous les visiteurs pour mesurer les pages vues, clics et téléchargements. Il n’utilise pas de cookies de suivi. Il peut traiter les URL de page/provenance, navigateur, système, appareil et localisation approximative. Les valeurs UTM des liens décrivent les sources de campagne. Terento les transmet dans les URL sans stocker les campagnes dans votre navigateur. Les statistiques servent à améliorer le site et mesurer les campagnes sur la base de l’intérêt légitime, article 6(1)(f) du RGPD. Il n’y a ni bandeau de consentement analytique ni interrupteur sur le site ; contactez-nous pour vous opposer. Ces statistiques sont distinctes des réglages de diagnostic de l’app.
@@ -166,7 +184,7 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 13 septembre 2026.
+Mise à jour : 6 octobre 2026.
 
 # Prywatność
 
@@ -197,6 +215,12 @@ Gdy piszesz do nas, otrzymujemy adres, wiadomość i załączniki, aby odpowiedz
 
 Zgłoszenie GitHub jest oddzielne od automatycznej diagnostyki: sprawdzasz i wysyłasz je samodzielnie, a treść i nazwa konta mogą być publiczne. Obowiązuje [polityka GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Dobrowolne wsparcie odbywa się przez [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), przetwarzające dane płatnicze na własnych zasadach.
 
+## Raporty pomocy
+
+Gdy aplikacja oferuje wysłanie raportu pomocy do Terento, raport jest wysyłany tylko wtedy, gdy zdecydujesz się go wysłać po zapoznaniu się z jego treścią. Zawiera oczyszczone informacje o problemie używane także w raportach GitHub: wersje aplikacji i macOS, model i wariant zegarka, etap, który się nie powiódł, kategorię i komunikat błędu, dostawcę i region mapy oraz czasy, a także opcjonalny opis. Nie zawiera numerów seryjnych, Unit IDs, danych kont, lokalnych ścieżek, surowych logów ani map; konto GitHub nie jest potrzebne. Nie podawaj w opisie danych osobowych.
+
+Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są używane w statystykach i są przechowywane przez 12 miesięcy. Dostęp ma administracja projektu; adres IP nie jest zapisywany z raportem. Podstawą jest uzasadniony interes w odpowiedzi na zgłoszenie i utrzymaniu aplikacji, zgodnie z art. 6 ust. 1 lit. f RODO.
+
 ## Statystyki i pamięć przeglądarki
 
 Umami jest ładowane dla wszystkich odwiedzających, aby mierzyć odsłony, kliknięcia i pobrania. Nie używa śledzących plików cookie. Może przetwarzać adresy stron i odsyłaczy, przeglądarkę, system, urządzenie i przybliżoną lokalizację. Wartości UTM w linkach opisują źródła kampanii. Terento przekazuje je w adresach URL bez zapisywania kampanii w przeglądarce. Statystyki służą ulepszaniu witryny i pomiarowi kampanii na podstawie uzasadnionego interesu, art. 6 ust. 1 lit. f RODO. Nie ma banera zgody ani przełącznika analityki w witrynie; skontaktuj się, aby zgłosić sprzeciw. Statystyki są oddzielne od ustawień diagnostyki aplikacji.
@@ -221,7 +245,7 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 13 września 2026 r.
+Aktualizacja: 6 października 2026 r.
 
 # Soukromí
 
@@ -252,6 +276,12 @@ Pokud nám napíšete, obdržíme adresu, zprávu a přílohy pro odpověď a pr
 
 GitHub issue je oddělené od automatické diagnostiky: sami jej zkontrolujete a odešlete; obsah a jméno účtu mohou být veřejné. Platí [pravidla GitHubu](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Dobrovolné příspěvky probíhají přes [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), které zpracovává platební údaje podle vlastních podmínek.
 
+## Zprávy podpoře
+
+Pokud aplikace nabízí odeslání zprávy podpoře Terento, zpráva se odešle jen tehdy, když se tak rozhodnete po zobrazení jejího obsahu. Obsahuje očištěné údaje o problému, které se používají i pro hlášení na GitHubu: verze aplikace a macOS, model a variantu hodinek, neúspěšný krok, kategorii a zprávu chyby, poskytovatele a oblast mapy a časové údaje, spolu s volitelným popisem. Neobsahuje sériová čísla, Unit IDs, účty, místní cesty, surové protokoly ani mapy; účet na GitHubu není potřeba. Do popisu neuvádějte osobní údaje.
+
+Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužívají se pro statistiky a uchovávají se 12 měsíců. Přístup má správa projektu; vaše IP adresa se se zprávou neukládá. Základem jsou oprávněné zájmy na vyřízení vašeho požadavku a údržbě aplikace podle čl. 6 odst. 1 písm. f GDPR.
+
 ## Statistiky a úložiště prohlížeče
 
 Umami se načítá všem návštěvníkům pro měření zobrazení, kliknutí a stažení. Nepoužívá sledovací cookies. Může zpracovávat URL stránky a odkazujícího webu, prohlížeč, systém, zařízení a přibližnou polohu. UTM v odkazech popisují zdroje kampaní. Terento je předává v URL bez ukládání kampaní do prohlížeče. Statistiky slouží zlepšování webu a měření kampaní na základě oprávněných zájmů, čl. 6 odst. 1 písm. f GDPR. Na webu není analytický souhlasový banner ani přepínač; pro námitku nás kontaktujte. Statistiky webu jsou oddělené od nastavení diagnostiky aplikace.
@@ -276,7 +306,7 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 13. září 2026.
+Aktualizováno: 6. října 2026.
 
 # Privacy
 
@@ -307,6 +337,12 @@ Se ci scrivi, riceviamo indirizzo, messaggio e allegati per rispondere e analizz
 
 Una issue GitHub è distinta dalla diagnostica automatica: la controlli e invii tu; contenuti e nome account possono essere pubblici. Si applica l’ [informativa GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). Le donazioni facoltative avvengono tramite [Buy Me a Coffee](https://www.buymeacoffee.com/privacy-policy), che tratta i dati di pagamento secondo le proprie condizioni.
 
+## Rapporti di assistenza
+
+Quando l’app offre di inviare un rapporto di assistenza a Terento, il rapporto viene inviato solo se scegli di inviarlo, dopo averne visto il contenuto. Contiene i dettagli ripuliti usati anche per le segnalazioni GitHub: versioni dell’app e di macOS, modello e variante dell’orologio, passaggio non riuscito, categoria e messaggio di errore, provider e regione della mappa e tempi, oltre all’eventuale descrizione che aggiungi. Esclude numeri di serie, Unit IDs, account, percorsi locali, log grezzi e mappe; non serve un account GitHub. Non inserire dati personali nella descrizione.
+
+I rapporti di assistenza servono solo a diagnosticare il problema segnalato, non sono usati per statistiche e sono conservati per 12 mesi. L’accesso è riservato all’amministrazione del progetto; il tuo indirizzo IP non viene salvato con il rapporto. La base è il legittimo interesse a rispondere alla tua richiesta e mantenere l’app, ai sensi dell’art. 6(1)(f) GDPR.
+
 ## Statistiche e memoria del browser
 
 Umami viene caricato per tutti i visitatori per misurare visualizzazioni, clic e download. Non usa cookie di tracciamento. Può trattare URL di pagina/provenienza, browser, sistema, dispositivo e posizione approssimativa. I valori UTM nei link descrivono le fonti delle campagne. Terento li trasmette tramite URL senza salvare campagne nel browser. Le statistiche servono a migliorare il sito e misurare le campagne sulla base del legittimo interesse, art. 6(1)(f) GDPR. Non ci sono banner di consenso analitico o interruttori sul sito; contattaci per opporti. Le statistiche sono separate dalle impostazioni diagnostiche dell’app.
@@ -331,4 +367,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 13 settembre 2026.
+Aggiornamento: 6 ottobre 2026.

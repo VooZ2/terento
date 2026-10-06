@@ -148,7 +148,7 @@ for path in home_files:
     assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
     assert html.count('data-provider-card=') == 5, f"{path}: expected five map-type cards with the existing nested OTM add-on"
     assert html.count('class="provider-benefits"') == 5, f"{path}: expected one benefits list per map card"
-    assert html.count("<details>") == 5, f"{path}: expected five FAQ answers"
+    assert html.count("<details>") == 6, f"{path}: expected six FAQ answers"
     assert 'class="final-cta"' in html, f"{path}: expected final CTA"
     assert "/assets/app/optimized/installing-maps-640.avif" in html, f"{path}: expected responsive hero artwork"
     items = anchors(path)
