@@ -625,7 +625,7 @@ final class DeviceEngine: ObservableObject {
         readingMessage = "Your Garmin was disconnected. Connect it again to continue."
         disconnectNotice = multipleDevices
             ? nil
-            : "Your Garmin was disconnected. Connect it again to continue."
+            : "Plug it back in. Terento reconnects automatically."
         appendLog("Device connection invalidated: \(reason)")
         reportConnectOutcome(.disconnected)
 

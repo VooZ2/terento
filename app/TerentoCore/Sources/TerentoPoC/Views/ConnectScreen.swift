@@ -808,6 +808,12 @@ struct ConnectScreen: View {
         .accessibilityLabel("Before you connect: use a USB data cable, unlock your watch, and quit Garmin Express.")
     }
 
+    /// The interrupted operation's outcome takes precedence over the generic
+    /// disconnect line, so the user learns what happened to their map.
+    private var disconnectExplanation: String? {
+        lifecycleViewModel.interruptedOperationNotice ?? deviceEngine.disconnectNotice
+    }
+
     private var connectionStatusTitle: String {
         switch deviceEngine.state {
         case .disconnected:
@@ -815,7 +821,7 @@ struct ConnectScreen: View {
         case .detecting:
             switch deviceEngine.detectionPhase {
             case .waitingForWatch:
-                return "Connect your watch"
+                return disconnectExplanation == nil ? "Connect your watch" : "Your Garmin was disconnected"
             case .connecting:
                 return "Waiting for your Garmin…"
             case .needsAttention(let outcome):
@@ -840,7 +846,7 @@ struct ConnectScreen: View {
         case .detecting:
             switch deviceEngine.detectionPhase {
             case .waitingForWatch:
-                return deviceEngine.disconnectNotice
+                return disconnectExplanation
                     ?? "Plug your Garmin into this Mac. Terento finds it automatically."
             case .connecting:
                 return "This may take up to 2 minutes."
