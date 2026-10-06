@@ -110,8 +110,14 @@ def plan_work(
     *,
     now: datetime,
     refresh_days: int,
+    published: set[tuple[str, str]] | None = None,
 ) -> tuple[list[WorkItem], list[tuple[PreviewArea, PreviewStyle]]]:
-    """Return (layers to render, layers no enabled package covers)."""
+    """Return (layers to render, layers no enabled package covers).
+
+    A layer counts as done only when its tiles are in the published release:
+    a renderer stopped between drawing a layer and publishing it leaves an
+    AVAILABLE row without tiles, and that layer is drawn again.
+    """
     work: list[WorkItem] = []
     uncovered: list[tuple[PreviewArea, PreviewStyle]] = []
     ordered = sorted(areas, key=lambda area: (not area.featured, areas.index(area)))
@@ -129,7 +135,7 @@ def plan_work(
                 retry_at = existing.get("retry_not_before")
                 if retry_at is not None and retry_at > now:
                     continue
-                if existing["status"] == "AVAILABLE":
+                if existing["status"] == "AVAILABLE" and (published is None or (area.id, style.id) in published):
                     current = {(c.package_id, c.package_version) for c in candidates}
                     fresh = existing.get("rendered_at") and existing["rendered_at"] > now - timedelta(days=refresh_days)
                     if (existing.get("package_id"), existing.get("package_version")) in current and fresh:
@@ -178,9 +184,11 @@ class PreviewRun:
             layers = self.db.layers()
             bounds = self.db.package_bounds()
             enabled = self.db.enabled_providers()
+            current = self.store.current_release()
             work, uncovered = plan_work(
                 self.areas, packages, layers, bounds, enabled,
                 now=self.clock(), refresh_days=self.settings.refresh_days,
+                published=self.store.layers(current) if current else set(),
             )
             for area, style in uncovered:
                 self.db.save_layer(area.id, style.id, style.provider_id, "NOT_COVERED")

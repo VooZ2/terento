@@ -424,6 +424,17 @@ class WindowTests(unittest.TestCase):
         work, uncovered = plan_work([target], [], {}, {}, {"bbbike"}, now=NOW, refresh_days=90)
         self.assertEqual(len(uncovered), 2)
 
+    def test_drawn_but_unpublished_layers_are_drawn_again(self):
+        target = area()
+        packages = packages_from_snapshot([snapshot_row("italy")])
+        drawn = {(target.id, "bbbike"): {"status": "AVAILABLE", "package_id": "italy", "package_version": "2026-09-01",
+                                         "rendered_at": NOW - timedelta(hours=1), "retry_not_before": None}}
+        work, _ = plan_work([target], packages, drawn, {}, {"bbbike"}, now=NOW, refresh_days=90, published=set())
+        self.assertEqual([(item.area.id, item.style.id) for item in work], [(target.id, "bbbike")])
+        work, _ = plan_work([target], packages, drawn, {}, {"bbbike"}, now=NOW, refresh_days=90,
+                            published={(target.id, "bbbike")})
+        self.assertEqual(work, [])
+
 
 class PreviewRunTests(unittest.TestCase):
     def run_window(self, root, rows, *, renderer=None, db=None, downloader=None, **setting_values):
