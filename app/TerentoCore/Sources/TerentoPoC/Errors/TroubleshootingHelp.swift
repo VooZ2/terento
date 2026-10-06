@@ -25,12 +25,31 @@ enum TroubleshootingAnchor: String, CaseIterable, Sendable {
 }
 
 /// The public guide; kept beside the anchors so this mapping has no UI dependency.
+/// Links reuse the app's existing referral convention (`TerentoAppLinks`:
+/// utm_source=terento_app, utm_medium=referral) with the troubleshooting
+/// campaign and the entry point as content. No model, version or id is added.
 enum TroubleshootingGuide {
     static let guideURL = URL(string: "https://terento.app/guides/troubleshooting/")!
+    static let campaign = "app_troubleshooting"
+    static let helpMenuContent = "help_menu"
 
+    /// A per-error Help link: query first, then the section fragment.
     static func url(_ anchor: TroubleshootingAnchor) -> URL {
+        url(content: anchor.rawValue, fragment: anchor.rawValue)
+    }
+
+    /// Help → Troubleshooting opens the top of the guide.
+    static var helpMenuURL: URL { url(content: helpMenuContent, fragment: nil) }
+
+    private static func url(content: String, fragment: String?) -> URL {
         var components = URLComponents(url: guideURL, resolvingAgainstBaseURL: false)!
-        components.fragment = anchor.rawValue
+        components.queryItems = [
+            URLQueryItem(name: "utm_source", value: "terento_app"),
+            URLQueryItem(name: "utm_medium", value: "referral"),
+            URLQueryItem(name: "utm_campaign", value: campaign),
+            URLQueryItem(name: "utm_content", value: content)
+        ]
+        components.fragment = fragment
         return components.url!
     }
 }

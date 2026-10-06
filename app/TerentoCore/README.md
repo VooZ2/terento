@@ -274,8 +274,12 @@ a download start without a received outcome is not proof of a failed download.
 - **Help links.** `Errors/TroubleshootingHelp.swift` is the only mapping from
   connection outcomes, authorization verdicts, catalog/acquisition errors,
   storage, post-write and Update/Remove states to the anchors of
-  `https://terento.app/guides/troubleshooting/` (English URL, fragment only). A
-  "Help" text link appears next to those messages; it is never a primary button.
+  `https://terento.app/guides/troubleshooting/` (English URL). Links reuse the
+  existing app referral parameters (`utm_source=terento_app`,
+  `utm_medium=referral`) with `utm_campaign=app_troubleshooting` and
+  `utm_content=<anchor>` (Help → Troubleshooting uses `help_menu`), followed by
+  the `#<anchor>` fragment; no model, version or id is added. A "Help" text link
+  appears next to those messages; it is never a primary button.
 - **First map selection.** While no map on the watch is managed by Terento, the
   locale recommendation is highlighted with "Recommended for your region" (never
   selected automatically), rows show the catalog download size and "about N min"

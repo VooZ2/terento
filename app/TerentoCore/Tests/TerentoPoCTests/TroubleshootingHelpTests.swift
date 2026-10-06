@@ -26,12 +26,26 @@ struct TroubleshootingHelpTests {
     static func testAnchorsMatchTheGuide() {
         expect(TroubleshootingAnchor.allCases.map(\.rawValue) == specifiedAnchors,
             "the app knows exactly the S2 guide anchors, in guide order")
+        let referral = "utm_source=terento_app&utm_medium=referral&utm_campaign=app_troubleshooting"
+        let sitePattern = try! NSRegularExpression(pattern: "^[A-Za-z0-9._~-]{1,80}$")
         for anchor in TroubleshootingAnchor.allCases {
             let url = anchor.url
-            expect(url.absoluteString == "https://terento.app/guides/troubleshooting/#\(anchor.rawValue)",
-                "\(anchor.rawValue) links the English guide URL with only a fragment")
-            expect(url.query == nil, "\(anchor.rawValue) adds no query string")
+            expect(url.absoluteString
+                == "https://terento.app/guides/troubleshooting/?\(referral)&utm_content=\(anchor.rawValue)#\(anchor.rawValue)",
+                "\(anchor.rawValue) links the English guide with the app referral, then the section fragment")
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+            let items = components.queryItems ?? []
+            expect(items.map(\.name) == ["utm_source", "utm_medium", "utm_campaign", "utm_content"],
+                "\(anchor.rawValue) carries only the four campaign parameters")
+            expect(items.allSatisfy { value in value.value.map {
+                    sitePattern.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) != nil } == true },
+                "\(anchor.rawValue) campaign values pass the site's attribution filter")
+            expect(components.fragment == anchor.rawValue && url.absoluteString.firstIndex(of: "?")! < url.absoluteString.firstIndex(of: "#")!,
+                "\(anchor.rawValue) keeps the fragment after the query string")
         }
+        let menu = TroubleshootingGuide.helpMenuURL
+        expect(menu.absoluteString == "https://terento.app/guides/troubleshooting/?\(referral)&utm_content=help_menu"
+            && menu.fragment == nil, "Help → Troubleshooting opens the guide top with the help_menu content")
     }
 
     static func testEveryTopicHasAGuideAnchor() {

@@ -90,7 +90,7 @@ require "$connect_screen" 'helpTopic: installationFailureHelpTopic' 'installatio
 require "$connect_screen" 'TroubleshootingHelp.topic(for: operation.phase)' 'Update/Remove progress has no Help link'
 require "$connect_screen" 'TerentoHelpLink(topic: .updateRemoveFailed, size: 12)' 'failed Update/Remove has no Help link'
 require "$diagnostics" 'TerentoHelpLink(topic: .sendReport)' 'Diagnostics failure report has no Help link'
-require "$app_source" 'openExternalURL(TroubleshootingGuide.guideURL)' 'Help menu has no troubleshooting guide'
+require "$app_source" 'openExternalURL(TroubleshootingGuide.helpMenuURL)' 'Help menu has no troubleshooting guide'
 
 python3 - "$repo_root/Terento.xcodeproj/project.pbxproj" <<'PYPROJECT'
 import json, subprocess, sys
