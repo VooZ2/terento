@@ -63,6 +63,7 @@ struct InstallationEvidenceTests {
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
         try testFailureContextRoundTrip()
+        try testInventoryMetricsPayload()
         try testUpdateEvidenceRoundTripAndIsolation()
         try testUpdateOutboxSurvivesOlderAppAndConsentChanges()
         try testCustomIMGEvidencePayload()
@@ -76,7 +77,43 @@ struct InstallationEvidenceTests {
         try testParkedUpdateSurvivesFileSplit()
         testDiagnosticSanitization()
         testPreparedInstallationIssue()
+        testInventoryMetricsReportAndTrace()
         print("PASS: installation evidence, privacy, default-on upload, report, and promotion tests")
+    }
+
+    /// Exact optional top-level shape; absent when nothing was measured.
+    static func testInventoryMetricsPayload() throws {
+        func payload(_ event: InstallationEvidenceEvent) throws -> [String: Any] {
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(event)) as! [String: Any]
+        }
+        let unmeasured = try payload(makeEvent())
+        expect(unmeasured["inventoryMetrics"] == nil,
+            "events without measured inventories omit inventoryMetrics")
+        let scoped = DeviceInventoryRead(files: (1...5).map {
+            DeviceFile(itemID: UInt32($0), parentID: 0, storageID: 1, path: "/f\($0)", filename: "f\($0)",
+                       sizeBytes: 1, isFolder: false)
+        }, scope: .garmin)
+        let prewriteOnly = InstallationInventoryMetrics(prewrite: scoped, durationMilliseconds: 1_234)
+        var event = makeEvent(outcome: .failed, finishing: .failed)
+        event.inventoryMetrics = prewriteOnly
+        let partial = try payload(event)["inventoryMetrics"] as? [String: Any]
+        expect(partial.map { Set($0.keys) } == ["scope", "prewriteObjectCount", "prewriteDurationMs"]
+            && partial?["scope"] as? String == "GARMIN" && partial?["prewriteObjectCount"] as? Int == 5
+            && partial?["prewriteDurationMs"] as? Int == 1_234,
+            "pre-write-only metrics omit the post-write fields")
+        event.inventoryMetrics = prewriteOnly.withPostwrite(.full(scoped.files + scoped.files),
+                                                            durationMilliseconds: 2_500)
+        let encoded = try JSONEncoder().encode(event)
+        let complete = try (JSONSerialization.jsonObject(with: encoded) as! [String: Any])["inventoryMetrics"] as? [String: Any]
+        expect(complete.map { Set($0.keys) } == ["scope", "prewriteObjectCount", "prewriteDurationMs",
+                                                  "postwriteObjectCount", "postwriteDurationMs"]
+            && complete?["scope"] as? String == "FULL" && complete?["postwriteObjectCount"] as? Int == 10
+            && complete?["postwriteDurationMs"] as? Int == 2_500,
+            "a full-walk read anywhere reports scope FULL with both counts and durations")
+        let text = String(decoding: encoded, as: UTF8.self)
+        expect(!text.contains("/f1") && !text.contains("\"f1\""), "metrics never carry paths or names")
+        let decoded = try JSONDecoder().decode(InstallationEvidenceEvent.self, from: encoded)
+        expect(decoded.inventoryMetrics == event.inventoryMetrics, "inventory metrics survive the durable outbox format")
     }
 
     static func testUpdateEvidenceRoundTripAndIsolation() throws {
@@ -648,6 +685,28 @@ struct InstallationEvidenceTests {
         expect(!backendPayload.contains("ABC") && backendPayload.contains("safe status"), "JSON backend payload redacts restricted identifiers")
         let signedURL = DiagnosticReportSanitizer.sanitize("https://example.test/map?token=secret-value&region=LTU")
         expect(!signedURL.contains("secret-value") && signedURL.contains("region=LTU"), "diagnostic report removes signed URL token values")
+    }
+
+    @MainActor
+    static func testInventoryMetricsReportAndTrace() {
+        let read = DeviceInventoryRead(files: [DeviceFile(itemID: 1, parentID: 0, storageID: 1, path: "/GARMIN",
+            filename: "GARMIN", sizeBytes: 0, isFolder: true)], scope: .garmin)
+        let metrics = InstallationInventoryMetrics(prewrite: read, durationMilliseconds: 812)
+            .withPostwrite(read, durationMilliseconds: 905)
+        let draft = InstallationIssueReport.generate(identity: nil, maps: [], stage: "Finishing", error: nil,
+            operationID: nil, verification: InstallationIssueVerification(inventoryMetrics: metrics))
+        expect(draft.body.contains("- Inventory scope: GARMIN") && draft.body.contains("- Pre-write inventory objects: 1")
+            && draft.body.contains("- Pre-write inventory duration (ms): 812")
+            && draft.body.contains("- Post-write inventory duration (ms): 905"),
+            "the local issue report lists inventory scope, counts and durations")
+        let unmeasured = InstallationIssueReport.generate(identity: nil, maps: [], stage: "Finishing", error: nil, operationID: nil)
+        expect(unmeasured.body.contains("- Inventory scope: Unavailable"), "unmeasured inventories are reported as unavailable")
+        let fields = InstallationInventoryMetrics.traceFields(read, durationMilliseconds: 812, baseline: 12_005)
+        expect(FinishingTrace.safeLine("FINISH_TRACE swift event=prewrite_inventory_metrics " + fields) != nil
+            && FinishingTrace.safeLine("FINISH_TRACE native event=inventory_scope offset=0 rc=2 detail=0") != nil
+            && FinishingTrace.safeLine("FINISH_TRACE swift event=prewrite_inventory_metrics scope=/Music objects=1") == nil
+            && FinishingTrace.safeLine("FINISH_TRACE swift event=postwrite_inventory_metrics fallback=other") == nil,
+            "finishing trace accepts only fixed inventory scope values and numeric counts")
     }
 
     @MainActor

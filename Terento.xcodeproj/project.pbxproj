@@ -107,6 +107,7 @@
 		AEC67F957DAC7B55D4D135CD /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC67F957DAC7B55D4D135CD /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift */; };
 		AE006FD6FB7CA77BEB78C4CC /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD006FD6FB7CA77BEB78C4CC /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift */; };
 		AEFA9788FFC221BEDB89733C /* app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA9788FFC221BEDB89733C /* app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift */; };
+		AE80C1040FFBF1634C56273A /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInventoryScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD80C1040FFBF1634C56273A /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInventoryScope.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -216,6 +217,7 @@
 		ADC67F957DAC7B55D4D135CD /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReport.swift; sourceTree = SOURCE_ROOT; };
 		AD006FD6FB7CA77BEB78C4CC /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Diagnostics/SupportReportSender.swift; sourceTree = SOURCE_ROOT; };
 		ADFA9788FFC221BEDB89733C /* app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift; sourceTree = SOURCE_ROOT; };
+		AD80C1040FFBF1634C56273A /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInventoryScope.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MapInventoryScope.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -332,6 +334,7 @@
 				AD334620BB02B36C6DF98A3A /* app/TerentoCore/Sources/TerentoPoC/Installation/RemainingTimeEstimator.swift */,
 				AD302462D419BECC779060B9 /* app/TerentoCore/Sources/TerentoPoC/Views/TerentoHelpLink.swift */,
 				AD8E85F4CB9C1B633536FF62 /* app/TerentoCore/Sources/TerentoPoC/Errors/TroubleshootingHelp.swift */,
+				AD80C1040FFBF1634C56273A /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInventoryScope.swift */,
 				0000000000000000000000a4 /* app/TerentoCore/Sources/TerentoPoC/Views/AppLinks.swift */,
 				0000000000000000000000a6 /* app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift */,
 				0000000000000000000000a8 /* app/TerentoCore/Sources/TerentoPoC/Compatibility/MapCapability.swift */,
@@ -498,6 +501,7 @@
 				AE334620BB02B36C6DF98A3A /* app/TerentoCore/Sources/TerentoPoC/Installation/RemainingTimeEstimator.swift in Sources */,
 				AE302462D419BECC779060B9 /* app/TerentoCore/Sources/TerentoPoC/Views/TerentoHelpLink.swift in Sources */,
 				AE8E85F4CB9C1B633536FF62 /* app/TerentoCore/Sources/TerentoPoC/Errors/TroubleshootingHelp.swift in Sources */,
+				AE80C1040FFBF1634C56273A /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInventoryScope.swift in Sources */,
 				0000000000000000000000b0 /* app/TerentoCore/Sources/TerentoPoC/Compatibility/InstallationEvidence.swift in Sources */,
 				0000000000000000000000b2 /* app/TerentoCore/Sources/TerentoPoC/Diagnostics/InstallationIssueReport.swift in Sources */,
 				000000000000000000000016 /* app/TerentoCore/Sources/TerentoPoC/Compatibility/CompatibilityEngine.swift in Sources */,

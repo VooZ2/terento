@@ -175,10 +175,10 @@ completed. The pre- and post-write inventory worker bound scales with the
 object count of the baseline inventory: 60 seconds (libmtp's LONG_TIMEOUT)
 plus 30 ms per object, at most 600 seconds. A heavy watch with years of
 activities and music (about 12,000 objects) therefore gets about 7 minutes
-instead of a fixed minute; this is not a model-specific USB workaround. The
-inventory still walks every storage: narrowing it to `/GARMIN` would drop the
-documented protection of map files on any storage and of unknown objects
-outside `/GARMIN`, which Update and external Remove share. Local sanitized
+instead of a fixed minute; this is not a model-specific USB workaround. These
+reads now use the map scope described under "Map-scope protection inventory"
+below, so the bound (still derived from the full scan count) is an upper limit
+rather than an expected duration. Local sanitized
 trace markers separate session open, file-list read, session close and native
 cleanup. The initiating 091e:51b5 hardware stall remains unproven pending a
 controlled failing/successful-model retest.
@@ -552,9 +552,10 @@ deletion is a separate, unchanged gate; no cleanup authority or mutation retry
 follows from these post-delete checks.
 
 Before an Update sends its replacement, a physically bound native session reads
-the complete raw inventory and builds the canonical `ProtectedMapInventory`.
-After verified replacement and old-map removal, another bound raw snapshot must
-match exactly the baseline minus the old target plus the verified replacement.
+the map-scope raw inventory (see below) and builds the canonical
+`ProtectedMapInventory`. After verified replacement and old-map removal, another
+bound raw map-scope snapshot must match exactly the baseline minus the old target
+plus the verified replacement, compared in the narrowest scope both reads cover.
 Baseline protected locations remain protected in the final comparison. Unknown
 objects, sidecars, folders and storage identity participate in the same classifier
 used by installation. Invalid or ambiguous inventory blocks completion. A failed
@@ -570,8 +571,9 @@ establish whole-device byte equality.
 
 `ProtectedMapInventory` compares storage ID, exact full path, filename, size and
 file/folder kind; item/parent handles are session-scoped navigation and diagnostics.
-It conservatively protects unknown objects, all-storage IMG/GMA/UNL/SID, map and
-SID containers, explicit operation/manifest locations, and required ancestors.
+Within the compared inventory it conservatively protects unknown objects,
+IMG/GMA/UNL/SID files on every storage, map and SID containers, explicit
+operation/manifest locations, and required ancestors.
 Classification grants no ownership or deletion authority. Duplicates, aliases,
 invalid paths and incoherent ancestry fail closed, with one narrow exception:
 several entries listed under one path (or case alias) are tolerated when every
@@ -583,6 +585,59 @@ duplicate handles, map files on any storage and everything under `/GARMIN`
 (write target, map containers and runtime namespaces) keep failing closed.
 Existing protected objects must remain stable; only explicit operation targets
 may change.
+
+**Map-scope protection inventory.** The pre-write and post-write protection inventories of a fresh installation and
+the protected baseline/final inventories of Safe Update read the **map scope**:
+every storage-root entry on every storage (files and folder entries with their
+name, size and kind) plus the complete recursive subtree of the single root
+folder named `GARMIN` (ASCII case ignored). Everything in that scope is compared
+exactly as before, including the write target, every managed, third-party and
+Garmin map in `/GARMIN` and `/GARMIN/Map`, SID data, activities and other
+`/GARMIN` content, and a map-like file placed at a storage root. Objects inside
+other top-level folders (for example `/Music/**` or `/Podcasts/**`, including any
+map-suffixed file there) are no longer compared; their top-level folder entries
+still are.
+
+This keeps the safety goals: every Terento write is one object-scoped send into
+the verified `/GARMIN` folder handle under native authorization with a
+same-session no-overwrite check; every native delete (Update's replaced map,
+managed and external Remove) resolves the same folder and removes one exact
+verified object after full SHA-256 comparison, and cleanup after a lost creation
+session is refused. The scanner only recognizes, manages or offers Remove for
+`/GARMIN/*.img` and `/GARMIN/Map/**/*.img`. Ownership, manifests and native
+authorization are unchanged. Changes outside the scope cannot be caused by those
+operations and were already only observations, not attribution.
+
+The native session uses the scoped walk only when it finds exactly one
+storage-root entry named `GARMIN` across all storages, and that entry is a folder
+with nonzero storage and object IDs. No root (`no_root`), several case-alias or
+cross-storage roots or a root-level non-folder with that name
+(`ambiguous_root`), or a failed scoped listing (`scoped_failed`) are answered by
+the previous full walk in the same session; partial scoped results are never
+returned. Every comparison uses the narrowest scope both sides cover: the full
+scan baseline of an installation is projected onto the map scope when the live
+read is scoped, and full-walk answers keep the full comparison. The worker bound
+and libmtp timeouts are unchanged.
+
+Map scan and detection, Remove (its live inspection and post-delete rescan), the
+post-update rescan, header prefix reads and exact content reads keep their full
+walk; none of them performs the protected comparison. A watch whose bulk is
+inside `/GARMIN` (for example years of activities in `/GARMIN/Activity`) still
+walks those objects, so the gain depends on how much content lies outside
+`/GARMIN`.
+
+Installation and Safe Update record privacy-safe `inventoryMetrics`: `scope`
+(`GARMIN` only when every measured read was scoped, otherwise `FULL`),
+`prewriteObjectCount`, `prewriteDurationMs` and, once a post-write read
+completed, `postwriteObjectCount` and `postwriteDurationMs`. Post-write duration
+includes the single retry when the target was transiently absent. Durations
+include worker start-up. They are attached to the installation/update
+compatibility evidence, listed in the local issue report, and traced locally as
+`prewrite_inventory_metrics` / `postwrite_inventory_metrics` (with the full scan
+`baseline` count and fallback reason), `update_inventory_metrics` and native
+`inventory_scope` (`rc` = fallback reason, `detail` = scope). No path, name,
+size or handle is recorded. Protection-context object counts cover the compared
+scope. The API must accept `inventoryMetrics` before a client emitting it ships.
 
 Diagnostic-only cases are the exact `/GARMIN/GarminDevice.xml` file, immediate
 FIT files in `/GARMIN/Monitor`, and descendant folders of `/GARMIN/TLG/PER`, based

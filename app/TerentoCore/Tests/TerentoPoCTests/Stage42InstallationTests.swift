@@ -102,6 +102,9 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
     var renumberExistingObjectIDs = false
     var snapshot: DeviceSnapshot
     var shouldFail = false
+    /// Simulates the native map-scope walk: storage roots plus the GARMIN subtree.
+    var mapScope = false
+    private(set) var mapScopeReadCount = 0
 
     init(
         files: [DeviceFile],
@@ -168,6 +171,12 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
                 isFolder: file.isFolder
             )
         }
+    }
+
+    func readMapScopeInventory() throws -> DeviceInventoryRead {
+        mapScopeReadCount += 1
+        let files = try readFileInventory()
+        return mapScope ? DeviceInventoryRead(files: MapInventoryScope.project(files), scope: .garmin) : .full(files)
     }
 
     func readSnapshot() throws -> DeviceSnapshot {
@@ -371,6 +380,7 @@ struct Stage42InstallationTests {
         passed += testTargetStorageMismatch()
         passed += testDuplicateMusicPathsStayProtected()
         passed += testHeavyWatchInventoryCompletes()
+        passed += testMapScopeProtectionInventory()
         #if TERENTO_PRODUCTION_CLEANUP_TEST
         passed += try testProductionCleanupRefusalRetainsDurableEvidence()
         #endif
@@ -860,6 +870,97 @@ struct Stage42InstallationTests {
             "a 12k-object watch completes protection checks without a fixed 60 s inventory ceiling")
         passed += expect(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: harness.request.beforeDeviceFiles.count) > 60,
             "the pre-write inventory bound grows with the baseline object count")
+        return passed
+    }
+
+    /// A heavy watch whose bulk (12,000 music tracks) lies outside /GARMIN.
+    /// The map-scope read compares storage roots and the GARMIN subtree only.
+    private static func testMapScopeProtectionInventory() -> Int {
+        func file(_ id: UInt32, _ path: String, folder: Bool = false, size: UInt64 = 10) -> DeviceFile {
+            DeviceFile(itemID: id, parentID: 9, storageID: 1, path: path,
+                filename: String(path.split(separator: "/").last!), sizeBytes: size, isFolder: folder)
+        }
+        var music = [file(10_001, "/Music", folder: true, size: 0)]
+        for index in 0..<12_000 {
+            music.append(file(UInt32(20_000 + index), "/Music/\(index).mp3", size: UInt64(3_000_000 + index)))
+        }
+        let rootMap = file(10_002, "/rootmap.img", size: 4_096)
+        let extra = music + [rootMap]
+        // Music churn between scan and pre/post-write reads (another app syncing).
+        let churned = music.map { $0.isFolder ? $0 : changedFile($0, sizeBytes: $0.sizeBytes + 1) }
+        var passed = 0
+
+        let scoped = Harness(beforeFilesTransform: { $0 + extra })
+        var scopedReader: MockDeviceReader?
+        let recorder = DiagnosticRecorder()
+        let scopedResult = scoped.run(configureReader: { reader in
+            reader.mapScope = true
+            reader.initialFiles = Harness.makeBeforeFiles(installedFrance: false) + churned + [rootMap]
+            reader.files += churned + [rootMap]
+            scopedReader = reader
+        }, diagnostic: recorder.record)
+        let projected = MapInventoryScope.project(scoped.request.beforeDeviceFiles).count
+        let metrics = scopedResult.diagnostics.inventoryMetrics
+        passed += expect(scopedResult.isSuccess && scoped.transport.writeCount == 1 && scoped.transport.deleteCount == 0
+            && scopedResult.diagnostics.unrelatedFilesProtectionPassed && scopedReader?.mapScopeReadCount == 2
+            && projected == 5 && scoped.request.beforeDeviceFiles.count == 12_005
+            && metrics?.scope == .garmin && metrics?.prewriteObjectCount == projected
+            && metrics?.postwriteObjectCount == projected + 1
+            && (metrics?.prewriteDurationMs ?? -1) >= 0 && (metrics?.postwriteDurationMs ?? -1) >= 0
+            && recorder.text.contains("prewrite_inventory_metrics scope=GARMIN fallback=none objects=5 baseline=12005")
+            && recorder.text.contains("postwrite_inventory_metrics scope=GARMIN fallback=none objects=6"),
+            "map scope compares 5 of 12,005 objects, ignores music outside /GARMIN and records metrics")
+
+        let full = Harness(beforeFilesTransform: { $0 + extra })
+        let fullResult = full.run(configureReader: { reader in
+            reader.initialFiles = Harness.makeBeforeFiles(installedFrance: false) + churned + [rootMap]
+            reader.files += churned + [rootMap]
+        })
+        passed += expect(fullResult.failure == .protectionViolation && full.transport.writeCount == 0
+            && fullResult.diagnostics.inventoryMetrics?.scope == .full
+            && fullResult.diagnostics.inventoryMetrics?.postwriteObjectCount == nil,
+            "a full-walk fallback keeps the previous whole-device comparison")
+
+        let rootChanged = Harness(beforeFilesTransform: { $0 + extra })
+        let rootResult = rootChanged.run(configureReader: { reader in
+            reader.mapScope = true
+            reader.initialFiles = Harness.makeBeforeFiles(installedFrance: false) + music
+                + [changedFile(rootMap, sizeBytes: 8_192)]
+            reader.files += music + [rootMap]
+        })
+        passed += expect(rootResult.failure == .protectionViolation
+            && rootResult.failureContext?.boundary == .prewriteProtection && rootChanged.transport.writeCount == 0,
+            "a map file at the storage root stays in scope: changing it blocks before writing")
+
+        let germany = "/GARMIN/freizeitkarte-germany.img"
+        let inside = Harness(beforeFilesTransform: { $0 + extra })
+        let insideResult = inside.run(configureReader: { reader in
+            reader.mapScope = true
+            reader.files = reader.files.map { $0.path == germany ? changedFile($0, sizeBytes: 1) : $0 } + extra
+        })
+        passed += expect(insideResult.failure == .protectionViolation
+            && insideResult.failureContext?.boundary == .postwriteProtection
+            && insideResult.failureContext?.protection?.protectionReason == .preexistingObjectChanged
+            && inside.transport.writeCount == 1 && inside.manifest.entries.isEmpty,
+            "a changed protected map inside /GARMIN still fails closed after the write")
+
+        let target = Harness(beforeFilesTransform: { $0 + extra })
+        let targetResult = target.run(configureReader: { reader in
+            reader.mapScope = true
+            reader.files = reader.files.map { $0.path == targetPath ? changedFile($0, sizeBytes: $0.sizeBytes + 1) : $0 } + extra
+        })
+        passed += expect(!targetResult.isSuccess && targetResult.failure == .remoteFileMissing
+            && target.transport.deleteCount == 1 && target.manifest.entries.isEmpty,
+            "a changed write target inside the map scope still fails closed")
+
+        let added = Harness(beforeFilesTransform: { $0 + extra })
+        let addedResult = added.run(configureReader: { reader in
+            reader.mapScope = true
+            reader.files += extra + [file(10_003, "/GARMIN/unexpected.img", size: 64)]
+        })
+        passed += expect(addedResult.failure == .protectionViolation
+            && addedResult.failureContext?.protection?.protectionReason == .nonTargetObjectAdded,
+            "an unexpected new map inside /GARMIN still fails closed")
         return passed
     }
 
