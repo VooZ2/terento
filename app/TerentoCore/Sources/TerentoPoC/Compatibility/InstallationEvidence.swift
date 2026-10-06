@@ -158,6 +158,9 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let optionalComponentNativeFailureCode: EvidenceNativeFailureCode?
     var operationKind: String? = nil
     var oldMapPreserved: Bool? = nil
+    /// Optional pre/post-write inventory scope, object counts and durations.
+    /// Older APIs reject unknown fields; deploy API acceptance first.
+    var inventoryMetrics: InstallationInventoryMetrics? = nil
 
     init(
         id: UUID = UUID(),
@@ -256,7 +259,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case operationKind, oldMapPreserved
+        case operationKind, oldMapPreserved, inventoryMetrics
         case failureContext
         case originalFailureContext
         case optionalComponentSelected
@@ -278,6 +281,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         operationKind = try container.decodeIfPresent(String.self, forKey: .operationKind)
         oldMapPreserved = try container.decodeIfPresent(Bool.self, forKey: .oldMapPreserved)
+        inventoryMetrics = try container.decodeIfPresent(InstallationInventoryMetrics.self, forKey: .inventoryMetrics)
         schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
         id = try container.decode(UUID.self, forKey: .id)
         timestamp = try container.decode(Date.self, forKey: .timestamp)

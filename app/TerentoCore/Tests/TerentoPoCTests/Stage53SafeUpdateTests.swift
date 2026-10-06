@@ -103,6 +103,9 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
     var postDeleteSnapshot: (([SafeUpdateRemoteObject]) -> [SafeUpdateRemoteObject])?
     var rawSnapshotTransform: (([DeviceFile], Bool) throws -> [DeviceFile])?
     var renumberAfterOldDeletion = false
+    /// Scope returned by each protected inventory read, in order (default full).
+    var snapshotScopes: [DeviceInventoryScope] = []
+    private var protectedReads = 0
     var events: [String] = []
     var objects: [SafeUpdateRemoteObject]
     var currentInspectionObject: SafeUpdateRemoteObject
@@ -189,8 +192,11 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
                 path: object.file.path, filename: object.file.filename,
                 sizeBytes: object.file.sizeBytes, isFolder: false)
         }
+        let raw = try rawSnapshotTransform?(files, afterDelete) ?? files
+        let scope = snapshotScopes.indices.contains(protectedReads) ? snapshotScopes[protectedReads] : .full
+        protectedReads += 1
         return SafeUpdateInventorySnapshot(storageID: 1,
-            files: try rawSnapshotTransform?(files, afterDelete) ?? files)
+            files: scope == .garmin ? MapInventoryScope.project(raw) : raw, scope: scope)
     }
 
     func rescanObjects() throws -> [SafeUpdateRemoteObject] {
@@ -972,6 +978,47 @@ private func testProtectedUpdateTransitionMatrix() async throws {
     }
 }
 
+/// Protected update inventories compared in the narrowest scope both reads
+/// cover; music outside /GARMIN churns between the baseline and final read.
+private func testMapScopeProtectedUpdate() async throws {
+    let music = [rawFile("/Music", id: 600, size: 0, folder: true, parent: 0)]
+        + (0..<12_000).map { rawFile("/Music/\($0).mp3", id: UInt32(10_000 + $0), size: 3_000, parent: 600) }
+    let base: [DeviceFile] = [rawFile("/GARMIN/external.img", id: 501), rawFile("/rootmap.img", id: 502, parent: 0)]
+    typealias Change = ([DeviceFile]) -> [DeviceFile]
+    let churn: Change = { files in files.map { $0.path.hasPrefix("/Music/") ? rawFile($0.path, id: $0.itemID, size: 4_000, parent: 600) : $0 } }
+    let cases: [(String, [DeviceInventoryScope], Bool, Change, DeviceInventoryScope)] = [
+        ("scoped reads ignore music churn", [.garmin, .garmin], true, churn, .garmin),
+        ("full baseline is projected for a scoped final read", [.full, .garmin], true, churn, .full),
+        ("full final read is projected for a scoped baseline", [.garmin, .full], true, churn, .full),
+        ("full reads keep the whole-device comparison", [.full, .full], false, churn, .full),
+        ("scoped reads still protect maps inside GARMIN", [.garmin, .garmin], false,
+            { files in files.filter { $0.path != "/GARMIN/external.img" } }, .garmin),
+        ("scoped reads still protect a storage-root map", [.garmin, .garmin], false,
+            { files in files.map { $0.path == "/rootmap.img" ? rawFile($0.path, id: $0.itemID, size: 99, parent: 0) : $0 } }, .garmin),
+        ("scoped reads still detect a new map inside GARMIN", [.garmin, .garmin], false,
+            { files in files + [rawFile("/GARMIN/extra.img", id: 990)] }, .garmin)
+    ]
+    for (name, scopes, success, change, metricScope) in cases {
+        let h = makeHarness(withWorkspace: true)
+        h.transport.snapshotScopes = scopes
+        h.transport.rawSnapshotTransform = { files, final in
+            let full = files + base + music
+            return final ? change(full) : full
+        }
+        let result = await run(h)
+        try require(result.isSuccess == success && h.reconciler.called == success, "map-scope update outcome: " + name)
+        try require(h.transport.events.filter { $0 == "writeTransactionObject" }.count == 1
+            && !h.transport.events.contains("cleanupTransactionObject"), "map-scope update performs one write: " + name)
+        let metrics = result.inventoryMetrics
+        let scopedBaseline = scopes[0] == .garmin
+        try require(metrics?.scope == metricScope
+            && metrics?.prewriteObjectCount == (scopedBaseline ? 5 : 12_005)
+            && metrics?.postwriteObjectCount != nil && (metrics?.postwriteDurationMs ?? -1) >= 0,
+            "map-scope update metrics: " + name)
+        print("PASS: map-scope update " + name)
+    }
+}
+
 private func testProtectedBaselineRefusesBeforeSend() async throws {
     for kind in 0..<5 {
         let h = makeHarness(withWorkspace: true)
@@ -1257,6 +1304,7 @@ struct Stage53SafeUpdateTests {
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
             ("protected replacement full raw matrix", testProtectedUpdateTransitionMatrix),
             ("protected baseline and binding gate", testProtectedBaselineRefusesBeforeSend),
+            ("map-scope protected update inventories", testMapScopeProtectedUpdate),
             ("truthful delete postverify failure", testDeletePostVerifyFailureReportsDeletion),
             ("protected final read failure", testProtectedFinalReadFailure),
             ("ambiguous delete outcome", testAmbiguousDeleteOutcomeIsNotPreserved),

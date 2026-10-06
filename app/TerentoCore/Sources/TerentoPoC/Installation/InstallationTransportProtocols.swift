@@ -350,6 +350,16 @@ extension MapInstallationTransport {
 
 protocol InstallationInventoryReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
+    /// Pre/post-write protection read. It may cover only the map scope
+    /// (storage roots plus the GARMIN subtree) and reports what it covers.
+    func readMapScopeInventory() throws -> DeviceInventoryRead
+}
+
+extension InstallationInventoryReader {
+    /// Injected readers without a scoped walk answer with the full inventory.
+    func readMapScopeInventory() throws -> DeviceInventoryRead {
+        .full(try readFileInventory())
+    }
 }
 
 protocol InstallationDeviceReader: InstallationInventoryReader {

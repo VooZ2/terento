@@ -111,6 +111,11 @@ The complete profile is checked before acquisition and again against the final
 live inventory before installation writes. The bounded inventory worker carries
 the physical operation profile into its native session. Safe Update also checks
 the unique root and expected storage on its physically bound live inventories.
+These pre/post-write inventories are map-scope reads (every storage-root entry
+plus the single `GARMIN` root subtree; see `app/TerentoCore/README.md`), so root
+uniqueness and storage binding are checked on the same root entries as a full
+walk, and any missing or ambiguous root makes the native session fall back to
+the full walk.
 The existing native mutation grant, same-session identity, ownership, protected
 objects, source verification, free-space and no-overwrite checks remain required.
 
