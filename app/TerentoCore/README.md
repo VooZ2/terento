@@ -113,6 +113,44 @@ date. An old exact manifest entry without BBBike context can then be recognized;
 a truncated path/style is never guessed. Duplicate or contradictory contextual
 records do not grant ownership.
 
+Removal content check (inside the native delete session, after the exact live
+object is resolved and before `DeleteObject`):
+
+- Terento-managed map with a recorded removal proof (Remove and Update's
+  old-map removal): only the recorded sampled regions are read. At install or
+  update time, after the written object passed its verification, Terento records
+  in the local manifest entry a format-1 proof computed from the validated local
+  artifact in one pass that also re-hashes the whole file against the recorded
+  SHA-256: 32 non-overlapping 65,535-byte regions (2,097,120 bytes; maps up to
+  that size are covered completely), always including the first region with the
+  `DSKIMG`/`GARMIN` header and the final bytes, the other 30 spread one per equal
+  stratum by a seed derived from the artifact SHA-256, plus the SHA-256 of the
+  concatenated regions. The native mutation authorization carries the plan and
+  digest; the bridge validates the exact geometry itself, reads each region from
+  the object resolved in the same session (unique `/GARMIN` entry, filename,
+  size, storage, parent folder), checks the IMG header, compares the digest, and
+  re-confirms the same object handle, name and size before the authorized delete.
+  Any mismatch, read error, malformed or partial proof refuses the delete
+  exactly as before; it never falls back to another check. This is sufficient
+  because the proof is not a claim about an unknown file: it binds the exact
+  object Terento itself wrote, verified and recorded on this Mac to sample
+  digests of those same bytes, and the same-session identity checks are
+  unchanged. A same-name, same-size replacement that differs only outside the
+  sampled regions is not detected by this check; the ownership, identity and
+  protected-file rules still apply. A 434 MB map is read as about 2 MB instead
+  of 434 MB (the fake-libmtp harness reads 2,097,120 bytes in 32 requests instead
+  of 434,000,000 bytes in 6,624).
+- Terento-managed map without a proof (entries written before this format, a
+  proof that does not exactly match the entry's size and SHA-256, failed-install
+  recovery records): the full SHA-256 of the object, as before.
+- External (not Terento-managed) map: always the full SHA-256 of the object
+  confirmed by the user; the native external delete refuses any sampled proof.
+
+The manifest change is additive: `removalProof` (`format`, `regionLength`,
+`offsets`, `sha256`) is optional per entry. Older entries decode unchanged, are
+re-encoded without the key, and an unreadable proof leaves the entry readable
+with the full check. Older app versions ignore the field.
+
 A safe update downloads and validates the replacement, checks space for both
 versions, uploads and verifies the replacement, then removes the old owned
 version. Insufficient space stops the update. Interrupted transfers must not
@@ -128,7 +166,8 @@ Update. Downloading and Installing retain their byte counts and transfer speed.
 Preparing reports completed package checks and measured local hashing; Checking
 combines local source validation with measured read-back/hash validation of the
 installed map. Verifying separately reports validation of the newly written map.
-Removing old reports measured full-content verification before deletion, and
+Removing old reports measured content verification before deletion (the
+sampled removal proof, or the full read without one), and
 Finishing advances through the existing confirmed checks. Each
 percentage belongs to its displayed stage, not the whole update or time remaining.
 Stage weights allocate work; they do not predict duration. ZIP extraction, device
@@ -136,8 +175,10 @@ inventory and the deletion command itself do not expose intermediate completion,
 progress holds at the last completed checkpoint with an action description until
 the call returns. Unknown download lengths remain at 0% until a total is known;
 no timer fabricates progress. Device safety checks and mutation order are unchanged.
-Remove and Update's old-map removal reserve 20–90% for the existing full SHA-256
-read immediately before deletion. The internal C bridge reports bytes read
+Remove and Update's old-map removal reserve 20–90% for the content check
+immediately before deletion (the recorded sampled proof of a managed map, which
+usually ends before the 5-second estimate warm-up, so no time estimate appears,
+or the full SHA-256 read otherwise). The internal C bridge reports bytes read
 without changing read sizes, content/identity checks or authorization. Read
 completion is not deletion success: hash or target mismatch still prevents the
 destructive call. At 93%, the UI says “Confirming the map was removed”; repeated
@@ -278,14 +319,21 @@ a download start without a received outcome is not proof of a failed download.
   existing app referral parameters (`utm_source=terento_app`,
   `utm_medium=referral`) with `utm_campaign=app_troubleshooting` and
   `utm_content=<anchor>` (Help → Troubleshooting uses `help_menu`), followed by
-  the `#<anchor>` fragment; no model, version or id is added. A "Help" text link
-  appears next to those messages; it is never a primary button.
-- **First map selection.** While no map on the watch is managed by Terento, the
-  locale recommendation is highlighted with "Recommended for your region" (never
-  selected automatically), rows show the catalog download size and "about N min"
-  from the median of the last five measured download speeds on this Mac (30
-  days, local only) or a conservative 1 MB/s, and "Keep the watch connected and
-  the Mac awake until Terento finishes." appears once a map is selected.
+  the `#<anchor>` fragment; no model, version or id is added. To keep the
+  interface uncluttered, a "Help" text link (never a primary button) appears
+  only inside error dialogs, currently the installation failure dialog, and in
+  the Diagnostics window's send-report help. Connect, Device verdict, catalog
+  notices, the review step, Manage maps rows, the scan-failure card and the
+  support report sheet show no Help link; Help → Troubleshooting stays
+  available from the menu.
+- **Install selection guidance.** Every selectable map row shows the catalog
+  download size and "about N min" ("Download 412 MB · about 7 min") from the
+  median of the last five measured download speeds on this Mac (30 days, local
+  only) or a conservative 1 MB/s. While no map on the watch is managed by
+  Terento (first map selection only), the locale recommendation is also
+  highlighted with "Recommended for your region" (never selected
+  automatically), and "Keep the watch connected and the Mac awake until Terento
+  finishes." appears once a map is selected.
 - **Resumed downloads.** A provider download that fails or is cancelled after at
   least 1 MiB is kept for 30 minutes when the server advertised byte ranges with
   a strong validator (non-weak ETag or Last-Modified), sent no content encoding
@@ -602,8 +650,10 @@ This keeps the safety goals: every Terento write is one object-scoped send into
 the verified `/GARMIN` folder handle under native authorization with a
 same-session no-overwrite check; every native delete (Update's replaced map,
 managed and external Remove) resolves the same folder and removes one exact
-verified object after full SHA-256 comparison, and cleanup after a lost creation
-session is refused. The scanner only recognizes, manages or offers Remove for
+verified object after its content check (the recorded sampled removal proof for
+a Terento-managed map that has one, otherwise full SHA-256 comparison; always the
+full SHA-256 for external maps), and cleanup after a lost creation session is
+refused. The scanner only recognizes, manages or offers Remove for
 `/GARMIN/*.img` and `/GARMIN/Map/**/*.img`. Ownership, manifests and native
 authorization are unchanged. Changes outside the scope cannot be caused by those
 operations and were already only observations, not attribution.

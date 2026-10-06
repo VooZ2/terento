@@ -721,7 +721,8 @@ final class MapLifecycleViewModel: ObservableObject {
                             expectedSHA256: isExternalRemoval ? (capturedSelection?.target.expectedSHA256 ?? "")
                                 : (context.expectedSHA256ByItemID[objectID] ?? ""),
                             expectedVersion: isExternalRemoval ? nil : context.item.version,
-                            allowsExternalRemoval: isExternalRemoval
+                            allowsExternalRemoval: isExternalRemoval,
+                            removalProof: isExternalRemoval ? nil : context.removalProofByItemID[objectID]
                         )
 
                         let componentResult = MapLifecycleManager().delete(
@@ -840,7 +841,8 @@ final class MapLifecycleViewModel: ObservableObject {
             identity: mapIdentity,
             version: version,
             ownership: .managedByTerento,
-            sha256: expectedHash
+            sha256: expectedHash,
+            removalProof: context.removalProofByItemID[objectID]
         )
         let request = SafeUpdateRequest(
             deviceKey: context.deviceKey,

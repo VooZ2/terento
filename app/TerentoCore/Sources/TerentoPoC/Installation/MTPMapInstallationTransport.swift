@@ -346,12 +346,18 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     func deleteAuthorized(targetFilename: String, expectedItemID: UInt32,
                           expectedSizeBytes: UInt64, expectedSHA256: String,
                           purpose: MapMutationPurpose,
+                          removalProof: ManagedRemovalProof? = nil,
                           onProgress: (@Sendable (TransferProgress) -> Void)? = nil) throws {
         guard [.removeManaged, .removeExternal, .updateOld].contains(purpose),
               expectedSHA256.count == 64, expectedSHA256.allSatisfy({ $0.isHexDigit }),
               expectedSHA256 != String(repeating: "0", count: 64) else {
             throw InstallationTransportError.operationFailed("Removal evidence is incomplete. Nothing was removed.", createdItemID: nil)
         }
+        let sampledProof = ManagedRemovalProof.forNativeRemoval(removalProof,
+            managed: purpose == .removeManaged || purpose == .updateOld,
+            fileSizeBytes: expectedSizeBytes, fileSHA256: expectedSHA256)
+        FinishingTrace.event("removal_check", "method=\(sampledProof == nil ? "full" : "sampled") "
+            + "bytes=\(sampledProof?.sampledBytes(fileSizeBytes: expectedSizeBytes) ?? expectedSizeBytes)")
         try operationGate.withOperation(kind: .remove, lifecycleLease: lifecycleLease) {
             guard let operationProfile else { throw InstallationTransportError.unsupportedDevice }
             var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
@@ -361,7 +367,8 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                     try targetFilename.withCString { filename in
                         try errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
                             try authorizedMutation(purpose: purpose, filename: targetFilename,
-                                size: expectedSizeBytes, sha256: expectedSHA256) { authorization, record in
+                                size: expectedSizeBytes, sha256: expectedSHA256,
+                                removalProof: sampledProof) { authorization, record in
                                 if purpose == .removeExternal {
                                     return terento_mtp_delete_external_map_authorized(nativeProfile, authorization, record,
                                         filename, expectedItemID, expectedSizeBytes, terentoMTPProgressCallback,
@@ -398,6 +405,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
 
     private func authorizedMutation(purpose: MapMutationPurpose, filename: String,
                                     size: UInt64, sha256: String?,
+                                    removalProof: ManagedRemovalProof? = nil,
                                     body: (UnsafePointer<TerentoMTPMutationAuthorization>,
                                            UnsafeMutablePointer<TerentoMTPMutationRecord>) -> Int32) throws -> Int32 {
         var ledger = try mutationOperation.begin(purpose: purpose,
@@ -425,7 +433,20 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                                 authorization.expected_physical_identifier_source = profile.physicalIdentifierSource
                                 authorization.expected_storage_id = profile.expectedStorageID
                                 authorization.expected_target_directory = targetDirectory
-                                return withUnsafePointer(to: &authorization) { body($0, &record) }
+                                guard let removalProof else {
+                                    return withUnsafePointer(to: &authorization) { body($0, &record) }
+                                }
+                                // The native delete validates the plan geometry
+                                // and digest itself and reads only these regions.
+                                return removalProof.offsets.withUnsafeBufferPointer { offsets in
+                                    removalProof.sha256.withCString { sampleHash in
+                                        authorization.removal_sample_offsets = offsets.baseAddress
+                                        authorization.removal_sample_count = UInt32(offsets.count)
+                                        authorization.removal_sample_length = removalProof.regionLength
+                                        authorization.removal_sample_sha256 = sampleHash
+                                        return withUnsafePointer(to: &authorization) { body($0, &record) }
+                                    }
+                                }
                             }
                         }
                     }

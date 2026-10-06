@@ -87,7 +87,6 @@ struct SupportReportSheet: View {
                 .padding(.top, 12)
 
             HStack(spacing: 10) {
-                TerentoHelpLink(topic: .sendReport)
                 Spacer(minLength: 0)
                 if case .sent = controller.state {
                     sheetButton("Done", primary: true, action: onClose)

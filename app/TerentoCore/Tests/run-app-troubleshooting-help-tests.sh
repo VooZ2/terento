@@ -77,19 +77,36 @@ if grep -rn 'guides/troubleshooting' "$project_root/Sources/TerentoPoC" | grep -
     exit 1
 fi
 
-require "$connect_screen" 'TerentoHelpLink(topic: topic)
-                            .padding(.top, 8)' 'Connect page does not show Help for connection states'
-require "$connect_screen" 'TroubleshootingHelp.topic(detectionPhase: deviceEngine.detectionPhase)' 'connect help is not derived from the detection phase'
-require "$connect_screen" 'deviceEngine.lastConnectOutcome.flatMap(TroubleshootingHelp.topic(for:))' 'failed connection help is not derived from the connect outcome'
-require "$connect_screen" 'authorizationHelpTopic: TroubleshootingHelp.topic(for: deviceEngine.installationAuthorization)' 'Device verdict has no Help link'
-require "$connect_screen" 'TerentoHelpLink(topic: .catalogFallback, size: 12)' 'local catalog notice has no Help link'
-require "$connect_screen" 'TerentoHelpLink(topic: .appUpdateRequired, size: 12)' 'update-required catalog notice has no Help link'
-require "$connect_screen" 'helpTopic: .mapReadFailed' 'map read failure has no Help link'
-require "$connect_screen" 'TroubleshootingHelp.reviewTopic(' 'blocked review step has no Help link'
+# Help links appear only inside error dialogs: the installation failure dialog
+# (and the Diagnostics window's send-report help). Normal, in-progress and
+# inline states stay uncluttered; the mapping above still serves the dialogs.
 require "$connect_screen" 'helpTopic: installationFailureHelpTopic' 'installation failure dialog has no Help link'
-require "$connect_screen" 'TroubleshootingHelp.topic(for: operation.phase)' 'Update/Remove progress has no Help link'
-require "$connect_screen" 'TerentoHelpLink(topic: .updateRemoveFailed, size: 12)' 'failed Update/Remove has no Help link'
+require "$connect_screen" 'TerentoHelpLink(topic: helpTopic)' 'error dialog does not render its Help link'
 require "$diagnostics" 'TerentoHelpLink(topic: .sendReport)' 'Diagnostics failure report has no Help link'
+python3 - "$project_root/Sources/TerentoPoC" <<'PYHELP'
+from pathlib import Path
+import re, sys
+views = Path(sys.argv[1]) / 'Views'
+uses = {}
+for path in sorted(views.glob('*.swift')):
+    if path.name == 'TerentoHelpLink.swift':
+        continue
+    count = path.read_text().count('TerentoHelpLink(')
+    if count:
+        uses[path.name] = count
+assert uses == {'ConnectScreen.swift': 1, 'DiagnosticsView.swift': 1}, uses
+screen = (views / 'ConnectScreen.swift').read_text()
+start = screen.index('private struct TerentoConfirmationDialog: View {')
+end = screen.index('\n}\n', start)
+assert 'TerentoHelpLink(topic: helpTopic)' in screen[start:end], 'Help link outside the error dialog'
+for removed in ['connectionHelpTopic', 'authorizationHelpTopic', 'TroubleshootingHelp.reviewTopic(',
+                'TroubleshootingHelp.topic(for: operation.phase)', 'topic: .updateRemoveFailed',
+                'topic: .catalogFallback', 'topic: .appUpdateRequired', 'helpTopic: .mapReadFailed']:
+    assert removed not in screen, removed
+sheet = (views / 'SupportReportSheet.swift').read_text()
+assert 'TerentoHelpLink' not in sheet, 'Support report sheet must not show a Help link'
+print('PASS: Help links appear only in the installation failure dialog and the Diagnostics send-report help')
+PYHELP
 require "$app_source" 'openExternalURL(TroubleshootingGuide.helpMenuURL)' 'Help menu has no troubleshooting guide'
 
 python3 - "$repo_root/Terento.xcodeproj/project.pbxproj" <<'PYPROJECT'

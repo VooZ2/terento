@@ -1074,7 +1074,10 @@ final class MapEngine: ObservableObject {
                 .compactMap { MapIdentity(provider: $0.providerId, region: $0.regionId) }
                 .first
             : nil
-        let hashes = Dictionary(uniqueKeysWithValues: item.installedMaps.compactMap { installedMap -> (UInt32, String)? in
+        // Integrity per live object: the manifest hash with its bound sampled
+        // removal proof, or a recovery record hash (never a proof).
+        let integrity = Dictionary(uniqueKeysWithValues: item.installedMaps.compactMap {
+            installedMap -> (UInt32, (sha256: String, removalProof: ManagedRemovalProof?))? in
             guard let objectID = installedMap.sourceFile.itemID else {
                 return nil
             }
@@ -1089,7 +1092,7 @@ final class MapEngine: ObservableObject {
                        && (installedMap.version == nil || entry.version == installedMap.version)
                }),
                !manifestEntry.sha256.isEmpty {
-                return (objectID, manifestEntry.sha256)
+                return (objectID, (manifestEntry.sha256, manifestEntry.boundRemovalProof))
             }
 
             if let provider = installedMap.provider,
@@ -1120,7 +1123,7 @@ final class MapEngine: ObservableObject {
                        )
                }),
                !manifestEntry.sha256.isEmpty {
-                return (objectID, manifestEntry.sha256)
+                return (objectID, (manifestEntry.sha256, manifestEntry.boundRemovalProof))
             }
 
             guard let recoveryRecord = recoveryRecords.first(where: { record in
@@ -1137,8 +1140,10 @@ final class MapEngine: ObservableObject {
                 return nil
             }
 
-            return (objectID, recoveryRecord.sha256)
+            return (objectID, (recoveryRecord.sha256, nil))
         })
+        let hashes = integrity.mapValues(\.sha256)
+        let removalProofs = integrity.compactMapValues(\.removalProof)
 
         guard let resolved = try? Self.resolveWriteProfile(identity: identity, files: result.deviceFiles) else {
             return nil
@@ -1154,7 +1159,8 @@ final class MapEngine: ObservableObject {
             expectedSHA256ByItemID: hashes,
             mapIdentity: itemMapIdentity ?? manifestMapIdentity,
             failedInstallRecovery: item.failedInstallRecovery,
-            expectedStorageID: resolved.target.root.storageID
+            expectedStorageID: resolved.target.root.storageID,
+            removalProofByItemID: removalProofs
         )
     }
 

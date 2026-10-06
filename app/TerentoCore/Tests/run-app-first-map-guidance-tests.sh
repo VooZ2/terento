@@ -65,6 +65,11 @@ require() {
 require "$connect_screen" 'highlightsRecommendation: isFirstMapSelection,' 'first map selection does not highlight the recommendation'
 require "$connect_screen" 'badge: showsRecommendation' 'recommendation has no text and icon badge'
 require "$connect_screen" '(FirstMapGuidance.recommendedLabel, "star.fill")' 'recommendation badge has no icon'
+require "$connect_screen" 'downloadEstimate: FirstMapGuidance.downloadEstimateText(' 'install selection rows do not show the download estimate'
+if grep -Fq 'downloadEstimate: isFirstMapSelection' "$connect_screen"; then
+    print -u2 "FAIL: the download size and time estimate must show on every install selection"
+    exit 1
+fi
 require "$connect_screen" 'bytes: item.package.expectedDownloadSizeBytes,' 'download estimate does not use the catalog download size'
 require "$connect_screen" 'recentBytesPerSecond: mapEngine.recentDownloadBytesPerSecond)' 'download estimate does not use the measured speed'
 require "$connect_screen" 'if isFirstMapSelection, !plan.selectedItems.isEmpty {' 'keep-connected line is not shown for a first selection'
@@ -88,4 +93,4 @@ for suffix in ("/MapCatalog/FirstMapGuidance.swift",):
 print("PASS: distributed Xcode target includes the first-map guidance")
 PYPROJECT
 
-print "PASS: first-map recommendation, download estimate and keep-connected wiring"
+print "PASS: first-map recommendation and keep-connected wiring; download estimate on every install selection"

@@ -53,7 +53,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
 
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject {
         // Inventory inspection is preliminary. The authorized native delete
-        // checks the old manifest hash again in the live mutation session.
+        // checks the old manifest content proof (sampled proof, or the full
+        // hash without one) again in the live mutation session.
         return try MTPSafeDeleteTransport(
             operationProfile: operationProfile,
             operationGate: operationGate,
@@ -74,6 +75,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                 expectedSizeBytes: target.expectedSizeBytes,
                 expectedSHA256: target.expectedSHA256,
                 purpose: .updateOld,
+                removalProof: target.removalProof,
                 onProgress: onProgress
             )
         } catch let error as InstallationTransportError {
