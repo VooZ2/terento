@@ -11,7 +11,6 @@ from terento_catalog.admin import (
     ADMIN_GLOSSARY,
     ADMIN_STYLES,
     _empty_state,
-    _glossary_link,
     _metric_tile,
     _scope_chip,
     _section_card,
@@ -246,7 +245,7 @@ class AdminComponentKitTests(unittest.TestCase):
         self.assertIn(">Last 7 days<", measured_zero)
         positive = _metric_tile("Failed", 3, failure=True)
         self.assertIn("data-tone='danger'", positive)
-        self.assertIn("admin-icon-x-circle", positive)
+        self.assertNotIn("admin-icon", positive)
         unknown = _metric_tile("Installs", None)
         self.assertIn("data-state='unknown'", unknown)
         self.assertIn("—<span class='sr-only'>Unknown</span>", unknown)
@@ -259,6 +258,12 @@ class AdminComponentKitTests(unittest.TestCase):
         self.assertIn("title='One provider failed.'", partial)
         rate = _metric_tile("Success rate", 97.94, fmt="rate")
         self.assertIn(">97.9%</strong>", rate)
+        with_rate = _metric_tile("Installs", 48, rate=94.12, rate_stat="installSuccessRate")
+        self.assertIn(" data-rate", with_rate)
+        self.assertIn("<strong data-stat='installSuccessRate'>94.1%</strong><span>Success</span>", with_rate)
+        self.assertIn(">—</strong><span>Success</span>", _metric_tile("Updates", 0, rate=None))
+        self.assertNotIn("Success", _metric_tile("Installs", 5, state="unavailable", rate=90))
+        self.assertNotIn("data-rate", _metric_tile("Installs", 5))
         self.assertIn(">1,204<", _metric_tile("Downloads", 1204))
 
     def test_linked_tile_carries_scope_in_its_accessible_name(self):
@@ -305,10 +310,6 @@ class AdminGlossaryTests(unittest.TestCase):
         self.assertIn('href="/admin/glossary"', body)
         for anchor, term, _ in ADMIN_GLOSSARY:
             self.assertIn(f"id='{anchor}'", body)
-        link = _glossary_link("open-problem")
-        self.assertIn("href='/admin/glossary#open-problem'", link)
-        self.assertIn("aria-label='About Open problem'", link)
-        self.assertEqual(_glossary_link("not-a-term"), "")
 
 
 if __name__ == "__main__":

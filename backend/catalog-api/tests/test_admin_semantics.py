@@ -747,7 +747,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Successful <strong>—</strong>", body)
         self.assertIn("data-stat='completedInstallCount'>0</strong>", body)
         self.assertIn("data-stat='completedDownloadCount'>—<span class='sr-only'>Unknown</span>", body)
-        self.assertIn("Failed 0</span> · —", body)
+        self.assertIn("Failed 0</span>", body)
+        self.assertIn(">—</strong><span>Success</span>", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -819,9 +820,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("href='/admin/providers'", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
         self.assertIn("data-stat='completedInstallCount'>3</strong>", body)
-        self.assertIn("Failed 1</span> · 75%", body)
+        self.assertIn("data-stat='installSuccessRate'>75%</strong>", body)
         self.assertIn("data-stat='completedDownloadCount'>2</strong>", body)
-        self.assertIn("Failed 1</span> · 66.7%", body)
+        self.assertIn("data-stat='downloadSuccessRate'>66.7%</strong>", body)
         self.assertIn("Installs <strong>3</strong> · Failed <strong>1</strong> · Rate <strong>75%</strong>", body)
         self.assertIn("Successful <strong>2</strong> · Failed <strong>1</strong> · Rate <strong>66.7%</strong>", body)
         self.assertIn("/admin/map-statistics?period=7d", body)
@@ -1473,7 +1474,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ).decode()
         self.assertIn("App downloads</h2>", body)
         self.assertIn("<section class='admin-card overview-panel overview-download-panel'", body)
-        self.assertIn("href='/admin/glossary#terento-app-download'", body)
+        self.assertNotIn("admin-glossary-link", body)
         self.assertNotIn("Observed download increases between checks.", body)
         self.assertNotIn("overview-info", body)
         self.assertIn("Last update ", body)
@@ -1784,7 +1785,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             selected_filters={"period": "all"},
         ).decode()
         self.assertIn("data-stat='completedInstallCount'>96</strong>", dashboard_body)
-        self.assertIn("Failed 10</span> · 90.6%", dashboard_body)
+        self.assertIn("Failed 10</span>", dashboard_body)
+        self.assertIn("data-stat='installSuccessRate'>90.6%</strong>", dashboard_body)
         # With All time selected the tiles are the all-time totals; no
         # duplicate All time line is rendered under the chart.
         self.assertNotIn("Installs <strong>96</strong> · Failed <strong>10</strong>", dashboard_body)

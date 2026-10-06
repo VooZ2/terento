@@ -393,17 +393,6 @@ ADMIN_GLOSSARY: tuple[tuple[str, str, str], ...] = (
 _GLOSSARY_TERMS = {anchor: term for anchor, term, _ in ADMIN_GLOSSARY}
 
 
-def _glossary_link(anchor: str) -> str:
-    term = _GLOSSARY_TERMS.get(anchor)
-    if not term:
-        return ""
-    return (
-        f"<a class='admin-glossary-link' href='/admin/glossary#{html.escape(anchor, quote=True)}' "
-        f"title='About {html.escape(term, quote=True)}' aria-label='About {html.escape(term, quote=True)}'>"
-        "<span aria-hidden='true'>?</span></a>"
-    )
-
-
 def _metric_value_text(value: Any, fmt: str) -> str | None:
     if value is None or isinstance(value, bool):
         return None
@@ -416,17 +405,21 @@ def _metric_value_text(value: Any, fmt: str) -> str | None:
     return f"{number:,}" if number is not None else None
 
 
+_NO_RATE = object()
+
+
 def _metric_tile(
     label: str, value: Any, *, fmt: str = "count", scope: str | None = None,
     state: str | None = None, failure: bool = False, secondary: str = "",
-    href: str | None = None, glossary: str | None = None,
+    href: str | None = None,
     data_stat: str | None = None, hint: str | None = None,
-    value_html: str | None = None,
+    value_html: str | None = None, rate: Any = _NO_RATE, rate_stat: str | None = None,
 ) -> str:
     """One metric: label, value, visible scope chip and one optional secondary line.
 
     ``state`` is measured, unknown, unavailable or partial. A failure count uses
-    the danger tone only when it is a measured value above zero.
+    the danger tone only when it is a measured value above zero; tiles carry no
+    icons. ``rate`` adds the success rate as a second figure beside the value.
     """
     rendered = _metric_value_text(value, fmt)
     if state is None:
@@ -440,8 +433,6 @@ def _metric_tile(
                     html.escape(rendered) if rendered is not None else (
         "—<span class='sr-only'>" + ("Unavailable" if state == "unavailable" else "Unknown") + "</span>"
     ))
-    if tone == "danger":
-        value_markup = _admin_icon("x-circle") + value_markup
     stat = f" data-stat='{html.escape(data_stat, quote=True)}'" if data_stat else ""
     state_pill = ""
     if state == "unavailable":
@@ -455,13 +446,18 @@ def _metric_tile(
     plain_value = rendered if rendered is not None else ("unavailable" if state == "unavailable" else "unknown")
     title = f" title='{html.escape(hint, quote=True)}'" if hint and state != "partial" else ""
     inner = (
-        f"<span class='admin-metric-label'>{html.escape(label)}"
-        + (_glossary_link(glossary) if glossary and not href else "")
-        + "</span>"
+        f"<span class='admin-metric-label'>{html.escape(label)}</span>"
         f"<strong class='admin-metric-value'{stat}>{value_markup}</strong>"
         + (f"<span class='admin-metric-meta'>{meta}</span>" if meta else "")
     )
-    attributes = f"data-state='{state}' data-tone='{tone}'{' data-kind=' + chr(39) + 'text' + chr(39) if fmt == 'text' else ''}{title}"
+    show_rate = rate is not _NO_RATE and state not in {"unknown", "unavailable"}
+    if show_rate:
+        rate_attr = f" data-stat='{html.escape(rate_stat, quote=True)}'" if rate_stat else ""
+        inner += (
+            f"<span class='admin-metric-rate'><strong{rate_attr}>{html.escape(_format_rate(rate))}</strong>"
+            "<span>Success</span></span>"
+        )
+    attributes = f"data-state='{state}' data-tone='{tone}'{' data-kind=' + chr(39) + 'text' + chr(39) if fmt == 'text' else ''}{' data-rate' if show_rate else ''}{title}"
     if href:
         return (
             f"<a class='admin-metric admin-metric-link' {attributes} href='{html.escape(href, quote=True)}' "
@@ -479,7 +475,7 @@ def _metric_row(tiles: list[str], *, label: str, css: str = "") -> str:
 
 def _section_card(
     title: str, body: str, *, card_id: str, action: tuple[str, str] | None = None,
-    scope: str | None = None, css: str = "", glossary: str | None = None,
+    scope: str | None = None, css: str = "",
     heading_tag: str = "h2", extra_attributes: str = "", mobile_collapse: bool = False,
 ) -> str:
     """A card with a 1–2 word title, an optional scope chip and one action link.
@@ -504,7 +500,6 @@ def _section_card(
     head = (
         f"<header class='admin-card-head'><{heading_tag} id='{html.escape(card_id, quote=True)}-title'>"
         f"{html.escape(title)}</{heading_tag}>"
-        + (_glossary_link(glossary) if glossary else "")
         + (_scope_chip(scope) if scope else "")
         + action_markup + toggle_markup + "</header>"
     )
@@ -1054,7 +1049,7 @@ def local_test_data_page(
             total = _optional_nonnegative_int(local_reports.get("totalCount")) or 0
             support_section = _section_card(
                 "Support reports",
-                _metric_row([_metric_tile("Local reports", total, scope="now", glossary="support-report")],
+                _metric_row([_metric_tile("Local reports", total, scope="now")],
                             label="Local support reports")
                 + (support_report_table(rows, caption="Local test support reports, newest first, up to 50")
                    if rows else _empty_state("empty", "No local test support reports.")),
@@ -2335,7 +2330,7 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
         body = _empty_state("empty", "No first-run sessions in this period.")
     else:
         tiles = _metric_row([
-            _metric_tile("Sessions", sessions, glossary="first-run"),
+            _metric_tile("Sessions", sessions),
             _metric_tile("Connected", connected),
             _metric_tile("Not connected", sum(not_connected.values()), failure=True),
         ], label="First run sessions")
@@ -2373,17 +2368,16 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
         )
     return _section_card(
         "First run", body, card_id="overview-funnel", scope=period,
-        css="overview-panel overview-funnel-panel", glossary="first-run",
+        css="overview-panel overview-funnel-panel",
     )
 
 
-def _rate_secondary(failed: Any, rate: Any) -> str:
+def _failed_secondary(failed: Any) -> str:
     failed_count = _optional_nonnegative_int(failed)
-    failed_markup = (
+    return (
         f"<span class='admin-metric-failed{' is-positive' if failed_count else ''}'>Failed {failed_count:,}</span>"
         if failed_count is not None else "<span class='admin-metric-failed'>Failed —</span>"
     )
-    return f"{failed_markup} · {html.escape(_format_rate(rate))}"
 
 
 def overview_page(
@@ -2492,23 +2486,23 @@ def overview_page(
     tiles = _metric_row([
         _metric_tile(
             "Installs", stat("completedInstallCount"), scope=period, state=tile_state,
-            secondary=_rate_secondary(stat("failedInstallCount"), stat("installSuccessRate")) if data_available else "",
-            glossary="fresh-install", data_stat="completedInstallCount",
+            secondary=_failed_secondary(stat("failedInstallCount")) if data_available else "",
+            rate=stat("installSuccessRate"), rate_stat="installSuccessRate", data_stat="completedInstallCount",
         ),
         _metric_tile(
             "Updates", stat("completedMapUpdateCount"), scope=period, state=tile_state,
-            secondary=_rate_secondary(stat("failedMapUpdateCount"), update_rate) if data_available else "",
-            glossary="map-update", data_stat="completedMapUpdateCount",
+            secondary=_failed_secondary(stat("failedMapUpdateCount")) if data_available else "",
+            rate=update_rate, rate_stat="mapUpdateSuccessRate", data_stat="completedMapUpdateCount",
         ),
         _metric_tile(
             "Downloads", stat("completedDownloadCount"), scope=period, state=tile_state,
-            secondary=_rate_secondary(stat("failedDownloadCount"), stat("downloadSuccessRate")) if data_available else "",
-            glossary="provider-download", data_stat="completedDownloadCount",
+            secondary=_failed_secondary(stat("failedDownloadCount")) if data_available else "",
+            rate=stat("downloadSuccessRate"), rate_stat="downloadSuccessRate", data_stat="completedDownloadCount",
         ),
         _metric_tile(
             "Needs attention", attention_total, scope="now",
             state=None if attention_total is not None else "unavailable" if not review_available else "partial",
-            failure=True, href="#overview-attention", glossary="task",
+            failure=True, href="#overview-attention",
         ),
     ], label="Dashboard summary", css="overview-tiles")
 
@@ -2549,7 +2543,7 @@ def overview_page(
                 ("Failed", data.get("allTimeFailedDownloadCount"), "count"),
                 ("Rate", data.get("allTimeDownloadSuccessRate"), "rate"),
             ]),
-            card_id="overview-download-trend", scope=period, glossary="provider-download",
+            card_id="overview-download-trend", scope=period,
             css="overview-panel overview-chart-panel",
         )
         installs_chart = _section_card(
@@ -2564,7 +2558,7 @@ def overview_page(
                 ("Updates", data.get("allTimeMapUpdateSuccessCount"), "count"),
                 ("Failed", data.get("allTimeMapUpdateFailedCount"), "count"),
             ]),
-            card_id="overview-trend", scope=period, glossary="fresh-install",
+            card_id="overview-trend", scope=period,
             css="overview-panel overview-chart-panel",
         )
     else:
@@ -2602,7 +2596,7 @@ def overview_page(
             f"<p class='overview-all-time overview-download-all-time'>{_scope_chip('all')}"
             f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong></span>"
             f"<span class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</span></p>",
-            card_id="overview-downloads", scope=period, glossary="terento-app-download",
+            card_id="overview-downloads", scope=period,
             css="overview-panel overview-download-panel",
         )
     else:
@@ -2688,7 +2682,7 @@ def missing_reports_page(
             else _empty_state("empty", "Nothing to review.")
         )
         body = _metric_row([
-            _metric_tile("Missing reports", total, scope="now", glossary="missing-report"),
+            _metric_tile("Missing reports", total, scope="now"),
         ], label="Missing report summary") + _section_card(
             "Reports", list_markup, card_id="missing-report-list", css="overview-attention-panel",
         )
@@ -3195,7 +3189,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
     content = f"""
       {_admin_header(user, csrf_token, active='system-health')}
       <main class='dashboard system-health-page' id='main-content'>
-        <div class='heading-row'><div><h1>Health</h1></div>{_glossary_link('health-states')}</div>
+        <div class='heading-row'><div><h1>Health</h1></div></div>
         <div class='admin-metric-row health-filter-tiles' role='group' aria-label='Filter checks by status'>{tiles}</div>
         <form class='filter-bar' id='health-filters' role='search'><label class='filter-search'><span class='sr-only'>Search checks</span><input type='search' id='health-search' placeholder='Search checks'></label><label><span class='sr-only'>Check status</span><select id='health-status'><option value='all'>All statuses</option>{health_options}</select></label></form>
         <p class='empty' id='health-empty' hidden>No checks match your filters.</p>
@@ -3311,11 +3305,11 @@ def dashboard_page(
         <div class="heading-row installation-heading"><div><h1>Installations</h1></div><p class="page-meta">{latest_copy}</p></div>
         <section class="admin-card installation-kpis" aria-label="Installation summary">
           {_metric_row([
-              _metric_tile("Attempts", attempts, scope="all", glossary="attempt", data_stat="attempts"),
-              _metric_tile("Successful", successes, scope="all", glossary="successful", data_stat="successful"),
-              _metric_tile("Failed", failures, scope="all", failure=True, glossary="failed", data_stat="failed"),
-              _metric_tile("Success rate", success_rate, fmt="rate", scope="all", glossary="success-rate", data_stat="successRate"),
-              _metric_tile("Open problems", open_errors, scope="now", failure=True, glossary="open-problem",
+              _metric_tile("Attempts", attempts, scope="all", data_stat="attempts"),
+              _metric_tile("Successful", successes, scope="all", data_stat="successful"),
+              _metric_tile("Failed", failures, scope="all", failure=True, data_stat="failed"),
+              _metric_tile("Success rate", success_rate, fmt="rate", scope="all", data_stat="successRate"),
+              _metric_tile("Open problems", open_errors, scope="now", failure=True,
                            href="/admin/installations?state=open" if open_errors else None, data_stat="openProblems",
                            hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
           ], label="Installation summary")}
@@ -3535,8 +3529,8 @@ def providers_page(
     )
     summary = "" if not provider_rows else _metric_row([
         _metric_tile("Active", active, scope="now", secondary=f"of {len(provider_rows)}"),
-        _metric_tile("Healthy", healthy, scope="now", secondary=f"of {len(provider_rows)}", glossary="health-states"),
-        _metric_tile("Package problems", affected_total, scope="now", failure=True, glossary="package-problem",
+        _metric_tile("Healthy", healthy, scope="now", secondary=f"of {len(provider_rows)}"),
+        _metric_tile("Package problems", affected_total, scope="now", failure=True,
                      state=None if affected_total is not None else "unknown"),
         _metric_tile("Provider problems", sum(1 for state in tracked if state["problem"]), scope="now", failure=True,
                      hint="Active providers with degraded or failed health, a failed or overdue catalog sync, or package problems"),
@@ -3895,13 +3889,13 @@ def provider_detail_page(
     disabled_maps = sum(1 for package in packages if package.get("downloads_disabled"))
     block = str(provider.get("downloadBlockReason") or "")
     tiles = _metric_row([
-        _metric_tile("Health", latest_health_status.title(), fmt="text", glossary="health-states",
+        _metric_tile("Health", latest_health_status.title(), fmt="text",
                      value_html=_provider_status_badge(latest_health_status if latest_health else "UNKNOWN", kind="health"),
                      secondary=f"Last check {_timestamp_markup(latest_health.get('checked_at') or provider.get('lastHealthCheck'))}"),
         _metric_tile("Catalog", latest_run_status.title(), fmt="text",
                      value_html=_provider_status_badge(latest_run_status) if latest_run else _status_pill("unknown", "No runs"),
                      secondary=f"Sync {_timestamp_markup(provider.get('lastCatalogSync'))}"),
-        _metric_tile("Package problems", affected_package_count, failure=True, glossary="package-problem",
+        _metric_tile("Package problems", affected_package_count, failure=True,
                      secondary=f"of {_optional_count_label(len(packages))} packages"),
         _metric_tile("Downloads", "Blocked" if block else "Allowed", fmt="text",
                      value_html=_status_pill("danger", "Blocked", title=block) if block else _status_pill("success", "Allowed"),
@@ -3937,7 +3931,7 @@ def provider_detail_page(
     problems_section = _section_card(
         "Problems",
         f"<p id='provider-recheck-progress' role='status'></p>{problems_body}",
-        card_id="provider-problems", glossary="package-problem",
+        card_id="provider-problems",
         css="provider-card provider-problems-card",
     ).replace(
         "</header>",
@@ -4163,7 +4157,7 @@ def map_statistics_page(
         )
 
     # --- Tiles: the selected period, with all time as a labelled line -------
-    def tile(label: str, value_key: str, failed_key: str, rate_key: str, tile_id: str, glossary: str) -> str:
+    def tile(label: str, value_key: str, failed_key: str, rate_key: str, tile_id: str) -> str:
         rate = summary.get(rate_key)
         secondary = (
             f"Failed {_admin_error_counter(summary.get(failed_key), data_stat=failed_key)} · "
@@ -4172,7 +4166,7 @@ def map_statistics_page(
         return (
             f"<div class='map-statistics-tile' id='{tile_id}'>"
             + _metric_tile(label, summary.get(value_key), scope=selected_period, secondary=secondary,
-                           glossary=glossary, data_stat=value_key)
+                           data_stat=value_key)
             + "</div>"
         )
 
@@ -4201,9 +4195,9 @@ def map_statistics_page(
     metrics_section = (
         "<section class='admin-card map-statistics-metrics' id='map-statistics-metrics' aria-label='Map statistics summary'>"
         + _metric_row([
-            tile("Downloads", "completedDownloads", "failedDownloads", "downloadSuccessRate", "map-statistics-downloads", "provider-download"),
-            tile("Installs", "completedInstalls", "failedInstalls", "installSuccessRate", "map-statistics-installs", "fresh-install"),
-            tile("Updates", "completedMapUpdates", "failedMapUpdates", "mapUpdateSuccessRate", "map-statistics-updates", "map-update"),
+            tile("Downloads", "completedDownloads", "failedDownloads", "downloadSuccessRate", "map-statistics-downloads"),
+            tile("Installs", "completedInstalls", "failedInstalls", "installSuccessRate", "map-statistics-installs"),
+            tile("Updates", "completedMapUpdates", "failedMapUpdates", "mapUpdateSuccessRate", "map-statistics-updates"),
         ], label="Map statistics for the selected period")
         + purpose_line + all_time_line + "</section>"
     )
@@ -4249,14 +4243,14 @@ def map_statistics_page(
             "Downloads",
             _overview_trend_chart(trend, bucket, chart_time_zone, metric='downloads', chart_id='maps-downloads',
                                   has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0))),
-            card_id="map-download-trend", scope=selected_period, glossary="provider-download",
+            card_id="map-download-trend", scope=selected_period,
             css="overview-panel overview-chart-panel",
         )
         + _section_card(
             "Installs",
             _overview_trend_chart(trend, bucket, chart_time_zone, chart_id='maps-installs',
                                   has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0))),
-            card_id="map-install-trend", scope=selected_period, glossary="fresh-install",
+            card_id="map-install-trend", scope=selected_period,
             css="overview-panel overview-chart-panel",
         )
         + "</section>"
@@ -4835,7 +4829,7 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
         content = (
             f"{invalid}"
             + _metric_row([
-                _metric_tile("Needs review", pending_models, scope="now", glossary="model-sources"),
+                _metric_tile("Needs review", pending_models, scope="now"),
                 _metric_tile("Approved", counts["approved"], scope="now"),
                 _metric_tile("Rejected", counts["rejected"], scope="now"),
                 _metric_tile("No source", counts["missing"], scope="now"),
@@ -6102,13 +6096,13 @@ def device_detail_page(
     statistics_section = "" if not history and not attempts and not failed else (
         "<section class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-labelledby='model-installation-kpis-title'>"
         "<header class='admin-card-head'><h2 id='model-installation-kpis-title'>Installs</h2>"
-        f"{_glossary_link('installation-report')}{_scope_chip('all')}</header>"
+        f"{_scope_chip('all')}</header>"
         + _metric_row([
-            _metric_tile("Attempts", attempts, glossary="attempt", data_stat="attempts",
+            _metric_tile("Attempts", attempts, data_stat="attempts",
                          hint="Each map result counts once, including custom .img."),
-            _metric_tile("Successful", successful, glossary="successful", data_stat="successful"),
-            _metric_tile("Failed", failed, failure=True, glossary="failed", data_stat="failed"),
-            _metric_tile("Open problems", open_errors, failure=True, glossary="open-problem", data_stat="openProblems",
+            _metric_tile("Successful", successful, data_stat="successful"),
+            _metric_tile("Failed", failed, failure=True, data_stat="failed"),
+            _metric_tile("Open problems", open_errors, failure=True, data_stat="openProblems",
                          hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
             _metric_tile("Last report", format_timestamp(last_report) if last_report else None, fmt="text",
                          value_html=_timestamp_markup(last_report) if last_report else None,
@@ -6118,7 +6112,7 @@ def device_detail_page(
     )
     history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not history else f"""
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
-          <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div>{_glossary_link('failed')}</div>
+          <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false'>Blocked before writing</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked before writing</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table mobile-record-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
@@ -6127,7 +6121,7 @@ def device_detail_page(
     """
     administration_section = f"""
         <details class='model-page-section model-administration admin-disclosure'><summary id='administration-title'>Administration</summary><div class='administration-grid'>
-          <article><h3>Install policy {_glossary_link('install-policy')}</h3><p class='table-help'>Install policy follows catalog Maps.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>Review metadata only; it never changes write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
+          <article><h3>Install policy</h3><p class='table-help'>Install policy follows catalog Maps.</p><p class='admin-state'>Current: {html.escape(authorization_label)}</p><p class='model-status-line'><strong>Public compatibility</strong><span>{public_copy}</span></p>{public_form}<h3>Support metadata</h3><p class='table-help'>Review metadata only; it never changes write access.</p><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-support-status='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Support status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Supported</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Unsupported</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Not evaluated</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save support metadata</button></form></article>
         </div></details>
     """
     information_sections = f"""
@@ -6251,10 +6245,10 @@ def diagnostics_page(
         <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
         <div class='heading-row'><div><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1></div></div>
         <section class='admin-card diagnostic-model-metrics' aria-label='Model diagnostic summary'>{_metric_row([
-            _metric_tile("Attempts", attempts, scope="all", glossary="attempt", data_stat="attempts"),
-            _metric_tile("Successful", successes, scope="all", glossary="successful", data_stat="successful"),
-            _metric_tile("Open problems", errors, scope="now", failure=True, glossary="open-problem", data_stat="openProblems"),
-            _metric_tile("Evidence", status.value.title() if status else "Unavailable", fmt="text", glossary="evidence",
+            _metric_tile("Attempts", attempts, scope="all", data_stat="attempts"),
+            _metric_tile("Successful", successes, scope="all", data_stat="successful"),
+            _metric_tile("Open problems", errors, scope="now", failure=True, data_stat="openProblems"),
+            _metric_tile("Evidence", status.value.title() if status else "Unavailable", fmt="text",
                          value_html=_status_badge(status.value if status else ''), data_stat="evidence"),
         ], label="Model diagnostic summary")}</section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
@@ -6338,7 +6332,7 @@ def github_issue_queue_page(
         <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
         <div class='heading-row'><div><h1>GitHub issues</h1></div></div>
         <section class='diagnostics-detail-section admin-card' aria-labelledby='github-issue-queue-title'>
-          <div class='section-heading'><div><h2 id='github-issue-queue-title'>Tasks</h2>{_glossary_link('task')}{_scope_chip('now')}<span class='table-help'>{_count_label(len(queue) + len(update_queue), 'task')}</span></div></div>
+          <div class='section-heading'><div><h2 id='github-issue-queue-title'>Tasks</h2>{_scope_chip('now')}<span class='table-help'>{_count_label(len(queue) + len(update_queue), 'task')}</span></div></div>
           <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>State</th><th scope='col' class='column-date'>Last activity</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
         </section>
         {''.join(dialogs)}{_identity_picker_template(identity_devices) if dialogs else ''}
@@ -6629,12 +6623,12 @@ def devices_page(
         <section class="admin-card device-summary-strip" aria-label="Device catalog summary and sync">
           {_metric_row([
               _metric_tile("Models", summary['models'], scope="now"),
-              _metric_tile("Maps: Yes", summary['mapCapable'], scope="now", glossary="install-policy"),
-              _metric_tile("Verified", verified_models, scope="all", glossary="evidence"),
-              _metric_tile("Covered", summary['mapModelsWithSuccess'], scope="all", glossary="evidence",
+              _metric_tile("Maps: Yes", summary['mapCapable'], scope="now"),
+              _metric_tile("Verified", verified_models, scope="all"),
+              _metric_tile("Covered", summary['mapModelsWithSuccess'], scope="all",
                            secondary=f"of {summary['eligibleMapModels']} · {html.escape(_format_rate(summary['mapModelCoverageRate']))}",
                            hint="Active Maps: Yes models with at least one verified installation"),
-              _metric_tile("Pending policy", pending_policy, scope="now", glossary="install-policy"),
+              _metric_tile("Pending policy", pending_policy, scope="now"),
           ], label="Device catalog summary")}
           <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {sync_line}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
@@ -8689,11 +8683,19 @@ ADMIN_STYLES += """
 .admin-metric[data-state="unknown"] .admin-metric-value,.admin-metric[data-state="unavailable"] .admin-metric-value{color:var(--secondary)}
 .admin-metric-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--secondary);font-size:12px;line-height:16px}
 .admin-metric-secondary{font-variant-numeric:tabular-nums}
+.admin-metric[data-rate]{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-content:start}
+.admin-metric[data-rate]>.admin-metric-label{grid-column:1/-1}
+.admin-metric-rate{display:flex;flex-direction:column;align-items:flex-end;grid-column:2;grid-row:2/4;gap:4px;color:var(--secondary);font-size:12px;line-height:16px}
+.admin-metric-rate>strong{color:var(--graphite);font:600 24px/32px var(--font-ui);font-variant-numeric:tabular-nums}
+.admin-metric[data-rate]>.admin-metric-meta{grid-column:1;grid-row:3}
+@media (max-width:720px){
+  .admin-metric[data-rate]{grid-template-columns:minmax(0,1fr)}
+  .admin-metric-rate{flex-direction:row;align-items:baseline;grid-column:1;grid-row:3;gap:6px}
+  .admin-metric-rate>strong{font-size:20px;line-height:26px}
+  .admin-metric[data-rate]>.admin-metric-meta{grid-column:1;grid-row:4}
+}
 .admin-metric-link:hover{background:var(--surface-muted)}
 .admin-metric-link:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}
-.admin-glossary-link{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;color:var(--interactive);font:700 11px/1 var(--font-ui);text-decoration:none}
-.admin-glossary-link>span{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid currentColor;border-radius:999px}
-.admin-glossary-link:hover>span{background:var(--selected-tint)}
 .admin-empty{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;color:var(--secondary);font-size:14px;line-height:20px}
 .admin-card-unavailable{border-style:dashed}
 .identification-compare{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:start}

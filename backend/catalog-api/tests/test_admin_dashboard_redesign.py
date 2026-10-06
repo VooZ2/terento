@@ -75,7 +75,9 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertEqual(tiles.count("data-scope='period'>Last 7 days</span>"), 3)
         self.assertIn("data-stat='completedInstallCount'>12</strong>", tiles)
         self.assertIn("data-stat='completedMapUpdateCount'>4</strong>", tiles)
-        self.assertIn("Failed 1</span> · 80%", tiles)
+        self.assertIn("Failed 1</span>", tiles)
+        self.assertIn("data-stat='mapUpdateSuccessRate'>80%</strong><span>Success</span>", tiles)
+        self.assertNotIn("admin-icon-x-circle", tiles)
         # Installs card: tiles carry the period totals, so the legend names the
         # series and counts only the custom .img split no tile shows.
         installs = body.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]

@@ -50,15 +50,19 @@ and legends must preserve these distinctions at supported widths.
 
 Every Admin page renders numbers, statuses, cards, tables, empty states and
 legends through one kit: a metric tile (label of one or two words, value,
-visible scope chip, at most one secondary line, measured/unknown/unavailable/
-partial states, danger tone only for a positive failure count), a section card
+optional success rate as a second figure of the value's size labelled
+`Success` beside the value — below it at ≤720 px — visible scope chip, at most
+one secondary line, measured/unknown/unavailable/partial states, danger tone
+only for a positive failure count; the label and secondary text carry the
+meaning, so a tile value never carries an icon), a section card
 (one- or two-word title, optional scope chip, at most one action link, no
 explanatory paragraph), a status pill (icon plus sentence-case text; colour
 supports but never replaces the text), table conventions (identity first,
 numbers and dates trailing, `—` for unknown), empty states (empty, filtered,
-unavailable with Retry) and chart legends. Metric labels link to the Tools →
-Glossary entry for their term. Colours, radii and focus rings come only from the
-generated brand tokens; the focus ring is Interactive Primary (≥3:1).
+unavailable with Retry) and chart legends. Labels and card titles carry no
+inline `?` glossary links; term definitions live only on Tools → Glossary.
+Colours, radii and focus rings come only from the generated brand tokens; the
+focus ring is Interactive Primary (≥3:1).
 
 This is the canonical behavioral contract for the private Terento admin surface
 and its diagnostic data dependencies. It complements `api.md` (routes and current
@@ -230,7 +234,7 @@ run, then App downloads.
 Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
 `Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
-`.dmg` and `.zip`), carries a glossary link with that definition, shows its
+`.dmg` and `.zip`; the Glossary defines it), shows its
 period increases in the legend and its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
 population for the period (sessions, connected vs not connected by reason,
