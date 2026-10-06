@@ -437,13 +437,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             self.assertIn(f"data-stat='completedInstallCount'>{count}</strong>", heads)
             self.assertIn(f"data-stat='completedDownloadCount'>{count}</strong>", heads)
             self.assertIn(f">{scope}</span>", heads)
-            # All-time totals stay visible, labelled with an All time chip.
-            all_time = body.split("class='overview-all-time'")
-            self.assertEqual(len(all_time), 3)
-            for line in all_time[1:]:
-                self.assertIn("data-scope='all'>All time</span>", line.split("</p>", 1)[0])
-            self.assertIn("Installs <strong>90</strong>", body)
-            self.assertIn("Successful <strong>180</strong>", body)
+            # Map chart cards carry no All time line (owner decision 2026-10-06).
+            for card in ("overview-trend-title", "overview-download-trend-title"):
+                self.assertNotIn("class='overview-all-time'", body.split(f"id='{card}'", 1)[1].split("</section>", 1)[0])
             self.assertNotIn("href='/admin/map-statistics?period=all'", body)
             self.assertNotIn("title='All time'", body)
         self.assertNotEqual(
@@ -742,9 +738,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "csrf",
         ).decode()
         self.assertIn("<h1>Dashboard</h1>", body)
-        # Missing all-time totals stay unknown (—), measured period zeros stay 0.
-        self.assertIn("Installs <strong>—</strong>", body)
-        self.assertIn("Successful <strong>—</strong>", body)
+        # Missing period totals stay unknown (—), measured period zeros stay 0.
         self.assertIn("data-stat='completedInstallCount'>0</strong>", body)
         self.assertIn("data-stat='completedDownloadCount'>—</strong>", body)
         self.assertIn("data-stat='failedInstallCount'>0</strong>", body)
@@ -822,8 +816,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("data-stat='installSuccessRate'>75%</strong>", body)
         self.assertIn("data-stat='completedDownloadCount'>2</strong>", body)
         self.assertIn("data-stat='downloadSuccessRate'>66.7%</strong>", body)
-        self.assertIn("Installs <strong>3</strong> · Failed <strong>1</strong> · Rate <strong>75%</strong>", body)
-        self.assertIn("Successful <strong>2</strong> · Failed <strong>1</strong> · Rate <strong>66.7%</strong>", body)
         self.assertIn("/admin/map-statistics?period=7d", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("overview-chart-update", body)

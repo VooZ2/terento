@@ -1755,8 +1755,6 @@ _INSTALL_CHART_SERIES = (
     ("update-failed", "Update failed", "map_update_failed_count"),
 )
 _LEGEND_COUNTED_SERIES = frozenset({"custom"})
-# Dashboard header totals cover installs only, so its legend also counts updates.
-_DASHBOARD_COUNTED_SERIES = _LEGEND_COUNTED_SERIES | {"update", "update-failed"}
 _DOWNLOAD_CHART_SERIES = (
     ("download-success", "Download successful", "download_success_count"),
     ("download-failed", "Download failed", "download_failed_count"),
@@ -1878,7 +1876,7 @@ def _overview_trend_chart(
     if _compact:
         return svg
     # Tiles or card headers carry the period totals; the legend names the
-    # series and counts only the ``counted`` series no total shows on its own.
+    # series and counts only the ``counted`` series (none on the Dashboard).
     totals = [sum(counts[index] for counts in values) for index in range(len(series))]
     legend = _chart_legend(
         [(name, label, total if name in counted else _LEGEND_NAME_ONLY)
@@ -2478,28 +2476,6 @@ def overview_page(
     )
 
     # --- Charts with an explicit all-time line -------------------------------
-    def all_time_line(items: list[tuple[str, Any, str]]) -> str:
-        # With All time selected the header totals already are these totals.
-        if period == "all":
-            return ""
-        parts = []
-        for label, value, fmt in items:
-            rendered = _metric_value_text(value, fmt)
-            parts.append(f"{html.escape(label)} <strong>{html.escape(rendered) if rendered is not None else '—'}</strong>")
-        return (
-            f"<p class='overview-all-time'>{_scope_chip('all')}<span>{' · '.join(parts)}</span></p>"
-        )
-
-    purposes = data.get("downloadPurposes") if isinstance(data.get("downloadPurposes"), dict) else None
-    purpose_line = ""
-    if purposes:
-        purpose_line = "<dl class='overview-purposes' aria-label='Downloads by purpose'>" + "".join(
-            f"<div><dt>{label}</dt><dd>{_optional_count_label((purposes.get(purpose) or {}).get('succeeded'))}"
-            + (f" <span class='admin-metric-failed is-positive'>· Failed {failed:,}</span>"
-               if (failed := _optional_nonnegative_int((purposes.get(purpose) or {}).get('failed'))) else "")
-            + "</dd></div>"
-            for purpose, label in (("install", "For installs"), ("update", "For updates"), ("unknown", "Not recorded"))
-        ) + "</dl>"
     trend = list(data.get("trend") or [])
     bucket = str(data.get("bucket") or "day")
     if data_available:
@@ -2507,12 +2483,9 @@ def overview_page(
             "Downloads",
             _overview_trend_chart(
                 trend, bucket, time_zone, metric="downloads", chart_id="overview-downloads",
+                counted=frozenset(),
                 has_activity=bool((data.get("completedDownloadCount") or 0) + (data.get("failedDownloadCount") or 0)),
-            ) + purpose_line + all_time_line([
-                ("Successful", data.get("allTimeCompletedDownloadCount"), "count"),
-                ("Failed", data.get("allTimeFailedDownloadCount"), "count"),
-                ("Rate", data.get("allTimeDownloadSuccessRate"), "rate"),
-            ]),
+            ),
             card_id="overview-download-trend", scope=period,
             totals=_period_totals(data, "completedDownloadCount", "failedDownloadCount", "downloadSuccessRate",
                                   label="Downloads in this period"),
@@ -2521,15 +2494,9 @@ def overview_page(
         installs_chart = _section_card(
             "Installs",
             _overview_trend_chart(
-                trend, bucket, time_zone, chart_id="overview-installs", counted=_DASHBOARD_COUNTED_SERIES,
+                trend, bucket, time_zone, chart_id="overview-installs", counted=frozenset(),
                 has_activity=bool((data.get("completedInstallCount") or 0) + (data.get("failedInstallCount") or 0) + (data.get("mapUpdateCount") or 0)),
-            ) + all_time_line([
-                ("Installs", data.get("allTimeSuccessCount"), "count"),
-                ("Failed", data.get("allTimeFailedCount"), "count"),
-                ("Rate", data.get("allTimeInstallSuccessRate"), "rate"),
-                ("Updates", data.get("allTimeMapUpdateSuccessCount"), "count"),
-                ("Failed", data.get("allTimeMapUpdateFailedCount"), "count"),
-            ]),
+            ),
             card_id="overview-trend", scope=period,
             totals=_period_totals(data, "completedInstallCount", "failedInstallCount", "installSuccessRate",
                                   label="Installs in this period"),

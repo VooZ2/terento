@@ -216,18 +216,17 @@ duplicate Review navigation item.
 Dashboard must answer whether anything is wrong, what happened in the selected
 period, whether activity is changing, and what to inspect next. It has no
 summary tile row: the Downloads and Installs chart cards share the first row.
-Each chart header shows the period scope chip and the period totals as compact
+Each chart card holds exactly three things (owner decision 2026-10-06): a
+header with the period scope chip and, top right, the period totals as compact
 value chips (Successful, Failed — danger only when positive — and Success rate;
-Installs counts fresh installs only), then the chart, a legend naming its series
-and one compact line with the all-time totals behind an `All time` chip
-(omitted when the period is All time, because the header totals then are those
-totals). Period totals live only in the chart headers; a legend shows a count
-only where it adds information no header shows (the Custom .img install split,
-Update successful and Update failed on the Dashboard, and the App downloads
-period increases). Header totals and charts use the same period population, so
-they agree. The Needs attention header shows its `Now` total as one chip (`—`
-when any row is unavailable). The Downloads card also breaks the period
-total down by purpose (For installs, For updates, Not recorded). Below the
+Installs counts fresh installs only); the chart; and a legend naming each
+series by colour without counts. No All time line, purpose breakdown or other
+explanatory text is shown in these cards; all-time totals and the purpose
+breakdown live on Maps. Header totals and charts use the same period
+population, so they agree. A legend elsewhere shows a count only where it adds
+information no total shows (the Maps Custom .img install split and the App
+downloads period increases). The Needs attention header shows its `Now` total
+as one chip (`—` when any row is unavailable). Below the
 charts, Needs attention and Activity share a row, then First run and App
 downloads share the next row; when one of those cards is omitted the remaining
 one spans the row, so no Dashboard row leaves an empty grid cell at ≥1024 px.

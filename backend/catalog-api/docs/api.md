@@ -219,11 +219,11 @@ hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
 There is no summary tile row. The Downloads and Installs chart cards come
 first; each header shows a visible period chip and the period totals
 (successful, failed and success rate; Installs counts fresh installs only),
-then the chart, a legend naming its series (only the custom `.img` split and
-the update series are counted) and, unless the period is All time, an
-`All time` line with the all-time totals; the Needs attention header shows its
-Now total; the Downloads card adds the period purpose
-breakdown (`downloadPurposes`: install, update, unknown). Needs attention covers unresolved work across all dates in
+then the chart and a legend naming its series without counts; nothing else is
+shown in these cards (all-time totals and the purpose breakdown are on Maps).
+The Needs attention header shows its Now total. The payload still carries the
+period purpose breakdown (`downloadPurposes`: install, update, unknown), which
+the Dashboard does not render. Needs attention covers unresolved work across all dates in
 nine fixed rows read only from `admin_review_summary()`, the open public
 support-report count (`support_report_open_count()`), the active Maps-unknown
 model count (`maps_unknown_model_count()`), the shared

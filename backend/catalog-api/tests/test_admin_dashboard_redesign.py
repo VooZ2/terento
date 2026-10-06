@@ -83,31 +83,16 @@ class DashboardPresentationTests(unittest.TestCase):
         # The header totals cover installs only, so the legend names the
         # series and counts the custom .img split and both update series.
         legend = installs.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
-        self.assertIn("<span>Install successful</span></li>", legend)
-        self.assertIn("<span>Custom .img install</span><strong>2</strong>", legend)
-        self.assertIn("<span>Update successful</span><strong>", legend)
-        self.assertIn("<span>Update failed</span><strong>", legend)
-        self.assertEqual(legend.count("<strong>"), 3)
-        self.assertIn("data-scope='all'>All time</span>", installs)
-        self.assertIn("Updates <strong>80</strong>", installs)
-        self.assertEqual(installs.count("class='overview-all-time'"), 1)
+        for name in ("Install successful", "Custom .img install", "Install failed", "Update successful", "Update failed"):
+            self.assertIn(f"<span>{name}</span></li>", legend)
         downloads = body.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0]
-        legend = downloads.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
-        self.assertNotIn("<strong>", legend)
-
-    def test_all_time_lines_are_omitted_when_the_period_is_all_time(self):
-        body = self.render(period="all")
-        for card in ("overview-trend-title", "overview-download-trend-title"):
-            section = body.split(f"id='{card}'", 1)[1].split("</section>", 1)[0]
-            self.assertNotIn("class='overview-all-time'", section)
-
-    def test_downloads_card_breaks_down_purpose(self):
-        body = self.render()
-        downloads = body.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0]
-        self.assertIn("aria-label='Downloads by purpose'", downloads)
-        self.assertIn("<dt>For installs</dt><dd>20", downloads)
-        self.assertIn("<dt>For updates</dt><dd>6", downloads)
-        self.assertIn("<dt>Not recorded</dt><dd>4", downloads)
+        for card in (installs, downloads):
+            # Header totals, the chart and a count-free legend; nothing else.
+            legend = card.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
+            self.assertNotIn("<strong>", legend)
+            self.assertNotIn("class='overview-all-time'", card)
+            self.assertNotIn("Downloads by purpose", card)
+            self.assertEqual(card.split("</ul>", 1)[1].replace("</div>", "").strip(), "")
 
     def test_needs_attention_has_nine_fixed_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})
