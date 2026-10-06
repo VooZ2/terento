@@ -1412,7 +1412,8 @@ h1 {
   grid-auto-columns: calc((100% - 88px) / 3);
   align-items: stretch;
   overflow-x: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
   scroll-snap-type: x proximity;
   padding: 4px 4px 12px;
   gap: 20px;
@@ -1420,7 +1421,12 @@ h1 {
 }
 
 .provider-cards::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.provider-cards::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--border);
 }
 
 .provider-card {
@@ -1541,39 +1547,19 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
-.provider-controls {
+.provider-compare {
   max-width: 1300px;
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 16px;
+  margin: 16px 0 0;
+  text-align: right;
+  font-weight: 600;
 }
 
-.provider-controls[hidden],
 .provider-card[hidden],
 .provider-addon[hidden] {
   display: none;
 }
 
-.provider-controls button {
-  min-height: 44px;
-  padding: 10px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--graphite);
-  font: 600 14px/1.4 var(--font-ui);
-  cursor: pointer;
-}
-
-.provider-controls button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.provider-cards:focus-visible,
-.provider-controls button:focus-visible {
+.provider-cards:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }

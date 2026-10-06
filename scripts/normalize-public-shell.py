@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261006-map-styles-shell-v1"
-PROVIDER_SCRIPT_VERSION = "20260912-bbbike-types-v1"
+PROVIDER_SCRIPT_VERSION = "20261006-map-styles-link-v1"
 STYLE_VERSION = "20261006-map-styles-v2"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
