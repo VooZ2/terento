@@ -30,20 +30,15 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The next candidate is **1.0.0-rc.1 / build 41**, the first release candidate
-for 1.0.0 (see [versioning](../VERSIONING.md)). It is published on the existing
-`beta` update channel so installed beta builds are offered it by the in-app
-update check. Public metadata continues to identify beta.18 until signed,
-notarized artifacts exist, and the draft release-note section stays marked as a
-draft until the owner approves it. Unlike beta.18 it depends on API changes:
-deploy the catalog API with migrations 067–072 first, then the site, then
-publish the app.
-
-The published release is **1.0.0-beta.18 / build 40**, from signed source
-`e0f0e7041e4aed9e53bdeebb226dff4cd2b6b8c5`. Its ZIP and DMG passed Apple
-notarization, stapling, Gatekeeper and launch validation. This release corrects
-shared Garmin write-target/profile resolution, without API/schema changes or a
-new hardware compatibility claim. Affected-watch confirmation remains pending.
+The published release is **1.0.0-rc.1 / build 41**, the first release
+candidate for 1.0.0, from signed source
+`64949f19b09594dc9e5ed654de7e691f801a233b` (tag `v1.0.0-rc.1-build41`). It is
+published on the existing `beta` update channel, so installed beta builds are
+offered it by the in-app update check. Its ZIP and DMG passed the full release
+suite, Apple notarization, stapling, Gatekeeper and launch validation. The
+catalog API with migrations 067–072 and the site were deployed before the app.
+Fast removal was confirmed on a real watch; real-watch confirmation of the
+faster Update checks remains pending.
 
 The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
