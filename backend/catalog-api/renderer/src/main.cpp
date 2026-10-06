@@ -52,8 +52,9 @@ static const double ORIGIN = M_PI * WGS84_RADIUS;
 
 struct Options
 {
-	QString img;
+	QStringList imgs;
 	QString out;
+	QString compareA, compareB;
 	double minLon = 0, minLat = 0, maxLon = 0, maxLat = 0;
 	int minZoom = 12, maxZoom = 16;
 	int meta = 4;
@@ -66,8 +67,9 @@ struct Options
 static void usage()
 {
 	fprintf(stderr,
-	  "usage: terento-preview-render --img FILE (--info | --bbox W,S,E,N --out DIR)\n"
-	  "  [--zoom MIN-MAX] [--meta N] [--quality Q] [--no-hillshading]\n");
+	  "usage: terento-preview-render --img FILE [--img OVERLAY]... (--info | --bbox W,S,E,N --out DIR)\n"
+	  "  [--zoom MIN-MAX] [--meta N] [--quality Q] [--no-hillshading]\n"
+	  "       terento-preview-render --compare DIR_A DIR_B --zoom Z-Z\n");
 }
 
 static bool parse(const QStringList &args, Options &o)
@@ -75,7 +77,14 @@ static bool parse(const QStringList &args, Options &o)
 	for (int i = 1; i < args.size(); i++) {
 		const QString &a = args.at(i);
 		QString v = (i + 1 < args.size()) ? args.at(i + 1) : QString();
-		if (a == "--img") {o.img = v; i++;}
+		if (a == "--img") {o.imgs.append(v); i++;}
+		else if (a == "--compare") {
+			if (i + 2 >= args.size())
+				return false;
+			o.compareA = args.at(i + 1);
+			o.compareB = args.at(i + 2);
+			i += 2;
+		}
 		else if (a == "--out") {o.out = v; i++;}
 		else if (a == "--info") o.info = true;
 		else if (a == "--no-hillshading") o.hillShading = false;
@@ -101,7 +110,9 @@ static bool parse(const QStringList &args, Options &o)
 		} else
 			return false;
 	}
-	if (o.img.isEmpty())
+	if (!o.compareA.isEmpty())
+		return o.imgs.isEmpty() && o.minZoom == o.maxZoom;
+	if (o.imgs.isEmpty())
 		return false;
 	if (o.info)
 		return true;
@@ -124,6 +135,50 @@ static int lat2tile(double lat, int z)
 	return qBound(0, (int)std::floor(t * (1 << z)), (1 << z) - 1);
 }
 
+/* Mean absolute RGB difference (0-1) over the tiles both directories have
+   at one zoom level; fully transparent pixels count as white paper. */
+static int compare(const Options &o)
+{
+	const QString za(QString("%1/%2").arg(o.compareA).arg(o.minZoom));
+	const QString zb(QString("%1/%2").arg(o.compareB).arg(o.minZoom));
+	double sum = 0;
+	qint64 pixels = 0, tiles = 0;
+
+	const QStringList xs(QDir(za).entryList(QDir::Dirs | QDir::NoDotAndDotDot));
+	for (int i = 0; i < xs.size(); i++) {
+		const QStringList ys(QDir(za + "/" + xs.at(i)).entryList(
+		  QStringList() << "*.webp", QDir::Files));
+		for (int j = 0; j < ys.size(); j++) {
+			const QString rel(xs.at(i) + "/" + ys.at(j));
+			if (!QFileInfo::exists(zb + "/" + rel))
+				continue;
+			QImage a(QImage(za + "/" + rel).convertToFormat(QImage::Format_ARGB32));
+			QImage b(QImage(zb + "/" + rel).convertToFormat(QImage::Format_ARGB32));
+			if (a.isNull() || b.isNull() || a.size() != b.size())
+				continue;
+			for (int y = 0; y < a.height(); y++) {
+				const QRgb *pa = (const QRgb*)a.constScanLine(y);
+				const QRgb *pb = (const QRgb*)b.constScanLine(y);
+				for (int x = 0; x < a.width(); x++) {
+					QRgb ca = qAlpha(pa[x]) ? pa[x] : qRgb(255, 255, 255);
+					QRgb cb = qAlpha(pb[x]) ? pb[x] : qRgb(255, 255, 255);
+					sum += (qAbs(qRed(ca) - qRed(cb)) + qAbs(qGreen(ca)
+					  - qGreen(cb)) + qAbs(qBlue(ca) - qBlue(cb))) / 765.0;
+				}
+			}
+			pixels += (qint64)a.width() * a.height();
+			tiles++;
+		}
+	}
+
+	QJsonObject result;
+	result["tiles"] = tiles;
+	result["score"] = pixels ? sum / pixels : QJsonValue();
+	printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact)
+	  .constData());
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
@@ -136,15 +191,27 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
+	if (!o.compareA.isEmpty())
+		return compare(o);
+
 	MapData::PolyCache polyCache;
 	MapData::PointCache pointCache;
 	MapData::ElevationCache demCache;
 	QMutex lock, demLock;
-	IMGData data(o.img, polyCache, pointCache, demCache, lock, demLock);
-	if (!data.isValid()) {
-		fprintf(stderr, "error: %s\n", qUtf8Printable(data.errorString()));
-		return 3;
+	QList<IMGData*> layers;
+	for (int i = 0; i < o.imgs.size(); i++) {
+		IMGData *d = new IMGData(o.imgs.at(i), polyCache, pointCache, demCache,
+		  lock, demLock);
+		if (!d->isValid()) {
+			fprintf(stderr, "error: %s: %s\n", qUtf8Printable(o.imgs.at(i)),
+			  qUtf8Printable(d->errorString()));
+			return 3;
+		}
+		layers.append(d);
 	}
+	/* The first map is the base; further maps (e.g. a contour add-on) are
+	   drawn on top in the given order, each with its own TYP style. */
+	IMGData &data = *layers.first();
 
 	const RectC b(data.bounds());
 	if (o.info) {
@@ -161,7 +228,9 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	Style style(1.0, data.typ());
+	QList<Style*> styles;
+	for (int i = 0; i < layers.size(); i++)
+		styles.append(new Style(1.0, layers.at(i)->typ()));
 	Projection proj(PCS::pcs(3857));
 	const bool hillShading = o.hillShading && data.hasDEM();
 
@@ -178,18 +247,25 @@ int main(int argc, char *argv[])
 		/* GPXSee IMG zoom n means 2^n tiles of 1 px; slippy zoom z with
 		   256 px tiles is n = z + 8. Data level selection is clamped to
 		   the levels the map provides. */
-		const int imgZoom = qBound(data.zooms().min(), z + 8,
-		  data.zooms().max());
+		const int zoom = z + 8;
 
 		for (int mx = x0; mx <= x1; mx += o.meta) {
 			for (int my = y0; my <= y1; my += o.meta) {
 				const int w = qMin(o.meta, x1 - mx + 1);
 				const int h = qMin(o.meta, y1 - my + 1);
-				RasterTile tile(&proj, transform, &data, &style, imgZoom,
-				  QRect(mx * TILE, my * TILE, w * TILE, h * TILE), 1.0,
-				  hillShading, true, true);
-				tile.render();
-				const QImage img(tile.pixmap().toImage());
+				const QRect rect(mx * TILE, my * TILE, w * TILE, h * TILE);
+				QImage img(rect.size(), QImage::Format_ARGB32_Premultiplied);
+				img.fill(Qt::transparent);
+				QPainter painter(&img);
+				for (int n = 0; n < layers.size(); n++) {
+					IMGData *d = layers.at(n);
+					RasterTile tile(&proj, transform, d, styles.at(n),
+					  qBound(d->zooms().min(), zoom, d->zooms().max()), rect,
+					  1.0, n == 0 && hillShading, true, true);
+					tile.render();
+					painter.drawPixmap(0, 0, tile.pixmap());
+				}
+				painter.end();
 
 				for (int i = 0; i < w; i++) {
 					for (int j = 0; j < h; j++) {
@@ -226,6 +302,9 @@ int main(int argc, char *argv[])
 	result["hillShading"] = hillShading;
 	printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact)
 	  .constData());
+
+	qDeleteAll(styles);
+	qDeleteAll(layers);
 
 	return 0;
 }

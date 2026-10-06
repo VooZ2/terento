@@ -2608,6 +2608,8 @@ def _provider_action_label(value: Any) -> str:
         "provider.status_changed": "Status changed",
         "provider.retired": "Provider retired",
         "provider.health_schedule_changed": "Health check interval changed",
+        "provider.previews_enabled": "Map style previews turned on",
+        "provider.previews_disabled": "Map style previews turned off",
         "package.downloads_disabled": "Map downloads disabled",
         "package.downloads_enabled": "Map downloads enabled",
     }
@@ -2633,6 +2635,65 @@ def _provider_action_button(
         f"<button type='button' class='{class_name}' data-provider-action='{html.escape(action, quote=True)}'"
         f" data-provider-id='{html.escape(provider_id, quote=True)}'{attributes}{disabled_attribute}>"
         f"{html.escape(label)}</button>"
+    )
+
+
+_PREVIEW_STATUS_LABELS = {
+    "AVAILABLE": "Published",
+    "NOT_COVERED": "Not covered",
+    "PENDING": "Waiting",
+    "FAILED": "Failed",
+}
+
+
+def _provider_preview_section(provider_id: str, status: str, previews: dict[str, Any] | None) -> str:
+    """Map style preview switch and per-layer render results for one provider."""
+    previews = previews or {}
+    enabled = bool(previews.get("enabled"))
+    layers = list(previews.get("layers") or [])
+    counts = {key: 0 for key in _PREVIEW_STATUS_LABELS}
+    for layer in layers:
+        key = str(layer.get("status") or "PENDING").upper()
+        counts[key] = counts.get(key, 0) + 1
+    state = (
+        "<span class='provider-status provider-status-active'>Previews on</span>"
+        if enabled else
+        "<span class='provider-status provider-status-paused'>Previews off</span>"
+    )
+    summary = " · ".join(f"{counts[key]} {label.lower()}" for key, label in _PREVIEW_STATUS_LABELS.items())
+    label = "Turn previews off" if enabled else "Turn previews on"
+    disabled = " disabled" if status == "RETIRED" else ""
+    button = (
+        f"<button type='button' class='secondary-button' data-provider-action='previews'"
+        f" data-provider-id='{html.escape(provider_id, quote=True)}'"
+        f" data-previews-enabled='{'false' if enabled else 'true'}'{disabled}>{label}</button>"
+    )
+    rows = "".join(
+        "<tr>"
+        f"<td><code>{html.escape(str(layer.get('area_id') or ''))}</code></td>"
+        f"<td>{html.escape(str(layer.get('style_id') or ''))}</td>"
+        f"<td class='column-status'>{_provider_status_badge(_PREVIEW_STATUS_LABELS.get(str(layer.get('status') or '').upper(), 'Waiting'))}</td>"
+        f"<td>{html.escape(str(layer.get('package_id') or '—'))}<br><small>{html.escape(str(layer.get('package_version') or ''))}</small></td>"
+        f"<td class='column-date'>{_timestamp_markup(layer.get('rendered_at'))}</td>"
+        f"<td>{html.escape(str(layer.get('error_code') or ''))}<br><small>{html.escape(str(layer.get('error_message') or ''))}</small></td>"
+        "</tr>"
+        for layer in layers
+    )
+    table = (
+        "<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map style preview layers</caption>"
+        "<thead><tr><th scope='col'>Area</th><th scope='col'>Style</th><th scope='col' class='column-status'>State</th>"
+        "<th scope='col'>Package</th><th scope='col' class='column-date'>Rendered</th><th scope='col'>Last problem</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table></div>"
+        if layers else "<p class='empty'>No preview layers rendered yet.</p>"
+    )
+    return (
+        "<section class='provider-card' aria-label='Map style previews'>"
+        f"<div class='section-heading'><div><h2>Map style previews</h2></div>{button}</div>"
+        f"<div class='provider-latest-summary'><div>{state} <span>{html.escape(summary)}</span></div></div>"
+        "<p class='table-help'>When on, the scheduler temporarily downloads this provider's maps during the nightly "
+        "preview window to draw comparison tiles for the public Map styles page, then deletes the downloads.</p>"
+        f"<details class='admin-disclosure' id='provider-preview-layers'><summary>Preview layers <span class='disclosure-meta'>· {len(layers)}</span></summary>"
+        f"<div class='disclosure-body'>{table}</div></details></section>"
     )
 
 
@@ -3099,6 +3160,7 @@ def provider_detail_page(
         <div class='provider-state-grid'>
         <section class='provider-card'><div class='section-heading'><div><h2>Health</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{_timestamp_markup(latest_health.get('checked_at') or provider.get('lastHealthCheck'))}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{latest_health_table}</div></details>{schedule}<details class='admin-disclosure' id='provider-health-history'><summary>Health check history <span class='disclosure-meta'>· {len(previous_health)} previous {'check' if len(previous_health) == 1 else 'checks'}</span></summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
         {collection_section}</div>
+        {_provider_preview_section(provider_id, status, provider.get('previews'))}
         <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages <span class='disclosure-meta'>· {len(packages)} catalog entries · {_optional_count_label(broken_packages)} artifacts needing attention</span></summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Needs attention</option><option value='available'>Available</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
         <details class='provider-card admin-disclosure' id='provider-technical-details'><summary>Technical details</summary><div class='disclosure-body'>
         <details class='admin-disclosure'><summary>Package releases</summary><div class='disclosure-body'><p>{release_summary}</p><p class='table-help'>Each region keeps its own provider release.</p></div></details>
@@ -3365,7 +3427,7 @@ def _provider_detail_script() -> str:
             downloadReason = answer.trim();
             if (!downloadReason) { if (status) status.textContent = 'Enter a reason to disable downloads.'; return; }
           }
-          const body = action === 'health-schedule' ? JSON.stringify({intervalHours: Number(document.getElementById('provider-health-interval').value)}) : action === 'downloads' ? JSON.stringify({packageId: button.dataset.packageId, enabled: button.dataset.downloadsEnabled === 'true', reason: downloadReason}) : action === 'rechecks' ? JSON.stringify(button.dataset.packageId ? {packageId: button.dataset.packageId} : {}) : action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
+          const body = action === 'previews' ? JSON.stringify({enabled: button.dataset.previewsEnabled === 'true'}) : action === 'health-schedule' ? JSON.stringify({intervalHours: Number(document.getElementById('provider-health-interval').value)}) : action === 'downloads' ? JSON.stringify({packageId: button.dataset.packageId, enabled: button.dataset.downloadsEnabled === 'true', reason: downloadReason}) : action === 'rechecks' ? JSON.stringify(button.dataset.packageId ? {packageId: button.dataset.packageId} : {}) : action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
           const original = button.textContent;
           button.disabled = true;
           if (status) status.textContent = `${original}…`;

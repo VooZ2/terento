@@ -19,6 +19,15 @@ class Settings:
     operations_ingest_secret: str | None = None
     opentopomap_contour_mode: str = "off"
     opentopomap_contour_allowlist: tuple[str, ...] = ()
+    map_preview_enabled: bool = False
+    map_preview_work_dir: Path = Path("/var/lib/terento/preview-work")
+    map_preview_window_utc: str = "00:00-06:00"
+    map_preview_refresh_days: int = 90
+    map_preview_max_total_bytes: int = 55 * 1000**3
+    map_preview_max_source_bytes: int = 5 * 1024**3
+    map_preview_min_free_bytes: int = 20 * 1000**3
+    map_preview_renderer: Path = Path("/usr/local/bin/terento-preview-render")
+    public_base_url: str = "https://api.terento.app"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -45,6 +54,35 @@ class Settings:
             operations_ingest_secret=_optional_secret("OPERATIONS_INGEST_SECRET"),
             opentopomap_contour_mode=_contour_mode(),
             opentopomap_contour_allowlist=_csv("OPENTOPO_MAP_CONTOUR_ALLOWLIST"),
+            map_preview_enabled=_boolean("MAP_PREVIEW_ENABLED", False),
+            map_preview_work_dir=Path(
+                os.environ.get("TERENTO_PREVIEW_WORK_DIR", "/var/lib/terento/preview-work")
+            ),
+            map_preview_window_utc=_preview_window(),
+            map_preview_refresh_days=_positive_int("MAP_PREVIEW_REFRESH_DAYS", 90),
+            map_preview_max_total_bytes=_positive_int("MAP_PREVIEW_MAX_TOTAL_BYTES", 55 * 1000**3),
+            map_preview_max_source_bytes=_positive_int("MAP_PREVIEW_MAX_SOURCE_BYTES", 5 * 1024**3),
+            map_preview_min_free_bytes=_positive_int("MAP_PREVIEW_MIN_FREE_BYTES", 20 * 1000**3),
+            map_preview_renderer=Path(
+                os.environ.get("TERENTO_PREVIEW_RENDERER", "/usr/local/bin/terento-preview-render")
+            ),
+            public_base_url=_public_base_url(),
+        )
+
+    def map_preview_settings(self):
+        from .map_preview.job import PreviewSettings, parse_window
+
+        return PreviewSettings(
+            enabled=self.map_preview_enabled,
+            asset_root=self.asset_root,
+            work_dir=self.map_preview_work_dir,
+            window_utc=parse_window(self.map_preview_window_utc),
+            refresh_days=self.map_preview_refresh_days,
+            max_total_bytes=self.map_preview_max_total_bytes,
+            max_source_bytes=self.map_preview_max_source_bytes,
+            min_free_bytes=self.map_preview_min_free_bytes,
+            renderer=self.map_preview_renderer,
+            public_base_url=self.public_base_url,
         )
 
 
@@ -97,3 +135,18 @@ def _csv(name: str) -> tuple[str, ...]:
         for item in os.environ.get(name, "").split(",")
         if item.strip()
     )
+
+
+def _preview_window() -> str:
+    value = os.environ.get("MAP_PREVIEW_WINDOW_UTC", "00:00-06:00").strip()
+    from .map_preview.job import parse_window
+
+    parse_window(value)
+    return value
+
+
+def _public_base_url() -> str:
+    value = os.environ.get("TERENTO_PUBLIC_API_URL", "https://api.terento.app").strip().rstrip("/")
+    if not value.startswith("https://"):
+        raise RuntimeError("TERENTO_PUBLIC_API_URL must use https")
+    return value

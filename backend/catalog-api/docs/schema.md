@@ -1,7 +1,9 @@
 # Catalog database schema
 
 The PostgreSQL schema is applied by the forward-only migrations in
-`src/terento_catalog/migrations/`. Map/provider tables store metadata only.
+`src/terento_catalog/migrations/`. Map/provider tables store metadata only;
+map style preview tables (migration 067) store render bookkeeping, never map
+files.
 Compatibility evidence, administrator credentials, and sessions are isolated
 from those tables and contain no Garmin Unit IDs, serial numbers, local
 manifests, local paths, or map binaries.
@@ -23,7 +25,26 @@ the registry contains only providers with a known server-side adapter.
 | `attribution` | `text` | Attribution shown to clients |
 | `license_url` | `text` | Official license/source page |
 | `last_catalog_sync` | `timestamptz` | Last successful metadata snapshot time |
+| `preview_enabled` | `boolean` | Operator switch for map style previews (migration 067, default `false`) |
 | `created_at`, `updated_at` | `timestamptz` | Local catalog audit timestamps |
+
+## Map style previews (migration 067)
+
+`map_preview_layer` has one row per preview area and style (primary key
+`area_id`, `style_id`): `provider_id`, `status` (`AVAILABLE`, `NOT_COVERED`,
+`PENDING`, `FAILED`), the rendered `package_id` and `package_version`,
+`release` that contains the tiles, `tile_count`, `bytes`, `rendered_at`,
+`attempted_at`, `retry_not_before` and the last `error_code`/`error_message`.
+A failed refresh of a published layer keeps its status and facts and only
+records the problem.
+
+`map_preview_package_bounds` caches the WGS84 bounds read from a downloaded
+package version so packages that cannot cover an area are not downloaded
+again. `map_preview_area_score` keeps each area's 0–1 style difference score.
+`map_preview_release` records each published tile release (`id` such as
+`20261006T010000Z`, `layer_count`, total preview `bytes`). The single-row
+`map_preview_lease` lets only one renderer work at a time across restarts and
+deploy overlap. Tile files live on the asset volume, not in PostgreSQL.
 
 ## `map`
 
