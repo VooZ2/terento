@@ -47,6 +47,7 @@ class PreviewSettings:
     renderer: Path
     public_base_url: str
     publish_interval: timedelta = timedelta(minutes=30)
+    render_jobs: int = 1
 
     def limits(self) -> Limits:
         return Limits(max_source_bytes=self.max_source_bytes, min_free_bytes=self.min_free_bytes)
@@ -148,7 +149,7 @@ class PreviewRun:
     ) -> None:
         self.database = database
         self.settings = settings
-        self.renderer = renderer or Renderer(settings.renderer)
+        self.renderer = renderer or Renderer(settings.renderer, jobs=settings.render_jobs)
         self.store = store or PreviewStore(settings.asset_root)
         self.db = db or PreviewDatabase(database)
         self.areas = areas if areas is not None else load_areas()
@@ -348,7 +349,7 @@ def run_worker(database: Any, stop: Event, settings: PreviewSettings, *, clock=l
     if not settings.enabled:
         LOGGER.info("map previews are disabled (MAP_PREVIEW_ENABLED=false)")
         return
-    renderer = Renderer(settings.renderer)
+    renderer = Renderer(settings.renderer, jobs=settings.render_jobs)
     if not renderer.available():
         LOGGER.error("map previews enabled but %s is missing", settings.renderer)
         return

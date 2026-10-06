@@ -560,6 +560,26 @@ class RendererBinaryTests(unittest.TestCase):
             self.assertEqual(renderer.compare(Path(directory) / "a", Path(directory) / "a", 14), 0.0)
             self.assertLess(renderer.compare(Path(directory) / "a", Path(directory) / "b", 14), 0.05)
 
+    def test_parallel_rendering_matches_serial_output(self):
+        executable = Path(os.environ["TERENTO_PREVIEW_RENDERER"])
+        fixture_area = area("fixture", countries=("AD",), center=(1.532, 42.512), kind="city")
+        fixture_area = PreviewArea(**{**fixture_area.__dict__, "min_zoom": 13, "max_zoom": 15})
+        with tempfile.TemporaryDirectory() as directory:
+            serial = Renderer(executable, jobs=1).render(fixture_area, [FIXTURE_IMG], Path(directory) / "serial")
+            parallel = Renderer(executable, jobs=4).render(fixture_area, [FIXTURE_IMG], Path(directory) / "parallel")
+            self.assertEqual((serial.tiles, serial.bytes), (parallel.tiles, parallel.bytes))
+            for tile in Path(directory, "serial").rglob("*.webp"):
+                twin = Path(directory, "parallel", tile.relative_to(Path(directory, "serial")))
+                self.assertEqual(tile.read_bytes(), twin.read_bytes())
+
+
+class RendererSettingsTests(unittest.TestCase):
+    def test_jobs_scale_the_memory_limit_and_are_bounded(self):
+        self.assertEqual(Renderer(jobs=1).memory_limit_bytes, 1536 * 1024 * 1024)
+        self.assertEqual(Renderer(jobs=3).memory_limit_bytes, 2560 * 1024 * 1024)
+        self.assertEqual((Renderer(jobs=0).jobs, Renderer(jobs=99).jobs), (1, 16))
+        self.assertEqual(settings(Path("/tmp")).render_jobs, 1)
+
 
 class PreviewHTTPTests(unittest.TestCase):
     def test_manifest_and_tile_routes(self):

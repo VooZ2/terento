@@ -34,9 +34,12 @@
 #include <QImageWriter>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QAtomicInteger>
 #include <QMutex>
 #include <QPainter>
 #include <QStringList>
+#include <QThreadPool>
+#include <QtConcurrent/QtConcurrentMap>
 #include "map/IMG/imgdata.h"
 #include "map/IMG/rastertile_img.h"
 #include "map/IMG/style_img.h"
@@ -59,6 +62,7 @@ struct Options
 	int minZoom = 12, maxZoom = 16;
 	int meta = 4;
 	int quality = 78;
+	int jobs = 1;
 	bool hillShading = true;
 	bool bboxSet = false;
 	bool info = false;
@@ -68,7 +72,7 @@ static void usage()
 {
 	fprintf(stderr,
 	  "usage: terento-preview-render --img FILE [--img OVERLAY]... (--info | --bbox W,S,E,N --out DIR)\n"
-	  "  [--zoom MIN-MAX] [--meta N] [--quality Q] [--no-hillshading]\n"
+	  "  [--zoom MIN-MAX] [--meta N] [--quality Q] [--jobs N] [--no-hillshading]\n"
 	  "       terento-preview-render --compare DIR_A DIR_B --zoom Z-Z\n");
 }
 
@@ -90,6 +94,7 @@ static bool parse(const QStringList &args, Options &o)
 		else if (a == "--no-hillshading") o.hillShading = false;
 		else if (a == "--meta") {o.meta = v.toInt(); i++;}
 		else if (a == "--quality") {o.quality = v.toInt(); i++;}
+		else if (a == "--jobs") {o.jobs = v.toInt(); i++;}
 		else if (a == "--zoom") {
 			QStringList z = v.split('-');
 			if (z.size() != 2)
@@ -119,7 +124,7 @@ static bool parse(const QStringList &args, Options &o)
 	return o.bboxSet && !o.out.isEmpty() && o.minLon < o.maxLon
 	  && o.minLat < o.maxLat && o.minZoom >= 0 && o.minZoom <= o.maxZoom
 	  && o.maxZoom <= 20 && o.meta >= 1 && o.meta <= 16 && o.quality >= 1
-	  && o.quality <= 100;
+	  && o.quality <= 100 && o.jobs >= 1 && o.jobs <= 16;
 }
 
 static int lon2tile(double lon, int z)
@@ -234,70 +239,89 @@ int main(int argc, char *argv[])
 	Projection proj(PCS::pcs(3857));
 	const bool hillShading = o.hillShading && data.hasDEM();
 
-	QElapsedTimer timer;
-	timer.start();
-	qint64 tiles = 0, bytes = 0;
-
+	/* One job per metatile, run on --jobs threads. The IMG data caches are
+	   shared and guarded by the locks passed to IMGData, as in GPXSee. */
+	struct Job {int z, mx, my, w, h;};
+	QList<Job> jobs;
 	for (int z = o.minZoom; z <= o.maxZoom; z++) {
 		const int x0 = lon2tile(o.minLon, z), x1 = lon2tile(o.maxLon, z);
 		const int y0 = lat2tile(o.maxLat, z), y1 = lat2tile(o.minLat, z);
-		const double scale = (2.0 * ORIGIN) / ((double)TILE * (1 << z));
+		for (int mx = x0; mx <= x1; mx += o.meta)
+			for (int my = y0; my <= y1; my += o.meta)
+				jobs.append({z, mx, my, qMin(o.meta, x1 - mx + 1),
+				  qMin(o.meta, y1 - my + 1)});
+	}
+
+	QElapsedTimer timer;
+	timer.start();
+	QAtomicInteger<qint64> tiles(0), bytes(0);
+	QAtomicInt failure(0);
+	QMutex errorLock;
+	QString error;
+
+	auto render = [&](const Job &job) {
+		if (failure.loadRelaxed())
+			return;
+		const double scale = (2.0 * ORIGIN) / ((double)TILE * (1 << job.z));
 		const Transform transform(ReferencePoint(PointD(0, 0),
 		  PointD(-ORIGIN, ORIGIN)), PointD(scale, scale));
 		/* GPXSee IMG zoom n means 2^n tiles of 1 px; slippy zoom z with
 		   256 px tiles is n = z + 8. Data level selection is clamped to
 		   the levels the map provides. */
-		const int zoom = z + 8;
+		const int zoom = job.z + 8;
+		const QRect rect(job.mx * TILE, job.my * TILE, job.w * TILE,
+		  job.h * TILE);
+		QImage img(rect.size(), QImage::Format_ARGB32_Premultiplied);
+		img.fill(Qt::transparent);
+		QPainter painter(&img);
+		for (int n = 0; n < layers.size(); n++) {
+			IMGData *d = layers.at(n);
+			RasterTile tile(&proj, transform, d, styles.at(n),
+			  qBound(d->zooms().min(), zoom, d->zooms().max()), rect,
+			  1.0, n == 0 && hillShading, true, true);
+			tile.render();
+			painter.drawPixmap(0, 0, tile.pixmap());
+		}
+		painter.end();
 
-		for (int mx = x0; mx <= x1; mx += o.meta) {
-			for (int my = y0; my <= y1; my += o.meta) {
-				const int w = qMin(o.meta, x1 - mx + 1);
-				const int h = qMin(o.meta, y1 - my + 1);
-				const QRect rect(mx * TILE, my * TILE, w * TILE, h * TILE);
-				QImage img(rect.size(), QImage::Format_ARGB32_Premultiplied);
-				img.fill(Qt::transparent);
-				QPainter painter(&img);
-				for (int n = 0; n < layers.size(); n++) {
-					IMGData *d = layers.at(n);
-					RasterTile tile(&proj, transform, d, styles.at(n),
-					  qBound(d->zooms().min(), zoom, d->zooms().max()), rect,
-					  1.0, n == 0 && hillShading, true, true);
-					tile.render();
-					painter.drawPixmap(0, 0, tile.pixmap());
+		for (int i = 0; i < job.w; i++) {
+			const QString dir(QString("%1/%2/%3").arg(o.out).arg(job.z)
+			  .arg(job.mx + i));
+			if (!QDir().mkpath(dir)) {
+				QMutexLocker locker(&errorLock);
+				error = QString("cannot create %1").arg(dir);
+				failure.storeRelaxed(4);
+				return;
+			}
+			for (int j = 0; j < job.h; j++) {
+				const QString path(QString("%1/%2.webp").arg(dir)
+				  .arg(job.my + j));
+				QImage t(img.copy(i * TILE, j * TILE, TILE, TILE));
+				QImageWriter writer(path, "webp");
+				writer.setQuality(o.quality);
+				if (!writer.write(t)) {
+					QMutexLocker locker(&errorLock);
+					error = QString("%1: %2").arg(path, writer.errorString());
+					failure.storeRelaxed(5);
+					return;
 				}
-				painter.end();
-
-				for (int i = 0; i < w; i++) {
-					for (int j = 0; j < h; j++) {
-						const QString dir(QString("%1/%2/%3").arg(o.out)
-						  .arg(z).arg(mx + i));
-						if (!QDir().mkpath(dir)) {
-							fprintf(stderr, "error: cannot create %s\n",
-							  qUtf8Printable(dir));
-							return 4;
-						}
-						const QString path(QString("%1/%2.webp").arg(dir)
-						  .arg(my + j));
-						QImage t(img.copy(i * TILE, j * TILE, TILE, TILE));
-						QImageWriter writer(path, "webp");
-						writer.setQuality(o.quality);
-						if (!writer.write(t)) {
-							fprintf(stderr, "error: %s: %s\n",
-							  qUtf8Printable(path),
-							  qUtf8Printable(writer.errorString()));
-							return 5;
-						}
-						tiles++;
-						bytes += QFileInfo(path).size();
-					}
-				}
+				tiles.fetchAndAddRelaxed(1);
+				bytes.fetchAndAddRelaxed(QFileInfo(path).size());
 			}
 		}
+	};
+
+	QThreadPool pool;
+	pool.setMaxThreadCount(o.jobs);
+	QtConcurrent::blockingMap(&pool, jobs, render);
+	if (failure.loadRelaxed()) {
+		fprintf(stderr, "error: %s\n", qUtf8Printable(error));
+		return failure.loadRelaxed();
 	}
 
 	QJsonObject result;
-	result["tiles"] = tiles;
-	result["bytes"] = bytes;
+	result["tiles"] = tiles.loadRelaxed();
+	result["bytes"] = bytes.loadRelaxed();
 	result["seconds"] = timer.elapsed() / 1000.0;
 	result["hillShading"] = hillShading;
 	printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact)
