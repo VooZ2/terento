@@ -33,7 +33,7 @@ for (const page of metadata.pages.filter((candidate) => candidate.indexable !== 
   assert.match(sitemap, new RegExp(`<loc>${baseUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}${page.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</loc>`), `${page.path}: sitemap URL`);
 }
 
-assert.match(read("site/index.html"), /provider-list\.js\?v=20260912-bbbike-types-v1/);
+assert.match(read("site/index.html"), /provider-list\.js\?v=20261006-map-styles-link-v1/);
 assert.match(read("site/provider-list.js"), /https:\/\/api\.terento\.app\/maps\/catalog-v4\.json/);
 assert.match(read("site/reading-state.js"), /terento-reading-state/);
 

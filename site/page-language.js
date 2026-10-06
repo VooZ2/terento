@@ -45,7 +45,6 @@ window.TerentoPageLanguage = (copy) => {
       const value = selected[element.dataset.i18nAria];
       if (value) element.setAttribute("aria-label", value);
     });
-    document.querySelector("[data-footer-copy]").textContent = selected.footerCopy;
   };
 
   let initialLanguage = "en";

@@ -2,7 +2,7 @@
 <html lang="cs" data-language="cs">
   <head>
     <script defer src="/site-shell.js?v=20261006-map-styles-shell-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261006-map-styles-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261006-map-styles-v2">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260912-bbbike-types-v1"></script>
+    <script defer src="/provider-list.js?v=20261006-map-styles-link-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script type="application/ld+json">
       {
@@ -334,10 +334,7 @@
               <ul class="provider-benefits"><li>Kompaktní mapy šetří úložiště zařízení</li><li>Zahrnuty i menší silnice a cesty</li><li>Navigace po zmapovaných silnicích a cestách</li></ul>
             </article>
           </div>
-          <div class="provider-controls" data-provider-controls hidden>
-            <button type="button" data-provider-previous aria-controls="provider-cards">Předchozí poskytovatel map</button>
-            <button type="button" data-provider-next aria-controls="provider-cards">Další poskytovatel map</button>
-          </div>
+          <p class="provider-compare"><a class="text-link" href="/cs/map-styles/" data-umami-event="navigation-link-click" data-umami-event-location="home-providers">Porovnat styly map naživo<span aria-hidden="true"> →</span></a></p>
         </div>
       </section>
       <section class="faq section" id="faq" aria-labelledby="faq-title">
@@ -407,7 +404,6 @@
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
-      <div class="shell footer-note"><p><span data-footer-copy data-shell-copy="stats">Statistiky návštěvnosti (Umami) nepoužívají cookies.</span></p></div>
     </footer>
   </body>
 </html>

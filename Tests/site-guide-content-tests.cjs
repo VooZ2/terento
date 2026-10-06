@@ -209,8 +209,8 @@ for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
   const source = read(path.join(root, file));
   assert.match(source, /data-page="(?:legal|privacy)"/);
   const scripts = [...source.matchAll(/<script defer src="([^"]+)"/g)].map((match) => match[1]);
-  const controller = "/page-language.js?v=20260905-shared-page-language-v1";
-  const copy = `/${file.split("/")[1]}-language.js?v=20260905-shared-page-language-v1`;
+  const controller = "/page-language.js?v=20261006-shared-page-language-v2";
+  const copy = `/${file.split("/")[1]}-language.js?v=20261006-shared-page-language-v2`;
   assert.equal(scripts.filter((src) => src === controller).length, 1);
   assert.equal(scripts.filter((src) => src === copy).length, 1);
   assert.ok(scripts.findIndex((src) => src.startsWith("/language.js?")) < scripts.indexOf(controller));
@@ -346,7 +346,6 @@ for (const pageName of ["legal", "privacy"]) {
       assert.equal(node('meta[name="twitter:description"]').content, node('meta[name="description"]').content);
       assert.ok(node("[data-i18n]").textContent);
       assert.ok(node("[data-i18n-aria]")["aria-label"]);
-      assert.ok(node("[data-footer-copy]").textContent);
       assert.deepEqual(links.filter((link) => link["aria-current"]).map((link) => link.dataset.languageSwitch), [language]);
     };
     check(locales.includes(preference) ? preference : "en");

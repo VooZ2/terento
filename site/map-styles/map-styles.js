@@ -48,7 +48,6 @@
 
   let manifest = null;
   let best = D.bestAreas(areas, null);
-  let catalogFacts = null;
 
   // Maps ----------------------------------------------------------------------
   const mapOptions = {
@@ -160,8 +159,7 @@
     const tags = current.tags.filter((tag) => copy.tags[tag]).slice(0, 2)
       .map((tag) => `<span class="map-styles-tag">${escapeHtml(copy.tags[tag])}</span>`).join("");
     const covered = D.coveredCount(manifest, current.id, styleIds);
-    const badge = best.has(current.id) ? `<span class="map-styles-best">${ICON_STAR}${escapeHtml(copy.best)}</span>` : "";
-    $("map-styles-area-meta").innerHTML = `${ICON_PIN}<span>${escapeHtml(countries)}</span>${tags}<span>· ${escapeHtml(D.format(copy.styles_of, {n: covered}))}</span>${badge}`;
+    $("map-styles-area-meta").innerHTML = `${ICON_PIN}<span>${escapeHtml(countries)}</span>${tags}<span>${escapeHtml(D.format(copy.styles_of, {n: covered}))}</span>`;
   }
 
   function styleOption(styleId, selected, other) {
@@ -297,8 +295,7 @@
       shown = items.length;
       const featured = kind ? items.filter((item) => best.has(item.id)) : [];
       const rest = kind ? items.filter((item) => !best.has(item.id)) : items;
-      if (featured.length) markup += `<p class="map-styles-group">${escapeHtml(copy.best)}</p><ul>${featured.map(areaButton).join("")}</ul>`;
-      if (rest.length) markup += `${featured.length ? `<p class="map-styles-group">${escapeHtml(copy.all[state.tab])}</p>` : ""}<ul>${rest.map(areaButton).join("")}</ul>`;
+      if (shown) markup += `<ul>${featured.concat(rest).map(areaButton).join("")}</ul>`;
     }
     if (!shown) markup = `<p class="map-styles-empty">${escapeHtml(D.format(copy.no_match, {q: state.query}))}</p>`;
     list.innerHTML = markup;
@@ -312,9 +309,15 @@
     $("map-styles-browser").hidden = false;
     $("map-styles-open-places").setAttribute("aria-expanded", "true");
     renderList();
-    const current = document.querySelector('.map-styles-area[aria-pressed="true"]');
-    if (current) current.scrollIntoView({block: "center"});
-    $("map-styles-search").focus();
+    // Scroll only the list: scrollIntoView and a plain focus() also scroll the
+    // clipped viewer, which lifts the whole map and leaves an empty band below it.
+    const list = $("map-styles-list");
+    const current = list.querySelector('.map-styles-area[aria-pressed="true"]');
+    if (current) {
+      const offset = current.getBoundingClientRect().top - list.getBoundingClientRect().top;
+      list.scrollTop += offset - (list.clientHeight - current.offsetHeight) / 2;
+    }
+    $("map-styles-search").focus({preventScroll: true});
   }
 
   function closePlaces(focusBack) {
@@ -490,31 +493,6 @@
     }
   }
   $("map-styles-retry").addEventListener("click", loadManifest);
-
-  async function loadCatalogFacts() {
-    if (catalogFacts) return;
-    try {
-      catalogFacts = D.catalogFacts(await fetchJson(data.catalogUrl), styles);
-    } catch (error) {
-      return;
-    }
-    document.querySelectorAll("[data-style-card]").forEach((card) => {
-      const facts = catalogFacts[card.dataset.styleCard];
-      const style = styleById[card.dataset.styleCard];
-      if (!facts || !style) return;
-      const count = card.querySelector("[data-style-count]");
-      count.textContent = D.format(style.countTemplate, {count: new Intl.NumberFormat(locale).format(facts.count)});
-      count.hidden = false;
-      const size = D.formatSize(facts.medianBytes, locale);
-      const sizeNode = card.querySelector("[data-style-size]");
-      if (size && sizeNode) {
-        sizeNode.querySelector("strong").textContent = size;
-        sizeNode.hidden = false;
-      }
-    });
-  }
-  const about = $("map-styles-about");
-  if (about) about.addEventListener("toggle", () => { if (about.open) loadCatalogFacts(); });
 
   viewer.classList.add("is-ready");
   refresh({frame: true});

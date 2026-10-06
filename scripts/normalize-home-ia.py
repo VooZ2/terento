@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-PROVIDER_SCRIPT_VERSION = "20260912-bbbike-types-v1"
+PROVIDER_SCRIPT_VERSION = "20261006-map-styles-link-v1"
 FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
@@ -56,8 +56,7 @@ PROVIDER_CARD_COPY = {
             "description": "Add lines that show elevation and help you read slopes. Choose this add-on when installing an OpenTopoMap region in Terento.",
             "count_template": "Available for {count} map packages · Uses additional storage."
         },
-        "previous": "Previous map provider",
-        "next": "Next map provider"
+        "compare_styles": "Compare map styles live"
     },
     "de": {
         "freizeitkarte": {
@@ -96,8 +95,7 @@ PROVIDER_CARD_COPY = {
             "description": "Ergänze Höhenlinien, um Höhen und Hänge besser zu erkennen. Wähle dieses Extra bei der Installation einer OpenTopoMap-Region in Terento.",
             "count_template": "Für {count} Kartenpakete verfügbar · Benötigt zusätzlichen Speicherplatz."
         },
-        "previous": "Vorheriger Kartenanbieter",
-        "next": "Nächster Kartenanbieter"
+        "compare_styles": "Kartenstile live vergleichen"
     },
     "fr": {
         "freizeitkarte": {
@@ -136,8 +134,7 @@ PROVIDER_CARD_COPY = {
             "description": "Ajoutez des courbes d’altitude pour mieux lire les pentes. Choisissez ce complément lors de l’installation d’une région OpenTopoMap dans Terento.",
             "count_template": "Disponible pour {count} cartes · Utilise de l’espace supplémentaire."
         },
-        "previous": "Fournisseur de cartes précédent",
-        "next": "Fournisseur de cartes suivant"
+        "compare_styles": "Comparer les styles en direct"
     },
     "pl": {
         "freizeitkarte": {
@@ -176,8 +173,7 @@ PROVIDER_CARD_COPY = {
             "description": "Dodaj linie wysokości, które pomagają odczytać nachylenie terenu. Wybierz ten dodatek podczas instalacji regionu OpenTopoMap w Terento.",
             "count_template": "Dostępne dla {count} pakietów map · Zajmują dodatkowe miejsce."
         },
-        "previous": "Poprzedni dostawca map",
-        "next": "Następny dostawca map"
+        "compare_styles": "Porównaj style map na żywo"
     },
     "cs": {
         "freizeitkarte": {
@@ -216,8 +212,7 @@ PROVIDER_CARD_COPY = {
             "description": "Přidejte výškové čáry, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.",
             "count_template": "Dostupné pro {count} mapových balíčků · Zabírají další místo."
         },
-        "previous": "Předchozí poskytovatel map",
-        "next": "Další poskytovatel map"
+        "compare_styles": "Porovnat styly map naživo"
     },
     "it": {
         "freizeitkarte": {
@@ -256,8 +251,7 @@ PROVIDER_CARD_COPY = {
             "description": "Aggiungi linee altimetriche per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.",
             "count_template": "Disponibile per {count} pacchetti di mappe · Occupa spazio aggiuntivo."
         },
-        "previous": "Provider di mappe precedente",
-        "next": "Provider di mappe successivo"
+        "compare_styles": "Confronta gli stili dal vivo"
     }
 }
 
@@ -462,10 +456,7 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="{copy["provider_list_label"]}">
             {provider_cards}
           </div>
-          <div class="provider-controls" data-provider-controls hidden>
-            <button type="button" data-provider-previous aria-controls="provider-cards">{PROVIDER_CARD_COPY[locale]["previous"]}</button>
-            <button type="button" data-provider-next aria-controls="provider-cards">{PROVIDER_CARD_COPY[locale]["next"]}</button>
-          </div>
+          <p class="provider-compare"><a class="text-link" href="{"/map-styles/" if locale == "en" else f"/{locale}/map-styles/"}" data-umami-event="navigation-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}<span aria-hidden="true"> →</span></a></p>
         </div>
       </section>'''
     values = {**copy, "provider_section": provider_section}

@@ -30,40 +30,33 @@ async function present(payload, fail = false, cardID = 'freizeitkarte', mapType 
   return { hidden: card.hidden, text: counter.textContent, ...(cardID === 'opentopomap' ? { addonHidden: addon.hidden, addonText: contourCounter.textContent } : {}) };
 }
 
-// Exercise the actual controls, keyboard handling, resize and reduced motion.
+// Exercise the keyboard handling, resize and reduced motion of the card row.
 function checkNavigation(reducedMotion) {
   const listeners = {};
-  const button = () => ({ disabled: false, addEventListener(type, action) { this[type] = action; } });
-  const previous = button(), next = button();
-  const controls = { hidden: true, querySelector: selector => selector === '[data-provider-previous]' ? previous : next };
   let behavior;
   const row = { scrollWidth: 630, clientWidth: 339, scrollLeft: 0,
     getBoundingClientRect: () => ({left: 18}),
     addEventListener: (type, action) => { listeners[type] = action; },
-    scrollBy(options) { behavior = options.behavior; this.scrollLeft = Math.max(0, Math.min(291, this.scrollLeft + options.left)); listeners.scroll(); },
+    scrollBy(options) { behavior = options.behavior; this.scrollLeft = Math.max(0, Math.min(291, this.scrollLeft + options.left)); },
   };
   const cards = [0, 1].map(index => ({ hidden: false,
     getBoundingClientRect: () => ({left: 18 + index * 325 - row.scrollLeft}),
   }));
   vm.runInNewContext(script, {
-    document: { querySelectorAll: () => cards, querySelector: selector => selector === '[data-provider-cards]' ? row : controls },
+    document: { querySelectorAll: () => cards, querySelector: selector => selector === '[data-provider-cards]' ? row : null },
     window: { matchMedia: () => ({matches: reducedMotion}), addEventListener: (type, action) => { listeners[type] = action; } },
     fetch: async () => { throw Error('offline'); },
   });
-  assert.equal(controls.hidden, false);
-  assert.equal(previous.disabled, true);
-  next.click();
-  assert.equal(row.scrollLeft, 291);
-  assert.equal(next.disabled, true);
-  assert.equal(behavior, reducedMotion ? 'instant' : 'smooth');
+  assert.equal(row.tabIndex, 0);
   let prevented = false;
-  listeners.keydown({target: row, key: 'ArrowLeft', preventDefault() { prevented = true; }});
+  listeners.keydown({target: row, key: 'ArrowRight', preventDefault() { prevented = true; }});
   assert.equal(prevented, true);
+  assert.equal(row.scrollLeft, 291);
+  assert.equal(behavior, reducedMotion ? 'instant' : 'smooth');
+  listeners.keydown({target: row, key: 'ArrowLeft', preventDefault() {}});
   assert.equal(row.scrollLeft, 0);
-  assert.equal(previous.disabled, true);
   row.clientWidth = 630;
   listeners.resize();
-  assert.equal(controls.hidden, true);
   assert.equal(row.tabIndex, -1);
 }
 
