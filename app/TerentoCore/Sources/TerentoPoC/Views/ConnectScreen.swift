@@ -403,7 +403,8 @@ struct ConnectScreen: View {
                 onManageMaps: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true ? {
                     installationFailureFollowUp = .manageMaps
                     isShowingInstallationFailure = false
-                } : nil
+                } : nil,
+                helpTopic: installationFailureHelpTopic
             )
             .interactiveDismissDisabled(false)
         }
@@ -651,6 +652,11 @@ struct ConnectScreen: View {
                     connectionStatusView
                         .padding(.top, 14)
 
+                    if let topic = connectionHelpTopic {
+                        TerentoHelpLink(topic: topic)
+                            .padding(.top, 8)
+                    }
+
                     if showsConnectChecklist {
                         connectChecklist
                             .padding(.top, 14)
@@ -764,6 +770,19 @@ struct ConnectScreen: View {
             }
         case .failed:
             return ("exclamationmark.triangle.fill", TerentoColors.error)
+        case .disconnected, .connected, .ready, .ejecting, .safeToDisconnect:
+            return nil
+        }
+    }
+
+    /// Help for the connection state on screen; none once a watch is connected.
+    private var connectionHelpTopic: TroubleshootingTopic? {
+        switch deviceEngine.state {
+        case .detecting:
+            return TroubleshootingHelp.topic(detectionPhase: deviceEngine.detectionPhase)
+        case .failed:
+            return deviceEngine.lastConnectOutcome.flatMap(TroubleshootingHelp.topic(for:))
+                ?? .watchStoppedResponding
         case .disconnected, .connected, .ready, .ejecting, .safeToDisconnect:
             return nil
         }
@@ -1025,7 +1044,8 @@ struct ConnectScreen: View {
                     status: "Error",
                     note: mapEngine.userErrorMessage,
                     isError: true,
-                    onRetry: refreshMapInventory
+                    onRetry: refreshMapInventory,
+                    helpTopic: .mapReadFailed
                 )
                 .padding(.top, 30)
             } else {
@@ -1204,7 +1224,8 @@ struct ConnectScreen: View {
                 canEject: canSafelyEject,
                 onEject: performSafeEject,
                 authorization: DeviceAuthorizationPresentation(deviceEngine.installationAuthorization),
-                onRetryAuthorization: { deviceEngine.retryInstallationAuthorization() }
+                onRetryAuthorization: { deviceEngine.retryInstallationAuthorization() },
+                authorizationHelpTopic: TroubleshootingHelp.topic(for: deviceEngine.installationAuthorization)
             )
             .padding(.top, 30)
 
@@ -1498,31 +1519,42 @@ struct ConnectScreen: View {
                     }
 
                     if let notice = authorizationPresentation.browsingNotice {
-                        Label(notice, systemImage: authorizationPresentation.systemImage)
-                            .font(.terentoUI(size: 12, weight: .medium))
-                            .foregroundStyle(authorizationPresentation.tone.color)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 10)
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Label(notice, systemImage: authorizationPresentation.systemImage)
+                                .font(.terentoUI(size: 12, weight: .medium))
+                                .foregroundStyle(authorizationPresentation.tone.color)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let topic = TroubleshootingHelp.topic(for: deviceEngine.installationAuthorization) {
+                                TerentoHelpLink(topic: topic, size: 12)
+                            }
+                        }
+                        .padding(.top, 10)
                     }
 
                     if mapEngine.catalogSource == .bundledFallback {
-                        Label(
-                            MapCatalogSource.bundledFallback.userLabel,
-                            systemImage: "wifi.slash"
-                        )
-                        .font(.terentoUI(size: 12, weight: .medium))
-                        .foregroundStyle(TerentoColors.secondaryText)
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Label(
+                                MapCatalogSource.bundledFallback.userLabel,
+                                systemImage: "wifi.slash"
+                            )
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .accessibilityHint("Terento is using its bundled local map list. It may be out of date.")
+                            TerentoHelpLink(topic: .catalogFallback, size: 12)
+                        }
                         .padding(.top, 10)
-                        .accessibilityHint("Terento is using its bundled local map list. It may be out of date.")
                     } else if mapEngine.catalogSource == .appUpdateRequired {
-                        Label(
-                            MapCatalogSource.appUpdateRequired.userLabel,
-                            systemImage: "arrow.down.circle"
-                        )
-                        .font(.terentoUI(size: 12, weight: .medium))
-                        .foregroundStyle(TerentoColors.secondaryText)
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Label(
+                                MapCatalogSource.appUpdateRequired.userLabel,
+                                systemImage: "arrow.down.circle"
+                            )
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .accessibilityHint("This Terento version can't use the current map catalog. Maps can be browsed; installing needs a Terento update.")
+                            TerentoHelpLink(topic: .appUpdateRequired, size: 12)
+                        }
                         .padding(.top, 10)
-                        .accessibilityHint("This Terento version can't use the current map catalog. Maps can be browsed; installing needs a Terento update.")
                     }
 
                     if mapEngine.state == .loadingCatalog || mapEngine.state == .scanning {
@@ -1540,7 +1572,8 @@ struct ConnectScreen: View {
                             status: "Error",
                             note: mapEngine.userErrorMessage,
                             isError: true,
-                            onRetry: refreshMapInventory
+                            onRetry: refreshMapInventory,
+                            helpTopic: .mapReadFailed
                         )
                         .padding(.top, 18)
                     } else if mapEngine.state != .scanned {
@@ -1960,6 +1993,13 @@ struct ConnectScreen: View {
                                 deviceEngine.retryInstallationAuthorization()
                             }
                             .accessibilityHint("Checks again whether this watch can install maps.")
+                        }
+
+                        if let topic = TroubleshootingHelp.reviewTopic(
+                            plan: plan,
+                            authorization: deviceEngine.installationAuthorization
+                        ) {
+                            TerentoHelpLink(topic: topic)
                         }
                     }
                     .padding(.top, 18)
@@ -2510,6 +2550,19 @@ struct ConnectScreen: View {
             : normalized
     }
 
+    private var installationFailureHelpTopic: TroubleshootingTopic {
+        if mapEngine.evidenceFailure == nil,
+           mapEngine.installationFailureAcquisitionError == nil,
+           let topic = TroubleshootingHelp.topic(for: deviceEngine.installationAuthorization) {
+            return topic
+        }
+        return TroubleshootingHelp.installationTopic(
+            failure: mapEngine.evidenceFailure,
+            acquisitionError: mapEngine.installationFailureAcquisitionError,
+            mayHaveLeftMapOnWatch: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true
+        )
+    }
+
     private var installationFailureSafetyMessage: String? {
         if let diagnostics = mapEngine.installationResult?.diagnostics {
             return diagnostics.existingFilesProtectionPassed
@@ -2977,6 +3030,8 @@ private struct InstallationFailureDialog: View {
     var onTryAgain: (() -> Void)? = nil
     /// Offered when a map file may remain on the watch after the failure.
     var onManageMaps: (() -> Void)? = nil
+    var helpTopic: TroubleshootingTopic? = nil
+    var onSendSupportReport: (() -> Void)? = nil
 
     private var primaryAction: (label: String, action: () -> Void)? {
         if let onTryAgain { return ("Try again", onTryAgain) }
@@ -2986,7 +3041,7 @@ private struct InstallationFailureDialog: View {
 
     private var supportingMessage: String? {
         [safetyMessage, onManageMaps == nil ? nil : InstallationFailure.leftoverMapFollowUp,
-         "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting.", reportError]
+         "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting. No GitHub account? Send the report to Terento instead.", reportError]
             .compactMap { value in
                 let normalized = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 return normalized.isEmpty ? nil : normalized
@@ -3012,7 +3067,9 @@ private struct InstallationFailureDialog: View {
             primaryLabel: primaryAction?.label ?? "Back to device",
             isDestructive: false,
             onCancel: onReportIssue,
-            onConfirm: primaryAction?.action ?? onBackToDevice
+            onConfirm: primaryAction?.action ?? onBackToDevice,
+            helpTopic: helpTopic,
+            onSendSupportReport: onSendSupportReport
         )
         .accessibilityElement(children: .contain)
     }
@@ -3044,6 +3101,10 @@ private struct TerentoConfirmationDialog: View {
     let isDestructive: Bool
     let onCancel: () -> Void
     let onConfirm: () -> Void
+    /// Optional text links below the message: the matching guide section and
+    /// the Terento support report. Neither is a primary action.
+    var helpTopic: TroubleshootingTopic? = nil
+    var onSendSupportReport: (() -> Void)? = nil
 
     init(
         icon: String,
@@ -3061,8 +3122,12 @@ private struct TerentoConfirmationDialog: View {
         primaryLabel: String,
         isDestructive: Bool,
         onCancel: @escaping () -> Void,
-        onConfirm: @escaping () -> Void
+        onConfirm: @escaping () -> Void,
+        helpTopic: TroubleshootingTopic? = nil,
+        onSendSupportReport: (() -> Void)? = nil
     ) {
+        self.helpTopic = helpTopic
+        self.onSendSupportReport = onSendSupportReport
         self.icon = icon
         self.iconColor = iconColor
         self.title = title
@@ -3124,6 +3189,24 @@ private struct TerentoConfirmationDialog: View {
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 16)
+                }
+
+                if helpTopic != nil || onSendSupportReport != nil {
+                    HStack(spacing: 18) {
+                        if let onSendSupportReport {
+                            Button(action: onSendSupportReport) {
+                                Label("Send report to Terento", systemImage: "paperplane")
+                            }
+                            .buttonStyle(.plain)
+                            .font(.terentoUI(size: 13, weight: .semibold))
+                            .foregroundStyle(TerentoColors.interactive)
+                            .accessibilityHint("Shows exactly what will be sent before anything is sent.")
+                        }
+                        if let helpTopic {
+                            TerentoHelpLink(topic: helpTopic)
+                        }
+                    }
+                    .padding(.top, 14)
                 }
 
                 HStack(spacing: Self.buttonGap) {
@@ -3831,6 +3914,7 @@ struct DeviceCard: View {
     /// as information while the verdict is not "Ready for maps".
     var authorization: DeviceAuthorizationPresentation? = nil
     var onRetryAuthorization: (() -> Void)? = nil
+    var authorizationHelpTopic: TroubleshootingTopic? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: 20) {
@@ -3857,7 +3941,8 @@ struct DeviceCard: View {
                 if let authorization {
                     DeviceAuthorizationStatusView(
                         presentation: authorization,
-                        onRetry: onRetryAuthorization
+                        onRetry: onRetryAuthorization,
+                        helpTopic: authorizationHelpTopic
                     )
                     .padding(.top, 9)
                 }
@@ -3921,6 +4006,7 @@ extension DeviceAuthorizationPresentation.Tone {
 private struct DeviceAuthorizationStatusView: View {
     let presentation: DeviceAuthorizationPresentation
     let onRetry: (() -> Void)?
+    var helpTopic: TroubleshootingTopic? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -3944,13 +4030,20 @@ private struct DeviceAuthorizationStatusView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Map installation: \(presentation.title). \(presentation.detail ?? "")")
 
-            if presentation.canRetry, let onRetry {
-                Button("Try again", action: onRetry)
-                    .buttonStyle(.plain)
-                    .font(.terentoUI(size: 12, weight: .semibold))
-                    .foregroundStyle(TerentoColors.interactive)
-                    .padding(.leading, 18)
-                    .accessibilityHint("Checks again whether this watch can install maps.")
+            if (presentation.canRetry && onRetry != nil) || helpTopic != nil {
+            HStack(spacing: 14) {
+                if presentation.canRetry, let onRetry {
+                    Button("Try again", action: onRetry)
+                        .buttonStyle(.plain)
+                        .font(.terentoUI(size: 12, weight: .semibold))
+                        .foregroundStyle(TerentoColors.interactive)
+                        .accessibilityHint("Checks again whether this watch can install maps.")
+                }
+                if let helpTopic {
+                    TerentoHelpLink(topic: helpTopic, size: 12)
+                }
+            }
+            .padding(.leading, 18)
             }
         }
     }
@@ -4120,17 +4213,34 @@ private struct ManageMapRow: View {
                 .frame(width: 24, height: 24)
         } trailing: {
             if let operation, operationIsActive {
-                ManageOperationProgress(operation: operation)
-            } else if !availableActions.isEmpty {
-                ManageActionGroup(
-                    mapTitle: item.title,
-                    primaryActions: primaryActions,
-                    updateBlocked: availability.updateBlocked,
-                    isEnabled: !isLifecycleBusy,
-                    onAction: perform
-                )
+                VStack(alignment: .leading, spacing: 4) {
+                    ManageOperationProgress(operation: operation)
+                    if let topic = TroubleshootingHelp.topic(for: operation.phase) {
+                        TerentoHelpLink(topic: topic, size: 11)
+                    }
+                }
+                .frame(width: InstallationTimelineLayout.manageProgressWidth, alignment: .leading)
+            } else if !availableActions.isEmpty || operationFailed {
+                VStack(alignment: .trailing, spacing: 6) {
+                    if !availableActions.isEmpty {
+                        ManageActionGroup(
+                            mapTitle: item.title,
+                            primaryActions: primaryActions,
+                            updateBlocked: availability.updateBlocked,
+                            isEnabled: !isLifecycleBusy,
+                            onAction: perform
+                        )
+                    }
+                    if operationFailed {
+                        TerentoHelpLink(topic: .updateRemoveFailed, size: 12)
+                    }
+                }
             }
         }
+    }
+
+    private var operationFailed: Bool {
+        operation?.phase == .failed
     }
 
     private var manageDetail: String {
@@ -4533,6 +4643,7 @@ struct MapStatusRow: View {
     /// An error row uses the error icon and colour together, never colour alone.
     var isError: Bool = false
     var onRetry: (() -> Void)? = nil
+    var helpTopic: TroubleshootingTopic? = nil
 
     private var accent: Color { isError ? TerentoColors.error : TerentoColors.lichenDark }
 
@@ -4572,9 +4683,16 @@ struct MapStatusRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let onRetry {
-                SecondaryButton(title: "Try again", action: onRetry)
-                    .accessibilityHint("Reads the maps on your watch again.")
+            if onRetry != nil || helpTopic != nil {
+                HStack(spacing: 16) {
+                    if let onRetry {
+                        SecondaryButton(title: "Try again", action: onRetry)
+                            .accessibilityHint("Reads the maps on your watch again.")
+                    }
+                    if let helpTopic {
+                        TerentoHelpLink(topic: helpTopic)
+                    }
+                }
             }
         }
         .padding(22)

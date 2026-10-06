@@ -279,6 +279,9 @@ final class MapEngine: ObservableObject {
     @Published private(set) var evidenceFailureContext: InstallationFailureContext?
     @Published private(set) var evidenceOriginalFailureContext: InstallationFailureContext?
     @Published private(set) var evidencePrimaryFailureMapIndex: Int?
+    /// The typed acquisition error behind the last stopped installation, used
+    /// only to choose the matching troubleshooting guide section.
+    @Published private(set) var installationFailureAcquisitionError: MapAcquisitionError?
     @Published private(set) var catalogSource: MapCatalogSource?
     @Published private(set) var catalogUpdatedAt: Date?
     /// Remote packages this app version could not accept and omitted.
@@ -1525,6 +1528,7 @@ final class MapEngine: ObservableObject {
         evidenceFailure = nil
         evidenceNativeFailureCode = nil
         evidencePrimaryFailureMapIndex = nil
+        installationFailureAcquisitionError = nil
         TerentoDiagnosticLog.recordInstallationStarted(
             maps: plan.installItems.map(\.package)
         )
@@ -1822,6 +1826,7 @@ final class MapEngine: ObservableObject {
                     self?.funnel?.recordInstallBlocked(.macStorage)
                 }
                 self?.evidencePrimaryFailureMapIndex = activePackageIndex
+                self?.installationFailureAcquisitionError = error as? MapAcquisitionError
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
                     self?.evidenceFailureStage = diagnostic.stage

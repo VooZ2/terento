@@ -93,6 +93,9 @@ struct TerentoPoCApp: App {
                 Button("Terento Website") {
                     openExternalURL(TerentoAppLinks.website)
                 }
+                Button("Troubleshooting") {
+                    openExternalURL(TerentoAppLinks.troubleshootingGuide)
+                }
                 Button("Documentation") {
                     openExternalURL(TerentoAppLinks.documentation)
                 }

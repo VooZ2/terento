@@ -117,6 +117,7 @@ struct DiagnosticsView: View {
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
+                        TerentoHelpLink(topic: .sendReport)
                     }
 
                     diagnosticsSection(title: "Delivery") {
