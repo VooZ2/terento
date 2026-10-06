@@ -1656,21 +1656,83 @@ def _overview_chart_bucket_label(
     return parsed.strftime("%d %b")
 
 
+# Minimum drawn height of a non-zero stacked segment, in chart units: about
+# 3 CSS px at the narrowest supported card width (desktop 720-unit chart at
+# ~0.63 scale, compact 360-unit chart at ~0.9 scale).
+_CHART_MIN_SEGMENT = 5.0
+_CHART_MIN_SEGMENT_COMPACT = 4.0
+
+
 def _overview_stacked_segments(
     counts: tuple[int | None, ...], center: float, bar_width: float,
     baseline: float, plot_height: float, scale_maximum: float,
+    *, minimum: float = _CHART_MIN_SEGMENT,
 ) -> dict[int, tuple[float, float, float, float]]:
-    """Return one shared x/width and cumulative y geometry for each segment."""
+    """Return one shared x/width and cumulative y geometry for each segment.
+
+    The bar keeps its true height (``plot_height * total / scale``). A tiny
+    non-zero segment is drawn at least ``minimum`` tall; the extra height is
+    taken proportionally from the larger segments of the same bar, so the bar
+    total and the axis scale stay truthful. Only when the true bar is shorter
+    than ``minimum`` per non-zero segment does the bar grow to exactly that
+    floor. Exact values remain in each bucket's label and value strip.
+    """
+    present = [(index, count) for index, count in enumerate(counts) if count is not None and count > 0]
+    if not present:
+        return {}
+    total = sum(count for _, count in present)
+    bar_height = max(plot_height * total / scale_maximum, minimum * len(present))
+    heights = {index: bar_height * count / total for index, count in present}
+    lifted: set[int] = set()
+    while True:
+        small = [index for index, height in heights.items() if index not in lifted and height < minimum]
+        if not small:
+            break
+        lifted.update(small)
+        free = [(index, count) for index, count in present if index not in lifted]
+        free_total = sum(count for _, count in free)
+        remaining = bar_height - minimum * len(lifted)
+        for index in lifted:
+            heights[index] = minimum
+        for index, count in free:
+            heights[index] = remaining * count / free_total if free_total else minimum
     x = center - bar_width / 2
     y = baseline
     segments: dict[int, tuple[float, float, float, float]] = {}
-    for index, count in enumerate(counts):
-        if count is None or count <= 0:
-            continue
-        height = max(3.0, plot_height * count / scale_maximum)
-        y -= height
-        segments[index] = (x, bar_width, y, height)
+    for index, _ in present:
+        y -= heights[index]
+        segments[index] = (x, bar_width, y, heights[index])
     return segments
+
+
+def _chart_axis_labels(
+    positions: list[float], texts: list[str], *, font_size: float, chart_width: float,
+    gap: float = 6.0,
+) -> list[tuple[int, str]]:
+    """X-axis labels without overlap: every bucket when the labels fit, else
+    every second (or the smallest regular step that fits), always keeping the
+    most recent bucket. Returns ``(index, text-anchor)`` pairs."""
+    count = len(texts)
+    if not count:
+        return []
+    widths = [len(text) * font_size * 0.6 for text in texts]
+    spacing = min((b - a for a, b in zip(positions, positions[1:]) if b > a), default=chart_width)
+    widest = max(widths)
+    step = 1
+    while step < count and step * spacing < widest + gap:
+        step += 1
+    placed: list[tuple[int, str, float, float]] = []
+    for index in range(count - 1, -1, -step):
+        x, width = positions[index], widths[index]
+        anchor, start, end = "middle", x - width / 2, x + width / 2
+        if start < 0:
+            anchor, start, end = "start", x, x + width
+        if end > chart_width:
+            anchor, start, end = "end", x - width, x
+        if placed and end + gap > placed[-1][2]:
+            continue  # an edge-anchored label would touch its neighbour
+        placed.append((index, anchor, start, end))
+    return [(index, anchor) for index, anchor, _, _ in reversed(placed)]
 
 
 _INSTALL_CHART_SERIES = (
@@ -1758,6 +1820,7 @@ def _overview_trend_chart(
         stack_total = sum(counts)
         segments = _overview_stacked_segments(
             counts, center, bar_width, top + plot_height, plot_height, scale_maximum,
+            minimum=_CHART_MIN_SEGMENT_COMPACT if _compact else _CHART_MIN_SEGMENT,
         )
         for series_index, (count, (name, label, field)) in enumerate(zip(counts, series)):
             timestamps = list(item.get(f"{field.removesuffix('_count')}_times") or [])
@@ -1785,19 +1848,13 @@ def _overview_trend_chart(
             f"<g class='overview-chart-group' role='img' tabindex='0' aria-label='{html.escape(group_title, quote=True)}'>"
             f"<title>{html.escape(group_title)}</title>{''.join(group_bars)}</g>"
         )
-    if _compact:
-        label_indexes = {0, (len(values) - 1) // 2, len(values) - 1}
-    else:
-        label_count = 8 if bucket == "hour" else 6
-        label_step = max(1, math.ceil((len(values) - 1) / max(label_count - 1, 1)))
-        label_indexes = {index for index in range(len(values)) if index % label_step == 0}
-        label_indexes.update({0, len(values) - 1})
-    for index in sorted(label_indexes):
-        item = trend[index]
-        anchor = 'start' if index == 0 else 'end' if index == len(values) - 1 else 'middle'
+    axis_texts = [_overview_chart_bucket_label(item.get("bucket"), bucket, time_zone) for item in trend]
+    for index, anchor in _chart_axis_labels(
+        x_positions, axis_texts, font_size=13 if _compact else 11, chart_width=chart_width,
+    ):
         labels.append(
             f"<text x='{x_positions[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}' aria-hidden='true'>"
-            f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>"
+            f"{html.escape(axis_texts[index])}</text>"
         )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='group' aria-label='{chart_label}'>"
@@ -2015,6 +2072,7 @@ def _overview_downloads_chart(
         )
         segments = _overview_stacked_segments(
             tuple(counts), center, bar_width, top + plot_height, plot_height, scale_maximum,
+            minimum=_CHART_MIN_SEGMENT_COMPACT if _compact else _CHART_MIN_SEGMENT,
         )
         for series_index, ((label, css_class), count) in enumerate(zip(series, counts)):
             if count is None:
@@ -2044,20 +2102,15 @@ def _overview_downloads_chart(
         )
         if marker:
             bars.append(marker)
-        label_step = max(1, round((len(values) - 1) / 11))
-        show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
-        if _compact:
-            show_label = index in {0, (len(values) - 1) // 2, len(values) - 1}
-        if show_label:
-            anchor = (
-                'start' if _compact and index == 0
-                else 'end' if _compact and index == len(values) - 1
-                else 'middle'
-            )
-            labels.append(
-                f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>"
-                f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone))}</text>"
-            )
+    centers = [position_center(index) for index in range(len(values))]
+    axis_texts = [_overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone) for item in trend]
+    for index, anchor in _chart_axis_labels(
+        centers, axis_texts, font_size=13 if _compact else 11, chart_width=chart_width,
+    ):
+        labels.append(
+            f"<text x='{centers[index]:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>"
+            f"{html.escape(axis_texts[index])}</text>"
+        )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
         f"viewBox='0 0 {chart_width} {chart_height}' role='group' "

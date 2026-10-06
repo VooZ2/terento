@@ -97,6 +97,73 @@ class AdminTokenAndFocusTests(unittest.TestCase):
 
 
 
+class AdminChartGeometryTests(unittest.TestCase):
+    """Minimum segment rule and x-axis label density (review 2026-10-06)."""
+
+    def test_tiny_segment_gets_the_minimum_while_the_bar_keeps_its_true_height(self):
+        from terento_catalog.admin import _CHART_MIN_SEGMENT, _overview_stacked_segments
+        segments = _overview_stacked_segments((100, 0, 1), 50, 20, 220, 200, 101)
+        self.assertNotIn(1, segments)  # a zero segment is never drawn
+        self.assertAlmostEqual(segments[2][3], _CHART_MIN_SEGMENT)
+        self.assertAlmostEqual(sum(item[3] for item in segments.values()), 200 * 101 / 101)
+        # Segments stay contiguous from the baseline.
+        self.assertAlmostEqual(segments[0][2] + segments[0][3], 220)
+        self.assertAlmostEqual(segments[2][2] + segments[2][3], segments[0][2])
+
+    def test_bar_shorter_than_the_floor_grows_only_to_the_floor(self):
+        from terento_catalog.admin import _overview_stacked_segments
+        segments = _overview_stacked_segments((1, 1), 50, 20, 220, 200, 1000, minimum=4)
+        self.assertEqual([round(item[3], 2) for item in segments.values()], [4.0, 4.0])
+
+    def test_proportions_are_untouched_when_every_segment_is_visible(self):
+        from terento_catalog.admin import _overview_stacked_segments
+        segments = _overview_stacked_segments((30, 10), 50, 20, 220, 200, 40)
+        self.assertAlmostEqual(segments[0][3], 150)
+        self.assertAlmostEqual(segments[1][3], 50)
+
+    def _labels(self, body: str, chart: str) -> list[tuple[float, str, str]]:
+        svg = body.split(f"overview-trend-{chart}'", 1)[1].split("</svg>", 1)[0]
+        return [(float(x), anchor, text) for x, anchor, text in re.findall(
+            r"<text x='([0-9.]+)' y='\d+' text-anchor='(\w+)'[^>]*>([^<]+)</text>", svg)]
+
+    def _assert_no_overlap(self, labels, font_size, width):
+        extents = []
+        for x, anchor, text in labels:
+            w = len(text) * font_size * 0.6
+            start = x - w / 2 if anchor == "middle" else x if anchor == "start" else x - w
+            extents.append((start, start + w))
+        for (_, end), (start, _) in zip(extents, extents[1:]):
+            self.assertLessEqual(end, start)
+        self.assertGreaterEqual(extents[0][0], 0)
+        self.assertLessEqual(extents[-1][1], width)
+
+    def test_axis_labels_every_bucket_when_they_fit_else_every_second(self):
+        from terento_catalog.admin import _overview_trend_chart
+        daily = [{"bucket": f"2026-09-{day:02d}T00:00:00Z", "success_count": 1} for day in range(18, 25)]
+        body = _overview_trend_chart(daily, "day")
+        desktop = self._labels(body, "desktop")
+        self.assertEqual([text for _, _, text in desktop], [f"{day} Sep" for day in range(18, 25)])
+        self._assert_no_overlap(desktop, 11, 720)
+        mobile = self._labels(body, "mobile")
+        self.assertEqual([text for _, _, text in mobile], ["18 Sep", "20 Sep", "22 Sep", "24 Sep"])
+        self._assert_no_overlap(mobile, 13, 360)
+        hourly = [{"bucket": f"2026-09-18T{hour:02d}:00:00Z", "success_count": 1} for hour in range(24)]
+        desktop = self._labels(_overview_trend_chart(hourly, "hour"), "desktop")
+        self.assertEqual(len(desktop), 12)
+        self.assertEqual(desktop[-1][2], "23:00")  # the most recent bucket is labelled
+        self._assert_no_overlap(desktop, 11, 720)
+
+    def test_app_download_axis_uses_the_same_rule(self):
+        from terento_catalog.admin import _overview_downloads_chart
+        trend = [{"bucket": f"2026-09-{day:02d}T00:00:00Z", "observed_at": f"2026-09-{day:02d}T18:00:00Z",
+                  "dmg_count": 3, "zip_count": 1} for day in range(18, 25)]
+        body = _overview_downloads_chart({"hasData": True, "bucket": "day", "trend": trend}, period="7d")
+        desktop = self._labels(body, "desktop")
+        self.assertEqual(len(desktop), 7)
+        self._assert_no_overlap(desktop, 11, 720)
+        self._assert_no_overlap(self._labels(body, "mobile"), 13, 360)
+
+
 class AdminComponentKitTests(unittest.TestCase):
     def test_scope_chip_is_visible_text_for_every_scope(self):
         self.assertEqual(_scope_chip("7d"), "<span class='admin-scope-chip' data-scope='period'>Last 7 days</span>")

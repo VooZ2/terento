@@ -257,6 +257,17 @@ each with its own legend entry; optional components and pre-write failures remai
 excluded by the statistics contract. Each bucket is one keyboard stop with a
 label listing every series; segments are presentational.
 
+Chart geometry is truthful with two legibility rules shared by every Admin bar
+chart. Minimum segment: a non-zero stacked segment is drawn at least about
+3 CSS px tall (5 chart units on the desktop chart, 4 on the compact chart); the
+added height is taken proportionally from the larger segments of the same bar,
+so each bar keeps its true total height on the axis scale. Only a bar whose
+true height is below that floor for each of its non-zero segments grows to
+exactly the floor, and exact values always remain in the bucket label and value
+strip. X axis: every bucket is labelled when the labels fit, otherwise every
+second bucket (or the smallest regular step that fits on the compact chart),
+always including the most recent bucket and never overlapping.
+
 Needs attention covers unresolved work across all dates in nine fixed category
 rows, each with an icon, label, count and arrow: Open problems, GitHub issues,
 Identity review, Publication review, Missing reports, Support reports, Maps
