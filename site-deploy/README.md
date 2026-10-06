@@ -77,7 +77,10 @@ with it does not trigger new `pull_request` workflows on GitHub. Automatic
 state-PR merging therefore still requires a follow-up workflow wiring change
 plus an approved non-`GITHUB_TOKEN` automation identity. Until both are
 provisioned, the deploy retains the state as a fallback artifact and an
-operator must merge the state-only PR after the normal checks pass. If the file is
+operator must merge the state-only PR after the normal checks pass. State
+retention is the last deploy step and has its own timeout below the job
+timeout, so a slow state-PR check never prevents the website deployment
+health or IndexNow observations from being reported. If the file is
 missing or invalid, the next confirmed publication records a bootstrap
 baseline and sends no bulk notification; it does not infer a full-sitemap
 submission.

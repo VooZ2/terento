@@ -646,6 +646,12 @@ def main() -> int:
     assert "TERENTO_ADMIN_ACCESS_REQUIRED: 'true'" in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
+    persist_step = deploy_site.index("- name: Persist IndexNow publication state")
+    assert deploy_site.index("- name: Retain website deployment health") < persist_step
+    assert deploy_site.index("- name: Report IndexNow submission result") < persist_step
+    persist_timeout = int(re.search(r"id: persist_indexnow_state\n\s+timeout-minutes: (\d+)", deploy_site).group(1))
+    job_timeout = int(re.search(r"\n  deploy:\n(?:    .*\n)*?    timeout-minutes: (\d+)", deploy_site).group(1))
+    assert persist_timeout < job_timeout, "the IndexNow state wait must fail its own step before the deploy job times out"
     assert "--observation deployment-observation" in deploy_site
     assert "--observation deployment-observation" in deploy_api
     publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")

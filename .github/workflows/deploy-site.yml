@@ -45,7 +45,7 @@ jobs:
     needs: publish
     if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     environment: rukas-site
     permissions:
       actions: write
@@ -226,8 +226,106 @@ jobs:
             --report-result live_verification_failed --error-code live_verification_failed \
             --report-out "$RUNNER_TEMP/indexnow-report.json"
 
+      - name: Retain website deployment health
+        if: steps.current.outputs.deploy == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_version="$(jq -r '.version' site/updates/macos-arm64.json)"
+          build_number="$(jq -r '.build' site/updates/macos-arm64.json)"
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          live_result='${{ steps.live_content.outcome }}'
+          if [ "$live_result" = 'success' ]; then
+            deployment_status='HEALTHY'
+            deployment_summary='Website deployment and live verification passed.'
+            indexnow_expected=true
+          else
+            deployment_status='FAILED'
+            deployment_summary='Website deployment completed, but live verification failed.'
+            indexnow_expected=false
+          fi
+          jq -n \
+            --arg observationId "deployment-site-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --arg observedAt "$observed_at" --arg sourceRunId "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --arg sourceRunUrl "$run_url" --arg commitSha "$GITHUB_SHA" \
+            --arg releaseVersion "$release_version" --arg buildNumber "$build_number" \
+            --arg status "$deployment_status" --arg summary "$deployment_summary" \
+            --arg liveResult "$live_result" \
+            --argjson indexnowExpected "$indexnow_expected" \
+            '{schemaVersion:1, observationId:$observationId, kind:"DEPLOYMENT",
+              component:"site", status:$status, observedAt:$observedAt,
+              sourceRunId:$sourceRunId, sourceRunUrl:$sourceRunUrl, commitSha:$commitSha,
+              releaseVersion:$releaseVersion, buildNumber:$buildNumber,
+              summary:$summary,
+              details:{site_container:"success", live_manifest:$liveResult,
+                indexnow_expected:$indexnowExpected,
+                indexnow_publication_id:(if $indexnowExpected then $observationId else null end),
+                indexnow_grace_seconds:1800}}' \
+            > "$RUNNER_TEMP/terento-site-deployment.json"
+          if ! python3 scripts/ci_http.py --observation deployment-observation --fail --silent --show-error --connect-timeout 5 --max-time 30 \
+            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$RUNNER_TEMP/terento-site-deployment.json" \
+            https://api.terento.app/internal/operations/observations; then
+            echo 'Website deployment observation delivery failed; deployment result is unchanged.' >&2
+          fi
+
+      - name: Report IndexNow submission result
+        id: indexnow_observation
+        if: steps.current.outputs.deploy == 'true'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$RUNNER_TEMP/indexnow-report.json"
+          report_id="indexnow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          jq --arg observationId "$report_id" \
+            --arg observedAt "$observed_at" --arg sourceRunId "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --arg sourceRunUrl "$run_url" --arg commitSha "$GITHUB_SHA" \
+            '. + {observationId:$observationId, kind:"INDEXNOW", component:"indexnow",
+              observedAt:$observedAt, sourceRunId:$sourceRunId, sourceRunUrl:$sourceRunUrl,
+              commitSha:$commitSha, summary:.summary} | del(.schemaVersion) |
+              {schemaVersion:1, observationId:.observationId, kind:.kind, component:.component,
+               status:.status, observedAt:.observedAt, sourceRunId:.sourceRunId,
+               sourceRunUrl:.sourceRunUrl, commitSha:.commitSha, summary:.summary,
+               details:.details}' \
+            "$RUNNER_TEMP/indexnow-report.json" \
+            > "$RUNNER_TEMP/terento-indexnow-observation.json"
+          report_status="$(jq -r '.status' "$RUNNER_TEMP/indexnow-report.json")"
+          report_result="$(jq -r '.details.result' "$RUNNER_TEMP/indexnow-report.json")"
+          attempted="$(jq -r '.details.attempted_url_count' "$RUNNER_TEMP/indexnow-report.json")"
+          pending="$(jq -r '.details.pending_url_count // "unknown"' "$RUNNER_TEMP/indexnow-report.json")"
+          echo "IndexNow report: status=$report_status result=$report_result attempted_urls=$attempted pending_urls=$pending" >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/ci_http.py --observation indexnow-observation --fail --silent --show-error --connect-timeout 5 --max-time 30 \
+            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$RUNNER_TEMP/terento-indexnow-observation.json" \
+            https://api.terento.app/internal/operations/observations
+
+      - name: Preserve IndexNow report fallback
+        if: steps.indexnow_observation.outcome != 'success' && steps.current.outputs.deploy == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: terento-indexnow-observation-${{ github.run_id }}
+          path: ${{ runner.temp }}/terento-indexnow-observation.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summarize IndexNow report delivery issue
+        if: steps.indexnow_observation.outcome != 'success' && steps.current.outputs.deploy == 'true'
+        shell: bash
+        run: echo 'IndexNow submission result was retained locally, but its operations report was not accepted by the backend.' >> "$GITHUB_STEP_SUMMARY"
+
+      # Runs last: its Swift CI and required-check wait can take longer than
+      # every other step, so a slow state PR must never prevent the website
+      # health and IndexNow observations from being retained.
       - name: Persist IndexNow publication state
         id: persist_indexnow_state
+        timeout-minutes: 40
         if: steps.current.outputs.deploy == 'true' && steps.live_content.outcome == 'success'
         continue-on-error: true
         env:
@@ -333,97 +431,3 @@ jobs:
           path: ${{ runner.temp }}/indexnow-state.json
           if-no-files-found: error
           retention-days: 14
-
-      - name: Retain website deployment health
-        if: steps.current.outputs.deploy == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          release_version="$(jq -r '.version' site/updates/macos-arm64.json)"
-          build_number="$(jq -r '.build' site/updates/macos-arm64.json)"
-          observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          live_result='${{ steps.live_content.outcome }}'
-          if [ "$live_result" = 'success' ]; then
-            deployment_status='HEALTHY'
-            deployment_summary='Website deployment and live verification passed.'
-            indexnow_expected=true
-          else
-            deployment_status='FAILED'
-            deployment_summary='Website deployment completed, but live verification failed.'
-            indexnow_expected=false
-          fi
-          jq -n \
-            --arg observationId "deployment-site-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            --arg observedAt "$observed_at" --arg sourceRunId "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
-            --arg sourceRunUrl "$run_url" --arg commitSha "$GITHUB_SHA" \
-            --arg releaseVersion "$release_version" --arg buildNumber "$build_number" \
-            --arg status "$deployment_status" --arg summary "$deployment_summary" \
-            --arg liveResult "$live_result" \
-            --argjson indexnowExpected "$indexnow_expected" \
-            '{schemaVersion:1, observationId:$observationId, kind:"DEPLOYMENT",
-              component:"site", status:$status, observedAt:$observedAt,
-              sourceRunId:$sourceRunId, sourceRunUrl:$sourceRunUrl, commitSha:$commitSha,
-              releaseVersion:$releaseVersion, buildNumber:$buildNumber,
-              summary:$summary,
-              details:{site_container:"success", live_manifest:$liveResult,
-                indexnow_expected:$indexnowExpected,
-                indexnow_publication_id:(if $indexnowExpected then $observationId else null end),
-                indexnow_grace_seconds:1800}}' \
-            > "$RUNNER_TEMP/terento-site-deployment.json"
-          if ! python3 scripts/ci_http.py --observation deployment-observation --fail --silent --show-error --connect-timeout 5 --max-time 30 \
-            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
-            -H "Content-Type: application/json" \
-            --data-binary "@$RUNNER_TEMP/terento-site-deployment.json" \
-            https://api.terento.app/internal/operations/observations; then
-            echo 'Website deployment observation delivery failed; deployment result is unchanged.' >&2
-          fi
-
-      - name: Report IndexNow submission result
-        id: indexnow_observation
-        if: steps.current.outputs.deploy == 'true'
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s "$RUNNER_TEMP/indexnow-report.json"
-          report_id="indexnow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          jq --arg observationId "$report_id" \
-            --arg observedAt "$observed_at" --arg sourceRunId "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
-            --arg sourceRunUrl "$run_url" --arg commitSha "$GITHUB_SHA" \
-            '. + {observationId:$observationId, kind:"INDEXNOW", component:"indexnow",
-              observedAt:$observedAt, sourceRunId:$sourceRunId, sourceRunUrl:$sourceRunUrl,
-              commitSha:$commitSha, summary:.summary} | del(.schemaVersion) |
-              {schemaVersion:1, observationId:.observationId, kind:.kind, component:.component,
-               status:.status, observedAt:.observedAt, sourceRunId:.sourceRunId,
-               sourceRunUrl:.sourceRunUrl, commitSha:.commitSha, summary:.summary,
-               details:.details}' \
-            "$RUNNER_TEMP/indexnow-report.json" \
-            > "$RUNNER_TEMP/terento-indexnow-observation.json"
-          report_status="$(jq -r '.status' "$RUNNER_TEMP/indexnow-report.json")"
-          report_result="$(jq -r '.details.result' "$RUNNER_TEMP/indexnow-report.json")"
-          attempted="$(jq -r '.details.attempted_url_count' "$RUNNER_TEMP/indexnow-report.json")"
-          pending="$(jq -r '.details.pending_url_count // "unknown"' "$RUNNER_TEMP/indexnow-report.json")"
-          echo "IndexNow report: status=$report_status result=$report_result attempted_urls=$attempted pending_urls=$pending" >> "$GITHUB_STEP_SUMMARY"
-          python3 scripts/ci_http.py --observation indexnow-observation --fail --silent --show-error --connect-timeout 5 --max-time 30 \
-            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
-            -H "Content-Type: application/json" \
-            --data-binary "@$RUNNER_TEMP/terento-indexnow-observation.json" \
-            https://api.terento.app/internal/operations/observations
-
-      - name: Preserve IndexNow report fallback
-        if: steps.indexnow_observation.outcome != 'success' && steps.current.outputs.deploy == 'true'
-        continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: terento-indexnow-observation-${{ github.run_id }}
-          path: ${{ runner.temp }}/terento-indexnow-observation.json
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Summarize IndexNow report delivery issue
-        if: steps.indexnow_observation.outcome != 'success' && steps.current.outputs.deploy == 'true'
-        shell: bash
-        run: echo 'IndexNow submission result was retained locally, but its operations report was not accepted by the backend.' >> "$GITHUB_STEP_SUMMARY"
