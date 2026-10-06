@@ -400,6 +400,9 @@ class WindowTests(unittest.TestCase):
         self.assertEqual(start, datetime(2026, 10, 7, tzinfo=timezone.utc))
         start, end = next_window(datetime(2026, 10, 6, 23, 30, tzinfo=timezone.utc), (day_time(23), day_time(2)))
         self.assertEqual((start.hour, end.day), (23, 7))
+        around_the_clock = parse_window("00:00-00:00")
+        start, end = next_window(datetime(2026, 10, 6, 15, 40, tzinfo=timezone.utc), around_the_clock)
+        self.assertEqual((start, end - start), (datetime(2026, 10, 6, tzinfo=timezone.utc), timedelta(days=1)))
 
     def test_plan_skips_fresh_layers_and_backoff(self):
         target = area()
@@ -454,6 +457,21 @@ class PreviewRunTests(unittest.TestCase):
             self.assertFalse(run.store.staging.exists())
             self.assertIsNone(db.lease)
             self.assertIn(("nord-est", "2026-09-01"), db.bounds)
+
+    def test_long_windows_publish_finished_layers_progressively(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rows = [
+                snapshot_row("nord-est", region="EUROPE-ITALY-NORD-EST",
+                             url="https://data.bbbike.org/osm/garmin/region/europe/italy/nord-est.osm.garmin-bbbike-latin1.img"),
+                snapshot_row("sud", region="EUROPE-ITALY-SUD", size=50,
+                             url="https://data.bbbike.org/osm/garmin/region/europe/italy/sud.osm.garmin-bbbike-latin1.img"),
+            ]
+            result, db, _, downloads, run = self.run_window(Path(directory), rows, publish_interval=timedelta(0))
+            self.assertEqual((result.rendered, len(downloads)), (2, 2))
+            self.assertEqual(len(db.released), 2)
+            self.assertEqual(db.released[0][1], [("a", "bbbike")])
+            self.assertEqual(run.store.layers(result.release), {("a", "bbbike"), ("b", "bbbike")})
+            self.assertFalse(run.store.staging.exists())
 
     def test_package_not_covering_area_moves_to_next_candidate(self):
         with tempfile.TemporaryDirectory() as directory:
