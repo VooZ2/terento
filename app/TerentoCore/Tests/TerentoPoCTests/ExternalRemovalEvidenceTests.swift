@@ -3,6 +3,7 @@
 struct MapIdentity: Equatable, Sendable { let key: String }
 enum MapManagementState: Equatable, Sendable { case managedByTerento, detectedNotManaged, unknown }
 struct MapVersion: Equatable, Sendable { let value: String }
+struct ManagedRemovalProof: Equatable, Sendable { let sha256: String }
 struct InstalledMapFile: Equatable, Sendable {
     let path: String
     let filename: String
@@ -35,6 +36,13 @@ struct ExternalRemovalEvidenceTests {
             precondition(cache.consume(target: wrong) == nil)
             precondition(cache.consume(target: selected) == nil)
         }
+        // A managed sampled proof never matches external confirmation evidence.
+        let proofTarget = SafeDeleteTarget(deviceKey: "test-device", mapIdentity: MapIdentity(key: "map"),
+            ownership: .detectedNotManaged, objectID: 7, expectedPath: "/GARMIN/external.img",
+            expectedFilename: "external.img", expectedSizeBytes: 100, expectedSHA256: "",
+            allowsExternalRemoval: true, removalProof: ManagedRemovalProof(sha256: digest))
+        cache.store(target: selected, sha256: digest)
+        precondition(cache.consume(target: proofTarget) == nil)
         cache.store(target: selected, sha256: digest)
         cache.clear()
         precondition(cache.consume(target: selected) == nil)

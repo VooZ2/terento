@@ -51,6 +51,10 @@ struct SafeDeleteTarget: Equatable, Sendable {
     /// Explicitly authorizes the beta one-by-one removal path for a parsed
     /// third-party map. This remains false for every manifest-backed target.
     let allowsExternalRemoval: Bool
+    /// Sampled removal proof from the managed manifest entry, if recorded.
+    /// The native managed delete enforces it; nil means the full SHA-256.
+    /// Never set for external maps.
+    let removalProof: ManagedRemovalProof?
 
     init(
         deviceKey: String,
@@ -62,7 +66,8 @@ struct SafeDeleteTarget: Equatable, Sendable {
         expectedSizeBytes: UInt64,
         expectedSHA256: String,
         expectedVersion: MapVersion? = nil,
-        allowsExternalRemoval: Bool = false
+        allowsExternalRemoval: Bool = false,
+        removalProof: ManagedRemovalProof? = nil
     ) {
         self.deviceKey = deviceKey
         self.mapIdentity = mapIdentity
@@ -74,6 +79,7 @@ struct SafeDeleteTarget: Equatable, Sendable {
         self.expectedSHA256 = expectedSHA256
         self.expectedVersion = expectedVersion
         self.allowsExternalRemoval = allowsExternalRemoval
+        self.removalProof = removalProof
     }
 
     var sourceFile: InstalledMapFile {
@@ -96,7 +102,8 @@ struct SafeDeleteTarget: Equatable, Sendable {
             expectedSizeBytes: expectedSizeBytes,
             expectedSHA256: expectedSHA256,
             expectedVersion: expectedVersion,
-            allowsExternalRemoval: allowsExternalRemoval
+            allowsExternalRemoval: allowsExternalRemoval,
+            removalProof: removalProof
         )
     }
 }

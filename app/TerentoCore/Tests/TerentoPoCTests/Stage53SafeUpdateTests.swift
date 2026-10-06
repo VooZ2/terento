@@ -71,6 +71,7 @@ private final class FakeSafeUpdateProvider: SafeUpdateArtifactProvider, @uncheck
 private final class FakeSafeUpdateManifestReconciler: SafeUpdateManifestReconciler, @unchecked Sendable {
     var shouldFail = false
     var called = false
+    var recordedNewObject: SafeUpdateRemoteObject?
 
     func reconcile(
         deviceKey: String,
@@ -80,6 +81,7 @@ private final class FakeSafeUpdateManifestReconciler: SafeUpdateManifestReconcil
         finalObjects: [SafeUpdateRemoteObject]
     ) throws {
         called = true
+        recordedNewObject = newObject
         if shouldFail { throw TerentoManifestStoreError.cleanupFailed }
     }
 }
@@ -107,6 +109,7 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
     var snapshotScopes: [DeviceInventoryScope] = []
     private var protectedReads = 0
     var events: [String] = []
+    var deletedTargets: [SafeDeleteTarget] = []
     var objects: [SafeUpdateRemoteObject]
     var currentInspectionObject: SafeUpdateRemoteObject
 
@@ -231,6 +234,7 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
         events.append("deleteExactObject")
+        deletedTargets.append(target)
         if mode == .deleteFailure {
             throw SafeDeleteTransportError.operationFailed("delete failed")
         }
@@ -524,6 +528,54 @@ private func testSuccessfulUpdateAndOrdering() async throws {
         "readProtectedInventory", "rescanObjects"
     ], "update should write, verify, remove old, and finish without a local backup")
     try require(harness.artifact.workspaceRootURL.map { !FileManager.default.fileExists(atPath: $0.path) } == true, "successful update should remove its acquisition workspace")
+}
+
+/// The old map's manifest proof reaches the old-map delete target, and the
+/// verified new map is recorded with a proof computed from its local artifact.
+private func testSampledRemovalProofFlowsThroughUpdate() async throws {
+    let base = makeHarness()
+    let bytes = Data((0..<4096).map { UInt8(truncatingIfNeeded: $0 &* 31 &+ 7) })
+    let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("terento-stage53-proof-\(UUID().uuidString).img")
+    try bytes.write(to: url, options: .atomic)
+    defer { try? FileManager.default.removeItem(at: url) }
+    let sha = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+    let artifact = SafeUpdateSourceArtifact(provider: base.artifact.provider, region: base.artifact.region,
+        version: base.artifact.version, localIMGURL: url, installSizeBytes: UInt64(bytes.count), sha256: sha,
+        sourcePackageURL: base.artifact.sourcePackageURL, catalogPackageID: base.artifact.catalogPackageID,
+        targetFilename: base.artifact.targetFilename)
+    let oldProof = ManagedRemovalProof(offsets: [0], sha256: String(repeating: "c", count: 64))
+    var oldObject = base.request.currentObject
+    oldObject.removalProof = oldProof
+    let newFile = InstalledMapFile(path: base.transport.newObject.file.path,
+        filename: base.transport.newObject.file.filename, sizeBytes: UInt64(bytes.count),
+        itemID: base.transport.newObject.file.itemID)
+    let newObject = SafeUpdateRemoteObject(file: newFile, identity: base.transport.newObject.identity,
+        version: base.transport.newObject.version, ownership: .managedByTerento, sha256: sha)
+    let request = base.request
+    let proofRequest = SafeUpdateRequest(deviceKey: request.deviceKey, identity: request.identity,
+        profile: request.profile, selectedMap: request.selectedMap, comparison: request.comparison,
+        currentItem: request.currentItem, currentObject: oldObject, confirmed: true, deviceConnected: true,
+        installationAuthorization: request.installationAuthorization)
+    let transport = FakeSafeUpdateTransport(oldObject: oldObject, newObject: newObject)
+    let reconciler = FakeSafeUpdateManifestReconciler()
+    let result = await SafeUpdateTransaction(gate: base.gate, sourceValidator: base.validator,
+        manifestReconciler: reconciler).run(request: withFixtureAuthorization(proofRequest),
+        provider: FakeSafeUpdateProvider(artifact: artifact), transport: transport)
+    try require(result.status == .success, "update with recorded proofs should succeed: \(result.message)")
+    try require(transport.deletedTargets.count == 1 && transport.deletedTargets[0].removalProof == oldProof
+        && transport.deletedTargets[0].expectedSHA256 == oldObject.sha256,
+        "old-map removal must carry the old manifest entry's sampled proof")
+    let recorded = reconciler.recordedNewObject?.removalProof
+    try require(recorded == ManagedRemovalProof.make(localFileURL: url, fileSizeBytes: UInt64(bytes.count), fileSHA256: sha)
+        && recorded?.isBound(toFileSizeBytes: UInt64(bytes.count), fileSHA256: sha) == true,
+        "the verified new map must be recorded with a proof from its local artifact")
+    try require(result.newObject?.removalProof == nil, "the reported device object stays a plain verified object")
+
+    let legacy = makeHarness()
+    _ = await run(legacy)
+    try require(legacy.transport.deletedTargets.first?.removalProof == nil,
+        "an old entry without a proof keeps the full content check")
 }
 
 private func testInstallFailureRemovesAcquisitionWorkspace() async throws {
@@ -1302,6 +1354,7 @@ struct Stage53SafeUpdateTests {
             ("provider timeout preserves installed map", testProviderTimeoutPreservesInstalledMap),
             ("real update acquisition telemetry", testRealUpdateAcquisitionEvents),
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
+            ("sampled removal proof through update", testSampledRemovalProofFlowsThroughUpdate),
             ("protected replacement full raw matrix", testProtectedUpdateTransitionMatrix),
             ("protected baseline and binding gate", testProtectedBaselineRefusesBeforeSend),
             ("map-scope protected update inventories", testMapScopeProtectedUpdate),

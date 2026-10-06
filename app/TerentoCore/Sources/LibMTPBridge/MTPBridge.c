@@ -1961,18 +1961,23 @@ static int map_short_packet_reads(const TerentoMTPMapOperationProfile *profile) 
 #endif
 }
 
-/* Full selected-content proof, in the deletion session; not creation provenance. */
-static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
-    const TerentoMTPMapOperationProfile *profile, uint32_t object_id,
-    uint64_t size, const char *expected_hash,
-    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
-    if (!expected_hash || strnlen(expected_hash, 65) != 64 || size < 512) return 0;
+/* A 64-digit hexadecimal SHA-256 that is not all zeroes. */
+static int valid_content_hash(const char *expected_hash) {
+    if (!expected_hash || strnlen(expected_hash, 65) != 64) return 0;
     int nonzero_hash = 0;
     for (size_t i = 0; i < 64; ++i) {
         if (!isxdigit((unsigned char)expected_hash[i])) return 0;
         if (expected_hash[i] != '0') nonzero_hash = 1;
     }
-    if (!nonzero_hash) return 0;
+    return nonzero_hash;
+}
+
+/* Full selected-content proof, in the deletion session; not creation provenance. */
+static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id,
+    uint64_t size, const char *expected_hash,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
+    if (!valid_content_hash(expected_hash) || size < 512) return 0;
     CC_SHA256_CTX hash;
     if (!CC_SHA256_Init(&hash)) return 0;
     uint64_t offset = 0;
@@ -2002,6 +2007,99 @@ static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
     char actual[65];
     for (size_t i = 0; i < sizeof(digest); ++i) snprintf(actual + i * 2, 3, "%02x", digest[i]);
     return strcasecmp(actual, expected_hash) == 0;
+}
+
+/* Any proof field set means a sampled proof was requested; it is then
+ * validated completely and never silently replaced by another check. */
+static int removal_proof_requested(const TerentoMTPMutationAuthorization *authorization) {
+    return authorization->removal_sample_offsets != NULL || authorization->removal_sample_count != 0
+        || authorization->removal_sample_length != 0 || authorization->removal_sample_sha256 != NULL;
+}
+
+/* Exact format-1 geometry recorded by Terento: sorted, non-overlapping regions
+ * of the fixed length, the first at offset 0 and the last ending at the final
+ * byte. Files longer than the full plan use exactly the fixed region count;
+ * shorter files are tiled completely, which is the full content. */
+static int validate_removal_plan(uint64_t file_size, const uint64_t *offsets,
+    uint32_t count, uint32_t length, uint64_t *total) {
+    if (!offsets || !total || file_size < 512 || length != TERENTO_REMOVAL_PROOF_REGION_LENGTH
+        || count == 0 || count > TERENTO_REMOVAL_PROOF_REGION_COUNT || offsets[0] != 0) return 0;
+    uint64_t covered_end = 0, sum = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        uint64_t start = offsets[i];
+        if (start >= file_size || (i > 0 && start < covered_end)) return 0;
+        uint64_t available = file_size - start;
+        uint64_t region = available < length ? available : length;
+        covered_end = start + region;
+        sum += region;
+    }
+    uint64_t full_plan = (uint64_t)TERENTO_REMOVAL_PROOF_REGION_COUNT * length;
+    if (covered_end != file_size) return 0;
+    if (file_size > full_plan ? (count != TERENTO_REMOVAL_PROOF_REGION_COUNT || sum != full_plan)
+                              : sum != file_size) return 0;
+    *total = sum;
+    return 1;
+}
+
+/* Sampled removal proof, in the deletion session, for a map Terento wrote and
+ * verified: the recorded regions of the live object must reproduce the digest
+ * computed from the verified local artifact at install time. The IMG header is
+ * checked exactly as in the full proof. Only the recorded regions are read. */
+static int verify_deletion_samples(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id, uint64_t size,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
+    uint64_t total = 0;
+    if (!valid_content_hash(authorization->expected_sha256)
+        || !valid_content_hash(authorization->removal_sample_sha256)
+        || !validate_removal_plan(size, authorization->removal_sample_offsets,
+            authorization->removal_sample_count, authorization->removal_sample_length, &total)) return 0;
+    CC_SHA256_CTX hash;
+    if (!CC_SHA256_Init(&hash)) return 0;
+    uint64_t done = 0;
+    /* Observation only: completion of reads never authorizes deletion. */
+    if (progress_callback) progress_callback(0, total, progress_context);
+    for (uint32_t index = 0; index < authorization->removal_sample_count; ++index) {
+        uint64_t start = authorization->removal_sample_offsets[index];
+        uint64_t available = size - start;
+        uint32_t length = (uint32_t)(available < authorization->removal_sample_length
+            ? available : authorization->removal_sample_length);
+        for (uint32_t consumed = 0; consumed < length;) {
+            uint64_t offset = start + consumed;
+            uint32_t requested = terento_sample_read_request(length - consumed, map_short_packet_reads(profile));
+            unsigned char *bytes = NULL;
+            unsigned int count = 0;
+            int result = LIBMTP_GetPartialObject(device, object_id, offset, requested, &bytes, &count);
+            int valid = result == 0 && bytes && count == requested;
+            if (valid && offset == 0) valid = count >= 0x48 && bytes[0] == 0
+                && !memcmp(bytes + 0x10, "DSKIMG", 6) && !memcmp(bytes + 0x41, "GARMIN", 6);
+            if (valid) valid = CC_SHA256_Update(&hash, bytes, count);
+            if (bytes) LIBMTP_FreeMemory(bytes);
+            if (!valid) return 0;
+            consumed += count;
+            done += count;
+            if (progress_callback) progress_callback(done, total, progress_context);
+        }
+    }
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    if (done != total || !CC_SHA256_Final(digest, &hash)) return 0;
+    char actual[65];
+    for (size_t i = 0; i < sizeof(digest); ++i) snprintf(actual + i * 2, 3, "%02x", digest[i]);
+    return strcasecmp(actual, authorization->removal_sample_sha256) == 0;
+}
+
+/* Managed deletion content check: the recorded sampled proof when one was
+ * supplied, otherwise the full SHA-256 of the selected content. */
+static int verify_managed_deletion_content(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id, uint64_t size,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPProgressCallback progress_callback, const void *progress_context) {
+    if (removal_proof_requested(authorization)) {
+        return verify_deletion_samples(device, profile, object_id, size, authorization,
+            progress_callback, progress_context);
+    }
+    return verify_deletion_content(device, profile, object_id, size, authorization->expected_sha256,
+        progress_callback, progress_context);
 }
 
 static int deletion_target_still_matches(LIBMTP_mtpdevice_t *device, uint32_t storage,
@@ -2625,7 +2723,7 @@ int terento_mtp_delete_managed_map_authorized(
     if (match_count != 1 || actual_item_id == 0 || expected_size_bytes == 0
         || remote_size != expected_size_bytes || storage_id != profile->expected_storage_id
         || authorization->expected_size != remote_size
-        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256, progress_callback, progress_context)
+        || !verify_managed_deletion_content(device, profile, actual_item_id, remote_size, authorization, progress_callback, progress_context)
         || !deletion_target_still_matches(device, storage_id, folder_id, target_filename,
             actual_item_id, remote_size)) {
         set_error(error_message, error_message_capacity, "Managed map cleanup refused: exact target identity did not match");
@@ -2677,6 +2775,8 @@ int terento_mtp_delete_external_map_authorized(
     if (record) { memset(record, 0, sizeof(*record)); record->native_result = TERENTO_MTP_MUTATION_REFUSED; }
     if (!authorization || !record) return TERENTO_MTP_MUTATION_REFUSED;
     if (authorization->purpose != TERENTO_MUTATION_REMOVE_EXTERNAL) return TERENTO_MTP_MUTATION_REFUSED;
+    /* External maps have no Terento install record: always the full content check. */
+    if (removal_proof_requested(authorization)) return TERENTO_MTP_MUTATION_REFUSED;
     if (validate_map_operation_profile(
             profile,
             error_message,

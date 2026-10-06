@@ -73,6 +73,9 @@ struct SafeUpdateRemoteObject: Equatable, Sendable {
     let version: MapVersion?
     let ownership: MapManagementState
     let sha256: String?
+    /// The manifest's sampled removal proof for the current map, or the proof
+    /// recorded for the verified new map. Nil keeps the full content check.
+    var removalProof: ManagedRemovalProof? = nil
 }
 
 struct SafeUpdateSourceArtifact: Equatable, Sendable {
@@ -549,7 +552,10 @@ struct LocalSafeUpdateManifestReconciler: SafeUpdateManifestReconciler, Sendable
             packageID: package.id,
             artifactID: package.mainArtifact?.id,
             artifactKind: .main,
-            bbbikeMetadata: BBBikeMapMetadata(package: package)
+            bbbikeMetadata: BBBikeMapMetadata(package: package),
+            removalProof: newObject.removalProof.flatMap {
+                $0.isBound(toFileSizeBytes: newObject.file.sizeBytes, fileSHA256: hash) ? $0 : nil
+            }
         )
         try store.replaceAfterUpdate(
             deviceKey: deviceKey,
@@ -1049,7 +1055,10 @@ struct SafeUpdateTransaction: Sendable {
             expectedFilename: current.file.filename,
             expectedSizeBytes: current.file.sizeBytes,
             expectedSHA256: currentHash,
-            expectedVersion: expectedOldVersion
+            expectedVersion: expectedOldVersion,
+            // The native delete uses it only when it is the exact plan for
+            // this old map's recorded size and SHA-256.
+            removalProof: request.currentObject.removalProof
         )
         let deleteResult = SafeDeleteAdapter().delete(
             target: deleteTarget,
@@ -1111,11 +1120,19 @@ struct SafeUpdateTransaction: Sendable {
         }
 
         report(.reconcilingManifest, fraction: 2.0 / 3, detail: "Saving the update record", onProgress)
+        // The new map was verified in full against this local artifact; record
+        // its sampled removal proof from the same bytes (nil keeps full checks).
+        var recordedObject = verified
+        recordedObject.removalProof = ManagedRemovalProof.make(
+            localFileURL: artifact.localIMGURL,
+            fileSizeBytes: artifact.installSizeBytes,
+            fileSHA256: artifact.sha256
+        )
         do {
             try manifestReconciler.reconcile(
                 deviceKey: request.deviceKey,
                 oldObject: current,
-                newObject: verified,
+                newObject: recordedObject,
                 package: request.selectedMap,
                 finalObjects: finalObjects
             )

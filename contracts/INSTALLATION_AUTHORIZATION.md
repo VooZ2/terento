@@ -102,6 +102,12 @@ walk, and any missing or ambiguous root makes the native session fall back to
 the full walk.
 The existing native mutation grant, same-session identity, ownership, protected
 objects, source verification, free-space and no-overwrite checks remain required.
+A delete grant for a Terento-managed map (Remove, Update's old map) may carry the
+sampled removal proof recorded in that map's manifest entry; the native delete
+then reads and compares only the recorded regions of the exact same-session
+object. Without a proof, and always for external maps, it compares the full
+SHA-256. The proof never grants write or delete permission by itself; see
+`app/TerentoCore/README.md` (Safety and verification).
 
 Native inventory and exact-read resolution project only the verified root and
 its descendants in the selected storage to logical `/GARMIN` paths. Original

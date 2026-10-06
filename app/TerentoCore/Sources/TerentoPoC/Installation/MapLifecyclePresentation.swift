@@ -199,6 +199,9 @@ struct MapLifecycleContext: Sendable {
     let profile: DeviceInstallProfile?
     let deviceKey: String
     let expectedSHA256ByItemID: [UInt32: String]
+    /// Sampled removal proofs from the same manifest entries that supplied
+    /// the hashes. Missing entries keep the full content check.
+    let removalProofByItemID: [UInt32: ManagedRemovalProof]
     /// Custom maps have no provider metadata in the IMG header. The exact
     /// manifest identity is carried separately for safe lifecycle operations.
     let mapIdentity: MapIdentity?
@@ -215,7 +218,8 @@ struct MapLifecycleContext: Sendable {
         expectedSHA256ByItemID: [UInt32: String],
         mapIdentity: MapIdentity? = nil,
         failedInstallRecovery: TerentoFailedInstallRecoveryRecord? = nil,
-        expectedStorageID: UInt32 = 0
+        expectedStorageID: UInt32 = 0,
+        removalProofByItemID: [UInt32: ManagedRemovalProof] = [:]
     ) {
         self.item = item
         self.comparison = comparison
@@ -226,6 +230,7 @@ struct MapLifecycleContext: Sendable {
         self.profile = profile
         self.deviceKey = deviceKey
         self.expectedSHA256ByItemID = expectedSHA256ByItemID
+        self.removalProofByItemID = removalProofByItemID
         self.mapIdentity = mapIdentity ?? failedInstallRecovery.flatMap {
             guard MapIdentity.normalizeProvider($0.providerId) == "custom" else { return nil }
             return MapIdentity(provider: $0.providerId, region: $0.regionId)

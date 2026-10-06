@@ -339,9 +339,10 @@ no longer compared. This is sufficient because every Terento mutation is
 object-scoped inside that subtree: a fresh object is sent into the verified
 `/GARMIN` folder handle under native authorization and a same-session
 no-overwrite check, and every native delete resolves the same folder and
-removes one exact verified object in it (the replaced or user-confirmed map
-after full SHA-256 comparison; automatic cleanup after a lost creation session
-is refused). The scan only recognizes, manages or
+removes one exact verified object in it (the replaced map or a managed map
+after its recorded sampled removal proof, or full SHA-256 comparison when the
+manifest entry has no proof; a user-confirmed external map always after full
+SHA-256 comparison; automatic cleanup after a lost creation session is refused). The scan only recognizes, manages or
 offers Remove for maps in `/GARMIN` and `/GARMIN/Map`, and storage-root map
 files remain compared. When the native session cannot prove exactly one root
 folder, or the scoped listing fails, it answers with the previous full walk;

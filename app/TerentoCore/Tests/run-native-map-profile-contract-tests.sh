@@ -67,14 +67,28 @@ for base in ['terento_mtp_install_map_file', 'terento_mtp_delete_managed_map', '
     assert 'validate_live_map_operation_device(' in live, base
     assert '!authorization || !record' in live, base
     assert re.search(re.escape(base + '_authorized') + r'\s*\([^;]*TerentoMTPMutationAuthorization[^;]*TerentoMTPMutationRecord', header, re.S), base
-for base in ['terento_mtp_delete_managed_map', 'terento_mtp_delete_external_map']:
+# Managed deletes check the recorded sampled proof or the full hash; external
+# deletes always check the full hash and refuse any sampled proof.
+content_checks = {'terento_mtp_delete_managed_map': 'verify_managed_deletion_content(',
+                  'terento_mtp_delete_external_map': 'verify_deletion_content('}
+for base, content_check in content_checks.items():
     live = body(base + '_authorized')
     for check in ['remote_size != expected_size_bytes', 'expected_size_bytes == 0',
                   'storage_id != profile->expected_storage_id', 'match_count != 1',
-                  'verify_deletion_content(', 'deletion_target_still_matches(',
+                  content_check, 'deletion_target_still_matches(',
                   'terento_dispatch_mutation(']:
         assert check in live, (base, check)
-    assert live.index('verify_deletion_content(') < live.index('deletion_target_still_matches(') < live.index('terento_dispatch_mutation('), base
+    assert live.index(content_check) < live.index('deletion_target_still_matches(') < live.index('terento_dispatch_mutation('), base
+managed_content = body('verify_managed_deletion_content')
+assert 'removal_proof_requested(authorization)' in managed_content
+assert 'verify_deletion_samples(' in managed_content and 'verify_deletion_content(' in managed_content
+external = body('terento_mtp_delete_external_map_authorized')
+assert 'if (removal_proof_requested(authorization)) return TERENTO_MTP_MUTATION_REFUSED;' in external
+assert external.index('removal_proof_requested(') < external.index('open_single_garmin_device(')
+samples = body('verify_deletion_samples')
+for check in ['validate_removal_plan(', 'valid_content_hash(authorization->removal_sample_sha256)',
+              '"DSKIMG"', '"GARMIN"', 'CC_SHA256_Final', 'strcasecmp(actual, authorization->removal_sample_sha256)']:
+    assert check in samples, check
     assert 'actual_item_id != expected_item_id' not in live, base
 assert '#define TERENTO_MAP_OPERATION_PROFILE_VERSION 2' in source
 for field in ['physical_identifier_source', 'physical_identifier', 'expected_storage_id']:

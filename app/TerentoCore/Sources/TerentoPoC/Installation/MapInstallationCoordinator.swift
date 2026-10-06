@@ -918,6 +918,16 @@ struct MapInstallationCoordinator: Sendable {
                 target: targetObject,
                 metadata: metadataResult
             )
+            // The written object passed sampled verification against this
+            // local artifact. Record a sampled removal proof from the same
+            // artifact (re-hashed in full while sampling); without it, removal
+            // keeps the full content check.
+            let removalProof = ManagedRemovalProof.make(
+                localFileURL: artifact.localIMGURL,
+                fileSizeBytes: artifact.installSizeBytes,
+                fileSHA256: artifact.sha256
+            )
+            diagnostic("removal_proof", "recorded=\(removalProof == nil ? 0 : 1) regions=\(removalProof?.offsets.count ?? 0)")
             let manifestEntry = TerentoManifestEntry(
                 deviceKey: request.identity.localManifestDeviceKey,
                 devicePath: targetPath,
@@ -931,7 +941,8 @@ struct MapInstallationCoordinator: Sendable {
                 packageID: request.selectedMap.id,
                 artifactID: artifact.artifactID,
                 artifactKind: artifact.artifactKind,
-                bbbikeMetadata: BBBikeMapMetadata(package: request.selectedMap)
+                bbbikeMetadata: BBBikeMapMetadata(package: request.selectedMap),
+                removalProof: removalProof
             )
 
             do {
