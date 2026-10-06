@@ -264,6 +264,16 @@ filenames, serials, Unit IDs, object identifiers, hashes and map contents.
 Absent or explicit-null context stays unavailable; it is not reconstructed.
 Persistence uses SQL NULL for either case, never a JSONB `null` value.
 
+## Installation inventory metrics
+
+Schema version 4 accepts an optional top-level `inventoryMetrics` object:
+`scope` (`FULL` or `GARMIN`), `prewriteObjectCount` (0–10,000,000),
+`prewriteDurationMs` (0–86,400,000) and optional `postwriteObjectCount` and
+`postwriteDurationMs` with the same bounds. Unknown nested keys are rejected;
+null means absent; versions 1–3 reject the field. It carries no names, paths or
+identifiers and is diagnostics only, never a count.
+`fixtures/compatibility-event.valid-inventory-metrics.json` is the reference.
+
 ## Changing a contract
 
 1. Inspect the serializer, validator, API documentation and existing consumers.

@@ -932,6 +932,23 @@ def _diagnostic_technical_details(result: dict[str, Any], result_number: int) ->
     ):
         if result.get(key) is not None:
             fields.append((label, _diagnostic_boolean(result.get(key))))
+    metrics = result.get("inventory_metrics")
+    if isinstance(metrics, str):
+        try:
+            metrics = json.loads(metrics)
+        except ValueError:
+            metrics = None
+    if isinstance(metrics, dict):
+        # Diagnostics only (inventoryMetrics); never a count.
+        for label, key in (
+            ("Inventory scope", "scope"),
+            ("Pre-write objects", "prewriteObjectCount"),
+            ("Pre-write check (ms)", "prewriteDurationMs"),
+            ("Post-write objects", "postwriteObjectCount"),
+            ("Post-write check (ms)", "postwriteDurationMs"),
+        ):
+            if metrics.get(key) is not None:
+                fields.append((label, metrics[key]))
     for key, prefix in (('failure_context', 'Failure'), ('original_failure_context', 'Original failure')):
         if key == 'original_failure_context' and result.get(key) is None:
             fields.append(('Original failure context', 'unavailable'))

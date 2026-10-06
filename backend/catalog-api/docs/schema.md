@@ -563,3 +563,11 @@ previous/new status and issue, note, admin, time; cascades with its report). No
 IP, serial, Unit ID, account or path is stored. Rows are pruned 12 months after
 receipt by `prune_compatibility_events`; local rows are removed by the Test data
 purge. Never read by statistics. Meaning: `contracts/SUPPORT_REPORT_CONTRACT.md`.
+
+### Migration072: installation inventory metrics
+
+Adds the nullable `compatibility_evidence_event.inventory_metrics` JSONB object
+column (optional schema-v4 `inventoryMetrics`: scope, pre-/post-write object
+counts and durations). Additive and ignored by the previous revision; no view or
+count reads it. `Database.inventory_metrics_distribution()` computes the
+non-local per-model median/p90 read model for `/admin/inventory-metrics.json`.

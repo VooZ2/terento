@@ -1043,7 +1043,7 @@ class Database:
                 cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,
                 raw_mtp_model, identity_resolution_code, is_local_test,
                 garmin_model_description, garmin_model_part_number, identity_assessment,
-                failure_context, original_failure_context,
+                failure_context, original_failure_context, inventory_metrics,
                 statistics_exclusion_code, statistics_exclusion_reason, security_issue_code,
                 schema_version
             ) VALUES (
@@ -1059,7 +1059,7 @@ class Database:
                 %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
                 %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s,
                 %(isLocalTest)s, %(garminModelDescription)s, %(garminModelPartNumber)s, %(identityAssessment)s::jsonb,
-                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb,
+                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb, %(inventoryMetrics)s::jsonb,
                 %(statisticsExclusionCode)s, %(statisticsExclusionReason)s, %(securityIssueCode)s,
                 %(schemaVersion)s
             ) ON CONFLICT (event_id) DO NOTHING
@@ -1084,6 +1084,7 @@ class Database:
             **event,
             "failureContext": json.dumps(event['failureContext']) if event.get('failureContext') is not None else None,
             "originalFailureContext": json.dumps(event['originalFailureContext']) if event.get('originalFailureContext') is not None else None,
+            "inventoryMetrics": json.dumps(event['inventoryMetrics']) if event.get('inventoryMetrics') is not None else None,
             # Swift Codable omits nil optional fields. PostgreSQL still needs
             # explicit NULL parameters for the named placeholders below.
             "family": event.get("family"),
@@ -1271,7 +1272,7 @@ class Database:
                 variant, firmware_version, provider, region, map_release, terento_version,
                 app_build, release_label, schema_version, map_result_index, selected_map_count,
                 phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
-                failure_context, original_failure_context,
+                failure_context, original_failure_context, inventory_metrics,
                 write_started,
                 remote_object_created,
                 cleanup_attempted,
@@ -4353,6 +4354,47 @@ class Database:
                 "SELECT id FROM support_report WHERE id = %s", (report["id"],),
             ).fetchone()
         return "duplicate" if existing else "conflict"
+
+    def inventory_metrics_distribution(self, *, model_limit: int = 100) -> list[dict[str, Any]]:
+        """Pre-write inventory timing per exact model and scope (non-local installation reports).
+
+        Diagnostics only: never an input to install, update, download or
+        compatibility counts.
+        """
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT COALESCE(e.canonical_device_model_id, '') AS canonical_device_model_id,
+                       e.compatibility_identity,
+                       e.inventory_metrics->>'scope' AS scope,
+                       count(*) AS report_count,
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteDurationMs')::bigint) AS duration_median,
+                       percentile_cont(0.9) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteDurationMs')::bigint) AS duration_p90,
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteObjectCount')::bigint) AS objects_median,
+                       percentile_cont(0.9) WITHIN GROUP (ORDER BY (e.inventory_metrics->>'prewriteObjectCount')::bigint) AS objects_p90,
+                       max(e.occurred_at) AS last_reported_at
+                FROM compatibility_evidence_event AS e
+                WHERE e.inventory_metrics IS NOT NULL AND e.is_local_test IS NOT TRUE
+                GROUP BY 1, 2, 3
+                ORDER BY report_count DESC, e.compatibility_identity, scope
+                LIMIT %s
+                """,
+                (max(1, min(int(model_limit), 500)),),
+            ).fetchall()
+        def number(value: Any) -> float | None:
+            return round(float(value), 1) if value is not None else None
+        return [
+            {
+                "canonicalDeviceId": row["canonical_device_model_id"] or None,
+                "compatibilityIdentity": row["compatibility_identity"],
+                "scope": row["scope"],
+                "reportCount": int(row["report_count"] or 0),
+                "prewriteDurationMs": {"median": number(row["duration_median"]), "p90": number(row["duration_p90"])},
+                "prewriteObjectCount": {"median": number(row["objects_median"]), "p90": number(row["objects_p90"])},
+                "lastReportedAt": row["last_reported_at"].isoformat() if hasattr(row["last_reported_at"], "isoformat") else row["last_reported_at"],
+            }
+            for row in rows
+        ]
 
     def maps_unknown_model_count(self) -> int:
         """Needs attention: active catalog models whose Maps value is Unknown (NULL)."""

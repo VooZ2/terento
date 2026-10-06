@@ -1422,6 +1422,20 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     noindex=True,
                 )
                 return
+            if request_path in {"/admin/inventory-metrics.json", "/admin/inventory-metrics.json/"}:
+                try:
+                    models = service.database.inventory_metrics_distribution()
+                except Exception:
+                    LOGGER.exception("admin inventory metrics failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "inventory_metrics_unavailable"},
+                                    send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                self._send_json(HTTPStatus.OK, {
+                    "schemaVersion": 1,
+                    "population": "non-local installation reports with inventoryMetrics; diagnostics only, never counts",
+                    "models": models,
+                }, send_body=send_body, cache_control="no-store", noindex=True)
+                return
             if request_path in {"/admin/app-funnel.json", "/admin/app-funnel.json/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 try:

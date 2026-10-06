@@ -198,6 +198,19 @@ Context does not change statistical populations, event idempotency, sharing,
 retention or device-operation authority. Missing or explicitly null fields remain
 unavailable in authenticated diagnostics and generated issue reports.
 
+### Optional `inventoryMetrics` and `GET /admin/inventory-metrics.json`
+
+Schema-version-4 events may carry the optional `inventoryMetrics` object
+defined in `contracts/compatibility-event.schema.json` (`scope` `FULL|GARMIN`,
+pre-write object count and duration, optional post-write count and duration;
+unknown nested keys and out-of-range values are `400 invalid_inventory_metrics`).
+Installation reports store it in `inventory_metrics` and show it in the Admin
+installation report Technical details; update reports keep it in their stored
+payload. `GET /admin/inventory-metrics.json` (admin session) returns, per exact
+model identity and scope, the non-local report count, median/p90 pre-write
+duration and object count, and the last report time. Diagnostics only; never
+an input to counts.
+
 ## `GET https://api.terento.app/admin`
 
 Returns the authenticated operator Dashboard. The default period is the last 24

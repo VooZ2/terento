@@ -245,6 +245,18 @@ is in memory and terminal reports enter the existing durable outbox. This does
 not add crash journaling before a result exists, and cannot recover a historical
 missing report or infer an unknown user's watch.
 
+## Server-first inventory metrics
+
+Schema version 4 additionally accepts an optional top-level `inventoryMetrics`
+object (`scope` `FULL|GARMIN`, `prewriteObjectCount` 0…10,000,000,
+`prewriteDurationMs` 0…86,400,000, optional `postwriteObjectCount` and
+`postwriteDurationMs`; unknown nested keys are `400`, null means absent;
+versions 1–3 reject it). Migration 072 stores it in the nullable
+`compatibility_evidence_event.inventory_metrics` column; update reports keep it
+in their payload. The metrics are diagnostics only and never counts. Deploy and
+verify the API before an app build emits the field; an older API rejects the
+unknown key with `400`.
+
 ## Server-first structured failure context
 
 The version-4 additive contract accepts optional top-level `failureContext` and

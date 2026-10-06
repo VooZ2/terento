@@ -476,7 +476,10 @@ installation outcomes, device files, telemetry, statistics, or publication.
 
 Diagnostic detail retains the result, time, map/provider, device identity,
 available image, reason, lifecycle actions, issue actions, and one collapsed
-Technical details section. A successful result with pending identity is not a
+Technical details section. When an installation report carries
+`inventoryMetrics`, Technical details lists its scope, pre-write objects and
+check time, and post-write objects and check time; they are diagnostics, never
+counts. A successful result with pending identity is not a
 failure.
 
 ### Shared installation and update review
