@@ -59,6 +59,9 @@ def select_suites(paths: list[str]) -> list[str]:
         if text in {".github/workflows/deploy-catalog-api.yml", ".github/workflows/reusable-catalog-api-quality.yml"}:
             selected.add("backend")
             continue
+        if text in {".github/workflows/deploy-site.yml", ".github/indexnow/site-state.json"}:
+            selected.add("site")
+            continue
         if text.startswith((".github/", "contracts/")):
             return list(ALL_SUITES)
         if text.startswith("Packaging/"):

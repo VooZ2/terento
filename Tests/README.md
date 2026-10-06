@@ -32,10 +32,14 @@ device telemetry; the audit must pass them through API validation locally.
 | App shell or presentation | app, shared/CI |
 | Native core or lifecycle | app, native, shared/CI |
 | Backend implementation | backend, shared/CI; selected catalog interfaces also native |
-| Shared schema/fixture or unknown implementation path | all suites |
+| Site deploy workflow or IndexNow publication state | site, shared/CI |
+| Other workflows, shared schema/fixture or unknown implementation path | all suites |
 
 The full release matrix runs on tags, manual full checks, weekly CI and release
-packaging. The required `build-and-test` aggregate rejects failed/cancelled jobs;
+packaging. A manual dispatch with `selection_base` (`beta` or `main`, task
+branches only) instead selects suites from the branch's changes since that
+base and skips the live catalog gate; the site deploy uses it for the IndexNow
+state PR. The required `build-and-test` aggregate rejects failed/cancelled jobs;
 only intentionally unselected suites may be skipped. In CI (`CI=true`) a suite
 runs every runner and lists all failing runners at the end; local runs stop at
 the first failure. A newer PR commit cancels older PR CI. Deployment jobs are serialized, not cancelled mid-mutation.

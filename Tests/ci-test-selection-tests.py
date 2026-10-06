@@ -61,6 +61,9 @@ def main() -> int:
     expect(["Tests/select-test-suites.py"], baseline)
     expect(["Tests/ci-test-selection-tests.py"], baseline)
     expect([".github/workflows/deploy-catalog-api.yml"], baseline | {"backend"})
+    expect([".github/workflows/deploy-site.yml"], baseline | {"site"})
+    expect([".github/indexnow/site-state.json"], baseline | {"site"})
+    expect([".github/workflows/publish-vps-images.yml"], set(MODULE.ALL_SUITES))
     expect(["backend/catalog-api/src/terento_catalog/admin.py", "Tests/site-faq-content-tests.cjs"], baseline | {"backend", "site"})
     expect([], set(MODULE.ALL_SUITES))
     # Every Markdown document a suite test reads selects that suite.

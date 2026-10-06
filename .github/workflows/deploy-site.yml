@@ -369,7 +369,8 @@ jobs:
             pr_number="${pr_url##*/}"
           fi
           echo "IndexNow publication state PR: ${pr_url}"
-          gh workflow run swift-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$state_branch"
+          gh workflow run swift-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$state_branch" \
+            -f selection_base=beta
           run_id=''
           for _ in {1..60}; do
             run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow swift-ci.yml \

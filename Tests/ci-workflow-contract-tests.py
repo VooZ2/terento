@@ -494,6 +494,29 @@ def verify_release_reporting(swift):
             assert values["release_manifest_changed"] == expected, (event, ref, values)
             if expected == "true":
                 assert set(json.loads(values["suites"])) == {"site", "app", "native", "backend", "release", "shared", "ci"}
+        # A dispatch with selection_base tests only the task branch's changes.
+        git("update-ref", "refs/remotes/origin/beta", after)
+        state = root / ".github/indexnow/site-state.json"
+        state.parent.mkdir(parents=True)
+        state.write_text("{}\n")
+        git("add", ".github/indexnow/site-state.json")
+        git("commit", "-m", "retain IndexNow state")
+        state_sha = git("rev-parse", "HEAD")
+        def dispatch(ref, selection_base):
+            output = root / "output"
+            output.write_text("")
+            process = subprocess.run(["bash", "-c", shell], cwd=root, capture_output=True,
+                env={**os.environ, "EVENT_NAME":"workflow_dispatch", "GITHUB_REF":ref, "BASE_SHA":"",
+                     "SELECTION_BASE":selection_base, "GITHUB_SHA":state_sha, "GITHUB_OUTPUT":str(output)})
+            if process.returncode:
+                return None
+            values = dict(line.split("=", 1) for line in output.read_text().splitlines())
+            return set(json.loads(values["suites"]))
+        assert dispatch("refs/heads/terento/indexnow-state", "beta") == {"site", "shared", "ci"}
+        assert dispatch("refs/heads/terento/indexnow-state", "") == {"site", "app", "native", "backend", "release", "shared", "ci"}
+        assert dispatch("refs/heads/terento/indexnow-state", "origin/beta") is None
+        assert dispatch("refs/heads/beta", "beta") is None
+        assert dispatch("refs/tags/v1.0.0", "beta") is None
     report = swift.split("  publish-operational-report:", 1)[1]
     assert "needs.changes.outputs.release_manifest_changed == 'true'" in report
     assert report.index("Reject superseded release metadata") < report.index("Build consolidated health report")
@@ -569,6 +592,10 @@ def main() -> int:
         "inputs.send_health_report || inputs.run_release_gate",
         "name: build-and-test",
         "Tests/select-test-suites.py --json --stdin",
+        "selection_base:",
+        "SELECTION_BASE: ${{ inputs.selection_base }}",
+        "if: (github.event_name == 'workflow_dispatch' && inputs.selection_base == '') || startsWith(github.ref, 'refs/tags/v')",
+        "LIVE_REQUIRED: ${{ (github.event_name == 'workflow_dispatch' && inputs.selection_base == '') || startsWith(github.ref, 'refs/tags/v') }}",
         "xcodebuild \\",
         "docker build --pull=false -f site-deploy/Dockerfile",
         "scripts/send-weekly-health-report.py",
@@ -726,6 +753,7 @@ def main() -> int:
     assert 'state_branch="terento/indexnow-state"' in deploy_site
     assert 'gh pr list --repo "$GITHUB_REPOSITORY" --base beta' in deploy_site
     assert 'gh workflow run swift-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$state_branch"' in deploy_site
+    assert '--ref "$state_branch" \\\n            -f selection_base=beta' in deploy_site
     assert 'select(.name == "build-and-test")' in deploy_site
     assert 'gh pr create --repo "$GITHUB_REPOSITORY" --base beta --head "$state_branch"' in deploy_site
     assert 'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch' in deploy_site
