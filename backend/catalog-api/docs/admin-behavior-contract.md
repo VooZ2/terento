@@ -40,7 +40,8 @@ Interactive Primary (slate), custom `.img` fresh install successful its own
 Lichen-dark series and legend entry, install failed solid red (destructive
 text), update successful Warm Stone with a stone-dark outline (Warm Stone alone
 is 2.69:1 on white), and update failed red diagonal stripes in bars and legends.
-Stacked segments are separated by a 1 px surface line, every series has a legend
+Stacked segments touch with no separator line, so each bar reads as one solid
+column; every series has a legend
 entry (counts follow the Dashboard legend rule), and each bucket is one keyboard
 stop whose label lists every series. Fresh-install KPI denominators exclude every update.
 Not-started updates are diagnostics, not failed device-write attempts. Charts
@@ -261,7 +262,7 @@ each with its own legend entry; optional components and pre-write failures remai
 excluded by the statistics contract. Each bucket is one keyboard stop with a
 label listing every series; segments are presentational. Tapping, clicking or
 keyboard-focusing a bucket (Enter/Space also select it) fills a small value
-strip under the chart with the bucket date, every series value (`—` when not
+strip under the chart (hidden, with no hint text, until a bucket is chosen) with the bucket date, every series value (`—` when not
 recorded) and the total, announced through `aria-live`; values never require
 hover. The strip uses the shared inline nonce script, no chart library, and the
 charts stay server-rendered SVG.

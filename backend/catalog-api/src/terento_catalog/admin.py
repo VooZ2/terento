@@ -1710,11 +1710,9 @@ def _chart_value_attributes(date: str, values: list[tuple[str, str, int | None]]
 
 
 def _chart_value_strip() -> str:
-    """Small live strip under a chart; filled by the shared chart-values script."""
-    return (
-        "<p class='overview-chart-values admin-legend' data-chart-values-strip aria-live='polite'>"
-        "<span class='overview-chart-values-hint'>Tap or focus a bar to see its values.</span></p>"
-    )
+    """Small live strip under a chart; empty (and hidden) until the shared
+    chart-values script fills it for a tapped or focused bucket."""
+    return "<p class='overview-chart-values admin-legend' data-chart-values-strip aria-live='polite'></p>"
 
 
 def _chart_axis_labels(
@@ -2489,8 +2487,7 @@ def overview_page(
             rendered = _metric_value_text(value, fmt)
             parts.append(f"{html.escape(label)} <strong>{html.escape(rendered) if rendered is not None else '—'}</strong>")
         return (
-            f"<p class='overview-all-time'>{_scope_chip('all')}<span>{' · '.join(parts)}</span>"
-            f"<a class='section-link' href='/admin/map-statistics?period=all'>Maps&nbsp;{_admin_icon('arrow-right')}</a></p>"
+            f"<p class='overview-all-time'>{_scope_chip('all')}<span>{' · '.join(parts)}</span></p>"
         )
 
     purposes = data.get("downloadPurposes") if isinstance(data.get("downloadPurposes"), dict) else None
@@ -8739,7 +8736,6 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
 .admin-legend i.overview-chart-update{border-color:var(--stone-dark)}
 .admin-legend i.overview-chart-update-failed{border-color:var(--danger);background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px)}
-.overview-trend-chart .overview-chart-group rect{stroke:var(--surface);stroke-width:1}
 .overview-trend-chart .overview-chart-group rect.overview-chart-update{stroke:var(--stone-dark)}
 .overview-chart-group:focus{outline:none}
 .overview-chart-group:focus-visible rect{stroke:var(--graphite);stroke-width:2}
@@ -8777,6 +8773,7 @@ ADMIN_STYLES += """
 .overview-chart-panel>.overview-all-time,.overview-download-panel>.overview-all-time{margin-top:auto;padding-top:10px}
 .overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
 .overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
+.overview-chart-values:empty{display:none}
 .overview-funnel-breakdown{display:grid;gap:12px;margin:12px 0 0}
 .overview-funnel-group h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
 .overview-funnel-bars{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
@@ -8787,7 +8784,6 @@ ADMIN_STYLES += """
 .overview-funnel-bars strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
 .overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
 .overview-chart-values-date{color:var(--graphite)}
-.overview-chart-values-hint{color:var(--secondary)}
 .overview-trend-chart .overview-chart-group{cursor:pointer}
 /* Model installation history: compact table rows at >=1024 px (cards below). The GitHub issue column shows only when a row has an issue. */
 @media(min-width:1024px){

@@ -444,7 +444,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 self.assertIn("data-scope='all'>All time</span>", line.split("</p>", 1)[0])
             self.assertIn("Installs <strong>90</strong>", body)
             self.assertIn("Successful <strong>180</strong>", body)
-            self.assertIn("href='/admin/map-statistics?period=all'", body)
+            self.assertNotIn("href='/admin/map-statistics?period=all'", body)
             self.assertNotIn("title='All time'", body)
         self.assertNotEqual(
             day.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0],

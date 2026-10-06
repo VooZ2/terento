@@ -154,7 +154,9 @@ class AdminChartValueStripTests(unittest.TestCase):
         }], "day")
         strip = body.split("<p class='overview-chart-values admin-legend'", 1)[1].split("</p>", 1)[0]
         self.assertIn("data-chart-values-strip aria-live='polite'", strip)
-        self.assertIn("Tap or focus a bar to see its values.", strip)
+        self.assertEqual(strip.split(">", 1)[1], "")  # no hint text; hidden until a bucket is chosen
+        self.assertIn(".overview-chart-values:empty{display:none}", ADMIN_STYLES)
+        self.assertNotIn(".overview-chart-group rect{stroke:var(--surface)", ADMIN_STYLES)  # solid bars
         groups = re.findall(r"<g class='overview-chart-group' role='img' tabindex='0' data-chart-values='([^']+)'", body)
         self.assertEqual(len(groups), 2)  # desktop and compact chart, one strip
         import html as html_module
