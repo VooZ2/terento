@@ -36,8 +36,9 @@ device telemetry; the audit must pass them through API validation locally.
 
 The full release matrix runs on tags, manual full checks, weekly CI and release
 packaging. The required `build-and-test` aggregate rejects failed/cancelled jobs;
-only intentionally unselected suites may be skipped. A newer PR commit cancels
-older PR CI. Deployment jobs are serialized, not cancelled mid-mutation.
+only intentionally unselected suites may be skipped. In CI (`CI=true`) a suite
+runs every runner and lists all failing runners at the end; local runs stop at
+the first failure. A newer PR commit cancels older PR CI. Deployment jobs are serialized, not cancelled mid-mutation.
 
 ## Purpose of each check
 
