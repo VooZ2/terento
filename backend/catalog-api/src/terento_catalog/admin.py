@@ -8730,13 +8730,11 @@ button.admin-metric[aria-pressed="true"]{border-color:var(--interactive);backgro
 .overview-chart-success{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-custom{fill:var(--lichen-dark);background:var(--lichen-dark)}
 .overview-chart-failed{fill:var(--danger);background:var(--danger)}
-.overview-chart-update{fill:var(--stone);background:var(--stone)}
+.overview-chart-update{fill:var(--stone-dark);background:var(--stone-dark)}
 .overview-chart-update-failed{fill:var(--danger)}
 .overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
-.admin-legend i.overview-chart-update{border-color:var(--stone-dark)}
 .admin-legend i.overview-chart-update-failed{border-color:var(--danger);background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px)}
-.overview-trend-chart .overview-chart-group rect.overview-chart-update{stroke:var(--stone-dark)}
 .overview-chart-group:focus{outline:none}
 .overview-chart-group:focus-visible rect{stroke:var(--graphite);stroke-width:2}
 """

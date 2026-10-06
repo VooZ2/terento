@@ -71,8 +71,11 @@ class AdminTokenAndFocusTests(unittest.TestCase):
                       functional["stoneDark"]["$value"],
                       TOKENS["semantic"]["admin"]["light"]["destructiveText"]["$value"]):
             self.assertGreaterEqual(_contrast(value, white), 3.0, value)
-        # Warm Stone itself is below 3:1, so update marks carry a stone-dark outline.
+        # Warm Stone itself is below 3:1, so update marks are filled Stone Dark,
+        # solid and without an outline.
         self.assertLess(_contrast(TOKENS["color"]["brand"]["stone"]["$value"], white), 3.0)
+        self.assertIn(".overview-chart-update{fill:var(--stone-dark);background:var(--stone-dark)}", ADMIN_STYLES)
+        self.assertNotIn("rect.overview-chart-update{stroke", ADMIN_STYLES)
 
 
 

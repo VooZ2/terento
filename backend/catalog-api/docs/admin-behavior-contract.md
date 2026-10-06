@@ -38,8 +38,8 @@ series and labels. Chart colours follow the single rule in the statistics
 contract (owner decision 2026-10-05): provider fresh install successful uses
 Interactive Primary (slate), custom `.img` fresh install successful its own
 Lichen-dark series and legend entry, install failed solid red (destructive
-text), update successful Warm Stone with a stone-dark outline (Warm Stone alone
-is 2.69:1 on white), and update failed red diagonal stripes in bars and legends.
+text), update successful solid Stone Dark with no outline (Warm Stone alone is
+2.69:1 on white), and update failed red diagonal stripes in bars and legends.
 Stacked segments touch with no separator line, so each bar reads as one solid
 column; every series has a legend
 entry (counts follow the Dashboard legend rule), and each bucket is one keyboard
