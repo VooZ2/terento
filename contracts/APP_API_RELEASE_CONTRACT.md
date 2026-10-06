@@ -1,21 +1,34 @@
 # App–API compatibility and release contract
 
-## Release candidate 1.0.0-rc.1 build 41 (staged, unpublished)
+## Release candidate 1.0.0-rc.1 build 41 — published
 
-The next public app is the first release candidate, staged in
-`Packaging/release-candidate.json` and the Xcode Release label `1.0.0-rc.1`
-(Debug `1.0.0-rc.1-local`). It bundles every unreleased app section below, so
-the API must first be deployed with migrations 067–072 (statistics integrity,
-acquisition purpose, reported identity facts, app funnel events, support
-reports, inventory metrics) and verified per the publication order. Then
-deploy the site, then publish the app. The API already validates release labels
-as SemVer, so `1.0.0-rc.1` is stored as public (`is_local_test=false`) and
-`1.0.0-rc.1-local` as local test data without an API change. The release
-candidate is published on the existing `beta` update channel
-([versioning](../VERSIONING.md)); the manifest schema and channel values are
-unchanged, so installed beta builds are offered it by build number.
+Published on 2026-10-06 from GitHub-verified source
+`64949f19b09594dc9e5ed654de7e691f801a233b`, tag `v1.0.0-rc.1-build41`, on the
+existing `beta` update channel ([versioning](../VERSIONING.md)); the manifest
+schema and channel values are unchanged, so installed beta builds are offered it
+by build number. It ships every app section below that was previously marked
+unreleased. Server first: the catalog API from the same source SHA was deployed
+before the app (deployment run 37466445343, migrations 067–072 applied:
+statistics integrity, acquisition purpose, reported identity facts, app funnel
+events, support reports, inventory metrics), then the site. The API validates
+release labels as SemVer, so `1.0.0-rc.1` is stored as public
+(`is_local_test=false`) and `1.0.0-rc.1-local` as local test data.
 
-## Unreleased statistics integrity and acquisition purpose
+The full 93-runner packaging suite and PR/merged-source CI passed. Apple
+submission `2f29874f-e088-4403-b1aa-6031d8063a4f` was Accepted. Signing,
+stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner approved the
+release notes before publication. Real-watch evidence: Update was validated
+during the beta with BBBike, Freizeitkarte and MapRando; fast removal was
+validated with the rc.1 local build; the faster Update checks remain pending
+real-watch confirmation and are listed in the release notes' KNOWN ISSUES.
+
+DMG: 7,452,800 bytes, SHA-256
+`f051c7a781c1180c5e673a7c1a0d09914faca9ec2e4ed7b9db544776cc33bbbb`.
+ZIP: 6,705,326 bytes, SHA-256
+`5050a3746aa19e5043265a948c42eea0711851d6fa14154ae95e4ed49a1e13ca`.
+GitHub asset digests and independently downloaded draft bytes match these values.
+
+## Statistics integrity and acquisition purpose — rc.1/build41
 
 Schema-1 download map events add optional `acquisitionPurpose=install|update`
 with the existing acquisition ID/component pair. Absent/null historical values
@@ -27,9 +40,9 @@ An API rollback must retain acceptance of the field after client distribution.
 There is no schema-version, device identifier, compatibility authority or map
 write policy change. Strict event-type/outcome agreement also covers legacy
 requests; map result indices reject Boolean, fractional and out-of-range values.
-These are local candidate changes, not a deployed API or released app claim.
+The API change was deployed before rc.1/build41 shipped the native producer.
 
-## Rejected telemetry parking (unreleased app candidate)
+## Rejected telemetry parking — rc.1/build41
 
 Every durable telemetry queue (map usage, compatibility/update diagnostics and
 the app funnel) treats HTTP 4xx except 408/425/429 as a rejection of that one
@@ -60,9 +73,9 @@ The Install plan accepts at most 100 selected maps per operation ("Select up to
 100 maps at a time."), equal to the API's `selectedMapCount <= 100` diagnostic
 bound; the native map-selection runner fails if the two constants diverge.
 
-## Catalog and installation-policy decoder tolerance (unreleased app candidate)
+## Catalog and installation-policy decoder tolerance — rc.1/build41
 
-The next app candidate accepts `/maps/catalog-v4.json` per package and tolerates
+rc.1/build41 accepts `/maps/catalog-v4.json` per package and tolerates
 additive installation-policy fields; both rules are owned by
 [`contracts/README.md`](README.md#responses-and-client-compatibility) and
 [`INSTALLATION_AUTHORIZATION.md`](INSTALLATION_AUTHORIZATION.md). Released
@@ -70,7 +83,7 @@ beta.14–beta.18 clients remain strict, so the API must keep the schema-3 polic
 projection key-exact and every published catalog package strictly valid until
 those clients are retired. A breaking policy change ships as a higher
 `schemaVersion`, which the new client reports as update required (no write).
-No payload, route or schema version changes in this candidate.
+No payload, route or schema version changes in this release.
 
 ## Beta.16 build 38 — provider recovery and update diagnostics
 

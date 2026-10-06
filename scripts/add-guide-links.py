@@ -2,7 +2,9 @@
 """Add the guide's contextual links to existing public-site surfaces."""
 
 import html
+import json
 import re
+import runpy
 from pathlib import Path
 
 
@@ -201,12 +203,24 @@ def normalize_download_layout(source: str, locale: str) -> str:
     status_section = sections[1]
     updated_status = re.sub(
         r'(<h2>[^<]*</h2>\s*)<p>[\s\S]*?</p>',
-        rf'\1<p>{html.escape(COPY[locale]["download_status"])}</p>',
+        lambda match: match.group(1) + f"<p>{html.escape(download_status(locale))}</p>",
         status_section.group(0),
         count=1,
     )
     source = source[:status_section.start()] + updated_status + source[status_section.end():]
     return download_presentation(source, locale)
+
+
+def download_status(locale: str) -> str:
+    """Status copy whose first sentence names the published release family."""
+    release_pages = runpy.run_path(str(ROOT / "scripts" / "normalize-release-pages.py"))
+    manifest = json.loads((ROOT / "site" / "updates" / "macos-arm64.json").read_text(encoding="utf-8"))
+    family = release_pages["release_family"](manifest["releaseLabel"])
+    beta_sentence = release_pages["CURRENT_BUILD"]["beta"][locale]
+    status = COPY[locale]["download_status"]
+    if not status.startswith(beta_sentence):
+        raise RuntimeError(f"{locale}: Download status must start with the current-build sentence")
+    return release_pages["CURRENT_BUILD"][family][locale] + status[len(beta_sentence):]
 
 
 def replace_download_section_link(source: str, section_index: int, anchor: str) -> str:
