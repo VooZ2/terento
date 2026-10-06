@@ -1354,6 +1354,7 @@ final class MapEngine: ObservableObject {
     /// Removes every retained artifact, for example when the app quits.
     func purgeRetainedArtifacts() {
         purgeExpiredRetainedArtifacts(now: .distantFuture)
+        MapDownloadResumeStore.shared.purgeAll()
     }
 
     var isInstalling: Bool {

@@ -66,6 +66,7 @@
     "app/TerentoCore/Tests/run-native-generic-lifecycle-tests.sh",
     "app/TerentoCore/Tests/run-native-preflight-tests.sh",
     "app/TerentoCore/Tests/run-native-acquisition-tests.sh",
+    "app/TerentoCore/Tests/run-native-download-resume-tests.sh",
     "app/TerentoCore/Tests/run-native-installation-tests.sh",
     "app/TerentoCore/Tests/run-native-map-selection-tests.sh",
     "app/TerentoCore/Tests/run-native-map-lifecycle-tests.sh",
