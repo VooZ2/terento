@@ -550,6 +550,12 @@ visible with an ambiguity notice and are excluded from completed counts.
 Updates never change installation metrics or public compatibility evidence.
 The Installs card labels its timestamp `Last report` (the last installation
 report); it is not a combined installation/update activity timestamp.
+On the model detail page the Installation history sits in the right-hand
+column (two-fifths summary, three-fifths history at ≥1024 px) and renders as
+compact table rows there: Date, Map, Result pill, Error, App version and the
+Inspect action, plus the GitHub issue column whenever a listed row has a linked
+issue. Below 1024 px it keeps the record-card layout. Filters, pagination and
+Inspect dialogs are unchanged.
 The broad Devices listing keeps its existing compact columns.
 
 ### Model sources

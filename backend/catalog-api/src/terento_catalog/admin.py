@@ -8623,7 +8623,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .model-evidence-history>.model-page-section{margin-top:0}
 .diagnostic-secondary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px;margin-top:16px}
 .diagnostic-secondary-grid>.diagnostic-secondary-disclosure{min-width:0;margin:0}
-@media(min-width:901px){
+@media(min-width:901px) and (max-width:1023px){
   .model-evidence-history .table-wrap:has(.mobile-record-table){border:0;background:transparent;overflow:visible;border-radius:0}
   .model-evidence-history table.mobile-record-table{display:block;min-width:0!important;width:100%;border:0;table-layout:auto}
   .model-evidence-history .mobile-record-table colgroup,.model-evidence-history .mobile-record-table thead{display:none}
@@ -8801,6 +8801,22 @@ ADMIN_STYLES += """
 .overview-chart-values-date{color:var(--graphite)}
 .overview-chart-values-hint{color:var(--secondary)}
 .overview-trend-chart .overview-chart-group{cursor:pointer}
+/* Model installation history: compact table rows at >=1024 px (cards below). The GitHub issue column shows only when a row has an issue. */
+@media(min-width:1024px){
+  .model-evidence-grid{grid-template-columns:minmax(0,2fr) minmax(0,3fr)}
+  .model-evidence-history .model-history-table{min-width:0;width:100%;table-layout:fixed}
+  .model-evidence-history .model-history-table th,.model-evidence-history .model-history-table td{padding:8px 6px;font-size:12px;line-height:16px;vertical-align:middle;white-space:normal;overflow-wrap:anywhere}
+  .model-evidence-history .model-history-table th:nth-child(1){width:16%}.model-evidence-history .model-history-table th:nth-child(2){width:16%}
+  .model-evidence-history .model-history-table th:nth-child(3){width:20%}.model-evidence-history .model-history-table th:nth-child(4){width:21%}
+  .model-evidence-history .model-history-table th:nth-child(5){width:10%}.model-evidence-history .model-history-table th:nth-child(6){width:11%}
+  .model-evidence-history .model-history-table th:nth-child(7){width:13%}
+  .model-evidence-history .model-history-table .column-date{text-align:left;overflow-wrap:normal}
+  .model-evidence-history .model-history-table th{overflow-wrap:normal}
+  .model-evidence-history .model-history-table .diagnostic-review{white-space:nowrap}
+  .model-evidence-history .model-history-table:not(:has(td[data-label='GitHub issue'] a)) :is(th,td):nth-child(5){display:none}
+  .model-evidence-history .model-history-table td.column-status:last-child{text-align:right}
+  .model-evidence-history .model-history-table .diagnostic-review{min-height:32px;padding:4px 8px}
+}
 @media(max-width:600px){
   .map-statistics-metrics>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   .map-statistics-metrics .admin-metric{min-width:0}
