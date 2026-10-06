@@ -77,6 +77,8 @@ Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öff
 
 Verbinde die Uhr erneut oder starte sie neu und prüfe die Karteneinstellungen. Fehlt die Karte weiterhin, nenne dem Support per E-Mail dein genaues Uhrenmodell, die Kartenregion und das Problem. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 
+[Alle Lösungsschritte ansehen](https://terento.app/de/guides/troubleshooting/)
+
 Bereit, wenn du es bist
 
 ## Bereit, deine erste Karte zu installieren?

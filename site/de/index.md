@@ -109,7 +109,7 @@ Ja. Terento zeigt, wenn neuere Veröffentlichungen verfügbar sind, und hilft di
 
 Was soll ich tun, wenn die Installation fehlschlägt?
 
-Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler.
+Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler. [Lies die Fehlerbehebung.](https://terento.app/de/guides/troubleshooting/)
 
 [Issue öffnen](https://github.com/VooZ2/terento/issues/new/choose) [Support per E-Mail](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

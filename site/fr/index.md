@@ -109,7 +109,7 @@ Oui. Terento vous indique lorsqu’une version plus récente est disponible et v
 
 Que dois-je faire si l’installation échoue ?
 
-Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.
+Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. [Lisez le guide de dépannage.](https://terento.app/fr/guides/troubleshooting/)
 
 [Ouvrir une issue](https://github.com/VooZ2/terento/issues/new/choose) [Contacter le support](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

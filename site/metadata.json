@@ -270,6 +270,60 @@
       "alternates": true
     },
     {
+      "file": "site/guides/troubleshooting/index.html",
+      "path": "/guides/troubleshooting/",
+      "locale": "en",
+      "title": "Troubleshooting Garmin Maps on Mac — Terento",
+      "description": "Fix common Terento problems on a Mac: connecting a Garmin watch, watch and map checks, downloads, free space, leftover maps, slow updates and sending a report.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/de/guides/troubleshooting/index.html",
+      "path": "/de/guides/troubleshooting/",
+      "locale": "de",
+      "title": "Fehlerbehebung für Garmin-Karten auf dem Mac — Terento",
+      "description": "Häufige Terento-Probleme auf dem Mac lösen: Garmin-Uhr verbinden, Uhren- und Kartenprüfungen, Downloads, freier Speicher, Kartenreste, langsame Updates und Bericht senden.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/guides/troubleshooting/index.html",
+      "path": "/fr/guides/troubleshooting/",
+      "locale": "fr",
+      "title": "Dépannage des cartes Garmin sur Mac — Terento",
+      "description": "Résolvez les problèmes courants de Terento sur Mac : connexion de la montre Garmin, vérifications, téléchargements, espace libre, cartes restantes, mises à jour lentes et envoi d’un rapport.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/guides/troubleshooting/index.html",
+      "path": "/pl/guides/troubleshooting/",
+      "locale": "pl",
+      "title": "Rozwiązywanie problemów z mapami Garmin na Macu — Terento",
+      "description": "Rozwiąż typowe problemy z Terento na Macu: podłączanie zegarka Garmin, sprawdzanie zegarka i map, pobieranie, wolne miejsce, pozostałości map, wolne aktualizacje i wysyłanie raportu.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/guides/troubleshooting/index.html",
+      "path": "/cs/guides/troubleshooting/",
+      "locale": "cs",
+      "title": "Řešení potíží s mapami Garmin na Macu — Terento",
+      "description": "Vyřešte běžné potíže s Terento na Macu: připojení hodinek Garmin, kontroly hodinek a map, stahování, volné místo, zbytky map, pomalé aktualizace a odeslání zprávy.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/it/guides/troubleshooting/index.html",
+      "path": "/it/guides/troubleshooting/",
+      "locale": "it",
+      "title": "Risoluzione dei problemi delle mappe Garmin su Mac — Terento",
+      "description": "Risolvi i problemi comuni di Terento su Mac: collegamento dello smartwatch Garmin, controlli di orologio e mappe, download, spazio libero, mappe residue, aggiornamenti lenti e invio di un rapporto.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
       "file": "site/legal/index.html",
       "path": "/legal/",
       "locale": "en",

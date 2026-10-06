@@ -109,7 +109,7 @@ Tak. Terento pokazuje, gdy dostępne są nowsze wydania, i pomaga aktualizować 
 
 Co zrobić, jeśli instalacja się nie powiedzie?
 
-Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.
+Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało. [Przeczytaj poradnik rozwiązywania problemów.](https://terento.app/pl/guides/troubleshooting/)
 
 [Otwórz zgłoszenie](https://github.com/VooZ2/terento/issues/new/choose) [Napisz do pomocy](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

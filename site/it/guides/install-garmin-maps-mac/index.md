@@ -77,6 +77,8 @@ Nella schermata di installazione non riuscita, scegli “Report issue”. Terent
 
 Ricollega o riavvia l’orologio e controlla le impostazioni della mappa. Se la mappa non appare ancora, invia all’assistenza il modello esatto dell’orologio, la regione della mappa e una descrizione del problema. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 
+[Vedi tutte le soluzioni](https://terento.app/it/guides/troubleshooting/)
+
 Pronto quando vuoi
 
 ## Pronto a installare la tua prima mappa?

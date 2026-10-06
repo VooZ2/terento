@@ -359,4 +359,83 @@ for (const pageName of ["legal", "privacy"]) {
     events.click({target: {closest: () => null}, preventDefault() { assert.fail("Unrelated clicks must navigate normally"); }});
   }
 }
+// Troubleshooting guide: the app opens /guides/troubleshooting/#<anchor>, so
+// every locale must render exactly these section ids in this order.
+const troubleshootingSlug = "guides/troubleshooting/";
+const troubleshootingAnchors = [
+  "connect-watch", "garmin-busy", "multiple-garmin", "usb-mode", "connection-timeout",
+  "watch-not-responding", "model-not-enabled", "couldnt-check", "catalog-unavailable",
+  "download-failed", "mac-storage", "watch-storage", "leftover-map", "update-remove", "send-report",
+];
+assert.equal(new Set(troubleshootingAnchors).size, 15);
+const troubleshootingDir = (locale) => path.join(root, "site", locale === "en" ? troubleshootingSlug : path.join(locale, troubleshootingSlug));
+const llms = read(path.join(root, "site", "llms.txt"));
+assert.ok(llms.includes(`](${baseUrl}/${troubleshootingSlug})`), "llms.txt lists the Troubleshooting guide");
+const troubleshootingTitles = new Set();
+for (const locale of locales) {
+  const file = path.join(troubleshootingDir(locale), "index.html");
+  const source = read(file);
+  const publicPath = localePath(locale, troubleshootingSlug);
+  const page = metadataByPath.get(publicPath);
+  assert.ok(page, `${locale}: troubleshooting metadata entry`);
+  assert.notEqual(page.indexable, false, `${locale}: troubleshooting guide is indexable`);
+  troubleshootingTitles.add(page.title);
+  assert.ok(source.includes(`<html lang="${locale}"`) && source.includes('data-page="troubleshooting"'), `${locale}: localized troubleshooting html`);
+  assert.ok(source.includes(`<title>${page.title}</title>`), `${locale}: troubleshooting title`);
+  assert.ok(source.includes(`<link rel="canonical" href="${baseUrl}${publicPath}">`), `${locale}: troubleshooting canonical`);
+  assert.equal((source.match(/hreflang=/g) || []).length, 7, `${locale}: troubleshooting hreflang`);
+  assert.ok(source.includes(`hreflang="x-default" href="${baseUrl}/${troubleshootingSlug}"`), `${locale}: troubleshooting x-default`);
+  assert.equal((source.match(/<h1>/g) || []).length, 1, `${locale}: one troubleshooting H1`);
+
+  const ids = [...source.matchAll(/<section class="troubleshooting-item" id="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(ids, troubleshootingAnchors, `${locale}: the 15 troubleshooting anchors`);
+  for (const anchor of troubleshootingAnchors) {
+    assert.equal((source.match(new RegExp(`\\sid="${anchor}"`, "g")) || []).length, 1, `${locale}: unique #${anchor}`);
+  }
+  const sections = [...source.matchAll(/<section class="troubleshooting-item" id="([^"]+)"[^>]*>([\s\S]*?)<\/section>/g)];
+  assert.equal(sections.length, 15, `${locale}: troubleshooting sections`);
+  for (const [, anchor, body] of sections) {
+    assert.match(body, new RegExp(`<h3 id="${anchor}-title">[^<]+</h3>`), `${locale}: #${anchor} heading`);
+    assert.match(body, /<p>[^<]+/, `${locale}: #${anchor} explanation`);
+    const steps = body.match(/<ol class="troubleshooting-steps">([\s\S]*?)<\/ol>/)?.[1] || "";
+    assert.ok((steps.match(/<li>/g) || []).length >= 2, `${locale}: #${anchor} short steps`);
+  }
+  for (const [, target] of source.matchAll(/href="#([^"]+)"/g)) {
+    assert.ok(target === "main-content" || troubleshootingAnchors.includes(target), `${locale}: in-page link #${target}`);
+  }
+  const main = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0]);
+  assert.doesNotMatch(main, /\bIMG\b|\.img|\/GARMIN|object (?:handle|ID)|libmtp|manifest/i, `${locale}: outcome language without device internals`);
+  assert.equal((main.match(/\bMTP\b/g) || []).length, 1, `${locale}: MTP only as the watch's USB mode value`);
+  assert.doesNotMatch(source, /Send report to Terento|TR-[A-Z0-9]{6}|TODO/i, `${locale}: no unreleased support-report claims`);
+  assert.match(main, /Report issue/, `${locale}: current GitHub report flow`);
+  assert.match(source, /href="mailto:hello&#64;terento\.app\?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="troubleshooting-send-report" data-umami-event-channel="email"/, `${locale}: email fallback`);
+  assert.ok(sitemap.includes(`<loc>${baseUrl}${publicPath}</loc>`), `${locale}: sitemap troubleshooting URL`);
+  const markdown = read(path.join(troubleshootingDir(locale), "index.md"));
+  assert.ok(markdown.includes(`canonical: ${baseUrl}${publicPath}`), `${locale}: troubleshooting Markdown representation`);
+  assert.equal((markdown.match(/^### /gm) || []).length, 15, `${locale}: Markdown keeps the 15 sections`);
+
+  const data = jsonLd(source, file);
+  const article = oneEntity(data, "Article", file);
+  assert.equal(article.inLanguage, locale);
+  assert.equal(article.mainEntityOfPage["@id"], baseUrl + publicPath);
+  assert.deepEqual(
+    oneEntity(data, "BreadcrumbList", file).itemListElement.map(({ position, item }) => ({ position, item })),
+    [{ position: 1, item: baseUrl + localePath(locale) }, { position: 2, item: baseUrl + publicPath }],
+    `${locale}: troubleshooting BreadcrumbList`,
+  );
+
+  const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
+  assert.ok(primary, `${locale}: troubleshooting static shell`);
+  assert.doesNotMatch(primary.split('<span class="language-switcher">')[0], /aria-current="page"/, `${locale}: no nav item claims the troubleshooting page`);
+  const languageOptions = source.match(/<div class="language-options">([\s\S]*?)<\/div>/)?.[1];
+  for (const candidate of locales) assert.ok(languageOptions.includes(`href="${localePath(candidate, troubleshootingSlug)}"`), `${locale}: troubleshooting language route`);
+
+  const guide = read(guideFile(locale));
+  assert.match(guide, new RegExp(`<a class="text-link" href="${publicPath}" data-umami-event="guide-link-click" data-umami-event-location="guide-troubleshooting">`), `${locale}: install guide links the troubleshooting guide`);
+  const home = read(path.join(root, "site", locale === "en" ? "index.html" : path.join(locale, "index.html")));
+  assert.match(home, new RegExp(`<a href="${publicPath}" data-umami-event="guide-link-click" data-umami-event-location="home-faq-troubleshooting">`), `${locale}: Home FAQ links the troubleshooting guide`);
+}
+assert.equal(troubleshootingTitles.size, 6, "localized troubleshooting titles");
+assert.match(read(path.join(root, "scripts", "build-guide-pages.py")), /TROUBLESHOOTING_ANCHORS = \(\n(?:\s+"[a-z-]+",\n){15}\)/, "generator owns the anchor contract");
 console.log("Guide and Legal/Privacy language contracts passed, including six-locale switching, rebuilt menus and unavailable storage.");
+console.log("Troubleshooting guide contracts passed: 15 stable anchors in six locales, sitemap, llms, Markdown, links and shell.");

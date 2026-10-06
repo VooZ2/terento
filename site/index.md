@@ -109,7 +109,7 @@ Yes. Terento shows when newer releases are available and helps you update Terent
 
 What should I do if installation fails?
 
-On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.
+On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened. [Read the troubleshooting guide.](https://terento.app/guides/troubleshooting/)
 
 [Open an issue](https://github.com/VooZ2/terento/issues/new/choose) [Email support](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

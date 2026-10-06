@@ -109,7 +109,7 @@ Sì. Terento mostra quando sono disponibili versioni più recenti e ti aiuta ad 
 
 Cosa devo fare se l’installazione non riesce?
 
-Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo.
+Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo. [Leggi la guida alla risoluzione dei problemi.](https://terento.app/it/guides/troubleshooting/)
 
 [Apri una issue](https://github.com/VooZ2/terento/issues/new/choose) [Scrivi all’assistenza](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

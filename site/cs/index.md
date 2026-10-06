@@ -109,7 +109,7 @@ Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vá
 
 Co mám dělat, když instalace selže?
 
-Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.
+Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému. [Přečtěte si průvodce řešením potíží.](https://terento.app/cs/guides/troubleshooting/)
 
 [Otevřít issue](https://github.com/VooZ2/terento/issues/new/choose) [Napsat podpoře](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 

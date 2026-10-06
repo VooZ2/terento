@@ -30,6 +30,12 @@ site/fr/guides/install-garmin-maps-mac/index.html
 site/pl/guides/install-garmin-maps-mac/index.html
 site/cs/guides/install-garmin-maps-mac/index.html
 site/it/guides/install-garmin-maps-mac/index.html
+site/guides/troubleshooting/index.html
+site/de/guides/troubleshooting/index.html
+site/fr/guides/troubleshooting/index.html
+site/pl/guides/troubleshooting/index.html
+site/cs/guides/troubleshooting/index.html
+site/it/guides/troubleshooting/index.html
 site/index.html
 site/de/index.html
 site/fr/index.html

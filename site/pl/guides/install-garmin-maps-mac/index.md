@@ -77,6 +77,8 @@ Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitH
 
 Podłącz zegarek ponownie lub uruchom go ponownie i sprawdź ustawienia map. Jeśli mapa nadal się nie pojawia, wyślij do pomocy technicznej dokładny model zegarka, region mapy i opis problemu. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 
+[Zobacz wszystkie rozwiązania](https://terento.app/pl/guides/troubleshooting/)
+
 Gotowe, gdy Ty będziesz
 
 ## Gotowy, aby zainstalować pierwszą mapę?

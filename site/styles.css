@@ -3057,6 +3057,34 @@ details p {
   text-underline-offset: 3px;
 }
 
+/* Troubleshooting guide: anchored sections opened from app help links */
+.troubleshooting-item[id] {
+  scroll-margin-top: 24px;
+}
+
+.troubleshooting-steps {
+  margin: 12px 0 0;
+  padding-left: 22px;
+  color: var(--secondary);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.troubleshooting-steps li + li {
+  margin-top: 6px;
+}
+
+.troubleshooting-steps a {
+  color: var(--link-text);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.troubleshooting-more {
+  margin: 22px 0 0;
+}
+
 .guide-bottom-cta {
   padding: clamp(64px, 8vw, 96px) 0;
   border-bottom: 0;

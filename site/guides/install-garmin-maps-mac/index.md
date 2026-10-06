@@ -77,6 +77,8 @@ On the failed installation screen, choose “Report issue”. Terento opens GitH
 
 Reconnect or restart the watch and check its map settings. If the map still does not appear, email support with your exact watch model, map region, and what happened. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 
+[See all troubleshooting steps](https://terento.app/guides/troubleshooting/)
+
 Ready when you are
 
 ## Ready to install your first map?

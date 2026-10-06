@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260926-static-shell-v1"
 PROVIDER_SCRIPT_VERSION = "20260912-bbbike-types-v1"
-STYLE_VERSION = "20260913-maprando-language-v2"
+STYLE_VERSION = "20261006-troubleshooting-v1"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20260918-compatibility-successful-snapshot-v1"
@@ -58,7 +58,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     compatibility = route_for(locale, "compatibility/")
     download = route_for(locale, "download/")
     guide = route_for(locale, "guides/install-garmin-maps-mac/")
-    route_for_language = route if page in {"about", "compatibility", "download", "guide"} else ""
+    route_for_language = route if page in {"about", "compatibility", "download", "guide", "troubleshooting"} else ""
     nav = {"about": route_for(locale, "about/"), "compatibility": compatibility, "guide": guide, "faq": f"{root}#faq", "download": download}
     active = {"about": page == "about", "compatibility": page == "compatibility", "guide": page == "guide", "download": page == "download"}
     nav_events = {
@@ -169,6 +169,7 @@ def _internal_link_metadata(tag: str, page: str) -> tuple[str, str] | None:
         "compatibility": "compatibility-content",
         "download": "download-content",
         "guide": "guide-content",
+        "troubleshooting": "troubleshooting-content",
         "legal": "legal-content",
         "privacy": "privacy-content",
         "404": "not-found",
@@ -197,7 +198,7 @@ def _internal_link_metadata(tag: str, page: str) -> tuple[str, str] | None:
         return "home-link-click", page_location
     if _internal_route(path, "compatibility"):
         return "compatibility-link-click", page_location
-    if _internal_route(path, "guides/install-garmin-maps-mac"):
+    if _internal_route(path, "guides/install-garmin-maps-mac") or _internal_route(path, "guides/troubleshooting"):
         return "guide-link-click", page_location
     if _internal_route(path, "download"):
         return "download-cta-click", page_location
@@ -252,6 +253,7 @@ def files() -> list[tuple[str, str, str]]:
             (f"site/{prefix}download/index.html", locale, "download"),
             (f"site/{prefix}compatibility/index.html", locale, "compatibility"),
             (f"site/{prefix}guides/install-garmin-maps-mac/index.html", locale, "guide"),
+            (f"site/{prefix}guides/troubleshooting/index.html", locale, "troubleshooting"),
         ])
     result.extend([("site/legal/index.html", "en", "legal"), ("site/privacy/index.html", "en", "privacy")])
     return result
@@ -267,7 +269,7 @@ def main() -> None:
         if not path.exists():
             continue
         source = path.read_text(encoding="utf-8")
-        header, footer = shell(locale, "about/" if page == "about" else "compatibility/" if page == "compatibility" else "download/" if page == "download" else "guides/install-garmin-maps-mac/" if page == "guide" else "", page)
+        header, footer = shell(locale, "about/" if page == "about" else "compatibility/" if page == "compatibility" else "download/" if page == "download" else "guides/install-garmin-maps-mac/" if page == "guide" else "guides/troubleshooting/" if page == "troubleshooting" else "", page)
         source, header_count = re.subn(r'<header class="site-header">[\s\S]*?</header>', header, source, count=1)
         if not header_count:
             raise SystemExit(f"missing header in {relative}")
