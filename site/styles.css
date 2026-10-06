@@ -3469,6 +3469,7 @@ details p {
 .map-styles-viewer button:focus-visible, .map-styles-viewer select:focus-visible, .map-styles-viewer input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .map-styles-noscript { padding: 16px 0; color: var(--muted-text); }
 .map-styles-about { padding-bottom: 32px; }
+.map-styles-about-details { border-bottom: 0; }
 .map-styles-about-details > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 4px; color: var(--muted-text); font-size: 15px; font-weight: 500; cursor: pointer; list-style: none; }
 .map-styles-about-details > summary::-webkit-details-marker { display: none; }
 .map-styles-about-details > summary:hover { color: var(--graphite); }
