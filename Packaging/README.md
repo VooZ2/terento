@@ -235,6 +235,29 @@ Before distributing a public build:
   release and website build numbers. A published DMG or successful site deploy
   alone does not complete this operational release gate.
 
+### Release notes format
+
+Every `RELEASE_NOTES.md` section from `1.0.0-rc.1` onward, draft or published,
+has exactly this structure:
+
+1. The title `# Terento v<release label> (build <build>)`. A draft keeps its
+   `DRAFT` and `TODO` comments directly below the title.
+2. A short intro: one or two short paragraphs saying what the release is, its
+   public status, and the real-device validation it actually has.
+3. `## WHAT'S NEW?`: new capabilities and visible improvements.
+4. `## WHAT'S FIXED?`: corrected behavior.
+5. `## KNOWN ISSUES`: limitations, pending real-device validation and
+   unresolved issues.
+
+The three blocks appear in this order, with these exact headings, as bullet
+lists, and no other `##` headings. A block with nothing to report keeps its
+heading and one bullet saying so, for example `- No fixes in this release.`
+Describe outcomes users notice, not implementation mechanics. Deferred
+validation gates belong in KNOWN ISSUES and are never described as passed (see
+[VERSIONING.md](../VERSIONING.md)). Sections published before `1.0.0-rc.1` keep
+their original structure. `Tests/release-documentation-tests.cjs` enforces this
+format.
+
 ### Documentation and help synchronization
 
 Before a public release, review every relevant user-facing surface:

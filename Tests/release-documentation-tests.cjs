@@ -167,6 +167,51 @@ for (const invalidNotes of [
 assert.throws(() => publishedReleaseNotes(draftNotes, stagedNotesPublished, stagedNotesPublished));
 assert.throws(() => publishedReleaseNotes("# Terento v1.0.0-beta.18 (build 40)\n<!-- TODO: x -->\n", stagedNotesPublished, stagedNotesPublished));
 publishedReleaseNotes(notes, release, artifactIdentity);
+
+// From 1.0.0-rc.1 onward every section is: title, optional DRAFT/TODO
+// comments, a short intro, then WHAT'S NEW?, WHAT'S FIXED? and KNOWN ISSUES
+// as bullet lists (Packaging/README.md, "Release notes format").
+const releaseNoteBlocks = ["## WHAT'S NEW?", "## WHAT'S FIXED?", "## KNOWN ISSUES"];
+function assertReleaseNoteFormat(section, title) {
+  const body = section.split(/\r?\n/).slice(1).join("\n").replace(/<!--[\s\S]*?-->/g, "");
+  const headings = body.split("\n").filter((line) => /^#{1,6}\s/.test(line));
+  assert.deepEqual(headings, releaseNoteBlocks, `${title}: release notes need exactly the three blocks in order`);
+  const intro = body.slice(0, body.indexOf(releaseNoteBlocks[0])).trim();
+  assert.ok(intro.length > 0, `${title}: release notes need a short intro`);
+  assert.ok(intro.split(/\n\s*\n/).length <= 2, `${title}: the intro is at most two short paragraphs`);
+  assert.doesNotMatch(intro, /^\s*[-*]\s/m, `${title}: the intro is prose, not a list`);
+  releaseNoteBlocks.forEach((heading, index) => {
+    const start = body.indexOf(heading) + heading.length;
+    const end = index + 1 < releaseNoteBlocks.length ? body.indexOf(releaseNoteBlocks[index + 1]) : body.length;
+    const lines = body.slice(start, end).split("\n").map((line) => line.trim()).filter(Boolean);
+    assert.ok(lines.length > 0, `${title}: ${heading} needs at least one bullet`);
+    assert.ok(lines.every((line) => /^- \S/.test(line)), `${title}: ${heading} is a bullet list`);
+  });
+}
+function releaseNoteSections(text) {
+  const sections = [];
+  const pattern = /^# Terento v(\S+) \(build (\d+)\)$/gm;
+  const matches = [...text.matchAll(pattern)];
+  matches.forEach((match, index) => {
+    const end = index + 1 < matches.length ? matches[index + 1].index : text.length;
+    sections.push({ label: match[1], title: match[0], text: text.slice(match.index, end) });
+  });
+  return sections;
+}
+const formattedSample = "# Terento v1.0.0-rc.2 (build 42)\n\n<!-- DRAFT: x -->\n\nIntro.\n\n## WHAT'S NEW?\n\n- New.\n\n## WHAT'S FIXED?\n\n- No fixes in this release.\n\n## KNOWN ISSUES\n\n- Issue.\n";
+assertReleaseNoteFormat(formattedSample, "sample");
+for (const invalid of [
+  formattedSample.replace("## WHAT'S FIXED?\n\n- No fixes in this release.\n\n", ""),
+  formattedSample.replace("## KNOWN ISSUES", "## Known issues and limits"),
+  formattedSample.replace("Intro.\n\n", ""),
+  formattedSample.replace("- New.", "New."),
+  formattedSample.replace("- New.", "- New.\n\n## Validation\n\n- Watch."),
+  formattedSample.replace("## WHAT'S NEW?", "## WHAT'S FIXED?").replace("## WHAT'S FIXED?\n\n- No", "## WHAT'S NEW?\n\n- No"),
+]) assert.throws(() => assertReleaseNoteFormat(invalid, "invalid sample"));
+const formattedSections = releaseNoteSections(notes).filter((section) => !/-beta\.\d+$/.test(section.label));
+assert.ok(formattedSections.length > 0 || !artifactIdentity || /-beta\./.test(artifactIdentity.releaseLabel),
+  "a release candidate or stable section must exist in the new format");
+for (const section of formattedSections) assertReleaseNoteFormat(section.text, section.title);
 assert.ok(notes.includes(release.sha256), "release notes must contain the manifest DMG SHA-256");
 assert.equal(
   release.downloadURL,

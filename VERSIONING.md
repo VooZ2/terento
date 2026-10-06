@@ -35,8 +35,9 @@ SemVer precedence orders `1.0.0-beta.N` before `1.0.0-rc.N` before `1.0.0`,
 but the update check never compares labels: it orders by marketing version and
 `CFBundleVersion`. A beta or release candidate may contain implemented code
 whose final real-device validation gate is still pending; release notes must
-state that limitation explicitly. Deferred gates must not be described as
-passed, and a genuinely new capability line may start the next base version.
+state that limitation explicitly under KNOWN ISSUES (the release-note format
+is defined in [Packaging/README.md](Packaging/README.md#release-notes-format)).
+Deferred gates must not be described as passed, and a genuinely new capability line may start the next base version.
 
 Release candidates are distributed on the existing `beta` update channel, the
 pre-release channel that installed beta builds already follow. This keeps

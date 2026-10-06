@@ -2,55 +2,43 @@
 
 <!-- DRAFT: unpublished release candidate. Publish only after the owner approves these notes, the API with migrations 067–072 and the site are deployed, and the signed, notarized artifacts exist. When publishing, remove this marker and every TODO line, add the real DMG SHA-256 comment, and update the manifest in the same change. -->
 
-Terento 1.0.0-rc.1 is the first release candidate for Terento 1.0.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Terento remains a Public beta until 1.0.0. This candidate is feature-complete for 1.0.0; later release candidates only contain fixes. Compatibility is still evaluated model by model.
+Terento 1.0.0-rc.1 is the first release candidate for Terento 1.0.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Terento remains a Public beta until 1.0.0, later release candidates only contain fixes, and compatibility is still evaluated model by model.
 
-## Connecting your watch
+Map Update was validated on real watches with BBBike, Freizeitkarte and MapRando maps during the beta. Fast removal was validated on a real watch with this release candidate. Protected-map, ownership, safe Update and explicit Remove safeguards and the installation authorization rules are unchanged.
 
-- Terento waits for your watch. With no Garmin connected, the Device page shows a short checklist instead of a connection error.
-- Clear messages when another app is using the watch, when more than one Garmin is connected, or when the watch is not in file-transfer (USB) mode.
-- After a timeout or an unexpected disconnect, plugging the watch back in starts a new connection automatically.
-- An unexpected disconnect is shown as such. An interrupted Update or Remove explains what was kept: nothing is removed before the content check finishes, and the current map stays until the new one is verified.
-- The Device page shows whether maps can be installed on this model. If Terento couldn't check, Try again checks again.
+## WHAT'S NEW?
 
-## Installing, updating and removing maps
-
-- Cancel is available while maps are downloaded and checked on the Mac. If an installation fails before anything is written, Try again keeps your selection and reuses the maps already downloaded and checked.
-- After an interrupted download, Try again continues where it stopped when the map server supports it, instead of starting over (BBBike downloads still start over). Every map is still fully checked.
-- Download, write, read-back and Update/Remove checks show an estimated time left once enough progress has been measured. Terento never shows a guessed time.
-- Update and Remove show measured progress throughout.
-- Your Mac stays awake during map transfers, and Terento asks before quitting while it writes to the watch.
-- The safety check before writing is faster on watches with a lot of music or other non-map content.
-- The map list shows each map's download size and estimated download time. On a watch without Terento maps yet, it also recommends a map for your region.
-- Removing a map installed with this version now takes seconds instead of minutes. Terento checks the exact map object and a recorded fingerprint of the map it wrote and verified.
-- Updating such a map is much faster: the checks of the installed map and of the new map take seconds, so an Update takes little more than writing the new map. The new map is checked the same way as a fresh installation, and the current map stays on the watch until the new one is verified.
+- Removing a map installed with this version takes seconds instead of minutes. Terento checks the exact map object and a recorded fingerprint of the map it wrote and verified.
+- Updating such a map is much faster: Terento no longer reads the installed map and the new map in full. The new map is checked the same way as a fresh installation, and the current map stays on the watch until the new one is verified.
 - Maps installed with earlier versions and maps not installed by Terento keep the full check. After their first Update with this version, later Updates and removals use the fast check.
-
-## Help and reports
-
+- The map list shows each map's download size and estimated download time. On a watch without Terento maps yet, it also recommends a map for your region.
+- After an interrupted download, Try again continues where it stopped when the map server supports it, instead of starting over (BBBike downloads still start over). Every map is still fully checked.
+- Download, write, read-back and Update/Remove checks show an estimated time left once enough progress has been measured. Terento never shows a guessed time. Update and Remove show measured progress throughout.
+- Cancel is available while maps are downloaded and checked on the Mac.
+- Your Mac stays awake during map transfers, and Terento asks before quitting while it writes to the watch.
+- With no Garmin connected, the Device page shows a short checklist instead of a connection error. It also shows whether maps can be installed on this model; if Terento couldn't check, Try again checks again.
 - Error dialogs link to the matching section of the new Troubleshooting guide on terento.app, and Help → Troubleshooting opens the guide.
 - Send report to Terento sends a sanitised failure report without a GitHub account. You review exactly what is sent, and the report is sent only when you choose Send. Reporting on GitHub remains available.
 
-## Safer catalog and reporting
+## WHAT'S FIXED?
 
+- Clear messages when another app is using the watch, when more than one Garmin is connected, or when the watch is not in file-transfer (USB) mode.
+- After a timeout or an unexpected disconnect, plugging the watch back in starts a new connection automatically.
+- An unexpected disconnect is shown as such. An interrupted Update or Remove explains what was kept: nothing is removed before the content check finishes, and the current map stays until the new one is verified.
+- If an installation fails before anything is written, Try again keeps your selection and reuses the maps already downloaded and checked.
+- The safety check before writing is faster on watches with a lot of music or other non-map content.
 - When the map catalog or installation policy needs a newer app, Terento asks you to update Terento instead of showing a misleading connection error. One invalid catalog entry no longer hides the rest of the catalog.
 - If Terento's record of the maps it installed on a watch can't be read, it is set aside, never deleted, before the next installation instead of the installation failing after the write.
 - Optional compatibility and usage reports are delivered more reliably: a rejected report no longer blocks later ones, and results are kept when a long transfer finishes while the Mac is locked.
 
-## Validation
+## KNOWN ISSUES
 
-Map Update was validated on a real watch with BBBike, Freizeitkarte and MapRando maps.
-
-## Known issues and limits
-
+- The faster Update checks passed automated tests but have not yet been confirmed on a real watch.
+- Updating or removing a map installed with an earlier version still uses the full check and can stay at a high displayed percentage for a while before it finishes.
 - Real-watch Update validation for OpenTopoMap is still pending.
 - Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
 - OpenTopoMap India remains under investigation in [issue #278](https://github.com/VooZ2/terento/issues/278).
 - Garmin Edge devices remain outside the current supported scope. This release does not broaden device compatibility claims.
-- The faster Update checks have passed automated tests; real-watch confirmation of their speed is still pending. Updating or removing a map installed with an earlier version still uses the full check and can remain at a high displayed percentage for a noticeable period before completion.
-
-<!-- TODO(owner validation): fast removal was validated on a real watch on 2026-10-06 (sampled check, about 6 s for a 277 MB map). Shorten the item above after the owner validates a fast Update on a real watch. -->
-
-Existing protected-map, ownership, safe Update and explicit Remove safeguards remain in place. Installation authorization rules are unchanged.
 
 <!-- TODO(publish): add the DMG SHA-256 comment of the signed 1.0.0-rc.1 DMG. -->
 
