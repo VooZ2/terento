@@ -8108,7 +8108,7 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 
 .model-status-line{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-top:8px}.model-status-line>span{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.model-status-line strong{color:var(--graphite);font-size:12px}.compact-empty-state{margin-top:20px;padding:18px 20px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}.compact-empty-state h2{margin:0 0 4px}.compact-empty-state p{margin:0;color:var(--secondary)}.diagnostic-identity-state{margin:12px 0;padding:10px 12px;border-left:3px solid var(--warning);background:var(--surface-muted);font-size:13px}
-.overview-primary-grid{align-items:start}.overview-primary-grid>.overview-panel{min-height:0}
+.overview-primary-grid{align-items:stretch}.overview-primary-grid>.overview-panel{min-height:0}
 .model-administration>summary,.device-information-section>summary{margin-bottom:12px}
 .model-administration,.device-information-section{padding:0;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}
 .admin-live-update{position:sticky;top:var(--admin-topbar-height);z-index:29;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 24px;background:var(--selected-tint,var(--surface));border-bottom:1px solid var(--border);font-size:14px}
@@ -8231,7 +8231,7 @@ main.dashboard>.heading-row h1{margin:0}
 .world-map-country.is-region-highlight{fill:var(--interactive)!important;stroke:var(--graphite);stroke-width:2}
 .region-map-link{display:inline;padding:0;border:0;border-radius:0;background:none;color:var(--interactive);text-align:left;text-decoration:underline;text-underline-offset:3px;white-space:normal;font:inherit;cursor:pointer}
 .region-map-link:hover{background:none;color:var(--graphite)}
-.map-statistics-coverage-layout{align-items:start;grid-template-columns:minmax(0,3fr) minmax(300px,1fr)}
+.map-statistics-coverage-layout{align-items:stretch;grid-template-columns:minmax(0,3fr) minmax(300px,1fr)}
 @media(max-width:1100px){.map-statistics-coverage-layout{grid-template-columns:minmax(0,1fr)}}
 .system-health-row[hidden]{display:none}
 .test-data-activity-caption{display:block;width:100%;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;text-align:left;padding:12px;font-size:13px;font-weight:650}
@@ -8512,8 +8512,9 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .map-statistics-provider-table .admin-table th,.map-statistics-provider-table .admin-table td{padding-inline:7px}
 .map-statistics-provider-table .admin-table td{white-space:normal;overflow-wrap:anywhere}
 .map-statistics-provider-table .admin-table .column-date{width:142px;overflow-wrap:normal;white-space:nowrap}
-.overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:'attention activity' 'funnel activity' 'downloads activity';grid-template-rows:auto auto 1fr;align-items:start;gap:16px;margin-top:16px}
-.overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-attention-panel{grid-area:attention}.overview-composition-grid>.overview-activity-panel{grid-area:activity}.overview-composition-grid>.overview-funnel-panel{grid-area:funnel}.overview-composition-grid>.overview-download-panel{grid-area:downloads}
+/* Rows: Needs attention | Activity, then First run | App downloads. Cards in a row stretch to one height; a lone last card spans the row so no grid cell stays empty. */
+.overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:16px;margin-top:16px}
+.overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-panel:last-child:nth-child(odd){grid-column:1/-1}
 .overview-heading+.overview-primary-grid{margin-top:0}
 .overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}
 .map-activity-row>time{grid-row:1}
@@ -8536,7 +8537,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
   .model-evidence-history .mobile-record-table tbody td:first-child,.model-evidence-history .mobile-record-table tbody td:has(button){grid-column:1/-1}
   .model-evidence-history .mobile-record-table td button{width:100%;min-height:44px}
 }
-@media(max-width:900px){.overview-composition-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:'attention' 'activity' 'funnel' 'downloads';grid-template-rows:none}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:900px){.overview-composition-grid{grid-template-columns:minmax(0,1fr)}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:760px){
   .admin-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
   .admin-nav-group{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
@@ -8693,6 +8694,10 @@ ADMIN_STYLES += """
 .support-report-technical h3{margin:14px 0 6px;font-size:13px}
 @media(max-width:900px){.support-report-grid{grid-template-columns:minmax(0,1fr)}}
 .support-report-form button.support-report-primary{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}
+/* Admin review fixes 2026-10-06 (admin-behavior-contract.md, Responsive and layout invariants). */
+.overview-chart-panel,.overview-download-panel{display:flex;flex-direction:column}
+.overview-chart-panel>.overview-chart-wrap,.overview-download-panel>.overview-chart-wrap{width:100%}
+.overview-chart-panel>.overview-all-time,.overview-download-panel>.overview-all-time{margin-top:auto;padding-top:10px}
 """
 
 def _error(message: str | None) -> str:

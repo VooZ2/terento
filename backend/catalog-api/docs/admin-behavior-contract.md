@@ -218,9 +218,11 @@ a legend with the period total per series, and one secondary line with the
 all-time totals behind an `All time` chip. Tile values and legend totals use the
 same period population, so they agree. The Downloads card also breaks the period
 total down by purpose (For installs, For updates, Not recorded). Below the
-charts, Needs attention, First run and App downloads form the leading column
-while Activity spans the trailing column. The narrow order is tiles, Downloads,
-Installs, Needs attention, Activity, First run, then App downloads.
+charts, Needs attention and Activity share a row, then First run and App
+downloads share the next row; when one of those cards is omitted the remaining
+one spans the row, so no Dashboard row leaves an empty grid cell at ≥1024 px.
+The narrow order is tiles, Downloads, Installs, Needs attention, Activity, First
+run, then App downloads.
 
 Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
 `Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
@@ -612,9 +614,11 @@ the Dashboard.
 Admin preserves consistent left edges and the existing spacing scale, with no
 block overlap or page-level horizontal overflow. It remains usable at effective
 200% zoom, uses one compact menu column, keeps charts visible rather than
-collapsed, trailing-aligns numbers and dates where practical, and uses
-content-driven heights instead of artificial equal-height whitespace. Controls
-retain keyboard focus, readable labels, and existing `aria-sort` semantics.
+collapsed, and trailing-aligns numbers and dates where practical. Cards that
+share a grid row (Dashboard and Maps) stretch to one height; charts in a row use
+one chart height, the shorter card's spare space sits below its content and an
+`All time` line aligns to the card bottom. Controls retain keyboard focus,
+readable labels, and existing `aria-sort` semantics.
 
 ## Mandatory change and release gate
 
