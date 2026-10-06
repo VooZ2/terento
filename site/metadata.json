@@ -324,6 +324,54 @@
       "alternates": true
     },
     {
+      "file": "site/map-styles/index.html",
+      "path": "/map-styles/",
+      "locale": "en",
+      "title": "Compare Free Garmin Maps: OpenTopoMap vs Freizeitkarte — Terento",
+      "description": "See how OpenTopoMap, Freizeitkarte, MapRando and BBBike Garmin maps look on popular hiking areas, trails and cities. Compare contours, trails and labels before you install.",
+      "alternates": true
+    },
+    {
+      "file": "site/de/map-styles/index.html",
+      "path": "/de/map-styles/",
+      "locale": "de",
+      "title": "Garmin-Karten vergleichen: OpenTopoMap vs. Freizeitkarte — Terento",
+      "description": "Sieh dir an, wie die Garmin-Karten OpenTopoMap, Freizeitkarte, MapRando und BBBike in beliebten Wandergebieten, auf Wegen und in Städten aussehen. Vergleiche Höhenlinien, Wege und Beschriftungen vor der Installation.",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/map-styles/index.html",
+      "path": "/fr/map-styles/",
+      "locale": "fr",
+      "title": "Cartes Garmin gratuites : OpenTopoMap vs Freizeitkarte — Terento",
+      "description": "Découvrez l’aspect des cartes Garmin OpenTopoMap, Freizeitkarte, MapRando et BBBike sur des zones de randonnée, sentiers et villes populaires. Comparez courbes de niveau, sentiers et libellés avant l’installation.",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/map-styles/index.html",
+      "path": "/pl/map-styles/",
+      "locale": "pl",
+      "title": "Porównaj darmowe mapy Garmin: OpenTopoMap, Freizeitkarte — Terento",
+      "description": "Zobacz, jak mapy Garmin OpenTopoMap, Freizeitkarte, MapRando i BBBike wyglądają w popularnych rejonach górskich, na szlakach i w miastach. Porównaj poziomice, szlaki i etykiety przed instalacją.",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/map-styles/index.html",
+      "path": "/cs/map-styles/",
+      "locale": "cs",
+      "title": "Porovnejte mapy Garmin: OpenTopoMap vs Freizeitkarte — Terento",
+      "description": "Podívejte se, jak mapy Garmin OpenTopoMap, Freizeitkarte, MapRando a BBBike vypadají v oblíbených turistických oblastech, na trasách a ve městech. Porovnejte vrstevnice, stezky a popisky před instalací.",
+      "alternates": true
+    },
+    {
+      "file": "site/it/map-styles/index.html",
+      "path": "/it/map-styles/",
+      "locale": "it",
+      "title": "Confronta mappe Garmin gratuite: OpenTopoMap, Freizeitkarte — Terento",
+      "description": "Scopri come appaiono le mappe Garmin OpenTopoMap, Freizeitkarte, MapRando e BBBike in aree escursionistiche, sentieri e città popolari. Confronta curve di livello, sentieri ed etichette prima dell’installazione.",
+      "alternates": true
+    },
+    {
       "file": "site/legal/index.html",
       "path": "/legal/",
       "locale": "en",
