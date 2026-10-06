@@ -18,7 +18,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, time as day_time, timedelta, timezone
 from pathlib import Path
-from threading import Event
+from threading import Event, Thread
 from typing import Any, Callable
 
 from .acquire import AcquisitionError, Limits, download, extract_img, remove_tree
@@ -32,6 +32,10 @@ LOGGER = logging.getLogger(__name__)
 JOB_NAME = "map-preview-renderer"
 ESTIMATED_TILE_BYTES = 24 * 1024
 FAILURE_BACKOFF = timedelta(days=3)
+# The lease is short and renewed while a window runs, so a renderer killed by
+# a deploy or crash blocks the next one for at most LEASE_SECONDS.
+LEASE_SECONDS = 15 * 60
+LEASE_RENEW_SECONDS = 2 * 60
 
 
 @dataclass(frozen=True)
@@ -47,6 +51,7 @@ class PreviewSettings:
     renderer: Path
     public_base_url: str
     publish_interval: timedelta = timedelta(minutes=30)
+    render_jobs: int = 1
 
     def limits(self) -> Limits:
         return Limits(max_source_bytes=self.max_source_bytes, min_free_bytes=self.min_free_bytes)
@@ -148,7 +153,7 @@ class PreviewRun:
     ) -> None:
         self.database = database
         self.settings = settings
-        self.renderer = renderer or Renderer(settings.renderer)
+        self.renderer = renderer or Renderer(settings.renderer, jobs=settings.render_jobs)
         self.store = store or PreviewStore(settings.asset_root)
         self.db = db or PreviewDatabase(database)
         self.areas = areas if areas is not None else load_areas()
@@ -158,13 +163,16 @@ class PreviewRun:
     def run(self, deadline: datetime, stop: Event | None = None) -> WindowResult:
         result = WindowResult()
         owner = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
-        lease_seconds = max(60, int((deadline - self.clock()).total_seconds()) + 600)
-        if not self.db.acquire_lease(owner, lease_seconds):
+        if not self.db.acquire_lease(owner, LEASE_SECONDS):
             LOGGER.info("map previews: another renderer holds the lease")
             return result
+        renewing = Event()
+        renewer = Thread(target=self._renew_lease, args=(owner, renewing), name="map-preview-lease", daemon=True)
+        renewer.start()
         job = uuid.uuid4().hex
         staged: dict[tuple[str, str], Path] = {}
         try:
+            self._clear_leftovers()
             rows, _updated = self.database.catalog_snapshot()
             packages = packages_from_snapshot(rows)
             layers = self.db.layers()
@@ -212,9 +220,28 @@ class PreviewRun:
             if staged:
                 result.release = self._publish(staged)
         finally:
+            renewing.set()
+            renewer.join(timeout=10)
             self.store.clear_staging()
             self.db.release_lease(owner)
         return result
+
+    def _renew_lease(self, owner: str, stop: Event) -> None:
+        while not stop.wait(LEASE_RENEW_SECONDS):
+            try:
+                self.db.acquire_lease(owner, LEASE_SECONDS)
+            except Exception:  # noqa: BLE001 - the next renewal retries
+                LOGGER.warning("map previews: lease renewal failed", exc_info=True)
+
+    def _clear_leftovers(self) -> None:
+        """Remove downloads and staged tiles a killed renderer left behind."""
+        self.store.clear_staging()
+        if self.settings.work_dir.is_dir():
+            for child in self.settings.work_dir.iterdir():
+                if child.is_dir() and not child.is_symlink():
+                    remove_tree(child)
+                else:
+                    child.unlink(missing_ok=True)
 
     # Work -----------------------------------------------------------------------
     @staticmethod
@@ -348,7 +375,7 @@ def run_worker(database: Any, stop: Event, settings: PreviewSettings, *, clock=l
     if not settings.enabled:
         LOGGER.info("map previews are disabled (MAP_PREVIEW_ENABLED=false)")
         return
-    renderer = Renderer(settings.renderer)
+    renderer = Renderer(settings.renderer, jobs=settings.render_jobs)
     if not renderer.available():
         LOGGER.error("map previews enabled but %s is missing", settings.renderer)
         return

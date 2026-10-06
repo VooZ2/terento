@@ -10,8 +10,10 @@ from pathlib import Path
 from terento_catalog.admin import (
     ADMIN_GLOSSARY,
     ADMIN_STYLES,
+    _FA_ICONS,
+    _PILL_ICONS,
+    _admin_icon,
     _empty_state,
-    _glossary_link,
     _metric_tile,
     _scope_chip,
     _section_card,
@@ -72,9 +74,32 @@ class AdminTokenAndFocusTests(unittest.TestCase):
                       functional["stoneDark"]["$value"],
                       TOKENS["semantic"]["admin"]["light"]["destructiveText"]["$value"]):
             self.assertGreaterEqual(_contrast(value, white), 3.0, value)
-        # Warm Stone itself is below 3:1, so update marks carry a stone-dark outline.
+        # Warm Stone itself is below 3:1, so update marks are filled Stone Dark,
+        # solid and without an outline.
         self.assertLess(_contrast(TOKENS["color"]["brand"]["stone"]["$value"], white), 3.0)
+        self.assertIn(".overview-chart-update{fill:var(--stone-dark);background:var(--stone-dark)}", ADMIN_STYLES)
+        self.assertNotIn("rect.overview-chart-update{stroke", ADMIN_STYLES)
 
+
+
+class AdminIconTests(unittest.TestCase):
+    """Owner decision 2026-10-06: Admin icons are Font Awesome Free, never hand-drawn."""
+
+    def test_icons_are_filled_font_awesome_paths(self):
+        for name in set(_PILL_ICONS.values()) | {"arrow-right", "arrow-left", "external", "close", "download", "message"}:
+            icon = _admin_icon(name)
+            self.assertIn("<path fill='currentColor' d='M", icon, name)
+            self.assertNotIn("stroke", icon)
+        self.assertEqual(_admin_icon("not-an-icon"), "")
+        for view_box, path in _FA_ICONS.values():
+            self.assertRegex(view_box, r"^0 0 \d+ 512$")
+            self.assertRegex(path, r"^[MmLlHhVvCcSsQqTtAaZz0-9.,\- ]+$")
+
+    def test_css_draws_no_glyph_or_border_icons(self):
+        self.assertNotRegex(ADMIN_STYLES, r"content:\s*['\"][⌄›→↗×✓]")
+        self.assertNotIn("border-width:0 2px 2px 0", ADMIN_STYLES)  # old drawn chevron
+        self.assertIn("--fa-chevron-right:url(\"data:image/svg+xml,", ADMIN_STYLES)
+        self.assertNotIn("stroke-linecap:round", ADMIN_STYLES.split(".admin-icon{", 1)[1].split("}", 1)[0])
 
 
 class AdminChartGeometryTests(unittest.TestCase):
@@ -155,7 +180,9 @@ class AdminChartValueStripTests(unittest.TestCase):
         }], "day")
         strip = body.split("<p class='overview-chart-values admin-legend'", 1)[1].split("</p>", 1)[0]
         self.assertIn("data-chart-values-strip aria-live='polite'", strip)
-        self.assertIn("Tap or focus a bar to see its values.", strip)
+        self.assertEqual(strip.split(">", 1)[1], "")  # no hint text; hidden until a bucket is chosen
+        self.assertIn(".overview-chart-values:empty{display:none}", ADMIN_STYLES)
+        self.assertNotIn(".overview-chart-group rect{stroke:var(--surface)", ADMIN_STYLES)  # solid bars
         groups = re.findall(r"<g class='overview-chart-group' role='img' tabindex='0' data-chart-values='([^']+)'", body)
         self.assertEqual(len(groups), 2)  # desktop and compact chart, one strip
         import html as html_module
@@ -246,7 +273,7 @@ class AdminComponentKitTests(unittest.TestCase):
         self.assertIn(">Last 7 days<", measured_zero)
         positive = _metric_tile("Failed", 3, failure=True)
         self.assertIn("data-tone='danger'", positive)
-        self.assertIn("admin-icon-x-circle", positive)
+        self.assertNotIn("admin-icon", positive)
         unknown = _metric_tile("Installs", None)
         self.assertIn("data-state='unknown'", unknown)
         self.assertIn("—<span class='sr-only'>Unknown</span>", unknown)
@@ -305,10 +332,6 @@ class AdminGlossaryTests(unittest.TestCase):
         self.assertIn('href="/admin/glossary"', body)
         for anchor, term, _ in ADMIN_GLOSSARY:
             self.assertIn(f"id='{anchor}'", body)
-        link = _glossary_link("open-problem")
-        self.assertIn("href='/admin/glossary#open-problem'", link)
-        self.assertIn("aria-label='About Open problem'", link)
-        self.assertEqual(_glossary_link("not-a-term"), "")
 
 
 if __name__ == "__main__":

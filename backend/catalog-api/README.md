@@ -317,6 +317,7 @@ newest two releases are kept.
 | `MAP_PREVIEW_WINDOW_UTC` | `00:00-06:00` | Rendering window; equal start and end (`00:00-00:00`) renders around the clock. |
 | `MAP_PREVIEW_REFRESH_DAYS` | `90` | Redraw unchanged layers after this many days. |
 | `MAP_PREVIEW_PUBLISH_MINUTES` | `30` | Publish finished layers at most this often during a window. |
+| `MAP_PREVIEW_RENDER_JOBS` | `1` | Tiles rendered in parallel by one renderer process (1–16). |
 | `MAP_PREVIEW_MAX_TOTAL_BYTES` | `55000000000` | Disk budget for all preview releases. |
 | `MAP_PREVIEW_MAX_SOURCE_BYTES` | `5368709120` | Largest provider download accepted. |
 | `MAP_PREVIEW_MIN_FREE_BYTES` | `20000000000` | Free disk space that must remain. |

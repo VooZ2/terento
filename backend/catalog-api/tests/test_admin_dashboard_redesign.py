@@ -39,7 +39,7 @@ def _funnel(**counts):
 
 
 class DashboardPresentationTests(unittest.TestCase):
-    def render(self, **overview):
+    def render(self, review=REVIEW, **overview):
         payload = {
             "period": "7d",
             "data": {
@@ -67,67 +67,65 @@ class DashboardPresentationTests(unittest.TestCase):
                               models=[{"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1}]),
         }
         payload.update(overview)
-        return overview_page(payload, {"username": "operator", "admin_review_summary": REVIEW}, "csrf").decode()
+        return overview_page(payload, {"username": "operator", "admin_review_summary": review}, "csrf").decode()
 
-    def test_tiles_carry_period_totals_and_the_legend_names_series(self):
+    def test_card_headers_carry_period_totals_and_the_legend_names_series(self):
         body = self.render()
-        tiles = body.split("aria-label='Dashboard summary'", 1)[1].split("overview-primary-grid", 1)[0]
-        self.assertEqual(tiles.count("data-scope='period'>Last 7 days</span>"), 3)
-        self.assertIn("data-stat='completedInstallCount'>12</strong>", tiles)
-        self.assertIn("data-stat='completedMapUpdateCount'>4</strong>", tiles)
-        self.assertIn("Failed 1</span> · 80%", tiles)
-        # Installs card: tiles carry the period totals, so the legend names the
-        # series and counts only the custom .img split no tile shows.
+        self.assertNotIn("Dashboard summary", body)
+        self.assertNotIn("overview-tiles", body)
         installs = body.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]
+        head = installs.split("</header>", 1)[0]
+        self.assertIn("data-scope='period'>Last 7 days</span>", head)
+        self.assertIn("data-stat='completedInstallCount'>12</strong><small>Successful</small>", head)
+        self.assertIn("data-stat='failedInstallCount'>", head)
+        self.assertIn("<small>Success rate</small>", head)
+        self.assertNotIn("admin-icon", head)
+        # The header totals cover installs only, so the legend names the
+        # series and counts the custom .img split and both update series.
         legend = installs.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
-        self.assertIn("<span>Install successful</span></li>", legend)
-        self.assertIn("<span>Custom .img install</span><strong>2</strong>", legend)
-        self.assertIn("<span>Update successful</span></li>", legend)
-        self.assertIn("<span>Update failed</span></li>", legend)
-        self.assertEqual(legend.count("<strong>"), 1)
-        self.assertIn("data-scope='all'>All time</span>", installs)
-        self.assertIn("Updates <strong>80</strong>", installs)
-        self.assertEqual(installs.count("class='overview-all-time'"), 1)
+        for name in ("Install successful", "Custom .img install", "Install failed", "Update successful", "Update failed"):
+            self.assertIn(f"<span>{name}</span></li>", legend)
         downloads = body.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0]
-        legend = downloads.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
-        self.assertNotIn("<strong>", legend)
+        for card in (installs, downloads):
+            # Header totals, the chart and a count-free legend; nothing else.
+            legend = card.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
+            self.assertNotIn("<strong>", legend)
+            self.assertNotIn("class='overview-all-time'", card)
+            self.assertNotIn("Downloads by purpose", card)
+            self.assertEqual(card.split("</ul>", 1)[1].replace("</div>", "").strip(), "")
 
-    def test_all_time_lines_are_omitted_when_the_period_is_all_time(self):
-        body = self.render(period="all")
-        for card in ("overview-trend-title", "overview-download-trend-title"):
-            section = body.split(f"id='{card}'", 1)[1].split("</section>", 1)[0]
-            self.assertNotIn("class='overview-all-time'", section)
-
-    def test_downloads_card_breaks_down_purpose(self):
-        body = self.render()
-        downloads = body.split("id='overview-download-trend-title'", 1)[1].split("</section>", 1)[0]
-        self.assertIn("aria-label='Downloads by purpose'", downloads)
-        self.assertIn("<dt>For installs</dt><dd>20", downloads)
-        self.assertIn("<dt>For updates</dt><dd>6", downloads)
-        self.assertIn("<dt>Not recorded</dt><dd>4", downloads)
-
-    def test_needs_attention_has_nine_fixed_rows_and_a_total(self):
+    def test_needs_attention_lists_only_nonzero_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
-        labels = ["Open problems", "GitHub issues", "Identity review", "Publication review",
-                  "Missing reports", "Support reports", "Maps unknown", "Provider problems", "System checks"]
-        self.assertEqual(attention.count("class='overview-attention-row'"), 9)
+        labels = ["Open problems", "GitHub issues", "Identity review", "Missing reports", "Support reports"]
+        self.assertEqual(attention.count("class='overview-attention-row'"), len(labels))
         positions = [attention.index(f"<span class='overview-attention-label'>{label}</span>") for label in labels]
         self.assertEqual(positions, sorted(positions))
+        # A measured zero (Publication review) renders no row; Maps unknown,
+        # Provider problems and System checks are not Needs attention rows.
+        for label in ("Publication review", "Maps unknown", "Provider problems", "System checks"):
+            self.assertNotIn(f">{label}<", attention)
+        self.assertNotIn("data-state='zero'", attention)
         self.assertIn("aria-label='Missing reports: 57'", attention)
         self.assertIn("href='/admin/review/missing-reports'", attention)
         self.assertIn("href='/admin/installations?state=identity-pending'", attention)
-        self.assertIn("data-state='zero'", attention)
         import re
         rows = [int(value) for value in re.findall(r"aria-label='[A-Za-z ]+: (\d+)'><svg", attention)]
-        self.assertEqual(len(rows), 9)
-        self.assertIn("aria-label='Maps unknown: 4'", attention)
-        self.assertIn("href='/admin/devices?maps=unknown&amp;active=1'", attention)
+        self.assertEqual(len(rows), len(labels))
         self.assertIn("aria-label='Support reports: 2'", attention)
         self.assertIn("href='/admin/support-reports'", attention)
-        tiles = body.split("aria-label='Dashboard summary'", 1)[1].split("overview-primary-grid", 1)[0]
-        # The tile total is exactly the sum of the rendered category rows.
-        self.assertIn(f"aria-label='Needs attention, now: {sum(rows)}'", tiles)
+        head = attention.split("</header>", 1)[0]
+        # The header total is exactly the sum of the rendered category rows.
+        self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong><small>Total</small>", head)
+
+    def test_needs_attention_with_nothing_open_says_so_without_rows(self):
+        zero_review = {"available": True, "installationIssues": 0, "githubIssuesInProgress": 0,
+                       "identityPending": 0, "readyToPublish": 0, "missingDiagnostics": 0}
+        body = self.render(review=zero_review, supportReports={"openCount": 0})
+        attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
+        self.assertIn("Nothing to review.", attention)
+        self.assertNotIn("overview-attention-row", attention)
+        self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
 
     def test_first_run_card_shows_connected_failed_authorization_and_waiting_models(self):
         body = self.render()
@@ -157,7 +155,8 @@ class DashboardPresentationTests(unittest.TestCase):
         body = self.render(data={"available": False})
         self.assertIn("<h1>Dashboard</h1>", body)
         self.assertGreaterEqual(body.count("admin-card-unavailable"), 2)
-        self.assertIn("data-stat='completedInstallCount'>—<span class='sr-only'>Unavailable</span>", body)
+        # Unavailable charts show no header totals rather than zeros.
+        self.assertNotIn("data-stat='completedInstallCount'", body)
         self.assertNotIn("No map activity in this period.", body)
 
     def test_provider_problem_definition_is_shared_and_excludes_deliberate_states(self):

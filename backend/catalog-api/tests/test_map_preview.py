@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 import zipfile
 from datetime import datetime, time as day_time, timedelta, timezone
@@ -21,7 +22,7 @@ from jsonschema import Draft202012Validator
 
 from terento_catalog.asset_storage import AssetStorage
 from terento_catalog.http_api import CatalogService, make_handler
-from terento_catalog.map_preview import acquire, areas as areas_module
+from terento_catalog.map_preview import acquire, areas as areas_module, job as job_module
 from terento_catalog.map_preview.acquire import AcquisitionError, Limits
 from terento_catalog.map_preview.areas import PreviewArea, load_areas, parse_areas, tile_count, tile_range
 from terento_catalog.map_preview.job import (
@@ -313,6 +314,7 @@ class FakePreviewDatabase:
         self.lease = None
 
     def acquire_lease(self, owner, seconds):
+        self.lease_calls = getattr(self, "lease_calls", []) + [seconds]
         if self.lease and self.lease != owner:
             return False
         self.lease = owner
@@ -473,6 +475,30 @@ class PreviewRunTests(unittest.TestCase):
             self.assertEqual(run.store.layers(result.release), {("a", "bbbike"), ("b", "bbbike")})
             self.assertFalse(run.store.staging.exists())
 
+    def test_short_renewed_lease_and_leftovers_from_a_killed_renderer_are_cleared(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "work" / "old-run").mkdir(parents=True)
+            (root / "work" / "old-run" / "gmapsupp.img").write_bytes(b"IMG")
+            (root / "work" / "stray.zip").write_bytes(b"ZIP")
+            rows = [snapshot_row("nord-est", region="EUROPE-ITALY-NORD-EST",
+                                 url="https://data.bbbike.org/osm/garmin/region/europe/italy/nord-est.osm.garmin-bbbike-latin1.img")]
+
+            def slow_download(provider_id, url, destination, *, expected_bytes, limits):
+                time.sleep(0.2)
+                destination.write_bytes(b"IMG")
+                return destination
+
+            db = FakePreviewDatabase()
+            with mock.patch.object(job_module, "LEASE_RENEW_SECONDS", 0.02):
+                result, db, _, _, _ = self.run_window(root, rows, db=db, downloader=slow_download)
+            self.assertEqual(result.rendered, 2)
+            self.assertEqual(db.lease_calls[0], job_module.LEASE_SECONDS)
+            self.assertGreater(len(db.lease_calls), 2)
+            self.assertTrue(all(seconds == job_module.LEASE_SECONDS for seconds in db.lease_calls))
+            self.assertEqual(list((root / "work").iterdir()), [])
+            self.assertIsNone(db.lease)
+
     def test_package_not_covering_area_moves_to_next_candidate(self):
         with tempfile.TemporaryDirectory() as directory:
             rows = [
@@ -559,6 +585,26 @@ class RendererBinaryTests(unittest.TestCase):
             renderer.render(fixture_area, [FIXTURE_IMG, FIXTURE_IMG], Path(directory) / "b")
             self.assertEqual(renderer.compare(Path(directory) / "a", Path(directory) / "a", 14), 0.0)
             self.assertLess(renderer.compare(Path(directory) / "a", Path(directory) / "b", 14), 0.05)
+
+    def test_parallel_rendering_matches_serial_output(self):
+        executable = Path(os.environ["TERENTO_PREVIEW_RENDERER"])
+        fixture_area = area("fixture", countries=("AD",), center=(1.532, 42.512), kind="city")
+        fixture_area = PreviewArea(**{**fixture_area.__dict__, "min_zoom": 13, "max_zoom": 15})
+        with tempfile.TemporaryDirectory() as directory:
+            serial = Renderer(executable, jobs=1).render(fixture_area, [FIXTURE_IMG], Path(directory) / "serial")
+            parallel = Renderer(executable, jobs=4).render(fixture_area, [FIXTURE_IMG], Path(directory) / "parallel")
+            self.assertEqual((serial.tiles, serial.bytes), (parallel.tiles, parallel.bytes))
+            for tile in Path(directory, "serial").rglob("*.webp"):
+                twin = Path(directory, "parallel", tile.relative_to(Path(directory, "serial")))
+                self.assertEqual(tile.read_bytes(), twin.read_bytes())
+
+
+class RendererSettingsTests(unittest.TestCase):
+    def test_jobs_scale_the_memory_limit_and_are_bounded(self):
+        self.assertEqual(Renderer(jobs=1).memory_limit_bytes, 1536 * 1024 * 1024)
+        self.assertEqual(Renderer(jobs=3).memory_limit_bytes, 2560 * 1024 * 1024)
+        self.assertEqual((Renderer(jobs=0).jobs, Renderer(jobs=99).jobs), (1, 16))
+        self.assertEqual(settings(Path("/tmp")).render_jobs, 1)
 
 
 class PreviewHTTPTests(unittest.TestCase):

@@ -13,6 +13,7 @@ const {chromium}=require(process.argv[2]);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}/${width}: page overflow`);
    assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
    assert(!/\bFresh\b/i.test(await page.locator('main').innerText()), `${name}: no Fresh labels`);
+   assert.equal(await page.locator('.admin-glossary-link').count(),0,`${name}: no glossary ? links`);
    if(name==='health'){
     const indexnow=page.locator("[data-health-name*='indexnow']");
     assert.equal(await indexnow.count(),1,'one IndexNow card');
@@ -28,15 +29,19 @@ const {chromium}=require(process.argv[2]);
     assert.equal(await page.locator('[data-health-name]').first().locator('.system-health-cause').count(),1,'other health card keeps its summary issue');
    }
    if(name==='overview'){
-    const tiles=await page.locator('.overview-tiles .admin-metric').evaluateAll(es=>es.map(e=>({height:Math.round(e.getBoundingClientRect().height),font:getComputedStyle(e.querySelector('.admin-metric-value')).fontSize})));
-    assert.equal(tiles.length,4,'Dashboard keeps four summary tiles');
-    assert.equal(new Set(tiles.map(t=>t.font)).size,1,'Tiles share numeric size');
+    assert.equal(await page.locator('.overview-tiles, .overview-page>.admin-metric-row').count(),0,'Dashboard has no summary tile row');
+    const totals=await page.locator('.overview-card-totals').evaluateAll(es=>es.map(e=>({card:e.closest('section').id,icons:e.querySelectorAll('.admin-icon').length,values:[...e.querySelectorAll('strong')].map(s=>getComputedStyle(s).fontSize)})));
+    assert.deepEqual(totals.map(t=>t.card),['overview-download-trend','overview-trend','overview-attention'],'Downloads, Installs and Needs attention headers carry the totals');
+    assert(totals.every(t=>t.icons===0),'Header totals carry no icons');
+    assert.equal(new Set(totals.flatMap(t=>t.values)).size,1,'Header totals share one numeric size');
+    if(width>900){const heads=await page.locator('#overview-download-trend .admin-card-head, #overview-trend .admin-card-head, #overview-attention .admin-card-head, #overview-activity .admin-card-head').evaluateAll(es=>es.map(e=>Math.round(e.getBoundingClientRect().height)));assert(heads[0]===heads[1]&&heads[2]===heads[3],'Card headers in a row share one height');}
     assert.equal(await page.locator('.overview-download-panel').count(),1,'App downloads chart remains visible');
     assert.equal(await page.locator('.overview-download-panel h2').innerText(),'App downloads');
     assert.deepEqual(await page.locator('main>.overview-primary-grid, main>.overview-composition-grid').evaluateAll(es=>es.map(e=>e.className)),['overview-primary-grid','overview-composition-grid']);
-    assert.equal(await page.locator('.overview-tiles .admin-scope-chip').count(),4,'Every tile shows a visible scope chip');
-    assert.equal(await page.locator('.overview-all-time .admin-scope-chip').count(),3,'One All time line per chart card');
-    assert.equal(await page.locator('.overview-attention-row').count(),9,'Needs attention keeps nine fixed rows');
+    assert.equal(await page.locator('.overview-primary-grid .admin-card-head .admin-scope-chip').count(),2,'Each chart header shows its period scope');
+    assert.equal(await page.locator('.overview-primary-grid .overview-all-time, .overview-primary-grid .overview-purposes, .overview-primary-grid .admin-legend strong').count(),0,'Chart cards show only header totals, chart and a count-free legend');
+    assert.equal(await page.locator('.overview-attention-row').count(),await page.locator('.overview-attention-row strong').evaluateAll(es=>es.filter(e=>e.textContent.trim()!=='0').length),'Needs attention lists only rows with work');
+    assert(await page.locator('.overview-attention-row').count()>0,'Fixture has open work');
     const visibleTrendCharts=page.locator('.overview-primary-grid .overview-trend-chart:visible');
     assert.equal(await visibleTrendCharts.count(),2,'Both current trend charts remain visible');
     for(const chart of await visibleTrendCharts.all()){
