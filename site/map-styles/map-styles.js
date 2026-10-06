@@ -134,7 +134,10 @@
   mapA.on("move zoom resize viewreset", updateClip);
   mapA.on("zoomend", updateZoom);
 
+  // A shared link may open in Side by side mode before the maps have a view.
+  let framed = false;
   function frameArea() {
+    framed = true;
     const current = area();
     const bounds = boundsOf(current);
     [mapA, mapB].forEach((map) => {
@@ -237,7 +240,7 @@
     });
     mapA.invalidateSize({pan: false});
     mapB.invalidateSize({pan: false});
-    if (state.mode === "split") mapB.setView(mapA.getCenter(), mapA.getZoom(), {animate: false});
+    if (state.mode === "split" && framed) mapB.setView(mapA.getCenter(), mapA.getZoom(), {animate: false});
   }
 
   function updateHash() {

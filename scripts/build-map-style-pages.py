@@ -23,7 +23,7 @@ SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261006-map-styles-v2"
+SCRIPT_VERSION = "20261006-map-styles-v3"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
 STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail")
 
