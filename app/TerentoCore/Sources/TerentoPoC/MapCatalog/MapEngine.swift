@@ -321,6 +321,16 @@ final class MapEngine: ObservableObject {
     private(set) var installTimeRemaining: RemainingTimeEstimate?
     private(set) var finishingTimeRemaining: RemainingTimeEstimate?
     private var downloadTimeEstimator = RemainingTimeEstimator()
+    private let downloadSpeedHistory = DownloadSpeedHistory()
+    /// Median of recently measured download speeds on this Mac, for the
+    /// first-map download estimate. Local only.
+    private(set) lazy var recentDownloadBytesPerSecond: Double? = downloadSpeedHistory.recentBytesPerSecond()
+
+    /// No map on the connected watch is managed by Terento yet.
+    var isFirstMapSelection: Bool {
+        guard let scan = result?.scan else { return false }
+        return FirstMapGuidance.isFirstMapSelection(installedMaps: scan.installedMaps + scan.otherMaps)
+    }
     private var installTimeEstimator = RemainingTimeEstimator()
     private var finishingTimeEstimator = RemainingTimeEstimator()
     private var installationAuthorizationGranted = false
@@ -1383,6 +1393,12 @@ final class MapEngine: ObservableObject {
     }
 
     fileprivate func receiveAcquisitionState(_ state: MapAcquisitionState) {
+        if state == .validatingDownload, acquisitionState == .downloading, let progress = acquisitionProgress {
+            // The transfer's own measured rate, independent of resumed bytes.
+            downloadSpeedHistory.record(bytesPerSecond: progress.bytesPerSecond,
+                                        downloadedBytes: progress.bytesDownloaded)
+            recentDownloadBytesPerSecond = downloadSpeedHistory.recentBytesPerSecond()
+        }
         if state != .downloading { resetTimeRemaining() }
         acquisitionState = state
         installationPhaseProgressIsMeasured = false

@@ -1382,6 +1382,17 @@ struct ConnectScreen: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
+    private var isFirstMapSelection: Bool {
+        mapEngine.isFirstMapSelection
+    }
+
+    private var firstMapKeepConnectedNotice: some View {
+        Label(FirstMapGuidance.keepConnectedLine, systemImage: "cable.connector")
+            .font(.terentoUI(size: 12, weight: .medium))
+            .foregroundStyle(TerentoColors.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
     @ViewBuilder
     private var catalogSelectionNotice: some View {
         let selectedProviderItems = mapSelectionItems.filter {
@@ -1478,7 +1489,13 @@ struct ConnectScreen: View {
                                     }
                                 ),
                                 isAvailable: true,
-                                selectionEnabled: isMapSelectionEnabled(item)
+                                selectionEnabled: isMapSelectionEnabled(item),
+                                highlightsRecommendation: isFirstMapSelection,
+                                downloadEstimate: isFirstMapSelection
+                                    ? FirstMapGuidance.downloadEstimateText(
+                                        bytes: item.package.expectedDownloadSizeBytes,
+                                        recentBytesPerSecond: mapEngine.recentDownloadBytesPerSecond)
+                                    : nil
                             )
                         }
                     }
@@ -1603,6 +1620,9 @@ struct ConnectScreen: View {
                 if let plan = displayedInstallationPlan {
                     VStack(alignment: .leading, spacing: 6) {
                         catalogSelectionNotice
+                        if isFirstMapSelection, !plan.selectedItems.isEmpty {
+                            firstMapKeepConnectedNotice
+                        }
                         MapSelectionStorageSummary(
                             plan: plan,
                             totalCapacity: snapshot?.totalCapacity ?? 0,
@@ -4557,6 +4577,8 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
     let contentSpacing: CGFloat
     let rowVerticalPadding: CGFloat
     let showsDivider: Bool
+    /// An optional status shown next to the title, always with an icon.
+    let badge: (text: String, systemImage: String)?
     let leadingContent: LeadingContent
     let trailingContent: TrailingContent
 
@@ -4567,9 +4589,11 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
         contentSpacing: CGFloat = 14,
         rowVerticalPadding: CGFloat = 13,
         showsDivider: Bool = true,
+        badge: (text: String, systemImage: String)? = nil,
         @ViewBuilder leading: () -> LeadingContent,
         @ViewBuilder trailing: () -> TrailingContent
     ) {
+        self.badge = badge
         self.title = title
         self.detail = detail
         self.note = note
@@ -4585,9 +4609,21 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
             leadingContent
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(title)
-                    .font(.terentoUI(size: 16, weight: .semibold))
-                    .foregroundStyle(TerentoColors.graphite)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(title)
+                        .font(.terentoUI(size: 16, weight: .semibold))
+                        .foregroundStyle(TerentoColors.graphite)
+
+                    if let badge {
+                        Label(badge.text, systemImage: badge.systemImage)
+                            .labelStyle(.titleAndIcon)
+                            .font(.terentoUI(size: 11, weight: .semibold))
+                            .foregroundStyle(TerentoColors.interactive)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(TerentoColors.interactive.opacity(0.10), in: Capsule())
+                    }
+                }
 
                 if let detail, !detail.isEmpty {
                     Text(detail)
@@ -4992,6 +5028,10 @@ struct MapSelectionRow: View {
     let showsSelectionControl: Bool
     let showsSize: Bool
     let showsDivider: Bool
+    /// First map selection only: highlight the locale recommendation.
+    let highlightsRecommendation: Bool
+    /// First map selection only: "Download 412 MB · about 4 min".
+    let downloadEstimate: String?
 
     init(
         item: MapSelectionItem,
@@ -5001,8 +5041,12 @@ struct MapSelectionRow: View {
         selectionEnabled: Bool = true,
         showsSelectionControl: Bool = true,
         showsSize: Bool? = nil,
-        showsDivider: Bool = true
+        showsDivider: Bool = true,
+        highlightsRecommendation: Bool = false,
+        downloadEstimate: String? = nil
     ) {
+        self.highlightsRecommendation = highlightsRecommendation
+        self.downloadEstimate = downloadEstimate
         self.item = item
         self._isSelected = isSelected
         self._selectedOptionalArtifactIDs = selectedOptionalArtifactIDs
@@ -5021,7 +5065,9 @@ struct MapSelectionRow: View {
                 note: item.acquisitionAvailability.detailedExplanation,
                 contentSpacing: 9,
                 rowVerticalPadding: 8,
-                showsDivider: !showsOptionalControl
+                showsDivider: !showsOptionalControl,
+                badge: showsRecommendation
+                    ? (FirstMapGuidance.recommendedLabel, "star.fill") : nil
             ) {
                 HStack(spacing: 6) {
                     if showsSelectionControl {
@@ -5061,11 +5107,19 @@ struct MapSelectionRow: View {
                 }
             } trailing: {
                 if showsSize && item.acquisitionAvailability == .available {
-                    Text(item.installSizeBytes.map(formatBytes) ?? "Size calculated before installation")
-                        .font(.terentoUI(size: 13, weight: .medium))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 190, alignment: .trailing)
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(item.installSizeBytes.map(formatBytes) ?? "Size calculated before installation")
+                            .font(.terentoUI(size: 13, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .multilineTextAlignment(.trailing)
+                        if let downloadEstimate {
+                            Text(downloadEstimate)
+                                .font(.terentoUI(size: 11, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
+                    .frame(maxWidth: 190, alignment: .trailing)
                 } else if item.acquisitionAvailability != .available {
                     Text("Unavailable")
                         .font(.terentoUI(size: 13, weight: .medium))
@@ -5231,15 +5285,22 @@ struct MapSelectionRow: View {
         }
 
         if showsSize {
-            return item.installSizeBytes.map {
+            let firstMap = [showsRecommendation ? FirstMapGuidance.recommendedLabel : nil, downloadEstimate]
+                .compactMap { $0 }.map { ", \($0)" }.joined()
+            return (item.installSizeBytes.map {
                 "\(item.title), \(item.comparison.providerName), \(formatBytes($0))"
-            } ?? "\(item.title), \(item.comparison.providerName), size calculated before installation"
+            } ?? "\(item.title), \(item.comparison.providerName), size calculated before installation") + firstMap
         }
         return "\(item.title), \(detail)"
     }
 
     private var isAlreadyInstalledSearchResult: Bool {
         isAvailable && item.comparison.installedMap != nil
+    }
+
+    private var showsRecommendation: Bool {
+        highlightsRecommendation && item.isRecommended && isAvailable
+            && item.comparison.installedMap == nil && item.acquisitionAvailability == .available
     }
 
     private var crossProviderSelectionDisabled: Bool {
