@@ -134,6 +134,10 @@ function testController() {
   const syncs = controller.split("\n").filter((line) => line.includes("mapB.setView(mapA.getCenter()"));
   assert.ok(syncs.length >= 1, "Side by side keeps both maps in sync");
   syncs.forEach((line) => assert.match(line, /\bframed\b/, "Side by side sync waits for the first view"));
+  // A page left open across a new preview release must move to it, not show removed tiles.
+  assert.match(controller, /\.on\("tileerror", refreshRelease\)/, "failed tiles recheck the release");
+  assert.match(controller, /fetchJson\(data\.manifestUrl, "no-cache"\)/, "the recheck bypasses the browser cache");
+  assert.match(controller, /visibilitychange/, "returning to the tab rechecks the release");
 }
 
 testHelpers();

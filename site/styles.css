@@ -3379,6 +3379,7 @@ details p {
 .map-styles-area-meta { grid-column: 1; color: var(--muted-text); font-size: 13px; line-height: 1.35; }
 .map-styles-area-styles { grid-row: 1 / span 2; grid-column: 2; color: var(--muted-text); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
 .map-styles-area-styles b { display: block; color: var(--graphite); font-size: 15px; }
+.map-styles-country { border-bottom: 0; }
 .map-styles-country > summary { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 10px; font-size: 15px; font-weight: 500; cursor: pointer; list-style: none; }
 .map-styles-country > summary::-webkit-details-marker { display: none; }
 .map-styles-country > summary::after { content: none; }
