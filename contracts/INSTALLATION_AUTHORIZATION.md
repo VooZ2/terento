@@ -41,10 +41,16 @@ feature flag. Public product claims remain independently evidence-gated.
 
 The stored catalog Maps value of a **new** collector-managed model comes only
 from the official Garmin product specifications the collector already reads:
-an explicit `yes` on a map-support row (`Ability to add maps`, `Preloaded maps`,
-`TopoActive maps`, `Maps`, `Map support`) stores `true`; an explicit `no` on a
-whole-support row (`Ability to add maps`, `Maps`, `Map support`) with no
-conflicting `yes` stores `false`; missing, conflicting or per-SKU-disagreeing
+an explicit `yes` on a map-support row (`Built-in mapping`, `Full vector map`,
+`Ability to add maps`, `Preloaded maps`, `TopoActive maps`, `Maps`,
+`Map support`) stores `true`; an explicit `no` on a whole-support row
+(`Built-in mapping`, `Full vector map`, `Ability to add maps`, `Maps`,
+`Map support`) with no conflicting `yes` stores `false`. The row lists are
+`MAP_POSITIVE_ROWS` and `MAP_NEGATIVE_ROWS` in
+`backend/catalog-api/src/terento_catalog/collectors/garmin/specifications.py`;
+change both together. Current Garmin pages use `Built-in mapping` and
+`Full vector map` (for example fēnix 8 and Venu X1); pages that show neither
+(for example Forerunner 570, vivoactive 6, Instinct 3) stay Unknown; missing, conflicting or per-SKU-disagreeing
 information stores NULL (Unknown → `PENDING`). A model-name prefix never stores
 a value, so a future maps-capable model in a family the native display registry
 calls non-map (for example a new Venu) is never silently `BLOCKED`. The

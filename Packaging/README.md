@@ -25,6 +25,11 @@ tests.
   dependency: the app build bundles source-built libmtp/libusb under
   `Terento.app/Contents/Frameworks`.
 
+- `rg` (ripgrep) on `PATH`; `Packaging/release.sh` checks it with the other
+  required commands before building. Any ripgrep build works (for example
+  Homebrew `ripgrep`, or the copy bundled with the Codex CLI when that
+  directory is added to `PATH` for the release command only).
+
 If Node.js is not on `PATH`, set `TERENTO_NODE_BIN` to its executable. The
 same override is used by the web, native, backend, and release checks.
 
@@ -218,7 +223,17 @@ Before distributing a public build:
 - run `Tests/run-all-tests.sh` and retain its per-suite summary in CI output;
 - synchronize all six visible Download pages with
   `python3 scripts/normalize-release-pages.py --write`, then require
-  `python3 scripts/normalize-release-pages.py --check` to pass;
+  `python3 scripts/normalize-release-pages.py --check` to pass. Regenerate the
+  site with the complete ordered sequence in `regenerate_site` of
+  `Tests/run-site-generator-parity-tests.sh` (legal, release pages, about, home,
+  guides, guide links, compatibility, public shell, metadata); a later step
+  rewrites the output of an earlier one, so running a single generator such as
+  `build-guide-pages.py` alone produces stale pages. Then run
+  `python3 scripts/build-markdown-pages.py --write`. The guide review date
+  follows the manifest `publishedAt`;
+- commit the regenerated pages before `python3 scripts/generate-sitemap.py
+  --write`: sitemap `lastmod` comes from Git history and is omitted for
+  uncommitted pages;
 - regenerate the public JSON-LD from the release manifest and visible FAQ
   content with `python3 scripts/normalize-structured-data.py --write`, then
   run it again with `--check` before publishing;
