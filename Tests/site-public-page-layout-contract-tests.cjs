@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261006-map-styles-v1";
+const styleVersion = "20261006-map-styles-v2";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -19,7 +19,7 @@ const cssBlock = (selector) => {
 
 assert.match(styles, /--internal-page-intro-padding-top:\s*clamp\(34px, 5vw, 64px\)/);
 assert.match(styles, /--product-photo-surface:\s*var\(--footer-text\)/);
-for (const selector of [".compatibility-hero", ".guide-intro", ".download-main"]) {
+for (const selector of [".compatibility-hero", ".guide-intro", ".download-main", ".map-styles-hero"]) {
   assert.match(cssBlock(selector), /var\(--internal-page-intro-padding-top\)/, `${selector} must use the shared intro token`);
 }
 assert.match(cssBlock(".hero"), /padding:\s*clamp\(48px, 5vw, 72px\)/, "Home hero begins within the first viewport");

@@ -100,37 +100,8 @@
     return new Set(areas.filter((area) => area.featured).map((area) => area.id));
   }
 
-  function median(values) {
-    if (!values.length) return null;
-    const sorted = values.slice().sort((a, b) => a - b);
-    const middle = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-  }
-
-  function catalogFacts(catalog, styles) {
-    const facts = {};
-    const providers = catalog && Array.isArray(catalog.providers) ? catalog.providers : [];
-    styles.forEach((style) => {
-      const provider = providers.find((item) => item.id === style.providerId && (item.status || "ACTIVE") === "ACTIVE");
-      const maps = provider && Array.isArray(provider.maps) ? provider.maps : [];
-      const usable = maps.filter((map) => (map.availability || "AVAILABLE") === "AVAILABLE"
-        && (style.mapType === null || map.mapType === style.mapType));
-      const sizes = usable.map((map) => Number(map.downloadSizeBytes || map.sizeBytes)).filter((value) => value > 0);
-      facts[style.id] = usable.length ? {count: usable.length, medianBytes: median(sizes)} : null;
-    });
-    return facts;
-  }
-
-  function formatSize(bytes, locale) {
-    if (!(bytes > 0)) return null;
-    const gigabytes = bytes >= 1e9;
-    const value = gigabytes ? bytes / 1e9 : bytes / 1e6;
-    const number = new Intl.NumberFormat(locale, {maximumFractionDigits: gigabytes ? 1 : 0}).format(value);
-    return `≈ ${number} ${gigabytes ? "GB" : "MB"}`;
-  }
-
   return {
     bbox, defaultZoom, zoomPercent, format, plural, normalize, matches, parseHash, serializeHash,
-    layerStatus, coveredCount, tileUrl, bestAreas, catalogFacts, formatSize, median,
+    layerStatus, coveredCount, tileUrl, bestAreas,
   };
 });

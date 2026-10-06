@@ -23,17 +23,9 @@ SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261006-map-styles-v1"
+SCRIPT_VERSION = "20261006-map-styles-v2"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
-CATALOG_URL = "https://api.terento.app/maps/catalog-v4.json"
 STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail")
-CATALOG_STYLE = {
-    "freizeitkarte": ("freizeitkarte", None),
-    "opentopomap": ("opentopomap", None),
-    "maprando": ("maprando", None),
-    "bbbike": ("bbbike", "bbbike-latin1"),
-    "bbbike-ontrail": ("bbbike", "ontrail-latin1"),
-}
 
 COPY: dict[str, dict[str, object]] = {
     "en": {
@@ -53,7 +45,6 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} place", "other": "{n} places"}, "route": {"one": "{n} trail", "other": "{n} trails"}, "city": {"one": "{n} city", "other": "{n} cities"}},
         "no_match": "No places match “{q}”. Try a country name, such as Italy or Nepal.",
         "best": "Best for comparing",
-        "all": {"places": "All places", "routes": "All trails", "cities": "All cities"},
         "styles_of": "{n} of 5 styles",
         "styles_short": "styles",
         "view": "View",
@@ -85,11 +76,8 @@ COPY: dict[str, dict[str, object]] = {
         "map_label": "Map preview. Drag or use the arrow keys to move, plus and minus to zoom.",
         "showing": "Showing {style} for {place}",
         "about": "About the five map styles",
-        "about_note": "Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings. Package counts and sizes come from the current catalog.",
-        "typical_size": "Typical region download",
-        "packages": "map packages",
-        "noscript": "Turn on JavaScript to compare the map styles on the map. The list shows every place you can compare.",
-        "places_heading": "Places you can compare",
+        "about_note": "Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.",
+        "noscript": "Turn on JavaScript to compare the map styles on the map.",
         "continents": {"europe": "Europe", "north-america": "North America", "south-america": "South America", "africa": "Africa", "asia": "Asia", "oceania": "Oceania"},
         "tags": {"mountains": "Mountains", "glaciers": "Glaciers", "lakes": "Lakes", "coast": "Coast", "forest": "Forest", "volcano": "Volcano", "canyon": "Canyon", "dunes": "Dunes", "river": "River", "highlands": "Highlands", "island": "Island", "rocks": "Rock formations", "city": "City", "cycling": "Cycling", "parks": "Parks", "old-town": "Old town", "non-latin-labels": "Non-Latin labels", "long-distance-trail": "Long-distance trail", "pilgrim-route": "Pilgrim route"},
     },
@@ -110,7 +98,6 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} Ort", "other": "{n} Orte"}, "route": {"one": "{n} Weg", "other": "{n} Wege"}, "city": {"one": "{n} Stadt", "other": "{n} Städte"}},
         "no_match": "Keine Orte passen zu „{q}“. Versuche einen Ländernamen wie Italien oder Nepal.",
         "best": "Am besten zum Vergleichen",
-        "all": {"places": "Alle Orte", "routes": "Alle Wege", "cities": "Alle Städte"},
         "styles_of": "{n} von 5 Stilen",
         "styles_short": "Stile",
         "view": "Ansicht",
@@ -142,11 +129,8 @@ COPY: dict[str, dict[str, object]] = {
         "map_label": "Kartenvorschau. Ziehen oder Pfeiltasten zum Bewegen, Plus und Minus zum Zoomen.",
         "showing": "{style} für {place} wird angezeigt",
         "about": "Über die fünf Kartenstile",
-        "about_note": "Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen. Paketzahlen und Größen stammen aus dem aktuellen Katalog.",
-        "typical_size": "Typischer Regionsdownload",
-        "packages": "Kartenpakete",
-        "noscript": "Aktiviere JavaScript, um die Kartenstile auf der Karte zu vergleichen. Die Liste zeigt alle Orte, die du vergleichen kannst.",
-        "places_heading": "Orte zum Vergleichen",
+        "about_note": "Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen.",
+        "noscript": "Aktiviere JavaScript, um die Kartenstile auf der Karte zu vergleichen.",
         "continents": {"europe": "Europa", "north-america": "Nordamerika", "south-america": "Südamerika", "africa": "Afrika", "asia": "Asien", "oceania": "Ozeanien"},
         "tags": {"mountains": "Berge", "glaciers": "Gletscher", "lakes": "Seen", "coast": "Küste", "forest": "Wald", "volcano": "Vulkan", "canyon": "Schlucht", "dunes": "Dünen", "river": "Fluss", "highlands": "Hochland", "island": "Insel", "rocks": "Felsformationen", "city": "Stadt", "cycling": "Radfahren", "parks": "Parks", "old-town": "Altstadt", "non-latin-labels": "Nicht-lateinische Beschriftung", "long-distance-trail": "Fernwanderweg", "pilgrim-route": "Pilgerweg"},
     },
@@ -167,7 +151,6 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} lieu", "other": "{n} lieux"}, "route": {"one": "{n} sentier", "other": "{n} sentiers"}, "city": {"one": "{n} ville", "other": "{n} villes"}},
         "no_match": "Aucun lieu ne correspond à « {q} ». Essayez un nom de pays, comme Italie ou Népal.",
         "best": "Idéal pour comparer",
-        "all": {"places": "Tous les lieux", "routes": "Tous les sentiers", "cities": "Toutes les villes"},
         "styles_of": "{n} styles sur 5",
         "styles_short": "styles",
         "view": "Affichage",
@@ -199,11 +182,8 @@ COPY: dict[str, dict[str, object]] = {
         "map_label": "Aperçu de carte. Faites glisser ou utilisez les flèches pour vous déplacer, plus et moins pour zoomer.",
         "showing": "Affichage de {style} pour {place}",
         "about": "À propos des cinq styles de carte",
-        "about_note": "Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte. Le nombre de paquets et les tailles proviennent du catalogue actuel.",
-        "typical_size": "Téléchargement typique d’une région",
-        "packages": "paquets de cartes",
-        "noscript": "Activez JavaScript pour comparer les styles sur la carte. La liste montre tous les lieux que vous pouvez comparer.",
-        "places_heading": "Lieux à comparer",
+        "about_note": "Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.",
+        "noscript": "Activez JavaScript pour comparer les styles sur la carte.",
         "continents": {"europe": "Europe", "north-america": "Amérique du Nord", "south-america": "Amérique du Sud", "africa": "Afrique", "asia": "Asie", "oceania": "Océanie"},
         "tags": {"mountains": "Montagnes", "glaciers": "Glaciers", "lakes": "Lacs", "coast": "Côte", "forest": "Forêt", "volcano": "Volcan", "canyon": "Canyon", "dunes": "Dunes", "river": "Rivière", "highlands": "Hautes terres", "island": "Île", "rocks": "Formations rocheuses", "city": "Ville", "cycling": "Vélo", "parks": "Parcs", "old-town": "Vieille ville", "non-latin-labels": "Libellés non latins", "long-distance-trail": "Grande randonnée", "pilgrim-route": "Chemin de pèlerinage"},
     },
@@ -224,7 +204,6 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} miejsce", "few": "{n} miejsca", "many": "{n} miejsc", "other": "{n} miejsca"}, "route": {"one": "{n} szlak", "few": "{n} szlaki", "many": "{n} szlaków", "other": "{n} szlaku"}, "city": {"one": "{n} miasto", "few": "{n} miasta", "many": "{n} miast", "other": "{n} miasta"}},
         "no_match": "Brak miejsc pasujących do „{q}”. Spróbuj nazwy kraju, np. Włochy lub Nepal.",
         "best": "Najlepsze do porównania",
-        "all": {"places": "Wszystkie miejsca", "routes": "Wszystkie szlaki", "cities": "Wszystkie miasta"},
         "styles_of": "{n} z 5 stylów",
         "styles_short": "stylów",
         "view": "Widok",
@@ -256,11 +235,8 @@ COPY: dict[str, dict[str, object]] = {
         "map_label": "Podgląd mapy. Przeciągnij lub użyj strzałek, aby przesuwać, plus i minus, aby zmieniać powiększenie.",
         "showing": "Wyświetlono {style} dla miejsca {place}",
         "about": "O pięciu stylach map",
-        "about_note": "Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy. Liczba pakietów i rozmiary pochodzą z aktualnego katalogu.",
-        "typical_size": "Typowe pobranie regionu",
-        "packages": "pakietów map",
-        "noscript": "Włącz JavaScript, aby porównać style na mapie. Lista pokazuje wszystkie miejsca, które możesz porównać.",
-        "places_heading": "Miejsca do porównania",
+        "about_note": "Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.",
+        "noscript": "Włącz JavaScript, aby porównać style na mapie.",
         "continents": {"europe": "Europa", "north-america": "Ameryka Północna", "south-america": "Ameryka Południowa", "africa": "Afryka", "asia": "Azja", "oceania": "Oceania"},
         "tags": {"mountains": "Góry", "glaciers": "Lodowce", "lakes": "Jeziora", "coast": "Wybrzeże", "forest": "Las", "volcano": "Wulkan", "canyon": "Kanion", "dunes": "Wydmy", "river": "Rzeka", "highlands": "Wyżyny", "island": "Wyspa", "rocks": "Formacje skalne", "city": "Miasto", "cycling": "Rower", "parks": "Parki", "old-town": "Stare miasto", "non-latin-labels": "Opisy niełacińskie", "long-distance-trail": "Szlak długodystansowy", "pilgrim-route": "Szlak pielgrzymkowy"},
     },
@@ -281,7 +257,6 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} místo", "few": "{n} místa", "many": "{n} místa", "other": "{n} míst"}, "route": {"one": "{n} stezka", "few": "{n} stezky", "many": "{n} stezky", "other": "{n} stezek"}, "city": {"one": "{n} město", "few": "{n} města", "many": "{n} města", "other": "{n} měst"}},
         "no_match": "Hledání „{q}“ neodpovídá žádné místo. Zkuste název země, například Itálie nebo Nepál.",
         "best": "Nejlepší k porovnání",
-        "all": {"places": "Všechna místa", "routes": "Všechny stezky", "cities": "Všechna města"},
         "styles_of": "{n} z 5 stylů",
         "styles_short": "stylů",
         "view": "Zobrazení",
@@ -313,11 +288,8 @@ COPY: dict[str, dict[str, object]] = {
         "map_label": "Náhled mapy. Posouvejte tažením nebo šipkami, přibližujte plusem a minusem.",
         "showing": "Zobrazeno {style} pro {place}",
         "about": "O pěti stylech map",
-        "about_note": "Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy. Počty balíčků a velikosti pocházejí z aktuálního katalogu.",
-        "typical_size": "Typické stažení oblasti",
-        "packages": "mapových balíčků",
-        "noscript": "Zapněte JavaScript a porovnejte styly na mapě. Seznam ukazuje všechna místa, která můžete porovnat.",
-        "places_heading": "Místa k porovnání",
+        "about_note": "Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy.",
+        "noscript": "Zapněte JavaScript a porovnejte styly na mapě.",
         "continents": {"europe": "Evropa", "north-america": "Severní Amerika", "south-america": "Jižní Amerika", "africa": "Afrika", "asia": "Asie", "oceania": "Oceánie"},
         "tags": {"mountains": "Hory", "glaciers": "Ledovce", "lakes": "Jezera", "coast": "Pobřeží", "forest": "Les", "volcano": "Sopka", "canyon": "Kaňon", "dunes": "Duny", "river": "Řeka", "highlands": "Vysočina", "island": "Ostrov", "rocks": "Skalní útvary", "city": "Město", "cycling": "Cyklistika", "parks": "Parky", "old-town": "Staré město", "non-latin-labels": "Nelatinkové popisky", "long-distance-trail": "Dálková trasa", "pilgrim-route": "Poutní cesta"},
     },
@@ -338,7 +310,6 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} luogo", "other": "{n} luoghi"}, "route": {"one": "{n} sentiero", "other": "{n} sentieri"}, "city": {"one": "{n} città", "other": "{n} città"}},
         "no_match": "Nessun luogo corrisponde a “{q}”. Prova con il nome di un paese, come Italia o Nepal.",
         "best": "Ideali per il confronto",
-        "all": {"places": "Tutti i luoghi", "routes": "Tutti i sentieri", "cities": "Tutte le città"},
         "styles_of": "{n} stili su 5",
         "styles_short": "stili",
         "view": "Vista",
@@ -370,17 +341,14 @@ COPY: dict[str, dict[str, object]] = {
         "map_label": "Anteprima della mappa. Trascina o usa le frecce per spostarti, più e meno per lo zoom.",
         "showing": "Visualizzazione di {style} per {place}",
         "about": "Informazioni sui cinque stili di mappa",
-        "about_note": "Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé, quindi colori e dettagli possono variare in base al modello e alle impostazioni della mappa. Numero di pacchetti e dimensioni provengono dal catalogo attuale.",
-        "typical_size": "Download tipico di una regione",
-        "packages": "pacchetti di mappe",
-        "noscript": "Attiva JavaScript per confrontare gli stili sulla mappa. L’elenco mostra tutti i luoghi che puoi confrontare.",
-        "places_heading": "Luoghi da confrontare",
+        "about_note": "Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé, quindi colori e dettagli possono variare in base al modello e alle impostazioni della mappa.",
+        "noscript": "Attiva JavaScript per confrontare gli stili sulla mappa.",
         "continents": {"europe": "Europa", "north-america": "Nord America", "south-america": "Sud America", "africa": "Africa", "asia": "Asia", "oceania": "Oceania"},
         "tags": {"mountains": "Montagne", "glaciers": "Ghiacciai", "lakes": "Laghi", "coast": "Costa", "forest": "Foresta", "volcano": "Vulcano", "canyon": "Canyon", "dunes": "Dune", "river": "Fiume", "highlands": "Altopiani", "island": "Isola", "rocks": "Formazioni rocciose", "city": "Città", "cycling": "Bici", "parks": "Parchi", "old-town": "Centro storico", "non-latin-labels": "Etichette non latine", "long-distance-trail": "Sentiero a lunga percorrenza", "pilgrim-route": "Cammino di pellegrinaggio"},
     },
 }
 
-CONTINENT_ORDER = ("europe", "north-america", "south-america", "africa", "asia", "oceania")
+
 ICONS = {
     "search": '<path d="M11 4.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Z"/><path d="m20 20-4.2-4.2"/>',
     "close": '<path d="M6 6l12 12M18 6 6 18"/>',
@@ -413,37 +381,18 @@ def style_copy(locale: str) -> list[dict[str, object]]:
     styles = []
     for style_id in STYLE_IDS:
         provider = PROVIDER_COPY[locale][style_id]
-        provider_id, map_type = CATALOG_STYLE[style_id]
         styles.append({
             "id": style_id,
             "name": provider["name"],
             "summary": provider["summary"],
             "benefits": list(provider["benefits"]),
             "note": MAPRANDO_NOTES[locale] if style_id == "maprando" else None,
-            "countTemplate": provider["count_template"],
-            "providerId": provider_id,
-            "mapType": map_type,
         })
     return styles
 
 
 def area_name(area: dict, locale: str) -> str:
     return area["name"].get(locale) or area["name"]["en"]
-
-
-def places_markup(locale: str, copy: dict[str, object]) -> str:
-    groups = []
-    for continent in CONTINENT_ORDER:
-        items = [area for area in AREAS["areas"] if area["continent"] == continent]
-        if not items:
-            continue
-        lists = []
-        for kind, tab in (("place", "places"), ("route", "routes"), ("city", "cities")):
-            entries = "".join(f"<li>{esc(area_name(area, locale))}</li>" for area in items if area["kind"] == kind)
-            if entries:
-                lists.append(f'<h4>{esc(copy["tabs"][tab])}</h4><ul>{entries}</ul>')
-        groups.append(f'<h3>{esc(copy["continents"][continent])}</h3>{"".join(lists)}')
-    return "".join(groups)
 
 
 def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, object]]) -> str:
@@ -456,10 +405,9 @@ def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, ob
         )
         cards.append(
             f'<article class="map-styles-about-card" data-style-card="{esc(style["id"])}">'
-            f'<h3>{esc(style["name"])} <span class="map-styles-about-count" data-style-count hidden></span></h3>'
+            f'<h3>{esc(style["name"])}</h3>'
             f'<p class="map-styles-about-summary">{esc(style["summary"])}</p>'
             f'<ul>{benefits}</ul>{note}'
-            f'<p class="map-styles-about-size" data-style-size hidden>{esc(copy["typical_size"])} <strong></strong></p>'
             "</article>"
         )
     return "".join(cards)
@@ -469,7 +417,6 @@ def page_data(locale: str, copy: dict[str, object], styles: list[dict[str, objec
     document = {
         "locale": locale,
         "manifestUrl": MANIFEST_URL,
-        "catalogUrl": CATALOG_URL,
         "areas": [
             {
                 "id": area["id"],
@@ -486,8 +433,8 @@ def page_data(locale: str, copy: dict[str, object], styles: list[dict[str, objec
             }
             for area in AREAS["areas"]
         ],
-        "styles": [{key: style[key] for key in ("id", "name", "summary", "countTemplate", "providerId", "mapType")} for style in styles],
-        "copy": {key: value for key, value in copy.items() if key not in {"h1", "lead", "eyebrow", "skip", "noscript", "about", "about_note", "places_heading"}},
+        "styles": [{key: style[key] for key in ("id", "name", "summary")} for style in styles],
+        "copy": {key: value for key, value in copy.items() if key not in {"h1", "lead", "eyebrow", "skip", "noscript", "about", "about_note"}},
     }
     return json.dumps(document, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
 
@@ -530,12 +477,12 @@ def render(locale: str) -> str:
     <a class="skip-link" href="#main-content">{esc(copy["skip"])}</a>
     <header class="site-header"></header>
     <main id="main-content" class="map-styles-main">
-      <section class="shell map-styles-hero" aria-labelledby="map-styles-title">
-        <div>
-          <p class="eyebrow">{esc(copy["eyebrow"])}</p>
+      <section class="map-styles-hero" aria-labelledby="map-styles-title">
+        <div class="shell">
+          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>{esc(copy["eyebrow"])}</p>
           <h1 id="map-styles-title">{esc(copy["h1"])}</h1>
+          <p class="hero-lede map-styles-lead">{esc(copy["lead"])}</p>
         </div>
-        <p class="map-styles-lead">{esc(copy["lead"])}</p>
       </section>
 
       <section class="map-styles-frame" aria-label="{esc(copy["region"])}">
@@ -607,8 +554,6 @@ def render(locale: str) -> str:
           <summary><span class="map-styles-about-label">{icon("info")}<span>{esc(copy["about"])}</span></span></summary>
           <div class="map-styles-about-grid">{about_markup(locale, copy, styles)}</div>
           <p class="map-styles-about-note">{esc(copy["about_note"])}</p>
-          <h2 class="map-styles-places-heading">{esc(copy["places_heading"])}</h2>
-          <div class="map-styles-places">{places_markup(locale, copy)}</div>
         </details>
       </section>
     </main>

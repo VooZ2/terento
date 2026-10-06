@@ -79,16 +79,6 @@ function testHelpers() {
   assert.equal(best.size, 10);
   assert.ok(best.has("a11") && !best.has("a0") && !best.has("a1"));
 
-  const catalog = {providers: [{id: "openstreetmap", status: "ACTIVE", maps: [
-    {mapType: "OPENTOPOMAP", availability: "AVAILABLE", downloadSizeBytes: 100e6},
-    {mapType: "OPENTOPOMAP", availability: "AVAILABLE", downloadSizeBytes: 300e6},
-    {mapType: "CONTOURS", availability: "AVAILABLE", downloadSizeBytes: 50e6},
-    {mapType: "OPENTOPOMAP", availability: "UNAVAILABLE", downloadSizeBytes: 900e6},
-  ]}]};
-  const facts = data.catalogFacts(catalog, [{id: "opentopomap", providerId: "openstreetmap", mapType: "OPENTOPOMAP"}, {id: "maprando", providerId: "maprando", mapType: null}]);
-  assert.deepEqual(facts, {opentopomap: {count: 2, medianBytes: 200e6}, maprando: null});
-  assert.equal(data.formatSize(1.25e9, "en"), "≈ 1.3 GB");
-  assert.equal(data.formatSize(0, "en"), null);
 }
 
 function testPages() {
