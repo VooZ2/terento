@@ -9,6 +9,9 @@ from pathlib import PurePosixPath
 
 
 ALL_SUITES = ("site", "app", "native", "backend", "release", "shared", "ci")
+# Fallback for repository automation that the macOS app and native core never
+# read: every other suite still runs, the long macOS app/native suites do not.
+NON_MAC_FALLBACK = ("site", "backend", "release", "shared", "ci")
 
 # Markdown documents that suite tests read as contracts. Other Markdown only
 # needs the always-selected shared and CI documentation checks.
@@ -62,8 +65,14 @@ def select_suites(paths: list[str]) -> list[str]:
         if text in {".github/workflows/deploy-site.yml", ".github/indexnow/site-state.json"}:
             selected.add("site")
             continue
-        if text.startswith((".github/", "contracts/")):
+        if text == ".github/workflows/swift-ci.yml" or text.startswith("contracts/"):
             return list(ALL_SUITES)
+        if text.startswith(".github/"):
+            selected.update(NON_MAC_FALLBACK)
+            continue
+        if text.startswith("site-deploy/"):
+            selected.add("site")
+            continue
         if text.startswith("Packaging/"):
             selected.update(("app", "release"))
             if path.name not in {"verify-release-label.sh", "README.md"}:
@@ -96,7 +105,7 @@ def select_suites(paths: list[str]) -> list[str]:
             ):
                 selected.update(("site", "release"))
             else:
-                return list(ALL_SUITES)
+                selected.update(NON_MAC_FALLBACK)
             continue
         if text == "app/TerentoCore/Tests/run-release-map-catalog-contract-gate-tests.sh":
             selected.add("release")

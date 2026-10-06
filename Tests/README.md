@@ -32,8 +32,9 @@ device telemetry; the audit must pass them through API validation locally.
 | App shell or presentation | app, shared/CI |
 | Native core or lifecycle | app, native, shared/CI |
 | Backend implementation | backend, shared/CI; selected catalog interfaces also native |
-| Site deploy workflow or IndexNow publication state | site, shared/CI |
-| Other workflows, shared schema/fixture or unknown implementation path | all suites |
+| Site deploy workflow, `site-deploy/` container files or IndexNow publication state | site, shared/CI |
+| Other `.github/` automation or non-site/release `scripts/` | all suites except macOS app and native |
+| `swift-ci.yml`, shared schema/fixture, brand source, test inventory or unknown path | all suites |
 
 The full release matrix runs on tags, manual full checks, weekly CI and release
 packaging. A manual dispatch with `selection_base` (`beta` or `main`, task
