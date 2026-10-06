@@ -319,8 +319,13 @@ a download start without a received outcome is not proof of a failed download.
   existing app referral parameters (`utm_source=terento_app`,
   `utm_medium=referral`) with `utm_campaign=app_troubleshooting` and
   `utm_content=<anchor>` (Help → Troubleshooting uses `help_menu`), followed by
-  the `#<anchor>` fragment; no model, version or id is added. A "Help" text link
-  appears next to those messages; it is never a primary button.
+  the `#<anchor>` fragment; no model, version or id is added. To keep the
+  interface uncluttered, a "Help" text link (never a primary button) appears
+  only inside error dialogs, currently the installation failure dialog, and in
+  the Diagnostics window's send-report help. Connect, Device verdict, catalog
+  notices, the review step, Manage maps rows, the scan-failure card and the
+  support report sheet show no Help link; Help → Troubleshooting stays
+  available from the menu.
 - **Install selection guidance.** Every selectable map row shows the catalog
   download size and "about N min" ("Download 412 MB · about 7 min") from the
   median of the last five measured download speeds on this Mac (30 days, local
