@@ -40,6 +40,7 @@ struct AppUpdateTests {
         try testHigherBuildIsAvailable()
         try testBeta9MaintenanceBuildIsAvailable()
         try testBeta10OfferedToBeta9()
+        try testReleaseCandidateOfferedToBetaChannel()
         try testHigherMarketingVersionIsAvailable()
         try testOlderReleaseIsUpToDate()
         try testIncompatibleMinimumMacOS()
@@ -54,7 +55,7 @@ struct AppUpdateTests {
         try await testDeferredUpdateCanOfferNewerBuild()
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
-        print("PASS: 18 app update tests")
+        print("PASS: 19 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -94,6 +95,46 @@ struct AppUpdateTests {
             current: installedVersion(build: 11)
         )
         expect(isAvailable(result, version: "1.0.0"), "beta.10 build 12 is offered to beta.9 build 11")
+    }
+
+    /// VERSIONING.md: release candidates ship on the existing beta channel and
+    /// continue the build counter, so beta.18 build 40 is offered rc.1 build 41
+    /// and an installed rc.1 is never offered the older beta again.
+    private static func testReleaseCandidateOfferedToBetaChannel() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "product": "Terento",
+          "platform": "macOS",
+          "architecture": "arm64",
+          "version": "1.0.0",
+          "build": 41,
+          "releaseLabel": "1.0.0-rc.1",
+          "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.1-build41/Terento-1.0.0-rc.1-macOS-arm64.dmg",
+          "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.1-build41",
+          "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.1-build41",
+          "channel": "beta",
+          "minimumMacOS": "13.0"
+        }
+        """
+        let candidate = try JSONDecoder().decode(
+            TerentoAppUpdateManifest.self,
+            from: Data(json.utf8)
+        )
+        try TerentoAppUpdateService.validate(manifest: candidate)
+        expect(candidate.displayVersion == "1.0.0-rc.1", "release candidate label is displayed")
+        let offered = try TerentoAppUpdateService.evaluate(
+            manifest: candidate,
+            current: installedVersion(build: 40),
+            currentMacOSVersion: "14.0"
+        )
+        expect(isAvailable(offered, version: "1.0.0"), "rc.1 build 41 is offered to beta.18 build 40")
+        let downgrade = try TerentoAppUpdateService.evaluate(
+            manifest: manifest(version: "1.0.0", build: 40, releaseLabel: "1.0.0-beta.18"),
+            current: installedVersion(build: 41),
+            currentMacOSVersion: "14.0"
+        )
+        expect(downgrade == .upToDate, "an installed rc.1 is not offered beta.18")
     }
 
     private static func testHigherMarketingVersionIsAvailable() throws {
