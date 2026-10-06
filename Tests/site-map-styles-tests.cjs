@@ -49,6 +49,7 @@ function testHelpers() {
   assert.equal(data.zoomPercent(area, 13), 100);
   assert.equal(data.zoomPercent(area, 15), 400);
   assert.equal(data.zoomPercent(area, 12), 50);
+  assert.equal(data.zoomPercent(area, 15, 14), 200, "100% is the widest zoom that fills the map");
 
   assert.equal(data.plural("en", {one: "{n} map", other: "{n} maps"}, 1), "1 map");
   assert.equal(data.plural("pl", {one: "{n} mapa", few: "{n} mapy", many: "{n} map", other: "{n} mapy"}, 5), "5 map");
@@ -138,6 +139,11 @@ function testController() {
   assert.match(controller, /\.on\("tileerror", refreshRelease\)/, "failed tiles recheck the release");
   assert.match(controller, /fetchJson\(data\.manifestUrl, "no-cache"\)/, "the recheck bypasses the browser cache");
   assert.match(controller, /visibilitychange/, "returning to the tab rechecks the release");
+  // The view stays inside the drawn area: no padding beyond it, 100% is the minimum zoom.
+  assert.match(controller, /map\.setMaxBounds\(bounds\);/);
+  assert.match(controller, /getBoundsZoom\(boundsOf\(current\), true\)/);
+  assert.match(controller, /map\.setMinZoom\(baseZoom\)/);
+  assert.doesNotMatch(controller, /bounds\.pad\(/);
 }
 
 testHelpers();

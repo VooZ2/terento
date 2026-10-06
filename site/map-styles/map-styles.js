@@ -136,17 +136,42 @@
 
   // A shared link may open in Side by side mode before the maps have a view.
   let framed = false;
+  // The view never leaves the drawn area. 100% is the widest zoom whose view
+  // still fits inside it (no grey margins); zooming in goes to the deepest
+  // drawn level. Both maps share the size of map A in every mode.
+  let baseZoom = 0;
+  function fitZoom() {
+    const current = area();
+    const cover = mapA.getBoundsZoom(boundsOf(current), true);
+    return Math.min(current.zoom[1], Math.max(D.defaultZoom(current), current.zoom[0], cover));
+  }
+
   function frameArea() {
     framed = true;
     const current = area();
     const bounds = boundsOf(current);
+    baseZoom = fitZoom();
     [mapA, mapB].forEach((map) => {
-      map.setMinZoom(current.zoom[0]);
+      map.setMaxBounds(bounds);
       map.setMaxZoom(current.zoom[1]);
-      map.setMaxBounds(bounds.pad(0.05));
-      map.setView([current.center[1], current.center[0]], D.defaultZoom(current), {animate: false});
+      map.setMinZoom(baseZoom);
+      map.setView([current.center[1], current.center[0]], baseZoom, {animate: false});
     });
   }
+
+  // A different map size (mode change, window resize) can need a closer 100%.
+  function refit() {
+    if (!framed) return;
+    const next = fitZoom();
+    if (next === baseZoom) return;
+    baseZoom = next;
+    [mapA, mapB].forEach((map) => {
+      map.setMinZoom(baseZoom);
+      if (map.getZoom() < baseZoom) map.setZoom(baseZoom, {animate: false});
+    });
+    updateZoom();
+  }
+  window.addEventListener("resize", refit);
 
   // Rendering -----------------------------------------------------------------
   function announce(message) {
@@ -225,9 +250,9 @@
   function updateZoom() {
     const current = area();
     const zoom = mapA.getZoom();
-    $("map-styles-zoom-level").textContent = `${D.zoomPercent(current, zoom)}%`;
+    $("map-styles-zoom-level").textContent = `${D.zoomPercent(current, zoom, baseZoom)}%`;
     $("map-styles-zoom-in").disabled = zoom >= current.zoom[1];
-    $("map-styles-zoom-out").disabled = zoom <= current.zoom[0];
+    $("map-styles-zoom-out").disabled = zoom <= baseZoom;
   }
 
   function renderMode() {
@@ -240,6 +265,7 @@
     });
     mapA.invalidateSize({pan: false});
     mapB.invalidateSize({pan: false});
+    refit();
     if (state.mode === "split" && framed) mapB.setView(mapA.getCenter(), mapA.getZoom(), {animate: false});
   }
 
