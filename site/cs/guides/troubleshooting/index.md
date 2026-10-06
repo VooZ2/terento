@@ -48,7 +48,7 @@ Pokud Terento hlásí, že hodinky nejsou připravené na přenos souborů, nast
 
 ### Hodinky Garmin jsou rozpoznané, ale nejsou připravené
 
-Pokud Terento hodinky najde, ale připojení není připravené do 2 minut, hodinky odpojte a znovu připojte. Občasné zaseknutí připojení je známé omezení aktuální bety.
+Pokud Terento hodinky najde, ale připojení není připravené do 2 minut, hodinky odpojte a znovu připojte. Občasné zaseknutí připojení je známé omezení aktuální verze.
 
 1. Ukončete další aplikace, které mohou hodinky používat. Viz [Hodinky používá Garmin Express nebo jiná aplikace](https://terento.app/cs/guides/troubleshooting/#garmin-busy).
 2. Zkuste jiný USB port nebo jiný kabel.
@@ -129,7 +129,7 @@ Odstraňte zbylou mapu v „Manage maps“ a pak ji nainstalujte znovu. Pokud se
 
 ### Aktualizace nebo odstranění mapy trvá dlouho
 
-V aktuální betě je to očekávané: při aktualizaci nebo odstranění mapy může ukazatel chvíli zůstat na vysokém procentu, než se akce dokončí. Nechte hodinky připojené a Mac nespící.
+V aktuální verzi je to očekávané: při aktualizaci nebo odstranění mapy může ukazatel chvíli zůstat na vysokém procentu, než se akce dokončí. Nechte hodinky připojené a Mac nespící.
 
 1. Neodpojujte hodinky, zatímco Terento pracuje.
 2. Počkejte, až Terento oznámí dokončení.

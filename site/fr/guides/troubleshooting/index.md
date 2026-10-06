@@ -48,7 +48,7 @@ Si Terento indique que la montre n’est pas prête pour le transfert de fichier
 
 ### Montre Garmin détectée mais pas prête
 
-Si Terento trouve la montre mais que la connexion n’est pas prête dans les 2 minutes, débranchez la montre et reconnectez-la. Les blocages occasionnels de connexion sont une limite connue de la bêta actuelle.
+Si Terento trouve la montre mais que la connexion n’est pas prête dans les 2 minutes, débranchez la montre et reconnectez-la. Les blocages occasionnels de connexion sont une limite connue de la version actuelle.
 
 1. Quittez les autres apps susceptibles d’utiliser la montre. Voir [Garmin Express ou une autre app utilise la montre](https://terento.app/fr/guides/troubleshooting/#garmin-busy).
 2. Essayez un autre port USB ou un autre câble.
@@ -129,7 +129,7 @@ Supprimez la carte restante dans « Manage maps », puis réinstallez-la. Si une
 
 ### La mise à jour ou la suppression d’une carte prend du temps
 
-C’est attendu dans la bêta actuelle : la mise à jour ou la suppression d’une carte peut rester un moment à un pourcentage élevé avant de se terminer. Gardez la montre connectée et votre Mac éveillé.
+C’est attendu dans la version actuelle : la mise à jour ou la suppression d’une carte peut rester un moment à un pourcentage élevé avant de se terminer. Gardez la montre connectée et votre Mac éveillé.
 
 1. Ne débranchez pas la montre pendant que Terento travaille.
 2. Attendez que Terento indique que c’est terminé.

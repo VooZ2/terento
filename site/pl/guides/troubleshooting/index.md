@@ -48,7 +48,7 @@ Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, u
 
 ### Zegarek Garmin wykryty, ale niegotowy
 
-Jeśli Terento znajdzie zegarek, ale połączenie nie będzie gotowe w ciągu 2 minut, odłącz zegarek i podłącz go ponownie. Sporadyczne zawieszanie się połączenia to znane ograniczenie obecnej bety.
+Jeśli Terento znajdzie zegarek, ale połączenie nie będzie gotowe w ciągu 2 minut, odłącz zegarek i podłącz go ponownie. Sporadyczne zawieszanie się połączenia to znane ograniczenie obecnej wersji.
 
 1. Zamknij inne aplikacje, które mogą korzystać z zegarka. Zobacz [Garmin Express lub inna aplikacja używa zegarka](https://terento.app/pl/guides/troubleshooting/#garmin-busy).
 2. Spróbuj innego portu USB lub innego kabla.
@@ -129,7 +129,7 @@ Usuń pozostałą mapę w „Manage maps”, a potem zainstaluj ją ponownie. Je
 
 ### Aktualizacja lub usuwanie mapy trwa długo
 
-W obecnej becie jest to oczekiwane: podczas aktualizacji lub usuwania mapy wskaźnik może przez chwilę stać na wysokim procencie przed zakończeniem. Pozostaw zegarek podłączony, a Maca wybudzonego.
+W obecnej wersji jest to oczekiwane: podczas aktualizacji lub usuwania mapy wskaźnik może przez chwilę stać na wysokim procencie przed zakończeniem. Pozostaw zegarek podłączony, a Maca wybudzonego.
 
 1. Nie odłączaj zegarka, gdy Terento pracuje.
 2. Poczekaj, aż Terento poinformuje o zakończeniu.

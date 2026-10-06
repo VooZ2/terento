@@ -20,6 +20,33 @@ for locale in links["COPY"]:
         else:
             raise AssertionError(f"{locale}: obsolete or unknown layout accepted: {layout}")
 print("Download layout checks passed for all six locales.")
+
+# A release-candidate manifest must change only the description of the current
+# build; the program-level beta wording stays, and a stable label is rejected.
+import json
+release_pages = runpy.run_path("scripts/normalize-release-pages.py")
+published = json.loads(open("site/updates/macos-arm64.json", encoding="utf-8").read())
+candidate = dict(published, releaseLabel="1.0.0-rc.1", releaseTag="v1.0.0-rc.1-build41",
+                 downloadURL="https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.1-build41/Terento-1.0.0-rc.1-macOS-arm64.dmg",
+                 releaseNotesURL="https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.1-build41")
+for locale in release_pages["LOCALES"]:
+    path = release_pages["page_path"](locale)
+    source = path.read_text(encoding="utf-8")
+    rc = release_pages["render"](source, locale, candidate, path)
+    assert "v1.0.0-rc.1" in rc and "beta.18" not in rc, locale
+    assert release_pages["LATEST"]["rc"][locale] + ": <strong>v1.0.0-rc.1</strong>" in rc, locale
+    assert release_pages["CURRENT_BUILD"]["rc"][locale] in rc, locale
+    assert release_pages["CURRENT_BUILD"]["beta"][locale] not in rc, locale
+    assert '"softwareVersion": "1.0.0-rc.1"' in rc, locale
+    assert release_pages["render"](rc, locale, published, path) == source, f"{locale}: beta round trip"
+    for label in ("1.0.0", "1.0.0-RC.1", "1.0.0-rc.0", "1.0.0-rc.1-local"):
+        try:
+            release_pages["render"](source, locale, dict(candidate, releaseLabel=label), path)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{locale}: unsupported release label accepted: {label}")
+print("Download release-candidate copy checks passed for all six locales.")
 PYTHON
 
 generated="site/privacy/index.html

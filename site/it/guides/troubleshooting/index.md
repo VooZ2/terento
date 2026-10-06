@@ -48,7 +48,7 @@ Se Terento indica che l’orologio non è pronto per il trasferimento file, impo
 
 ### Orologio Garmin rilevato ma non pronto
 
-Se Terento trova l’orologio ma la connessione non è pronta entro 2 minuti, scollega l’orologio e ricollegalo. I blocchi occasionali della connessione sono un limite noto della beta attuale.
+Se Terento trova l’orologio ma la connessione non è pronta entro 2 minuti, scollega l’orologio e ricollegalo. I blocchi occasionali della connessione sono un limite noto della versione attuale.
 
 1. Chiudi le altre app che potrebbero usare l’orologio. Vedi [Garmin Express o un’altra app sta usando l’orologio](https://terento.app/it/guides/troubleshooting/#garmin-busy).
 2. Prova un’altra porta USB o un altro cavo.
@@ -129,7 +129,7 @@ Rimuovi la mappa rimasta in “Manage maps” e poi installala di nuovo. Se un�
 
 ### Aggiornamento o rimozione della mappa molto lenti
 
-Nella beta attuale è previsto: durante l’aggiornamento o la rimozione di una mappa l’avanzamento può restare per un po’ su una percentuale alta prima di terminare. Lascia l’orologio collegato e il Mac attivo.
+Nella versione attuale è previsto: durante l’aggiornamento o la rimozione di una mappa l’avanzamento può restare per un po’ su una percentuale alta prima di terminare. Lascia l’orologio collegato e il Mac attivo.
 
 1. Non scollegare l’orologio mentre Terento è al lavoro.
 2. Attendi che Terento segnali che ha finito.

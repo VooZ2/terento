@@ -48,7 +48,7 @@ Meldet Terento, dass die Uhr nicht für die Dateiübertragung bereit ist, stelle
 
 ### Garmin-Uhr erkannt, aber nicht bereit
 
-Findet Terento die Uhr, wird die Verbindung aber nicht innerhalb von 2 Minuten bereit, trenne die Uhr und verbinde sie erneut. Gelegentlich hängende Verbindungen sind eine bekannte Einschränkung der aktuellen Beta.
+Findet Terento die Uhr, wird die Verbindung aber nicht innerhalb von 2 Minuten bereit, trenne die Uhr und verbinde sie erneut. Gelegentlich hängende Verbindungen sind eine bekannte Einschränkung der aktuellen Version.
 
 1. Beende andere Programme, die die Uhr verwenden könnten. Siehe [Garmin Express oder eine andere App blockiert die Uhr](https://terento.app/de/guides/troubleshooting/#garmin-busy).
 2. Versuche einen anderen USB-Anschluss oder ein anderes Kabel.
@@ -129,7 +129,7 @@ Entferne den Kartenrest in „Manage maps“ und installiere die Karte dann erne
 
 ### Karten-Update oder Entfernen dauert lange
 
-Das ist in der aktuellen Beta zu erwarten: Beim Aktualisieren oder Entfernen einer Karte kann die Anzeige eine Weile bei einem hohen Prozentwert stehen bleiben, bevor der Vorgang endet. Lass die Uhr verbunden und deinen Mac wach.
+Das ist in der aktuellen Version zu erwarten: Beim Aktualisieren oder Entfernen einer Karte kann die Anzeige eine Weile bei einem hohen Prozentwert stehen bleiben, bevor der Vorgang endet. Lass die Uhr verbunden und deinen Mac wach.
 
 1. Trenne die Uhr nicht, solange Terento arbeitet.
 2. Warte, bis Terento den Abschluss meldet.

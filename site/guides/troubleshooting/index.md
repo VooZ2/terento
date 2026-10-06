@@ -48,7 +48,7 @@ If Terento says the watch isn’t ready for file transfer, set the watch’s USB
 
 ### Garmin watch detected but not ready
 
-If Terento finds the watch but the connection doesn’t become ready within 2 minutes, unplug the watch and connect it again. Occasional connection stalls are a known limit of the current beta.
+If Terento finds the watch but the connection doesn’t become ready within 2 minutes, unplug the watch and connect it again. Occasional connection stalls are a known limit of the current version.
 
 1. Quit other apps that may be using the watch. See [Garmin Express or another app is using the watch](https://terento.app/guides/troubleshooting/#garmin-busy).
 2. Try another USB port or cable.
@@ -129,7 +129,7 @@ Remove the leftover map in “Manage maps”, then install it again. If an insta
 
 ### Map update or removal takes a long time
 
-This is expected in the current beta: updating or removing a map can stay at a high percentage for a while before it finishes. Keep the watch connected and your Mac awake.
+This is expected in the current version: updating or removing a map can stay at a high percentage for a while before it finishes. Keep the watch connected and your Mac awake.
 
 1. Don’t unplug the watch while Terento is working.
 2. Wait until Terento says it is done.
