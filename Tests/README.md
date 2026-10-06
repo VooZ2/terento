@@ -124,6 +124,15 @@ offline native fixture and verifies durable recovery with zero native operations
 No simulated provider, fixture state or telemetry client enters the app target.
 Release isolation checks run on compiler inputs and the actual packaged bundle.
 
+## Test log isolation
+
+`Tests/run-test-suite.py` points `TERENTO_LOG_DIRECTORY` at a fresh temporary
+folder. The app's diagnostic log (`TerentoLogLocation`) and the finishing trace
+(`FinishingTrace`) honor it, so test runs never overwrite the owner's
+`~/Library/Logs/Terento` files (`log.txt`, `finishing.log`, `failure-report.*`)
+that are used as real-watch evidence. Runners started outside the suite runner
+must set it too; production builds never set it.
+
 ## Failures and retries
 
 Each runner streams output and saves its first-attempt log under ignored
