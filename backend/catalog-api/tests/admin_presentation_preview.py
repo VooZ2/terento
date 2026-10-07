@@ -22,6 +22,7 @@ from terento_catalog.admin import (
 )
 from terento_catalog.support_report_admin import support_report_detail_page, support_reports_page
 from terento_catalog.support_reports import validate_support_report
+from terento_catalog.update_diagnostics import update_diagnostics_page
 
 
 def _daily_trend() -> list[dict[str, object]]:
@@ -450,6 +451,12 @@ def create(root: Path) -> None:
         update_history={"device_id": "fenix-8-51-amoled", "rows": [],
                         "outcome": "failed", "offset": 0, "has_more": False},
     ))
+    # Update reports list with five-digit totals: the one-card KPI row must fit
+    # two rows on phones without overflowing (owner 2026-10-07).
+    (root / "update-reports.html").write_bytes(update_diagnostics_page({
+        "rows": update_rows, "has_more": True,
+        "totals": {"total": 12_345, "succeeded": 11_890, "failed": 312, "not_started": 143, "open_failed": 27},
+    }, user, "fixture"))
     identification_device = {
         "id": "fenix-8-51-amoled", "model": "fēnix 8",
         "variant": "51 mm, AMOLED", "mapCapable": True,

@@ -7326,8 +7326,9 @@ def devices_page(
     devices = payload["devices"]
     verified_models = sum(device.get("evidenceStatus") == "VERIFIED" for device in devices)
     pending_policy = sum(device.get("installationAuthorization") == "PENDING" and device.get("active") is not False for device in devices)
+    # The rate is its own span so it can wrap under the count in a narrow tile.
     covered_value = (f"{summary['mapModelsWithSuccess']:,}/{summary['eligibleMapModels']:,}"
-                     f" ({_format_rate(summary['mapModelCoverageRate'])})")
+                     f" <span class='admin-metric-rate'>({html.escape(_format_rate(summary['mapModelCoverageRate']))})</span>")
     map_filters = "".join(
         f"<button type='button' class='quick-filter{' active' if value == 'yes' else ''}' data-device-map-filter='{value}' "
         f"aria-pressed='{'true' if value == 'yes' else 'false'}'>{label}</button>"
@@ -7344,7 +7345,7 @@ def devices_page(
               _metric_tile("Models", summary['models']),
               _metric_tile("Maps: Yes", summary['mapCapable']),
               _metric_tile("Verified", verified_models),
-              _metric_tile("Covered", summary['mapModelsWithSuccess'], value_html=html.escape(covered_value), data_stat="covered",
+              _metric_tile("Covered", summary['mapModelsWithSuccess'], value_html=covered_value, data_stat="covered",
                            hint="Active Maps: Yes models with at least one verified installation"),
               # A positive count uses the failure tone (owner decision 2026-10-06).
               _metric_tile("Pending policy", pending_policy, failure=True),
@@ -9252,7 +9253,7 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
   .filter-bar label,.filter-search{min-width:0!important;max-width:100%;flex:1 1 100%}
   .filter-bar .filter-clear{width:100%}
   input:not([type='checkbox']):not([type='radio']),select,textarea{font-size:16px!important;max-width:100%;min-width:0;min-height:44px}
-  .quick-filter-group{min-width:0;max-width:100%;display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;flex-basis:100%;gap:5px;padding-bottom:3px}
+  .quick-filter-group{min-width:0;max-width:100%;display:flex;flex-wrap:wrap;overflow-x:visible;flex-basis:100%}
   .quick-filter{flex:0 0 auto;min-height:44px;font-size:13px}
   .mobile-filter-options{display:grid;grid-template-columns:1fr;gap:8px;width:100%}
   .mobile-filter-toggle{width:100%;text-align:left}
@@ -10110,16 +10111,30 @@ ADMIN_STYLES += """
 @media(max-width:1100px){.provider-kpis>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:1180px){.provider-detail .provider-state-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:760px){
-  .provider-technical-switcher>.quick-filter-group{flex-wrap:wrap;overflow-x:visible}
   .provider-technical-card .mobile-record-table td:is(.provider-reason-cell,.provider-url-cell),.provider-technical-card .mobile-record-table td:has(.audit-technical-details[open]){grid-column:1/-1;min-width:0}
   .provider-technical-card .mobile-record-table td.is-empty{display:none}
   .provider-technical-card .audit-technical-details code{max-width:100%}
 }
 @media(max-width:700px){
-  .provider-kpis>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .provider-kpis>.admin-metric-row>:last-child:nth-child(odd){grid-column:1/-1}
   .provider-health-schedule label{flex-basis:100%}
   .provider-health-schedule select{flex:1 1 150px}
+}
+"""
+
+# One-card KPI rows (owner decision 2026-10-07, admin-behavior-contract.md
+# "Responsive and layout invariants"): at <=760 px a summary card's tiles fit
+# two rows: five or three tiles use three columns (3 + 2, or one row), four or
+# two use two (2 + 2, or one row). The shared auto-fit grid would otherwise
+# stack one tile per row. Each tile spans three shared subgrid rows (label,
+# value, secondary line), so numbers sit on one baseline under labels that may
+# wrap, and a parenthesised rate wraps under its count instead of overflowing.
+ADMIN_STYLES += """
+@media(max-width:760px){
+  :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row{grid-template-columns:repeat(3,minmax(min-content,1fr));row-gap:0}
+  :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row:has(>:nth-child(2):last-child,>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(min-content,1fr))}
+  :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row>.admin-metric{display:grid;grid-row:span 3;grid-template-rows:subgrid;align-content:start;row-gap:4px;padding:4px 0 8px}
+  :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row .admin-metric-label{align-self:start}
+  :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row .admin-metric-value{flex-wrap:wrap;gap:0 6px;margin-top:0}
 }
 """
 

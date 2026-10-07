@@ -515,7 +515,9 @@ class AdminDevicesTests(unittest.TestCase):
             'id="device-map"><option value="yes" selected', "results",
             # Same filter bar and tiles as Installations (owner decision 2026-10-06).
             "data-device-map-filter='yes' aria-pressed='true'>Maps: Yes", "data-device-map-filter='all'",
-            "admin-card installation-kpis device-summary-strip", "data-stat='covered'>1/1 (100%)",
+            "admin-card installation-kpis device-summary-strip",
+            # The rate is a separate part that wraps under the count on phones (owner 2026-10-07).
+            "data-stat='covered'>1/1 <span class='admin-metric-rate'>(100%)</span>",
             "class='page-meta device-summary-sync'><strong>Last sync</strong>",
         ):
             self.assertIn(value, body)

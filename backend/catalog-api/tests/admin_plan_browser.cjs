@@ -278,8 +278,9 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert.equal(await page.locator('#diagnostic-filters select').count(),0,'Quick filters, not a select');
     assert.equal(await page.locator('#diagnostic-filters [data-history-filter]').count(),7);
     assert.equal(await page.locator('#diagnostic-results-count').innerText(),'','No N records line');
-    const pill=await page.locator("[data-stat='evidence'] .admin-pill").evaluate(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,tile:e.closest('.admin-metric').getBoundingClientRect().width}));
-    assert(pill.h<=30&&pill.w<pill.tile*0.8,'Evidence is a normal status pill, not stretched');
+    // A narrow phone column may be exactly as wide as the pill, so compare with its own content width.
+    const pill=await page.locator("[data-stat='evidence'] .admin-pill").evaluate(e=>{const w=e.getBoundingClientRect().width,h=e.getBoundingClientRect().height,tile=e.closest('.admin-metric').getBoundingClientRect().width;const width=e.style.width;e.style.width='max-content';const natural=e.getBoundingClientRect().width;e.style.width=width;return {w,h,tile,natural};});
+    assert(pill.h<=30&&(pill.w<pill.tile*0.8||Math.abs(pill.w-pill.natural)<=1),'Evidence is a normal status pill, not stretched');
     assert.equal(await page.getByRole('link',{name:/Review all pending identities/}).count(),1);
     await page.locator("[data-history-filter='identity-pending']").click();
     assert.equal(await page.locator('#diagnostic-rows tr:not([hidden])').count(),await page.locator("#diagnostic-rows tr[data-identity-pending='true']").count(),'Identity review quick filter');
@@ -305,6 +306,27 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert.equal(await pendingTile.getAttribute('data-tone'),'danger','Positive Pending policy uses the danger tone');
     assert.notEqual(await pendingTile.locator('.admin-metric-value').evaluate(e=>getComputedStyle(e).color),await page.locator('.device-summary-strip .admin-metric').first().locator('.admin-metric-value').evaluate(e=>getComputedStyle(e).color),'Pending policy value is visibly toned');
    }
+  }
+  if(width===390) for(const name of ['installations','devices','providers','provider','health','identification-list','update-reports','device','diagnostics','statistics']){
+   // Owner 2026-10-07: every one-card KPI row fits two rows on phones (5 -> 3+2, 4 -> 2+2, 3 -> one row)
+   // with numbers on one baseline and nothing overflowing; quick-filter groups wrap instead of scrolling.
+   await page.goto(base+'/admin/'+name+'.html');await page.waitForTimeout(150);
+   assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
+   if(name==='devices')await page.evaluate(()=>{const v=document.querySelector('[data-stat="covered"]');v.firstChild.textContent='24/78 ';v.querySelector('.admin-metric-rate').textContent='(30.8%)';});
+   const rows=await page.locator(':is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row').evaluateAll(rs=>rs.map(row=>{const box=row.getBoundingClientRect(),tiles=[...row.children].map(t=>{const r=t.getBoundingClientRect(),v=t.querySelector('.admin-metric-value').getBoundingClientRect();return {top:Math.round(r.top),value:Math.round(v.top),right:r.right,overflow:t.scrollWidth>t.clientWidth+1||[...t.querySelectorAll('*')].some(e=>e.getBoundingClientRect().right>r.right+1)};});return {label:row.getAttribute('aria-label'),columns:getComputedStyle(row).gridTemplateColumns.split(' ').length,right:box.right,tiles};}));
+   if(name!=='statistics')assert(rows.length>0,`${name}: has a one-card KPI row`);
+   for(const row of rows){
+    const count=row.tiles.length,tops=[...new Set(row.tiles.map(t=>t.top))];
+    assert.equal(row.columns,count%2===0?2:3,`${name} ${row.label}: ${count} tiles use ${count%2===0?2:3} columns at 390px`);
+    assert(tops.length<=2,`${name} ${row.label}: at most two rows at 390px (got ${tops.length})`);
+    for(const top of tops){const values=row.tiles.filter(t=>t.top===top).map(t=>t.value);assert(Math.max(...values)-Math.min(...values)<=1,`${name} ${row.label}: numbers share one baseline per row`);}
+    assert(row.tiles.every(t=>!t.overflow&&t.right<=row.right+1),`${name} ${row.label}: no tile overflows at 390px`);
+   }
+   const scrolling=await page.locator('.quick-filter-group').evaluateAll(gs=>gs.filter(g=>g.getClientRects().length&&g.scrollWidth>g.clientWidth+1).map(g=>g.getAttribute('aria-label')||g.className));
+   assert.deepEqual(scrolling,[],`${name}: quick-filter groups wrap instead of scrolling at 390px`);
+   const short=await page.locator('.quick-filter-group .quick-filter').evaluateAll(bs=>bs.filter(b=>b.getClientRects().length&&b.getBoundingClientRect().height<43.5).length);
+   assert.equal(short,0,`${name}: quick filters keep the 44px touch height`);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}/${width}: page overflow`);
   }
   await page.goto(base+'/admin/device-empty.html');
   const empty=page.locator('.model-evidence-history .compact-empty-state');

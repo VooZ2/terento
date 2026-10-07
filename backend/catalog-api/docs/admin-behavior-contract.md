@@ -107,7 +107,9 @@ remaining selects behind a `Filters and sorting` button, More filters and
 either panel opens full width below that row without moving the buttons. The
 result count is one tight line below them with Clear beside it when shown, never
 a control-height block; a More filters button without a partner (Maps) keeps
-the full width.
+the full width. At 760 px and narrower a quick-filter group wraps its buttons
+onto as many rows as it needs with the normal gap and keeps the 44 px touch
+height; it never scrolls horizontally or clips a button at the edge.
 
 Filter persistence (owner decision 2026-10-06): a page may keep its search,
 sort, More filters selects and page size in the tab's session storage and in
@@ -326,7 +328,8 @@ model is one row with its label, a small horizontal bar scaled to its share of
 the period's sessions and its count as text (zero rows are omitted). Its
 Sessions, Connected and Not connected tiles stay on one row of three equal
 columns at every width, label above number; a label may wrap but the numbers
-share one baseline. Other metric rows keep their own narrow stacking. It never
+share one baseline. One-card KPI rows follow the two-row rule in Responsive and
+layout invariants. It never
 mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
 Activity is internally scrollable and must not force page height. A generic
@@ -1010,6 +1013,18 @@ which keeps 12 px (a filter bar drawn as the table's attached header keeps no
 gap). Rows inside one table or list are not separate cards; labelled mobile
 record rows keep their 12 px row gap. The spacing belongs to the containing
 layout (`--admin-card-gap`), never to both the layout and the card.
+
+One-card KPI rows (owner decision 2026-10-07): a summary card holding one
+metric row (`installation-kpis` on Installations, Devices, Providers, provider
+detail, Health, Model sources and Update reports, and the `admin-kpi-panel`
+Installs and Updates cards on device and diagnostics pages) fits two rows at
+760 px and narrower: five or three tiles use three columns (3 + 2, or one row),
+four or two tiles use two (2 + 2, or one row). Columns share the width equally
+and widen only as far as a pill or number needs. Within each row of tiles the
+labels share one top line and the values one line below the tallest label, so
+a wrapped label never moves a number off the shared baseline. A long value
+wraps instead of overflowing: Covered renders its rate as a separate part that
+moves under the count. Desktop layouts are unchanged.
 
 ## Mandatory change and release gate
 

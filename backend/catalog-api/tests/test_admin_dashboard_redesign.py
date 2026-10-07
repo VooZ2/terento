@@ -154,6 +154,27 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn(".overview-funnel-metrics .admin-metric-value{margin-top:auto}", ADMIN_STYLES)
         self.assertIn(".admin-metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));", ADMIN_STYLES)
 
+    def test_one_card_kpi_rows_fit_two_rows_on_phones(self):
+        # Owner 2026-10-07: at <=760 px a one-card KPI row uses three columns
+        # for five or three tiles and two for four or two; labels and values
+        # share subgrid rows so numbers keep one baseline; long values wrap.
+        self.assertIn("@media(max-width:760px){\n  :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row{", ADMIN_STYLES)
+        row = ":is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row"
+        for declaration in (
+            row + "{grid-template-columns:repeat(3,minmax(min-content,1fr));row-gap:0}",
+            row + ":has(>:nth-child(2):last-child,>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(min-content,1fr))}",
+            row + ">.admin-metric{display:grid;grid-row:span 3;grid-template-rows:subgrid;",
+            row + " .admin-metric-label{align-self:start}",
+            row + " .admin-metric-value{flex-wrap:wrap;",
+        ):
+            self.assertIn(declaration, ADMIN_STYLES)
+        # The provider detail card no longer has its own 2 + 2 + 1 phone layout.
+        self.assertNotIn(".provider-kpis>.admin-metric-row>:last-child:nth-child(odd){grid-column:1/-1}", ADMIN_STYLES)
+        self.assertNotIn(".provider-kpis>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}", ADMIN_STYLES)
+        # Quick-filter groups wrap on phones instead of scrolling sideways.
+        self.assertIn(".quick-filter-group{min-width:0;max-width:100%;display:flex;flex-wrap:wrap;overflow-x:visible;flex-basis:100%}", ADMIN_STYLES)
+        self.assertNotIn("flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain", ADMIN_STYLES)
+
     def test_first_run_card_states(self):
         self.assertIn("Could not load this section.", _funnel_card({"available": False}, "7d"))
         self.assertIn("No first-run sessions in this period.", _funnel_card(_funnel(), "7d"))
