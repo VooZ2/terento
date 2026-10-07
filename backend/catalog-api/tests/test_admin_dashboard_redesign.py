@@ -175,6 +175,16 @@ class DashboardPresentationTests(unittest.TestCase):
                        "Not allowed for this watch", "Watch not identified", "Update required<"):
             self.assertNotIn(hidden, card)  # zero outcomes are not listed
         self.assertNotIn("<dl class='overview-funnel-breakdown'>", card)
+        # Owner 2026-10-07: beside App downloads a wide card shows the groups in
+        # two balanced columns (a group is never split); labels keep their width.
+        self.assertIn(".overview-funnel-panel{container:overview-funnel/inline-size}", ADMIN_STYLES)
+        self.assertIn("@media(min-width:901px){@container overview-funnel (min-width:620px){", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-breakdown{display:block;columns:2;column-gap:24px}", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-group{display:block;break-inside:avoid;padding-bottom:12px}", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-bars{grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);", ADMIN_STYLES)
+        # One column: one aligned label column for every group; the bar shrinks first.
+        self.assertIn(".overview-funnel-breakdown{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-bars li{display:grid;grid-template-columns:subgrid;grid-column:1/-1;", ADMIN_STYLES)
         # Owner 2026-10-07: the three First run tiles stay on one row at every
         # width with numbers on one baseline; other metric rows keep auto-fit.
         self.assertIn("<div class='admin-metric-row overview-funnel-metrics' role='group' aria-label='First run sessions'>", card)

@@ -9894,15 +9894,31 @@ ADMIN_STYLES += """
 /* First run keeps its three tiles on one row at every width (owner 2026-10-07); a wrapped label never moves its number off the shared baseline. */
 .overview-funnel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
 .overview-funnel-metrics .admin-metric-value{margin-top:auto}
-.overview-funnel-breakdown{display:grid;gap:12px;margin:12px 0 0}
+/* Labels keep their full width (one aligned label column via subgrid); the bar
+   track takes what is left and shrinks first, down to 24 px. */
+.overview-funnel-breakdown{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);column-gap:8px;row-gap:12px;margin:12px 0 0}
+.overview-funnel-group{display:grid;grid-template-columns:subgrid;grid-column:1/-1;min-width:0}
+.overview-funnel-group>*{grid-column:1/-1}
 .overview-funnel-group h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
 .overview-funnel-note{margin:-2px 0 6px;font:400 12px/16px var(--font-ui)}
-.overview-funnel-bars{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
-.overview-funnel-bars li{display:grid;grid-template-columns:minmax(96px,1.1fr) minmax(0,2fr) minmax(32px,auto);align-items:center;gap:8px;min-width:0}
+.overview-funnel-bars{display:grid;grid-template-columns:subgrid;row-gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
+.overview-funnel-bars li{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-width:0}
 .overview-funnel-label{min-width:0;overflow-wrap:anywhere}
 .overview-funnel-bar{display:block;height:8px;border-radius:4px;background:var(--surface-muted)}
 .overview-funnel-bar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--status-neutral-text)}
 .overview-funnel-bars strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+/* Owner 2026-10-07: beside App downloads (two-column Dashboard, >900 px) a wide
+   First run card lays its groups out in two balanced columns without splitting a
+   group; each group aligns its own label column. Below the container threshold
+   the half columns cannot fit label, bar and count, so the breakdown stays one
+   column (also at 900 px and narrower). */
+.overview-funnel-panel{container:overview-funnel/inline-size}
+@media(min-width:901px){@container overview-funnel (min-width:620px){
+  .overview-funnel-breakdown{display:block;columns:2;column-gap:24px}
+  .overview-funnel-group{display:block;break-inside:avoid;padding-bottom:12px}
+  .overview-funnel-group:last-child{padding-bottom:0}
+  .overview-funnel-bars{grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);column-gap:8px}
+}}
 .overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
 .overview-chart-values-date{color:var(--graphite)}
 .overview-trend-chart .overview-chart-group{cursor:pointer}

@@ -332,7 +332,12 @@ outcome, with the muted note `A session can hit several problems and still
 connect.`), Authorization, Catalog, Install blocked and Waiting models (top
 three) list one row per outcome or model with its label, a small horizontal bar
 scaled to its share of the period's sessions and its count as text, largest
-first; zero rows are omitted and an empty group shows `—`. Rows count sessions
+first; zero rows are omitted and an empty group shows `—`. Labels keep their
+full width and the bar track shrinks first. When the card sits beside App
+downloads (>900 px) and is wide enough for label, bar and count in half columns
+(card content at least 620 px), the groups flow into two balanced columns and a
+group is never split; otherwise they stay in one column with one aligned label
+column. Rows count sessions
 per outcome and are not exclusive: one session can appear in several rows, and
 most connection problems are signals seen while the app keeps waiting, so their
 sum is not a failure count. Outcome labels use outcome wording: Connection

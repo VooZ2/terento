@@ -143,6 +143,12 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert.deepEqual(await page.locator('.overview-funnel-group h3').allInnerTexts(),['Connection problems','Authorization','Catalog','Install blocked','Waiting models'],'First run breakdown groups');
     const funnelRows=await page.locator('.overview-funnel-bars li').evaluateAll(es=>es.map(e=>{const c=e.closest('.overview-funnel-panel').getBoundingClientRect(),r=e.getBoundingClientRect();return r.left>=c.left-1&&r.right<=c.right+1&&e.scrollWidth<=e.clientWidth+1&&[...e.children].every(x=>x.getBoundingClientRect().right<=r.right+1);}));
     assert(funnelRows.length>0&&funnelRows.every(Boolean),`First run breakdown rows fit the card at ${width}px`);
+    // Wide First run cards beside App downloads use two balanced columns; a group is never split; narrow layouts keep one column.
+    const funnelGroups=await page.locator('.overview-funnel-group').evaluateAll(es=>es.map(e=>{const xs=[e,...e.querySelectorAll('li')].map(x=>Math.round(x.getBoundingClientRect().left));return {left:xs[0],whole:xs.every(x=>Math.abs(x-xs[0])<=1)};}));
+    assert(funnelGroups.every(g=>g.whole),`First run groups stay in one column at ${width}px`);
+    assert.equal(new Set(funnelGroups.map(g=>g.left)).size,width>=1440?2:1,`First run breakdown columns at ${width}px`);
+    const labelsWrap=await page.locator('.overview-funnel-label').evaluateAll(es=>es.filter(e=>e.getClientRects().length>1||e.getBoundingClientRect().height>24).length);
+    assert.equal(labelsWrap,0,`First run labels do not wrap at ${width}px`);
     assert.equal(await page.locator('.map-activity-row>a:not(.overview-activity-device)').count(),0,'Generic activity destinations are removed');
     if(width<=760){
      const toggle=page.locator('#admin-menu-toggle');
