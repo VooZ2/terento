@@ -1,5 +1,13 @@
 # App–API compatibility and release contract
 
+## Release candidate 1.0.0-rc.2 build 42 — staged
+
+Staged on the existing `beta` update channel. It changes only the Device page's
+connection messages, help links and status icons; it adds no API field, route,
+telemetry event or migration and keeps every rc.1 payload unchanged, so no
+server deployment precedes it. The API validates its labels as SemVer:
+`1.0.0-rc.2` is stored as public and `1.0.0-rc.2-local` as local test data.
+
 ## Release candidate 1.0.0-rc.1 build 41 — published
 
 Published on 2026-10-06 from GitHub-verified source

@@ -35,6 +35,14 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.0.0-rc.2 / build 42**, the second release candidate
+for 1.0.0 (see [versioning](../VERSIONING.md)). It changes only the Device
+page's connection messages and is published on the existing `beta` update
+channel. It needs no API or migration change, so no server deployment precedes
+it. Public metadata continues to identify rc.1 until signed, notarized
+artifacts exist, and the draft release-note section stays marked as a draft
+until the owner approves it.
+
 The published release is **1.0.0-rc.1 / build 41**, the first release
 candidate for 1.0.0, from signed source
 `64949f19b09594dc9e5ed654de7e691f801a233b` (tag `v1.0.0-rc.1-build41`). It is
