@@ -1473,6 +1473,8 @@ class Database:
             FROM operation_reviews
         """
         with self.connection() as connection:
+            # Reads compatibility_model_statistics (publication reviews).
+            _skip_jit_compilation(connection)
             row = connection.execute(query).fetchone()
         values = row or {}
         summary = {
@@ -1781,6 +1783,8 @@ class Database:
         """
         scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
         with self.connection() as connection:
+            # The last read below uses compatibility_model_statistics.
+            _skip_jit_compilation(connection)
             attention = list(connection.execute(
                 f"""{operation_cte}
                 SELECT *, count(*) FILTER (WHERE open_error) OVER () AS total_open_errors,

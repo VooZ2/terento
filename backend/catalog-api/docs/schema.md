@@ -603,8 +603,13 @@ previous revision; no data, view or count changes. It serves the per-device
 evidence lookups of `compatibility_model_statistics` (review linkage) and of the
 Devices/Installations snapshot (first verified success). That snapshot reads the
 statistics view once per request through a materialized CTE instead of once per
-catalog device, and both Admin statistics reads disable PostgreSQL JIT for their
-transaction (`SET LOCAL jit = off`), which changes only the execution strategy.
+catalog device. The Admin page reads of the statistics view (Installations/Devices
+statistics and snapshot, and the Dashboard's Needs attention summary and
+review-required list) disable PostgreSQL JIT for their transaction
+(`SET LOCAL jit = off`), which changes only the execution strategy: the view's
+review lookup makes its cost estimate grow with `compatibility_model_review`
+rows, and past `jit_optimize_above_cost` compilation takes seconds for a read
+that runs in milliseconds.
 The Maps reads (`map_statistics`, its trend and `map_statistics_linkage`) do the
 same: under their hash-join preference a date-scoped linkage lookup or a
 provider filter leaves a join only a nested loop can run, whose disable cost
