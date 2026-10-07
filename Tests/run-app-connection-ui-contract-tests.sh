@@ -33,12 +33,36 @@ assert_contains 'return "connect-illustration"' "$connect_screen"
 assert_contains 'connect-illustration-connecting.png in Resources' "$project_file"
 assert_contains 'return "Waiting for your Garmin…"' "$connect_screen"
 assert_contains "return \"Couldn't connect to Garmin\"" "$connect_screen"
-assert_contains 'return "This may take up to 2 minutes."' "$connect_screen"
+assert_contains 'return "This may take up to 2 minutes. Terento keeps checking and tells you what to do if your watch doesn'"'"'t get ready."' "$connect_screen"
 assert_contains "return \"We couldn't connect to your Garmin. Reconnect it and try again.\"" "$connect_screen"
 assert_contains 'return message' "$connect_screen"
 assert_absent 'return "Garmin not found"' "$connect_screen"
+# A final failure names its cause; the generic title remains the fallback and
+# the sidebar label.
 if [[ "$(rg -Fxc "            return \"Couldn't connect to Garmin\"" "$connect_screen")" -ne 2 ]]; then
-    print -u2 "FAIL: failed connection title must be used in both production presentation paths"
+    print -u2 "FAIL: failed connection title must stay the fallback and the sidebar label"
+    exit 1
+fi
+assert_contains 'if let failure = deviceEngine.connectFailure {' "$connect_screen"
+assert_contains 'return failure.title' "$connect_screen"
+assert_contains 'return failure.reason' "$connect_screen"
+assert_contains 'connectFailureSteps(failure.steps)' "$connect_screen"
+assert_contains 'connectFailure = failure' "$device_engine"
+# Two minutes with nothing on USB escalates the waiting page; detection keeps polling.
+assert_contains 'showsConnectChecklist && deviceEngine.hasWaitedWithoutUSB' "$connect_screen"
+assert_contains 'Text("Still not showing up?")' "$connect_screen"
+assert_contains 'Plug it directly into the Mac, not into a USB hub' "$connect_screen"
+assert_contains 'detectionPolicy.reportedOutcomes.contains(.timeoutNoUSB)' "$device_engine"
+# Every sidebar status has text and an icon; colour only supports it.
+assert_contains 'Image(systemName: statusIcon)' "$connect_screen"
+assert_contains 'return "Needs attention"' "$connect_screen"
+sidebar_status="$(awk '
+    /private struct SidebarConnectionStatus/ { capture = 1 }
+    /private enum ConnectionStatusPresentation/ { capture = 0 }
+    capture { print }
+' "$connect_screen")"
+if [[ "$sidebar_status" == *'Circle()'* ]]; then
+    print -u2 "FAIL: sidebar status still relies on a colour dot"
     exit 1
 fi
 assert_contains '.accessibilityLabel("\(connectionStatusTitle) \(connectionStatusDescription)")' "$connect_screen"

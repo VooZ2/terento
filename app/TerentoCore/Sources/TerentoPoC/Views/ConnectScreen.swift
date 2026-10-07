@@ -209,6 +209,7 @@ struct ConnectScreen: View {
             TerentoSidebar(
                 selectedSection: $selectedSection,
                 connectionState: deviceEngine.state,
+                detectionPhase: deviceEngine.detectionPhase,
                 canEject: canSafelyEject,
                 isInstalling: installationOperationIsActive,
                 navigationLocked: installationOperationIsActive,
@@ -658,7 +659,17 @@ struct ConnectScreen: View {
                     connectionStatusView
                         .padding(.top, 14)
 
-                    if showsConnectChecklist {
+                    if let failure = shownConnectFailure {
+                        connectFailureSteps(failure.steps)
+                            .padding(.top, 12)
+                            .frame(maxWidth: 480, alignment: .center)
+                    }
+
+                    if showsNoUSBHelp {
+                        noUSBHelp
+                            .padding(.top, 14)
+                            .frame(maxWidth: 460, alignment: .center)
+                    } else if showsConnectChecklist {
                         connectChecklist
                             .padding(.top, 14)
                             .frame(maxWidth: 420, alignment: .center)
@@ -748,6 +759,9 @@ struct ConnectScreen: View {
     }
 
     private var connectionIllustrationMaxHeight: CGFloat {
+        if showsNoUSBHelp {
+            return 170
+        }
         if showsConnectChecklist {
             return 240
         }
@@ -790,6 +804,81 @@ struct ConnectScreen: View {
         .accessibilityLabel("Before you connect: use a USB data cable, unlock your watch, and quit Garmin Express.")
     }
 
+    /// After the whole connection window with nothing on USB, the calm
+    /// waiting page adds fuller steps; detection keeps polling unchanged.
+    private var showsNoUSBHelp: Bool {
+        showsConnectChecklist && deviceEngine.hasWaitedWithoutUSB
+    }
+
+    private static let noUSBHelpSteps: [(text: String, icon: String)] = [
+        ("Use a USB data cable, not a charge-only cable", "cable.connector"),
+        ("Plug it directly into the Mac, not into a USB hub", "desktopcomputer"),
+        ("Try another USB port", "cable.connector"),
+        ("Unlock your watch", "lock.open"),
+        ("Restart your watch", "arrow.clockwise"),
+        ("Quit Garmin Express", "xmark.app")
+    ]
+
+    private var noUSBHelp: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("Still not showing up?")
+                .font(.terentoUI(size: 13, weight: .semibold))
+                .foregroundStyle(TerentoColors.graphite)
+                .padding(.bottom, 2)
+            ForEach(Self.noUSBHelpSteps, id: \.text) { step in
+                troubleshootingRow(step.text, icon: step.icon)
+            }
+            Text("Terento keeps looking while you try these.")
+                .font(.terentoUI(size: 12, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .padding(.top, 2)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(TerentoColors.border.opacity(0.5), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Still not showing up? "
+                + Self.noUSBHelpSteps.map { $0.text + "." }.joined(separator: " ")
+                + " Terento keeps looking while you try these."
+        )
+    }
+
+    /// The final failure's message; `nil` in every other state.
+    private var shownConnectFailure: ConnectFailureMessage? {
+        deviceEngine.state == .failed ? deviceEngine.connectFailure : nil
+    }
+
+    /// Numbered steps below the reason, read by VoiceOver after the title
+    /// and reason and before Try again.
+    private func connectFailureSteps(_ steps: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(index + 1).")
+                        .font(.terentoUI(size: 14, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .frame(minWidth: 18, alignment: .trailing)
+
+                    Text(step)
+                        .font(.terentoUI(size: 14, weight: .medium))
+                        .foregroundStyle(TerentoColors.graphite)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "What to do: " + steps.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: " ")
+        )
+    }
+
     /// The interrupted operation's outcome takes precedence over the generic
     /// disconnect line, so the user learns what happened to their map.
     private var disconnectExplanation: String? {
@@ -817,6 +906,9 @@ struct ConnectScreen: View {
         case .safeToDisconnect:
             return "Safe to disconnect"
         case .failed:
+            if let failure = deviceEngine.connectFailure {
+                return failure.title
+            }
             return "Couldn't connect to Garmin"
         }
     }
@@ -831,7 +923,7 @@ struct ConnectScreen: View {
                 return disconnectExplanation
                     ?? "Plug your Garmin into this Mac. Terento finds it automatically."
             case .connecting:
-                return "This may take up to 2 minutes."
+                return "This may take up to 2 minutes. Terento keeps checking and tells you what to do if your watch doesn't get ready."
             case .needsAttention(let outcome):
                 return UserFacingErrorMessage.detectionAttention(outcome)?.description
                     ?? "This may take up to 2 minutes."
@@ -843,6 +935,9 @@ struct ConnectScreen: View {
         case .safeToDisconnect:
             return "You can unplug your Garmin."
         case .failed:
+            if let failure = deviceEngine.connectFailure {
+                return failure.reason
+            }
             if let message = deviceEngine.userErrorMessage {
                 return message
             }
@@ -2774,6 +2869,7 @@ struct ConnectScreen: View {
 struct TerentoSidebar: View {
     @Binding var selectedSection: TerentoSection
     let connectionState: DeviceConnectionState
+    let detectionPhase: DeviceDetectionPhase
     let canEject: Bool
     let isInstalling: Bool
     let navigationLocked: Bool
@@ -2824,6 +2920,7 @@ struct TerentoSidebar: View {
 
             SidebarConnectionStatus(
                 state: connectionState,
+                detectionPhase: detectionPhase,
                 canEject: canEject,
                 isInstalling: isInstalling,
                 onEject: onEject
@@ -3339,16 +3436,21 @@ private extension String {
 
 private struct SidebarConnectionStatus: View {
     let state: DeviceConnectionState
+    let detectionPhase: DeviceDetectionPhase
     let canEject: Bool
     let isInstalling: Bool
     let onEject: () -> Void
 
     private var label: String {
-        isInstalling ? "Installing…" : ConnectionStatusPresentation.label(for: state)
+        isInstalling ? "Installing…" : ConnectionStatusPresentation.label(for: state, phase: detectionPhase)
     }
 
     private var statusColor: Color {
-        isInstalling ? TerentoColors.interactive : ConnectionStatusPresentation.color(for: state)
+        isInstalling ? TerentoColors.interactive : ConnectionStatusPresentation.color(for: state, phase: detectionPhase)
+    }
+
+    private var statusIcon: String {
+        isInstalling ? "arrow.down.circle" : ConnectionStatusPresentation.systemImage(for: state, phase: detectionPhase)
     }
 
     private var ejectPresentation: SafeEjectPresentation {
@@ -3357,10 +3459,11 @@ private struct SidebarConnectionStatus: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
+            HStack(spacing: 7) {
+                Image(systemName: statusIcon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(statusColor)
+                    .frame(width: 14)
                     .accessibilityHidden(true)
 
                 Text(label)
@@ -3410,12 +3513,17 @@ private struct SidebarConnectionStatus: View {
 
 }
 
+/// Every sidebar status pairs its text with an icon; colour only supports it.
+/// The icons reuse the Connect page's symbols.
 private enum ConnectionStatusPresentation {
-    static func label(for state: DeviceConnectionState) -> String {
+    static func label(for state: DeviceConnectionState, phase: DeviceDetectionPhase) -> String {
         switch state {
         case .disconnected:
             return "Disconnected"
         case .detecting:
+            if case .needsAttention = phase {
+                return "Needs attention"
+            }
             return "Waiting…"
         case .connected, .ready:
             return "Connected"
@@ -3428,11 +3536,38 @@ private enum ConnectionStatusPresentation {
         }
     }
 
-    static func color(for state: DeviceConnectionState) -> Color {
+    static func systemImage(for state: DeviceConnectionState, phase: DeviceDetectionPhase) -> String {
+        switch state {
+        case .disconnected:
+            return "cable.connector"
+        case .detecting:
+            switch phase {
+            case .waitingForWatch:
+                return "cable.connector"
+            case .connecting:
+                return "arrow.triangle.2.circlepath"
+            case .needsAttention:
+                return "exclamationmark.circle.fill"
+            }
+        case .connected, .ready, .safeToDisconnect:
+            return "checkmark.circle.fill"
+        case .ejecting:
+            return "eject"
+        case .failed:
+            return "exclamationmark.triangle.fill"
+        }
+    }
+
+    static func color(for state: DeviceConnectionState, phase: DeviceDetectionPhase) -> Color {
         switch state {
         case .connected, .ready:
             return TerentoColors.lichen
-        case .detecting, .ejecting:
+        case .detecting:
+            if case .needsAttention = phase {
+                return TerentoColors.warning
+            }
+            return TerentoColors.sky
+        case .ejecting:
             return TerentoColors.sky
         case .safeToDisconnect:
             return TerentoColors.lichenDark

@@ -74,6 +74,36 @@ struct TroubleshootingHelpTests {
             "connecting links the connect steps")
         expect(TroubleshootingHelp.topic(detectionPhase: .needsAttention(.busy)).anchor == .garminBusy,
             "a live busy hint links the busy section")
+        testFailureMessagesMatchTheirSections()
+    }
+
+    /// Each final connect failure has its own title, a reason and steps, and
+    /// its outcome maps to the guide section about the same cause.
+    static func testFailureMessagesMatchTheirSections() {
+        let expected: [DeviceConnectOutcome: (anchor: TroubleshootingAnchor, cue: String)] = [
+            .timeoutNoUSB: (.connectWatch, "Use a USB data cable, not a charge-only cable."),
+            .timeoutUSBPresent: (.connectionTimeout, "didn't become ready within 2 minutes"),
+            .busy: (.garminBusy, "only one app at a time"),
+            .multipleDevices: (.multipleGarmin, "one Garmin at a time"),
+            .notMTPMode: (.usbMode, "open USB Mode, usually under Settings › System, and choose MTP"),
+            .disconnected: (.connectWatch, "firmly plugged in"),
+            .failed: (.watchNotResponding, "stopped answering")
+        ]
+        var titles = Set<String>()
+        for outcome in DeviceConnectOutcome.allCases where outcome != .connected {
+            guard let entry = expected[outcome] else {
+                expect(false, "connect failure \(outcome.rawValue) has an expected guide section")
+                return
+            }
+            let message = UserFacingErrorMessage.detectionFailure(
+                outcome, garminUSBPresent: outcome != .timeoutNoUSB, detectedConflicts: [])
+            expect(titles.insert(message.title).inserted && !message.reason.isEmpty && message.steps.count >= 2,
+                "connect failure \(outcome.rawValue) has a distinct title, a reason and steps")
+            expect(message.text.contains(entry.cue),
+                "connect failure \(outcome.rawValue) explains the cause its guide section covers")
+            expect(TroubleshootingHelp.topic(for: outcome)?.anchor == entry.anchor,
+                "connect failure \(outcome.rawValue) maps to #\(entry.anchor.rawValue)")
+        }
     }
 
     static func testAuthorizationVerdicts() {

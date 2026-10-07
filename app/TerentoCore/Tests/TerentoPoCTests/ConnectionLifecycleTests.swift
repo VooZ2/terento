@@ -169,9 +169,12 @@ private func testNoWatchStaysCalmWithoutClock() throws {
         try require(step == .wait(DeviceDetectionPolicy.presencePollInterval), "no Garmin on USB only polls")
         try require(policy.phase == .waitingForWatch, "no Garmin keeps the calm waiting phase")
         try require(!policy.connectionClockIsRunning, "no connection clock runs without a Garmin")
+        // DeviceEngine.hasWaitedWithoutUSB reads this to add the "Still not showing up?" steps.
+        try require(policy.reportedOutcomes.contains(.timeoutNoUSB) == (second >= DeviceDetectionPolicy.connectionWindow),
+                    "the USB-absent signal fires once the whole connection window has passed")
     }
     let outcomes = policy.takeNewOutcomes()
-    try require(outcomes == [.timeoutNoUSB], "a long USB-absent wait is a funnel signal only, reported once")
+    try require(outcomes == [.timeoutNoUSB], "a long USB-absent wait keeps polling calmly and is reported once")
 }
 
 private func testClockStartsOnlyWhenGarminAppears() throws {

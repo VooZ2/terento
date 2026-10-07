@@ -45,6 +45,30 @@ timeout, a failed check or an unexpected disconnect, unplugging and reconnecting
 the watch restarts discovery. `DeviceConnectOutcome` exposes each episode
 outcome for the first-run funnel; `DeviceEngine` itself sends no telemetry.
 
+The Connect page says why the watch is not connected and what to do
+(`Errors/UserFacingErrorMessage.swift`). While a Garmin is on USB it says that
+Terento keeps checking and will say what to do if the watch doesn't get ready.
+Once a whole 2-minute window has passed with nothing on USB (the `timeoutNoUSB`
+signal), the waiting page replaces its checklist with "Still not showing up?"
+steps (data cable, directly into the Mac rather than a USB hub, another port,
+unlock, restart, quit Garmin Express) while discovery keeps polling. A final
+failure is titled by its cause: "Your watch was detected but didn't get ready",
+"Your watch disconnected before it was ready" (the watch left USB just before
+the window ended), "Another app may be using your watch", "Your watch isn't
+ready for file transfer" or "Your watch stopped responding". It gives one
+sentence of reason and numbered steps; the last step says to reconnect the
+watch or click Try again and that Terento doesn't check again until then. The
+collapsed "Having trouble connecting?" list follows. USB Mode is named as in
+the guide ("open USB Mode, usually under Settings › System, and choose MTP";
+not every model has it). A busy watch, and a timeout with the watch on USB,
+name the apps found by the read-only running-application scan (Garmin Express,
+OpenMTP, MacDroid, Android File Transfer, Image Capture); a busy watch with
+none found keeps the Garmin Express wording. The messages do not change
+detection: the policy and its timing, the error classification, the replug
+watch and the funnel outcomes are independent of them, and intermittent
+USB/MTP stalls remain a known limit. The sidebar status shows an icon with its
+text and colour, including "Needs attention".
+
 While maps are downloaded and checked on the Mac, or the no-write preflight
 runs, the install page offers Cancel; it uses the existing task cancellation
 and workspace cleanup, and nothing has been written to the watch. Once the
