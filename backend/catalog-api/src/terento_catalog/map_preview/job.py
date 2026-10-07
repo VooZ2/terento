@@ -188,6 +188,10 @@ class PreviewRun:
             enabled = self.db.enabled_providers()
             current = self.store.current_release()
             published = self.store.layers(current) if current else set()
+            if current:
+                # A renderer stopped mid-publish (for example by a deploy) can
+                # switch the release before recording it; record it now.
+                self.db.mark_released(current, sorted(published), len(published), self.store.disk_usage())
             # Layers an earlier renderer left with transparent land are redrawn.
             published = {key for key in published if not self.store.has_transparency(current, *key)}
             work, uncovered = plan_work(
