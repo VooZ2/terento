@@ -133,6 +133,12 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert(appChart.leftUnused<55&&appChart.rightUnused<25,'App downloads chart keeps only axis and clipping margins');
     if(width>900){assert(Math.abs(charts[0].y-charts[1].y)<=1,'Dashboard charts share a row');assert(Math.abs(attention.y-activity.y)<=1,'Attention and Activity share a row');const funnel=await page.locator('.overview-funnel-panel').evaluate(e=>e.getBoundingClientRect());assert(app.y>=attention.y+attention.height+15,'App downloads follows the Needs attention row');assert(Math.abs(app.y-funnel.y)<=1&&Math.abs(app.height-funnel.height)<=1,'First run and App downloads share one row at one height');assert(Math.abs(app.x-activity.x)<=1&&Math.abs(app.width-activity.width)<=1,'Right-column cards align');assert(Math.abs(attention.height-activity.height)<=1&&Math.abs(charts[0].height-charts[1].height)<=1,'Cards in a row share one height');assert(Math.abs(activity.width-attention.width)<=1,'Dashboard composition columns match');assert(app.width<width*.6,'App downloads occupies half row');}
     else {assert(charts[1].y>charts[0].y,'Dashboard charts stack narrow');assert(activity.y>attention.y,'Activity follows Needs attention');assert(app.y>activity.y,'App downloads follows Activity');}
+    // Owner 2026-10-07: First run keeps its three tiles on one row (numbers on one baseline) at every width.
+    const funnelTiles=await page.locator('.overview-funnel-metrics>.admin-metric').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),v=e.querySelector('.admin-metric-value').getBoundingClientRect();return {y:r.y,right:r.right,width:r.width,value:v.bottom,overflow:e.scrollWidth>e.clientWidth+1};}));
+    const funnelRow=await page.locator('.overview-funnel-metrics').evaluate(e=>e.getBoundingClientRect().right);
+    assert.equal(funnelTiles.length,3,'First run shows three tiles');
+    assert(funnelTiles.every(t=>Math.abs(t.y-funnelTiles[0].y)<=1&&Math.abs(t.value-funnelTiles[0].value)<=1),`First run tiles share one row and baseline at ${width}px`);
+    assert(funnelTiles.every(t=>Math.abs(t.width-funnelTiles[0].width)<=1&&!t.overflow&&t.right<=funnelRow+1),`First run tiles are equal and do not overflow at ${width}px`);
     assert.equal(await page.locator('.map-activity-row>a:not(.overview-activity-device)').count(),0,'Generic activity destinations are removed');
     if(width<=760){
      const toggle=page.locator('#admin-menu-toggle');
@@ -272,8 +278,9 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert.equal(await page.locator('#diagnostic-filters select').count(),0,'Quick filters, not a select');
     assert.equal(await page.locator('#diagnostic-filters [data-history-filter]').count(),7);
     assert.equal(await page.locator('#diagnostic-results-count').innerText(),'','No N records line');
-    const pill=await page.locator("[data-stat='evidence'] .admin-pill").evaluate(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,tile:e.closest('.admin-metric').getBoundingClientRect().width}));
-    assert(pill.h<=30&&pill.w<pill.tile*0.8,'Evidence is a normal status pill, not stretched');
+    // A narrow phone column may be exactly as wide as the pill, so compare with its own content width.
+    const pill=await page.locator("[data-stat='evidence'] .admin-pill").evaluate(e=>{const w=e.getBoundingClientRect().width,h=e.getBoundingClientRect().height,tile=e.closest('.admin-metric').getBoundingClientRect().width;const width=e.style.width;e.style.width='max-content';const natural=e.getBoundingClientRect().width;e.style.width=width;return {w,h,tile,natural};});
+    assert(pill.h<=30&&(pill.w<pill.tile*0.8||Math.abs(pill.w-pill.natural)<=1),'Evidence is a normal status pill, not stretched');
     assert.equal(await page.getByRole('link',{name:/Review all pending identities/}).count(),1);
     await page.locator("[data-history-filter='identity-pending']").click();
     assert.equal(await page.locator('#diagnostic-rows tr:not([hidden])').count(),await page.locator("#diagnostic-rows tr[data-identity-pending='true']").count(),'Identity review quick filter');
@@ -300,6 +307,27 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert.notEqual(await pendingTile.locator('.admin-metric-value').evaluate(e=>getComputedStyle(e).color),await page.locator('.device-summary-strip .admin-metric').first().locator('.admin-metric-value').evaluate(e=>getComputedStyle(e).color),'Pending policy value is visibly toned');
    }
   }
+  if(width===390) for(const name of ['installations','devices','providers','provider','health','identification-list','update-reports','device','diagnostics','statistics']){
+   // Owner 2026-10-07: every one-card KPI row fits two rows on phones (5 -> 3+2, 4 -> 2+2, 3 -> one row)
+   // with numbers on one baseline and nothing overflowing; quick-filter groups wrap instead of scrolling.
+   await page.goto(base+'/admin/'+name+'.html');await page.waitForTimeout(150);
+   assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
+   if(name==='devices')await page.evaluate(()=>{const v=document.querySelector('[data-stat="covered"]');v.firstChild.textContent='24/78 ';v.querySelector('.admin-metric-rate').textContent='(30.8%)';});
+   const rows=await page.locator(':is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row').evaluateAll(rs=>rs.map(row=>{const box=row.getBoundingClientRect(),tiles=[...row.children].map(t=>{const r=t.getBoundingClientRect(),v=t.querySelector('.admin-metric-value').getBoundingClientRect();return {top:Math.round(r.top),value:Math.round(v.top),right:r.right,overflow:t.scrollWidth>t.clientWidth+1||[...t.querySelectorAll('*')].some(e=>e.getBoundingClientRect().right>r.right+1)};});return {label:row.getAttribute('aria-label'),columns:getComputedStyle(row).gridTemplateColumns.split(' ').length,right:box.right,tiles};}));
+   if(name!=='statistics')assert(rows.length>0,`${name}: has a one-card KPI row`);
+   for(const row of rows){
+    const count=row.tiles.length,tops=[...new Set(row.tiles.map(t=>t.top))];
+    assert.equal(row.columns,count%2===0?2:3,`${name} ${row.label}: ${count} tiles use ${count%2===0?2:3} columns at 390px`);
+    assert(tops.length<=2,`${name} ${row.label}: at most two rows at 390px (got ${tops.length})`);
+    for(const top of tops){const values=row.tiles.filter(t=>t.top===top).map(t=>t.value);assert(Math.max(...values)-Math.min(...values)<=1,`${name} ${row.label}: numbers share one baseline per row`);}
+    assert(row.tiles.every(t=>!t.overflow&&t.right<=row.right+1),`${name} ${row.label}: no tile overflows at 390px`);
+   }
+   const scrolling=await page.locator('.quick-filter-group').evaluateAll(gs=>gs.filter(g=>g.getClientRects().length&&g.scrollWidth>g.clientWidth+1).map(g=>g.getAttribute('aria-label')||g.className));
+   assert.deepEqual(scrolling,[],`${name}: quick-filter groups wrap instead of scrolling at 390px`);
+   const short=await page.locator('.quick-filter-group .quick-filter').evaluateAll(bs=>bs.filter(b=>b.getClientRects().length&&b.getBoundingClientRect().height<43.5).length);
+   assert.equal(short,0,`${name}: quick filters keep the 44px touch height`);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}/${width}: page overflow`);
+  }
   await page.goto(base+'/admin/device-empty.html');
   const empty=page.locator('.model-evidence-history .compact-empty-state');
   assert.equal(await empty.count(),2,'Installation and Update history each use one compact empty state');
@@ -324,6 +352,8 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
   const dropdownErrors=[];dropdown.on('pageerror',e=>dropdownErrors.push(e.message));
   const expected={overview:['overview-period'],installations:['evidence-status','evidence-sort'],devices:['device-family','device-support','device-status','device-mobile-sort'],statistics:['map-statistics-provider','map-statistics-event','map-statistics-outcome'],providers:[],provider:['provider-package-page-size','provider-source-page-size'],health:[],diagnostics:[],'support-reports':[],device:['diagnostic-state-filter']};
   const navigates=new Set(['overview-period','map-statistics-range','map-statistics-provider']);
+  // Owner request 2026-10-07: every period picker offers Today first.
+  const periodOrder=['Today','Last 24 hours','Last 7 days','Last 30 days','All time'];
   const exercised=new Set();
   const settle=async name=>{if(name==='overview')await dropdown.waitForURL(/timeZone=/);await dropdown.waitForTimeout(50);};
   const control=id=>dropdown.locator(`#${id}`).locator('xpath=following-sibling::button[contains(@class,"admin-dropdown-button")]');
@@ -418,11 +448,27 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
      assert.equal(await dropdown.locator('[data-health-status]:not([hidden])').count(),5,'Health status filter keeps working');
     }
     if(name==='overview'){
+     await control('overview-period').click();
+     assert.deepEqual((await dropdown.locator('.admin-dropdown-list [role="option"]').allInnerTexts()).map(text=>text.trim()),periodOrder,`overview/${width}: the period dropdown lists Today first`);
+     if(width===1440)await dropdown.screenshot({path:`${output}/dropdown-overview-period-today-${width}.png`});
+     await dropdown.getByRole('option',{name:'Today',exact:true}).click();
+     await dropdown.waitForURL(/period=today/);await dropdown.waitForFunction(()=>document.querySelector('#overview-period')?.dataset.adminDropdownReady==='true'&&document.querySelectorAll('.admin-dropdown-list').length===1);
      await control('overview-period').click();await dropdown.getByRole('option',{name:'Last 7 days',exact:true}).click();
      await dropdown.waitForURL(/period=7d/);await dropdown.waitForFunction(()=>document.querySelector('#overview-period')?.dataset.adminDropdownReady==='true'&&document.querySelectorAll('.admin-dropdown-list').length===1);
      assert.equal(await control('overview-period').isVisible(),true,'Replaced Dashboard content gets a fresh dropdown');
     }
     if(name==='statistics'){
+     await dropdown.goto(base+'/admin/statistics.html');await settle(name);
+     const range=dropdown.locator("[data-quick-select='map-statistics-range']");
+     assert.deepEqual((await range.locator('[data-quick-value]').allInnerTexts()).map(text=>text.trim()),periodOrder,`statistics/${width}: the time range lists Today first`);
+     assert.deepEqual(await dropdown.evaluate(()=>[...document.querySelectorAll('#map-statistics-range option')].map(option=>option.value)),['today','24h','7d','30d','all'],`statistics/${width}: the hidden select keeps the same order`);
+     // The row may scroll or wrap, but never widens the page or clips a button vertically.
+     const rangeBox=await range.evaluate(group=>{const g=group.getBoundingClientRect(),style=getComputedStyle(group);return {right:g.right,scrolls:group.scrollWidth>group.clientWidth,overflowX:style.overflowX,wraps:style.flexWrap};});
+     assert(rangeBox.right<=width+0.5,`statistics/${width}: the time range stays inside the viewport ${JSON.stringify(rangeBox)}`);
+     assert(!rangeBox.scrolls||['auto','scroll'].includes(rangeBox.overflowX)||rangeBox.wraps==='wrap',`statistics/${width}: an overflowing time range scrolls or wraps ${JSON.stringify(rangeBox)}`);
+     await range.screenshot({path:`${output}/statistics-range-${width}.png`});
+     await range.locator("[data-quick-value='today']").click();
+     await dropdown.waitForURL(/period=today/);
      await dropdown.goto(base+'/admin/statistics.html');await settle(name);
      await dropdown.locator("[data-quick-select='map-statistics-range'] [data-quick-value='7d']").click();
      await dropdown.waitForURL(/period=7d/);
@@ -673,6 +719,16 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
  release();await waiting;assert.equal(await notice.isVisible(),false,'Old URL response ignored');
  mode='ok';await refresh.evaluate(()=>history.replaceState(null,'','/admin/device.html'));
  snapshot=JSON.stringify({...initial,device:'final'});await poll();assert.equal(await notice.isVisible(),true);
+ // Compact info status: icon + text, secondary Refresh beside the text, Dismiss.
+ assert.equal(await notice.getAttribute('role'),'status');assert.equal(await notice.getAttribute('aria-live'),'polite');
+ assert.equal(await notice.getAttribute('data-tone'),'info');assert.equal(await notice.locator('.admin-icon-info').count(),1);
+ assert.match(await notice.innerText(),/New data is available/);
+ assert.match(await notice.getByRole('button',{name:'Refresh'}).getAttribute('class'),/secondary-button/);
+ const noticeBox=await notice.boundingBox(),mainBox=await refresh.locator('main').boundingBox();
+ assert(noticeBox.x>=mainBox.x-1&&noticeBox.x+noticeBox.width<=mainBox.x+mainBox.width+1,'Notice stays inside the content width');
+ await notice.getByRole('button',{name:'Dismiss notice'}).click();assert.equal(await notice.isVisible(),false);
+ await poll();assert.equal(await notice.isVisible(),false,'A dismissed change stays dismissed');
+ snapshot=JSON.stringify({...initial,device:'final-2'});await poll();assert.equal(await notice.isVisible(),true,'A further change shows again');
  refresh.once('dialog',dialog=>dialog.accept());
  await Promise.all([refresh.waitForNavigation(),notice.getByRole('button',{name:'Refresh'}).click()]);
  await refresh.waitForFunction(()=>!!window.testPoll);await poll();assert.equal(await notice.isVisible(),false);

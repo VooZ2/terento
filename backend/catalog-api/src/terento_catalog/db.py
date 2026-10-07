@@ -27,6 +27,7 @@ from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
 from .telemetry import is_local_release_label
 from .statistics_exclusions import classify_compatibility_event
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, period_start
 
 
 OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
@@ -410,6 +411,18 @@ def _prefer_hash_joins(connection: Any) -> None:
     connection.execute("SET LOCAL enable_nestloop = off")
 
 
+def _skip_jit_compilation(connection: Any) -> None:
+    """Keep small Admin statistics reads off PostgreSQL's JIT compiler.
+
+    ``compatibility_model_statistics`` carries a per-aggregate review lookup
+    whose estimated cost grows with evidence history far beyond its real
+    cost; past ``jit_optimize_above_cost`` the server spends seconds compiling
+    LLVM code for a query that runs in milliseconds. This transaction-local
+    setting changes only execution strategy, never the result.
+    """
+    connection.execute("SET LOCAL jit = off")
+
+
 def _enrich_activity_models(connection, rows):
     """Attach a catalog model only through exact retained diagnostic evidence.
 
@@ -756,32 +769,20 @@ class Database:
         intervals crossing the selected period boundary remain visible as
         uncertain; the read model never fabricates zero observations.
         """
-        periods = {
-            "24h": timedelta(hours=24),
-            "7d": timedelta(days=7),
-            "30d": timedelta(days=30),
-            "all": None,
-        }
-        if period not in periods:
+        if period not in ADMIN_PERIODS:
             period = "24h"
         # One bucket rule for every Admin trend (map charts use the same grid):
-        # 24h hourly, 7d daily, 30d weekly, all time adaptive by observed span.
-        bucket = {
-            "24h": "hour",
-            "7d": "day",
-            "30d": "week",
-            "all": "month",
-        }[period]
+        # Today and 24h hourly, 7d daily, 30d weekly, all time adaptive by
+        # observed span.
+        bucket = PERIOD_BUCKETS[period]
         now = now or datetime.now(timezone.utc)
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
         now = now.astimezone(timezone.utc)
-        duration = periods[period]
-        start = (
-            datetime(1970, 1, 1, tzinfo=timezone.utc)
-            if duration is None
-            else now - duration
-        )
+        # Today starts at local midnight in the selected time zone.
+        start = period_start(
+            period, now=now, time_zone=time_zone,
+        ) or datetime(1970, 1, 1, tzinfo=timezone.utc)
         if period == "24h":
             # Match the map-operation chart's rolling 24-hour window: include
             # the current hour bucket and the bucket at the same hour yesterday.
@@ -1209,6 +1210,7 @@ class Database:
     def compatibility_statistics(self) -> list[dict[str, Any]]:
         query = "SELECT * FROM compatibility_model_statistics ORDER BY model"
         with self.connection() as connection:
+            _skip_jit_compilation(connection)
             return list(connection.execute(query).fetchall())
 
     def compatibility_diagnostic_population(self) -> list[dict[str, Any]]:
@@ -5311,12 +5313,7 @@ class Database:
                 else "month"
             )
         else:
-            bucket = {
-                "24h": "hour",
-                "7d": "day",
-                "30d": "week",
-                "all": "month",
-            }.get(period, "hour")
+            bucket = PERIOD_BUCKETS.get(period, "hour")
         rows = self.map_statistics(
             filters, trend_bucket=bucket, time_zone=time_zone,
         )
@@ -5884,8 +5881,16 @@ class Database:
         Compatibility evidence is joined only through the canonical catalog
         device ID. Legacy/model-string joins are deliberately excluded so a
         47 mm and 51 mm variant can never inherit one another's counts.
+
+        The statistics view is evaluated once per request (materialized CTE).
+        A per-device LATERAL over the view re-aggregated every evidence row
+        and re-ran its review lookup for every catalog row (devices x view
+        rows), which made Installations and Devices take seconds.
         """
         query = """
+            WITH model_statistics AS MATERIALIZED (
+                SELECT * FROM compatibility_model_statistics AS s
+            )
             SELECT
                 f.id AS family_id,
                 f.name AS family_name,
@@ -5987,7 +5992,7 @@ class Database:
                                OR other.automatic_finishing_result IS DISTINCT FROM 'VERIFIED')
                        )) AS first_success,
                     s.last_success, s.last_evidence
-                FROM compatibility_model_statistics AS s
+                FROM model_statistics AS s
                 WHERE s.canonical_device_model_id = dm.id
             ) AS evidence ON TRUE
             LEFT JOIN LATERAL (
@@ -5995,7 +6000,7 @@ class Database:
                        s.successful_install_count,
                        s.public_statistics_enabled, s.public_display_name,
                        s.last_evidence
-                FROM compatibility_model_statistics AS s
+                FROM model_statistics AS s
                 WHERE s.canonical_device_model_id = dm.id
                 ORDER BY s.last_evidence DESC NULLS LAST
                 LIMIT 1
@@ -6010,6 +6015,7 @@ class Database:
             ORDER BY dm.model, dm.case_size_mm NULLS LAST, dm.variant, dm.id
         """
         with self.connection() as connection:
+            _skip_jit_compilation(connection)
             rows = list(connection.execute(query).fetchall())
             latest = connection.execute(
                 """

@@ -107,7 +107,9 @@ remaining selects behind a `Filters and sorting` button, More filters and
 either panel opens full width below that row without moving the buttons. The
 result count is one tight line below them with Clear beside it when shown, never
 a control-height block; a More filters button without a partner (Maps) keeps
-the full width.
+the full width. At 760 px and narrower a quick-filter group wraps its buttons
+onto as many rows as it needs with the normal gap and keeps the 44 px touch
+height; it never scrolls horizontally or clips a button at the edge.
 
 Filter persistence (owner decision 2026-10-06): a page may keep its search,
 sort, More filters selects and page size in the tab's session storage and in
@@ -308,8 +310,14 @@ one spans the row, so no Dashboard row leaves an empty grid cell at ≥1024 px.
 The narrow order is Downloads, Installs, Needs attention, Activity, First
 run, then App downloads.
 
-Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
-`Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
+Every number shows its scope as visible text (`Today`, `Last 24 hours`,
+`Last 7 days`, `Last 30 days`, `All time` or `Now`); hover-only scope is not
+used. Every Admin period picker (the Dashboard period dropdown and the Maps time
+range) offers, in this order, Today, Last 24 hours, Last 7 days, Last 30 days and
+All time (owner request 2026-10-07); Today covers the current day from midnight
+in the selected Admin time zone up to now. The Dashboard default stays Last 24
+hours and the Maps default stays All time; an unknown Dashboard period falls
+back to Last 24 hours. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`, never map downloads), shows its
 period increases in the legend and its all-time totals and last update in one
@@ -317,7 +325,11 @@ period increases in the legend and its all-time totals and last update in one
 population for the period (sessions, connected vs not connected by reason,
 authorization outcomes and the top waiting models); each reason, outcome and
 model is one row with its label, a small horizontal bar scaled to its share of
-the period's sessions and its count as text (zero rows are omitted). It never
+the period's sessions and its count as text (zero rows are omitted). Its
+Sessions, Connected and Not connected tiles stay on one row of three equal
+columns at every width, label above number; a label may wrap but the numbers
+share one baseline. One-card KPI rows follow the two-row rule in Responsive and
+layout invariants. It never
 mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
 Activity is internally scrollable and must not force page height. A generic
@@ -610,7 +622,8 @@ buckets and period boundaries use it; changing the zone reloads them. The Maps
 heading carries no Update reports link; the update report list is reached from
 Tools → Update reports.
 
-Maps trends use hourly buckets for 24 hours, daily buckets for seven days,
+Maps trends use hourly buckets for Today (from local 00:00 to the current hour)
+and 24 hours, daily buckets for seven days,
 weekly buckets for 30 days, and adaptive all-time buckets: daily through 14
 observed days, weekly through 60, then monthly. Missing buckets keep the
 statistics contract's existing zero-fill and timezone rules.
@@ -980,6 +993,36 @@ answer with raw JSON: an invalid link, a missing page and an unavailable page
 are HTML error pages with the navigation. The review summary query runs only for
 the Dashboard.
 
+### Freshness notice
+
+Every page with `#main-content` renders `data-admin-revisions`: one hash per
+section of data that the page itself displays. While the tab is visible the page
+re-reads its own URL every two minutes, and once when the tab becomes visible
+again, and compares the fresh revisions with the rendered ones. A notice appears
+only when a revision differs, so a refresh with no new data never brings it back
+on the next poll; a client-side section render acknowledges its own sections.
+
+Revisions hash displayed data only (owner report 2026-10-07). They exclude
+request-time values (for example the First run `since`/`until` window, render
+time, CSRF and nonce values), observation and schedule clocks (health check,
+heartbeat, download poll and next-check times), payloads a page does not render
+(the Dashboard hashes no compatibility evidence, provider rows or Maps unknown,
+and no in-progress download rows; Maps hashes provider names only), zero chart
+buckets that only move with the rolling window, and list order. A new or
+changed installation, report, count, status or displayed row still changes the
+revision, as does an event leaving a rolling period.
+
+The notice is one compact info status inside the content width (floating near
+the bottom, centred on wide screens and spanning the 16 px gutters on phones):
+the info icon and `New data is available for this page.`, a secondary `Refresh`
+button directly beside the text and an icon-only Dismiss button. It uses the
+Admin surface, the info status border, the control radius and a 44 px touch
+target on phones; it is `role="status"` with `aria-live="polite"` and never
+takes focus. A failed check (`Live check unavailable. Refresh to try again.`)
+or an expired session uses the warning icon and border. Refresh reloads the page
+and asks before discarding unsaved edits in a POST form. Dismiss hides the
+current state until a different change or state arrives.
+
 ### Responsive and layout invariants
 
 Admin preserves consistent left edges and the existing spacing scale, with no
@@ -1000,6 +1043,19 @@ which keeps 12 px (a filter bar drawn as the table's attached header keeps no
 gap). Rows inside one table or list are not separate cards; labelled mobile
 record rows keep their 12 px row gap. The spacing belongs to the containing
 layout (`--admin-card-gap`), never to both the layout and the card.
+
+One-card KPI rows (owner decision 2026-10-07): a summary card holding one
+metric row (`installation-kpis` on Installations, Devices, Providers, provider
+detail, Health, Model sources and Update reports, and the `admin-kpi-panel`
+Installs and Updates cards on device and diagnostics pages) fits two rows at
+760 px and narrower: five or three tiles use three columns (3 + 2, or one row),
+four or two tiles use two (2 + 2, or one row). Columns share the width equally
+and widen only as far as a pill or number needs. Within each row of tiles the
+labels share one top line and the values one line below the tallest label, so
+a wrapped label never moves a number off the shared baseline. A long value
+wraps instead of overflowing. On Devices, Covered spans two columns so Pending
+policy sits under Verified, and its rate is a separate half-size part on the
+count's line (owner decision 2026-10-07). Desktop layouts are unchanged.
 
 ## Mandatory change and release gate
 

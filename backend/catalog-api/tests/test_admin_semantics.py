@@ -502,21 +502,30 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         const current = {dataset:{adminRevisions:'{"content":"a"}'},getAttribute:()=>null};
         global.document = {hidden:false,
           querySelector:s=>s==='[data-admin-revisions]'?current:s==='.admin-topbar'?{after:()=>{}}:null,
-          createElement:()=>{const e={setAttribute:()=>{},append:()=>{},addEventListener:(k,f)=>e[k]=f};elements.push(e);return e;},
+          createElement:()=>{const e={attrs:{},setAttribute:(k,v)=>e.attrs[k]=v,append:()=>{},addEventListener:(k,f)=>e[k]=f};elements.push(e);return e;},
           addEventListener:(k,f)=>listeners[k]=f};
         global.window = {location:{href:'https://example.test/admin',reload:()=>reloads++},confirm:()=>confirmed,addEventListener:()=>{}};
         global.setInterval = f=>check=f;
         global.fetch = async()=>{if(fail)throw Error('offline');return {ok:true,text:async()=>revision};};
         global.DOMParser = class {parseFromString(s){return {querySelector:()=>({dataset:{adminRevisions:JSON.stringify({content:s})}})};}};
         eval(process.argv[1]);
+        const [notice, icon, message, refresh, dismiss] = elements;
         (async()=>{
-          await check(); assert.equal(elements[0].hidden,true);
-          revision='b'; await check(); assert.equal(elements[0].hidden,false);
-          assert.match(elements[1].textContent,/New activity/); assert.equal(reloads,0);
-          listeners.input({target:{closest:()=>true}});elements[2].click();assert.equal(reloads,0);
-          confirmed=true;elements[2].click();assert.equal(reloads,1);
-          fail=true;await check();assert.match(elements[1].textContent,/unavailable/);
-          document.hidden=true;elements[0].hidden=true;await check();assert.equal(elements[0].hidden,true);
+          assert.equal(notice.attrs.role,'status'); assert.equal(notice.attrs['aria-live'],'polite');
+          assert.equal(dismiss.attrs['aria-label'],'Dismiss notice');
+          assert.match(refresh.className,/secondary-button/);
+          await check(); assert.equal(notice.hidden,true);
+          revision='b'; await check(); assert.equal(notice.hidden,false);
+          assert.match(message.textContent,/New data is available/); assert.equal(notice.attrs['data-tone'],'info');
+          assert.match(icon.innerHTML,/admin-icon-info/); assert.equal(reloads,0);
+          dismiss.click(); assert.equal(notice.hidden,true);
+          await check(); assert.equal(notice.hidden,true,'Dismissed change stays hidden on the next poll');
+          revision='c'; await check(); assert.equal(notice.hidden,false,'A further change shows again');
+          listeners.input({target:{closest:()=>true}});refresh.click();assert.equal(reloads,0);
+          confirmed=true;refresh.click();assert.equal(reloads,1);
+          fail=true;await check();assert.match(message.textContent,/unavailable/);
+          assert.equal(notice.attrs['data-tone'],'warning'); assert.match(icon.innerHTML,/admin-icon-alert/);
+          document.hidden=true;notice.hidden=true;await check();assert.equal(notice.hidden,true);
         })().catch(e=>{console.error(e);process.exitCode=1});
         """
         self._run_node(harness, _admin_freshness_script())

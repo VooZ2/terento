@@ -515,7 +515,12 @@ class AdminDevicesTests(unittest.TestCase):
             'id="device-map"><option value="yes" selected', "results",
             # Same filter bar and tiles as Installations (owner decision 2026-10-06).
             "data-device-map-filter='yes' aria-pressed='true'>Maps: Yes", "data-device-map-filter='all'",
-            "admin-card installation-kpis device-summary-strip", "data-stat='covered'>1/1 (100%)",
+            "admin-card installation-kpis device-summary-strip",
+            # The rate is a separate, half-size part on the count's line on phones,
+            # where Covered spans two columns (owner 2026-10-07).
+            "data-stat='covered'>1/1 <span class='admin-metric-rate'>(100%)</span>",
+            ".device-summary-strip>.admin-metric-row>.admin-metric:has([data-stat='covered']){grid-column:span 2}",
+            ".device-summary-strip [data-stat='covered'] .admin-metric-rate{font-size:.5em}",
             "class='page-meta device-summary-sync'><strong>Last sync</strong>",
         ):
             self.assertIn(value, body)

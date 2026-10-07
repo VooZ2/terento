@@ -64,8 +64,11 @@ purge does not yet include this table.
 
 ## Read model: `GET /admin/app-funnel.json`
 
-Admin authentication is required. `period` is `24h`, `7d` (default), `30d` or
-`all`; any other query parameter is `400`. The response reports, for the period,
+Admin authentication is required. `period` is `today`, `24h`, `7d` (default),
+`30d` or `all`, with the windows defined in
+[`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md); the optional `timeZone`
+(IANA name; absent or unknown is UTC) sets where `today` starts and is echoed as
+`timeZone`. Any other query parameter is `400`. The response reports, for the period,
 the number of distinct non-local sessions with any funnel event, the distinct
 session count for every stage/outcome pair (zero-filled), and the top ten base
 models by distinct sessions with `AUTHORIZATION` outcome `PENDING`,

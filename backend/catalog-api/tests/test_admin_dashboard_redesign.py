@@ -9,7 +9,7 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
-from terento_catalog.admin import _funnel_card, _provider_problem_state, overview_page
+from terento_catalog.admin import ADMIN_STYLES, _funnel_card, _provider_problem_state, overview_page
 from terento_catalog.http_api import CatalogService, make_handler
 
 
@@ -147,6 +147,33 @@ class DashboardPresentationTests(unittest.TestCase):
             self.assertIn(f"<h3>{title}</h3><ul class='overview-funnel-bars' aria-label='{title}'>", card)
         self.assertNotIn("Not in MTP mode", card)  # zero outcomes are not listed
         self.assertNotIn("<dl class='overview-funnel-breakdown'>", card)
+        # Owner 2026-10-07: the three First run tiles stay on one row at every
+        # width with numbers on one baseline; other metric rows keep auto-fit.
+        self.assertIn("<div class='admin-metric-row overview-funnel-metrics' role='group' aria-label='First run sessions'>", card)
+        self.assertIn(".overview-funnel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-metrics .admin-metric-value{margin-top:auto}", ADMIN_STYLES)
+        self.assertIn(".admin-metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));", ADMIN_STYLES)
+
+    def test_one_card_kpi_rows_fit_two_rows_on_phones(self):
+        # Owner 2026-10-07: at <=760 px a one-card KPI row uses three columns
+        # for five or three tiles and two for four or two; labels and values
+        # share subgrid rows so numbers keep one baseline; long values wrap.
+        self.assertIn("@media(max-width:760px){\n  :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row{", ADMIN_STYLES)
+        row = ":is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row"
+        for declaration in (
+            row + "{grid-template-columns:repeat(3,minmax(min-content,1fr));row-gap:0}",
+            row + ":has(>:nth-child(2):last-child,>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(min-content,1fr))}",
+            row + ">.admin-metric{display:grid;grid-row:span 3;grid-template-rows:subgrid;",
+            row + " .admin-metric-label{align-self:start}",
+            row + " .admin-metric-value{flex-wrap:wrap;",
+        ):
+            self.assertIn(declaration, ADMIN_STYLES)
+        # The provider detail card no longer has its own 2 + 2 + 1 phone layout.
+        self.assertNotIn(".provider-kpis>.admin-metric-row>:last-child:nth-child(odd){grid-column:1/-1}", ADMIN_STYLES)
+        self.assertNotIn(".provider-kpis>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}", ADMIN_STYLES)
+        # Quick-filter groups wrap on phones instead of scrolling sideways.
+        self.assertIn(".quick-filter-group{min-width:0;max-width:100%;display:flex;flex-wrap:wrap;overflow-x:visible;flex-basis:100%}", ADMIN_STYLES)
+        self.assertNotIn("flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain", ADMIN_STYLES)
 
     def test_first_run_card_states(self):
         self.assertIn("Could not load this section.", _funnel_card({"available": False}, "7d"))

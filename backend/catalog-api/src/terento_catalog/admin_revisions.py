@@ -12,7 +12,11 @@ _OBSERVATION_FIELDS = {
     'generatedAt', 'checked_at', 'checkedAt', 'lastHealthCheck', 'lastDownloadTest',
     'heartbeat_at', 'heartbeatAt', 'last_heartbeat_at', 'csrf_token', 'csrfToken',
     'requestId', 'nonce', 'lastObservedAt', 'lastSuccessfulObservedAt',
+    # Next scheduled provider check: a schedule clock that moves after every
+    # routine check, like the scheduler's next_run_at.
+    'nextCheckAt',
 }
+_TREND_COUNT_KEYS = {'bucket', 'state'}
 _CHECK_CONTEXTS = {'healthHistory', 'health', 'observations', 'weekly', 'scheduler', 'issueSync', 'githubSync'}
 
 
@@ -25,7 +29,17 @@ def _canonical(value: Any, context: str = '') -> Any:
             for row in value.get('trend', []):
                 if row.get('state') == 'observed_zero':
                     continue
+                if (row.get('state') in {'period_boundary', 'gap'} and not row.get('contains_discontinuity')
+                        and not row.get('dmg_count') and not row.get('zip_count')):
+                    # The rolling window's first interval (and a gap) without an
+                    # increase moves every hour; it is not new data either.
+                    continue
                 point = {k: v for k, v in row.items() if k not in {'observed_at', 'previous_observed_at'}}
+                if point.get('state') == 'period_boundary':
+                    # An increase reaching the window start is the same fact; only
+                    # its exit from the window changes what the page shows.
+                    point['state'] = 'observed_increase'
+                    point.pop('uncertain', None)
                 if point.get('state') == 'baseline':
                     point.pop('bucket', None)
                 elif isinstance(point.get('bucket'), datetime):
@@ -55,6 +69,22 @@ def _canonical(value: Any, context: str = '') -> Any:
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
     return str(value)
+
+
+def active_trend_buckets(rows: Any) -> list[Any]:
+    """Chart buckets that hold at least one non-zero count.
+
+    Display-only zero buckets fill the rolling window and move with the clock,
+    so they are not part of a page's freshness revision.
+    """
+    def has_count(row: Any) -> bool:
+        if not isinstance(row, dict):
+            return True
+        return any(
+            not isinstance(value, bool) and isinstance(value, (int, float, Decimal)) and value != 0
+            for key, value in row.items() if key not in _TREND_COUNT_KEYS
+        )
+    return [row for row in rows or [] if has_count(row)]
 
 
 def section_revisions(sections: dict[str, Any]) -> dict[str, str]:
