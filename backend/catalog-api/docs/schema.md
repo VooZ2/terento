@@ -593,3 +593,15 @@ column (optional schema-v4 `inventoryMetrics`: scope, pre-/post-write object
 counts and durations). Additive and ignored by the previous revision; no view or
 count reads it. `Database.inventory_metrics_distribution()` computes the
 non-local per-model median/p90 read model for `/admin/inventory-metrics.json`.
+
+### Migration074: canonical device evidence index
+
+Adds `compatibility_evidence_canonical_device_idx` on
+`compatibility_evidence_event (canonical_device_model_id, compatibility_identity)`.
+Additive, transactional (`CREATE INDEX IF NOT EXISTS`) and used unchanged by the
+previous revision; no data, view or count changes. It serves the per-device
+evidence lookups of `compatibility_model_statistics` (review linkage) and of the
+Devices/Installations snapshot (first verified success). That snapshot reads the
+statistics view once per request through a materialized CTE instead of once per
+catalog device, and both Admin statistics reads disable PostgreSQL JIT for their
+transaction (`SET LOCAL jit = off`), which changes only the execution strategy.

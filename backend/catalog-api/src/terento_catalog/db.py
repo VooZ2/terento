@@ -411,6 +411,18 @@ def _prefer_hash_joins(connection: Any) -> None:
     connection.execute("SET LOCAL enable_nestloop = off")
 
 
+def _skip_jit_compilation(connection: Any) -> None:
+    """Keep small Admin statistics reads off PostgreSQL's JIT compiler.
+
+    ``compatibility_model_statistics`` carries a per-aggregate review lookup
+    whose estimated cost grows with evidence history far beyond its real
+    cost; past ``jit_optimize_above_cost`` the server spends seconds compiling
+    LLVM code for a query that runs in milliseconds. This transaction-local
+    setting changes only execution strategy, never the result.
+    """
+    connection.execute("SET LOCAL jit = off")
+
+
 def _enrich_activity_models(connection, rows):
     """Attach a catalog model only through exact retained diagnostic evidence.
 
@@ -1198,6 +1210,7 @@ class Database:
     def compatibility_statistics(self) -> list[dict[str, Any]]:
         query = "SELECT * FROM compatibility_model_statistics ORDER BY model"
         with self.connection() as connection:
+            _skip_jit_compilation(connection)
             return list(connection.execute(query).fetchall())
 
     def compatibility_diagnostic_population(self) -> list[dict[str, Any]]:
@@ -5868,8 +5881,16 @@ class Database:
         Compatibility evidence is joined only through the canonical catalog
         device ID. Legacy/model-string joins are deliberately excluded so a
         47 mm and 51 mm variant can never inherit one another's counts.
+
+        The statistics view is evaluated once per request (materialized CTE).
+        A per-device LATERAL over the view re-aggregated every evidence row
+        and re-ran its review lookup for every catalog row (devices x view
+        rows), which made Installations and Devices take seconds.
         """
         query = """
+            WITH model_statistics AS MATERIALIZED (
+                SELECT * FROM compatibility_model_statistics AS s
+            )
             SELECT
                 f.id AS family_id,
                 f.name AS family_name,
@@ -5971,7 +5992,7 @@ class Database:
                                OR other.automatic_finishing_result IS DISTINCT FROM 'VERIFIED')
                        )) AS first_success,
                     s.last_success, s.last_evidence
-                FROM compatibility_model_statistics AS s
+                FROM model_statistics AS s
                 WHERE s.canonical_device_model_id = dm.id
             ) AS evidence ON TRUE
             LEFT JOIN LATERAL (
@@ -5979,7 +6000,7 @@ class Database:
                        s.successful_install_count,
                        s.public_statistics_enabled, s.public_display_name,
                        s.last_evidence
-                FROM compatibility_model_statistics AS s
+                FROM model_statistics AS s
                 WHERE s.canonical_device_model_id = dm.id
                 ORDER BY s.last_evidence DESC NULLS LAST
                 LIMIT 1
@@ -5994,6 +6015,7 @@ class Database:
             ORDER BY dm.model, dm.case_size_mm NULLS LAST, dm.variant, dm.id
         """
         with self.connection() as connection:
+            _skip_jit_compilation(connection)
             rows = list(connection.execute(query).fetchall())
             latest = connection.execute(
                 """
