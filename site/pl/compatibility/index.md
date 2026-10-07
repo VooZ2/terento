@@ -11,7 +11,7 @@ Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej po
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
-**24** modele z udanymi instalacjami**141** udane instalacjeOstatnia udana instalacja 6 października 2026
+**24** modele z udanymi instalacjami**149** udane instalacjeOstatnia udana instalacja 6 października 2026
 
 Jak działa ta lista
 
@@ -43,6 +43,16 @@ fēnix
 
 Ostatnia udana instalacja 4 października 2026
 
+Forerunner
+
+### Forerunner 970
+
+AMOLED
+
+12 udanych instalacji
+
+Ostatnia udana instalacja 6 października 2026
+
 fēnix
 
 ### fēnix 9 Pro
@@ -55,23 +65,13 @@ Ostatnia udana instalacja 6 października 2026
 
 Forerunner
 
-### Forerunner 970
-
-AMOLED
-
-8 udanych instalacji
-
-Ostatnia udana instalacja 4 października 2026
-
-Forerunner
-
 ### Forerunner 965
 
 Historical
 
-7 udanych instalacji
+9 udanych instalacji
 
-Ostatnia udana instalacja 29 września 2026
+Ostatnia udana instalacja 6 października 2026
 
 fēnix
 
@@ -132,6 +132,16 @@ fēnix
 6 udanych instalacji
 
 Ostatnia udana instalacja 29 września 2026
+
+fēnix
+
+### fēnix 7 Pro
+
+Solar, Historical
+
+4 udanych instalacji
+
+Ostatnia udana instalacja 6 października 2026
 
 fēnix
 
@@ -202,16 +212,6 @@ epix
 2 udanych instalacji
 
 Ostatnia udana instalacja 24 września 2026
-
-fēnix
-
-### fēnix 7 Pro
-
-Historical
-
-2 udanych instalacji
-
-Ostatnia udana instalacja 12 września 2026
 
 fēnix
 
