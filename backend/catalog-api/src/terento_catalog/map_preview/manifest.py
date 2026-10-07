@@ -46,7 +46,9 @@ def build_manifest(
             if row is not None:
                 if row["status"] == "NOT_COVERED":
                     status = "NOT_COVERED"
-                elif (area.id, style.id) in published and row.get("release") == release and release:
+                # The release's own tiles decide availability: a renderer
+                # stopped mid-publish may not have recorded the release yet.
+                elif (area.id, style.id) in published and row["status"] == "AVAILABLE" and release:
                     status = "AVAILABLE"
                     version = row.get("package_version")
                     rendered = _iso(row.get("rendered_at"))

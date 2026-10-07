@@ -286,10 +286,14 @@ class ManifestTests(unittest.TestCase):
                                                     "package_version": "2026-09", "rendered_at": NOW},
             ("dolomites-tre-cime", "bbbike"): {"status": "AVAILABLE", "release": "20261001T010000Z",
                                                "package_version": "2026-09", "rendered_at": NOW},
+            # Published by a renderer that was stopped before it recorded the release.
+            ("dolomites-tre-cime", "maprando"): {"status": "AVAILABLE", "release": "20261001T010000Z",
+                                                 "package_version": "2026-09", "rendered_at": NOW},
             ("mount-fuji", "freizeitkarte"): {"status": "NOT_COVERED", "release": None},
         }
         document = build_manifest(
-            areas=areas, layers=layers, published={("dolomites-tre-cime", "opentopomap")},
+            areas=areas, layers=layers,
+            published={("dolomites-tre-cime", "opentopomap"), ("dolomites-tre-cime", "maprando")},
             scores={"dolomites-tre-cime": 0.4}, release="20261006T010000Z",
             public_base_url="https://api.terento.app", now=NOW,
         )
@@ -297,8 +301,9 @@ class ManifestTests(unittest.TestCase):
         dolomites = next(item for item in document["areas"] if item["id"] == "dolomites-tre-cime")
         statuses = {layer["style"]: layer["status"] for layer in dolomites["layers"]}
         self.assertEqual(statuses["opentopomap"], "AVAILABLE")
-        # A layer from an older release is not advertised as published.
+        # A layer missing from the current release is not advertised as published.
         self.assertEqual(statuses["bbbike"], "PENDING")
+        self.assertEqual(statuses["maprando"], "AVAILABLE")
         self.assertEqual(dolomites["diffScore"], 0.4)
         fuji = next(item for item in document["areas"] if item["id"] == "mount-fuji")
         self.assertEqual(fuji["layers"][0]["status"], "NOT_COVERED")
@@ -485,6 +490,27 @@ class PreviewRunTests(unittest.TestCase):
             self.assertEqual(db.released[0][1], [("a", "bbbike")])
             self.assertEqual(run.store.layers(result.release), {("a", "bbbike"), ("b", "bbbike")})
             self.assertFalse(run.store.staging.exists())
+
+    def test_release_switched_by_a_stopped_renderer_is_recorded_without_redrawing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = PreviewStore(root / "assets")
+            staged = store.staging_dir("stopped") / "a" / "bbbike" / "14" / "8800"
+            staged.mkdir(parents=True)
+            (staged / "5800.webp").write_bytes(WEBP[:24] + b"\x00" + WEBP[25:])  # opaque paper
+            store.publish(release="20261006T010000Z", staged={("a", "bbbike"): staged.parent.parent}, keep=[])
+            db = FakePreviewDatabase()
+            db.rows[("a", "bbbike")] = {
+                "status": "AVAILABLE", "provider_id": "bbbike", "package_id": "nord-est",
+                "package_version": "2026-09-01", "rendered_at": NOW - timedelta(hours=1),
+                "retry_not_before": None, "release": None,
+            }
+            rows = [snapshot_row("nord-est", region="EUROPE-ITALY-NORD-EST",
+                                 url="https://data.bbbike.org/osm/garmin/region/europe/italy/nord-est.osm.garmin-bbbike-latin1.img")]
+            result, db, _, _, run = self.run_window(root, rows, db=db)
+            self.assertEqual(db.released[0], ("20261006T010000Z", [("a", "bbbike")]))
+            self.assertEqual(result.rendered, 1)
+            self.assertEqual(run.store.layers(result.release), {("a", "bbbike"), ("b", "bbbike")})
 
     def test_short_renewed_lease_and_leftovers_from_a_killed_renderer_are_cleared(self):
         with tempfile.TemporaryDirectory() as directory:
