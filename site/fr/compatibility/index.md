@@ -11,7 +11,7 @@ Terento est conçu pour les montres Garmin prenant en charge les cartes. Vous tr
 
 L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
 
-**24** modèles avec des installations réussies**141** installations réussiesDernière installation réussie 6 octobre 2026
+**24** modèles avec des installations réussies**149** installations réussiesDernière installation réussie 6 octobre 2026
 
 Comment fonctionne cette liste
 
@@ -43,6 +43,16 @@ fēnix
 
 Dernière installation réussie 4 octobre 2026
 
+Forerunner
+
+### Forerunner 970
+
+AMOLED
+
+12 installations réussies
+
+Dernière installation réussie 6 octobre 2026
+
 fēnix
 
 ### fēnix 9 Pro
@@ -55,23 +65,13 @@ Dernière installation réussie 6 octobre 2026
 
 Forerunner
 
-### Forerunner 970
-
-AMOLED
-
-8 installations réussies
-
-Dernière installation réussie 4 octobre 2026
-
-Forerunner
-
 ### Forerunner 965
 
 Historical
 
-7 installations réussies
+9 installations réussies
 
-Dernière installation réussie 29 septembre 2026
+Dernière installation réussie 6 octobre 2026
 
 fēnix
 
@@ -132,6 +132,16 @@ fēnix
 6 installations réussies
 
 Dernière installation réussie 29 septembre 2026
+
+fēnix
+
+### fēnix 7 Pro
+
+Solar, Historical
+
+4 installations réussies
+
+Dernière installation réussie 6 octobre 2026
 
 fēnix
 
@@ -202,16 +212,6 @@ epix
 2 installations réussies
 
 Dernière installation réussie 24 septembre 2026
-
-fēnix
-
-### fēnix 7 Pro
-
-Historical
-
-2 installations réussies
-
-Dernière installation réussie 12 septembre 2026
 
 fēnix
 
