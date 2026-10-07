@@ -74,6 +74,78 @@ struct TroubleshootingHelpTests {
             "connecting links the connect steps")
         expect(TroubleshootingHelp.topic(detectionPhase: .needsAttention(.busy)).anchor == .garminBusy,
             "a live busy hint links the busy section")
+        testFailureMessagesMatchTheirSections()
+    }
+
+    /// Each final connect failure has its own title, a reason and steps, and
+    /// its outcome maps to the guide section about the same cause.
+    static func testFailureMessagesMatchTheirSections() {
+        let expected: [DeviceConnectOutcome: (anchor: TroubleshootingAnchor, cue: String)] = [
+            .timeoutNoUSB: (.connectWatch, "Use a USB data cable, not a charge-only cable"),
+            .timeoutUSBPresent: (.connectionTimeout, "didn't become ready within 2 minutes"),
+            .busy: (.garminBusy, "Only one app at a time can use the watch"),
+            .multipleDevices: (.multipleGarmin, "one Garmin at a time"),
+            .notMTPMode: (.usbMode, "USB Mode (usually under Settings › System), choose MTP"),
+            .disconnected: (.connectWatch, "firmly plugged in"),
+            .failed: (.watchNotResponding, "stopped answering")
+        ]
+        var titles = Set<String>()
+        for outcome in DeviceConnectOutcome.allCases where outcome != .connected {
+            guard let entry = expected[outcome] else {
+                expect(false, "connect failure \(outcome.rawValue) has an expected guide section")
+                return
+            }
+            let message = UserFacingErrorMessage.detectionFailure(
+                outcome, garminUSBPresent: outcome != .timeoutNoUSB, detectedConflicts: [])
+            expect(titles.insert(message.title).inserted && !message.reason.isEmpty && message.steps.count >= 2,
+                "connect failure \(outcome.rawValue) has a distinct title, a reason and steps")
+            expect(message.text.contains(entry.cue),
+                "connect failure \(outcome.rawValue) explains the cause its guide section covers")
+            expect(TroubleshootingHelp.topic(for: outcome)?.anchor == entry.anchor,
+                "connect failure \(outcome.rawValue) maps to #\(entry.anchor.rawValue)")
+            expect(message.outcome == outcome
+                && helpTopic(.failed, failure: message)?.anchor == entry.anchor,
+                "the final \(outcome.rawValue) screen links #\(entry.anchor.rawValue)")
+        }
+        testConnectHelpOnlyInProblemBoxes()
+    }
+
+    private static func helpTopic(_ state: DeviceConnectionState, phase: DeviceDetectionPhase = .waitingForWatch,
+                                  failure: ConnectIssueMessage? = nil,
+                                  waitedWithoutUSB: Bool = false) -> TroubleshootingTopic? {
+        TroubleshootingHelp.connectHelpTopic(state: state, phase: phase, failure: failure,
+                                             waitedWithoutUSB: waitedWithoutUSB)
+    }
+
+    /// Connect links the guide only inside a help box about a problem: a live
+    /// attention state, a final failure, or the "Still not showing up?" steps.
+    /// Plain waiting and connecting have no link.
+    static func testConnectHelpOnlyInProblemBoxes() {
+        for phase in [DeviceDetectionPhase.waitingForWatch, .connecting] {
+            expect(helpTopic(.detecting, phase: phase) == nil, "\(phase) shows no Help link")
+        }
+        expect(helpTopic(.detecting, phase: .waitingForWatch, waitedWithoutUSB: true)?.anchor == .connectWatch,
+            "the \"Still not showing up?\" steps link the connect section")
+        expect(helpTopic(.detecting, phase: .connecting, waitedWithoutUSB: true) == nil,
+            "connecting shows no Help link even after a long USB-absent wait")
+        let attention: [DeviceConnectOutcome: TroubleshootingAnchor] = [
+            .busy: .garminBusy, .multipleDevices: .multipleGarmin, .notMTPMode: .usbMode
+        ]
+        for (outcome, anchor) in attention {
+            expect(helpTopic(.detecting, phase: .needsAttention(outcome))?.anchor == anchor,
+                "the live \(outcome.rawValue) state links #\(anchor.rawValue)")
+            expect(UserFacingErrorMessage.detectionAttention(outcome, detectedConflicts: [])?.outcome == outcome,
+                "the live \(outcome.rawValue) message records its outcome")
+        }
+        let lost = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: false, detectedConflicts: [])
+        expect(helpTopic(.failed, failure: lost)?.anchor == .connectionTimeout,
+            "a watch that left USB before it was ready links the connection-timeout section")
+        expect(helpTopic(.failed) == nil, "a failure without a known cause shows no Help link")
+        let stale = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true, detectedConflicts: [])
+        for state in [DeviceConnectionState.disconnected, .connected, .ready, .ejecting, .safeToDisconnect] {
+            expect(helpTopic(state, phase: .needsAttention(.busy), failure: stale, waitedWithoutUSB: true) == nil,
+                "\(state) shows no connection Help link")
+        }
     }
 
     static func testAuthorizationVerdicts() {

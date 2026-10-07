@@ -9,6 +9,9 @@ final class DeviceEngine: ObservableObject {
     @Published private(set) var installationAuthorization: InstallationAuthorizationState = .blocked(.catalogUnavailable)
     @Published private(set) var errorMessage: String?
     @Published private(set) var userErrorMessage: String?
+    /// The cause-specific Connect message behind `userErrorMessage` after a
+    /// detection episode ends without a connection. Presentation only.
+    @Published private(set) var connectFailure: ConnectIssueMessage?
     @Published private(set) var readingMessage = "Connect your Garmin watch to this Mac."
     @Published private(set) var readingAttempt = 0
     @Published private(set) var logLines: [String] = ["Ready for a read-only device check."]
@@ -58,6 +61,13 @@ final class DeviceEngine: ObservableObject {
 
     var isReading: Bool {
         state == .detecting
+    }
+
+    /// Whether this detection episode has already reported `timeoutNoUSB`:
+    /// the whole connection window passed with no Garmin on USB. Read-only;
+    /// detection keeps polling unchanged.
+    var hasWaitedWithoutUSB: Bool {
+        state == .detecting && detectionPolicy.reportedOutcomes.contains(.timeoutNoUSB)
     }
 
     var hasConnectedDevice: Bool {
@@ -192,6 +202,7 @@ final class DeviceEngine: ObservableObject {
         clearCachedDevice()
         errorMessage = nil
         userErrorMessage = nil
+        connectFailure = nil
         readingAttempt = 0
         lastDetectionUSBPresence = false
         detectionPolicy = DeviceDetectionPolicy(now: Self.uptime())
@@ -339,10 +350,12 @@ final class DeviceEngine: ObservableObject {
         stateManager.fail()
         state = stateManager.state
         publishDetectionProgress()
-        userErrorMessage = UserFacingErrorMessage.forDetectionFailure(
+        let failure = UserFacingErrorMessage.detectionFailure(
             outcome,
             garminUSBPresent: lastDetectionUSBPresence
         )
+        connectFailure = failure
+        userErrorMessage = failure.text
         if outcome == .failed {
             readingMessage = "The watch stopped responding."
             appendLog("Connection check stopped: the watch did not respond within the device read bound")
@@ -459,6 +472,7 @@ final class DeviceEngine: ObservableObject {
         clearCachedDevice()
         errorMessage = nil
         userErrorMessage = nil
+        connectFailure = nil
         readingMessage = "Releasing the connection…"
         appendLog("Eject requested; cancelling read-only work")
 
@@ -622,6 +636,7 @@ final class DeviceEngine: ObservableObject {
         state = stateManager.state
         errorMessage = nil
         userErrorMessage = nil
+        connectFailure = nil
         readingMessage = "Your Garmin was disconnected. Connect it again to continue."
         disconnectNotice = multipleDevices
             ? nil

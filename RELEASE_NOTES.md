@@ -1,3 +1,34 @@
+# Terento v1.0.0-rc.2 (build 42)
+
+<!-- DRAFT: unpublished; publish only after owner approval, notarization and the GitHub prerelease. -->
+<!-- TODO: add the DMG SHA-256 comment after packaging. -->
+
+Terento 1.0.0-rc.2 is the second release candidate for Terento 1.0.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Terento remains a Public beta until 1.0.0, release candidates only contain fixes, and compatibility is still evaluated model by model.
+
+This candidate changes only what the Device page shows when a watch doesn't connect; map installation, Update, Remove and their safeguards are unchanged from rc.1. The new messages passed automated tests and have not yet been checked with a real watch.
+
+## WHAT'S NEW?
+
+- No new features in this release; release candidates only contain fixes.
+
+## WHAT'S FIXED?
+
+- When your watch doesn't connect, the Device page names the cause, shows what Terento found and lists what to do, with a link to the matching section of the troubleshooting guide.
+- If another app such as Android File Transfer or OpenMTP may be using the watch, Terento names that app.
+- The watch's USB Mode setting is named with its usual location (Settings › System).
+- If no watch is plugged in for 2 minutes, the Device page shows more steps to try while Terento keeps looking.
+- Each connection status in the sidebar has an icon as well as text.
+
+## KNOWN ISSUES
+
+- The new connection messages passed automated tests but have not yet been checked with a real watch.
+- The faster Update checks from rc.1 have not yet been confirmed on a real watch.
+- Updating or removing a map installed with an earlier version still uses the full check and can stay at a high displayed percentage for a while before it finishes.
+- Real-watch Update validation for OpenTopoMap is still pending.
+- Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
+- OpenTopoMap India remains under investigation in [issue #278](https://github.com/VooZ2/terento/issues/278).
+- Garmin Edge devices remain outside the current supported scope. This release does not broaden device compatibility claims.
+
 # Terento v1.0.0-rc.1 (build 41)
 
 Terento 1.0.0-rc.1 is the first release candidate for Terento 1.0.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Terento remains a Public beta until 1.0.0, later release candidates only contain fixes, and compatibility is still evaluated model by model.

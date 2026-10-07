@@ -20,4 +20,14 @@ if ! grep -Fq 'if let message = deviceEngine.userErrorMessage' "$connect_screen"
     exit 1
 fi
 
+# A problem names its cause, says what is wrong, then shows the help box.
+for needle in 'return failure.title' 'return failure.reason' \
+    'connectHelpBox(heading: issue.finding, steps: issue.steps, note: issue.note)' \
+    'return deviceEngine.connectFailure' 'return UserFacingErrorMessage.detectionAttention(outcome)'; do
+    if ! grep -Fq -- "$needle" "$connect_screen"; then
+        print -u2 "FAIL: Connect screen does not present the cause-specific failure ($needle)"
+        exit 1
+    fi
+done
+
 print "PASS: Connect screen presents the resolved device error"

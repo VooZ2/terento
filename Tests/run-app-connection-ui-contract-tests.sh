@@ -33,21 +33,53 @@ assert_contains 'return "connect-illustration"' "$connect_screen"
 assert_contains 'connect-illustration-connecting.png in Resources' "$project_file"
 assert_contains 'return "Waiting for your Garmin…"' "$connect_screen"
 assert_contains "return \"Couldn't connect to Garmin\"" "$connect_screen"
-assert_contains 'return "This may take up to 2 minutes."' "$connect_screen"
+assert_contains 'return "This may take up to 2 minutes. Terento tells you if something is wrong."' "$connect_screen"
 assert_contains "return \"We couldn't connect to your Garmin. Reconnect it and try again.\"" "$connect_screen"
 assert_contains 'return message' "$connect_screen"
 assert_absent 'return "Garmin not found"' "$connect_screen"
+# A final failure names its cause; the generic title remains the fallback and
+# the sidebar label.
 if [[ "$(rg -Fxc "            return \"Couldn't connect to Garmin\"" "$connect_screen")" -ne 2 ]]; then
-    print -u2 "FAIL: failed connection title must be used in both production presentation paths"
+    print -u2 "FAIL: failed connection title must stay the fallback and the sidebar label"
+    exit 1
+fi
+assert_contains 'if let failure = deviceEngine.connectFailure {' "$connect_screen"
+assert_contains 'return failure.title' "$connect_screen"
+assert_contains 'return failure.reason' "$connect_screen"
+assert_contains 'connectFailure = failure' "$device_engine"
+# Every Connect problem uses the calm "Still not showing up?" pattern: an
+# outline status icon, a one-line description, then one light help box with a
+# finding, icon steps, the guide link and a note. There is no second list.
+assert_contains 'connectHelpBox(heading: issue.finding, steps: issue.steps, note: issue.note)' "$connect_screen"
+assert_contains 'troubleshootingRow(step.text, icon: step.systemImage)' "$connect_screen"
+assert_contains '.background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: 10))' "$connect_screen"
+assert_contains 'return ("exclamationmark.circle", TerentoColors.warning)' "$connect_screen"
+assert_contains 'return ("exclamationmark.triangle", TerentoColors.error)' "$connect_screen"
+assert_absent 'Having trouble connecting?' "$connect_screen"
+assert_absent 'troubleshootingExpanded' "$connect_screen"
+# Two minutes with nothing on USB escalates the waiting page; detection keeps polling.
+assert_contains 'showsConnectChecklist && deviceEngine.hasWaitedWithoutUSB' "$connect_screen"
+assert_contains 'heading: "Still not showing up?"' "$connect_screen"
+assert_contains 'Plug it directly into the Mac, not into a USB hub' "$connect_screen"
+assert_contains 'detectionPolicy.reportedOutcomes.contains(.timeoutNoUSB)' "$device_engine"
+# Every sidebar status has text and an icon; colour only supports it.
+assert_contains 'Image(systemName: statusIcon)' "$connect_screen"
+assert_contains 'return "Needs attention"' "$connect_screen"
+sidebar_status="$(awk '
+    /private struct SidebarConnectionStatus/ { capture = 1 }
+    /private enum ConnectionStatusPresentation/ { capture = 0 }
+    capture { print }
+' "$connect_screen")"
+if [[ "$sidebar_status" == *'Circle()'* ]]; then
+    print -u2 "FAIL: sidebar status still relies on a colour dot"
     exit 1
 fi
 assert_contains '.accessibilityLabel("\(connectionStatusTitle) \(connectionStatusDescription)")' "$connect_screen"
 assert_contains 'return "Waiting…"' "$connect_screen"
 assert_contains 'VStack(alignment: .center, spacing: 0)' "$connect_screen"
 assert_contains 'multilineTextAlignment(.center)' "$connect_screen"
-assert_contains '.frame(maxWidth: 620, alignment: .center)' "$connect_screen"
+assert_contains '.frame(maxWidth: 460, alignment: .center)' "$connect_screen"
 assert_contains 'title: deviceEngine.state == .failed ? "Try again" : "Connect device"' "$connect_screen"
-assert_contains 'shouldShowTroubleshooting' "$connect_screen"
 assert_contains 'stateManager.fail()' "$device_engine"
 assert_contains 'static let connectionWindow: TimeInterval = 120' "$repo_root/app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift"
 assert_contains 'Connection timed out after 2 minutes.' "$device_engine"
@@ -74,8 +106,14 @@ assert_contains '.tint(TerentoColors.sky)' "$connect_screen"
 assert_contains 'return TerentoColors.sky.opacity(0.20)' "$connect_screen"
 assert_contains 'case .active:' "$connect_screen"
 assert_absent '.tint(.white)' "$connect_screen"
-assert_contains 'return troubleshootingExpanded ? 220 : 300' "$connect_screen"
-assert_contains 'return troubleshootingExpanded ? 180 : 220' "$connect_screen"
+# The illustration has two sizes, from the page height only: larger without a
+# help box, smaller with one. It never depends on the message on screen.
+assert_contains 'GeometryReader { page in' "$connect_screen"
+assert_contains 'maxHeight: connectionIllustrationHeight(pageHeight: page.size.height)' "$connect_screen"
+assert_contains 'return min(180, max(80, pageHeight - 410))' "$connect_screen"
+assert_contains 'return min(300, max(120, pageHeight - 290))' "$connect_screen"
+assert_contains 'shownConnectIssue != nil || showsNoUSBHelp' "$connect_screen"
+assert_absent 'connectionIllustrationMaxHeight' "$connect_screen"
 assert_contains '.frame(maxHeight: .infinity, alignment: .center)' "$connect_screen"
 assert_contains 'return TerentoColors.lichenDark' "$connect_screen"
 assert_contains 'InstallationFailureDialog(' "$connect_screen"

@@ -155,7 +155,8 @@ struct DeviceDetectionEngineTests {
         check(engine.state == .detecting && engine.detectionPhase == .waitingForWatch,
               "without a Garmin the engine stays in the calm waiting state")
         check(transport.calls == 0, "no libmtp snapshot is attempted without a Garmin on USB")
-        check(engine.userErrorMessage == nil && outcomes.values.isEmpty, "waiting shows no error and reports nothing")
+        check(engine.userErrorMessage == nil && outcomes.values.isEmpty && !engine.hasWaitedWithoutUSB,
+              "waiting shows no error and reports nothing")
         engine.cancelReadDevice()
     }
 
@@ -210,7 +211,9 @@ struct DeviceDetectionEngineTests {
         engine.setPresenceMonitoringEnabled(false)
         engine.readDevice()
         check(await waitUntil(3) { engine.state == .failed }, "a bounded read deadline ends detection")
-        check(engine.userErrorMessage == UserFacingErrorMessage.stoppedResponding,
+        check(engine.connectFailure?.title == "Your watch stopped responding"
+                && engine.connectFailure?.steps.first?.text == "Unplug the watch and wait 5 seconds"
+                && engine.userErrorMessage == engine.connectFailure?.text,
               "a stalled watch shows the unplug-and-replug recovery message")
         check(outcomes.values == [.failed], "a stalled read reports failed")
         transport.enqueue(.success(watch))
@@ -218,6 +221,7 @@ struct DeviceDetectionEngineTests {
         try? await Task.sleep(for: .milliseconds(1_300))
         transport.setUSBCount(1)
         check(await waitUntil(6) { engine.hasConnectedDevice }, "replugging after a failure restarts discovery automatically")
+        check(engine.connectFailure == nil && engine.userErrorMessage == nil, "a new episode clears the failure message")
     }
 
     @MainActor static func testUnexpectedDisconnectRestartsDiscovery() async {
