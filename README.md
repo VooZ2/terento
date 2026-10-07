@@ -99,7 +99,7 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **rc.1 (build 41)**, the first release candidate
+The latest public release is **rc.2 (build 42)**, the second release candidate
 for Terento 1.0.0. Download the notarized macOS app below; no additional
 software is required.
 
@@ -113,8 +113,9 @@ DMG, ZIP, release notes, and previous versions are available on
 
 Terento is a **Public beta**. Compatibility and map updates are still being
 tested on real watches. Updates to newer BBBike, Freizeitkarte and MapRando
-releases were confirmed on a real watch; OpenTopoMap updates and the faster
-update checks of rc.1 still need real-device confirmation.
+releases were confirmed on a real watch; OpenTopoMap updates, the faster
+update checks of rc.1 and the connection messages of rc.2 still need
+real-device confirmation.
 
 During an update, Terento checks the new map before removing the old version
 it installed. If there is not enough space for both, it stops and keeps the

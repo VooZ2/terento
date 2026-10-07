@@ -1,8 +1,5 @@
 # Terento v1.0.0-rc.2 (build 42)
 
-<!-- DRAFT: unpublished; publish only after owner approval, notarization and the GitHub prerelease. -->
-<!-- TODO: add the DMG SHA-256 comment after packaging. -->
-
 Terento 1.0.0-rc.2 is the second release candidate for Terento 1.0.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Terento remains a Public beta until 1.0.0, release candidates only contain fixes, and compatibility is still evaluated model by model.
 
 This candidate changes only what the Device page shows when a watch doesn't connect; map installation, Update, Remove and their safeguards are unchanged from rc.1. The new messages passed automated tests and have not yet been checked with a real watch.
@@ -28,6 +25,8 @@ This candidate changes only what the Device page shows when a watch doesn't conn
 - Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
 - OpenTopoMap India remains under investigation in [issue #278](https://github.com/VooZ2/terento/issues/278).
 - Garmin Edge devices remain outside the current supported scope. This release does not broaden device compatibility claims.
+
+<!-- DMG SHA-256: 22e965f4d4ecdfe193ea12a662cb2140010c0f15c9514197149b11f56f0a99b7 -->
 
 # Terento v1.0.0-rc.1 (build 41)
 

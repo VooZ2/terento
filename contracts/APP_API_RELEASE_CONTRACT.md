@@ -1,12 +1,29 @@
 # App–API compatibility and release contract
 
-## Release candidate 1.0.0-rc.2 build 42 — staged
+## Release candidate 1.0.0-rc.2 build 42 — published
 
-Staged on the existing `beta` update channel. It changes only the Device page's
-connection messages, help links and status icons; it adds no API field, route,
-telemetry event or migration and keeps every rc.1 payload unchanged, so no
-server deployment precedes it. The API validates its labels as SemVer:
-`1.0.0-rc.2` is stored as public and `1.0.0-rc.2-local` as local test data.
+Published on 2026-10-07 from GitHub-verified source
+`1e9b97ad403178f4af4ed7de21d3166136f2a3ec` (merge of PR #381), tag
+`v1.0.0-rc.2-build42`, on the existing `beta` update channel. It changes only
+the Device page's connection messages, help links and status icons; it adds no
+API field, route, telemetry event or migration and keeps every rc.1 payload
+unchanged, so no server deployment preceded it. The API validates its labels as
+SemVer: `1.0.0-rc.2` is stored as public and `1.0.0-rc.2-local` as local test
+data.
+
+The full 94-runner packaging suite and PR/merged-source CI passed. Apple
+submission `f4aae891-559d-4230-b792-d2de7368b0e8` was Accepted with no issues.
+Signing, stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner
+approved the release notes before publication. Real-watch evidence: none for
+the new connection messages, which are listed in KNOWN ISSUES with the rc.1
+faster Update checks.
+
+DMG: 7,458,435 bytes, SHA-256
+`22e965f4d4ecdfe193ea12a662cb2140010c0f15c9514197149b11f56f0a99b7`.
+ZIP: 6,709,370 bytes, SHA-256
+`b98ad5628017634291fbc548c8b1a400848c69849b709151e47ddf547e742d6b`.
+GitHub asset digests and independently downloaded draft and public bytes match
+these values.
 
 ## Release candidate 1.0.0-rc.1 build 41 — published
 
