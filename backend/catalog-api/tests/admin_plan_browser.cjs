@@ -133,6 +133,12 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert(appChart.leftUnused<55&&appChart.rightUnused<25,'App downloads chart keeps only axis and clipping margins');
     if(width>900){assert(Math.abs(charts[0].y-charts[1].y)<=1,'Dashboard charts share a row');assert(Math.abs(attention.y-activity.y)<=1,'Attention and Activity share a row');const funnel=await page.locator('.overview-funnel-panel').evaluate(e=>e.getBoundingClientRect());assert(app.y>=attention.y+attention.height+15,'App downloads follows the Needs attention row');assert(Math.abs(app.y-funnel.y)<=1&&Math.abs(app.height-funnel.height)<=1,'First run and App downloads share one row at one height');assert(Math.abs(app.x-activity.x)<=1&&Math.abs(app.width-activity.width)<=1,'Right-column cards align');assert(Math.abs(attention.height-activity.height)<=1&&Math.abs(charts[0].height-charts[1].height)<=1,'Cards in a row share one height');assert(Math.abs(activity.width-attention.width)<=1,'Dashboard composition columns match');assert(app.width<width*.6,'App downloads occupies half row');}
     else {assert(charts[1].y>charts[0].y,'Dashboard charts stack narrow');assert(activity.y>attention.y,'Activity follows Needs attention');assert(app.y>activity.y,'App downloads follows Activity');}
+    // Owner 2026-10-07: First run keeps its three tiles on one row (numbers on one baseline) at every width.
+    const funnelTiles=await page.locator('.overview-funnel-metrics>.admin-metric').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),v=e.querySelector('.admin-metric-value').getBoundingClientRect();return {y:r.y,right:r.right,width:r.width,value:v.bottom,overflow:e.scrollWidth>e.clientWidth+1};}));
+    const funnelRow=await page.locator('.overview-funnel-metrics').evaluate(e=>e.getBoundingClientRect().right);
+    assert.equal(funnelTiles.length,3,'First run shows three tiles');
+    assert(funnelTiles.every(t=>Math.abs(t.y-funnelTiles[0].y)<=1&&Math.abs(t.value-funnelTiles[0].value)<=1),`First run tiles share one row and baseline at ${width}px`);
+    assert(funnelTiles.every(t=>Math.abs(t.width-funnelTiles[0].width)<=1&&!t.overflow&&t.right<=funnelRow+1),`First run tiles are equal and do not overflow at ${width}px`);
     assert.equal(await page.locator('.map-activity-row>a:not(.overview-activity-device)').count(),0,'Generic activity destinations are removed');
     if(width<=760){
      const toggle=page.locator('#admin-menu-toggle');

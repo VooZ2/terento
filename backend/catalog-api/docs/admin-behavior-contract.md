@@ -317,7 +317,10 @@ period increases in the legend and its all-time totals and last update in one
 population for the period (sessions, connected vs not connected by reason,
 authorization outcomes and the top waiting models); each reason, outcome and
 model is one row with its label, a small horizontal bar scaled to its share of
-the period's sessions and its count as text (zero rows are omitted). It never
+the period's sessions and its count as text (zero rows are omitted). Its
+Sessions, Connected and Not connected tiles stay on one row of three equal
+columns at every width, label above number; a label may wrap but the numbers
+share one baseline. Other metric rows keep their own narrow stacking. It never
 mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
 Activity is internally scrollable and must not force page height. A generic

@@ -9,7 +9,7 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
-from terento_catalog.admin import _funnel_card, _provider_problem_state, overview_page
+from terento_catalog.admin import ADMIN_STYLES, _funnel_card, _provider_problem_state, overview_page
 from terento_catalog.http_api import CatalogService, make_handler
 
 
@@ -147,6 +147,12 @@ class DashboardPresentationTests(unittest.TestCase):
             self.assertIn(f"<h3>{title}</h3><ul class='overview-funnel-bars' aria-label='{title}'>", card)
         self.assertNotIn("Not in MTP mode", card)  # zero outcomes are not listed
         self.assertNotIn("<dl class='overview-funnel-breakdown'>", card)
+        # Owner 2026-10-07: the three First run tiles stay on one row at every
+        # width with numbers on one baseline; other metric rows keep auto-fit.
+        self.assertIn("<div class='admin-metric-row overview-funnel-metrics' role='group' aria-label='First run sessions'>", card)
+        self.assertIn(".overview-funnel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-metrics .admin-metric-value{margin-top:auto}", ADMIN_STYLES)
+        self.assertIn(".admin-metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));", ADMIN_STYLES)
 
     def test_first_run_card_states(self):
         self.assertIn("Could not load this section.", _funnel_card({"available": False}, "7d"))

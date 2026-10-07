@@ -2280,7 +2280,7 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
             _metric_tile("Sessions", sessions),
             _metric_tile("Connected", connected),
             _metric_tile("Not connected", sum(not_connected.values()), failure=True),
-        ], label="First run sessions")
+        ], label="First run sessions", css="overview-funnel-metrics")
 
         def bars(title: str, items: list[tuple[str, int]]) -> str:
             """Label, a bar scaled to the share of sessions, and the count."""
@@ -9810,6 +9810,9 @@ ADMIN_STYLES += """
 .overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
 .overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
 .overview-chart-values:empty{display:none}
+/* First run keeps its three tiles on one row at every width (owner 2026-10-07); a wrapped label never moves its number off the shared baseline. */
+.overview-funnel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.overview-funnel-metrics .admin-metric-value{margin-top:auto}
 .overview-funnel-breakdown{display:grid;gap:12px;margin:12px 0 0}
 .overview-funnel-group h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
 .overview-funnel-bars{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
