@@ -605,3 +605,7 @@ Devices/Installations snapshot (first verified success). That snapshot reads the
 statistics view once per request through a materialized CTE instead of once per
 catalog device, and both Admin statistics reads disable PostgreSQL JIT for their
 transaction (`SET LOCAL jit = off`), which changes only the execution strategy.
+The Maps reads (`map_statistics`, its trend and `map_statistics_linkage`) do the
+same: under their hash-join preference a date-scoped linkage lookup or a
+provider filter leaves a join only a nested loop can run, whose disable cost
+crosses the JIT threshold although the query executes in milliseconds.
