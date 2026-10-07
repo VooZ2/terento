@@ -298,7 +298,10 @@ provider_rechecks_unavailable` instead of dropping the connection. Inline
 scripts carry the CSP nonce only at their template sites through a per-process
 unguessable placeholder; the assembled body is never post-processed for
 `<script>`. Open pages check freshness every two minutes while visible and once
-when the tab becomes visible again.
+when the tab becomes visible again, by re-reading their own URL and comparing
+`data-admin-revisions`; revisions hash only displayed data, never request-time
+values or observation clocks (`docs/admin-behavior-contract.md`, Freshness
+notice).
 
 Production `/admin*` is first protected by Cloudflare Access and the trusted
 origin assertion. The application then requires its native admin session and

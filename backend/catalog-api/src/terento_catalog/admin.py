@@ -5,7 +5,7 @@ import hashlib
 import hmac
 import html
 import json
-from .admin_revisions import section_revisions, statistics_revisions
+from .admin_revisions import active_trend_buckets, section_revisions, statistics_revisions
 
 import math
 import re
@@ -2342,9 +2342,7 @@ def overview_page(
     data_raw = overview.get("data") if isinstance(overview.get("data"), dict) else {}
     data_available = data_raw.get("available") is not False
     data = data_raw if data_available else {}
-    compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
     downloads = overview.get("downloads") if isinstance(overview.get("downloads"), dict) else {}
-    providers = list(overview.get("providers") or [])
     period = str(overview.get("period") or "24h")
     if period not in ADMIN_PERIODS:
         period = "24h"
@@ -2502,12 +2500,45 @@ def overview_page(
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
     """
-    return _layout("Dashboard", content, sections={
-        "mapActivity": data, "compatibility": compatibility, "downloads": downloads,
-        "providers": providers, "review": review, "funnel": overview.get("funnel"),
-        "supportReports": overview.get("supportReports"), "mapsUnknown": overview.get("mapsUnknown"),
-        "system": [(card["title"], card["status"], card["reason"]) for card in health_cards],
-    })
+    return _layout("Dashboard", content, sections=_overview_revision_sections(
+        overview, data, recent, downloads, review if review_available else None, system_issues,
+    ))
+
+
+# Dashboard map-activity fields that the page does not render.
+_OVERVIEW_UNSHOWN_ACTIVITY = frozenset({
+    "recentActivity", "attention", "missingDiagnosticFailures", "missingDiagnosticFailureCount", "trend",
+})
+
+
+def _overview_revision_sections(
+    overview: dict[str, Any], data: dict[str, Any], recent: list[dict[str, Any]],
+    downloads: dict[str, Any], review: dict[str, Any] | None, system_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Freshness revisions for exactly what the Dashboard renders.
+
+    Request-time values (the First run window bounds), payloads the page does
+    not render (compatibility evidence, provider rows, Maps unknown, hidden
+    in-progress downloads) and clock-moved zero chart buckets are left out, so
+    an unchanged Dashboard never reports new data (docs/admin-behavior-contract.md).
+    """
+    funnel = overview.get("funnel")
+    return {
+        "mapActivity": {
+            "available": bool(data),
+            **{key: value for key, value in data.items() if key not in _OVERVIEW_UNSHOWN_ACTIVITY},
+            "trend": active_trend_buckets(data.get("trend")),
+            "recentActivity": recent,
+        },
+        "downloads": downloads,
+        "review": {key: review.get(key) for key, *_ in _ATTENTION_ROWS} if review is not None else None,
+        "funnel": (
+            {key: funnel.get(key) for key in ("available", "sessionCount", "stages", "modelsNeedingReview")}
+            if isinstance(funnel, dict) else None
+        ),
+        "supportReports": overview.get("supportReports"),
+        "system": [(card["title"], card["status"]) for card in system_issues],
+    }
 
 
 def _missing_report_notice(action: str, event_id: str, csrf_token: str, *, return_to: str) -> str:
@@ -4621,7 +4652,10 @@ def map_statistics_page(
       </main>
       <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
-    return _layout("Maps", content, revisions={**statistics_revisions(statistics), **section_revisions({"providers": providers})})
+    # Maps shows provider names only (filter options); provider health and
+    # collection clocks are not part of this page's freshness revision.
+    provider_labels = [(provider.get("id"), provider.get("name")) for provider in providers]
+    return _layout("Maps", content, revisions={**statistics_revisions(statistics), **section_revisions({"providers": provider_labels})})
 
 
 def _provider_detail_script() -> str:
@@ -9226,9 +9260,19 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
 .overview-primary-grid{align-items:stretch}.overview-primary-grid>.overview-panel{min-height:0}
 .model-administration>summary,.device-information-section>summary{margin-bottom:12px}
 .model-administration,.device-information-section{padding:0;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}
-.admin-live-update{position:sticky;top:var(--admin-topbar-height);z-index:29;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 24px;background:var(--selected-tint,var(--surface));border-bottom:1px solid var(--border);font-size:14px}
+/* Freshness notice: a compact info status floating inside the content width;
+   Refresh is a secondary action beside the text (admin-behavior-contract.md). */
+.admin-live-update{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));z-index:40;transform:translateX(-50%);display:flex;align-items:center;gap:10px;width:max-content;max-width:min(calc(100% - 48px),640px);margin:0;padding:6px 6px 6px 12px;border:1px solid var(--status-supported-border);border-radius:var(--radius-control);background:var(--surface);color:var(--graphite);box-shadow:0 4px 16px color-mix(in srgb,var(--graphite) 14%,transparent);font:500 13px/18px var(--font-ui)}
 .admin-live-update[hidden]{display:none}
-@media(max-width:760px){.admin-section-nav{flex-basis:100%;order:3}.admin-nav{margin-inline-start:auto}.admin-live-update{padding:10px 16px}}
+.admin-live-update[data-tone='warning']{border-color:var(--status-tested-border)}
+.admin-live-update-icon{display:inline-flex;flex:0 0 auto;color:var(--status-supported-text)}
+.admin-live-update[data-tone='warning'] .admin-live-update-icon{color:var(--status-warning-text)}
+.admin-live-update-icon .admin-icon,.admin-live-update-dismiss .admin-icon{width:16px;height:16px;margin:0;color:inherit}
+.admin-live-update-text{min-width:0}
+.admin-live-update .admin-live-update-refresh{flex:0 0 auto;min-height:32px;padding:6px 12px}
+.admin-live-update-dismiss{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:0;border-radius:var(--radius-control);background:transparent;color:var(--secondary)}
+.admin-live-update-dismiss:hover{background:var(--surface-muted);color:var(--graphite)}
+@media(max-width:760px){.admin-section-nav{flex-basis:100%;order:3}.admin-nav{margin-inline-start:auto}}
 @media(max-width:560px){.admin-header-left{width:auto}.admin-nav{width:100%;justify-content:space-between}.admin-section-nav{overflow:visible}}
 /* Phone layouts share the same controls and data as desktop. */
 #admin-menu-panel,.mobile-filter-options{display:contents}
@@ -9269,7 +9313,9 @@ h1,h2,h3,h4,.administration-grid h3,.admin-kpi-grid article>strong,.provider-met
   .diagnostic-detail-summary,.diagnostic-actions-grid{grid-template-columns:1fr}.diagnostic-detail-summary div{grid-template-columns:minmax(80px,.7fr) minmax(0,1fr)}
   .diagnostic-action-form button{min-height:44px}.diagnostic-detail-summary dd{text-align:right}
   .auth-card{margin:24px 16px;max-width:calc(100% - 32px);padding:20px}.auth-card button{min-height:44px}
-  .admin-live-update{top:64px;gap:8px;padding:10px 16px;font-size:13px}.admin-live-update button{min-height:44px}
+  .admin-live-update{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 10px;left:16px;right:16px;transform:none;width:auto;max-width:none;padding:4px 4px 10px 12px}
+  .admin-live-update .admin-live-update-refresh{grid-column:2;grid-row:2;justify-self:start;min-height:44px}
+  .admin-live-update-dismiss{grid-column:3;grid-row:1;width:44px;height:44px}
 }
 @media(max-width:760px){.filter-bar .device-mobile-sort{display:block}.device-filter-bar{position:static}.device-sticky-header{display:none!important}.table-wrap{min-width:0;max-width:100%}.diagnostic-list-wrap{max-height:none}.table-wrap:has(.mobile-record-table){border:0;background:transparent;overflow:visible;border-radius:0}table.mobile-record-table{display:block;min-width:0!important;width:100%;border:0;table-layout:auto}.mobile-record-table colgroup,.mobile-record-table thead{display:none}.mobile-record-table tbody{display:grid;width:100%;gap:12px}.mobile-record-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);min-width:0}.mobile-record-table tbody td{display:block;width:auto!important;min-width:0;padding:0!important;border:0!important;text-align:left!important;white-space:normal!important;overflow-wrap:anywhere;font-size:13px}.mobile-record-table td a{min-height:44px;display:inline-flex;align-items:center}.mobile-record-table td .provider-name-link{align-items:flex-start}.mobile-record-table td[data-label='']::before{display:none}.mobile-record-table tbody td::before{content:attr(data-label);display:block;margin-bottom:5px;font-size:11px;line-height:1.35;font-weight:600;color:var(--secondary)}.mobile-record-table tbody td:first-child{grid-column:1/-1;font-weight:650}.mobile-record-table tbody td:has(button){grid-column:1/-1}.mobile-record-table td button{min-height:44px;width:100%}.device-model-button{min-height:44px}.device-thumb{width:40px;height:48px}.device-model-copy{min-width:0}.device-model-copy strong{white-space:normal}.provider-pagination,.device-pagination{display:flex;flex-wrap:wrap;gap:8px}.provider-pagination button,.device-pagination button{min-height:44px}.provider-pagination>span{flex:1 1 100%;order:3}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}.map-statistics-filter-bar .filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}}
 @media(max-width:760px){.map-statistics-provider-table .mobile-record-table td[data-empty-group='true']{display:none!important}}
@@ -10870,23 +10916,51 @@ def _admin_dropdown_script() -> str:
 
 
 def _admin_freshness_script() -> str:
+    """Freshness notice (docs/admin-behavior-contract.md, "Freshness notice").
+
+    The open page re-reads its own URL every two minutes while visible and
+    compares the section revisions it rendered with the fresh ones. Only a
+    changed revision, a failed check or an expired session shows the compact
+    notice: status icon and text, a secondary Refresh action and Dismiss.
+    """
+    icons = json.dumps({key: _admin_icon(name) for key, name in (("info", "info"), ("warning", "alert"), ("close", "close"))})
     return r"""(() => {
       if (!document.querySelector('[data-admin-revisions]') || document.querySelector('#admin-live-update')) return;
+      const icons = __ADMIN_LIVE_ICONS__;
       const notice = document.createElement('div');
       notice.id = 'admin-live-update'; notice.className = 'admin-live-update';
-      notice.setAttribute('role', 'status'); notice.hidden = true;
-      const message = document.createElement('span');
+      notice.setAttribute('role', 'status'); notice.setAttribute('aria-live', 'polite'); notice.hidden = true;
+      const icon = document.createElement('span'); icon.className = 'admin-live-update-icon';
+      const message = document.createElement('span'); message.className = 'admin-live-update-text';
       const refresh = document.createElement('button');
-      refresh.type = 'button'; refresh.className = 'secondary-button'; refresh.textContent = 'Refresh';
-      notice.append(message, refresh); document.querySelector('.admin-topbar')?.after(notice);
-      let dirty = false, generation = 0, running = false, pending = null;
+      refresh.type = 'button'; refresh.className = 'secondary-button admin-live-update-refresh'; refresh.textContent = 'Refresh';
+      const dismiss = document.createElement('button');
+      dismiss.type = 'button'; dismiss.className = 'admin-live-update-dismiss';
+      dismiss.setAttribute('aria-label', 'Dismiss notice'); dismiss.innerHTML = icons.close;
+      notice.append(icon, message, refresh, dismiss);
+      const topbar = document.querySelector('.admin-topbar');
+      if (topbar) topbar.after(notice); else document.body.append(notice);
+      let dirty = false, generation = 0, running = false, pending = null, shownKey = '', dismissedKey = '';
       const read = node => JSON.parse(node?.dataset.adminRevisions || '{}');
-      const update = () => {
-        if (!pending) { notice.hidden = true; return; }
-        const shown = read(document.querySelector('[data-admin-revisions]'));
-        notice.hidden = !Object.keys(pending).some(key => pending[key] !== shown[key]);
-        message.textContent = 'New activity is available.';
+      // One notice, three states. Dismiss hides the current state until a
+      // different one (for example a further change) arrives.
+      const show = (tone, text, key) => {
+        shownKey = key;
+        if (key === dismissedKey) { notice.hidden = true; return; }
+        notice.setAttribute('data-tone', tone);
+        icon.innerHTML = icons[tone];
+        message.textContent = text;
+        notice.hidden = false;
       };
+      const hide = () => { shownKey = ''; dismissedKey = ''; notice.hidden = true; };
+      const update = () => {
+        if (!pending) { hide(); return; }
+        const shown = read(document.querySelector('[data-admin-revisions]'));
+        const changed = Object.keys(pending).filter(key => pending[key] !== shown[key]).sort();
+        if (!changed.length) { hide(); return; }
+        show('info', 'New data is available for this page.', 'changed:' + changed.map(key => key + '=' + pending[key]).join(','));
+      };
+      dismiss.addEventListener('click', () => { dismissedKey = shownKey; notice.hidden = true; });
       document.addEventListener('input', event => {
         if (event.target.closest('form[method="post"]')) dirty = true;
       });
@@ -10917,7 +10991,7 @@ def _admin_freshness_script() -> str:
           const response = await fetch(url, {credentials:'same-origin', cache:'no-store', signal:controller.signal});
           if (stale()) return;
           if ((response.redirected && new URL(response.url).pathname === '/admin/login') || response.status === 401 || response.status === 403) {
-            message.textContent = 'Your session expired. Refresh to sign in.'; notice.hidden = false; return;
+            show('warning', 'Your session expired. Refresh to sign in.', 'session'); return;
           }
           if (!response.ok) throw new Error('Unavailable');
           const next = new DOMParser().parseFromString(await response.text(), 'text/html').querySelector('[data-admin-revisions]');
@@ -10925,14 +10999,14 @@ def _admin_freshness_script() -> str:
           if (!next) throw new Error('Missing snapshot');
           pending = read(next); update();
         } catch (_) {
-          if (!stale()) { message.textContent = 'Live check unavailable. Try Refresh.'; notice.hidden = false; }
+          if (!stale()) show('warning', 'Live check unavailable. Refresh to try again.', 'unavailable');
         } finally { clearTimeout(timeout); running = false; }
       };
       // Lighter freshness polling (ADM-27): every two minutes while visible,
       // plus one check when the tab becomes visible again.
       setInterval(check, 120000);
       document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
-    })();"""
+    })();""".replace("__ADMIN_LIVE_ICONS__", icons)
 
 
 def _decode_base64(value: str) -> bytes:

@@ -993,6 +993,36 @@ answer with raw JSON: an invalid link, a missing page and an unavailable page
 are HTML error pages with the navigation. The review summary query runs only for
 the Dashboard.
 
+### Freshness notice
+
+Every page with `#main-content` renders `data-admin-revisions`: one hash per
+section of data that the page itself displays. While the tab is visible the page
+re-reads its own URL every two minutes, and once when the tab becomes visible
+again, and compares the fresh revisions with the rendered ones. A notice appears
+only when a revision differs, so a refresh with no new data never brings it back
+on the next poll; a client-side section render acknowledges its own sections.
+
+Revisions hash displayed data only (owner report 2026-10-07). They exclude
+request-time values (for example the First run `since`/`until` window, render
+time, CSRF and nonce values), observation and schedule clocks (health check,
+heartbeat, download poll and next-check times), payloads a page does not render
+(the Dashboard hashes no compatibility evidence, provider rows or Maps unknown,
+and no in-progress download rows; Maps hashes provider names only), zero chart
+buckets that only move with the rolling window, and list order. A new or
+changed installation, report, count, status or displayed row still changes the
+revision, as does an event leaving a rolling period.
+
+The notice is one compact info status inside the content width (floating near
+the bottom, centred on wide screens and spanning the 16 px gutters on phones):
+the info icon and `New data is available for this page.`, a secondary `Refresh`
+button directly beside the text and an icon-only Dismiss button. It uses the
+Admin surface, the info status border, the control radius and a 44 px touch
+target on phones; it is `role="status"` with `aria-live="polite"` and never
+takes focus. A failed check (`Live check unavailable. Refresh to try again.`)
+or an expired session uses the warning icon and border. Refresh reloads the page
+and asks before discarding unsaved edits in a POST form. Dismiss hides the
+current state until a different change or state arrives.
+
 ### Responsive and layout invariants
 
 Admin preserves consistent left edges and the existing spacing scale, with no

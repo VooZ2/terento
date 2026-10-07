@@ -719,6 +719,16 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
  release();await waiting;assert.equal(await notice.isVisible(),false,'Old URL response ignored');
  mode='ok';await refresh.evaluate(()=>history.replaceState(null,'','/admin/device.html'));
  snapshot=JSON.stringify({...initial,device:'final'});await poll();assert.equal(await notice.isVisible(),true);
+ // Compact info status: icon + text, secondary Refresh beside the text, Dismiss.
+ assert.equal(await notice.getAttribute('role'),'status');assert.equal(await notice.getAttribute('aria-live'),'polite');
+ assert.equal(await notice.getAttribute('data-tone'),'info');assert.equal(await notice.locator('.admin-icon-info').count(),1);
+ assert.match(await notice.innerText(),/New data is available/);
+ assert.match(await notice.getByRole('button',{name:'Refresh'}).getAttribute('class'),/secondary-button/);
+ const noticeBox=await notice.boundingBox(),mainBox=await refresh.locator('main').boundingBox();
+ assert(noticeBox.x>=mainBox.x-1&&noticeBox.x+noticeBox.width<=mainBox.x+mainBox.width+1,'Notice stays inside the content width');
+ await notice.getByRole('button',{name:'Dismiss notice'}).click();assert.equal(await notice.isVisible(),false);
+ await poll();assert.equal(await notice.isVisible(),false,'A dismissed change stays dismissed');
+ snapshot=JSON.stringify({...initial,device:'final-2'});await poll();assert.equal(await notice.isVisible(),true,'A further change shows again');
  refresh.once('dialog',dialog=>dialog.accept());
  await Promise.all([refresh.waitForNavigation(),notice.getByRole('button',{name:'Refresh'}).click()]);
  await refresh.waitForFunction(()=>!!window.testPoll);await poll();assert.equal(await notice.isVisible(),false);
