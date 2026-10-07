@@ -132,6 +132,34 @@ class FunnelStorageTests(PGliteTestCase):
         self.db.prune_compatibility_events()
         self.assertEqual(self.sql("SELECT count(*) AS n FROM app_funnel_event")[0]["n"], 1)
 
+    def test_never_connected_counts_distinct_period_sessions_without_a_connection(self):
+        now = self.sql("SELECT now() AS now")[0]["now"]
+        connected_only, problem_then_connected, problem_only, catalog_only = (str(uuid4()) for _ in range(4))
+        self.store(sessionId=connected_only)
+        self.store(sessionId=problem_then_connected, outcome="NOT_MTP_MODE")
+        self.store(sessionId=problem_then_connected, outcome="BUSY")
+        self.store(sessionId=problem_then_connected)
+        self.store(sessionId=problem_only, outcome="TIMEOUT_NO_USB")
+        self.store(sessionId=problem_only, outcome="NOT_MTP_MODE")
+        self.store(sessionId=catalog_only, stage="CATALOG", outcome="REMOTE")
+        # Local test builds and sessions outside the period are excluded; a
+        # connection outside the period does not count for the period.
+        self.store(sessionId=str(uuid4()), releaseLabel="1.0.0-beta.19-local", outcome="TIMEOUT_NO_USB")
+        old = (now - timedelta(days=10)).isoformat().replace("+00:00", "Z")
+        self.store(sessionId=str(uuid4()), outcome="FAILED", occurredAt=old)
+        earlier_connection = str(uuid4())
+        self.store(sessionId=earlier_connection, occurredAt=old)
+        self.store(sessionId=earlier_connection, outcome="DISCONNECTED")
+        summary = self.db.app_funnel_summary(now - timedelta(days=7))
+        counts = {(row["stage"], row["outcome"]): row["sessionCount"] for row in summary["stages"]}
+        self.assertEqual(summary["sessionCount"], 5)
+        self.assertEqual(summary["neverConnectedSessionCount"], 3)
+        self.assertEqual(counts[("DEVICE_CONNECT", "CONNECTED")], 2)
+        self.assertEqual(counts[("DEVICE_CONNECT", "NOT_MTP_MODE")], 2)
+        all_time = self.db.app_funnel_summary(None)
+        self.assertEqual((all_time["sessionCount"], all_time["neverConnectedSessionCount"]), (6, 3))
+        self.assertEqual(self.db.app_funnel_summary(now + timedelta(days=1))["neverConnectedSessionCount"], 0)
+
     def test_funnel_never_enters_install_statistics(self):
         self.store(stage="INSTALL_BLOCKED", outcome="DEVICE_STORAGE")
         self.assertEqual(self.db.map_statistics({}), [])
@@ -176,6 +204,7 @@ class FunnelHTTPTests(PGliteTestCase):
                      json.dumps(funnel(stage="AUTHORIZATION", outcome="PENDING", baseModel="fenix 8")).encode())
         payload = self.service.app_funnel({"period": "24h"})
         self.assertEqual(payload["sessionCount"], 1)
+        self.assertEqual(payload["neverConnectedSessionCount"], 1)
         stages = {item["stage"]: {o["outcome"]: o["sessionCount"] for o in item["outcomes"]} for item in payload["stages"]}
         self.assertEqual(set(stages), set(FUNNEL_OUTCOMES))
         self.assertEqual(stages["AUTHORIZATION"]["PENDING"], 1)

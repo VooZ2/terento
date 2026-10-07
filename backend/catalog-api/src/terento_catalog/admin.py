@@ -2243,39 +2243,87 @@ def _attention_row(label: str, count: int | None, href: str, icon: str, *, unava
     )
 
 
-_FUNNEL_LABELS = {
-    "CONNECTED": "Connected", "TIMEOUT_NO_USB": "No USB", "TIMEOUT_USB_PRESENT": "USB timeout",
-    "BUSY": "Device busy", "MULTIPLE_DEVICES": "Several devices", "NOT_MTP_MODE": "Not in MTP mode",
-    "DISCONNECTED": "Disconnected", "FAILED": "Failed",
-    "APPROVED": "Approved", "PENDING": "Pending", "OUT_OF_SCOPE": "Out of scope",
-    "UNKNOWN_MODEL": "Unknown model", "AMBIGUOUS": "Ambiguous", "CATALOG_UNAVAILABLE": "Catalog unavailable",
-    "UPDATE_REQUIRED": "Update required",
-}
+# First run breakdown groups: (title, stage, outcome labels). Labels are per
+# stage because outcome codes repeat across stages (UPDATE_REQUIRED, AUTHORIZATION).
+_FUNNEL_GROUPS: tuple[tuple[str, str, dict[str, str]], ...] = (
+    ("Connection problems", "DEVICE_CONNECT", {
+        "TIMEOUT_NO_USB": "No watch plugged in", "TIMEOUT_USB_PRESENT": "Didn't get ready",
+        "NOT_MTP_MODE": "Not in file-transfer mode", "BUSY": "Watch in use by another app",
+        "MULTIPLE_DEVICES": "Several Garmins", "DISCONNECTED": "Disconnected after connecting",
+        "FAILED": "Stopped responding",
+    }),
+    ("Authorization", "AUTHORIZATION", {
+        "APPROVED": "Approved", "PENDING": "Pending", "OUT_OF_SCOPE": "Out of scope",
+        "UNKNOWN_MODEL": "Unknown model", "AMBIGUOUS": "Ambiguous",
+        "CATALOG_UNAVAILABLE": "Catalog unavailable", "UPDATE_REQUIRED": "Update required",
+    }),
+    ("Catalog", "CATALOG", {
+        "REMOTE": "Loaded", "REMOTE_PARTIAL": "Partly loaded", "BUNDLED_FALLBACK": "Built-in copy",
+        "UPDATE_REQUIRED": "App update required",
+    }),
+    ("Install blocked", "INSTALL_BLOCKED", {
+        "AUTHORIZATION": "Not allowed for this watch", "DEVICE_STORAGE": "Watch storage full",
+        "MAC_STORAGE": "Mac storage problem", "CATALOG_UNVERIFIED": "Map not verified",
+        "LOCAL_CAPABILITY": "Watch not identified", "OTHER": "Other",
+    }),
+)
+_FUNNEL_NOTES = {"Connection problems": "A session can hit several problems and still connect."}
 
 
-def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
-    """First run: connected vs failed sessions, authorization and waiting models."""
-    if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
-        return _unavailable_card("First run", "overview-funnel")
+def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
+    """Exactly what the First run card shows (also its freshness revision).
+
+    Tiles: period sessions, sessions that connected and sessions that never
+    connected. Groups list non-zero per-session outcome counts, largest first;
+    a session can appear in several rows of one group.
+    """
     stages = {
         str(stage.get("stage")): {
             str(item.get("outcome")): _optional_nonnegative_int(item.get("sessionCount")) or 0
-            for item in stage.get("outcomes") or []
+            for item in stage.get("outcomes") or [] if isinstance(item, dict)
         }
         for stage in funnel.get("stages") or [] if isinstance(stage, dict)
     }
     sessions = _optional_nonnegative_int(funnel.get("sessionCount"))
-    connect = stages.get("DEVICE_CONNECT", {})
-    connected = connect.get("CONNECTED", 0)
-    not_connected = {key: value for key, value in connect.items() if key != "CONNECTED" and value}
-    authorization = {key: value for key, value in stages.get("AUTHORIZATION", {}).items() if value}
+    if not sessions:
+        return {"sessions": sessions}
+    groups: list[tuple[str, list[tuple[str, int]]]] = []
+    for title, stage, labels in _FUNNEL_GROUPS:
+        items = {
+            key: value for key, value in stages.get(stage, {}).items()
+            if value and not (stage == "DEVICE_CONNECT" and key == "CONNECTED")
+        }
+        groups.append((title, [
+            (labels.get(key, key.replace("_", " ").capitalize()), value)
+            for key, value in sorted(items.items(), key=lambda item: (-item[1], item[0]))
+        ]))
+    waiting = [
+        (str(item["baseModel"]), _optional_nonnegative_int(item.get("sessionCount")) or 0)
+        for item in funnel.get("modelsNeedingReview") or []
+        if isinstance(item, dict) and item.get("baseModel")
+    ][:3]
+    groups.append(("Waiting models", waiting))
+    return {
+        "sessions": sessions,
+        "connected": stages.get("DEVICE_CONNECT", {}).get("CONNECTED", 0),
+        "neverConnected": _optional_nonnegative_int(funnel.get("neverConnectedSessionCount")),
+        "groups": groups,
+    }
+
+
+def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
+    """First run: sessions, connected and never connected, then per-stage outcomes."""
+    if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
+        return _unavailable_card("First run", "overview-funnel")
+    display = _funnel_display(funnel)
+    sessions = display["sessions"]
     if not sessions:
         body = _empty_state("empty", "No first-run sessions in this period.")
     else:
         tiles = _metric_row([
             _metric_tile("Sessions", sessions),
-            _metric_tile("Connected", connected),
-            _metric_tile("Not connected", sum(not_connected.values()), failure=True),
+            _metric_tile("Connected", display["connected"]),
+            _metric_tile("Never connected", display["neverConnected"], failure=True),
         ], label="First run sessions", css="overview-funnel-metrics")
 
         def bars(title: str, items: list[tuple[str, int]]) -> str:
@@ -2286,27 +2334,16 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
                 f"<strong>{value:,}</strong><span class='sr-only'> of {sessions:,} sessions</span></li>"
                 for label, value in items
             ) or "<li class='overview-funnel-none'><span class='overview-funnel-label'>—</span></li>"
+            note = _FUNNEL_NOTES.get(title) if items else None
+            note_markup = f"<p class='overview-funnel-note muted-value'>{html.escape(note)}</p>" if note else ""
             return (
-                f"<div class='overview-funnel-group'><h3>{html.escape(title)}</h3>"
+                f"<div class='overview-funnel-group'><h3>{html.escape(title)}</h3>{note_markup}"
                 f"<ul class='overview-funnel-bars' aria-label='{html.escape(title, quote=True)}'>{rows}</ul></div>"
             )
 
-        def ordered(items: dict[str, int]) -> list[tuple[str, int]]:
-            return [
-                (_FUNNEL_LABELS.get(key, key.replace('_', ' ').title()), value)
-                for key, value in sorted(items.items(), key=lambda item: (-item[1], item[0]))
-            ]
-
-        waiting = [
-            (str(item["baseModel"]), _optional_nonnegative_int(item.get("sessionCount")) or 0)
-            for item in funnel.get("modelsNeedingReview") or []
-            if isinstance(item, dict) and item.get("baseModel")
-        ][:3]
         body = tiles + (
             "<div class='overview-funnel-breakdown'>"
-            + bars("Not connected", ordered(not_connected))
-            + bars("Authorization", ordered(authorization))
-            + bars("Waiting models", waiting)
+            + "".join(bars(title, items) for title, items in display["groups"])
             + "</div>"
         )
     return _section_card(
@@ -2533,8 +2570,9 @@ def _overview_revision_sections(
         "downloads": downloads,
         "review": {key: review.get(key) for key, *_ in _ATTENTION_ROWS} if review is not None else None,
         "funnel": (
-            {key: funnel.get(key) for key in ("available", "sessionCount", "stages", "modelsNeedingReview")}
-            if isinstance(funnel, dict) else None
+            None if not isinstance(funnel, dict)
+            else _funnel_display(funnel) if funnel.get("available") is not False and "stages" in funnel
+            else {"available": False}
         ),
         "supportReports": overview.get("supportReports"),
         "system": [(card["title"], card["status"]) for card in system_issues],
@@ -9856,14 +9894,31 @@ ADMIN_STYLES += """
 /* First run keeps its three tiles on one row at every width (owner 2026-10-07); a wrapped label never moves its number off the shared baseline. */
 .overview-funnel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
 .overview-funnel-metrics .admin-metric-value{margin-top:auto}
-.overview-funnel-breakdown{display:grid;gap:12px;margin:12px 0 0}
+/* Labels keep their full width (one aligned label column via subgrid); the bar
+   track takes what is left and shrinks first, down to 24 px. */
+.overview-funnel-breakdown{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);column-gap:8px;row-gap:12px;margin:12px 0 0}
+.overview-funnel-group{display:grid;grid-template-columns:subgrid;grid-column:1/-1;min-width:0}
+.overview-funnel-group>*{grid-column:1/-1}
 .overview-funnel-group h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
-.overview-funnel-bars{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
-.overview-funnel-bars li{display:grid;grid-template-columns:minmax(96px,1.1fr) minmax(0,2fr) minmax(32px,auto);align-items:center;gap:8px;min-width:0}
+.overview-funnel-note{margin:-2px 0 6px;font:400 12px/16px var(--font-ui)}
+.overview-funnel-bars{display:grid;grid-template-columns:subgrid;row-gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
+.overview-funnel-bars li{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-width:0}
 .overview-funnel-label{min-width:0;overflow-wrap:anywhere}
 .overview-funnel-bar{display:block;height:8px;border-radius:4px;background:var(--surface-muted)}
 .overview-funnel-bar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--status-neutral-text)}
 .overview-funnel-bars strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+/* Owner 2026-10-07: beside App downloads (two-column Dashboard, >900 px) a wide
+   First run card lays its groups out in two balanced columns without splitting a
+   group; each group aligns its own label column. Below the container threshold
+   the half columns cannot fit label, bar and count, so the breakdown stays one
+   column (also at 900 px and narrower). */
+.overview-funnel-panel{container:overview-funnel/inline-size}
+@media(min-width:901px){@container overview-funnel (min-width:620px){
+  .overview-funnel-breakdown{display:block;columns:2;column-gap:24px}
+  .overview-funnel-group{display:block;break-inside:avoid;padding-bottom:12px}
+  .overview-funnel-group:last-child{padding-bottom:0}
+  .overview-funnel-bars{grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);column-gap:8px}
+}}
 .overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
 .overview-chart-values-date{color:var(--graphite)}
 .overview-trend-chart .overview-chart-group{cursor:pointer}

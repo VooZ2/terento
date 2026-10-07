@@ -316,9 +316,13 @@ def create(root: Path) -> None:
                  "dmg_count": 1, "zip_count": 0, "confidence": "verified", "population_comparability": "verified"},
             ],
         },
-        "funnel": {"sessionCount": 4, "stages": [
+        "funnel": {"sessionCount": 4, "neverConnectedSessionCount": 1, "stages": [
             {"stage": "DEVICE_CONNECT", "outcomes": [{"outcome": "CONNECTED", "sessionCount": 3},
-                                                     {"outcome": "TIMEOUT_NO_USB", "sessionCount": 1}]},
+                                                     {"outcome": "TIMEOUT_NO_USB", "sessionCount": 2}]},
+            {"stage": "CATALOG", "outcomes": [{"outcome": "REMOTE", "sessionCount": 3},
+                                              {"outcome": "BUNDLED_FALLBACK", "sessionCount": 1}]},
+            {"stage": "INSTALL_BLOCKED", "outcomes": [{"outcome": "DEVICE_STORAGE", "sessionCount": 1},
+                                                      {"outcome": "CATALOG_UNVERIFIED", "sessionCount": 1}]},
         ]},
         "providers": providers,
     }, user, "fixture"))

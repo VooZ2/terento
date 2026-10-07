@@ -23,15 +23,28 @@ REVIEW = {
 def _funnel(**counts):
     return {
         "sessionCount": counts.get("sessions", 0),
+        "neverConnectedSessionCount": counts.get("never_connected", 0),
         "stages": [
             {"stage": "DEVICE_CONNECT", "outcomes": [
                 {"outcome": "CONNECTED", "sessionCount": counts.get("connected", 0)},
                 {"outcome": "TIMEOUT_NO_USB", "sessionCount": counts.get("no_usb", 0)},
                 {"outcome": "NOT_MTP_MODE", "sessionCount": counts.get("not_mtp", 0)},
+                {"outcome": "BUSY", "sessionCount": counts.get("busy", 0)},
             ]},
             {"stage": "AUTHORIZATION", "outcomes": [
                 {"outcome": "APPROVED", "sessionCount": counts.get("approved", 0)},
                 {"outcome": "PENDING", "sessionCount": counts.get("pending", 0)},
+                {"outcome": "UPDATE_REQUIRED", "sessionCount": counts.get("auth_update", 0)},
+            ]},
+            {"stage": "CATALOG", "outcomes": [
+                {"outcome": "REMOTE", "sessionCount": counts.get("remote", 0)},
+                {"outcome": "BUNDLED_FALLBACK", "sessionCount": counts.get("bundled", 0)},
+                {"outcome": "UPDATE_REQUIRED", "sessionCount": counts.get("catalog_update", 0)},
+            ]},
+            {"stage": "INSTALL_BLOCKED", "outcomes": [
+                {"outcome": "AUTHORIZATION", "sessionCount": counts.get("blocked_authorization", 0)},
+                {"outcome": "DEVICE_STORAGE", "sessionCount": counts.get("device_storage", 0)},
+                {"outcome": "LOCAL_CAPABILITY", "sessionCount": counts.get("local_capability", 0)},
             ]},
         ],
         "modelsNeedingReview": counts.get("models", []),
@@ -63,7 +76,8 @@ class DashboardPresentationTests(unittest.TestCase):
                 }], "bucket": "day",
             },
             "compatibility": {}, "providers": [], "system": {},
-            "funnel": _funnel(sessions=5, connected=4, no_usb=1, approved=3, pending=1,
+            "funnel": _funnel(sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1,
+                              remote=4, catalog_update=1, device_storage=1,
                               models=[{"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1}]),
         }
         payload.update(overview)
@@ -128,25 +142,49 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertNotIn("overview-attention-row", attention)
         self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
 
-    def test_first_run_card_shows_connected_failed_authorization_and_waiting_models(self):
+    def test_first_run_card_shows_tiles_and_per_stage_groups(self):
         body = self.render()
         card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
         self.assertIn(">First run</h2>", body)
         self.assertIn("data-scope='period'>Last 7 days</span>", card)
-        self.assertIn(">5</strong>", card)
-        # Each reason/outcome is a small bar with its label and count as text;
-        # the bar width is the share of the period's first-run sessions.
+        self.assertIn("<span class='admin-metric-label'>Sessions</span><strong class='admin-metric-value'>5</strong>", card)
+        self.assertIn("<span class='admin-metric-label'>Connected</span><strong class='admin-metric-value'>4</strong>", card)
+        self.assertIn("data-tone='danger'><span class='admin-metric-label'>Never connected</span>"
+                      "<strong class='admin-metric-value'>1</strong>", card)
+        self.assertNotIn("Not connected", card)
+        # Each outcome is a small bar with its label and count as text; the bar
+        # width is the share of the period's first-run sessions.
         def bar(label, count, share):
             return (f"<li><span class='overview-funnel-label'>{label}</span>"
                     f"<span class='overview-funnel-bar' aria-hidden='true'><i style='width:{share:.1f}%'></i></span>"
                     f"<strong>{count}</strong><span class='sr-only'> of 5 sessions</span></li>")
-        self.assertIn(bar("No USB", 1, 20), card)
+        self.assertIn(bar("No watch plugged in", 1, 20), card)
         self.assertIn(bar("Approved", 3, 60) + bar("Pending", 1, 20), card)  # ordered by count
+        self.assertIn(bar("Loaded", 4, 80) + bar("App update required", 1, 20), card)
+        self.assertIn(bar("Watch storage full", 1, 20), card)
         self.assertIn(bar("fenix 8", 1, 20), card)
-        for title in ("Not connected", "Authorization", "Waiting models"):
-            self.assertIn(f"<h3>{title}</h3><ul class='overview-funnel-bars' aria-label='{title}'>", card)
-        self.assertNotIn("Not in MTP mode", card)  # zero outcomes are not listed
+        titles = ("Connection problems", "Authorization", "Catalog", "Install blocked", "Waiting models")
+        for title in titles:
+            self.assertIn(f"<h3>{title}</h3>", card)
+            self.assertIn(f"<ul class='overview-funnel-bars' aria-label='{title}'>", card)
+        self.assertEqual([card.index(f"<h3>{title}</h3>") for title in titles],
+                         sorted(card.index(f"<h3>{title}</h3>") for title in titles))
+        self.assertIn("<h3>Connection problems</h3><p class='overview-funnel-note muted-value'>"
+                      "A session can hit several problems and still connect.</p>", card)
+        for hidden in ("Not in file-transfer mode", "Watch in use by another app", "Built-in copy",
+                       "Not allowed for this watch", "Watch not identified", "Update required<"):
+            self.assertNotIn(hidden, card)  # zero outcomes are not listed
         self.assertNotIn("<dl class='overview-funnel-breakdown'>", card)
+        # Owner 2026-10-07: beside App downloads a wide card shows the groups in
+        # two balanced columns (a group is never split); labels keep their width.
+        self.assertIn(".overview-funnel-panel{container:overview-funnel/inline-size}", ADMIN_STYLES)
+        self.assertIn("@media(min-width:901px){@container overview-funnel (min-width:620px){", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-breakdown{display:block;columns:2;column-gap:24px}", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-group{display:block;break-inside:avoid;padding-bottom:12px}", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-bars{grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);", ADMIN_STYLES)
+        # One column: one aligned label column for every group; the bar shrinks first.
+        self.assertIn(".overview-funnel-breakdown{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);", ADMIN_STYLES)
+        self.assertIn(".overview-funnel-bars li{display:grid;grid-template-columns:subgrid;grid-column:1/-1;", ADMIN_STYLES)
         # Owner 2026-10-07: the three First run tiles stay on one row at every
         # width with numbers on one baseline; other metric rows keep auto-fit.
         self.assertIn("<div class='admin-metric-row overview-funnel-metrics' role='group' aria-label='First run sessions'>", card)
@@ -178,6 +216,30 @@ class DashboardPresentationTests(unittest.TestCase):
     def test_first_run_card_states(self):
         self.assertIn("Could not load this section.", _funnel_card({"available": False}, "7d"))
         self.assertIn("No first-run sessions in this period.", _funnel_card(_funnel(), "7d"))
+
+    def test_never_connected_tile_is_the_session_count_not_the_sum_of_problems(self):
+        # Owner 2026-10-07: 12 sessions, 8 connected; problem rows overlap and
+        # their sum (19) exceeded the sessions. The tile is the API's distinct
+        # never-connected count; failure tone only above zero.
+        card = _funnel_card(_funnel(sessions=12, connected=8, never_connected=4, no_usb=9, not_mtp=6,
+                                    busy=4), "24h")
+        self.assertIn("<span class='admin-metric-label'>Never connected</span>"
+                      "<strong class='admin-metric-value'>4</strong>", card)
+        self.assertNotIn(">19<", card)
+        self.assertIn("<span class='overview-funnel-label'>No watch plugged in</span>", card)
+        self.assertIn("<span class='overview-funnel-label'>Not in file-transfer mode</span>", card)
+        self.assertIn("<span class='overview-funnel-label'>Watch in use by another app</span>", card)
+        self.assertLess(card.index("No watch plugged in"), card.index("Not in file-transfer mode"))
+        for title in ("Catalog", "Install blocked"):
+            group = card.split(f"<h3>{title}</h3>", 1)[1].split("</ul>", 1)[0]
+            self.assertIn("overview-funnel-none", group)  # empty groups show "—"
+        all_connected = _funnel_card(_funnel(sessions=3, connected=3, never_connected=0, remote=3,
+                                             blocked_authorization=1, local_capability=2), "24h")
+        self.assertIn("data-tone='neutral'><span class='admin-metric-label'>Never connected</span>"
+                      "<strong class='admin-metric-value'>0</strong>", all_connected)
+        self.assertNotIn("overview-funnel-note", all_connected)  # no problems, no note
+        self.assertIn("<span class='overview-funnel-label'>Watch not identified</span>", all_connected)
+        self.assertIn("<span class='overview-funnel-label'>Not allowed for this watch</span>", all_connected)
 
     def test_unavailable_map_snapshot_keeps_the_page_and_marks_sections(self):
         body = self.render(data={"available": False})
@@ -223,7 +285,8 @@ class CountingDatabase(FakeProviderDatabase):
         return super().admin_overview_map_snapshot(since, period=period, time_zone=time_zone)
 
     def app_funnel_summary(self, since, until=None, *, model_limit=10):
-        return {"sessionCount": 2, "stages": [{"stage": "DEVICE_CONNECT", "outcome": "CONNECTED", "sessionCount": 2}],
+        return {"sessionCount": 2, "neverConnectedSessionCount": 0,
+                "stages": [{"stage": "DEVICE_CONNECT", "outcome": "CONNECTED", "sessionCount": 2}],
                 "modelsNeedingReview": []}
 
     def missing_diagnostic_failures(self, *, limit=50, offset=0):

@@ -128,9 +128,11 @@ def build(root):
                              'update': {'succeeded': 12, 'failed': 1},
                              'unknown': {'succeeded': 6, 'failed': 0}},
     })
-    overview['funnel']={'sessionCount':42,'stages':[
-        {'stage':'DEVICE_CONNECT','outcomes':[{'outcome':'CONNECTED','sessionCount':38},{'outcome':'TIMEOUT_NO_USB','sessionCount':2},{'outcome':'NOT_MTP_MODE','sessionCount':1},{'outcome':'BUSY','sessionCount':1}]},
-        {'stage':'AUTHORIZATION','outcomes':[{'outcome':'APPROVED','sessionCount':30},{'outcome':'PENDING','sessionCount':5},{'outcome':'UNKNOWN_MODEL','sessionCount':2},{'outcome':'AMBIGUOUS','sessionCount':1}]}],
+    overview['funnel']={'sessionCount':42,'neverConnectedSessionCount':4,'stages':[
+        {'stage':'DEVICE_CONNECT','outcomes':[{'outcome':'CONNECTED','sessionCount':38},{'outcome':'TIMEOUT_NO_USB','sessionCount':5},{'outcome':'NOT_MTP_MODE','sessionCount':3},{'outcome':'BUSY','sessionCount':1},{'outcome':'DISCONNECTED','sessionCount':2}]},
+        {'stage':'AUTHORIZATION','outcomes':[{'outcome':'APPROVED','sessionCount':30},{'outcome':'PENDING','sessionCount':5},{'outcome':'UNKNOWN_MODEL','sessionCount':2},{'outcome':'AMBIGUOUS','sessionCount':1}]},
+        {'stage':'CATALOG','outcomes':[{'outcome':'REMOTE','sessionCount':36},{'outcome':'REMOTE_PARTIAL','sessionCount':3},{'outcome':'BUNDLED_FALLBACK','sessionCount':2},{'outcome':'UPDATE_REQUIRED','sessionCount':0}]},
+        {'stage':'INSTALL_BLOCKED','outcomes':[{'outcome':'AUTHORIZATION','sessionCount':5},{'outcome':'DEVICE_STORAGE','sessionCount':2},{'outcome':'LOCAL_CAPABILITY','sessionCount':1},{'outcome':'OTHER','sessionCount':0}]}],
         'modelsNeedingReview':[{'baseModel':'fenix 8','outcome':'PENDING','sessionCount':4},{'baseModel':'Forerunner 965','outcome':'UNKNOWN_MODEL','sessionCount':1}]}
     overview['supportReports']={'openCount':3}
     overview['mapsUnknown']={'modelCount':2}
