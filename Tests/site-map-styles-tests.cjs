@@ -46,10 +46,6 @@ function testHelpers() {
   assert.ok(Math.abs((north - south) * 111.32 - 16) < 0.01);
   assert.equal(data.defaultZoom(area), 13);
   assert.equal(data.defaultZoom({...area, kind: "city", zoom: [12, 17]}), 14);
-  assert.equal(data.zoomPercent(area, 13), 100);
-  assert.equal(data.zoomPercent(area, 15), 400);
-  assert.equal(data.zoomPercent(area, 12), 50);
-  assert.equal(data.zoomPercent(area, 15, 14), 200, "100% is the widest zoom that fills the map");
 
   assert.equal(data.plural("en", {one: "{n} map", other: "{n} maps"}, 1), "1 map");
   assert.equal(data.plural("pl", {one: "{n} mapa", few: "{n} mapy", many: "{n} map", other: "{n} mapy"}, 5), "5 map");
@@ -112,6 +108,15 @@ function testPages() {
     assert.ok(source.includes("/assets/vendor/leaflet-1.9.4/leaflet.js"), `${locale}: self-hosted Leaflet`);
     assert.ok(!/unpkg|cdnjs|jsdelivr|tile\.openstreetmap/.test(source), `${locale}: no third-party map hosts`);
 
+    // The overlays stay small: no captions or zoom percentage, collapsed place details and view menu.
+    assert.ok(!/map-styles-caption|map-styles-zoom-level/.test(source), `${locale}: no caption or zoom level over the map`);
+    assert.match(source, /id="map-styles-place-toggle" aria-expanded="false" aria-controls="map-styles-area-meta"/, `${locale}: place details expand`);
+    assert.match(source, /<p class="map-styles-place-meta" id="map-styles-area-meta" hidden>/, `${locale}: place details start collapsed`);
+    assert.match(source, /id="map-styles-view-toggle" aria-expanded="false" aria-controls="map-styles-view-menu"/, `${locale}: view modes sit in a menu`);
+    assert.match(source, /id="map-styles-view-menu"[^>]*hidden>/, `${locale}: view menu starts closed`);
+    assert.match(source, /class="map-styles-viewer"[^>]*data-mode="split"/, `${locale}: Side by side is the default view`);
+    assert.match(source, /data-mode="split" aria-pressed="true"/, `${locale}: Side by side is marked current`);
+
     const cards = homeCards(locale);
     assert.ok(cards.length >= 4, `${locale}: home provider cards found`);
     const about = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
@@ -144,6 +149,9 @@ function testController() {
   assert.match(controller, /getBoundsZoom\(boundsOf\(current\), true\)/);
   assert.match(controller, /map\.setMinZoom\(baseZoom\)/);
   assert.doesNotMatch(controller, /bounds\.pad\(/);
+  // Side by side is the default on every screen; a shared link still chooses its own view.
+  assert.match(controller, /mode: fromHash\.mode \|\| "split"/);
+  assert.doesNotMatch(controller, /max-width/, "narrow screens do not force another view");
 }
 
 testHelpers();

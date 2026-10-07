@@ -17,7 +17,6 @@
   const areaById = Object.fromEntries(areas.map((area) => [area.id, area]));
   const $ = (id) => document.getElementById(id);
   const stage = $("map-styles-stage");
-  const narrow = window.matchMedia("(max-width: 720px)");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[char]));
   const icon = (paths) => `<svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths}</svg>`;
@@ -38,13 +37,12 @@
     area: areaById[fromHash.area] ? fromHash.area : "dolomites-tre-cime",
     a: styleIds.includes(fromHash.style) ? fromHash.style : "opentopomap",
     b: styleIds.includes(fromHash.compare) ? fromHash.compare : "bbbike",
-    mode: fromHash.mode || "swipe",
+    mode: fromHash.mode || "split",
     tab: "places",
     query: "",
     split: 50,
   };
   if (state.b === state.a) state.b = styleIds.find((id) => id !== state.a);
-  if (narrow.matches && state.mode === "split") state.mode = "swipe";
 
   let manifest = null;
   let best = D.bestAreas(areas, null);
@@ -207,10 +205,6 @@
     $("map-styles-style-b").innerHTML = styleIds.map((id) => styleOption(id, state.b, state.a)).join("");
     pills.hidden = state.mode !== "single";
     $("map-styles-compare").hidden = state.mode === "single";
-    const style = styleById[state.a];
-    $("map-styles-caption").innerHTML = state.mode === "single"
-      ? `<b>${escapeHtml(style.name)}</b> · ${escapeHtml(style.summary)}`
-      : escapeHtml(state.mode === "split" ? copy.split_caption : copy.swipe_caption);
     $("map-styles-label-a").textContent = styleById[state.a].name;
     $("map-styles-label-b").textContent = styleById[state.b].name;
     renderNotices();
@@ -250,7 +244,6 @@
   function updateZoom() {
     const current = area();
     const zoom = mapA.getZoom();
-    $("map-styles-zoom-level").textContent = `${D.zoomPercent(current, zoom, baseZoom)}%`;
     $("map-styles-zoom-in").disabled = zoom >= current.zoom[1];
     $("map-styles-zoom-out").disabled = zoom <= baseZoom;
   }
@@ -262,6 +255,7 @@
     $("map-styles-knob").setAttribute("aria-valuenow", String(Math.round(state.split)));
     document.querySelectorAll(".map-styles-tools [data-mode]").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.mode === state.mode));
+      if (button.dataset.mode === state.mode) $("map-styles-view-current").innerHTML = button.innerHTML;
     });
     mapA.invalidateSize({pan: false});
     mapB.invalidateSize({pan: false});
@@ -420,13 +414,40 @@
     [state.a, state.b] = [state.b, state.a];
     refresh();
   });
+  // The view menu stays folded to one button so it covers little of the map.
+  const tools = $("map-styles-tools");
+  const viewToggle = $("map-styles-view-toggle");
+  function setViewMenu(open, focusBack) {
+    tools.dataset.open = String(open);
+    viewToggle.setAttribute("aria-expanded", String(open));
+    $("map-styles-view-menu").hidden = !open;
+    if (!open && focusBack) viewToggle.focus();
+  }
+  viewToggle.addEventListener("click", () => setViewMenu(viewToggle.getAttribute("aria-expanded") !== "true"));
+  tools.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && tools.dataset.open === "true") {
+      event.preventDefault();
+      setViewMenu(false, true);
+    }
+  });
+  document.addEventListener("click", (event) => {
+    if (tools.dataset.open === "true" && !tools.contains(event.target)) setViewMenu(false);
+  });
   document.querySelectorAll(".map-styles-tools [data-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       state.mode = button.dataset.mode;
       if (state.b === state.a) state.b = styleIds.find((id) => id !== state.a) || state.b;
       refresh();
+      setViewMenu(false, true);
       announce(copy.modes[state.mode]);
     });
+  });
+
+  const placeToggle = $("map-styles-place-toggle");
+  placeToggle.addEventListener("click", () => {
+    const open = placeToggle.getAttribute("aria-expanded") !== "true";
+    placeToggle.setAttribute("aria-expanded", String(open));
+    $("map-styles-area-meta").hidden = !open;
   });
   $("map-styles-zoom-in").addEventListener("click", () => mapA.zoomIn());
   $("map-styles-zoom-out").addEventListener("click", () => mapA.zoomOut());
@@ -471,6 +492,7 @@
     toastTimer = setTimeout(() => { node.hidden = true; }, 3200);
   }
   $("map-styles-copy-link").addEventListener("click", () => {
+    setViewMenu(false, true);
     const url = window.location.origin + window.location.pathname + D.serializeHash(state);
     const fallback = () => toast(`${escapeHtml(copy.copy_fallback)} <code>${escapeHtml(url)}</code>`);
     try {
@@ -485,12 +507,6 @@
     if (next.area && areaById[next.area] && next.area !== state.area) {
       state.area = next.area;
       refresh({frame: true});
-    }
-  });
-  narrow.addEventListener("change", () => {
-    if (narrow.matches && state.mode === "split") {
-      state.mode = "swipe";
-      refresh();
     }
   });
   if (window.ResizeObserver) new ResizeObserver(() => { mapA.invalidateSize({pan: false}); mapB.invalidateSize({pan: false}); updateClip(); }).observe(stage);

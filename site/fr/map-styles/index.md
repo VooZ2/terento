@@ -15,8 +15,6 @@ Lieu
 
 Style de la carte de gauche Style de la carte de droite
 
-100%
-
 À propos des cinq styles de carte
 
 ### Freizeitkarte

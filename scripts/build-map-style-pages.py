@@ -23,7 +23,7 @@ SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261006-map-styles-v5"
+SCRIPT_VERSION = "20261007-map-styles-v6"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
 STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail")
 
@@ -41,6 +41,7 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Search places",
         "search_placeholder": "Search a place or country",
         "change": "Change place",
+        "details": "Place details",
         "close": "Close place list",
         "count": {"place": {"one": "{n} place", "other": "{n} places"}, "route": {"one": "{n} trail", "other": "{n} trails"}, "city": {"one": "{n} city", "other": "{n} cities"}},
         "no_match": "No places match “{q}”. Try a country name, such as Italy or Nepal.",
@@ -58,8 +59,6 @@ COPY: dict[str, dict[str, object]] = {
         "left_style": "Left map style",
         "right_style": "Right map style",
         "swap": "Swap left and right styles",
-        "split_caption": "Both maps move together. Pick a style for each side.",
-        "swipe_caption": "Drag the divider to compare the two styles.",
         "not_covered": "{style} has no map for {place}",
         "not_covered_detail": "Pick another style to compare this place.",
         "pending": "The {style} preview for {place} is being prepared",
@@ -94,6 +93,7 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Orte suchen",
         "search_placeholder": "Ort oder Land suchen",
         "change": "Ort ändern",
+        "details": "Ortsdetails",
         "close": "Ortsliste schließen",
         "count": {"place": {"one": "{n} Ort", "other": "{n} Orte"}, "route": {"one": "{n} Weg", "other": "{n} Wege"}, "city": {"one": "{n} Stadt", "other": "{n} Städte"}},
         "no_match": "Keine Orte passen zu „{q}“. Versuche einen Ländernamen wie Italien oder Nepal.",
@@ -111,8 +111,6 @@ COPY: dict[str, dict[str, object]] = {
         "left_style": "Kartenstil links",
         "right_style": "Kartenstil rechts",
         "swap": "Stile links und rechts tauschen",
-        "split_caption": "Beide Karten bewegen sich gemeinsam. Wähle für jede Seite einen Stil.",
-        "swipe_caption": "Ziehe die Trennlinie, um beide Stile zu vergleichen.",
         "not_covered": "{style} hat keine Karte für {place}",
         "not_covered_detail": "Wähle einen anderen Stil, um diesen Ort zu vergleichen.",
         "pending": "Die {style}-Vorschau für {place} wird vorbereitet",
@@ -147,6 +145,7 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Rechercher des lieux",
         "search_placeholder": "Rechercher un lieu ou un pays",
         "change": "Changer de lieu",
+        "details": "Détails du lieu",
         "close": "Fermer la liste des lieux",
         "count": {"place": {"one": "{n} lieu", "other": "{n} lieux"}, "route": {"one": "{n} sentier", "other": "{n} sentiers"}, "city": {"one": "{n} ville", "other": "{n} villes"}},
         "no_match": "Aucun lieu ne correspond à « {q} ». Essayez un nom de pays, comme Italie ou Népal.",
@@ -164,8 +163,6 @@ COPY: dict[str, dict[str, object]] = {
         "left_style": "Style de la carte de gauche",
         "right_style": "Style de la carte de droite",
         "swap": "Inverser les styles gauche et droite",
-        "split_caption": "Les deux cartes se déplacent ensemble. Choisissez un style pour chaque côté.",
-        "swipe_caption": "Faites glisser le séparateur pour comparer les deux styles.",
         "not_covered": "{style} n’a pas de carte pour {place}",
         "not_covered_detail": "Choisissez un autre style pour comparer ce lieu.",
         "pending": "L’aperçu {style} pour {place} est en préparation",
@@ -200,6 +197,7 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Szukaj miejsc",
         "search_placeholder": "Szukaj miejsca lub kraju",
         "change": "Zmień miejsce",
+        "details": "Szczegóły miejsca",
         "close": "Zamknij listę miejsc",
         "count": {"place": {"one": "{n} miejsce", "few": "{n} miejsca", "many": "{n} miejsc", "other": "{n} miejsca"}, "route": {"one": "{n} szlak", "few": "{n} szlaki", "many": "{n} szlaków", "other": "{n} szlaku"}, "city": {"one": "{n} miasto", "few": "{n} miasta", "many": "{n} miast", "other": "{n} miasta"}},
         "no_match": "Brak miejsc pasujących do „{q}”. Spróbuj nazwy kraju, np. Włochy lub Nepal.",
@@ -217,8 +215,6 @@ COPY: dict[str, dict[str, object]] = {
         "left_style": "Styl lewej mapy",
         "right_style": "Styl prawej mapy",
         "swap": "Zamień style lewej i prawej mapy",
-        "split_caption": "Obie mapy przesuwają się razem. Wybierz styl dla każdej strony.",
-        "swipe_caption": "Przeciągnij separator, aby porównać oba style.",
         "not_covered": "{style} nie ma mapy dla miejsca {place}",
         "not_covered_detail": "Wybierz inny styl, aby porównać to miejsce.",
         "pending": "Podgląd {style} dla miejsca {place} jest w przygotowaniu",
@@ -253,6 +249,7 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Hledat místa",
         "search_placeholder": "Hledat místo nebo zemi",
         "change": "Změnit místo",
+        "details": "Podrobnosti o místě",
         "close": "Zavřít seznam míst",
         "count": {"place": {"one": "{n} místo", "few": "{n} místa", "many": "{n} místa", "other": "{n} míst"}, "route": {"one": "{n} stezka", "few": "{n} stezky", "many": "{n} stezky", "other": "{n} stezek"}, "city": {"one": "{n} město", "few": "{n} města", "many": "{n} města", "other": "{n} měst"}},
         "no_match": "Hledání „{q}“ neodpovídá žádné místo. Zkuste název země, například Itálie nebo Nepál.",
@@ -270,8 +267,6 @@ COPY: dict[str, dict[str, object]] = {
         "left_style": "Styl levé mapy",
         "right_style": "Styl pravé mapy",
         "swap": "Prohodit styly vlevo a vpravo",
-        "split_caption": "Obě mapy se pohybují společně. Vyberte styl pro každou stranu.",
-        "swipe_caption": "Přetáhněte dělicí čáru a porovnejte oba styly.",
         "not_covered": "{style} nemá mapu pro {place}",
         "not_covered_detail": "Vyberte jiný styl a porovnejte toto místo.",
         "pending": "Náhled {style} pro {place} se připravuje",
@@ -306,6 +301,7 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Cerca luoghi",
         "search_placeholder": "Cerca un luogo o un paese",
         "change": "Cambia luogo",
+        "details": "Dettagli del luogo",
         "close": "Chiudi l’elenco dei luoghi",
         "count": {"place": {"one": "{n} luogo", "other": "{n} luoghi"}, "route": {"one": "{n} sentiero", "other": "{n} sentieri"}, "city": {"one": "{n} città", "other": "{n} città"}},
         "no_match": "Nessun luogo corrisponde a “{q}”. Prova con il nome di un paese, come Italia o Nepal.",
@@ -323,8 +319,6 @@ COPY: dict[str, dict[str, object]] = {
         "left_style": "Stile della mappa a sinistra",
         "right_style": "Stile della mappa a destra",
         "swap": "Scambia gli stili di sinistra e destra",
-        "split_caption": "Le due mappe si muovono insieme. Scegli uno stile per ogni lato.",
-        "swipe_caption": "Trascina il divisore per confrontare i due stili.",
         "not_covered": "{style} non ha una mappa per {place}",
         "not_covered_detail": "Scegli un altro stile per confrontare questo luogo.",
         "pending": "L’anteprima {style} per {place} è in preparazione",
@@ -448,7 +442,7 @@ def render(locale: str) -> str:
         for key, label in copy["tabs"].items()
     )
     modes = "".join(
-        f'<button type="button" class="map-styles-mode" data-mode="{key}" aria-pressed="{"true" if key == "swipe" else "false"}" aria-label="{esc(label)}">{icon(key)}<span class="map-styles-mode-text">{esc(label)}</span></button>'
+        f'<button type="button" class="map-styles-mode" data-mode="{key}" aria-pressed="{"true" if key == "split" else "false"}" aria-label="{esc(label)}">{icon(key)}<span class="map-styles-mode-text">{esc(label)}</span></button>'
         for key, label in copy["modes"].items()
     )
     return f'''<!doctype html>
@@ -486,8 +480,8 @@ def render(locale: str) -> str:
       </section>
 
       <section class="map-styles-frame" aria-label="{esc(copy["region"])}">
-        <div class="map-styles-viewer" id="map-styles" data-mode="swipe">
-          <div class="map-styles-stage" id="map-styles-stage" data-mode="swipe">
+        <div class="map-styles-viewer" id="map-styles" data-mode="split">
+          <div class="map-styles-stage" id="map-styles-stage" data-mode="split">
             <div class="map-styles-pane map-styles-pane-a"><div class="map-styles-map" id="map-styles-map-a" role="application" aria-roledescription="map" aria-label="{esc(copy["map_label"])}"></div><span class="map-styles-pane-label" id="map-styles-label-a"></span><div class="map-styles-notice" id="map-styles-notice-a" hidden></div></div>
             <div class="map-styles-pane map-styles-pane-b"><div class="map-styles-map" id="map-styles-map-b" role="application" aria-roledescription="map" aria-label="{esc(copy["map_label"])}"></div><span class="map-styles-pane-label" id="map-styles-label-b"></span><div class="map-styles-notice" id="map-styles-notice-b" hidden></div></div>
             <div class="map-styles-divider" id="map-styles-divider"><div class="map-styles-knob" id="map-styles-knob" role="slider" tabindex="0" aria-label="{esc(copy["divider"])}" aria-valuemin="5" aria-valuemax="95" aria-valuenow="50">{icon("swipe")}</div></div>
@@ -495,10 +489,15 @@ def render(locale: str) -> str:
 
           <div class="map-styles-overlay map-styles-place" id="map-styles-place" data-open="false">
             <div class="map-styles-place-card" id="map-styles-place-card">
-              <p class="map-styles-overlay-eyebrow" id="map-styles-place-kind">{esc(copy["kind"][default["kind"]])}</p>
-              <h2 id="map-styles-area-title">{esc(area_name(default, locale))}</h2>
-              <p class="map-styles-place-meta" id="map-styles-area-meta"></p>
-              <button type="button" class="map-styles-change" id="map-styles-open-places" aria-expanded="false" aria-controls="map-styles-browser">{icon("search")}<span>{esc(copy["change"])}</span></button>
+              <div class="map-styles-place-head">
+                <div class="map-styles-place-title">
+                  <p class="map-styles-overlay-eyebrow" id="map-styles-place-kind">{esc(copy["kind"][default["kind"]])}</p>
+                  <h2 id="map-styles-area-title">{esc(area_name(default, locale))}</h2>
+                </div>
+                <button type="button" class="map-styles-place-button" id="map-styles-open-places" aria-expanded="false" aria-controls="map-styles-browser" aria-label="{esc(copy["change"])}" title="{esc(copy["change"])}">{icon("search")}</button>
+                <button type="button" class="map-styles-place-button map-styles-place-more" id="map-styles-place-toggle" aria-expanded="false" aria-controls="map-styles-area-meta" aria-label="{esc(copy["details"])}" title="{esc(copy["details"])}">{icon("chevron")}</button>
+              </div>
+              <p class="map-styles-place-meta" id="map-styles-area-meta" hidden></p>
             </div>
             <div class="map-styles-browser" id="map-styles-browser" hidden>
               <div class="map-styles-browser-head">
@@ -516,10 +515,13 @@ def render(locale: str) -> str:
             </div>
           </div>
 
-          <div class="map-styles-overlay map-styles-tools" role="group" aria-label="{esc(copy["view"])}">
-            {modes}
-            <span class="map-styles-tools-separator" aria-hidden="true"></span>
-            <button type="button" class="map-styles-mode" id="map-styles-copy-link" aria-label="{esc(copy["copy_link"])}" title="{esc(copy["copy_link"])}">{icon("link")}</button>
+          <div class="map-styles-overlay map-styles-tools" id="map-styles-tools" data-open="false">
+            <button type="button" class="map-styles-mode map-styles-view-toggle" id="map-styles-view-toggle" aria-expanded="false" aria-controls="map-styles-view-menu" aria-label="{esc(copy["view"])}"><span class="map-styles-view-current" id="map-styles-view-current">{icon("split")}<span class="map-styles-mode-text">{esc(copy["modes"]["split"])}</span></span>{icon("chevron")}</button>
+            <div class="map-styles-view-menu" id="map-styles-view-menu" role="group" aria-label="{esc(copy["view"])}" hidden>
+              {modes}
+              <span class="map-styles-tools-separator" aria-hidden="true"></span>
+              <button type="button" class="map-styles-mode" id="map-styles-copy-link">{icon("link")}<span class="map-styles-mode-text">{esc(copy["copy_link"])}</span></button>
+            </div>
           </div>
 
           <div class="map-styles-overlay map-styles-dock" id="map-styles-dock">
@@ -533,12 +535,10 @@ def render(locale: str) -> str:
               <select id="map-styles-style-b"></select>
               <span class="map-styles-side" aria-hidden="true">{esc(copy["right"])}</span>
             </div>
-            <p class="map-styles-caption" id="map-styles-caption"></p>
           </div>
 
           <div class="map-styles-zoom" role="group" aria-label="{esc(copy["zoom"])}">
             <button type="button" id="map-styles-zoom-in" aria-label="{esc(copy["zoom_in"])}">{icon("plus")}</button>
-            <span class="map-styles-zoom-level" id="map-styles-zoom-level">100%</span>
             <button type="button" id="map-styles-zoom-out" aria-label="{esc(copy["zoom_out"])}">{icon("minus")}</button>
           </div>
           <p class="map-styles-attribution" id="map-styles-attribution"></p>
