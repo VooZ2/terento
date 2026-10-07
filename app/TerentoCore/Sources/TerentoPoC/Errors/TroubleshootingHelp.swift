@@ -139,16 +139,21 @@ enum TroubleshootingHelp {
         }
     }
 
-    /// Connect shows a Help link only for a connection error: a live
-    /// attention state or a final failure, for the cause on screen. Waiting
-    /// and connecting, including the "Still not showing up?" steps, have none.
-    static func connectionErrorTopic(state: DeviceConnectionState,
-                                     phase: DeviceDetectionPhase,
-                                     failure: ConnectFailureMessage?) -> TroubleshootingTopic? {
+    /// Connect links the guide only inside a help box about a problem: a live
+    /// attention state, a final failure, or the "Still not showing up?"
+    /// steps after a whole connection window with nothing on USB. Plain
+    /// waiting and connecting have no link.
+    static func connectHelpTopic(state: DeviceConnectionState,
+                                 phase: DeviceDetectionPhase,
+                                 failure: ConnectIssueMessage?,
+                                 waitedWithoutUSB: Bool) -> TroubleshootingTopic? {
         switch state {
         case .detecting:
-            guard case let .needsAttention(outcome) = phase else { return nil }
-            return topic(for: outcome)
+            switch phase {
+            case .needsAttention(let outcome): return topic(for: outcome)
+            case .waitingForWatch: return waitedWithoutUSB ? .connectionNoUSB : nil
+            case .connecting: return nil
+            }
         case .failed:
             return failure.flatMap { topic(for: $0.outcome) }
         case .disconnected, .connected, .ready, .ejecting, .safeToDisconnect:

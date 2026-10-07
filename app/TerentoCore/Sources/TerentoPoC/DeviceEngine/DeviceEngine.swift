@@ -11,7 +11,7 @@ final class DeviceEngine: ObservableObject {
     @Published private(set) var userErrorMessage: String?
     /// The cause-specific Connect message behind `userErrorMessage` after a
     /// detection episode ends without a connection. Presentation only.
-    @Published private(set) var connectFailure: ConnectFailureMessage?
+    @Published private(set) var connectFailure: ConnectIssueMessage?
     @Published private(set) var readingMessage = "Connect your Garmin watch to this Mac."
     @Published private(set) var readingAttempt = 0
     @Published private(set) var logLines: [String] = ["Ready for a read-only device check."]

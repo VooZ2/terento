@@ -94,21 +94,35 @@ enum MTPConnectionConflictDiagnostics {
     }
 }
 
-/// What the Connect page shows after a detection episode ends without a
-/// connection: the cause as the title, one sentence of reason, then numbered
-/// steps. The last step says how to retry, because detection resumes only
-/// after the watch is reconnected or Try again is clicked. Titles stay short
-/// enough for one line of the 42 pt heading at the minimum window width.
-struct ConnectFailureMessage: Equatable, Sendable {
+/// One line in a Connect help box: an SF Symbol already used on the Connect
+/// page and a short instruction.
+struct ConnectStep: Equatable, Sendable {
+    let systemImage: String
+    let text: String
+}
+
+/// A connection problem on the Connect page, in the calm "Still not showing
+/// up?" style: the cause as the title (one heading line at the minimum window
+/// width), one short sentence saying what is wrong, then a light box that
+/// leads with what Terento found, lists the steps with icons, links the guide
+/// and ends with what Terento does meanwhile. A final failure's last step and
+/// note say how to retry, because detection resumes only after the watch is
+/// reconnected or Try again is clicked.
+struct ConnectIssueMessage: Equatable, Sendable {
     /// The outcome the message explains; it selects the guide section.
     let outcome: DeviceConnectOutcome
     let title: String
+    /// One short sentence: what is wrong.
     let reason: String
-    let steps: [String]
+    /// What Terento found; the box's first line.
+    let finding: String
+    let steps: [ConnectStep]
+    /// What Terento does meanwhile, or what makes it check again.
+    let note: String
 
-    /// The reason followed by the numbered steps, as one plain text.
+    /// The message as plain text: reason, finding, numbered steps and note.
     var text: String {
-        ([reason] + steps.enumerated().map { "\($0.offset + 1). \($0.element)" })
+        ([reason, finding] + steps.enumerated().map { "\($0.offset + 1). \($0.element.text)" } + [note])
             .joined(separator: "\n")
     }
 }
@@ -123,78 +137,84 @@ enum UserFacingErrorMessage {
         detectionFailure(outcome, garminUSBPresent: garminUSBPresent, detectedConflicts: detectedConflicts).text
     }
 
-    /// Cause-specific title, reason and steps for a final detection failure.
-    /// Only BUSY and a timeout with the watch on USB name a detected app.
+    /// The cause-specific message for a final detection failure. Only BUSY
+    /// and a timeout with the watch on USB name a detected app.
     static func detectionFailure(
         _ outcome: DeviceConnectOutcome,
         garminUSBPresent: Bool,
         detectedConflicts: [String] = MTPConnectionConflictDiagnostics.runningApplicationNames()
-    ) -> ConnectFailureMessage {
+    ) -> ConnectIssueMessage {
         switch outcome {
         case .busy:
-            return ConnectFailureMessage(
+            return ConnectIssueMessage(
                 outcome: .busy,
                 title: "Your watch may be in use",
-                reason: "Terento couldn't open the connection to your watch, and only one app at a time can use it.",
+                reason: "Another app may be using your watch.",
+                finding: busyFinding(detectedConflicts),
                 steps: [
-                    detectedConflicts.isEmpty
-                        ? "Quit Garmin Express and other apps that connect to your watch."
-                        : "Quit \(joinedNames(detectedConflicts)).",
+                    ConnectStep(systemImage: "xmark.app", text: detectedConflicts.isEmpty
+                        ? "Quit Garmin Express and other apps that connect to your watch"
+                        : "Quit \(joinedNames(detectedConflicts))"),
                     reconnectStep
-                ]
+                ],
+                note: retryNote
             )
         case .multipleDevices:
-            return ConnectFailureMessage(
+            return ConnectIssueMessage(
                 outcome: .multipleDevices,
                 title: "More than one Garmin",
                 reason: "Terento works with one Garmin at a time.",
+                finding: "More than one Garmin is plugged in",
                 steps: [
-                    "Unplug every other Garmin device, such as other watches, bike computers or handheld devices.",
+                    ConnectStep(systemImage: "cable.connector", text: "Unplug every other Garmin device"),
                     reconnectStep
-                ]
+                ],
+                note: retryNote
             )
         case .notMTPMode:
-            return ConnectFailureMessage(
+            return ConnectIssueMessage(
                 outcome: .notMTPMode,
                 title: "Not ready for file transfer",
-                reason: "Your Garmin is connected, but it didn't switch to file transfer within 2 minutes.",
-                steps: [
-                    "Unlock the watch.",
-                    usbModeStep,
-                    reconnectStep
-                ]
+                reason: "Your watch didn't switch to file transfer within 2 minutes.",
+                finding: notOfferingFileTransfer,
+                steps: [unlockStep, usbModeStep, reconnectStep],
+                note: retryNote
             )
         case .failed:
-            return ConnectFailureMessage(
+            return ConnectIssueMessage(
                 outcome: .failed,
                 title: "Your watch stopped responding",
                 reason: "The watch stopped answering while Terento was checking it.",
+                finding: "Your watch didn't answer for about 90 seconds",
                 steps: [
-                    "Unplug the watch and wait 5 seconds.",
-                    "If this keeps happening, restart the watch.",
+                    ConnectStep(systemImage: "cable.connector", text: "Unplug the watch and wait 5 seconds"),
+                    restartStep,
                     connectAgainStep
-                ]
+                ],
+                note: retryNote
             )
         case .disconnected:
-            return ConnectFailureMessage(
+            return ConnectIssueMessage(
                 outcome: .disconnected,
                 title: "Your watch was disconnected",
-                reason: "The connection to your watch ended before it was ready.",
-                steps: [
-                    "Check that the cable is firmly plugged in at both ends.",
-                    connectAgainStep
-                ]
+                reason: "The connection ended before your watch was ready.",
+                finding: "Your Garmin is no longer plugged in",
+                steps: [cableStep, connectAgainStep],
+                note: retryNote
             )
         case .timeoutNoUSB:
-            return ConnectFailureMessage(
+            return ConnectIssueMessage(
                 outcome: .timeoutNoUSB,
                 title: "Your watch isn't showing up",
                 reason: "Terento can't find your Garmin on this Mac.",
+                finding: "No Garmin is plugged in to this Mac",
                 steps: [
-                    "Use a USB data cable, not a charge-only cable.",
-                    "Plug it directly into the Mac, not into a USB hub, and unlock the watch.",
+                    ConnectStep(systemImage: "cable.connector", text: "Use a USB data cable, not a charge-only cable"),
+                    ConnectStep(systemImage: "desktopcomputer", text: "Plug it directly into the Mac, not into a USB hub"),
+                    unlockStep,
                     connectAgainStep
-                ]
+                ],
+                note: retryNote
             )
         case .timeoutUSBPresent, .connected:
             return connectionTimeout(garminUSBPresent: garminUSBPresent, detectedConflicts: detectedConflicts)
@@ -204,34 +224,74 @@ enum UserFacingErrorMessage {
     /// Shown when a bounded device read reaches its deadline.
     static let stoppedResponding = "The watch stopped responding. Unplug it, wait 5 seconds, plug it back in."
 
-    /// The watch's USB Mode setting, worded like the guide's #usb-mode section.
-    /// "MTP" appears only as the value to choose.
-    static let usbModeStep = "On the watch, open USB Mode, usually under Settings › System, and choose MTP. Not every model has this setting; if yours doesn't, skip this step."
+    /// The watch's USB Mode setting, hedged like the guide's #usb-mode section
+    /// (usually under Settings › System; not every model has it). "MTP"
+    /// appears only as the value to choose.
+    static let usbModeStep = ConnectStep(
+        systemImage: "gearshape",
+        text: "If your watch has USB Mode (usually under Settings › System), choose MTP"
+    )
 
-    private static let retryNote = "Terento doesn't check again until you do."
-    private static let reconnectStep = "Then unplug the watch and connect it again, or click Try again. \(retryNote)"
-    private static let connectAgainStep = "Then connect the watch again, or click Try again. \(retryNote)"
+    /// After a final failure, detection resumes only on a replug or Try again.
+    static let retryNote = "Terento checks again only after you reconnect or click Try again."
 
-    /// Live title and description while detection keeps polling. Only BUSY
-    /// reads the running applications, and only when it is shown.
+    private static let notOfferingFileTransfer = "Your Garmin is plugged in but isn't offering file transfer"
+    private static let unlockStep = ConnectStep(systemImage: "lock.open", text: "Unlock the watch")
+    private static let restartStep = ConnectStep(systemImage: "arrow.clockwise", text: "If it keeps happening, restart the watch")
+    private static let cableStep = ConnectStep(systemImage: "cable.connector",
+                                               text: "Check that the cable is firmly plugged in at both ends")
+    private static let otherPortStep = ConnectStep(systemImage: "cable.connector",
+                                                   text: "Try another USB port or cable, plugged directly into the Mac")
+    private static let reconnectStep = ConnectStep(systemImage: "arrow.triangle.2.circlepath",
+                                                   text: "Unplug the watch and connect it again, or click Try again")
+    private static let replugAfterWaitStep = ConnectStep(systemImage: "arrow.triangle.2.circlepath",
+                                                         text: "Unplug for 5 seconds, then reconnect or click Try again")
+    private static let connectAgainStep = ConnectStep(systemImage: "arrow.triangle.2.circlepath",
+                                                      text: "Connect the watch again, or click Try again")
+
+    private static func busyFinding(_ conflicts: [String]) -> String {
+        conflicts.isEmpty
+            ? "Only one app at a time can use the watch"
+            : "\(joinedNames(conflicts)) \(conflicts.count == 1 ? "is" : "are") open"
+    }
+
+    /// The live message while detection keeps polling. Only BUSY reads the
+    /// running applications, and only when it is shown.
     static func detectionAttention(
         _ outcome: DeviceConnectOutcome,
         detectedConflicts: @autoclosure () -> [String] = MTPConnectionConflictDiagnostics.runningApplicationNames()
-    ) -> (title: String, description: String)? {
+    ) -> ConnectIssueMessage? {
         switch outcome {
         case .multipleDevices:
-            return ("More than one Garmin connected",
-                    "Unplug the other Garmin devices. Terento continues as soon as only your watch is connected.")
+            return ConnectIssueMessage(
+                outcome: .multipleDevices,
+                title: "More than one Garmin found",
+                reason: "Terento works with one Garmin at a time.",
+                finding: "More than one Garmin is plugged in",
+                steps: [ConnectStep(systemImage: "cable.connector", text: "Unplug the other Garmin devices")],
+                note: "Terento continues as soon as only your watch is connected."
+            )
         case .busy:
             let conflicts = detectedConflicts()
-            let quit = conflicts.isEmpty
-                ? "Quit Garmin Express and similar apps."
-                : "Quit \(joinedNames(conflicts))."
-            return ("Your Garmin is busy",
-                    "Another app may be using your watch. \(quit) Terento connects automatically when the watch is free.")
+            return ConnectIssueMessage(
+                outcome: .busy,
+                title: "Your Garmin is busy",
+                reason: "Another app may be using your watch.",
+                finding: busyFinding(conflicts),
+                steps: [ConnectStep(systemImage: "xmark.app", text: conflicts.isEmpty
+                    ? "Quit Garmin Express and similar apps"
+                    : "Quit \(joinedNames(conflicts))")],
+                note: "Terento connects automatically when the watch is free."
+            )
         case .notMTPMode:
-            return ("Your Garmin isn't ready yet",
-                    "Unlock the watch. If your model has USB Mode, usually under Settings › System, choose MTP. Terento keeps checking.")
+            return ConnectIssueMessage(
+                outcome: .notMTPMode,
+                title: "Your Garmin isn't ready yet",
+                reason: "Your watch hasn't switched to file transfer yet.",
+                finding: notOfferingFileTransfer,
+                steps: [unlockStep, usbModeStep],
+                note: "Terento keeps checking while you try these."
+            )
         case .connected, .timeoutNoUSB, .timeoutUSBPresent, .disconnected, .failed:
             return nil
         }
@@ -250,37 +310,30 @@ enum UserFacingErrorMessage {
     static func connectionTimeout(
         garminUSBPresent: Bool,
         detectedConflicts: [String] = MTPConnectionConflictDiagnostics.runningApplicationNames()
-    ) -> ConnectFailureMessage {
+    ) -> ConnectIssueMessage {
         guard garminUSBPresent else {
-            return ConnectFailureMessage(
+            return ConnectIssueMessage(
                 outcome: .timeoutUSBPresent,
                 title: "Your watch lost connection",
-                reason: "Terento found your Garmin, but the connection dropped before it became ready.",
-                steps: [
-                    "Check that the cable is firmly plugged in at both ends.",
-                    "Try another USB port or cable, plugged directly into the Mac.",
-                    connectAgainStep
-                ]
+                reason: "The connection dropped before your watch was ready.",
+                finding: "Your Garmin was found, then disconnected",
+                steps: [cableStep, otherPortStep, connectAgainStep],
+                note: retryNote
             )
         }
-        let replug = "Then unplug the watch, wait 5 seconds and connect it again, or click Try again. \(retryNote)"
-        let steps = detectedConflicts.isEmpty
-            ? [
-                "Unlock the watch.",
-                "Try another USB port or cable, plugged directly into the Mac.",
-                "If this keeps happening, restart the watch.",
-                replug
-            ]
-            : [
-                "Quit \(joinedNames(detectedConflicts)), which may be using the watch.",
-                "Unlock the watch.",
-                replug
-            ]
-        return ConnectFailureMessage(
+        let named = !detectedConflicts.isEmpty
+        return ConnectIssueMessage(
             outcome: .timeoutUSBPresent,
             title: "Your watch didn't get ready",
-            reason: "Terento found your Garmin, but it didn't become ready within 2 minutes.",
-            steps: steps
+            reason: "The connection didn't become ready within 2 minutes.",
+            finding: named
+                ? "\(joinedNames(detectedConflicts)) \(detectedConflicts.count == 1 ? "is" : "are") open and may be using the watch"
+                : "Your Garmin is plugged in to this Mac",
+            steps: named
+                ? [ConnectStep(systemImage: "xmark.app", text: "Quit \(joinedNames(detectedConflicts))"),
+                   unlockStep, replugAfterWaitStep]
+                : [unlockStep, otherPortStep, restartStep, replugAfterWaitStep],
+            note: retryNote
         )
     }
 

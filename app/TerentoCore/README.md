@@ -46,29 +46,32 @@ the watch restarts discovery. `DeviceConnectOutcome` exposes each episode
 outcome for the first-run funnel; `DeviceEngine` itself sends no telemetry.
 
 The Connect page says why the watch is not connected and what to do
-(`Errors/UserFacingErrorMessage.swift`). While a Garmin is on USB it says that
-Terento keeps checking and will say what to do if the watch doesn't get ready.
-Once a whole 2-minute window has passed with nothing on USB (the `timeoutNoUSB`
-signal), the waiting page replaces its checklist with "Still not showing up?"
-steps (data cable, directly into the Mac rather than a USB hub, another port,
-unlock, restart, quit Garmin Express) while discovery keeps polling. A final
-failure is titled by its cause, in one heading line at the minimum window
-width: "Your watch didn't get ready", "Your watch lost connection" (the watch
-left USB just before the window ended), "Your watch may be in use", "Not ready
-for file transfer" or "Your watch stopped responding". It gives one
-sentence of reason and numbered steps; the last step says to reconnect the
-watch or click Try again and that Terento doesn't check again until then. A
-Help link to the cause's troubleshooting section follows (also on the live
-attention states), then the collapsed "Having trouble connecting?" list. USB Mode is named as in
-the guide ("open USB Mode, usually under Settings › System, and choose MTP";
-not every model has it). A busy watch, and a timeout with the watch on USB,
-name the apps found by the read-only running-application scan (Garmin Express,
-OpenMTP, MacDroid, Android File Transfer, Image Capture); a busy watch with
-none found keeps the Garmin Express wording. The messages do not change
-detection: the policy and its timing, the error classification, the replug
-watch and the funnel outcomes are independent of them, and intermittent
-USB/MTP stalls remain a known limit. The sidebar status shows an icon with its
-text and colour, including "Needs attention".
+(`Errors/UserFacingErrorMessage.swift`). Every problem follows the calm pattern
+of the waiting page: an outline status icon, a title of one heading line, one
+short sentence saying what is wrong, then one light box. The box leads with
+what Terento found (for example "Android File Transfer is open"), lists the
+steps as icon bullets, links the cause's section of the troubleshooting guide
+and ends with a note on what Terento does meanwhile. While a Garmin is on USB
+the connecting state says it may take up to 2 minutes and that Terento will say
+if something is wrong. The live attention states (busy, more than one Garmin,
+not yet ready for file transfer) use the box while discovery keeps polling.
+Once a whole 2-minute window has passed with nothing on USB (the
+`timeoutNoUSB` signal), the waiting page's checklist becomes the "Still not
+showing up?" box (data cable, directly into the Mac rather than a USB hub,
+another port, unlock, restart, quit Garmin Express). A final failure is titled
+by its cause ("Your watch didn't get ready", "Your watch lost connection" when
+the watch left USB just before the window ended, "Your watch may be in use",
+"Not ready for file transfer" or "Your watch stopped responding"); its last
+step is to reconnect the watch or click Try again, and its note says Terento
+checks again only then. USB Mode is named as in the guide ("If your watch has
+USB Mode (usually under Settings › System), choose MTP"). A busy watch, and a
+timeout with the watch on USB, name the apps found by the read-only
+running-application scan (Garmin Express, OpenMTP, MacDroid, Android File
+Transfer, Image Capture); a busy watch with none found keeps the Garmin Express
+wording. The messages do not change detection: the policy and its timing, the
+error classification, the replug watch and the funnel outcomes are independent
+of them, and intermittent USB/MTP stalls remain a known limit. The sidebar
+status shows an icon with its text and colour, including "Needs attention".
 
 While maps are downloaded and checked on the Mac, or the no-write preflight
 runs, the install page offers Cancel; it uses the existing task cancellation
@@ -394,11 +397,11 @@ a download start without a received outcome is not proof of a failed download.
   `utm_content=<anchor>` (Help → Troubleshooting uses `help_menu`), followed by
   the `#<anchor>` fragment; no model, version or id is added. To keep the
   interface uncluttered, a "Help" text link (never a primary button) appears
-  only for errors: inside error dialogs (currently the installation failure
-  dialog), in the Diagnostics window's send-report help, and on the Connect
-  page for a connection error (a live attention state or a final failure,
-  linked to that cause's section by `TroubleshootingHelp.connectionErrorTopic`).
-  Waiting and connecting (including the "Still not showing up?" steps), the
+  only for problems: inside error dialogs (currently the installation failure
+  dialog), in the Diagnostics window's send-report help, and inside the Connect
+  page's help box (a live attention state, a final failure or the "Still not
+  showing up?" steps, linked to that cause's section by
+  `TroubleshootingHelp.connectHelpTopic`). Plain waiting and connecting, the
   Device verdict, catalog notices, the review step, Manage maps rows, the
   scan-failure card and the support report sheet show no Help link;
   Help → Troubleshooting stays available from the menu.

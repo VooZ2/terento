@@ -212,7 +212,7 @@ struct DeviceDetectionEngineTests {
         engine.readDevice()
         check(await waitUntil(3) { engine.state == .failed }, "a bounded read deadline ends detection")
         check(engine.connectFailure?.title == "Your watch stopped responding"
-                && engine.connectFailure?.steps.first == "Unplug the watch and wait 5 seconds."
+                && engine.connectFailure?.steps.first?.text == "Unplug the watch and wait 5 seconds"
                 && engine.userErrorMessage == engine.connectFailure?.text,
               "a stalled watch shows the unplug-and-replug recovery message")
         check(outcomes.values == [.failed], "a stalled read reports failed")

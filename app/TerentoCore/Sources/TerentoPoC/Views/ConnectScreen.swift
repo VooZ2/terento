@@ -33,7 +33,6 @@ struct ConnectScreen: View {
     @ObservedObject var appUpdateController: AppUpdateController
     @State private var selectedSection: TerentoSection = .device
     @State private var localInstallStep: LocalInstallStep = .choose
-    @State private var troubleshootingExpanded = false
     @State private var selectedMapIDs: Set<String> = []
     @State private var selectedOptionalArtifactIDs: [String: Set<String>] = [:]
     @State private var selectedInstallationPlan: InstallationPlan?
@@ -659,19 +658,16 @@ struct ConnectScreen: View {
                     connectionStatusView
                         .padding(.top, 14)
 
-                    if let failure = shownConnectFailure {
-                        connectFailureSteps(failure.steps)
-                            .padding(.top, 12)
-                            .frame(maxWidth: 480, alignment: .center)
-                    }
-
-                    if let topic = connectionErrorHelpTopic {
-                        TerentoHelpLink(topic: topic)
-                            .padding(.top, 10)
-                    }
-
-                    if showsNoUSBHelp {
-                        noUSBHelp
+                    if let issue = shownConnectIssue {
+                        connectHelpBox(heading: issue.finding, steps: issue.steps, note: issue.note)
+                            .padding(.top, 14)
+                            .frame(maxWidth: 460, alignment: .center)
+                    } else if showsNoUSBHelp {
+                        connectHelpBox(
+                            heading: "Still not showing up?",
+                            steps: Self.noUSBHelpSteps,
+                            note: "Terento keeps looking while you try these."
+                        )
                             .padding(.top, 14)
                             .frame(maxWidth: 460, alignment: .center)
                     } else if showsConnectChecklist {
@@ -686,36 +682,6 @@ struct ConnectScreen: View {
                             action: startReadOnlyCheck
                         )
                             .padding(.top, 14)
-                    }
-
-                    if shouldShowTroubleshooting {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Button {
-                                troubleshootingExpanded.toggle()
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: troubleshootingExpanded ? "chevron.down" : "chevron.right")
-                                        .font(.system(size: 11, weight: .semibold))
-
-                                    Text("Having trouble connecting?")
-                                        .font(.terentoUI(size: 13, weight: .medium))
-                                }
-                                .foregroundStyle(TerentoColors.secondaryText)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Having trouble connecting?")
-                            .accessibilityValue(troubleshootingExpanded ? "Expanded" : "Collapsed")
-                            .accessibilityHint("Shows troubleshooting steps.")
-
-                            if troubleshootingExpanded {
-                                troubleshootingContent
-                                    .padding(.top, 7)
-                            }
-                        }
-                        .padding(.top, 12)
-                        .frame(maxWidth: 620, alignment: .center)
                     }
 
                 }
@@ -765,16 +731,13 @@ struct ConnectScreen: View {
     }
 
     private var connectionIllustrationMaxHeight: CGFloat {
-        if showsNoUSBHelp {
-            return 170
+        if shownConnectIssue != nil || showsNoUSBHelp {
+            return 180
         }
         if showsConnectChecklist {
             return 240
         }
-        if deviceEngine.state == .failed {
-            return troubleshootingExpanded ? 180 : 220
-        }
-        return troubleshootingExpanded ? 220 : 300
+        return 300
     }
 
     /// Every connect status pairs its text with an icon; colour only supports it.
@@ -787,10 +750,10 @@ struct ConnectScreen: View {
             case .connecting:
                 return ("arrow.triangle.2.circlepath", TerentoColors.interactive)
             case .needsAttention:
-                return ("exclamationmark.circle.fill", TerentoColors.warning)
+                return ("exclamationmark.circle", TerentoColors.warning)
             }
         case .failed:
-            return ("exclamationmark.triangle.fill", TerentoColors.error)
+            return ("exclamationmark.triangle", TerentoColors.error)
         case .disconnected, .connected, .ready, .ejecting, .safeToDisconnect:
             return nil
         }
@@ -816,27 +779,66 @@ struct ConnectScreen: View {
         showsConnectChecklist && deviceEngine.hasWaitedWithoutUSB
     }
 
-    private static let noUSBHelpSteps: [(text: String, icon: String)] = [
-        ("Use a USB data cable, not a charge-only cable", "cable.connector"),
-        ("Plug it directly into the Mac, not into a USB hub", "desktopcomputer"),
-        ("Try another USB port", "cable.connector"),
-        ("Unlock your watch", "lock.open"),
-        ("Restart your watch", "arrow.clockwise"),
-        ("Quit Garmin Express", "xmark.app")
+    private static let noUSBHelpSteps: [ConnectStep] = [
+        ConnectStep(systemImage: "cable.connector", text: "Use a USB data cable, not a charge-only cable"),
+        ConnectStep(systemImage: "desktopcomputer", text: "Plug it directly into the Mac, not into a USB hub"),
+        ConnectStep(systemImage: "cable.connector", text: "Try another USB port"),
+        ConnectStep(systemImage: "lock.open", text: "Unlock your watch"),
+        ConnectStep(systemImage: "arrow.clockwise", text: "Restart your watch"),
+        ConnectStep(systemImage: "xmark.app", text: "Quit Garmin Express")
     ]
 
-    private var noUSBHelp: some View {
+    /// The problem on screen: a live attention state or the final failure.
+    private var shownConnectIssue: ConnectIssueMessage? {
+        switch deviceEngine.state {
+        case .failed:
+            return deviceEngine.connectFailure
+        case .detecting:
+            guard case let .needsAttention(outcome) = deviceEngine.detectionPhase else { return nil }
+            return UserFacingErrorMessage.detectionAttention(outcome)
+        case .disconnected, .connected, .ready, .ejecting, .safeToDisconnect:
+            return nil
+        }
+    }
+
+    /// The guide section for the help box on screen; none while plainly
+    /// waiting or connecting.
+    private var connectHelpTopic: TroubleshootingTopic? {
+        TroubleshootingHelp.connectHelpTopic(
+            state: deviceEngine.state,
+            phase: deviceEngine.detectionPhase,
+            failure: deviceEngine.connectFailure,
+            waitedWithoutUSB: deviceEngine.hasWaitedWithoutUSB
+        )
+    }
+
+    /// Every Connect problem uses this light box: what Terento found (or the
+    /// question it answers), the steps with icons, the guide link and what
+    /// Terento does meanwhile. VoiceOver reads the heading and steps as one
+    /// element, then the link, then the note.
+    private func connectHelpBox(heading: String, steps: [ConnectStep], note: String) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text("Still not showing up?")
-                .font(.terentoUI(size: 13, weight: .semibold))
-                .foregroundStyle(TerentoColors.graphite)
-                .padding(.bottom, 2)
-            ForEach(Self.noUSBHelpSteps, id: \.text) { step in
-                troubleshootingRow(step.text, icon: step.icon)
+            VStack(alignment: .leading, spacing: 7) {
+                Text(heading)
+                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 2)
+                ForEach(steps, id: \.text) { step in
+                    troubleshootingRow(step.text, icon: step.systemImage)
+                }
             }
-            Text("Terento keeps looking while you try these.")
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(([heading] + steps.map(\.text)).joined(separator: ". "))
+
+            if let topic = connectHelpTopic {
+                TerentoHelpLink(topic: topic, title: "More help in the troubleshooting guide", iconColumnWidth: 18)
+            }
+
+            Text(note)
                 .font(.terentoUI(size: 12, weight: .medium))
                 .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
         }
         .padding(12)
@@ -846,53 +848,6 @@ struct ConnectScreen: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(TerentoColors.border.opacity(0.5), lineWidth: 1)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "Still not showing up? "
-                + Self.noUSBHelpSteps.map { $0.text + "." }.joined(separator: " ")
-                + " Terento keeps looking while you try these."
-        )
-    }
-
-    /// The guide section for a connection error on screen; none while
-    /// waiting or connecting.
-    private var connectionErrorHelpTopic: TroubleshootingTopic? {
-        TroubleshootingHelp.connectionErrorTopic(
-            state: deviceEngine.state,
-            phase: deviceEngine.detectionPhase,
-            failure: deviceEngine.connectFailure
-        )
-    }
-
-    /// The final failure's message; `nil` in every other state.
-    private var shownConnectFailure: ConnectFailureMessage? {
-        deviceEngine.state == .failed ? deviceEngine.connectFailure : nil
-    }
-
-    /// Numbered steps below the reason, read by VoiceOver after the title
-    /// and reason and before Try again.
-    private func connectFailureSteps(_ steps: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(index + 1).")
-                        .font(.terentoUI(size: 14, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .frame(minWidth: 18, alignment: .trailing)
-
-                    Text(step)
-                        .font(.terentoUI(size: 14, weight: .medium))
-                        .foregroundStyle(TerentoColors.graphite)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "What to do: " + steps.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: " ")
-        )
     }
 
     /// The interrupted operation's outcome takes precedence over the generic
@@ -939,9 +894,9 @@ struct ConnectScreen: View {
                 return disconnectExplanation
                     ?? "Plug your Garmin into this Mac. Terento finds it automatically."
             case .connecting:
-                return "This may take up to 2 minutes. Terento keeps checking and tells you what to do if your watch doesn't get ready."
+                return "This may take up to 2 minutes. Terento tells you if something is wrong."
             case .needsAttention(let outcome):
-                return UserFacingErrorMessage.detectionAttention(outcome)?.description
+                return UserFacingErrorMessage.detectionAttention(outcome)?.reason
                     ?? "This may take up to 2 minutes."
             }
         case .connected, .ready:
@@ -961,29 +916,8 @@ struct ConnectScreen: View {
         }
     }
 
-    private var shouldShowTroubleshooting: Bool {
-        deviceEngine.state == .failed
-    }
-
-    private var troubleshootingContent: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            troubleshootingRow("Try a different cable", icon: "cable.connector")
-            troubleshootingRow("Connect directly to your Mac", icon: "desktopcomputer")
-            troubleshootingRow("Make sure your watch is unlocked", icon: "lock.open")
-            troubleshootingRow("Restart your watch and try again", icon: "arrow.clockwise")
-            troubleshootingRow("Close other Garmin apps", icon: "xmark.app")
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(TerentoColors.border.opacity(0.5), lineWidth: 1)
-        }
-    }
-
     private func troubleshootingRow(_ text: String, icon: String) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .regular))
                 .foregroundStyle(TerentoColors.secondaryText)
@@ -993,6 +927,7 @@ struct ConnectScreen: View {
             Text(text)
                 .font(.terentoUI(size: 13, weight: .medium))
                 .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
