@@ -417,8 +417,11 @@ def _skip_jit_compilation(connection: Any) -> None:
     ``compatibility_model_statistics`` carries a per-aggregate review lookup
     whose estimated cost grows with evidence history far beyond its real
     cost; past ``jit_optimize_above_cost`` the server spends seconds compiling
-    LLVM code for a query that runs in milliseconds. This transaction-local
-    setting changes only execution strategy, never the result.
+    LLVM code for a query that runs in milliseconds. Map statistics reads hit
+    the same threshold: under ``_prefer_hash_joins`` a join that only a nested
+    loop can execute (a date-scoped correlated lookup, or a provider filter
+    that leaves a clauseless join) carries the planner's disable cost. This
+    transaction-local setting changes only execution strategy, never the result.
     """
     connection.execute("SET LOCAL jit = off")
 
@@ -1470,6 +1473,8 @@ class Database:
             FROM operation_reviews
         """
         with self.connection() as connection:
+            # Reads compatibility_model_statistics (publication reviews).
+            _skip_jit_compilation(connection)
             row = connection.execute(query).fetchone()
         values = row or {}
         summary = {
@@ -1778,6 +1783,8 @@ class Database:
         """
         scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
         with self.connection() as connection:
+            # The last read below uses compatibility_model_statistics.
+            _skip_jit_compilation(connection)
             attention = list(connection.execute(
                 f"""{operation_cte}
                 SELECT *, count(*) FILTER (WHERE open_error) OVER () AS total_open_errors,
@@ -5260,6 +5267,7 @@ class Database:
             values = compatibility_values + values + ([time_zone] if trend_bucket == "hour" else [time_zone, time_zone])
             with self.connection() as connection:
                 _prefer_hash_joins(connection)
+                _skip_jit_compilation(connection)
                 return list(connection.execute(query, values).fetchall())
 
         query += """
@@ -5291,6 +5299,7 @@ class Database:
         values = compatibility_values + values
         with self.connection() as connection:
             _prefer_hash_joins(connection)
+            _skip_jit_compilation(connection)
             return list(connection.execute(query, values).fetchall())
 
     def map_statistics_trend(
@@ -5602,6 +5611,7 @@ class Database:
         """
         with self.connection() as connection:
             _prefer_hash_joins(connection)
+            _skip_jit_compilation(connection)
             row = connection.execute(query, values).fetchone() or {}
 
         def integer(key: str) -> int:
