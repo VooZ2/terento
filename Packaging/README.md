@@ -35,23 +35,15 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The next candidate is **1.0.0-rc.2 / build 42**, the second release candidate
-for 1.0.0 (see [versioning](../VERSIONING.md)). It changes only the Device
-page's connection messages and is published on the existing `beta` update
-channel. It needs no API or migration change, so no server deployment precedes
-it. Public metadata continues to identify rc.1 until signed, notarized
-artifacts exist, and the draft release-note section stays marked as a draft
-until the owner approves it.
-
-The published release is **1.0.0-rc.1 / build 41**, the first release
+The published release is **1.0.0-rc.2 / build 42**, the second release
 candidate for 1.0.0, from signed source
-`64949f19b09594dc9e5ed654de7e691f801a233b` (tag `v1.0.0-rc.1-build41`). It is
-published on the existing `beta` update channel, so installed beta builds are
-offered it by the in-app update check. Its ZIP and DMG passed the full release
-suite, Apple notarization, stapling, Gatekeeper and launch validation. The
-catalog API with migrations 067–072 and the site were deployed before the app.
-Fast removal was confirmed on a real watch; real-watch confirmation of the
-faster Update checks remains pending.
+`1e9b97ad403178f4af4ed7de21d3166136f2a3ec` (tag `v1.0.0-rc.2-build42`). It is
+published on the existing `beta` update channel, so installed beta and rc.1
+builds are offered it by the in-app update check. Its ZIP and DMG passed the
+full release suite, Apple notarization, stapling, Gatekeeper and launch
+validation. It changes only the Device page's connection messages; no API or
+migration preceded it. Real-watch confirmation of its connection messages and
+of rc.1's faster Update checks remains pending.
 
 The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
