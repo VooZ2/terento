@@ -109,7 +109,7 @@ function testPages() {
     assert.ok(!/unpkg|cdnjs|jsdelivr|tile\.openstreetmap/.test(source), `${locale}: no third-party map hosts`);
 
     // The overlays stay small: no captions or zoom percentage, collapsed place details and view menu.
-    assert.ok(!/map-styles-caption|map-styles-zoom-level/.test(source), `${locale}: no caption or zoom level over the map`);
+    assert.ok(!/map-styles-caption|map-styles-zoom-level|map-styles-side/.test(source), `${locale}: no caption, zoom level or Left/Right words over the map`);
     assert.match(source, /id="map-styles-place-toggle" aria-expanded="false" aria-controls="map-styles-area-meta"/, `${locale}: place details expand`);
     assert.match(source, /<p class="map-styles-place-meta" id="map-styles-area-meta" hidden>/, `${locale}: place details start collapsed`);
     assert.match(source, /id="map-styles-view-toggle" aria-expanded="false" aria-controls="map-styles-view-menu"/, `${locale}: view modes sit in a menu`);

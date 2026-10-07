@@ -23,7 +23,7 @@ SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261007-map-styles-v6"
+SCRIPT_VERSION = "20261007-map-styles-v7"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
 STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail")
 
@@ -54,8 +54,6 @@ COPY: dict[str, dict[str, object]] = {
         "copied": "Link copied",
         "copy_fallback": "Copy this link:",
         "style_group": "Map style",
-        "left": "Left",
-        "right": "Right",
         "left_style": "Left map style",
         "right_style": "Right map style",
         "swap": "Swap left and right styles",
@@ -106,8 +104,6 @@ COPY: dict[str, dict[str, object]] = {
         "copied": "Link kopiert",
         "copy_fallback": "Diesen Link kopieren:",
         "style_group": "Kartenstil",
-        "left": "Links",
-        "right": "Rechts",
         "left_style": "Kartenstil links",
         "right_style": "Kartenstil rechts",
         "swap": "Stile links und rechts tauschen",
@@ -158,8 +154,6 @@ COPY: dict[str, dict[str, object]] = {
         "copied": "Lien copié",
         "copy_fallback": "Copiez ce lien :",
         "style_group": "Style de carte",
-        "left": "Gauche",
-        "right": "Droite",
         "left_style": "Style de la carte de gauche",
         "right_style": "Style de la carte de droite",
         "swap": "Inverser les styles gauche et droite",
@@ -210,8 +204,6 @@ COPY: dict[str, dict[str, object]] = {
         "copied": "Link skopiowany",
         "copy_fallback": "Skopiuj ten link:",
         "style_group": "Styl mapy",
-        "left": "Lewa",
-        "right": "Prawa",
         "left_style": "Styl lewej mapy",
         "right_style": "Styl prawej mapy",
         "swap": "Zamień style lewej i prawej mapy",
@@ -262,8 +254,6 @@ COPY: dict[str, dict[str, object]] = {
         "copied": "Odkaz zkopírován",
         "copy_fallback": "Zkopírujte tento odkaz:",
         "style_group": "Styl mapy",
-        "left": "Vlevo",
-        "right": "Vpravo",
         "left_style": "Styl levé mapy",
         "right_style": "Styl pravé mapy",
         "swap": "Prohodit styly vlevo a vpravo",
@@ -314,8 +304,6 @@ COPY: dict[str, dict[str, object]] = {
         "copied": "Link copiato",
         "copy_fallback": "Copia questo link:",
         "style_group": "Stile di mappa",
-        "left": "Sinistra",
-        "right": "Destra",
         "left_style": "Stile della mappa a sinistra",
         "right_style": "Stile della mappa a destra",
         "swap": "Scambia gli stili di sinistra e destra",
@@ -527,13 +515,11 @@ def render(locale: str) -> str:
           <div class="map-styles-overlay map-styles-dock" id="map-styles-dock">
             <div class="map-styles-pills" role="radiogroup" aria-label="{esc(copy["style_group"])}" id="map-styles-pills" hidden></div>
             <div class="map-styles-compare" id="map-styles-compare">
-              <span class="map-styles-side" aria-hidden="true">{esc(copy["left"])}</span>
               <label class="sr-only" for="map-styles-style-a">{esc(copy["left_style"])}</label>
               <select id="map-styles-style-a"></select>
               <button type="button" class="map-styles-icon-button" id="map-styles-swap" aria-label="{esc(copy["swap"])}">{icon("swap")}</button>
               <label class="sr-only" for="map-styles-style-b">{esc(copy["right_style"])}</label>
               <select id="map-styles-style-b"></select>
-              <span class="map-styles-side" aria-hidden="true">{esc(copy["right"])}</span>
             </div>
           </div>
 
