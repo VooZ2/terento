@@ -341,3 +341,31 @@ class IdentityAssessmentTests(unittest.TestCase):
         self.assertEqual(screen['state'], 'MISSING')
         self.assertEqual(screen['evidence'], [])
         self.assertEqual(result['facts']['screenTechnology'], [])
+
+    def test_label_normalization_is_cached_and_unchanged(self):
+        import re
+        import unicodedata
+        from terento_catalog import identity_assessment as module
+
+        def reference_normalized(value):
+            text = unicodedata.normalize('NFKD', str(value or '')).lower()
+            text = ''.join(c for c in text if not unicodedata.combining(c))
+            return re.sub(r'[^a-z0-9]+', ' ', text).strip()
+
+        def reference_model_label(value):
+            text = reference_normalized(value).removeprefix('garmin ')
+            return re.split(r'\b(?:\d{2,3}\s*mm|amoled|microled|mip|solar|sapphire|inreach)\b', text)[0].strip()
+
+        for value in (None, '', 0, 47, False, 'Garmin fēnix 8 Pro 51mm AMOLED', 'ＥＰＩＸ Pro (Gen 2)',
+                      'Forerunner® 965', '  tactix 7 – Solar  ', 'Identity pending'):
+            with self.subTest(value=value):
+                self.assertEqual(module.normalized(value), reference_normalized(value))
+                self.assertEqual(module.model_label(value), reference_model_label(value))
+        # A device page assesses hundreds of reports against the whole catalog;
+        # each catalog name is normalized once, not once per report.
+        devices = [dict(id=f'device-{index}', model=f'Catalog Watch {index}', case_size_mm=47)
+                   for index in range(40)]
+        module._model_label_text.cache_clear()
+        for index in range(25):
+            assess_identity(dict(self.event, rawMTPModel=f'fenix 8 Pro 51mm unit {index}'), devices, self.mappings)
+        self.assertLessEqual(module._model_label_text.cache_info().misses, len(devices) + 2 * 25 + 5)

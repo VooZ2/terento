@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from functools import lru_cache
 from typing import Any
 
 VERSION = 3
@@ -59,15 +60,29 @@ def apply_corrections(event: dict, corrections: list[dict]) -> dict:
     return effective
 
 
-def normalized(value: Any) -> str:
-    text = unicodedata.normalize('NFKD', str(value or '')).lower()
+# assess_identity compares every report with every catalog record, so without
+# a cache each catalog name is re-normalized once per report (a device page
+# with hundreds of reports took seconds). Both helpers are pure functions of
+# the text, so caching changes no result.
+@lru_cache(maxsize=8192)
+def _normalized_text(text: str) -> str:
+    text = unicodedata.normalize('NFKD', text).lower()
     text = ''.join(c for c in text if not unicodedata.combining(c))
     return re.sub(r'[^a-z0-9]+', ' ', text).strip()
 
 
-def model_label(value: Any) -> str:
-    text = normalized(value).removeprefix('garmin ')
+@lru_cache(maxsize=8192)
+def _model_label_text(text: str) -> str:
+    text = _normalized_text(text).removeprefix('garmin ')
     return re.split(r'\b(?:\d{2,3}\s*mm|amoled|microled|mip|solar|sapphire|inreach)\b', text)[0].strip()
+
+
+def normalized(value: Any) -> str:
+    return _normalized_text(str(value or ''))
+
+
+def model_label(value: Any) -> str:
+    return _model_label_text(str(value or ''))
 
 
 def _identity_observations(event: dict) -> dict[str, Any]:
