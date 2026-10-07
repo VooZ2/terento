@@ -107,6 +107,18 @@ class DashboardRevisionTests(unittest.TestCase):
         new_session["funnel"]["sessionCount"] = 6
         self.assertNotEqual(base["funnel"], self.render(new_session)["funnel"])
 
+        never_connected = overview()
+        never_connected["funnel"]["neverConnectedSessionCount"] = 2
+        self.assertNotEqual(base["funnel"], self.render(never_connected)["funnel"])
+
+        for stage, outcome in (("CATALOG", "REMOTE"), ("INSTALL_BLOCKED", "DEVICE_STORAGE")):
+            shown = overview()
+            for item in shown["funnel"]["stages"]:
+                for row in item["outcomes"]:
+                    if (item["stage"], row["outcome"]) == (stage, outcome):
+                        row["sessionCount"] = 2
+            self.assertNotEqual(base["funnel"], self.render(shown)["funnel"], stage)
+
         new_report = overview()
         new_report["supportReports"] = {"openCount": 1}
         self.assertNotEqual(base["supportReports"], self.render(new_report)["supportReports"])
@@ -118,6 +130,20 @@ class DashboardRevisionTests(unittest.TestCase):
         review_payload = overview()
         user = {**USER, "admin_review_summary": {**REVIEW, "installationIssues": 3}}
         self.assertNotEqual(base["review"], revisions(overview_page(review_payload, user, "csrf"))["review"])
+
+    def test_undisplayed_first_run_data_does_not_change_the_revision(self):
+        # The card shows the top three waiting models (label and count) only;
+        # a fourth model or the outcome behind a shown model is not displayed.
+        payload = overview()
+        payload["funnel"]["modelsNeedingReview"] = [
+            {"baseModel": name, "outcome": "PENDING", "sessionCount": 1}
+            for name in ("fenix 8", "Forerunner 965", "Venu X1")
+        ]
+        hidden = copy.deepcopy(payload)
+        hidden["funnel"]["modelsNeedingReview"][0]["outcome"] = "UNKNOWN_MODEL"
+        hidden["funnel"]["modelsNeedingReview"].append({"baseModel": "Edge 1050", "outcome": "AMBIGUOUS", "sessionCount": 1})
+        hidden["funnel"]["population"] = "changed description"
+        self.assertEqual(self.render(payload)["funnel"], self.render(hidden)["funnel"])
 
 
 class DashboardHttpRevisionTests(unittest.TestCase):

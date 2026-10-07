@@ -179,7 +179,7 @@ class FunnelDatabase(FakeProviderDatabase):
 
     def app_funnel_summary(self, since, until=None):
         self.funnel_windows.append((since, until))
-        return {"sessionCount": 0, "stages": [], "modelsNeedingReview": []}
+        return {"sessionCount": 0, "neverConnectedSessionCount": 0, "stages": [], "modelsNeedingReview": []}
 
 
 class TodayServiceTests(unittest.TestCase):

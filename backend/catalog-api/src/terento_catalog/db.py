@@ -4667,8 +4667,20 @@ class Database:
             values.append(until)
         where = " AND ".join(clauses)
         with self.connection() as connection:
+            # One row per period session; a session that never reported
+            # DEVICE_CONNECT=CONNECTED in the period counts as never connected.
             totals = connection.execute(
-                f"SELECT count(DISTINCT e.session_id) AS session_count FROM app_funnel_event AS e WHERE {where}",
+                f"""
+                SELECT count(*) AS session_count,
+                       count(*) FILTER (WHERE NOT s.connected) AS never_connected_count
+                FROM (
+                    SELECT e.session_id,
+                           bool_or(e.stage = 'DEVICE_CONNECT' AND e.outcome = 'CONNECTED') AS connected
+                    FROM app_funnel_event AS e
+                    WHERE {where}
+                    GROUP BY e.session_id
+                ) AS s
+                """,
                 values,
             ).fetchone() or {}
             stages = list(connection.execute(
@@ -4696,6 +4708,7 @@ class Database:
             ).fetchall())
         return {
             "sessionCount": int(totals.get("session_count") or 0),
+            "neverConnectedSessionCount": int(totals.get("never_connected_count") or 0),
             "stages": [
                 {"stage": row["stage"], "outcome": row["outcome"], "sessionCount": int(row["session_count"] or 0)}
                 for row in stages

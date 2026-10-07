@@ -516,6 +516,7 @@ class CatalogService:
             "until": until.isoformat(),
             "population": "distinct app sessions; local test builds excluded; separate from install, update and download statistics",
             "sessionCount": summary["sessionCount"],
+            "neverConnectedSessionCount": summary["neverConnectedSessionCount"],
             "stages": [
                 {
                     "stage": stage,

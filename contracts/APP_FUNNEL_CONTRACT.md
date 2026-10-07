@@ -69,11 +69,18 @@ Admin authentication is required. `period` is `today`, `24h`, `7d` (default),
 [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md); the optional `timeZone`
 (IANA name; absent or unknown is UTC) sets where `today` starts and is echoed as
 `timeZone`. Any other query parameter is `400`. The response reports, for the period,
-the number of distinct non-local sessions with any funnel event, the distinct
+the number of distinct non-local sessions with any funnel event
+(`sessionCount`), the number of those sessions with no `DEVICE_CONNECT` outcome
+`CONNECTED` event in the period (`neverConnectedSessionCount`), the distinct
 session count for every stage/outcome pair (zero-filled), and the top ten base
 models by distinct sessions with `AUTHORIZATION` outcome `PENDING`,
 `UNKNOWN_MODEL` or `AMBIGUOUS`. A session that reports several outcomes counts
-once in each. Period membership uses the event time, except that a time more
+once in each, so outcome counts are not exclusive and their sum can exceed
+`sessionCount`. Most non-`CONNECTED` `DEVICE_CONNECT` outcomes are signals seen
+while the app keeps waiting (`TIMEOUT_NO_USB`, `NOT_MTP_MODE`, `BUSY`,
+`MULTIPLE_DEVICES`), and `DISCONNECTED` follows a connection, so
+`neverConnectedSessionCount` (not the sum of those outcomes) is the number of
+sessions that did not connect. Period membership uses the event time, except that a time more
 than 10 minutes after server receipt is treated as the receipt time (the same
 rule as map statistics).
 

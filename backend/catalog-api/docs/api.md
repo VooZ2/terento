@@ -809,9 +809,11 @@ is idempotent by event `id` (`201` stored, `200` duplicate), and allows 120 even
 per client address per minute. `GET /admin/app-funnel.json?period=today|24h|7d|30d|all`
 (default `7d`; optional `timeZone` sets where `today` starts and is echoed in
 the additive `timeZone` field)
-requires an admin session and returns distinct non-local session counts per
-stage/outcome (zero-filled) plus the top base models with authorization outcome
-`PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`. The visual Admin presentation is not
+requires an admin session and returns the distinct non-local session count
+(`sessionCount`), the additive `neverConnectedSessionCount` (period sessions
+without a `DEVICE_CONNECT`/`CONNECTED` event in the period), distinct session
+counts per stage/outcome (zero-filled; not exclusive) plus the top base models
+with authorization outcome `PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`. The visual Admin presentation is not
 part of this route.
 
 ## `POST /support/reports`

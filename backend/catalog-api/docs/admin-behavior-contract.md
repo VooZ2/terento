@@ -322,13 +322,27 @@ are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`, never map downloads), shows its
 period increases in the legend and its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
-population for the period (sessions, connected vs not connected by reason,
-authorization outcomes and the top waiting models); each reason, outcome and
-model is one row with its label, a small horizontal bar scaled to its share of
-the period's sessions and its count as text (zero rows are omitted). Its
-Sessions, Connected and Not connected tiles stay on one row of three equal
-columns at every width, label above number; a label may wrap but the numbers
-share one baseline. One-card KPI rows follow the two-row rule in Responsive and
+population for the period. Its Sessions, Connected and Never connected tiles
+show the period's distinct sessions, the sessions that connected and the
+sessions that never connected (`neverConnectedSessionCount`, danger tone only
+above zero); they stay on one row of three equal columns at every width, label
+above number; a label may wrap but the numbers share one baseline. Below them,
+in this order, Connection problems (every non-connected `DEVICE_CONNECT`
+outcome, with the muted note `A session can hit several problems and still
+connect.`), Authorization, Catalog, Install blocked and Waiting models (top
+three) list one row per outcome or model with its label, a small horizontal bar
+scaled to its share of the period's sessions and its count as text, largest
+first; zero rows are omitted and an empty group shows `—`. Rows count sessions
+per outcome and are not exclusive: one session can appear in several rows, and
+most connection problems are signals seen while the app keeps waiting, so their
+sum is not a failure count. Outcome labels use outcome wording: Connection
+problems `No watch plugged in`, `Didn't get ready`, `Not in file-transfer
+mode`, `Watch in use by another app`, `Several Garmins`, `Disconnected after
+connecting`, `Stopped responding`; Catalog `Loaded`, `Partly loaded`,
+`Built-in copy`, `App update required`; Install blocked `Not allowed for this
+watch`, `Watch storage full`, `Mac storage problem`, `Map not verified`, `Watch
+not identified`, `Other`. The Dashboard freshness revision for First run covers
+exactly these displayed values. One-card KPI rows follow the two-row rule in Responsive and
 layout invariants. It never
 mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
