@@ -643,53 +643,55 @@ struct ConnectScreen: View {
             bottomPadding: TerentoPageLayout.primaryBottomPadding,
             maxHeight: .infinity
         ) {
-            VStack(alignment: .center, spacing: 0) {
-                Spacer(minLength: 0)
-
+            GeometryReader { page in
                 VStack(alignment: .center, spacing: 0) {
-                    ResourceImage(name: connectionIllustrationName, subdirectory: "Illustrations")
-                        .scaledToFit()
-                        .frame(
-                            maxWidth: 720,
-                            maxHeight: connectionIllustrationMaxHeight
-                        )
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    Spacer(minLength: 0)
 
-                    connectionStatusView
-                        .padding(.top, 14)
+                    VStack(alignment: .center, spacing: 0) {
+                        ResourceImage(name: connectionIllustrationName, subdirectory: "Illustrations")
+                            .scaledToFit()
+                            .frame(
+                                maxWidth: 720,
+                                maxHeight: connectionIllustrationHeight(pageHeight: page.size.height)
+                            )
+                            .frame(maxWidth: .infinity, alignment: .center)
 
-                    if let issue = shownConnectIssue {
-                        connectHelpBox(heading: issue.finding, steps: issue.steps, note: issue.note)
+                        connectionStatusView
                             .padding(.top, 14)
-                            .frame(maxWidth: 460, alignment: .center)
-                    } else if showsNoUSBHelp {
-                        connectHelpBox(
-                            heading: "Still not showing up?",
-                            steps: Self.noUSBHelpSteps,
-                            note: "Terento keeps looking while you try these."
-                        )
-                            .padding(.top, 14)
-                            .frame(maxWidth: 460, alignment: .center)
-                    } else if showsConnectChecklist {
-                        connectChecklist
-                            .padding(.top, 14)
-                            .frame(maxWidth: 420, alignment: .center)
+
+                        if let issue = shownConnectIssue {
+                            connectHelpBox(heading: issue.finding, steps: issue.steps, note: issue.note)
+                                .padding(.top, 14)
+                                .frame(maxWidth: 460, alignment: .center)
+                        } else if showsNoUSBHelp {
+                            connectHelpBox(
+                                heading: "Still not showing up?",
+                                steps: Self.noUSBHelpSteps,
+                                note: "Terento keeps looking while you try these."
+                            )
+                                .padding(.top, 14)
+                                .frame(maxWidth: 460, alignment: .center)
+                        } else if showsConnectChecklist {
+                            connectChecklist
+                                .padding(.top, 14)
+                                .frame(maxWidth: 420, alignment: .center)
+                        }
+
+                        if deviceEngine.state == .disconnected || deviceEngine.state == .failed {
+                            PrimaryButton(
+                                title: deviceEngine.state == .failed ? "Try again" : "Connect device",
+                                action: startReadOnlyCheck
+                            )
+                                .padding(.top, 14)
+                        }
+
                     }
+                    .frame(maxWidth: .infinity, alignment: .center)
 
-                    if deviceEngine.state == .disconnected || deviceEngine.state == .failed {
-                        PrimaryButton(
-                            title: deviceEngine.state == .failed ? "Try again" : "Connect device",
-                            action: startReadOnlyCheck
-                        )
-                            .padding(.top, 14)
-                    }
-
+                    Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
-
-                Spacer(minLength: 0)
+                .frame(maxHeight: .infinity, alignment: .center)
             }
-            .frame(maxHeight: .infinity, alignment: .center)
         }
     }
 
@@ -730,14 +732,21 @@ struct ConnectScreen: View {
         }
     }
 
-    private var connectionIllustrationMaxHeight: CGFloat {
-        if shownConnectIssue != nil || showsNoUSBHelp {
-            return 180
+    /// The illustration has two sizes: a larger one without a help box and a
+    /// smaller one while a help box is shown. Each depends only on the page
+    /// height, never on the message, so switching states doesn't resize it.
+    /// The reserves fit the tallest content of each kind at the minimum
+    /// window (a final failure's box and Try again; a three-line disconnect
+    /// notice with the checklist).
+    private func connectionIllustrationHeight(pageHeight: CGFloat) -> CGFloat {
+        if showsConnectHelpBox {
+            return min(180, max(80, pageHeight - 410))
         }
-        if showsConnectChecklist {
-            return 240
-        }
-        return 300
+        return min(300, max(120, pageHeight - 290))
+    }
+
+    private var showsConnectHelpBox: Bool {
+        shownConnectIssue != nil || showsNoUSBHelp
     }
 
     /// Every connect status pairs its text with an icon; colour only supports it.

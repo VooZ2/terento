@@ -51,7 +51,9 @@ of the waiting page: an outline status icon, a title of one heading line, one
 short sentence saying what is wrong, then one light box. The box leads with
 what Terento found (for example "Android File Transfer is open"), lists the
 steps as icon bullets, links the cause's section of the troubleshooting guide
-and ends with a note on what Terento does meanwhile. While a Garmin is on USB
+and ends with a note on what Terento does meanwhile. The illustration has two
+sizes that depend only on the window height: larger without a help box,
+smaller with one, so it does not change between messages. While a Garmin is on USB
 the connecting state says it may take up to 2 minutes and that Terento will say
 if something is wrong. The live attention states (busy, more than one Garmin,
 not yet ready for file transfer) use the box while discovery keeps polling.
