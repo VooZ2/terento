@@ -3346,7 +3346,7 @@ details p {
 .map-styles-place { top: 16px; left: 16px; display: flex; flex-direction: column; width: max-content; max-width: min(320px, calc(100% - 120px)); max-height: calc(100% - 32px); }
 .map-styles-place[data-open="true"] { width: 320px; max-width: calc(100% - 32px); }
 .map-styles-place[data-open="true"] { bottom: 16px; }
-.map-styles-place-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; padding: 8px 8px 8px 14px; }
+.map-styles-place-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; padding: 4px 4px 4px 12px; }
 .map-styles-place-head { display: flex; align-items: center; gap: 4px; }
 .map-styles-place-title { flex: 1; min-width: 0; padding-right: 6px; }
 .map-styles-place-title .map-styles-overlay-eyebrow { margin-bottom: 1px; }

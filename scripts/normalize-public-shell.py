@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261006-map-styles-shell-v1"
 PROVIDER_SCRIPT_VERSION = "20261006-map-styles-link-v1"
-STYLE_VERSION = "20261007-map-styles-v7"
+STYLE_VERSION = "20261007-map-styles-v8"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20260918-compatibility-successful-snapshot-v1"
