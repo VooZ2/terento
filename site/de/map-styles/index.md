@@ -15,8 +15,6 @@ Ort
 
 Kartenstil links Kartenstil rechts
 
-100%
-
 Über die fünf Kartenstile
 
 ### Freizeitkarte

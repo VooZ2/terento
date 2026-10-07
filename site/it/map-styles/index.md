@@ -15,8 +15,6 @@ Luogo
 
 Stile della mappa a sinistra Stile della mappa a destra
 
-100%
-
 Informazioni sui cinque stili di mappa
 
 ### Freizeitkarte

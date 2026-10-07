@@ -15,8 +15,6 @@ Place
 
 Left map style Right map style
 
-100%
-
 About the five map styles
 
 ### Freizeitkarte

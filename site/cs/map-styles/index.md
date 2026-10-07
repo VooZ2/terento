@@ -15,8 +15,6 @@ Místo
 
 Styl levé mapy Styl pravé mapy
 
-100%
-
 O pěti stylech map
 
 ### Freizeitkarte

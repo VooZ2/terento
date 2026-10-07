@@ -21,10 +21,6 @@
     return Math.min(area.zoom[1], area.zoom[0] + (area.kind === "city" ? 2 : 1));
   }
 
-  function zoomPercent(area, zoom, base = defaultZoom(area)) {
-    return Math.round(100 * Math.pow(2, zoom - base));
-  }
-
   function format(template, values) {
     return String(template).replace(/\{(\w+)\}/g, (match, key) => (key in values ? String(values[key]) : match));
   }
@@ -101,7 +97,7 @@
   }
 
   return {
-    bbox, defaultZoom, zoomPercent, format, plural, normalize, matches, parseHash, serializeHash,
+    bbox, defaultZoom, format, plural, normalize, matches, parseHash, serializeHash,
     layerStatus, coveredCount, tileUrl, bestAreas,
   };
 });
