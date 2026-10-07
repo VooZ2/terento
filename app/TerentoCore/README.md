@@ -52,10 +52,10 @@ Once a whole 2-minute window has passed with nothing on USB (the `timeoutNoUSB`
 signal), the waiting page replaces its checklist with "Still not showing up?"
 steps (data cable, directly into the Mac rather than a USB hub, another port,
 unlock, restart, quit Garmin Express) while discovery keeps polling. A final
-failure is titled by its cause: "Your watch was detected but didn't get ready",
-"Your watch disconnected before it was ready" (the watch left USB just before
-the window ended), "Another app may be using your watch", "Your watch isn't
-ready for file transfer" or "Your watch stopped responding". It gives one
+failure is titled by its cause, in one heading line at the minimum window
+width: "Your watch didn't get ready", "Your watch lost connection" (the watch
+left USB just before the window ended), "Your watch may be in use", "Not ready
+for file transfer" or "Your watch stopped responding". It gives one
 sentence of reason and numbered steps; the last step says to reconnect the
 watch or click Try again and that Terento doesn't check again until then. The
 collapsed "Having trouble connecting?" list follows. USB Mode is named as in

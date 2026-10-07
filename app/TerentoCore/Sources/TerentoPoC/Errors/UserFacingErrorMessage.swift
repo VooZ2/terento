@@ -97,7 +97,8 @@ enum MTPConnectionConflictDiagnostics {
 /// What the Connect page shows after a detection episode ends without a
 /// connection: the cause as the title, one sentence of reason, then numbered
 /// steps. The last step says how to retry, because detection resumes only
-/// after the watch is reconnected or Try again is clicked.
+/// after the watch is reconnected or Try again is clicked. Titles stay short
+/// enough for one line of the 42 pt heading at the minimum window width.
 struct ConnectFailureMessage: Equatable, Sendable {
     let title: String
     let reason: String
@@ -130,7 +131,7 @@ enum UserFacingErrorMessage {
         switch outcome {
         case .busy:
             return ConnectFailureMessage(
-                title: "Another app may be using your watch",
+                title: "Your watch may be in use",
                 reason: "Terento couldn't open the connection to your watch, and only one app at a time can use it.",
                 steps: [
                     detectedConflicts.isEmpty
@@ -141,7 +142,7 @@ enum UserFacingErrorMessage {
             )
         case .multipleDevices:
             return ConnectFailureMessage(
-                title: "More than one Garmin is connected",
+                title: "More than one Garmin",
                 reason: "Terento works with one Garmin at a time.",
                 steps: [
                     "Unplug every other Garmin device, such as other watches, bike computers or handheld devices.",
@@ -150,7 +151,7 @@ enum UserFacingErrorMessage {
             )
         case .notMTPMode:
             return ConnectFailureMessage(
-                title: "Your watch isn't ready for file transfer",
+                title: "Not ready for file transfer",
                 reason: "Your Garmin is connected, but it didn't switch to file transfer within 2 minutes.",
                 steps: [
                     "Unlock the watch.",
@@ -244,7 +245,7 @@ enum UserFacingErrorMessage {
     ) -> ConnectFailureMessage {
         guard garminUSBPresent else {
             return ConnectFailureMessage(
-                title: "Your watch disconnected before it was ready",
+                title: "Your watch lost connection",
                 reason: "Terento found your Garmin, but the connection dropped before it became ready.",
                 steps: [
                     "Check that the cable is firmly plugged in at both ends.",
@@ -267,7 +268,7 @@ enum UserFacingErrorMessage {
                 replug
             ]
         return ConnectFailureMessage(
-            title: "Your watch was detected but didn't get ready",
+            title: "Your watch didn't get ready",
             reason: "Terento found your Garmin, but it didn't become ready within 2 minutes.",
             steps: steps
         )

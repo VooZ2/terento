@@ -41,13 +41,13 @@ struct UserFacingErrorMessageTests {
         expect(namedTimeout.steps.last?.hasPrefix("Then unplug the watch, wait 5 seconds and connect it again, or click Try again.") == true,
                "USB-present timeout with a named app keeps the replug step")
         let plainTimeout = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: true, detectedConflicts: [])
-        expect(plainTimeout.title == "Your watch was detected but didn't get ready"
+        expect(plainTimeout.title == "Your watch didn't get ready"
             && plainTimeout.reason == "Terento found your Garmin, but it didn't become ready within 2 minutes."
             && plainTimeout.steps.contains("Try another USB port or cable, plugged directly into the Mac.")
             && plainTimeout.steps.last?.hasPrefix("Then unplug the watch, wait 5 seconds and connect it again") == true,
                "USB-present timeout without conflicts gives concrete next steps and the replug step")
         let absentTimeout = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: false, detectedConflicts: ["MacDroid"])
-        expect(absentTimeout.title == "Your watch disconnected before it was ready" && !absentTimeout.text.contains("MacDroid"),
+        expect(absentTimeout.title == "Your watch lost connection" && !absentTimeout.text.contains("MacDroid"),
                "a timeout after the watch dropped off USB has its own title and no unrelated conflict")
         expect(!absentTimeout.text.contains("charge-only"),
                "a watch that was already detected is not told to swap a charge-only cable")
@@ -121,6 +121,8 @@ struct UserFacingErrorMessageTests {
         for (outcome, message) in failureMessages {
             expect(titles.insert(message.title).inserted, "\(outcome) has a distinct title: \(message.title)")
             expect(message.title != "Couldn't connect to Garmin", "\(outcome) names the cause instead of the generic title")
+            // Measured: 29 characters fill one line of the 42 pt heading at the 920 pt minimum window.
+            expect(message.title.count <= 29, "\(outcome) title fits one heading line at the minimum window width")
             expect(message.reason.hasSuffix(".") && !message.reason.dropLast().contains(". "),
                    "\(outcome) gives the reason in one sentence")
             expect(message.steps.count >= 2 && message.steps.allSatisfy { $0.hasSuffix(".") },
@@ -145,7 +147,7 @@ struct UserFacingErrorMessageTests {
         expect(UserFacingErrorMessage.detectionFailure(.timeoutNoUSB, garminUSBPresent: true, detectedConflicts: []).title
             == "Your watch isn't showing up", "TIMEOUT_NO_USB never claims the watch was detected")
         let busy = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true, detectedConflicts: [])
-        expect(busy.title == "Another app may be using your watch",
+        expect(busy.title == "Your watch may be in use",
                "BUSY is inferred from session-open failures, so its title does not state it as fact")
         for (outcome, message) in failureMessages {
             expect(!message.text.contains("adapter"), "\(outcome) does not rule out the adapter a USB-C Mac needs")
@@ -154,7 +156,7 @@ struct UserFacingErrorMessageTests {
 
     static func testUSBModeNamesTheMenuPath() {
         let final = UserFacingErrorMessage.detectionFailure(.notMTPMode, garminUSBPresent: true, detectedConflicts: [])
-        expect(final.title == "Your watch isn't ready for file transfer",
+        expect(final.title == "Not ready for file transfer",
                "NOT_MTP_MODE describes the outcome in the guide's words")
         expect(final.steps.contains(UserFacingErrorMessage.usbModeStep)
             && UserFacingErrorMessage.usbModeStep.hasPrefix("On the watch, open USB Mode, usually under Settings › System, and choose MTP.")

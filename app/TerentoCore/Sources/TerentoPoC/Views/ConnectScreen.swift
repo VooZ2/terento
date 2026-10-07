@@ -735,6 +735,7 @@ struct ConnectScreen: View {
                 .font(.terentoHeading(size: 42, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .center)
 
             Text(connectionStatusDescription)
