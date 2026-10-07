@@ -77,9 +77,10 @@ if grep -rn 'guides/troubleshooting' "$project_root/Sources/TerentoPoC" | grep -
     exit 1
 fi
 
-# Help links appear only inside error dialogs: the installation failure dialog
-# (and the Diagnostics window's send-report help). Normal, in-progress and
-# inline states stay uncluttered; the mapping above still serves the dialogs.
+# Help links appear only for errors: inside the installation failure dialog,
+# in the Diagnostics window's send-report help, and on the Connect page for a
+# connection error (a live attention state or a final failure). Waiting,
+# connecting and other normal, in-progress and inline states stay uncluttered.
 require "$connect_screen" 'helpTopic: installationFailureHelpTopic' 'installation failure dialog has no Help link'
 require "$connect_screen" 'TerentoHelpLink(topic: helpTopic)' 'error dialog does not render its Help link'
 require "$diagnostics" 'TerentoHelpLink(topic: .sendReport)' 'Diagnostics failure report has no Help link'
@@ -94,18 +95,25 @@ for path in sorted(views.glob('*.swift')):
     count = path.read_text().count('TerentoHelpLink(')
     if count:
         uses[path.name] = count
-assert uses == {'ConnectScreen.swift': 1, 'DiagnosticsView.swift': 1}, uses
+assert uses == {'ConnectScreen.swift': 2, 'DiagnosticsView.swift': 1}, uses
 screen = (views / 'ConnectScreen.swift').read_text()
 start = screen.index('private struct TerentoConfirmationDialog: View {')
 end = screen.index('\n}\n', start)
 assert 'TerentoHelpLink(topic: helpTopic)' in screen[start:end], 'Help link outside the error dialog'
+# Connect's other Help link is the connection-error link, chosen by
+# TroubleshootingHelp.connectionErrorTopic (nil while waiting or connecting).
+assert screen.count('TerentoHelpLink(topic: topic)') == 1, 'Connect has more than one connection Help link'
+guard = screen.index('if let topic = connectionErrorHelpTopic {')
+assert 0 < screen.index('TerentoHelpLink(topic: topic)') - guard < 120, 'connection Help link is not guarded by the error topic'
+assert 'TroubleshootingHelp.connectionErrorTopic(' in screen, 'connection Help link does not use the central mapping'
+assert 'support.garmin.com' not in screen, 'Connect still links the generic Garmin support page'
 for removed in ['connectionHelpTopic', 'authorizationHelpTopic', 'TroubleshootingHelp.reviewTopic(',
                 'TroubleshootingHelp.topic(for: operation.phase)', 'topic: .updateRemoveFailed',
                 'topic: .catalogFallback', 'topic: .appUpdateRequired', 'helpTopic: .mapReadFailed']:
     assert removed not in screen, removed
 sheet = (views / 'SupportReportSheet.swift').read_text()
 assert 'TerentoHelpLink' not in sheet, 'Support report sheet must not show a Help link'
-print('PASS: Help links appear only in the installation failure dialog and the Diagnostics send-report help')
+print('PASS: Help links appear only in the installation failure dialog, the Diagnostics send-report help and Connect connection errors')
 PYHELP
 require "$app_source" 'openExternalURL(TroubleshootingGuide.helpMenuURL)' 'Help menu has no troubleshooting guide'
 

@@ -103,6 +103,38 @@ struct TroubleshootingHelpTests {
                 "connect failure \(outcome.rawValue) explains the cause its guide section covers")
             expect(TroubleshootingHelp.topic(for: outcome)?.anchor == entry.anchor,
                 "connect failure \(outcome.rawValue) maps to #\(entry.anchor.rawValue)")
+            expect(message.outcome == outcome
+                && TroubleshootingHelp.connectionErrorTopic(state: .failed, phase: .waitingForWatch, failure: message)?.anchor
+                    == entry.anchor,
+                "the final \(outcome.rawValue) screen links #\(entry.anchor.rawValue)")
+        }
+        testConnectionErrorHelpOnlyForErrors()
+    }
+
+    /// Connect links the guide only for a connection error, never while
+    /// waiting or connecting (including the "Still not showing up?" steps).
+    static func testConnectionErrorHelpOnlyForErrors() {
+        for phase in [DeviceDetectionPhase.waitingForWatch, .connecting] {
+            expect(TroubleshootingHelp.connectionErrorTopic(state: .detecting, phase: phase, failure: nil) == nil,
+                "\(phase) shows no Help link")
+        }
+        let attention: [DeviceConnectOutcome: TroubleshootingAnchor] = [
+            .busy: .garminBusy, .multipleDevices: .multipleGarmin, .notMTPMode: .usbMode
+        ]
+        for (outcome, anchor) in attention {
+            expect(TroubleshootingHelp.connectionErrorTopic(state: .detecting, phase: .needsAttention(outcome),
+                                                            failure: nil)?.anchor == anchor,
+                "the live \(outcome.rawValue) state links #\(anchor.rawValue)")
+        }
+        let lost = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: false, detectedConflicts: [])
+        expect(TroubleshootingHelp.connectionErrorTopic(state: .failed, phase: .waitingForWatch, failure: lost)?.anchor
+            == .connectionTimeout, "a watch that left USB before it was ready links the connection-timeout section")
+        expect(TroubleshootingHelp.connectionErrorTopic(state: .failed, phase: .waitingForWatch, failure: nil) == nil,
+            "a failure without a known cause shows no Help link")
+        let stale = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true, detectedConflicts: [])
+        for state in [DeviceConnectionState.disconnected, .connected, .ready, .ejecting, .safeToDisconnect] {
+            expect(TroubleshootingHelp.connectionErrorTopic(state: state, phase: .needsAttention(.busy), failure: stale) == nil,
+                "\(state) shows no connection Help link")
         }
     }
 

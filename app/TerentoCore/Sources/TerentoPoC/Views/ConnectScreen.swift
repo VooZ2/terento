@@ -665,6 +665,11 @@ struct ConnectScreen: View {
                             .frame(maxWidth: 480, alignment: .center)
                     }
 
+                    if let topic = connectionErrorHelpTopic {
+                        TerentoHelpLink(topic: topic)
+                            .padding(.top, 10)
+                    }
+
                     if showsNoUSBHelp {
                         noUSBHelp
                             .padding(.top, 14)
@@ -849,6 +854,16 @@ struct ConnectScreen: View {
         )
     }
 
+    /// The guide section for a connection error on screen; none while
+    /// waiting or connecting.
+    private var connectionErrorHelpTopic: TroubleshootingTopic? {
+        TroubleshootingHelp.connectionErrorTopic(
+            state: deviceEngine.state,
+            phase: deviceEngine.detectionPhase,
+            failure: deviceEngine.connectFailure
+        )
+    }
+
     /// The final failure's message; `nil` in every other state.
     private var shownConnectFailure: ConnectFailureMessage? {
         deviceEngine.state == .failed ? deviceEngine.connectFailure : nil
@@ -957,18 +972,6 @@ struct ConnectScreen: View {
             troubleshootingRow("Make sure your watch is unlocked", icon: "lock.open")
             troubleshootingRow("Restart your watch and try again", icon: "arrow.clockwise")
             troubleshootingRow("Close other Garmin apps", icon: "xmark.app")
-
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text("Still having trouble?")
-                    .font(.terentoUI(size: 13, weight: .semibold))
-
-                externalLink(
-                    "Garmin connection guide ↗",
-                    urlString: "https://support.garmin.com/"
-                )
-            }
-            .foregroundStyle(TerentoColors.secondaryText)
-            .padding(.top, 6)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1001,19 +1004,6 @@ struct ConnectScreen: View {
             } else {
                 connectContent
             }
-        }
-    }
-
-    @ViewBuilder
-    private func externalLink(_ title: String, urlString: String) -> some View {
-        if let url = URL(string: urlString) {
-            Link(title, destination: url)
-                .font(.terentoUI(size: 14, weight: .medium))
-                .foregroundStyle(TerentoColors.interactive)
-        } else {
-            Text(title)
-                .font(.terentoUI(size: 14, weight: .medium))
-                .foregroundStyle(TerentoColors.secondaryText)
         }
     }
 

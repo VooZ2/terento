@@ -57,8 +57,9 @@ width: "Your watch didn't get ready", "Your watch lost connection" (the watch
 left USB just before the window ended), "Your watch may be in use", "Not ready
 for file transfer" or "Your watch stopped responding". It gives one
 sentence of reason and numbered steps; the last step says to reconnect the
-watch or click Try again and that Terento doesn't check again until then. The
-collapsed "Having trouble connecting?" list follows. USB Mode is named as in
+watch or click Try again and that Terento doesn't check again until then. A
+Help link to the cause's troubleshooting section follows (also on the live
+attention states), then the collapsed "Having trouble connecting?" list. USB Mode is named as in
 the guide ("open USB Mode, usually under Settings › System, and choose MTP";
 not every model has it). A busy watch, and a timeout with the watch on USB,
 name the apps found by the read-only running-application scan (Garmin Express,
@@ -393,11 +394,14 @@ a download start without a received outcome is not proof of a failed download.
   `utm_content=<anchor>` (Help → Troubleshooting uses `help_menu`), followed by
   the `#<anchor>` fragment; no model, version or id is added. To keep the
   interface uncluttered, a "Help" text link (never a primary button) appears
-  only inside error dialogs, currently the installation failure dialog, and in
-  the Diagnostics window's send-report help. Connect, Device verdict, catalog
-  notices, the review step, Manage maps rows, the scan-failure card and the
-  support report sheet show no Help link; Help → Troubleshooting stays
-  available from the menu.
+  only for errors: inside error dialogs (currently the installation failure
+  dialog), in the Diagnostics window's send-report help, and on the Connect
+  page for a connection error (a live attention state or a final failure,
+  linked to that cause's section by `TroubleshootingHelp.connectionErrorTopic`).
+  Waiting and connecting (including the "Still not showing up?" steps), the
+  Device verdict, catalog notices, the review step, Manage maps rows, the
+  scan-failure card and the support report sheet show no Help link;
+  Help → Troubleshooting stays available from the menu.
 - **Install selection guidance.** Every selectable map row shows the catalog
   download size and "about N min" ("Download 412 MB · about 7 min") from the
   median of the last five measured download speeds on this Mac (30 days, local

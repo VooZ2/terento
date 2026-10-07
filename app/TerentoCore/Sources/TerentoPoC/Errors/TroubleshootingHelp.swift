@@ -139,6 +139,23 @@ enum TroubleshootingHelp {
         }
     }
 
+    /// Connect shows a Help link only for a connection error: a live
+    /// attention state or a final failure, for the cause on screen. Waiting
+    /// and connecting, including the "Still not showing up?" steps, have none.
+    static func connectionErrorTopic(state: DeviceConnectionState,
+                                     phase: DeviceDetectionPhase,
+                                     failure: ConnectFailureMessage?) -> TroubleshootingTopic? {
+        switch state {
+        case .detecting:
+            guard case let .needsAttention(outcome) = phase else { return nil }
+            return topic(for: outcome)
+        case .failed:
+            return failure.flatMap { topic(for: $0.outcome) }
+        case .disconnected, .connected, .ready, .ejecting, .safeToDisconnect:
+            return nil
+        }
+    }
+
     /// `nil` while resolving or approved.
     static func topic(for authorization: InstallationAuthorizationState) -> TroubleshootingTopic? {
         switch authorization {
