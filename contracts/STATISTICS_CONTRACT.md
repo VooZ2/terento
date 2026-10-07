@@ -303,8 +303,14 @@ cancelled, and unknown events are not chart series.
 
 The map-statistics read model keeps fresh-install outcomes, acquisition
 outcomes, and update outcomes separate. Period views use the selected period;
-all-time views say so explicitly. Period boundaries use the server/read-model
-timezone supplied by the request, and timestamps remain immutable source facts.
+all-time views say so explicitly. The Admin period set is `today`, `24h`, `7d`,
+`30d` and `all` (owner request 2026-10-07 added `today`). `today` is the
+current calendar day in the request's time zone: it starts at local midnight
+(where a DST change skips midnight, at the day's first existing local instant)
+and runs until now. The other periods are rolling windows ending now; `all` has
+no start. Period boundaries use the server/read-model timezone supplied by the
+request (an absent or unknown zone is UTC), and timestamps remain immutable
+source facts.
 Client clocks can run ahead: when a reported time is more than 10 minutes after
 the server receipt time, the map-statistics read model uses the receipt time for
 that event (map events and diagnostics alike) in period filters, KPIs, canonical
@@ -320,8 +326,8 @@ time, so a later matching map report cannot move a diagnostic result out of its
 original period. Ambiguous matches cannot supply another result's timestamp.
 An explicit dateTo bounds both bucket selection and display filling. Repeated
 local hours at DST rollback retain distinct real-hour bucket identities.
-The 24-hour trend is hourly, seven-day trends are daily, and 30-day trends are
-weekly. All-time trends use the observed span: up to 14 days is daily, 15–60
+The Today and 24-hour trends are hourly (Today from local 00:00 to the current
+hour), seven-day trends are daily, and 30-day trends are weekly. All-time trends use the observed span: up to 14 days is daily, 15–60
 days is weekly, and longer spans are monthly. Missing display buckets keep the
 existing zero-fill rule; bucketing never interpolates or invents events.
 Admin labels and grouping are owned by
@@ -369,13 +375,13 @@ unattributed boundaries.
 The GitHub read model uses these meanings:
 
 GitHub download trends use the same bucket rule as the map trends, so one
-Dashboard period selects one grid for every chart: 24 hours hourly, seven days
-daily, 30 days weekly, and all time adaptive by the observed span since the first
+Dashboard period selects one grid for every chart: Today and 24 hours hourly,
+seven days daily, 30 days weekly, and all time adaptive by the observed span since the first
 retained snapshot (up to 14 days daily, 15–60 days weekly, longer monthly).
 
-For the 24-hour trend read model, `hour_start` is the canonical hourly floor of
-an observation. The exact `observed_at` remains available as factual interval
-metadata. This changes display bucketing only: deltas, baselines, gaps,
+For the hourly (Today and 24-hour) trend read model, `hour_start` is the
+canonical hourly floor of an observation. The exact `observed_at` remains
+available as factual interval metadata. This changes display bucketing only: deltas, baselines, gaps,
 discontinuities, legacy confidence, partial aggregation, and period-boundary
 handling continue to use the real retained observations. The Admin chart's
 equal-width slots and `HH:00` labels are presentation rules in

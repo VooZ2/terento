@@ -308,8 +308,14 @@ one spans the row, so no Dashboard row leaves an empty grid cell at ≥1024 px.
 The narrow order is Downloads, Installs, Needs attention, Activity, First
 run, then App downloads.
 
-Every number shows its scope as visible text (`Last 24 hours`, `Last 7 days`,
-`Last 30 days`, `All time` or `Now`); hover-only scope is not used. Card titles
+Every number shows its scope as visible text (`Today`, `Last 24 hours`,
+`Last 7 days`, `Last 30 days`, `All time` or `Now`); hover-only scope is not
+used. Every Admin period picker (the Dashboard period dropdown and the Maps time
+range) offers, in this order, Today, Last 24 hours, Last 7 days, Last 30 days and
+All time (owner request 2026-10-07); Today covers the current day from midnight
+in the selected Admin time zone up to now. The Dashboard default stays Last 24
+hours and the Maps default stays All time; an unknown Dashboard period falls
+back to Last 24 hours. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`, never map downloads), shows its
 period increases in the legend and its all-time totals and last update in one
@@ -613,7 +619,8 @@ buckets and period boundaries use it; changing the zone reloads them. The Maps
 heading carries no Update reports link; the update report list is reached from
 Tools → Update reports.
 
-Maps trends use hourly buckets for 24 hours, daily buckets for seven days,
+Maps trends use hourly buckets for Today (from local 00:00 to the current hour)
+and 24 hours, daily buckets for seven days,
 weekly buckets for 30 days, and adaptive all-time buckets: daily through 14
 observed days, weekly through 60, then monthly. Missing buckets keep the
 statistics contract's existing zero-fill and timezone rules.

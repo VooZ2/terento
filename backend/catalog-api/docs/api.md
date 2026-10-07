@@ -214,7 +214,11 @@ an input to counts.
 ## `GET https://api.terento.app/admin`
 
 Returns the authenticated operator Dashboard. The default period is the last 24
-hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported.
+hours; `?period=today`, `?period=7d`, `?period=30d`, and `?period=all` are also
+supported, and an unknown value falls back to the default. `today` runs from
+midnight in `?timeZone=` (the selected Admin time zone; absent or unknown is
+UTC) until now, with hourly trends. Every period-scoped section (chart totals and
+trends, Activity, First run and App downloads) uses the same window.
 
 There is no summary tile row. The Downloads and Installs chart cards come
 first; each header shows a visible period chip and the period totals
@@ -283,7 +287,7 @@ snapshot is a baseline; unchanged counters are observed zero; missing snapshots
 are unknown. Counter decreases or confirmed population changes are discontinuity.
 Gap and period-boundary increases are retained as uncertain intervals, and
 aggregated partial buckets stay marked partial. Buckets follow the map trend rule
-(24h hourly, 7d daily, 30d weekly, all time adaptive by observed span). A failed GitHub read does not
+(today and 24h hourly, 7d daily, 30d weekly, all time adaptive by observed span). A failed GitHub read does not
 erase the last successful observation or timestamp.
 
 Authenticated HTML routes answer errors with an HTML page inside the admin
@@ -799,7 +803,9 @@ First-run funnel telemetry; meaning, fields and limits are owned by
 [`APP_FUNNEL_CONTRACT.md`](../../../contracts/APP_FUNNEL_CONTRACT.md). Intake
 accepts at most 4 KiB of schema-version-1 JSON, rejects unknown fields (`400`),
 is idempotent by event `id` (`201` stored, `200` duplicate), and allows 120 events
-per client address per minute. `GET /admin/app-funnel.json?period=24h|7d|30d|all`
+per client address per minute. `GET /admin/app-funnel.json?period=today|24h|7d|30d|all`
+(default `7d`; optional `timeZone` sets where `today` starts and is echoed in
+the additive `timeZone` field)
 requires an admin session and returns distinct non-local session counts per
 stage/outcome (zero-filled) plus the top base models with authorization outcome
 `PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`. The visual Admin presentation is not
@@ -879,7 +885,11 @@ outcome, and the optional `component_kind` (`main` or `contours`). Where the exi
 `region_identity` is an additive cross-provider grouping key derived from
 existing canonical region/country metadata. The technical IDs remain available.
 Supported query filters are `provider`, `map`, `region`,
-`dateFrom`, `dateTo`, `eventType`, and `outcome`. `provider`, `map`, `region`,
+`dateFrom`, `dateTo`, `eventType`, and `outcome`, plus `period` (`today`, `24h`,
+`7d`, `30d` or `all`, default `all`; any other value is `400
+invalid_period_filter`) and `timeZone`. A non-`all` period replaces `dateFrom`
+with its start; `today` starts at midnight in `timeZone` (absent or unknown is
+UTC). `provider`, `map`, `region`,
 and dates define the KPI, coverage, and popularity population. `eventType` and
 `outcome` affect only the Event detail projection; pagination is also detail
 only. The response is no-store/noindex and
@@ -959,7 +969,8 @@ event ID. Neither administrative action scope merges per-map statistics.
 ## `GET /admin/map-statistics`
 
 Returns the authenticated, no-store/noindex Maps page for the aggregate read
-model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time, plus
+model. It supports Today, Last 24 hours, Last 7 days, Last 30 days, and All time
+(default All time), plus
 provider, map, region, event-type, outcome, and exact `eventId` detail filters.
 
 The visible order is the period tiles (Downloads, Installs, Updates from

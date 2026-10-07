@@ -108,6 +108,7 @@ from .provider_catalog import (
     OpenTopoMapProviderAdapter,
 )
 from .provider_health import check_provider as run_provider_health_check
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, period_start
 
 LOGGER = logging.getLogger(__name__)
 
@@ -120,7 +121,6 @@ MAP_EVENT_RATE_LIMIT = 600
 COMPATIBILITY_EVENT_RATE_LIMIT = 300
 # A session sends at most one event per (stage, outcome, baseModel).
 APP_FUNNEL_EVENT_RATE_LIMIT = 120
-APP_FUNNEL_PERIODS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30), "all": None}
 # A user sends a support report only by explicit choice; retries reuse the id.
 SUPPORT_REPORT_RATE_LIMIT = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
@@ -496,19 +496,22 @@ class CatalogService:
 
     def app_funnel(self, query: dict[str, str]) -> dict[str, Any]:
         """Admin JSON read model for the app first-run funnel (distinct sessions)."""
-        if set(query) - {"period"}:
+        if set(query) - {"period", "timeZone"}:
             raise FunnelValidationError("unknown_filter")
         period = query.get("period") or "7d"
-        if period not in APP_FUNNEL_PERIODS:
+        if period not in ADMIN_PERIODS:
             raise FunnelValidationError("invalid_period")
+        # Like the other Admin read models, an unknown zone falls back to UTC;
+        # only Today depends on it (local midnight until now).
+        time_zone = _admin_time_zone(query.get("timeZone"))
         until = datetime.now(timezone.utc)
-        delta = APP_FUNNEL_PERIODS[period]
-        since = until - delta if delta is not None else None
+        since = period_start(period, now=until, time_zone=time_zone)
         summary = self.database.app_funnel_summary(since, until)
         counts = {(row["stage"], row["outcome"]): row["sessionCount"] for row in summary["stages"]}
         return {
             "schemaVersion": 1,
             "period": period,
+            "timeZone": time_zone,
             "since": since.isoformat() if since else None,
             "until": until.isoformat(),
             "population": "distinct app sessions; local test builds excluded; separate from install, update and download statistics",
@@ -534,23 +537,17 @@ class CatalogService:
         return event, inserted
 
     def map_statistics(self, query: dict[str, str]) -> dict[str, Any]:
-        periods = {
-            "24h": timedelta(hours=24),
-            "7d": timedelta(days=7),
-            "30d": timedelta(days=30),
-            "all": None,
-        }
         period = str(query.get("period") or "all").strip().lower()
-        if period not in periods:
+        if period not in ADMIN_PERIODS:
             raise MapEventValidationError("invalid_period_filter")
+        time_zone = _admin_time_zone(query.get("timeZone"))
         filter_query = {
             key: value for key, value in query.items()
             if key not in {"detailPage", "detailPageSize", "period", "timeZone"}
         }
-        if periods[period] is not None:
-            filter_query["dateFrom"] = (
-                datetime.now(timezone.utc) - periods[period]
-            ).isoformat()
+        start = period_start(period, now=datetime.now(timezone.utc), time_zone=time_zone)
+        if start is not None:
+            filter_query["dateFrom"] = start.isoformat()
         filters = validate_statistics_filters(filter_query)
         population_filters = {
             key: value for key, value in filters.items()
@@ -631,7 +628,6 @@ class CatalogService:
             for row in detail_rows
         ]
         linkage = self.database.map_statistics_linkage(population_filters)
-        time_zone = _admin_time_zone(query.get("timeZone"))
         trend_filters = dict(population_filters)
         if period == "all" and "dateFrom" not in trend_filters:
             observed_starts = [
@@ -646,7 +642,7 @@ class CatalogService:
                 trend_filters, period=period, time_zone=time_zone,
             )
             if callable(trend_reader)
-            else ([], {"24h": "hour", "7d": "day", "30d": "week", "all": "month"}[period])
+            else ([], PERIOD_BUCKETS[period])
         )
         payload = {
             "schemaVersion": 1,
@@ -670,21 +666,12 @@ class CatalogService:
     def admin_overview(
         self, period: str = "24h", time_zone: str = "UTC",
     ) -> dict[str, Any]:
-        periods = {
-            "24h": timedelta(hours=24),
-            "7d": timedelta(days=7),
-            "30d": timedelta(days=30),
-            "all": None,
-        }
-        if period not in periods:
+        if period not in ADMIN_PERIODS:
             period = "24h"
         time_zone = _admin_time_zone(time_zone)
-        duration = periods[period]
-        since = (
-            datetime.now(timezone.utc) - duration
-            if duration is not None
-            else datetime(1970, 1, 1, tzinfo=timezone.utc)
-        )
+        since = period_start(
+            period, now=datetime.now(timezone.utc), time_zone=time_zone,
+        ) or datetime(1970, 1, 1, tzinfo=timezone.utc)
         downloads_getter = getattr(self.database, "github_downloads_snapshot", None)
 
         def section(name: str, reader: Any, fallback: Any) -> Any:
@@ -731,7 +718,7 @@ class CatalogService:
             "providers": providers,
             "providersAvailable": providers_payload is not None,
             "system": section("system", system_health, dict(unavailable)),
-            "funnel": section("funnel", lambda: self.app_funnel({"period": period}), dict(unavailable)),
+            "funnel": section("funnel", lambda: self.app_funnel({"period": period, "timeZone": time_zone}), dict(unavailable)),
             "supportReports": section(
                 "supportReports",
                 lambda: {"openCount": self.database.support_report_open_count()},

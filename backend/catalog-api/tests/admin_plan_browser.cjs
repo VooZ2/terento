@@ -330,6 +330,8 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
   const dropdownErrors=[];dropdown.on('pageerror',e=>dropdownErrors.push(e.message));
   const expected={overview:['overview-period'],installations:['evidence-status','evidence-sort'],devices:['device-family','device-support','device-status','device-mobile-sort'],statistics:['map-statistics-provider','map-statistics-event','map-statistics-outcome'],providers:[],provider:['provider-package-page-size','provider-source-page-size'],health:[],diagnostics:[],'support-reports':[],device:['diagnostic-state-filter']};
   const navigates=new Set(['overview-period','map-statistics-range','map-statistics-provider']);
+  // Owner request 2026-10-07: every period picker offers Today first.
+  const periodOrder=['Today','Last 24 hours','Last 7 days','Last 30 days','All time'];
   const exercised=new Set();
   const settle=async name=>{if(name==='overview')await dropdown.waitForURL(/timeZone=/);await dropdown.waitForTimeout(50);};
   const control=id=>dropdown.locator(`#${id}`).locator('xpath=following-sibling::button[contains(@class,"admin-dropdown-button")]');
@@ -424,11 +426,27 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
      assert.equal(await dropdown.locator('[data-health-status]:not([hidden])').count(),5,'Health status filter keeps working');
     }
     if(name==='overview'){
+     await control('overview-period').click();
+     assert.deepEqual((await dropdown.locator('.admin-dropdown-list [role="option"]').allInnerTexts()).map(text=>text.trim()),periodOrder,`overview/${width}: the period dropdown lists Today first`);
+     if(width===1440)await dropdown.screenshot({path:`${output}/dropdown-overview-period-today-${width}.png`});
+     await dropdown.getByRole('option',{name:'Today',exact:true}).click();
+     await dropdown.waitForURL(/period=today/);await dropdown.waitForFunction(()=>document.querySelector('#overview-period')?.dataset.adminDropdownReady==='true'&&document.querySelectorAll('.admin-dropdown-list').length===1);
      await control('overview-period').click();await dropdown.getByRole('option',{name:'Last 7 days',exact:true}).click();
      await dropdown.waitForURL(/period=7d/);await dropdown.waitForFunction(()=>document.querySelector('#overview-period')?.dataset.adminDropdownReady==='true'&&document.querySelectorAll('.admin-dropdown-list').length===1);
      assert.equal(await control('overview-period').isVisible(),true,'Replaced Dashboard content gets a fresh dropdown');
     }
     if(name==='statistics'){
+     await dropdown.goto(base+'/admin/statistics.html');await settle(name);
+     const range=dropdown.locator("[data-quick-select='map-statistics-range']");
+     assert.deepEqual((await range.locator('[data-quick-value]').allInnerTexts()).map(text=>text.trim()),periodOrder,`statistics/${width}: the time range lists Today first`);
+     assert.deepEqual(await dropdown.evaluate(()=>[...document.querySelectorAll('#map-statistics-range option')].map(option=>option.value)),['today','24h','7d','30d','all'],`statistics/${width}: the hidden select keeps the same order`);
+     // The row may scroll or wrap, but never widens the page or clips a button vertically.
+     const rangeBox=await range.evaluate(group=>{const g=group.getBoundingClientRect(),style=getComputedStyle(group);return {right:g.right,scrolls:group.scrollWidth>group.clientWidth,overflowX:style.overflowX,wraps:style.flexWrap};});
+     assert(rangeBox.right<=width+0.5,`statistics/${width}: the time range stays inside the viewport ${JSON.stringify(rangeBox)}`);
+     assert(!rangeBox.scrolls||['auto','scroll'].includes(rangeBox.overflowX)||rangeBox.wraps==='wrap',`statistics/${width}: an overflowing time range scrolls or wraps ${JSON.stringify(rangeBox)}`);
+     await range.screenshot({path:`${output}/statistics-range-${width}.png`});
+     await range.locator("[data-quick-value='today']").click();
+     await dropdown.waitForURL(/period=today/);
      await dropdown.goto(base+'/admin/statistics.html');await settle(name);
      await dropdown.locator("[data-quick-select='map-statistics-range'] [data-quick-value='7d']").click();
      await dropdown.waitForURL(/period=7d/);

@@ -47,6 +47,7 @@ from .maprando_geography import (
     REGION_GEOGRAPHY,
 )
 from .operational_health import provider_catalog_health
+from .statistics_periods import ADMIN_PERIOD_LABELS, ADMIN_PERIODS
 
 
 PASSWORD_MIN_LENGTH = 14
@@ -297,19 +298,13 @@ def _admin_icon(name: str) -> str:
 # through these helpers so one concept looks the same everywhere.
 # ---------------------------------------------------------------------------
 
-ADMIN_SCOPE_LABELS = {
-    "24h": "Last 24 hours",
-    "7d": "Last 7 days",
-    "30d": "Last 30 days",
-    "all": "All time",
-    "now": "Now",
-}
+ADMIN_SCOPE_LABELS = {**ADMIN_PERIOD_LABELS, "now": "Now"}
 
 
 def _scope_chip(scope: str) -> str:
     """Visible scope for a number: a period, ``All time`` or ``Now``."""
     label = ADMIN_SCOPE_LABELS.get(scope, scope)
-    kind = "period" if scope in {"24h", "7d", "30d"} else "now" if scope == "now" else "all"
+    kind = "period" if scope in {"today", "24h", "7d", "30d"} else "now" if scope == "now" else "all"
     return f"<span class='admin-scope-chip' data-scope='{kind}'>{html.escape(label)}</span>"
 
 
@@ -1920,11 +1915,12 @@ def _overview_downloads_chart(
     if not trend:
         return "<p class='overview-empty-state'>No GitHub download data yet.</p>"
     chart_bucket = str(downloads.get("bucket") or {
-        "24h": "hour", "7d": "day", "30d": "day", "all": "month",
+        "today": "hour", "24h": "hour", "7d": "day", "30d": "day", "all": "month",
     }.get(period, "hour"))
     if chart_bucket not in {"hour", "day", "week", "month"}:
         chart_bucket = "hour"
     period_label = {
+        "today": "today",
         "24h": "the last 24 hours",
         "7d": "the last 7 days",
         "30d": "the last 30 days",
@@ -2350,13 +2346,13 @@ def overview_page(
     downloads = overview.get("downloads") if isinstance(overview.get("downloads"), dict) else {}
     providers = list(overview.get("providers") or [])
     period = str(overview.get("period") or "24h")
-    if period not in {"24h", "7d", "30d", "all"}:
+    if period not in ADMIN_PERIODS:
         period = "24h"
     time_zone = str(overview.get("timeZone") or "UTC")
-    period_labels = {"24h": "Last 24 hours", "7d": "Last 7 days", "30d": "Last 30 days", "all": "All time"}
+    # Picker order (owner request 2026-10-07): Today, then the rolling periods.
     period_options = "".join(
-        f"<option value='{value}'{' selected' if value == period else ''}>{label}</option>"
-        for value, label in period_labels.items()
+        f"<option value='{value}'{' selected' if value == period else ''}>{ADMIN_PERIOD_LABELS[value]}</option>"
+        for value in ADMIN_PERIODS
     )
     recent = [
         item for item in data.get("recentActivity") or []
@@ -4466,7 +4462,7 @@ def map_statistics_page(
         or (statistics.get("filters") or {}).get("period")
         or "all"
     ).strip().lower()
-    if selected_period not in {"24h", "7d", "30d", "all"}:
+    if selected_period not in ADMIN_PERIODS:
         selected_period = "all"
     event_status = "No matching event groups"
     provider_names = {str(provider.get("id") or ""): str(provider.get("name") or provider.get("id") or "") for provider in providers}
@@ -4522,7 +4518,7 @@ def map_statistics_page(
     )
     statistics_period_filter = _quick_select_filter(
         "map-statistics-range",
-        [("24h", "Last 24 hours"), ("7d", "Last 7 days"), ("30d", "Last 30 days"), ("all", "All time")],
+        [(value, ADMIN_PERIOD_LABELS[value]) for value in ADMIN_PERIODS],
         selected_period, label="Time range", name="period",
     )
     detail_query = {

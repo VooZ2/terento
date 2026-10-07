@@ -27,6 +27,7 @@ from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
 from .telemetry import is_local_release_label
 from .statistics_exclusions import classify_compatibility_event
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, period_start
 
 
 OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
@@ -756,32 +757,20 @@ class Database:
         intervals crossing the selected period boundary remain visible as
         uncertain; the read model never fabricates zero observations.
         """
-        periods = {
-            "24h": timedelta(hours=24),
-            "7d": timedelta(days=7),
-            "30d": timedelta(days=30),
-            "all": None,
-        }
-        if period not in periods:
+        if period not in ADMIN_PERIODS:
             period = "24h"
         # One bucket rule for every Admin trend (map charts use the same grid):
-        # 24h hourly, 7d daily, 30d weekly, all time adaptive by observed span.
-        bucket = {
-            "24h": "hour",
-            "7d": "day",
-            "30d": "week",
-            "all": "month",
-        }[period]
+        # Today and 24h hourly, 7d daily, 30d weekly, all time adaptive by
+        # observed span.
+        bucket = PERIOD_BUCKETS[period]
         now = now or datetime.now(timezone.utc)
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
         now = now.astimezone(timezone.utc)
-        duration = periods[period]
-        start = (
-            datetime(1970, 1, 1, tzinfo=timezone.utc)
-            if duration is None
-            else now - duration
-        )
+        # Today starts at local midnight in the selected time zone.
+        start = period_start(
+            period, now=now, time_zone=time_zone,
+        ) or datetime(1970, 1, 1, tzinfo=timezone.utc)
         if period == "24h":
             # Match the map-operation chart's rolling 24-hour window: include
             # the current hour bucket and the bucket at the same hour yesterday.
@@ -5311,12 +5300,7 @@ class Database:
                 else "month"
             )
         else:
-            bucket = {
-                "24h": "hour",
-                "7d": "day",
-                "30d": "week",
-                "all": "month",
-            }.get(period, "hour")
+            bucket = PERIOD_BUCKETS.get(period, "hour")
         rows = self.map_statistics(
             filters, trend_bucket=bucket, time_zone=time_zone,
         )

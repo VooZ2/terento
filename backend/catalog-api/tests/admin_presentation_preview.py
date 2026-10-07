@@ -18,6 +18,7 @@ from terento_catalog.admin import (
     devices_page,
     diagnostics_page,
     map_statistics_page,
+    overview_page,
 )
 from terento_catalog.support_report_admin import support_report_detail_page, support_reports_page
 from terento_catalog.support_reports import validate_support_report
@@ -194,6 +195,19 @@ def _identity_review_fixture():
     return operations, resolved, statistics, devices
 
 
+def _today_trend() -> list[dict[str, object]]:
+    """Hourly Today buckets: local (Europe/Vilnius) 00:00 to 14:00 on 7 Oct."""
+    return [
+        {
+            "bucket": f"2026-10-{6 if hour < 3 else 7:02d}T{(hour + 21) % 24:02d}:00:00Z",
+            "download_success_count": hour % 4, "download_failed_count": 1 if hour == 9 else 0,
+            "success_count": hour % 3, "failed_count": 1 if hour == 11 else 0,
+            "custom_count": 1 if hour == 10 else 0, "map_update_count": 0,
+        }
+        for hour in range(15)
+    ]
+
+
 def create(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
     build(root)
@@ -275,6 +289,38 @@ def create(root: Path) -> None:
         _statistics(rows, trend=_daily_trend(), bucket="day"),
         providers, user, "fixture", selected_filters={"period": "7d"},
     ))
+    (root / "statistics-today.html").write_bytes(map_statistics_page(
+        {**_statistics(rows, trend=_today_trend(), bucket="hour"), "timeZone": "Europe/Vilnius"},
+        providers, user, "fixture", selected_filters={"period": "today", "timeZone": "Europe/Vilnius"},
+    ))
+    today_trend = _today_trend()
+    (root / "overview-today.html").write_bytes(overview_page({
+        "period": "today", "timeZone": "Europe/Vilnius",
+        "data": {
+            "hasData": True, "trend": today_trend, "bucket": "hour", "recentActivity": [],
+            "completedInstallCount": sum(int(item["success_count"]) + int(item["custom_count"]) for item in today_trend),
+            "failedInstallCount": sum(int(item["failed_count"]) for item in today_trend),
+            "installSuccessRate": 93.3,
+            "completedDownloadCount": sum(int(item["download_success_count"]) for item in today_trend),
+            "failedDownloadCount": sum(int(item["download_failed_count"]) for item in today_trend),
+            "downloadSuccessRate": 95.0,
+        },
+        "downloads": {
+            "hasData": True, "dmgTotal": 330, "zipTotal": 85, "bucket": "hour",
+            "lastSuccessfulObservedAt": "2026-10-07T11:00:00Z",
+            "trend": [
+                {"bucket": "2026-10-07T05:00:00Z", "observed_at": "2026-10-07T05:00:00Z", "state": "observed_increase",
+                 "dmg_count": 2, "zip_count": 1, "confidence": "verified", "population_comparability": "verified"},
+                {"bucket": "2026-10-07T11:00:00Z", "observed_at": "2026-10-07T11:00:00Z", "state": "observed_increase",
+                 "dmg_count": 1, "zip_count": 0, "confidence": "verified", "population_comparability": "verified"},
+            ],
+        },
+        "funnel": {"sessionCount": 4, "stages": [
+            {"stage": "DEVICE_CONNECT", "outcomes": [{"outcome": "CONNECTED", "sessionCount": 3},
+                                                     {"outcome": "TIMEOUT_NO_USB", "sessionCount": 1}]},
+        ]},
+        "providers": providers,
+    }, user, "fixture"))
     (root / "statistics-monthly.html").write_bytes(map_statistics_page(
         _statistics(rows, trend=_monthly_trend(), bucket="month"),
         providers, user, "fixture",
