@@ -88,7 +88,7 @@ are operator work, never statistics.
 
 ## Responses and client compatibility
 
-The current rc.1 client requests `/maps/catalog-v4.json`. The legacy route
+The current rc.2 client, like rc.1, requests `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
 Older clients (beta.18 and earlier) can reject a complete snapshot containing
 an unknown installable provider, so these projections must remain separate.
