@@ -11,7 +11,7 @@ Terento is designed for Garmin smartwatches with map support. Below are exact mo
 
 Not seeing your model does not mean it is unsupported — we may simply not have a successful shared installation for that exact model and variant yet.
 
-**24** models with successful installs**149** successful installsLatest successful install October 6, 2026
+**25** models with successful installs**156** successful installsLatest successful install October 7, 2026
 
 How this list works
 
@@ -21,7 +21,7 @@ Installation results are shared with Terento by users. They are not Garmin certi
 
 The current beta includes four map providers. This product information is separate from the device results shown here.
 
-24 models
+25 models
 
 fēnix
 
@@ -32,6 +32,16 @@ fēnix
 35 successful installs
 
 Latest successful install October 4, 2026
+
+Forerunner
+
+### Forerunner 970
+
+AMOLED
+
+15 successful installs
+
+Latest successful install October 7, 2026
 
 fēnix
 
@@ -45,13 +55,13 @@ Latest successful install October 4, 2026
 
 Forerunner
 
-### Forerunner 970
+### Forerunner 965
 
-AMOLED
+Historical
 
-12 successful installs
+10 successful installs
 
-Latest successful install October 6, 2026
+Latest successful install October 7, 2026
 
 fēnix
 
@@ -60,16 +70,6 @@ fēnix
 51 mm, AMOLED
 
 10 successful installs
-
-Latest successful install October 6, 2026
-
-Forerunner
-
-### Forerunner 965
-
-Historical
-
-9 successful installs
 
 Latest successful install October 6, 2026
 
@@ -203,6 +203,16 @@ fēnix
 
 Latest successful install September 17, 2026
 
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, MIP, Solar, inReach
+
+3 successful installs
+
+Latest successful install October 7, 2026
+
 epix
 
 ### epix Pro (Gen 2)
@@ -237,16 +247,6 @@ fēnix
 
 ### fēnix 9 Pro
 
-51 mm, MIP, Solar, inReach
-
-1 successful install
-
-Latest successful install September 20, 2026
-
-fēnix
-
-### fēnix 9 Pro
-
 47 mm, MIP, Solar, inReach
 
 1 successful install
@@ -262,6 +262,16 @@ fēnix
 1 successful install
 
 Latest successful install September 15, 2026
+
+tactix
+
+### tactix Delta
+
+Solar, Historical
+
+1 successful install
+
+Latest successful install October 7, 2026
 
 Community results
 

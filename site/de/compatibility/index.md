@@ -11,7 +11,7 @@ Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Unten 
 
 Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.
 
-**24** Modelle mit erfolgreichen Installationen**149** erfolgreiche InstallationenLetzte erfolgreiche Installation 6. Oktober 2026
+**25** Modelle mit erfolgreichen Installationen**156** erfolgreiche InstallationenLetzte erfolgreiche Installation 7. Oktober 2026
 
 So funktioniert diese Liste
 
@@ -21,7 +21,7 @@ Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind kei
 
 Die aktuelle Beta umfasst vier Kartenanbieter. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
 
-24 Modelle
+25 Modelle
 
 fēnix
 
@@ -32,6 +32,16 @@ fēnix
 35 erfolgreiche Installationen
 
 Letzte erfolgreiche Installation 4. Oktober 2026
+
+Forerunner
+
+### Forerunner 970
+
+AMOLED
+
+15 erfolgreiche Installationen
+
+Letzte erfolgreiche Installation 7. Oktober 2026
 
 fēnix
 
@@ -45,13 +55,13 @@ Letzte erfolgreiche Installation 4. Oktober 2026
 
 Forerunner
 
-### Forerunner 970
+### Forerunner 965
 
-AMOLED
+Historical
 
-12 erfolgreiche Installationen
+10 erfolgreiche Installationen
 
-Letzte erfolgreiche Installation 6. Oktober 2026
+Letzte erfolgreiche Installation 7. Oktober 2026
 
 fēnix
 
@@ -60,16 +70,6 @@ fēnix
 51 mm, AMOLED
 
 10 erfolgreiche Installationen
-
-Letzte erfolgreiche Installation 6. Oktober 2026
-
-Forerunner
-
-### Forerunner 965
-
-Historical
-
-9 erfolgreiche Installationen
 
 Letzte erfolgreiche Installation 6. Oktober 2026
 
@@ -203,6 +203,16 @@ fēnix
 
 Letzte erfolgreiche Installation 17. September 2026
 
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, MIP, Solar, inReach
+
+3 erfolgreiche Installationen
+
+Letzte erfolgreiche Installation 7. Oktober 2026
+
 epix
 
 ### epix Pro (Gen 2)
@@ -237,16 +247,6 @@ fēnix
 
 ### fēnix 9 Pro
 
-51 mm, MIP, Solar, inReach
-
-1 erfolgreiche Installation
-
-Letzte erfolgreiche Installation 20. September 2026
-
-fēnix
-
-### fēnix 9 Pro
-
 47 mm, MIP, Solar, inReach
 
 1 erfolgreiche Installation
@@ -262,6 +262,16 @@ fēnix
 1 erfolgreiche Installation
 
 Letzte erfolgreiche Installation 15. September 2026
+
+tactix
+
+### tactix Delta
+
+Solar, Historical
+
+1 erfolgreiche Installation
+
+Letzte erfolgreiche Installation 7. Oktober 2026
 
 Ergebnisse aus der Community
 
