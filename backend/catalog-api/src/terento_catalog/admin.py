@@ -10135,6 +10135,11 @@ ADMIN_STYLES += """
   :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row>.admin-metric{display:grid;grid-row:span 3;grid-template-rows:subgrid;align-content:start;row-gap:4px;padding:4px 0 8px}
   :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row .admin-metric-label{align-self:start}
   :is(.installation-kpis,.admin-kpi-panel)>.admin-metric-row .admin-metric-value{flex-wrap:wrap;gap:0 6px;margin-top:0}
+  /* Devices: Covered spans two columns so Pending policy sits under Verified, and the
+     rate is half size on the same line as covered/eligible (owner decision 2026-10-07). */
+  .device-summary-strip>.admin-metric-row>.admin-metric:has([data-stat='covered']){grid-column:span 2}
+  .device-summary-strip [data-stat='covered']{flex-wrap:nowrap;align-items:baseline}
+  .device-summary-strip [data-stat='covered'] .admin-metric-rate{font-size:.5em}
 }
 """
 

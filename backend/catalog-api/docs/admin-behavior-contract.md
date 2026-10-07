@@ -1023,8 +1023,9 @@ four or two tiles use two (2 + 2, or one row). Columns share the width equally
 and widen only as far as a pill or number needs. Within each row of tiles the
 labels share one top line and the values one line below the tallest label, so
 a wrapped label never moves a number off the shared baseline. A long value
-wraps instead of overflowing: Covered renders its rate as a separate part that
-moves under the count. Desktop layouts are unchanged.
+wraps instead of overflowing. On Devices, Covered spans two columns so Pending
+policy sits under Verified, and its rate is a separate half-size part on the
+count's line (owner decision 2026-10-07). Desktop layouts are unchanged.
 
 ## Mandatory change and release gate
 
