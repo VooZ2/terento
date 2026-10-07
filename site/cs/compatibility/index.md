@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**24** modely s úspěšnými instalacemi**149** úspěšných instalacíPoslední úspěšná instalace 6. října 2026
+**25** modely s úspěšnými instalacemi**156** úspěšných instalacíPoslední úspěšná instalace 7. října 2026
 
 Jak tento seznam funguje
 
@@ -21,7 +21,7 @@ Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin
 
 Aktuální beta zahrnuje čtyři poskytovatele map. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
-24 modelů
+25 modelů
 
 fēnix
 
@@ -32,6 +32,16 @@ fēnix
 35 úspěšných instalací
 
 Poslední úspěšná instalace 4. října 2026
+
+Forerunner
+
+### Forerunner 970
+
+AMOLED
+
+15 úspěšných instalací
+
+Poslední úspěšná instalace 7. října 2026
 
 fēnix
 
@@ -45,13 +55,13 @@ Poslední úspěšná instalace 4. října 2026
 
 Forerunner
 
-### Forerunner 970
+### Forerunner 965
 
-AMOLED
+Historical
 
-12 úspěšných instalací
+10 úspěšných instalací
 
-Poslední úspěšná instalace 6. října 2026
+Poslední úspěšná instalace 7. října 2026
 
 fēnix
 
@@ -60,16 +70,6 @@ fēnix
 51 mm, AMOLED
 
 10 úspěšných instalací
-
-Poslední úspěšná instalace 6. října 2026
-
-Forerunner
-
-### Forerunner 965
-
-Historical
-
-9 úspěšných instalací
 
 Poslední úspěšná instalace 6. října 2026
 
@@ -203,6 +203,16 @@ fēnix
 
 Poslední úspěšná instalace 17. září 2026
 
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, MIP, Solar, inReach
+
+3 úspěšných instalací
+
+Poslední úspěšná instalace 7. října 2026
+
 epix
 
 ### epix Pro (Gen 2)
@@ -237,16 +247,6 @@ fēnix
 
 ### fēnix 9 Pro
 
-51 mm, MIP, Solar, inReach
-
-1 úspěšná instalace
-
-Poslední úspěšná instalace 20. září 2026
-
-fēnix
-
-### fēnix 9 Pro
-
 47 mm, MIP, Solar, inReach
 
 1 úspěšná instalace
@@ -262,6 +262,16 @@ fēnix
 1 úspěšná instalace
 
 Poslední úspěšná instalace 15. září 2026
+
+tactix
+
+### tactix Delta
+
+Solar, Historical
+
+1 úspěšná instalace
+
+Poslední úspěšná instalace 7. října 2026
 
 Výsledky komunity
 

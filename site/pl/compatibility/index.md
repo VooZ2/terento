@@ -11,7 +11,7 @@ Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej po
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
-**24** modele z udanymi instalacjami**149** udane instalacjeOstatnia udana instalacja 6 października 2026
+**25** modele z udanymi instalacjami**156** udane instalacjeOstatnia udana instalacja 7 października 2026
 
 Jak działa ta lista
 
@@ -21,7 +21,7 @@ Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyf
 
 Aktualna beta obejmuje czterech dostawców map. Ta informacja o produkcie jest oddzielona od pokazanych tutaj wyników dla urządzeń.
 
-24 modeli
+25 modeli
 
 fēnix
 
@@ -32,6 +32,16 @@ fēnix
 35 udanych instalacji
 
 Ostatnia udana instalacja 4 października 2026
+
+Forerunner
+
+### Forerunner 970
+
+AMOLED
+
+15 udanych instalacji
+
+Ostatnia udana instalacja 7 października 2026
 
 fēnix
 
@@ -45,13 +55,13 @@ Ostatnia udana instalacja 4 października 2026
 
 Forerunner
 
-### Forerunner 970
+### Forerunner 965
 
-AMOLED
+Historical
 
-12 udanych instalacji
+10 udanych instalacji
 
-Ostatnia udana instalacja 6 października 2026
+Ostatnia udana instalacja 7 października 2026
 
 fēnix
 
@@ -60,16 +70,6 @@ fēnix
 51 mm, AMOLED
 
 10 udanych instalacji
-
-Ostatnia udana instalacja 6 października 2026
-
-Forerunner
-
-### Forerunner 965
-
-Historical
-
-9 udanych instalacji
 
 Ostatnia udana instalacja 6 października 2026
 
@@ -203,6 +203,16 @@ fēnix
 
 Ostatnia udana instalacja 17 września 2026
 
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, MIP, Solar, inReach
+
+3 udanych instalacji
+
+Ostatnia udana instalacja 7 października 2026
+
 epix
 
 ### epix Pro (Gen 2)
@@ -237,16 +247,6 @@ fēnix
 
 ### fēnix 9 Pro
 
-51 mm, MIP, Solar, inReach
-
-1 udana instalacja
-
-Ostatnia udana instalacja 20 września 2026
-
-fēnix
-
-### fēnix 9 Pro
-
 47 mm, MIP, Solar, inReach
 
 1 udana instalacja
@@ -262,6 +262,16 @@ fēnix
 1 udana instalacja
 
 Ostatnia udana instalacja 15 września 2026
+
+tactix
+
+### tactix Delta
+
+Solar, Historical
+
+1 udana instalacja
+
+Ostatnia udana instalacja 7 października 2026
 
 Wyniki społeczności
 
