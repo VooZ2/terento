@@ -139,6 +139,10 @@ most 15 minutes: a renderer that finds the lease taken retries every 2
 minutes. The next renderer removes the downloads and staged tiles the stopped
 one left behind, and redraws layers that were drawn but not yet published or
 whose published tiles still have the transparent land of an earlier renderer.
+A deploy never makes drawn previews disappear or start over: the manifest
+follows the tiles in the current release, so a release switched by a renderer
+stopped mid-publish stays visible, and the next renderer records that release
+and keeps every published layer.
 
 Then switch providers on one at a time under Admin › Providers › Map style
 previews and check the `map-preview-renderer` heartbeat, the provider's
