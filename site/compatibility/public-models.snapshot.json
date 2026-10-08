@@ -12,8 +12,8 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 35,
-      "lastSuccessfulInstallation": "2026-10-04T19:24:44+00:00"
+      "successfulInstallations": 36,
+      "lastSuccessfulInstallation": "2026-10-08T02:21:00+00:00"
     },
     {
       "model": "Forerunner 970",
@@ -44,6 +44,20 @@
       "lastSuccessfulInstallation": "2026-10-04T22:03:29+00:00"
     },
     {
+      "model": "fēnix 9 Pro · 51 mm",
+      "variant": "51 mm",
+      "caseSizeMm": 51,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
+      "successfulInstallations": 11,
+      "lastSuccessfulInstallation": "2026-10-08T04:28:40+00:00"
+    },
+    {
       "model": "Forerunner 965 · Historical",
       "variant": "Historical",
       "caseSizeMm": null,
@@ -56,20 +70,6 @@
       "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
       "successfulInstallations": 10,
       "lastSuccessfulInstallation": "2026-10-07T14:00:58+00:00"
-    },
-    {
-      "model": "fēnix 9 Pro · 51 mm",
-      "variant": "51 mm",
-      "caseSizeMm": 51,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 10,
-      "lastSuccessfulInstallation": "2026-10-06T10:41:01+00:00"
     },
     {
       "model": "fēnix 7X Pro · Historical",
@@ -352,5 +352,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-07T22:21:45.620814+00:00"
+  "generatedAt": "2026-10-08T12:21:29.800891+00:00"
 }
