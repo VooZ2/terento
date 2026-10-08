@@ -11,7 +11,7 @@ Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej po
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
-**25** modele z udanymi instalacjami**158** udane instalacjeOstatnia udana instalacja 8 października 2026
+**25** modele z udanymi instalacjami**164** udane instalacjeOstatnia udana instalacja 8 października 2026
 
 Jak działa ta lista
 
@@ -139,9 +139,19 @@ fēnix
 
 Solar, Historical
 
-4 udanych instalacji
+5 udanych instalacji
 
-Ostatnia udana instalacja 6 października 2026
+Ostatnia udana instalacja 8 października 2026
+
+fēnix
+
+### fēnix 7 Pro
+
+Solar, (no Wi-Fi)
+
+5 udanych instalacji
+
+Ostatnia udana instalacja 8 października 2026
 
 fēnix
 
@@ -205,6 +215,16 @@ Ostatnia udana instalacja 17 września 2026
 
 fēnix
 
+### fēnix 8
+
+47 mm, MIP, Solar
+
+3 udanych instalacji
+
+Ostatnia udana instalacja 8 października 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 51 mm, MIP, Solar, inReach
@@ -222,26 +242,6 @@ epix
 2 udanych instalacji
 
 Ostatnia udana instalacja 24 września 2026
-
-fēnix
-
-### fēnix 7 Pro
-
-Solar, (no Wi-Fi)
-
-2 udanych instalacji
-
-Ostatnia udana instalacja 1 października 2026
-
-fēnix
-
-### fēnix 8
-
-47 mm, MIP, Solar
-
-1 udana instalacja
-
-Ostatnia udana instalacja 29 września 2026
 
 fēnix
 
