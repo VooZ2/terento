@@ -86,13 +86,19 @@ The stored catalog Maps value of a **new** collector-managed model comes only
 from the official Garmin product specifications the collector already reads:
 an explicit `yes` on a map-support row (`Built-in mapping`, `Full vector map`,
 `Ability to add maps`, `Preloaded maps`, `TopoActive maps`, `Maps`,
-`Map support`) stores `true`; an explicit `no` on a whole-support row
-(`Built-in mapping`, `Full vector map`, `Ability to add maps`, `Maps`,
-`Map support`) with no conflicting `yes` stores `false`. The row lists are
-`MAP_POSITIVE_ROWS` and `MAP_NEGATIVE_ROWS` in
+`Map support`, `Preloaded road and trail maps`) stores `true`; an explicit `no`
+on a whole-support row (`Built-in mapping`, `Full vector map`,
+`Ability to add maps`, `Maps`, `Map support`) with no conflicting `yes` stores
+`false`. Rows under a specification-table section heading containing "golf"
+(Garmin's `Golfing Features`) are never map evidence, `yes` or `no` (see the
+golf rule below). The row lists are `MAP_POSITIVE_ROWS` and
+`MAP_NEGATIVE_ROWS` in
 `backend/catalog-api/src/terento_catalog/collectors/garmin/specifications.py`;
-change both together. Current Garmin pages use `Built-in mapping` and
-`Full vector map` (for example fēnix 8 and Venu X1); pages that show neither
+change both together. Current Garmin pages use `Built-in mapping` (section
+`What You'll Love`) and `Preloaded road and trail maps` (section
+`Mapping & Navigation`), for example fēnix 8, Venu X1, Forerunner 970 and
+Enduro 4; Garmin lists `Full vector map` only under `Golfing Features`, so it
+no longer decides a current page. Pages that show none of the counted rows
 (for example Forerunner 570, vivoactive 6, Instinct 3) stay Unknown; missing, conflicting or per-SKU-disagreeing
 information stores NULL (Unknown → `PENDING`). A model-name prefix never stores
 a value, so a future maps-capable model in a family the native display registry
@@ -132,13 +138,20 @@ Migration 075 applies these decisions; the per-row evidence is stored in
   non-map products are not added. Current-category models (for example
   Enduro 4, Approach S72) are added by the weekly collector from their
   specification rows.
-- *Golf watches (pending owner review).* On Approach watches the
-  `Full vector map: yes` row (for S44 and S50 `yes (with Garmin Golf
-  membership)`) sits in the golf section of the specification table and
-  appears to describe golf-course maps, not general map support. Golf-section
-  map rows are pending a separate owner decision and do not change stored
-  values: every Approach row keeps its current stored Maps value (`false`),
-  and migration 075 does not touch them.
+- *Golf watches (owner rule, 2026-10-09).* A golf watch has Maps=Yes only
+  when its official specifications show real (outdoor, road, trail or topo)
+  map support outside the golf section. The `Full vector map` row inside
+  `Golfing Features` (on Approach S44 and S50 `yes (with Garmin Golf
+  membership)`) describes golf-course maps and is not map evidence, so a page
+  whose only positive map row is in a golf section (Approach S44, S50, S70)
+  stores Unknown unless a whole-support `no` row outside the golf section
+  stores `false`. A positive row in any other section still counts: Approach
+  S72 stores `true` from `Built-in mapping: yes` (`What You'll Love`) and
+  `Preloaded road and trail maps: yes` (`Mapping & Navigation`). The rule
+  applies to every product page; non-golf map watches are decided by their
+  non-golf rows. Existing Approach rows keep their stored Maps value (`false`)
+  because the collector never replaces a stored value; no migration changes
+  them.
 - *Reviewed Maps=No.* The collector stores Unknown when a page has no map row.
   As a reviewed owner decision, Bounce 2, D2 Air X15, Forerunner 70, 170 and
   170 Music, vívofit jr. 3 and vívosmart 5 are stored as Maps=No: their

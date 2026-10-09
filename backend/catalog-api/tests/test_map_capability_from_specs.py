@@ -27,6 +27,18 @@ def sku(rows, product="123", part="010-12345-00"):
     return {"productId": product, "partNumber": part, "tabs": {"specsTab": {"content": content}}}
 
 
+def sectioned_sku(sections, product="123", part="010-12345-00"):
+    """Garmin's live specsTab layout: one table per section, its heading in an <h3> inside a title row."""
+    tables = []
+    for heading, rows in sections:
+        cells = [f"<tr><th scope='row'>{label}</th><td class='{value}'></td></tr>" if value in {"yes", "no"}
+                 else f"<tr><th scope='row'>{label}</th><td>{value}</td></tr>" for label, value in rows]
+        tables.append("<table><tbody><tr class='title'><td colspan='2'>\n<h3>" + heading.replace("&", "&amp;")
+                      + "</h3>\n</td></tr>" + "".join(cells) + "</tbody></table>")
+    return {"productId": product, "partNumber": part,
+            "tabs": {"specsTab": {"content": "<div>" + "".join(tables) + "</div>"}}}
+
+
 class SpecificationParserTests(unittest.TestCase):
     def test_maps_yes_from_preloaded_or_add_maps_rows(self):
         result = parse_specifications(page(sku([("Display type", "AMOLED"), ("Preloaded maps", "yes"),
@@ -73,6 +85,50 @@ class SpecificationParserTests(unittest.TestCase):
         self.assertIsNone(variants["map_capable"])
         self.assertEqual(map_capability_from_rows({}), (None, None))
         self.assertEqual(map_capability_from_rows({"maps": "none listed"}), (None, None))
+
+    def test_golf_section_map_rows_are_not_map_evidence(self):
+        """Owner rule 2026-10-09: rows under a golf heading describe golf-course maps."""
+        # Approach S70: the only map row is "Full vector map" under Golfing Features.
+        s70 = parse_specifications(page(sectioned_sku([
+            ("What You'll Love", [("Display type", "AMOLED (optional always-on mode)")]),
+            ("Outdoor Recreation", [("Point-to-point navigation", "yes")]),
+            ("Golfing Features", [("Full vector map", "yes"), ("Green view with manual pin positioning", "yes")]),
+            ("Workout and Training Plans", [("On-screen workout muscle maps", "yes")])])), "123")
+        self.assertIsNone(s70["map_capable"])
+        self.assertIsNone(s70["map_evidence_row"])
+        self.assertEqual(s70["screen_technology"], "AMOLED")
+        # Approach S44/S50 value text.
+        s44 = parse_specifications(page(sectioned_sku([
+            ("Golfing Features", [("Full vector map", "yes (with Garmin Golf membership)")])])), "123")
+        self.assertIsNone(s44["map_capable"])
+        # A golf-section "no" does not deny map support either.
+        golf_no = parse_specifications(page(sectioned_sku([("Golfing Features", [("Full vector map", "no")])])), "123")
+        self.assertIsNone(golf_no["map_capable"])
+        # A whole-support "no" outside the golf section still stores false on a golf page.
+        denied = parse_specifications(page(sectioned_sku([
+            ("Mapping & Navigation", [("Built-in mapping", "no")]),
+            ("Golfing Features", [("Full vector map", "yes")])])), "123")
+        self.assertIs(denied["map_capable"], False)
+        self.assertEqual(denied["map_evidence_row"], "built-in mapping")
+
+    def test_non_golf_section_map_rows_still_count(self):
+        # Approach S72 / fēnix 8 / Enduro 4 layout: real map rows outside the golf section.
+        s72 = parse_specifications(page(sectioned_sku([
+            ("What You'll Love", [("Built-in mapping", "yes")]),
+            ("Golfing Features", [("Full vector map", "yes")]),
+            ("Mapping & Navigation", [("Preloaded road and trail maps", "yes")])])), "123")
+        self.assertIs(s72["map_capable"], True)
+        self.assertEqual(s72["map_evidence_row"], "built-in mapping")
+        # Older map watches (fēnix 6 Pro, MARQ) list only "Preloaded road and trail maps" outside golf.
+        road_trail = parse_specifications(page(sectioned_sku([
+            ("Golfing Features", [("Full vector map", "yes")]),
+            ("Mapping & Navigation", [("Preloaded road and trail maps", "yes (Sapphire Editions only)"),
+                                      ("Preloaded ski resort maps", "yes")])])), "123")
+        self.assertIs(road_trail["map_capable"], True)
+        self.assertEqual(road_trail["map_evidence_row"], "preloaded road and trail maps")
+        # "Full vector map" outside a golf heading keeps its old meaning.
+        self.assertIs(parse_specifications(page(sectioned_sku([
+            ("Mapping & Navigation", [("Full vector map", "yes")])])), "123")["map_capable"], True)
 
     def test_other_product_on_the_page_is_not_evidence(self):
         result = parse_specifications(page(sku([("Ability to add maps", "yes")], product="456")), "123")

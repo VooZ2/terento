@@ -111,7 +111,7 @@ class MigrationSourceTests(unittest.TestCase):
         for forbidden in ("DROP ", "ALTER ", "DELETE ", "RENAME", "CREATE INDEX"):
             self.assertNotIn(forbidden, code.upper())
         self.assertIn("ON CONFLICT (id) DO NOTHING", code)
-        # Golf-section map rows are pending owner review: no Approach row changes.
+        # Approach rows keep their stored Maps value: no Approach row changes.
         self.assertNotIn("approach", code.lower())
         self.assertNotIn("map_capable = TRUE", code)
         self.assertIn("d.map_capable IS NULL", code)
