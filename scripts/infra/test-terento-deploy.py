@@ -123,5 +123,100 @@ class DeployPathTests(unittest.TestCase):
             deploy.validate_status(["--candidate-digest", DIGEST])
 
 
+def image_id(char):
+    return "sha256:" + char * 64
+
+
+class ImagePruneTests(unittest.TestCase):
+    def _docker(self, removed, fail_rmi=()):
+        # Images a..f and 0, newest first by creation time; c is used by a stopped container.
+        created = {image_id(c): "2026-10-0%dT00:00:00Z" % (9 - n) for n, c in enumerate("abcdef0")}
+        references = {"current": image_id("a"), "previous": image_id("d")}
+
+        def docker(*args, **kwargs):
+            if args[:3] == ("image", "inspect", "--format") and args[3] == "{{.Id}}":
+                return references[args[4]] + "\n"
+            if args[:3] == ("image", "inspect", "--format"):
+                return created[args[4]] + "\n"
+            if args[0] == "ps":
+                return "container1\ncontainer2\n"
+            if args[:2] == ("inspect", "--type=container"):
+                return image_id("c") + "\n" + image_id("9") + "\n"
+            if args[0] == "images":
+                self.assertEqual(args[-1], deploy.PROJECTS["api"]["image"])
+                return "\n".join(created) + "\n" + image_id("a") + "\n"
+            if args[0] == "rmi":
+                self.assertEqual(len(args), 2, "rmi must never be forced or batched")
+                if args[1] in fail_rmi:
+                    raise deploy.subprocess.CalledProcessError(1, "docker rmi")
+                removed.append(args[1])
+                return ""
+            raise AssertionError(args)
+
+        return docker
+
+    def test_keeps_current_previous_in_use_and_two_newest_others(self):
+        removed = []
+        with patch.object(deploy, "docker", side_effect=self._docker(removed)):
+            result = deploy.prune_images("api", ["current", "previous"])
+        # Kept: a (current), d (previous), c (container), b and e (two newest others).
+        self.assertEqual(removed, [image_id("f"), image_id("0")])
+        self.assertEqual(result, (2, 0))
+
+    def test_failures_are_counted_and_never_raised(self):
+        removed = []
+        with patch.object(deploy, "docker", side_effect=self._docker(removed, fail_rmi={image_id("f")})):
+            self.assertEqual(deploy.prune_images("api", ["current", "previous"]), (1, 1))
+        with patch.object(deploy, "docker", side_effect=deploy.subprocess.CalledProcessError(1, "docker")):
+            self.assertEqual(deploy.prune_images("api", ["current"]), (0, 1))
+
+    def test_deploy_prunes_only_after_recorded_success_and_tolerates_prune_failure(self):
+        with tempfile.TemporaryDirectory() as root:
+            base = Path(root) / "config"
+            state = Path(root) / "state"
+            (base / "site").mkdir(parents=True)
+            (base / "site" / "enabled").touch()
+            state.mkdir()
+            old_image = deploy.PROJECTS["site"]["image"] + "@sha256:" + "c" * 64
+            (state / "site.json").write_text(json.dumps({"image": old_image, "commit": "d" * 40, "previous": None}))
+            image = deploy.PROJECTS["site"]["image"] + "@" + DIGEST
+            image_inspect = json.dumps([{"Config": {"Labels": {
+                "org.opencontainers.image.source": "https://github.com/VooZ2/terento",
+                "org.opencontainers.image.revision": REVISION,
+            }}}])
+
+            def prune(project, references):
+                self.assertTrue(json.loads((state / "site.json").read_text())["image"] == image)
+                self.assertEqual(references, [image, old_image])
+                return (0, 3)
+
+            with patch.object(deploy, "BASE", base), patch.object(deploy, "STATE", state), \
+                    patch.object(deploy, "compose", return_value=""), \
+                    patch.object(deploy, "docker", return_value=image_inspect), \
+                    patch.object(deploy, "healthy_ids", return_value={"site": {}}), \
+                    patch.object(deploy, "register"), patch.object(deploy, "run"), \
+                    patch.object(deploy, "prune_images", side_effect=prune) as pruned:
+                deploy.deploy("site", DIGEST, REVISION)
+            pruned.assert_called_once()
+
+    def test_failed_deploy_does_not_prune(self):
+        with tempfile.TemporaryDirectory() as root:
+            base = Path(root) / "config"
+            (base / "api").mkdir(parents=True)
+            (base / "api" / "enabled").touch()
+            image_inspect = json.dumps([{"Config": {"Labels": {
+                "org.opencontainers.image.source": "https://github.com/VooZ2/terento",
+                "org.opencontainers.image.revision": REVISION,
+            }}}])
+            with patch.object(deploy, "BASE", base), patch.object(deploy, "STATE", Path(root) / "state"), \
+                    patch.object(deploy, "compose", return_value=""), \
+                    patch.object(deploy, "docker", return_value=image_inspect), \
+                    patch.object(deploy, "migrate_candidate", side_effect=deploy.DeploymentError("migration failed")), \
+                    patch.object(deploy, "prune_images") as pruned:
+                with self.assertRaises(deploy.DeploymentError):
+                    deploy.deploy("api", DIGEST, REVISION)
+            pruned.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -32,7 +32,11 @@ operations lock:
 7. run `terento-catalog-migrate` from the same image with no target-specific argument when entries are pending;
 8. reread the ledger and require exact equality with the candidate inventory;
 9. replace only the API/scheduler services with the same immutable image and verify health;
-10. verify the release, record state, and retain the previous image for rollback.
+10. verify the release, record state, and retain the previous image for rollback;
+11. remove this project's older unused images with a plain, never-forced `docker rmi`,
+    keeping the current and previous release images, every image used by any
+    container, and the two newest other images. A pruning failure is only
+    reported (`IMAGE_PRUNE … failed=N`) and never fails or rolls back the deploy.
 
 The database container is never replaced by this path. A migration failure,
 ledger mismatch, invalid inventory, or health failure leaves the previous

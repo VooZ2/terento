@@ -80,7 +80,9 @@ protocol.
 Forward schema recovery uses the validated database backup/recovery procedure
 in [production-db-recovery.md](production-db-recovery.md). A service failure
 may restore the previous immutable image, but it must not delete volumes or
-attempt an automatic schema downgrade. If the remote result is uncertain,
+attempt an automatic schema downgrade. Image cleanup runs only after a
+verified, recorded deploy and always keeps the current and previous release
+images, so rollback to the previous image never needs a registry pull. If the remote result is uncertain,
 inspect the bounded root-owned state and ledger before considering any retry.
 
 ## Evidence before an authorized run

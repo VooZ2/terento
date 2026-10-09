@@ -24,6 +24,8 @@ BASE = Path('/etc/terento/deployment')
 STATE = Path('/var/lib/terento/deployment')
 REGISTRY = Path('/etc/terento/ops-containers.json')
 OPERATIONS_LOCK_NAME = 'operations.lock'
+# Besides the current and previous release, keep this many newest other project images.
+KEEP_RECENT_IMAGES = 2
 
 class DeploymentError(Exception):
     pass
@@ -350,6 +352,38 @@ def dispatch(arguments):
     deploy(*validate(arguments))
     return 0
 
+def prune_images(project, keep_references):
+    """Remove this project's unused older images after a verified deploy.
+
+    Keeps the given references (current and previous release), every image used by any
+    container, and the KEEP_RECENT_IMAGES newest other images of the repository. Uses a
+    plain `docker rmi` by image ID (never forced) and never raises: pruning is housekeeping
+    and must not fail or roll back a deploy. Returns (removed, failed) counts.
+    """
+    removed = failed = 0
+    try:
+        keep = set()
+        for reference in keep_references:
+            keep.add(docker('image', 'inspect', '--format', '{{.Id}}', reference, timeout=30).strip())
+        container_ids = docker('ps', '-a', '-q', '--no-trunc', timeout=30).split()
+        if container_ids:
+            keep.update(docker('inspect', '--type=container', '--format', '{{.Image}}', *container_ids, timeout=60).split())
+        listed = docker('images', '--no-trunc', '--quiet', PROJECTS[project]['image'], timeout=30).split()
+        created = {}
+        for image_id in dict.fromkeys(listed):
+            if re.fullmatch(r'sha256:[0-9a-f]{64}', image_id):
+                created[image_id] = docker('image', 'inspect', '--format', '{{.Created}}', image_id, timeout=30).strip()
+        others = sorted((i for i in created if i not in keep), key=lambda i: created[i], reverse=True)
+        for image_id in others[KEEP_RECENT_IMAGES:]:
+            try:
+                docker('rmi', image_id, timeout=120)
+                removed += 1
+            except subprocess.SubprocessError:
+                failed += 1
+    except Exception:
+        failed += 1
+    return removed, failed
+
 def operator_failure_message(error):
     """Return only fixed/sanitized operation detail suitable for the terminal."""
     if isinstance(error, DeploymentError):
@@ -393,6 +427,8 @@ def deploy(project, digest, commit):
                 compose(project, image, 'stop', *spec['services'])
             # Never delete volumes or attempt an automatic schema downgrade.
             raise
+        removed, failed = prune_images(project, [image] + ([old['image']] if old else []))
+        print('IMAGE_PRUNE '+project+' removed='+str(removed)+' failed='+str(failed))
         print('DEPLOYMENT_PASS '+project+' '+commit)
 
 if __name__ == '__main__':
