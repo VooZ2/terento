@@ -32,8 +32,9 @@ the same value the installation policy uses (`null` → `PENDING`); it is not
 public compatibility evidence and does not by itself authorize a write. New
 collector rows take that value only from official specification evidence
 ([`INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md)). Compatibility status is deliberately absent from
-this public contract. Retail rows are collector-managed; inactive
-retail rows remain in the database for continuity, while reviewed historical
+this public contract. Retail rows are collector-managed; a model that leaves
+Garmin's current category stays in this endpoint with `active: true` (retired
+from retail, see below), while reviewed historical
 rows have `record_source = HISTORICAL_REVIEWED` and
 `collector_managed = false` and are intentionally excluded from this endpoint.
 The existing validated fēnix 8 USB identity (`VID 0x091e`, `PID 0x51b8`) is
@@ -75,7 +76,10 @@ It includes fēnix 7/7S/7X, the fēnix 7 Pro/7S Pro/7X Pro identities (including
 the reviewed no-Wi-Fi Solar editions), fēnix 6 variants, epix Gen 2, and
 Forerunner 955. A shared evidence event can resolve to one of these rows even
 when the current retail collector has never returned it. Historical rows are
-never deactivated by retail absence.
+never counted by retail absence. Migration 075 adds further reviewed
+map-capable historical catalog rows for installation authorization (listed in
+`docs/schema.md`); they are catalog rows only and are not added to this
+evidence-resolution registry.
 
 The private admin view is additive and is not part of this public contract.
 `/admin/devices.json` is authenticated and may include catalogue sync
@@ -212,7 +216,7 @@ validated WebP under `/assets/devices/` and changes the record to `AVAILABLE`.
 The public API never serves review storage. The runtime limit is 8 MiB and
 dimensions must be valid and between 1 and 16384 pixels.
 
-## Historical evidence and inactive policy
+## Historical evidence and retail retirement
 
 Compatibility ingestion resolves a reviewed historical identity in the same
 database transaction as event insertion. If no reviewed identity matches, the
@@ -224,8 +228,9 @@ profile.
 The collector writes only current retail rows. A historical row is not part of
 the collector's absence counter and remains active in the database regardless
 of how many weekly retail collections omit it. Current retail rows are never
-deleted automatically; a model is marked inactive only after it is absent
-from three consecutive successful complete collections.
+deleted automatically. A model absent from three consecutive successful
+complete collections is retired from retail but stays active, so installation
+authorization keeps following its stored Maps value.
 
 ## Failure policy
 
@@ -234,10 +239,12 @@ scope validation. A product-page enrichment failure keeps the successful
 category record but marks that run partial. A category-source failure leaves
 the previous catalog untouched and records a failed collection run.
 
-Records are never deleted automatically. A model is marked inactive only
-after it is absent from three consecutive successful full weekly collections;
-partial collections do not increment that counter. Inactive records remain
-available in the catalog for historical identity and future compatibility work.
+Records are never deleted automatically and retail absence never deactivates
+a model. After a model is absent from three consecutive successful full weekly
+collections it is retired from retail (`consecutive_missed_collections >= 3`)
+and keeps `active = true`; partial collections do not increment that counter,
+and a model seen again is current retail once more. Retired records remain in
+the catalog for identity, compatibility work and installation authorization.
 
 
 ## Display-only label contract
@@ -296,8 +303,11 @@ claiming the connected watch's lens, finish or band. No media is mirrored.
 The unsized historical record and existing assignments remain intact. New
 records start NOT_EVALUATED and are not collector-managed retail entries.
 Reported `EPIX PRO` is a narrow generation-label alias for `epix Pro (Gen 2)`
-during evidence comparison only. Size conflicts still exclude other candidates;
-this alias does not approve XML/USB mappings or assign reports automatically.
+in evidence comparison. Size conflicts still exclude other candidates. The
+alias does not approve XML/USB mappings or assign reports automatically. The
+installation policy uses the same alias as a reviewed base-model alias. Alias
+rows copy every `epix pro gen 2` row under `baseModel: "epix pro"`. The owning
+rule is in [`INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md).
 
 
 ## Historical model photography

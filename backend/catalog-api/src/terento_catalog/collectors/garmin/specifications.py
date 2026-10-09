@@ -8,11 +8,17 @@ class SpecificationTable(HTMLParser):
     def __init__(self):
         super().__init__()
         self.rows = {}
+        # Rows outside golf sections only: the map evidence (see GOLF_SECTION below).
+        self.map_rows = {}
+        self.section = ''
+        self.heading = None
         self.label = ''
         self.value = ''
         self.cell = None
 
     def handle_starttag(self, tag, attrs):
+        if tag == 'h3':
+            self.heading = ''
         if tag == 'tr':
             self.label, self.value = '', ''
         if tag in ('th', 'td'):
@@ -25,17 +31,23 @@ class SpecificationTable(HTMLParser):
                     self.value = 'no'
 
     def handle_data(self, data):
-        if self.cell == 'th':
+        if self.heading is not None:
+            self.heading += data
+        elif self.cell == 'th':
             self.label += data
         elif self.cell == 'td':
             self.value += data
 
     def handle_endtag(self, tag):
+        if tag == 'h3' and self.heading is not None:
+            self.section, self.heading = ' '.join(self.heading.split()).lower(), None
         if tag in ('th', 'td'):
             self.cell = None
         if tag == 'tr' and self.label.strip():
             key, value = self.label.strip().lower(), self.value.strip()
             self.rows[key] = value if key not in self.rows or self.rows[key] == value else ''
+            if GOLF_SECTION not in self.section:
+                self.map_rows[key] = value if key not in self.map_rows or self.map_rows[key] == value else ''
 
 
 # Maps evidence from the official specification table (owner rule 2026-10-06):
@@ -47,8 +59,16 @@ class SpecificationTable(HTMLParser):
 # "Built-in mapping" and "Full vector map"; watches without maps simply omit
 # those rows (Garmin publishes no explicit "no"), so they stay unknown.
 # "On-screen workout muscle maps" is not map support and is never matched.
+# Golf rule (owner, 2026-10-09): a row under a specification-table heading that
+# contains "golf" (Garmin's "Golfing Features") describes golf-course maps, not
+# outdoor/road/trail/topo map support, so it is never map evidence, yes or no.
+# Garmin lists "Full vector map" only there (Approach S44/S50/S70 show nothing
+# else), so a golf-only page stays Unknown; a map row in any other section
+# (for example "Built-in mapping" under "What You'll Love" or "Preloaded road
+# and trail maps" under "Mapping & Navigation", as on Approach S72) still counts.
+GOLF_SECTION = 'golf'
 MAP_POSITIVE_ROWS = ('built-in mapping', 'full vector map', 'ability to add maps', 'preloaded maps',
-                     'topoactive maps', 'maps', 'map support')
+                     'topoactive maps', 'maps', 'map support', 'preloaded road and trail maps')
 MAP_NEGATIVE_ROWS = ('built-in mapping', 'full vector map', 'ability to add maps', 'maps', 'map support')
 
 
@@ -98,7 +118,7 @@ def parse_specifications(html: str, product_id: str) -> dict:
         satellite = table.rows.get('satellite communication', '').lower()
         if satellite.startswith('yes') and 'inreach' in satellite:
             inreach_value = 'yes'
-        map_capable, map_row = map_capability_from_rows(table.rows)
+        map_capable, map_row = map_capability_from_rows(table.map_rows)
         variants.append({'screen_technology': screen,
                          'solar': {'yes': True, 'no': False}.get(solar_value),
                          'inreach': {'yes': True, 'no': False}.get(inreach_value),

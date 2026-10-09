@@ -202,7 +202,9 @@ map-capable model evidence coverage =
 The numerator is a distinct exact-model count, not a count of installations.
 Resolved diagnostics retain their historical verified result. Stored Maps=NULL
 or Maps=No, inactive rows, unresolved text identities and inferred capability
-are excluded from both sides. This metric is not support status, public
+are excluded from both sides. A model retired from Garmin retail stays active
+(`contracts/INSTALLATION_AUTHORIZATION.md`) and is counted like a reviewed
+historical row. This metric is not support status, public
 compatibility, diagnostic linkage coverage, or native write authorization. It
 belongs to the device catalog evidence view and is not presented on Dashboard
 or Maps.

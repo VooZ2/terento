@@ -999,7 +999,8 @@ activity and is not converted into an installation failure.
 Returns catalog version 2 for the separate Garmin device catalog. Records are discovered from the
 official smartwatch category and do not mean that Terento has tested or
 supports the model. The retail source is not a complete historical Garmin
-database; inactive historical records can remain in the response.
+database; models that left the current category remain in the response as
+active, retired-from-retail records.
 
 ```json
 {
@@ -1127,6 +1128,17 @@ authorization. A stale `catalogDeviceID` is only a hint and cannot narrow the
 candidate set by itself. The
 read-only `tools/installation-policy-audit.sql` query reports the live Garmin
 row counts and expected row-level decisions; it does not mutate the database.
+
+The response also contains generation-label alias rows. These rows come from the
+reviewed `GENERATION_LABEL_BASE_MODEL_ALIASES` table in
+`installation_policy.py`; it currently has one entry, `epix pro` →
+`epix pro gen 2`. For each catalog row of the target base model, an alias row
+copies every field except `baseModel`, which becomes the alias, and `id`, which
+becomes `<catalog id>@alias-<alias>`. Released clients require unique ids and use
+them for nothing else. Therefore the policy has more `devices` entries than the
+audit query has catalog rows: one extra entry per aliased target row. The
+schema, key sets and `policyVersion` are unchanged. The owning rule is in
+[`INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md).
 
 The local policy implementation sends `Cache-Control: no-store` and returns
 fresh HTTP 200 JSON even when a conditional request is supplied; it does not

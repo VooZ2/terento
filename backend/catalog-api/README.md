@@ -170,7 +170,10 @@ runtime dependencies.
   possible candidates: all Yes is `APPROVED`, all No is `BLOCKED`, and mixed
   or NULL capabilities are `PENDING`. An unidentifiable/conflicting base
   model or no candidates is `PENDING`. `support_status`, public compatibility
-  and successful-install counts are not policy inputs.
+  and successful-install counts are not policy inputs. The policy also has
+  reviewed generation-label alias rows (for example, `epix pro` →
+  `epix pro gen 2`). These rows copy the target catalog rows, as described in
+  `contracts/INSTALLATION_AUTHORIZATION.md`.
 - `GET /assets/devices/<name>.webp` serves validated runtime assets from the
   same API domain.
 - `GET /admin/providers`, `GET /admin/providers/<id>`, and
@@ -369,8 +372,9 @@ part number. Product-image binaries are never fetched.
 
 The collector canonicalizes family/model names, preserves display diacritics,
 extracts explicit case sizes and display variants, and collapses cosmetic SKU
-differences. It keeps historical records and only marks a model inactive after
-three consecutive successful full collections fail to observe it. A partial
+differences. It keeps historical records. A model that three consecutive
+successful full collections fail to observe is retired from retail but stays
+active, so its catalog Maps decision still governs installation. A partial
 collection does not advance that absence counter.
 
 The catalog does not claim that a discovered device is tested or supported.

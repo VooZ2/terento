@@ -49,7 +49,7 @@
         "baseModel": {
           "type": "string",
           "minLength": 1,
-          "description": "Normalized catalog model identity shared by SKU variants; derived from model, not canonicalModel."
+          "description": "Normalized catalog model identity shared by SKU variants; derived from model, not canonicalModel. Reviewed generation-label alias rows copy a catalog row and carry the alias here (INSTALLATION_AUTHORIZATION.md)."
         },
         "canonicalModel": {
           "type": "string"

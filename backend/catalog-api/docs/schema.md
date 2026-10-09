@@ -246,19 +246,24 @@ band, and material SKUs are collapsed by the collector.
 | `product_url` | `text` | Official Garmin product page |
 | `source_url` | `text` | Official category source |
 | `source_image_url` | `text` | Allowlisted direct official Garmin media URL (`res.garmin.com`), nullable |
-| `active` | `boolean` | Conservative current/ historical state |
-| `consecutive_missed_collections` | `smallint` | Absence counter used by inactive policy |
+| `active` | `boolean` | Whether the row takes part in installation authorization; retail retirement never clears it |
+| `consecutive_missed_collections` | `smallint` | Complete-collection absence counter; 3 or more marks a collector row retired from retail |
 | `record_source` | `text` | `CURRENT_RETAIL`, `HISTORICAL_REVIEWED`, or `EVIDENCE_DISCOVERED` |
-| `collector_managed` | `boolean` | Whether the current retail collector may update/deactivate this row |
+| `collector_managed` | `boolean` | Whether the current retail collector may update this row and count its absence |
 | `first_seen_at`, `last_seen_at` | `timestamptz` | Observation timestamps |
 | `created_at`, `updated_at` | `timestamptz` | Local audit timestamps |
 
 Records are preserved. Only `collector_managed = true` rows participate in the
-absence policy: `active` becomes false after three consecutive successful
-complete collections do not observe a model; a partial or failed collection
-does not advance that policy. Migration `016` seeds reviewed historical
+absence policy: after three consecutive successful complete collections do not
+observe a model, it is **retired from retail** (`consecutive_missed_collections
+>= 3`). Retirement keeps `active = true`, so owners of a discontinued watch keep
+the stored catalog Maps decision; Admin shows the lifecycle as "Retired from
+retail". A partial or failed collection does not advance the counter, and a
+retired model observed again returns to current retail with the counter reset.
+No routine path sets `active = false`; an inactive row is a deliberate
+withdrawal and confers no approval. Migration `016` seeds reviewed historical
 identities, including fēnix 7, with `collector_managed = false`, so retail
-absence cannot deactivate them.
+absence never counts for them.
 
 ## `device_usb_identity`
 
@@ -408,7 +413,7 @@ required, then 0 successful operations is `TESTING`, 1–2 is `TESTED`, 3–4 is
 compatibility status. Migration 025's older active/write-started operation
 projection is superseded by migration 056's logical per-result semantics while
 per-map evidence remains available for diagnosis. Historical reviewed records
-are not deactivated by the retail collector. Compatibility evidence, canonical
+are not counted by the retail absence policy. Compatibility evidence, canonical
 links, and operator installation authorization remain separate from device write
 authorization.
 
@@ -614,3 +619,34 @@ The Maps reads (`map_statistics`, its trend and `map_statistics_linkage`) do the
 same: under their hash-join preference a date-scoped linkage lookup or a
 provider filter leaves a join only a nested loop can run, whose disable cost
 crosses the JIT threshold although the query executes in milliseconds.
+
+### Migration075: reviewed Maps catalog decisions
+
+Owner decisions of 2026-10-09 (canonical rule:
+[`contracts/INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md)).
+Data-only and additive; no column, constraint, index or existing identity
+changes, and the previous revision reads every row unchanged.
+
+1. Inserts 34 `HISTORICAL_REVIEWED`, `collector_managed = false`, active
+   Maps=Yes rows (`ON CONFLICT (id) DO NOTHING`) for map-capable watches the
+   catalog lacked or whose reported name is a distinct base model: quatix 7 Pro,
+   D2 Mach 1 Pro, Forerunner 945 LTE, quatix 6X/7X Solar, Descent Mk2S/Mk2i, the
+   eight first-generation MARQ models, D2 Delta/Delta S/Delta PX/Charlie, fēnix
+   5S/5X Plus, the original epix, the tactix 7 Pro/Pro Ballistics/Standard
+   Edition names, the MARQ (Gen 2) Carbon and Damascus Steel Edition names, the
+   Japanese "Dual Power" names of fēnix 8 (47/51 mm), quatix 6X and Forerunner
+   955, and quatix 8 Pro 51 mm. Each row records the official Garmin source and
+   map row in `specification_evidence.map_capable`; the `model` label is chosen
+   so the policy base model equals the reported one. The `garmin-marq` family is
+   inserted if absent. fēnix 6 rows are not touched.
+2. Sets Maps=No on Bounce 2, D2 Air X15, Forerunner 70/170/170 Music, vívofit
+   jr. 3 (both) and vívosmart 5 only where the value is still NULL and the
+   product URL matches (reviewed owner decision; no official map row).
+   Approach (golf) rows are not touched; the later golf-section rule is in
+   `contracts/INSTALLATION_AUTHORIZATION.md`.
+3. Reactivates collector rows that only the former three-missed-run rule made
+   inactive (`collector_managed AND NOT active AND
+   consecutive_missed_collections >= 3`).
+
+Rollback to the previous revision is safe: its collector would again mark a
+model inactive after three missed complete runs, which is that revision's rule.
