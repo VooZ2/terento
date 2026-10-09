@@ -639,13 +639,12 @@ changes, and the previous revision reads every row unchanged.
    map row in `specification_evidence.map_capable`; the `model` label is chosen
    so the policy base model equals the reported one. The `garmin-marq` family is
    inserted if absent. fēnix 6 rows are not touched.
-2. Sets Maps=Yes on Approach S44, S50 and S70 (42/47 mm) only where the stored
-   value is still the `false` from migration 021's name-prefix backfill and the
-   product URL matches the reviewed page (official "Full vector map: yes" row).
-3. Sets Maps=No on Bounce 2, D2 Air X15, Forerunner 70/170/170 Music, vívofit
+2. Sets Maps=No on Bounce 2, D2 Air X15, Forerunner 70/170/170 Music, vívofit
    jr. 3 (both) and vívosmart 5 only where the value is still NULL and the
    product URL matches (reviewed owner decision; no official map row).
-4. Reactivates collector rows that only the former three-missed-run rule made
+   Approach (golf) rows are not touched; golf-section map rows are pending
+   owner review.
+3. Reactivates collector rows that only the former three-missed-run rule made
    inactive (`collector_managed AND NOT active AND
    consecutive_missed_collections >= 3`).
 

@@ -132,12 +132,13 @@ Migration 075 applies these decisions; the per-row evidence is stored in
   non-map products are not added. Current-category models (for example
   Enduro 4, Approach S72) are added by the weekly collector from their
   specification rows.
-- *Golf watches.* A golf watch is Maps=Yes when its official specification
-  table has an explicit `yes` on a map-support row, as for any other model.
-  A value such as `yes (with Garmin Golf membership)` is an explicit `yes` on
-  the row itself, so it counts; the collector stores it the same way. Approach
-  S44, S50 and S70 (42/47 mm) are therefore Maps=Yes; Approach J1 and S12 show
-  no map row and stay Maps=No.
+- *Golf watches (pending owner review).* On Approach watches the
+  `Full vector map: yes` row (for S44 and S50 `yes (with Garmin Golf
+  membership)`) sits in the golf section of the specification table and
+  appears to describe golf-course maps, not general map support. Golf-section
+  map rows are pending a separate owner decision and do not change stored
+  values: every Approach row keeps its current stored Maps value (`false`),
+  and migration 075 does not touch them.
 - *Reviewed Maps=No.* The collector stores Unknown when a page has no map row.
   As a reviewed owner decision, Bounce 2, D2 Air X15, Forerunner 70, 170 and
   170 Music, vívofit jr. 3 and vívosmart 5 are stored as Maps=No: their

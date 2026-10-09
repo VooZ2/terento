@@ -91,27 +91,10 @@ INSERT INTO device_model (
 
 ON CONFLICT (id) DO NOTHING;
 
--- 2. Golf watches whose official specification table has an explicit "yes"
--- on a map-support row (MAP_POSITIVE_ROWS). Migration 021's name-prefix
--- backfill stored false; only that exact prior value is replaced.
-CREATE TEMP TABLE reviewed_maps_seed (id TEXT PRIMARY KEY, source TEXT NOT NULL, evidence JSONB NOT NULL) ON COMMIT DROP;
-INSERT INTO reviewed_maps_seed (id, source, evidence) VALUES
-    ('garmin-approach-s44', 'https://www.garmin.com/en-US/p/1604358/', '{"value": true, "source": "https://www.garmin.com/en-US/p/1604358/", "version": "reviewed-official-garmin-source-2026-10-09", "checkedAt": "2026-10-09T00:00:00Z", "field": "full vector map", "officialValue": "yes (with Garmin Golf membership)", "review": "Owner rule 2026-10-09: an explicit yes on an official map-support row is Maps=Yes, including golf watches."}'::jsonb),
-    ('garmin-approach-s50', 'https://www.garmin.com/en-US/p/1604377/', '{"value": true, "source": "https://www.garmin.com/en-US/p/1604377/", "version": "reviewed-official-garmin-source-2026-10-09", "checkedAt": "2026-10-09T00:00:00Z", "field": "full vector map", "officialValue": "yes (with Garmin Golf membership)", "review": "Owner rule 2026-10-09: an explicit yes on an official map-support row is Maps=Yes, including golf watches."}'::jsonb),
-    ('garmin-approach-s70-42', 'https://www.garmin.com/en-US/p/847697/', '{"value": true, "source": "https://www.garmin.com/en-US/p/847697/", "version": "reviewed-official-garmin-source-2026-10-09", "checkedAt": "2026-10-09T00:00:00Z", "field": "full vector map", "officialValue": "yes", "review": "Owner rule 2026-10-09: an explicit yes on an official map-support row is Maps=Yes, including golf watches."}'::jsonb),
-    ('garmin-approach-s70-47', 'https://www.garmin.com/en-US/p/847706/', '{"value": true, "source": "https://www.garmin.com/en-US/p/847706/", "version": "reviewed-official-garmin-source-2026-10-09", "checkedAt": "2026-10-09T00:00:00Z", "field": "full vector map", "officialValue": "yes", "review": "Owner rule 2026-10-09: an explicit yes on an official map-support row is Maps=Yes, including golf watches."}'::jsonb);
-
-UPDATE device_model d SET
-    map_capable = TRUE,
-    specification_evidence = d.specification_evidence || jsonb_build_object('map_capable', s.evidence),
-    updated_at = now()
-FROM reviewed_maps_seed s
-WHERE d.id = s.id AND d.product_url = s.source AND d.map_capable IS FALSE;
-
--- 3. Reviewed owner decision: Unknown becomes No only for these products,
+-- 2. Reviewed owner decision: Unknown becomes No only for these products,
 -- whose official specifications show no map row at all and whose category
 -- has no maps. The collector itself still stores Unknown for such pages.
-TRUNCATE reviewed_maps_seed;
+CREATE TEMP TABLE reviewed_maps_seed (id TEXT PRIMARY KEY, source TEXT NOT NULL, evidence JSONB NOT NULL) ON COMMIT DROP;
 INSERT INTO reviewed_maps_seed (id, source, evidence) VALUES
     ('garmin-bounce-2', 'https://www.garmin.com/en-US/p/1815501/', '{"value": false, "source": "https://www.garmin.com/en-US/p/1815501/", "version": "reviewed-owner-decision-2026-10-09", "checkedAt": "2026-10-09T00:00:00Z", "field": null, "review": "Reviewed owner decision: the official specifications list no map row of any kind and the product category has no maps."}'::jsonb),
     ('garmin-d2-air-x15', 'https://www.garmin.com/en-US/p/1957609/', '{"value": false, "source": "https://www.garmin.com/en-US/p/1957609/", "version": "reviewed-owner-decision-2026-10-09", "checkedAt": "2026-10-09T00:00:00Z", "field": null, "review": "Reviewed owner decision: the official specifications list no map row of any kind and the product category has no maps."}'::jsonb),
@@ -129,7 +112,7 @@ UPDATE device_model d SET
 FROM reviewed_maps_seed s
 WHERE d.id = s.id AND d.product_url = s.source AND d.map_capable IS NULL;
 
--- 4. Retail retirement no longer deactivates a model (see db.py). Restore
+-- 3. Retail retirement no longer deactivates a model (see db.py). Restore
 -- authorization for collector rows that only the old three-missed-run rule
 -- made inactive; no other path sets active = false.
 UPDATE device_model SET active = TRUE, updated_at = now()

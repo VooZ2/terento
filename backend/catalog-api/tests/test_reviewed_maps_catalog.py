@@ -111,7 +111,9 @@ class MigrationSourceTests(unittest.TestCase):
         for forbidden in ("DROP ", "ALTER ", "DELETE ", "RENAME", "CREATE INDEX"):
             self.assertNotIn(forbidden, code.upper())
         self.assertIn("ON CONFLICT (id) DO NOTHING", code)
-        self.assertIn("d.map_capable IS FALSE", code)
+        # Golf-section map rows are pending owner review: no Approach row changes.
+        self.assertNotIn("approach", code.lower())
+        self.assertNotIn("map_capable = TRUE", code)
         self.assertIn("d.map_capable IS NULL", code)
         self.assertIn("consecutive_missed_collections >= 3", code)
         # fēnix 6 is end of life: no row of that family is added or changed.
@@ -130,7 +132,7 @@ class MigrationSourceTests(unittest.TestCase):
 
     def test_statements_split_cleanly(self):
         statements = _statements(MIGRATION.read_text(encoding="utf-8"))
-        self.assertEqual(len(statements), 9)
+        self.assertEqual(len(statements), 6)
 
 
 class MigratedCatalogTests(PGliteTestCase):
@@ -200,7 +202,7 @@ class ReviewedMapsUpdateTests(PGliteTestCase):
         return {row["id"]: row for row in self.sql(
             "SELECT id, map_capable, active, specification_evidence FROM device_model")}
 
-    def test_golf_and_unknown_rows_change_only_from_the_exact_prior_value(self):
+    def test_unknown_rows_change_only_from_null_and_golf_rows_stay_unchanged(self):
         p = "https://www.garmin.com/en-US/p/{}/".format
         collector_row(self.sql, "garmin-approach-s44", "Approach S44", p(1604358), False)
         collector_row(self.sql, "garmin-approach-s50", "Approach S50", p(1604377), False)
@@ -222,10 +224,8 @@ class ReviewedMapsUpdateTests(PGliteTestCase):
         self.apply_migration()
         rows = self.maps()
         for device_id in ("garmin-approach-s44", "garmin-approach-s50", "garmin-approach-s70-42", "garmin-approach-s70-47"):
-            self.assertIs(rows[device_id]["map_capable"], True)
-            self.assertEqual(rows[device_id]["specification_evidence"]["map_capable"]["field"], "full vector map")
-        self.assertEqual(rows["garmin-approach-s44"]["specification_evidence"]["map_capable"]["officialValue"],
-                         "yes (with Garmin Golf membership)")
+            self.assertIs(rows[device_id]["map_capable"], False)
+            self.assertNotIn("map_capable", rows[device_id]["specification_evidence"] or {})
         self.assertIs(rows["garmin-approach-j1"]["map_capable"], False)
         self.assertIs(rows["garmin-approach-s12"]["map_capable"], False)
         for device_id in nulls:
@@ -238,8 +238,8 @@ class ReviewedMapsUpdateTests(PGliteTestCase):
 
         rows_policy, updated_at = self.db.installation_policy_snapshot()
         document = json.loads(serialize_installation_policy(build_installation_policy(rows_policy, updated_at)))
-        self.assertEqual(app_resolve(document, garmin("Approach S70 47mm"))[0], "APPROVED")
-        self.assertEqual(app_resolve(document, garmin("Approach S44"))[0], "APPROVED")
+        self.assertEqual(app_resolve(document, garmin("Approach S70 47mm"))[0], "OUT_OF_SCOPE")
+        self.assertEqual(app_resolve(document, garmin("Approach S44"))[0], "OUT_OF_SCOPE")
         self.assertEqual(app_resolve(document, garmin("Approach S12"))[0], "OUT_OF_SCOPE")
         self.assertEqual(app_resolve(document, garmin("Forerunner 70"))[0], "OUT_OF_SCOPE")
 
