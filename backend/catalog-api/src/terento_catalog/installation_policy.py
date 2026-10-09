@@ -11,6 +11,24 @@ from typing import Any
 INSTALLATION_POLICY_SCHEMA_VERSION = 3
 INSTALLATION_POLICY_VERSION = 3
 
+# Reviewed, exact whole-name generation-label aliases: a watch that reports
+# the left-hand base model is the catalog base model on the right. Each entry
+# needs repository evidence that the watch reports the alias and that Garmin
+# sold exactly one generation under that name, so the alias cannot name a
+# different product. This is not family, prefix or substring matching; keep
+# the table small and owned by contracts/INSTALLATION_AUTHORIZATION.md.
+GENERATION_LABEL_BASE_MODEL_ALIASES: dict[str, str] = {
+    # epix Pro watches report "EPIX PRO" / "epix Pro 51mm" without "(Gen 2)";
+    # Garmin sold one epix Pro generation, catalogued as "epix Pro (Gen 2)".
+    "epix pro": "epix pro gen 2",
+}
+
+# Shipped clients reject a policy with duplicate ids, so alias rows need their
+# own id. Clients only validate ids (non-empty, unique); they never match on,
+# store, log or report a policy row id. Catalog ids are [a-z0-9-] slugs, so the
+# "@" separator cannot collide; a collision would still fail closed.
+ALIAS_ROW_ID_SEPARATOR = "@alias-"
+
 
 def installation_base_model(model: str) -> str:
     """Derive the model identity from the catalog model label, not the SKU identity.
@@ -107,6 +125,7 @@ def build_installation_policy(
             }
         )
 
+    devices.extend(_generation_label_alias_rows(devices))
     devices.sort(key=lambda item: item["id"])
     return {
         "schemaVersion": INSTALLATION_POLICY_SCHEMA_VERSION,
@@ -115,6 +134,31 @@ def build_installation_policy(
         "manufacturer": "Garmin",
         "devices": devices,
     }
+
+
+def _generation_label_alias_rows(devices: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Mirror every row of each alias target under the alias base model.
+
+    Only ``id`` and ``baseModel`` differ, so active state, nullable Maps
+    capability, derived authorization and variant facts stay bound to the
+    real catalog rows. An alias that already names real catalog rows is not
+    applied: the catalog's own rows then decide, without mixing.
+    """
+    real_ids = {device["id"] for device in devices}
+    real_base_models = {device["baseModel"] for device in devices}
+    aliases: list[dict[str, Any]] = []
+    for alias, target in sorted(GENERATION_LABEL_BASE_MODEL_ALIASES.items()):
+        if alias in real_base_models:
+            continue
+        suffix = ALIAS_ROW_ID_SEPARATOR + alias.replace(" ", "-")
+        for device in devices:
+            if device["baseModel"] != target:
+                continue
+            alias_id = device["id"] + suffix
+            if alias_id in real_ids:
+                raise ValueError("installation policy alias id collides with a catalog id")
+            aliases.append(dict(device, id=alias_id, baseModel=alias))
+    return aliases
 
 
 def serialize_installation_policy(policy: dict[str, Any]) -> bytes:

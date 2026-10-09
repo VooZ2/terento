@@ -170,7 +170,10 @@ runtime dependencies.
   possible candidates: all Yes is `APPROVED`, all No is `BLOCKED`, and mixed
   or NULL capabilities are `PENDING`. An unidentifiable/conflicting base
   model or no candidates is `PENDING`. `support_status`, public compatibility
-  and successful-install counts are not policy inputs.
+  and successful-install counts are not policy inputs. The policy also has
+  reviewed generation-label alias rows (for example, `epix pro` →
+  `epix pro gen 2`). These rows copy the target catalog rows, as described in
+  `contracts/INSTALLATION_AUTHORIZATION.md`.
 - `GET /assets/devices/<name>.webp` serves validated runtime assets from the
   same API domain.
 - `GET /admin/providers`, `GET /admin/providers/<id>`, and

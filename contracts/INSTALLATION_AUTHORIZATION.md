@@ -29,6 +29,37 @@ endpoint failure, missing route, or invalid response is `CATALOG_UNAVAILABLE`,
 also with no write. This is a temporary verification failure, not evidence of
 permanent incompatibility.
 
+**Generation-label base-model aliases.** Some watches report a whole model name
+without the generation label of the catalog model. The server owns the fix, so
+released clients need no change. `GENERATION_LABEL_BASE_MODEL_ALIASES` in
+`backend/catalog-api/src/terento_catalog/installation_policy.py` is a small,
+reviewed table of exact, whole normalized base-model names. For each alias, the
+policy response also contains one alias row for every catalog row of the target
+base model, including inactive rows and rows with a NULL or `false` Maps value.
+An alias row is a copy of its target row. Only `baseModel` (set to the alias)
+and `id` (the target id plus `@alias-<alias>`) differ. Thus `active`,
+`mapCapable`, `scope`, `installationAuthorization` and the variant facts stay
+bound to the real row. The same candidate, variant-narrowing and capability
+rules apply to the alias, so a NULL, `false` or inactive target gives the same
+`PENDING` or `BLOCKED` result. An alias never uses family, prefix or substring
+matching, and it never changes any other base model. If real catalog rows
+already have the alias base model, the alias is not applied. Every other unknown
+base model stays `PENDING`. Released clients (beta.14 build 35 to rc.2 build 42)
+reject duplicate policy ids. They use the id only for that check: they do not
+match on it, persist it, log it, upload it or report it. For this reason alias
+rows need their own ids, and these ids cannot reach evidence, reports or
+statistics. Alias rows
+add no fields to schema 3 and do not change `policyVersion`. Clients fetch the
+policy fresh for each decision (`no-store`), so the next check sees them. Add an
+alias only when repository evidence shows that the watch reports that name and
+Garmin sold exactly one generation under it. Current table: reported `epix Pro`
+(`EPIX PRO`, `epix Pro 51mm`) → `epix pro gen 2`. Garmin sold only one epix Pro
+generation, catalogued as "epix Pro (Gen 2)", so the reported name cannot mean
+another product. Plain `epix` is not an alias because Garmin sold an original
+epix and epix (Gen 2). The MARQ (Gen 2) lines are not aliased because
+first-generation MARQ editions exist under the same names. Edge models stay
+absent and `PENDING`.
+
 The public Compatibility directory and its `TESTED`/`SUPPORTED`/`VERIFIED`
 evidence categories, `successfulInstallations`, Admin `support_status`, and
 prior successful installs neither grant nor revoke write authority. Catalog
