@@ -43,7 +43,7 @@ The site remembers a language you choose as `terento-language` in local storage.
 
 Website, API and database hosting use Hostinger; Cloudflare delivers and protects website/API traffic. Umami runs at `stats.enduristas.lt`. See [Cloudflare](https://www.cloudflare.com/privacypolicy/) and [Hostinger](https://www.hostinger.com/legal/privacy-policy) for their processing information. Provider configurations may involve processing outside the EEA; contact us for details of applicable arrangements.
 
-The retention policy for uploaded app diagnostics is 24 months. Access is restricted to project administration. Support correspondence is kept while needed to resolve the request and related disputes or legal obligations. Contact us about other service-specific storage periods or a particular report.
+The retention policy for uploaded app diagnostics is 24 months. Access is restricted to project administration. Encrypted backups of the API database and server configuration are kept on separate equipment controlled by the project for up to 14 days. Support correspondence is kept while needed to resolve the request and related disputes or legal obligations. Contact us about other service-specific storage periods or a particular report.
 
 ## Your choices and rights
 
@@ -57,4 +57,4 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 6 October 2026.
+Updated: 9 October 2026.

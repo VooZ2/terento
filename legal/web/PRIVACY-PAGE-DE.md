@@ -43,7 +43,7 @@ Eine von dir gewählte Sprache wird als `terento-language` im lokalen Speicher g
 
 Website, API und Datenbank nutzen Hostinger; Cloudflare liefert und schützt Website-/API-Verkehr. Umami läuft unter `stats.enduristas.lt`. Informationen der Anbieter findest du bei [Cloudflare](https://www.cloudflare.com/privacypolicy/) und [Hostinger](https://www.hostinger.com/legal/privacy-policy). Je nach Konfiguration kann eine Verarbeitung außerhalb des EWR stattfinden; kontaktiere uns zu den geltenden Regelungen.
 
-Die Aufbewahrungsrichtlinie für hochgeladene App-Diagnosen beträgt 24 Monate. Zugriff hat nur die Projektverwaltung. Support-Nachrichten werden so lange aufbewahrt, wie sie zur Klärung der Anfrage, damit verbundener Streitigkeiten oder gesetzlicher Pflichten nötig sind. Frage uns nach weiteren dienstspezifischen Fristen oder einem bestimmten Bericht.
+Die Aufbewahrungsrichtlinie für hochgeladene App-Diagnosen beträgt 24 Monate. Zugriff hat nur die Projektverwaltung. Verschlüsselte Sicherungen der API-Datenbank und der Serverkonfiguration werden bis zu 14 Tage auf separater, vom Projekt kontrollierter Hardware aufbewahrt. Support-Nachrichten werden so lange aufbewahrt, wie sie zur Klärung der Anfrage, damit verbundener Streitigkeiten oder gesetzlicher Pflichten nötig sind. Frage uns nach weiteren dienstspezifischen Fristen oder einem bestimmten Bericht.
 
 ## Auswahl und Rechte
 
@@ -57,4 +57,4 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 6. Oktober 2026.
+Aktualisiert: 9. Oktober 2026.
