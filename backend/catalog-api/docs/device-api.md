@@ -296,8 +296,11 @@ claiming the connected watch's lens, finish or band. No media is mirrored.
 The unsized historical record and existing assignments remain intact. New
 records start NOT_EVALUATED and are not collector-managed retail entries.
 Reported `EPIX PRO` is a narrow generation-label alias for `epix Pro (Gen 2)`
-during evidence comparison only. Size conflicts still exclude other candidates;
-this alias does not approve XML/USB mappings or assign reports automatically.
+in evidence comparison. Size conflicts still exclude other candidates. The
+alias does not approve XML/USB mappings or assign reports automatically. The
+installation policy uses the same alias as a reviewed base-model alias. Alias
+rows copy every `epix pro gen 2` row under `baseModel: "epix pro"`. The owning
+rule is in [`INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md).
 
 
 ## Historical model photography

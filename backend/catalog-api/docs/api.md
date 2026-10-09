@@ -1128,6 +1128,17 @@ candidate set by itself. The
 read-only `tools/installation-policy-audit.sql` query reports the live Garmin
 row counts and expected row-level decisions; it does not mutate the database.
 
+The response also contains generation-label alias rows. These rows come from the
+reviewed `GENERATION_LABEL_BASE_MODEL_ALIASES` table in
+`installation_policy.py`; it currently has one entry, `epix pro` →
+`epix pro gen 2`. For each catalog row of the target base model, an alias row
+copies every field except `baseModel`, which becomes the alias, and `id`, which
+becomes `<catalog id>@alias-<alias>`. Released clients require unique ids and use
+them for nothing else. Therefore the policy has more `devices` entries than the
+audit query has catalog rows: one extra entry per aliased target row. The
+schema, key sets and `policyVersion` are unchanged. The owning rule is in
+[`INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md).
+
 The local policy implementation sends `Cache-Control: no-store` and returns
 fresh HTTP 200 JSON even when a conditional request is supplied; it does not
 reuse the public device-catalog 304/stale-cache behavior. The native client

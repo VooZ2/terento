@@ -48,7 +48,11 @@ block; if candidates have mixed Maps values, any candidate has Maps=NULL, or
 there are no candidates, return `PENDING`. An identified inactive row cannot
 grant approval and is `BLOCKED`. An unknown base model is `PENDING`, not
 permanently unsupported. No family or substring match may grant a write,
-including across Garmin product families.
+including across Garmin product families. Separately, the server applies a
+reviewed table of exact, whole-name generation-label aliases (for example,
+reported `epix pro` → `epix pro gen 2`). For each alias, the policy contains
+copies of the target rows, so the result still comes from those rows'
+capability; see `INSTALLATION_AUTHORIZATION.md`.
 
 Fetch fresh policy before acquisition/extraction and at the final write
 boundary. Safe Update refreshes at operation start and immediately before its
