@@ -48,7 +48,7 @@ The site remembers a language you choose as `terento-language` in local storage.
 
 Website, API and database hosting use Hostinger; Cloudflare delivers and protects website/API traffic. Umami runs at `stats.enduristas.lt`. See [Cloudflare](https://www.cloudflare.com/privacypolicy/) and [Hostinger](https://www.hostinger.com/legal/privacy-policy) for their processing information. Provider configurations may involve processing outside the EEA; contact us for details of applicable arrangements.
 
-The retention policy for uploaded app diagnostics is 24 months. Access is restricted to project administration. Support correspondence is kept while needed to resolve the request and related disputes or legal obligations. Contact us about other service-specific storage periods or a particular report.
+The retention policy for uploaded app diagnostics is 24 months. Access is restricted to project administration. Encrypted backups of the API database and server configuration are kept on separate equipment controlled by the project for up to 14 days. Support correspondence is kept while needed to resolve the request and related disputes or legal obligations. Contact us about other service-specific storage periods or a particular report.
 
 ## Your choices and rights
 
@@ -62,7 +62,7 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 6 October 2026.
+Updated: 9 October 2026.
 
 # Datenschutz
 
@@ -109,7 +109,7 @@ Eine von dir gewählte Sprache wird als `terento-language` im lokalen Speicher g
 
 Website, API und Datenbank nutzen Hostinger; Cloudflare liefert und schützt Website-/API-Verkehr. Umami läuft unter `stats.enduristas.lt`. Informationen der Anbieter findest du bei [Cloudflare](https://www.cloudflare.com/privacypolicy/) und [Hostinger](https://www.hostinger.com/legal/privacy-policy). Je nach Konfiguration kann eine Verarbeitung außerhalb des EWR stattfinden; kontaktiere uns zu den geltenden Regelungen.
 
-Die Aufbewahrungsrichtlinie für hochgeladene App-Diagnosen beträgt 24 Monate. Zugriff hat nur die Projektverwaltung. Support-Nachrichten werden so lange aufbewahrt, wie sie zur Klärung der Anfrage, damit verbundener Streitigkeiten oder gesetzlicher Pflichten nötig sind. Frage uns nach weiteren dienstspezifischen Fristen oder einem bestimmten Bericht.
+Die Aufbewahrungsrichtlinie für hochgeladene App-Diagnosen beträgt 24 Monate. Zugriff hat nur die Projektverwaltung. Verschlüsselte Sicherungen der API-Datenbank und der Serverkonfiguration werden bis zu 14 Tage auf separater, vom Projekt kontrollierter Hardware aufbewahrt. Support-Nachrichten werden so lange aufbewahrt, wie sie zur Klärung der Anfrage, damit verbundener Streitigkeiten oder gesetzlicher Pflichten nötig sind. Frage uns nach weiteren dienstspezifischen Fristen oder einem bestimmten Bericht.
 
 ## Auswahl und Rechte
 
@@ -123,7 +123,7 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 6. Oktober 2026.
+Aktualisiert: 9. Oktober 2026.
 
 # Confidentialité
 
@@ -170,7 +170,7 @@ Une langue choisie est mémorisée sous `terento-language` dans le stockage loca
 
 Le site, l’API et la base de données utilisent Hostinger ; Cloudflare assure la diffusion et la protection du trafic. Umami fonctionne à `stats.enduristas.lt`. Consultez [Cloudflare](https://www.cloudflare.com/privacypolicy/) et [Hostinger](https://www.hostinger.com/legal/privacy-policy) pour leurs traitements. Les configurations peuvent impliquer des traitements hors EEE ; contactez-nous pour les modalités applicables.
 
-La politique de conservation des diagnostics transmis est de 24 mois. L’accès est réservé à l’administration du projet. Les échanges d’assistance sont conservés tant que nécessaires au traitement de la demande, des litiges associés ou des obligations légales. Contactez-nous au sujet d’autres durées propres aux services ou d’un rapport précis.
+La politique de conservation des diagnostics transmis est de 24 mois. L’accès est réservé à l’administration du projet. Des sauvegardes chiffrées de la base de données de l’API et de la configuration du serveur sont conservées jusqu’à 14 jours sur un équipement distinct contrôlé par le projet. Les échanges d’assistance sont conservés tant que nécessaires au traitement de la demande, des litiges associés ou des obligations légales. Contactez-nous au sujet d’autres durées propres aux services ou d’un rapport précis.
 
 ## Vos choix et droits
 
@@ -184,7 +184,7 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 6 octobre 2026.
+Mise à jour : 9 octobre 2026.
 
 # Prywatność
 
@@ -231,7 +231,7 @@ Wybrany język jest zapisywany jako `terento-language` w pamięci lokalnej. Ta �
 
 Witryna, API i baza danych korzystają z Hostinger; Cloudflare dostarcza i chroni ruch. Umami działa pod `stats.enduristas.lt`. Informacje dostawców znajdziesz w [Cloudflare](https://www.cloudflare.com/privacypolicy/) i [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfiguracje mogą obejmować przetwarzanie poza EOG; zapytaj nas o stosowane rozwiązania.
 
-Polityka przechowywania wysłanej diagnostyki wynosi 24 miesiące. Dostęp ma administracja projektu. Korespondencja pomocy jest przechowywana tak długo, jak wymaga obsługa zgłoszenia, powiązanych sporów lub obowiązków prawnych. Zapytaj o inne okresy właściwe dla usług lub konkretny raport.
+Polityka przechowywania wysłanej diagnostyki wynosi 24 miesiące. Dostęp ma administracja projektu. Zaszyfrowane kopie zapasowe bazy danych API i konfiguracji serwera są przechowywane do 14 dni na osobnym sprzęcie kontrolowanym przez projekt. Korespondencja pomocy jest przechowywana tak długo, jak wymaga obsługa zgłoszenia, powiązanych sporów lub obowiązków prawnych. Zapytaj o inne okresy właściwe dla usług lub konkretny raport.
 
 ## Twoje wybory i prawa
 
@@ -245,7 +245,7 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 6 października 2026 r.
+Aktualizacja: 9 października 2026 r.
 
 # Soukromí
 
@@ -292,7 +292,7 @@ Vybraný jazyk se ukládá jako `terento-language` do místního úložiště. T
 
 Web, API a databáze využívají Hostinger; Cloudflare poskytuje a chrání provoz. Umami běží na `stats.enduristas.lt`. Podrobnosti poskytovatelů: [Cloudflare](https://www.cloudflare.com/privacypolicy/) a [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfigurace mohou zahrnovat zpracování mimo EHP; kontaktujte nás pro platná opatření.
 
-Pravidlo uchovávání odeslané diagnostiky je 24 měsíců. Přístup má správa projektu. Korespondence podpory se uchovává po dobu potřebnou k vyřízení žádosti, souvisejících sporů nebo právních povinností. Zeptejte se na další lhůty konkrétních služeb nebo zprávu.
+Pravidlo uchovávání odeslané diagnostiky je 24 měsíců. Přístup má správa projektu. Šifrované zálohy databáze API a konfigurace serveru se uchovávají až 14 dní na samostatném zařízení pod kontrolou projektu. Korespondence podpory se uchovává po dobu potřebnou k vyřízení žádosti, souvisejících sporů nebo právních povinností. Zeptejte se na další lhůty konkrétních služeb nebo zprávu.
 
 ## Vaše volby a práva
 
@@ -306,7 +306,7 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 6. října 2026.
+Aktualizováno: 9. října 2026.
 
 # Privacy
 
@@ -353,7 +353,7 @@ La lingua scelta viene memorizzata come `terento-language` nella memoria locale.
 
 Sito, API e database usano Hostinger; Cloudflare distribuisce e protegge il traffico. Umami opera su `stats.enduristas.lt`. Consulta [Cloudflare](https://www.cloudflare.com/privacypolicy/) e [Hostinger](https://www.hostinger.com/legal/privacy-policy) per i loro trattamenti. Le configurazioni possono comportare trattamenti fuori dallo SEE; contattaci per le disposizioni applicabili.
 
-La politica di conservazione della diagnostica inviata è di 24 mesi. L’accesso è riservato all’amministrazione del progetto. La corrispondenza di assistenza è conservata finché necessaria per la richiesta, controversie collegate o obblighi legali. Chiedici altri periodi specifici dei servizi o informazioni su un rapporto.
+La politica di conservazione della diagnostica inviata è di 24 mesi. L’accesso è riservato all’amministrazione del progetto. I backup cifrati del database dell’API e della configurazione del server sono conservati fino a 14 giorni su un dispositivo separato controllato dal progetto. La corrispondenza di assistenza è conservata finché necessaria per la richiesta, controversie collegate o obblighi legali. Chiedici altri periodi specifici dei servizi o informazioni su un rapporto.
 
 ## Scelte e diritti
 
@@ -367,4 +367,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 6 ottobre 2026.
+Aggiornamento: 9 ottobre 2026.

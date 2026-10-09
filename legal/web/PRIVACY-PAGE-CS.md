@@ -43,7 +43,7 @@ Vybraný jazyk se ukládá jako `terento-language` do místního úložiště. T
 
 Web, API a databáze využívají Hostinger; Cloudflare poskytuje a chrání provoz. Umami běží na `stats.enduristas.lt`. Podrobnosti poskytovatelů: [Cloudflare](https://www.cloudflare.com/privacypolicy/) a [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfigurace mohou zahrnovat zpracování mimo EHP; kontaktujte nás pro platná opatření.
 
-Pravidlo uchovávání odeslané diagnostiky je 24 měsíců. Přístup má správa projektu. Korespondence podpory se uchovává po dobu potřebnou k vyřízení žádosti, souvisejících sporů nebo právních povinností. Zeptejte se na další lhůty konkrétních služeb nebo zprávu.
+Pravidlo uchovávání odeslané diagnostiky je 24 měsíců. Přístup má správa projektu. Šifrované zálohy databáze API a konfigurace serveru se uchovávají až 14 dní na samostatném zařízení pod kontrolou projektu. Korespondence podpory se uchovává po dobu potřebnou k vyřízení žádosti, souvisejících sporů nebo právních povinností. Zeptejte se na další lhůty konkrétních služeb nebo zprávu.
 
 ## Vaše volby a práva
 
@@ -57,4 +57,4 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 6. října 2026.
+Aktualizováno: 9. října 2026.

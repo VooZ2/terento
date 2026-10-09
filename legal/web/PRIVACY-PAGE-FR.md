@@ -43,7 +43,7 @@ Une langue choisie est mémorisée sous `terento-language` dans le stockage loca
 
 Le site, l’API et la base de données utilisent Hostinger ; Cloudflare assure la diffusion et la protection du trafic. Umami fonctionne à `stats.enduristas.lt`. Consultez [Cloudflare](https://www.cloudflare.com/privacypolicy/) et [Hostinger](https://www.hostinger.com/legal/privacy-policy) pour leurs traitements. Les configurations peuvent impliquer des traitements hors EEE ; contactez-nous pour les modalités applicables.
 
-La politique de conservation des diagnostics transmis est de 24 mois. L’accès est réservé à l’administration du projet. Les échanges d’assistance sont conservés tant que nécessaires au traitement de la demande, des litiges associés ou des obligations légales. Contactez-nous au sujet d’autres durées propres aux services ou d’un rapport précis.
+La politique de conservation des diagnostics transmis est de 24 mois. L’accès est réservé à l’administration du projet. Des sauvegardes chiffrées de la base de données de l’API et de la configuration du serveur sont conservées jusqu’à 14 jours sur un équipement distinct contrôlé par le projet. Les échanges d’assistance sont conservés tant que nécessaires au traitement de la demande, des litiges associés ou des obligations légales. Contactez-nous au sujet d’autres durées propres aux services ou d’un rapport précis.
 
 ## Vos choix et droits
 
@@ -57,4 +57,4 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 6 octobre 2026.
+Mise à jour : 9 octobre 2026.

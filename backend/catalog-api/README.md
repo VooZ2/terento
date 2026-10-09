@@ -71,8 +71,9 @@ listing contained old whole-VPS restore points
 `52757820` (2026-09-19) and `51894425` (2026-09-12); neither is a validated
 PostgreSQL-only recovery, and the snapshot API reported no usable current
 snapshot. The VPS recovery evidence remains subject to the separate
-[production recovery procedure](docs/production-db-recovery.md); no backup,
-restore, or production mutation is implied by this source checkout.
+[production recovery procedure](docs/production-db-recovery.md), which also
+describes the nightly encrypted off-host backup; no restore or production
+mutation is implied by this source checkout.
 
 Admin presentation checks must inspect the rendered page, including populated
 and empty map statistics. Each component must have a unique DOM ID: duplicated

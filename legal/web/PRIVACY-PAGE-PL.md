@@ -43,7 +43,7 @@ Wybrany język jest zapisywany jako `terento-language` w pamięci lokalnej. Ta �
 
 Witryna, API i baza danych korzystają z Hostinger; Cloudflare dostarcza i chroni ruch. Umami działa pod `stats.enduristas.lt`. Informacje dostawców znajdziesz w [Cloudflare](https://www.cloudflare.com/privacypolicy/) i [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfiguracje mogą obejmować przetwarzanie poza EOG; zapytaj nas o stosowane rozwiązania.
 
-Polityka przechowywania wysłanej diagnostyki wynosi 24 miesiące. Dostęp ma administracja projektu. Korespondencja pomocy jest przechowywana tak długo, jak wymaga obsługa zgłoszenia, powiązanych sporów lub obowiązków prawnych. Zapytaj o inne okresy właściwe dla usług lub konkretny raport.
+Polityka przechowywania wysłanej diagnostyki wynosi 24 miesiące. Dostęp ma administracja projektu. Zaszyfrowane kopie zapasowe bazy danych API i konfiguracji serwera są przechowywane do 14 dni na osobnym sprzęcie kontrolowanym przez projekt. Korespondencja pomocy jest przechowywana tak długo, jak wymaga obsługa zgłoszenia, powiązanych sporów lub obowiązków prawnych. Zapytaj o inne okresy właściwe dla usług lub konkretny raport.
 
 ## Twoje wybory i prawa
 
@@ -57,4 +57,4 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 6 października 2026 r.
+Aktualizacja: 9 października 2026 r.
