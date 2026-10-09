@@ -356,6 +356,22 @@ def operator_failure_message(error):
         return 'Terento production operation refused: '+str(error)
     return 'Terento production operation failed; inspect root-owned server diagnostics. No service or volume rollback was requested.'
 
+def prune_old_images(project, keep):
+    """Best-effort removal of this project's images except the current and rollback ones."""
+    try:
+        keep_ids = {docker('image', 'inspect', '--format', '{{.Id}}', image, timeout=30).strip() for image in keep}
+        listed = docker('image', 'ls', '--no-trunc', '--quiet', PROJECTS[project]['image'], timeout=60).split()
+    except (subprocess.SubprocessError, OSError):
+        return
+    for image_id in dict.fromkeys(listed):
+        if image_id in keep_ids:
+            continue
+        try:
+            # Never forced: Docker refuses images still used by a container.
+            docker('image', 'rm', image_id, timeout=120)
+        except (subprocess.SubprocessError, OSError):
+            pass
+
 def deploy(project, digest, commit):
     spec = PROJECTS[project]
     image = spec['image']+'@'+digest
@@ -393,6 +409,8 @@ def deploy(project, digest, commit):
                 compose(project, image, 'stop', *spec['services'])
             # Never delete volumes or attempt an automatic schema downgrade.
             raise
+        # After the recorded success, so a cleanup problem can never trigger a rollback.
+        prune_old_images(project, [image] + ([old['image']] if old else []))
         print('DEPLOYMENT_PASS '+project+' '+commit)
 
 if __name__ == '__main__':

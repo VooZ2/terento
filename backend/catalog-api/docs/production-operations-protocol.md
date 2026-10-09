@@ -31,6 +31,7 @@ needed, is an owner/root operation outside the GitHub protocol.
 8. It rereads the ledger and requires exact equality with the candidate inventory before replacing services.
 9. It replaces API/scheduler only, verifies service identity, image digest, health, and release, and records state.
 10. On failure it leaves the old services and volumes intact or restores the previous service image; it never downgrades the schema.
+11. After a recorded success it removes other local images of the same repository without force, keeping the current and previous images. A cleanup problem never fails or rolls back the deployment.
 
 The database container is not replaced. The root helper's operations lock spans
 candidate validation, migration precheck, migration execution, postcheck, and
