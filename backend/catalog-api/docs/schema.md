@@ -642,8 +642,8 @@ changes, and the previous revision reads every row unchanged.
 2. Sets Maps=No on Bounce 2, D2 Air X15, Forerunner 70/170/170 Music, vívofit
    jr. 3 (both) and vívosmart 5 only where the value is still NULL and the
    product URL matches (reviewed owner decision; no official map row).
-   Approach (golf) rows are not touched; golf-section map rows are pending
-   owner review.
+   Approach (golf) rows are not touched; the later golf-section rule is in
+   `contracts/INSTALLATION_AUTHORIZATION.md`.
 3. Reactivates collector rows that only the former three-missed-run rule made
    inactive (`collector_managed AND NOT active AND
    consecutive_missed_collections >= 3`).
