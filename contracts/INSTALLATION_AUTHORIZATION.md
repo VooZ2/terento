@@ -24,7 +24,15 @@ Solar, or inReach information does not prevent approval if every plausible
 active candidate has `mapCapable=true`. All candidates with Maps=Yes produce
 `APPROVED`; all with Maps=No produce `BLOCKED`; mixed candidates or any NULL
 capability produce `PENDING`. An unknown base model or no candidates is
-`PENDING`, with no write. Inactive rows never confer approval. A policy
+`PENDING`, with no write. Inactive rows never confer approval; `active=false`
+is reserved for a deliberate withdrawal, and no routine path sets it. A
+collector-managed model that leaves Garmin's current category is **retired from
+retail, not deactivated**: after three consecutive successful complete weekly
+collections without it, it keeps `active=true` and its stored Maps value, so
+owners of discontinued watches (for example fēnix 8, Enduro 3, quatix 8 once
+Garmin stops selling them) keep the same decision. Retirement is the
+`consecutive_missed_collections >= 3` counter, shown in Admin as "Retired from
+retail"; a model seen again is current retail. A policy
 endpoint failure, missing route, or invalid response is `CATALOG_UNAVAILABLE`,
 also with no write. This is a temporary verification failure, not evidence of
 permanent incompatibility.
@@ -56,9 +64,13 @@ Garmin sold exactly one generation under it. Current table: reported `epix Pro`
 (`EPIX PRO`, `epix Pro 51mm`) → `epix pro gen 2`. Garmin sold only one epix Pro
 generation, catalogued as "epix Pro (Gen 2)", so the reported name cannot mean
 another product. Plain `epix` is not an alias because Garmin sold an original
-epix and epix (Gen 2). The MARQ (Gen 2) lines are not aliased because
-first-generation MARQ editions exist under the same names. Edge models stay
-absent and `PENDING`.
+epix and epix (Gen 2); it is a real catalog row for the original epix (see
+below), so a watch that reports plain `epix` is decided by that row (Maps=Yes).
+Both epix generations have maps, so the result is the same for either. The
+MARQ (Gen 2) lines are not aliased because first-generation MARQ editions exist
+under the same names; those first-generation names are real Maps=Yes rows, so
+a Gen 2 watch that reported a plain first-generation name would also be
+approved correctly. Edge models stay absent and `PENDING`.
 
 The public Compatibility directory and its `TESTED`/`SUPPORTED`/`VERIFIED`
 evidence categories, `successfulInstallations`, Admin `support_status`, and
@@ -92,6 +104,47 @@ Unknown row may be filled later from the same specification evidence.
 Administrators still set Maps manually; Devices filtered to `Maps: Unknown`
 and active models (`/admin/devices?maps=unknown&active=1`) lists active models
 whose value is Unknown.
+
+**Reviewed catalog additions and Maps decisions (owner, 2026-10-09).**
+Migration 075 applies these decisions; the per-row evidence is stored in
+`specification_evidence.map_capable` and listed in
+`backend/catalog-api/docs/schema.md`.
+
+- *Missing map-capable models.* Map watches that Garmin no longer sells, or
+  whose reported name is a different base model from the existing row, are
+  added as active `HISTORICAL_REVIEWED` rows with Maps=Yes, never as aliases.
+  Each needs an official Garmin source that states map support: a product
+  specification row (`Built-in mapping`, `Full vector map`, `Preloaded road and
+  trail maps`, `Moving map …`, or the Japanese `地図のダウンロード機能` /
+  `フルベクトル地図` rows), or the owner's manual Map topic ("comes preloaded
+  with maps" / "can display … Garmin map data"). The `model` label is chosen so
+  its base model equals the name the watch reports. Rows added: quatix 7 Pro,
+  D2 Mach 1 Pro, Forerunner 945 LTE, quatix 6X and 7X (Solar), Descent Mk2S and
+  Mk2i, MARQ Adventurer/Athlete/Aviator/Captain/Commander/Driver/Golfer/
+  Expedition (first generation), D2 Delta/Delta S/Delta PX/Charlie, fēnix 5S
+  Plus and 5X Plus, epix (original), tactix 7 – Pro / Pro Ballistics /
+  Standard Edition, MARQ (Gen 2) Commander/Athlete/Golfer – Carbon Edition and
+  Adventurer – Damascus Steel Edition, fēnix 8 Dual Power (47/51 mm), quatix 6X
+  Dual Power, Forerunner 955 Dual Power, and quatix 8 Pro 51 mm (listed by
+  Garmin's Connect IQ device list; Maps from the quatix 8 Pro specifications).
+  The fēnix 6 family is end of life: its rows stay exactly as they are and no
+  fēnix 6 Pro or fēnix 6 Dual Power rows are added. Edge, handheld and
+  non-map products are not added. Current-category models (for example
+  Enduro 4, Approach S72) are added by the weekly collector from their
+  specification rows.
+- *Golf watches (pending owner review).* On Approach watches the
+  `Full vector map: yes` row (for S44 and S50 `yes (with Garmin Golf
+  membership)`) sits in the golf section of the specification table and
+  appears to describe golf-course maps, not general map support. Golf-section
+  map rows are pending a separate owner decision and do not change stored
+  values: every Approach row keeps its current stored Maps value (`false`),
+  and migration 075 does not touch them.
+- *Reviewed Maps=No.* The collector stores Unknown when a page has no map row.
+  As a reviewed owner decision, Bounce 2, D2 Air X15, Forerunner 70, 170 and
+  170 Music, vívofit jr. 3 and vívosmart 5 are stored as Maps=No: their
+  official specifications show no map row at all and their product categories
+  have no maps. Like any stored `true`/`false`, the collector never replaces
+  these values; an administrator can still change them.
 
 Installation checks current policy before provider/custom acquisition or
 extraction and again at the final write boundary. Safe Update checks when the

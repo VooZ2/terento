@@ -36,6 +36,7 @@ from .compatibility_status import (
     calculate_compatibility_status,
 )
 from .device_catalog import _official_source_image_url
+from .models import RETAIL_RETIREMENT_MISSED_RUNS
 from .failure_reasons import failure_reason_label, normalize_failure_reason
 from .failure_context import validate_context
 from .map_capability import classify_map_capable
@@ -6635,7 +6636,8 @@ def device_detail_page(
 
     lifecycle = (
         "Historical" if device.get("recordSource") == "HISTORICAL_REVIEWED" else
-        "Inactive" if device.get("active") is False else "Current retail"
+        "Inactive" if device.get("active") is False else
+        "Retired from retail" if device.get("retailRetired") else "Current retail"
     )
     catalog_source = (
         "Historical reviewed registry" if device.get("recordSource") == "HISTORICAL_REVIEWED" else
@@ -7238,6 +7240,10 @@ def _admin_device_payload(
             },
             "recordSource": str(row.get("record_source") or "CURRENT_RETAIL").upper(),
             "collectorManaged": bool(row.get("collector_managed", True)),
+            # Missing from Garmin's current category for the retirement threshold;
+            # the row stays active, so authorization keeps the catalog Maps value.
+            "retailRetired": bool(row.get("collector_managed", True)) and int(
+                row.get("consecutive_missed_collections") or 0) >= RETAIL_RETIREMENT_MISSED_RUNS,
             "asset": {"status": "AVAILABLE", "url": asset_url} if asset_url else {"status": "MISSING"},
             "sourceAsset": {"url": source_image_url, "scope": "MODEL"} if source_image_url else None,
             "image": image,

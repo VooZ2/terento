@@ -999,7 +999,8 @@ activity and is not converted into an installation failure.
 Returns catalog version 2 for the separate Garmin device catalog. Records are discovered from the
 official smartwatch category and do not mean that Terento has tested or
 supports the model. The retail source is not a complete historical Garmin
-database; inactive historical records can remain in the response.
+database; models that left the current category remain in the response as
+active, retired-from-retail records.
 
 ```json
 {

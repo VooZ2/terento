@@ -588,6 +588,11 @@ marker on Devices, Installations and model detail while preserving real variant
 labels such as 47 mm or Solar (no Wi-Fi). The legacy variant placeholder
 `Historical` displays as an empty variant, not a hardware feature. The marker
 describes catalog provenance, not product age or Garmin's discontinued status.
+Model detail's catalog lifecycle reads `Historical` for that provenance,
+`Retired from retail` for a collector row Garmin's category has omitted for
+three complete collections (`retailRetired` in the admin payload; the row stays
+active and keeps its Maps and Install policy), `Inactive` for a withdrawn
+inactive row, and otherwise `Current retail`.
 
 The historical fēnix 7 Pro and Solar (no Wi-Fi) identities remain separate, as do
 their 7X Pro equivalents: Garmin lists them separately in its
