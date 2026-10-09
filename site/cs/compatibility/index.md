@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**25** modely s úspěšnými instalacemi**164** úspěšných instalacíPoslední úspěšná instalace 8. října 2026
+**25** modely s úspěšnými instalacemi**174** úspěšných instalacíPoslední úspěšná instalace 9. října 2026
 
 Jak tento seznam funguje
 
@@ -29,9 +29,9 @@ fēnix
 
 47 mm, AMOLED
 
-36 úspěšných instalací
+42 úspěšných instalací
 
-Poslední úspěšná instalace 8. října 2026
+Poslední úspěšná instalace 9. října 2026
 
 Forerunner
 
@@ -39,9 +39,9 @@ Forerunner
 
 AMOLED
 
-15 úspěšných instalací
+16 úspěšných instalací
 
-Poslední úspěšná instalace 7. října 2026
+Poslední úspěšná instalace 9. října 2026
 
 fēnix
 
@@ -53,6 +53,16 @@ fēnix
 
 Poslední úspěšná instalace 4. října 2026
 
+Forerunner
+
+### Forerunner 965
+
+Historical
+
+12 úspěšných instalací
+
+Poslední úspěšná instalace 9. října 2026
+
 fēnix
 
 ### fēnix 9 Pro
@@ -62,16 +72,6 @@ fēnix
 11 úspěšných instalací
 
 Poslední úspěšná instalace 8. října 2026
-
-Forerunner
-
-### Forerunner 965
-
-Historical
-
-10 úspěšných instalací
-
-Poslední úspěšná instalace 7. října 2026
 
 fēnix
 
@@ -93,6 +93,16 @@ fēnix
 
 Poslední úspěšná instalace 27. září 2026
 
+fēnix
+
+### fēnix 9 Pro
+
+47 mm, AMOLED
+
+7 úspěšných instalací
+
+Poslední úspěšná instalace 9. října 2026
+
 Forerunner
 
 ### Forerunner 955
@@ -112,16 +122,6 @@ fēnix
 6 úspěšných instalací
 
 Poslední úspěšná instalace 16. září 2026
-
-fēnix
-
-### fēnix 9 Pro
-
-47 mm, AMOLED
-
-6 úspěšných instalací
-
-Poslední úspěšná instalace 1. října 2026
 
 fēnix
 
