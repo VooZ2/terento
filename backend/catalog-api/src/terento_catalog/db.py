@@ -19,7 +19,7 @@ from .identity_assessment import (
 from .failure_reasons import normalize_failure_reason
 from .failure_context import validate_event_contexts
 from .compatibility_status import calculate_compatibility_status
-from .models import CollectedDevice, CollectedMap
+from .models import RETAIL_RETIREMENT_MISSED_RUNS, CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
 from .historical_devices import historical_device_for_event
 from .provider_catalog import ProviderDefinition, ProviderSnapshot
@@ -5935,6 +5935,7 @@ class Database:
                 dm.active,
                 dm.record_source,
                 dm.collector_managed,
+                dm.consecutive_missed_collections,
                 dm.first_seen_at,
                 dm.last_seen_at,
                 dm.created_at,
@@ -6138,6 +6139,7 @@ class Database:
                         EXCLUDED.source_url,
                         EXCLUDED.source_image_url
                     ) OR device_model.active = FALSE
+                      OR device_model.consecutive_missed_collections >= %s
                     THEN now()
                     ELSE device_model.updated_at
                 END
@@ -6155,7 +6157,7 @@ class Database:
                     SELECT id, family_id, manufacturer, model, canonical_model, variant,
                            case_size_mm, display_type, part_number, product_url,
                            source_url, source_image_url, active, screen_technology, solar, inreach,
-                           map_capable
+                           map_capable, consecutive_missed_collections
                     FROM device_model
                     WHERE id = ANY(%s)
                     """,
@@ -6194,7 +6196,11 @@ class Database:
                     specifications_changed = specifications_changed or (
                         existing.get("map_capable") is None and record.map_capable is not None
                     )
-                    if existing["active"] is False or incoming_values != existing_values or specifications_changed:
+                    returning_from_retirement = (
+                        int(existing.get("consecutive_missed_collections") or 0) >= RETAIL_RETIREMENT_MISSED_RUNS
+                    )
+                    if (existing["active"] is False or returning_from_retirement
+                            or incoming_values != existing_values or specifications_changed):
                         updated_ids.append(record.id)
                 connection.execute(
                     family_query,
@@ -6228,6 +6234,7 @@ class Database:
                         # installation PENDING). A model-name prefix never
                         # stores a value, and a stored value is never replaced.
                         record.map_capable,
+                        RETAIL_RETIREMENT_MISSED_RUNS,
                     ),
                 )
 
@@ -6248,7 +6255,13 @@ class Database:
                 )
 
             if collection_complete:
-                deactivated_ids = [
+                # Owner rule 2026-10-09: a model that leaves Garmin's current
+                # category is retired from retail, not deactivated. It keeps
+                # active = TRUE so owners of discontinued watches keep the
+                # catalog Maps decision; retirement is the missed-run counter
+                # reaching RETAIL_RETIREMENT_MISSED_RUNS. A model seen again
+                # resets the counter and is current retail again.
+                retired_ids = [
                     row["id"]
                     for row in connection.execute(
                         """
@@ -6256,10 +6269,9 @@ class Database:
                         FROM device_model
                         WHERE id <> ALL(%s)
                           AND collector_managed = TRUE
-                          AND active = TRUE
-                          AND consecutive_missed_collections + 1 >= 3
+                          AND consecutive_missed_collections + 1 = %s
                         """,
-                        (seen_ids,),
+                        (seen_ids, RETAIL_RETIREMENT_MISSED_RUNS),
                     ).fetchall()
                 ]
                 connection.execute(
@@ -6268,26 +6280,20 @@ class Database:
                     SET
                         consecutive_missed_collections = CASE
                             WHEN id = ANY(%s) THEN 0
-                            ELSE consecutive_missed_collections + 1
-                        END,
-                        active = CASE
-                            WHEN id = ANY(%s) THEN TRUE
-                            WHEN consecutive_missed_collections + 1 >= 3 THEN FALSE
-                            ELSE active
+                            ELSE LEAST(consecutive_missed_collections + 1, 32767)
                         END,
                         updated_at = CASE
                             WHEN id <> ALL(%s)
-                             AND active = TRUE
-                             AND consecutive_missed_collections + 1 >= 3
+                             AND consecutive_missed_collections + 1 = %s
                             THEN now()
                             ELSE updated_at
                         END
                     WHERE collector_managed = TRUE
                     """,
-                    (seen_ids, seen_ids, seen_ids),
+                    (seen_ids, seen_ids, RETAIL_RETIREMENT_MISSED_RUNS),
                 )
                 updated_ids.extend(
-                    device_id for device_id in deactivated_ids
+                    device_id for device_id in retired_ids
                     if device_id not in updated_ids
                 )
 

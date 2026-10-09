@@ -46,7 +46,8 @@ Solar, or inReach facts are not mandatory fields. If every remaining possible
 active candidate has Maps=Yes, authorize; if every candidate has Maps=No,
 block; if candidates have mixed Maps values, any candidate has Maps=NULL, or
 there are no candidates, return `PENDING`. An identified inactive row cannot
-grant approval and is `BLOCKED`. An unknown base model is `PENDING`, not
+grant approval and is `BLOCKED`; a model that leaves Garmin's current category
+is retired from retail but stays active, so it keeps its Maps decision. An unknown base model is `PENDING`, not
 permanently unsupported. No family or substring match may grant a write,
 including across Garmin product families. Separately, the server applies a
 reviewed table of exact, whole-name generation-label aliases (for example,

@@ -4,6 +4,12 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 
+# Complete weekly Garmin collections a collector-managed model may be absent
+# from before it is retired from retail. Retirement never deactivates it, so
+# installation authorization keeps following the stored catalog Maps value.
+RETAIL_RETIREMENT_MISSED_RUNS = 3
+
+
 @dataclass(frozen=True, order=True)
 class NormalizedVersion:
     year: int

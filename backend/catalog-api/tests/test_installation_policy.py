@@ -446,7 +446,10 @@ class MigratedCatalogAliasTests(PGliteTestCase):
         self.assertEqual(len(document["devices"]), len(rows) + len(real))
         self.assertEqual(app_resolve(document, garmin("epix Pro 51mm")),
                          ("APPROVED", ["garmin-epix-pro-gen-2-51@alias-epix-pro", "garmin-epix-pro-gen-2@alias-epix-pro"]))
-        self.assertEqual(app_resolve(document, garmin("epix")), ("PENDING", []))
+        # Plain "epix" is a real catalog row since migration 075 (the original
+        # epix), not an alias; both epix generations are maps-capable.
+        self.assertEqual(app_resolve(document, garmin("epix")), ("APPROVED", ["garmin-epix-gen-1"]))
+        self.assertNotIn("epix", GENERATION_LABEL_BASE_MODEL_ALIASES)
 
 
 if __name__ == "__main__":

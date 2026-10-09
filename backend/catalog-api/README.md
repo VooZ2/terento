@@ -372,8 +372,9 @@ part number. Product-image binaries are never fetched.
 
 The collector canonicalizes family/model names, preserves display diacritics,
 extracts explicit case sizes and display variants, and collapses cosmetic SKU
-differences. It keeps historical records and only marks a model inactive after
-three consecutive successful full collections fail to observe it. A partial
+differences. It keeps historical records. A model that three consecutive
+successful full collections fail to observe is retired from retail but stays
+active, so its catalog Maps decision still governs installation. A partial
 collection does not advance that absence counter.
 
 The catalog does not claim that a discovered device is tested or supported.
