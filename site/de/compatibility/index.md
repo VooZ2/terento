@@ -11,7 +11,7 @@ Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Unten 
 
 Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.
 
-**25** Modelle mit erfolgreichen Installationen**164** erfolgreiche InstallationenLetzte erfolgreiche Installation 8. Oktober 2026
+**25** Modelle mit erfolgreichen Installationen**175** erfolgreiche InstallationenLetzte erfolgreiche Installation 10. Oktober 2026
 
 So funktioniert diese Liste
 
@@ -29,9 +29,9 @@ fēnix
 
 47 mm, AMOLED
 
-36 erfolgreiche Installationen
+42 erfolgreiche Installationen
 
-Letzte erfolgreiche Installation 8. Oktober 2026
+Letzte erfolgreiche Installation 9. Oktober 2026
 
 Forerunner
 
@@ -39,9 +39,9 @@ Forerunner
 
 AMOLED
 
-15 erfolgreiche Installationen
+16 erfolgreiche Installationen
 
-Letzte erfolgreiche Installation 7. Oktober 2026
+Letzte erfolgreiche Installation 9. Oktober 2026
 
 fēnix
 
@@ -53,25 +53,25 @@ fēnix
 
 Letzte erfolgreiche Installation 4. Oktober 2026
 
-fēnix
-
-### fēnix 9 Pro
-
-51 mm, AMOLED
-
-11 erfolgreiche Installationen
-
-Letzte erfolgreiche Installation 8. Oktober 2026
-
 Forerunner
 
 ### Forerunner 965
 
 Historical
 
-10 erfolgreiche Installationen
+12 erfolgreiche Installationen
 
-Letzte erfolgreiche Installation 7. Oktober 2026
+Letzte erfolgreiche Installation 9. Oktober 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, AMOLED
+
+12 erfolgreiche Installationen
+
+Letzte erfolgreiche Installation 10. Oktober 2026
 
 fēnix
 
@@ -93,6 +93,16 @@ fēnix
 
 Letzte erfolgreiche Installation 27. September 2026
 
+fēnix
+
+### fēnix 9 Pro
+
+47 mm, AMOLED
+
+7 erfolgreiche Installationen
+
+Letzte erfolgreiche Installation 9. Oktober 2026
+
 Forerunner
 
 ### Forerunner 955
@@ -112,16 +122,6 @@ fēnix
 6 erfolgreiche Installationen
 
 Letzte erfolgreiche Installation 16. September 2026
-
-fēnix
-
-### fēnix 9 Pro
-
-47 mm, AMOLED
-
-6 erfolgreiche Installationen
-
-Letzte erfolgreiche Installation 1. Oktober 2026
 
 fēnix
 
