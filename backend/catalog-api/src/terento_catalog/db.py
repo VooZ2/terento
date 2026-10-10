@@ -3755,7 +3755,7 @@ class Database:
         return {'packageId': package_id, 'enabled': enabled}
 
     def provider_download_urls(self, provider_id: str) -> list[dict[str, Any]]:
-        from .provider_catalog import freizeitkarte_policy_country_codes
+        from .provider_catalog import acquisition_withheld
         with self.connection() as connection:
             rows = connection.execute(
                 """
@@ -3775,13 +3775,9 @@ class Database:
         samples = []
         seen = set()
         for row in rows:
-            codes = [str(code).upper() for code in (row.get("country_codes") or [])]
-            if row.get("country"):
-                codes.append(str(row["country"]).upper())
-            if provider_id == "freizeitkarte":
-                codes = freizeitkarte_policy_country_codes(row.get("provider_region_id") or "", codes)
-            if (row.get("availability") == "WITHHELD" or "RU" in codes
-                    or ("UA" in codes and str(row.get("canonical_region_id") or row.get("region") or "").upper() == "CRIMEA")):
+            codes = [*(row.get("country_codes") or []), *([row["country"]] if row.get("country") else [])]
+            if acquisition_withheld(provider_id, row.get("provider_region_id"), codes,
+                                    row.get("canonical_region_id") or row.get("region"), row.get("availability")):
                 continue
             if row["source_url"] in seen:
                 continue

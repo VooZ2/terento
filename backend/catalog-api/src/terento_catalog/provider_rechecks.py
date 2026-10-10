@@ -64,11 +64,9 @@ def jobs(database, provider_id):
 def inspect_artifact(row):
     """Use the provider's existing validator; no user-supplied URLs."""
     from .provider_catalog import ProviderCollectionError
-    codes = row.get('country_codes') or []
-    if row['provider_id'] == 'freizeitkarte':
-        from .provider_catalog import freizeitkarte_policy_country_codes
-        codes = freizeitkarte_policy_country_codes(row.get('provider_region_id', ''), codes)
-    if row.get('availability') == 'WITHHELD' or 'RU' in codes or ('UA' in codes and row.get('region', '').upper() == 'CRIMEA'):
+    from .provider_catalog import acquisition_withheld
+    if acquisition_withheld(row['provider_id'], row.get('provider_region_id'), row.get('country_codes'),
+                            row.get('region'), row.get('availability')):
         raise ValueError('acquisition_withheld')
     url, provider = row['source_url'], row['provider_id']
     opener = build_opener(_NoRedirect())

@@ -182,6 +182,16 @@ def freizeitkarte_policy_country_codes(provider_region_id: str, country_codes) -
     return tuple(country_codes)
 
 
+def acquisition_withheld(provider_id: str, provider_region_id: str | None, country_codes,
+                         region: str | None, availability: str | None = None) -> bool:
+    """Canonical product policy: Crimea (UA + CRIMEA) and every RU region."""
+    codes = [str(code).upper() for code in (country_codes or ())]
+    if provider_id == "freizeitkarte":
+        codes = list(freizeitkarte_policy_country_codes(provider_region_id or "", codes))
+    return (availability == "WITHHELD" or "RU" in codes
+            or ("UA" in codes and str(region or "").upper() == "CRIMEA"))
+
+
 def snapshot_from_freizeitkarte_records(
     records: list[Any], definition: ProviderDefinition = FREIZEITKARTE
 ) -> ProviderSnapshot:

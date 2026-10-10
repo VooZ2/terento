@@ -256,6 +256,14 @@ from the public package list; the collector never invents a size. The explicit
 `installSizeBytes` field is the final uncompressed Garmin IMG size and may be
 unknown. Unknown install size is never treated as zero or as the archive size.
 
+Owner rule (2026-10-10): selection lists show only installable maps. The public
+catalog therefore omits russia and Crimea packages (the canonical acquisition
+policy: Crimea `UA` + `CRIMEA`, every `RU` region, `WITHHELD`) and any package
+whose required IMG is larger than the FAT32 file limit (4 GiB − 1 byte; the
+archive size decides only while the install size is unknown). An optional
+artifact above the limit is dropped without hiding its main map. The database
+rows stay; nothing is deleted.
+
 ## Collector behavior
 
 The collector reads the official Freizeitkarte release page and seven official
@@ -543,15 +551,20 @@ stored, mirrored or proxied. HTTP range inspection rejects a changed final host.
 IMG validation checks the unencrypted DSKIMG/GARMIN header and joins its two
 fixed description fields before matching the full MapRando region and calendar
 date to the filename. Accent folding is confined to MapRando identity. A
-truncated or mismatched description retains the package as `UNAVAILABLE`, with
-an unavailable artifact, rather than making an unsafe match. Native acquisition
+truncated or mismatched description is not an installable release: the
+collector leaves that region out of the snapshot (retiring an earlier package
+row) rather than making an unsafe match, and offers it again once the provider
+publishes a consistent file. Native acquisition
 still validates the entire downloaded file. Original source sizes are both
 download and installation sizes. No provider checksum is invented.
 
 A complete metadata-only inspection on 2026-09-10 found **160** direct IMG
 packages: **158** matching headers and **2 unavailable**. Haiti/Dominican
 Republic has a truncated fixed description; New Zealand's filename date is
-2026-09-02 but the header says 01.09.2026. These remain visible but blocked.
+2026-09-02 but the header says 01.09.2026. On 2026-10-10 New Zealand matched
+again, while Haiti/Dominican Republic (title cut at the 50-byte field) and
+Brazil Southeast (header 01.10.2026, filename 2026_10_02) failed; such regions
+are no longer listed.
 `France_Courbes_IGN` is a standalone alternative package, never an OTM-style
 optional overlay. Geographic metadata derives from the reviewed provider
 `country.txt` extract paths and explicit directory country/subregion names in

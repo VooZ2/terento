@@ -607,8 +607,12 @@ Responses use `Cache-Control: no-store`.
 Returns an additive provider-neutral catalog. `schemaVersion: 2` identifies the
 new provider/package/artifact fields, while `catalogVersion: 1`, the legacy map
 fields, and `sourceURL` remain for existing macOS clients. The response
-contains all validated packages known to enabled or paused prebuilt adapters;
-catalog membership is distinct from acquisition availability. The collector
+contains the validated packages known to enabled or paused prebuilt adapters,
+except packages withheld by the russia/Crimea acquisition policy and packages
+whose required IMG exceeds the FAT32 file limit of 4 GiB − 1 byte (owner rule
+2026-10-10: lists show only installable maps); an optional artifact above that
+limit is dropped alone. Other blocked packages stay listed with
+`downloadBlockReason`. The collector
 keeps original provider download URLs and never downloads or proxies map
 packages through Terento.
 

@@ -164,6 +164,10 @@ class MapRandoProviderAdapter:
             if sum(date == released for date, _ in links) != 1:
                 raise ProviderCollectionError("MapRando latest release is ambiguous")
             measurement = self.fetcher.measure_img(source_url)
+            if not measurement.identity_validated:
+                # An IMG whose own title/date cannot confirm the release is not
+                # installable, so it is not offered; the next consistent file is.
+                continue
             identity, policy_codes = policy_identity(slug)
             codes, region_kind = REGION_GEOGRAPHY.get(slug, (policy_codes, "subregion"))
             package_id = "maprando-" + slug
@@ -174,13 +178,13 @@ class MapRandoProviderAdapter:
                 region=identity, country=codes[0] if len(codes) == 1 else None,
                 release=release, release_id=release,
                 version_label=release, generated_at=released, source_updated_at=released,
-                availability="AVAILABLE" if measurement.identity_validated else "UNAVAILABLE",
+                availability="AVAILABLE",
                 country_codes=codes, region_kind=region_kind,
                 tags=(), capabilities=("main",), artifacts=(CatalogArtifact(
                     id=package_id + "-main", kind="main", source_url=source_url,
                     size_bytes=measurement.size_bytes, install_size_bytes=measurement.size_bytes,
                     checksum_sha256=None, content_type="application/octet-stream", required=True,
-                    validation_status="VALIDATED" if measurement.identity_validated else "UNAVAILABLE",
+                    validation_status="VALIDATED",
                     source_updated_at=released,
                 ),),
             ))
