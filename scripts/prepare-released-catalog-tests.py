@@ -19,6 +19,13 @@ MATRICES = (
 )
 
 
+MODERN_GUARD = """            // The bundled catalog is exact; a live catalog lists only installable maps.
+            let usesBundledCatalog = identityContractCatalogURL == packageRoot.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            )
+            let allRowsPass = (usesBundledCatalog ? packages.count == {count} : !packages.isEmpty)
+                && packages.allSatisfy {{ package in"""
+
 def prepare_source(source: str) -> str:
     # New clients preserve unavailable rows; their tests must stay unchanged.
     modern = "private static func testBlockedCatalogStaysVisible()" in source
@@ -31,6 +38,12 @@ def prepare_source(source: str) -> str:
         for old, new, _ in REPLACEMENTS:
             source = source.replace(old, new)
     if modern:
+        # Released modern clients pin the bundled row count even for a live catalog.
+        for _, _, count in MATRICES:
+            guard = f"            let allRowsPass = packages.count == {count} && packages.allSatisfy {{ package in"
+            if source.count(guard) > 1:
+                raise ValueError("Unrecognized released-client identity matrix layout")
+            source = source.replace(guard, MODERN_GUARD.format(count=count))
         return source
     for name, provider_id, count in MATRICES:
         signature = f"    private static func {name}() {{"

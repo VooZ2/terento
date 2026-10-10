@@ -237,8 +237,8 @@ shown in these cards (all-time totals are on Maps).
 The Needs attention header shows its Now total. The payload still carries the
 period purpose breakdown (`downloadPurposes`: install, update, unknown), which
 the Dashboard does not render. Needs attention covers unresolved work across all dates in
-up to six review-queue rows (zero-count rows are omitted; all zero shows
-`Nothing to review.`) read only from `admin_review_summary()` and the open
+up to six review-queue rows (zero-count rows are omitted; all zero collapses
+the card to its header) read only from `admin_review_summary()` and the open
 public support-report count (`support_report_open_count()`), plus one System
 checks row only when the overview's system health snapshot (the same
 `operational_health_snapshot()` data Health renders) has failed or degraded
@@ -1370,7 +1370,9 @@ before the page script runs, not inline page data.
 
 `static/map/coverage-map-v1.js` exposes `TerentoCoverageMap(container, options)`:
 trusted bundled SVG, country names, callbacks, `update([{code,count,name}])`,
-`highlight(code, focus)`, `zoom(action)` and `destroy()`. The renderer performs
+`highlight(code, focus)`, `zoom(action)` and `destroy()`. Optional
+`unavailable` country codes get a grey hatched fill and `unavailableLabel` in
+their accessible name. The full-world fit is the minimum zoom (100%). The renderer performs
 no fetches and knows no admin routes, cookies, telemetry IDs or provider query
 schema. Admin aggregates its existing data and owns provider tooltip details.
 A future public page can reuse the renderer with separately approved aggregate

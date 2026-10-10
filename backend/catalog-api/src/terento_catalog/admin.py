@@ -2713,8 +2713,8 @@ def overview_page(
     attention_status = ""
     if not review_available:
         attention_status = _empty_state("unavailable", "Review counts are unavailable.", action=("", "Retry"))
-    elif attention_total == 0:
-        attention_status = _empty_state("empty", "Nothing to review.")
+    # Nothing open: the card collapses to its header (owner 2026-10-10); the
+    # 0 Total chip says it.
     attention_section = _section_card(
         "Needs attention",
         review_notice + attention_status
@@ -2752,16 +2752,18 @@ def overview_page(
             statistic it always was; Web shows web installer records only."""
             app_body, app_totals = chart(data, kind, chart_id)
             web_body, web_totals = chart(web, kind, chart_id + "-web")
+            # The switch is the first chip of the header totals, in the same size.
             switch = (
-                f"<div class='quick-filter-group overview-source-switch' role='group' aria-label='{title} source'>"
-                "<button type='button' class='quick-filter active' data-source-switch='app' aria-pressed='true'>App</button>"
-                "<button type='button' class='quick-filter' data-source-switch='web' aria-pressed='false'>Web</button></div>"
+                f"<span class='overview-source-switch' role='group' aria-label='{title} source'>"
+                "<button type='button' class='active' data-source-switch='app' aria-pressed='true'>App</button>"
+                "<button type='button' data-source-switch='web' aria-pressed='false'>Web</button></span>"
             )
             return _section_card(
-                title, switch + f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
+                title, f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
                 card_id=card_id, scope=period,
-                totals=f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
-                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span>",
+                totals=f"<div class='overview-card-totals overview-source-head'>{switch}"
+                       f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
+                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span></div>",
                 css="overview-panel overview-chart-panel",
             )
 
@@ -4929,7 +4931,7 @@ def map_statistics_page(
     )
     coverage = f"""
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installs by country'>
-          {_section_card('Countries', "<div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', css='provider-card map-statistics-world-map-card')}
+          {_section_card('Countries', "<div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out' disabled>−</button><button type='button' data-map-zoom='reset'>Reset map</button></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', css='provider-card map-statistics-world-map-card')}
           {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table' data-own-mobile-layout><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', css='provider-card map-statistics-popularity', mobile_collapse=True)}
         </section>"""
     stream_buttons = "".join(
@@ -4970,7 +4972,7 @@ def map_statistics_page(
         {"" if not has_event_data else coverage + provider_table + ranking + events}
         {trends}
       </main>
-      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="{WORLD_MAP_SCRIPT_PATH}"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
+      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20261010-not-offered-1"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="{WORLD_MAP_SCRIPT_PATH}"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
     # Maps shows provider names only (filter options); provider health and
     # collection clocks are not part of this page's freshness revision.
@@ -5221,8 +5223,17 @@ def _map_statistics_script() -> str:
         });
         return Object.values(byCountry).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || (a.name || a.code).localeCompare(b.name || b.code));
       };
+      // Maps are never offered in Russia (acquisition policy: every RU region is
+      // withheld), so the map hatches it grey and its tooltip names only the
+      // country (owner decision 2026-10-10: no explanatory text in Admin).
+      const unavailableCountries = new Set(['ru']);
       const showWorldMapTooltip = (item, code) => {
         if (!worldMapTooltip) return;
+        if (unavailableCountries.has(code)) {
+          worldMapTooltip.innerHTML = `<strong>${escapeHtml(countryNames[code] || code.toUpperCase())}</strong>`;
+          worldMapTooltip.hidden = false;
+          return;
+        }
         const providerLines = item?.providers ? Object.values(item.providers).sort((a,b) => (b.count ?? -1) - (a.count ?? -1)).map((entry) => `<div class="world-map-provider-line"><span>${escapeHtml(providerName[entry.id] || entry.id)}</span><strong>${countValue(entry.count)}</strong></div>`).join('') : '';
         worldMapTooltip.innerHTML = `<strong>${escapeHtml(item?.name || countryNames[code] || code.toUpperCase())}</strong><span class="world-map-tooltip-total">${countValue(item?.count)} completed installs</span>${providerLines}`;
         worldMapTooltip.hidden = false;
@@ -5231,8 +5242,12 @@ def _map_statistics_script() -> str:
         if (!worldMapSvg || typeof window.TerentoCoverageMap !== 'function') return;
         coverageMap ||= new window.TerentoCoverageMap(worldMapSvg, {
           svg: window.terentoWorldMapSvg, names: countryNames,
+          unavailable: [...unavailableCountries], unavailableLabel: 'maps are not offered here',
           onCountry: (item, code) => { if (code) showWorldMapTooltip(item, code); else if (worldMapTooltip) worldMapTooltip.hidden = true; },
-          onZoom: (zoom, initial) => { const status = document.querySelector('#world-map-zoom-status'); if (status) status.textContent = `${Math.round(Math.pow(2, zoom - initial) * 100)}%`; }
+          onZoom: (zoom, initial) => {
+            // The full-world view is the smallest; zoom out is off there.
+            const zoomOut = document.querySelector("[data-map-zoom='out']"); if (zoomOut) zoomOut.disabled = zoom <= initial + 0.001;
+          }
         });
         const items = countryCoverage().filter((item) => coverageMap.codes.has(item.code));
         coverageMap.update(items);
@@ -9657,7 +9672,7 @@ main.dashboard>.heading-row h1{margin:0}
 @media(max-width:700px){.device-overview-sections .admin-disclosure:not(.filter-disclosure)>summary,.device-specification-link{min-height:44px}}
 .world-map-controls{display:flex;align-items:center;gap:8px;padding:4px 10px 10px}
 .world-map-controls button{min-height:40px;min-width:40px;padding:6px 10px;border-radius:var(--admin-control-radius);background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
-.world-map-controls span{font-size:12px;color:var(--secondary)}
+.world-map-controls button:disabled{cursor:not-allowed;opacity:.45}
 .world-map-svg{height:420px;min-height:300px;touch-action:none;cursor:grab;overflow:hidden;user-select:none;-webkit-user-select:none}.world-map-svg *{user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 .world-map-svg:active{cursor:grabbing}
 .world-map-svg:focus-visible{outline:var(--admin-focus-ring);outline-offset:-2px}
@@ -9748,8 +9763,7 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-statistics-world-map-card .map-statistics-world-map{padding:0;min-height:0}
 .map-statistics-world-map-card .world-map-svg{height:auto;min-height:0;aspect-ratio:900 / 365}
 .map-statistics-world-map-card .world-map-controls{position:absolute;z-index:3;top:8px;left:8px;padding:0;gap:6px}
-.map-statistics-world-map-card .world-map-controls span{padding:4px 6px;border-radius:var(--admin-control-radius);background:var(--surface)}
-@media(max-width:700px){.map-statistics-world-map-card .world-map-controls{position:static;padding:8px;gap:4px}.map-statistics-world-map-card .world-map-controls button{padding:6px 8px;white-space:nowrap}.map-statistics-world-map-card .world-map-controls span{padding:4px}}
+@media(max-width:700px){.map-statistics-world-map-card .world-map-controls{position:static;padding:8px;gap:4px}.map-statistics-world-map-card .world-map-controls button{padding:6px 8px;white-space:nowrap}}
 .map-statistics-popularity .table-wrap th{white-space:normal;overflow-wrap:normal}
 @media(max-width:700px){.world-map-controls button{min-width:44px;min-height:44px}}
 @media(max-width:700px){
@@ -10507,7 +10521,12 @@ ADMIN_STYLES += """
 .web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
 .web-installer-why{display:block;margin-top:4px;font-size:12px}
 .web-installer-tests{margin:20px 0 0;font-size:12px}
-.overview-source-switch{margin:0 0 10px}.overview-source-totals{display:contents}.overview-source-totals[hidden]{display:none}
+.overview-chart-panel .overview-empty-state{justify-content:center;padding:32px 0;text-align:center}
+.overview-attention-empty{align-self:start}
+.overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
+.overview-source-switch{display:inline-flex;box-sizing:border-box;height:24px;padding:1px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted)}
+.overview-source-switch button{min-height:0;height:20px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--secondary);font:inherit;font-size:var(--admin-type-support-size);line-height:20px;cursor:pointer}
+.overview-source-switch button.active{background:var(--surface);color:var(--graphite);font-weight:650;box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 8%,transparent)}
 """
 # Signed-in pages link one cacheable stylesheet; the content hash in the name
 # changes whenever the CSS changes (served by the admin map-assets route).

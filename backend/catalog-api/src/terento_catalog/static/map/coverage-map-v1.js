@@ -1,6 +1,8 @@
 /* Reusable country coverage renderer. No network, authentication or telemetry.
  * Input: trusted OpenStreetMap-derived SVG and aggregated {code, count, name} rows.
  * Hosts own data policy, fetching, provider details and surrounding UI.
+ * options.unavailable lists country codes where maps are not offered; they get
+ * a grey hatched fill and options.unavailableLabel in their accessible name.
  */
 (function (global) {
   'use strict';
@@ -18,6 +20,30 @@
     map.attributionControl.setPrefix(false);
     map.attributionControl.addAttribution('Boundaries: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> (ODbL) · Leaflet');
     const paths = new Map([...svg.querySelectorAll('path[id]')].map(path => [path.id, path]));
+    const unavailable = new Set(options.unavailable || []);
+    // Hatch stripes keep a fixed 5 px on-screen size: CRS.Simple draws 2^zoom px per SVG unit.
+    let hatch = null;
+    if (unavailable.size) {
+      const ns = 'http://www.w3.org/2000/svg';
+      const make = (tag, attributes) => {
+        const element = svg.ownerDocument.createElementNS(ns, tag);
+        Object.entries(attributes).forEach(([name, value]) => element.setAttribute(name, value));
+        return element;
+      };
+      const defs = make('defs', {});
+      hatch = make('pattern', {id: 'coverage-map-unavailable', patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)'});
+      hatch.appendChild(make('rect', {style: 'fill:color-mix(in srgb,var(--secondary,#6d706f) 16%,var(--surface,#fff))'}));
+      hatch.appendChild(make('path', {style: 'stroke:var(--secondary,#6d706f);stroke-opacity:.55'}));
+      defs.appendChild(hatch);
+      svg.insertBefore(defs, svg.firstChild);
+    }
+    const scaleHatch = () => {
+      if (!hatch) return;
+      const size = 5 * Math.pow(2, -map.getZoom());
+      [hatch, hatch.children[0]].forEach(element => { element.setAttribute('width', size); element.setAttribute('height', size); });
+      hatch.children[1].setAttribute('d', `M0 0V${size}`);
+      hatch.children[1].setAttribute('stroke-width', size * .32);
+    };
     let data = new Map();
     const notify = code => options.onCountry?.(code ? data.get(code) : null, code);
     const highlight = (code, focus = false) => {
@@ -46,20 +72,23 @@
     // 100% fits the complete world with a small inset at every viewport size.
     const initialZoom = () => map.getBoundsZoom(bounds, false, [12, 12]);
     let overviewZoom;
+    // Zoom out stops at 100%: the whole world is the smallest view.
     const reset = () => {
       map.invalidateSize();
       overviewZoom = initialZoom();
+      map.setMinZoom(overviewZoom);
       map.setView(bounds.getCenter(), overviewZoom, {animate: false});
+      scaleHatch();
       highlight(null);
     };
     const resize = new ResizeObserver(() => {
       const atOverview = map.getZoom() === overviewZoom && map.getCenter().equals(bounds.getCenter());
       map.invalidateSize({pan: false});
       if (atOverview) reset();
-      else options.onZoom?.(map.getZoom(), initialZoom());
+      else { map.setMinZoom(initialZoom()); options.onZoom?.(map.getZoom(), initialZoom()); }
     });
     resize.observe(container);
-    map.on('zoomend', () => options.onZoom?.(map.getZoom(), initialZoom()));
+    map.on('zoomend', () => { scaleHatch(); options.onZoom?.(map.getZoom(), initialZoom()); });
     reset();
     return {
       codes: new Set(paths.keys()),
@@ -69,8 +98,15 @@
         paths.forEach((path, code) => {
           const row = data.get(code);
           const count = row?.count || 0;
+          const name = row?.name || options.names?.[code] || code.toUpperCase();
+          if (unavailable.has(code)) {
+            path.classList.add('is-unavailable');
+            path.style.fill = 'url(#coverage-map-unavailable)';
+            path.setAttribute('aria-label', `${name}: ${options.unavailableLabel || 'maps are not offered'}`);
+            return;
+          }
           path.style.fill = count && maximum ? `hsl(198 25% ${97 - Math.pow(count / maximum, .58) * 48}%)` : 'var(--surface, #fff)';
-          path.setAttribute('aria-label', `${row?.name || options.names?.[code] || code.toUpperCase()}: ${count} completed installs`);
+          path.setAttribute('aria-label', `${name}: ${count} completed installs`);
         });
       },
       highlight,
