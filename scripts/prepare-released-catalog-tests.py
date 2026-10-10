@@ -59,7 +59,10 @@ def prepare_source(source: str) -> str:
             let catalogKind = catalogURL == bundledCatalogURL ? "bundled" : "live"
             let installationEligibility = provider.map {{ $0.allowsNewInstallCatalog ? "allowed" : "blocked" }} ?? "missing-provider"
             print("Released {provider_id} matrix [catalog=\\(catalogKind), installation=\\(installationEligibility), actualRows=\\(packages.count), expectedRows=\\(expectedRowCount)]")
-            let allRowsPass = provider != nil && packages.count == expectedRowCount && packages.allSatisfy {{ package in''')
+            // Live catalogs list only installable maps (owner rule 2026-10-10), so their size may shrink.
+            let rowCountMatches = catalogURL == bundledCatalogURL || expectedRowCount == 0
+                ? packages.count == expectedRowCount : !packages.isEmpty
+            let allRowsPass = provider != nil && rowCountMatches && packages.allSatisfy {{ package in''')
         block = block.replace("        } catch {", "            }\n        } catch {")
         if provider_id == "opentopomap":
             old = '''            let requiresBundledContourFixture = ProcessInfo.processInfo.environment[
