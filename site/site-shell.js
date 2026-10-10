@@ -33,6 +33,7 @@
       document.querySelectorAll("[data-shell-aria]").forEach(node => { node.setAttribute("aria-label", copy[node.dataset.shellAria]); });
       document.querySelectorAll("[data-shell-root]").forEach(node => { node.href = root; });
       document.querySelectorAll("[data-shell-route]").forEach(node => { node.href = root + routes[node.dataset.shellRoute]; });
+      document.querySelectorAll('[data-shell-copy="web_installer"]').forEach(node => { node.search = language === "en" ? "" : `?lang=${language}`; });
       document.querySelectorAll(".language-code").forEach(node => { node.textContent = language.toUpperCase(); });
       document.querySelectorAll(".mobile-language-label").forEach(node => { node.textContent = copy.name; });
       if (menuButton) {

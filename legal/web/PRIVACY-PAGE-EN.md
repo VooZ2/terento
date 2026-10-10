@@ -1,6 +1,6 @@
 # Privacy
 
-This notice covers the Terento website and macOS app. No account is needed to use the app. Your maps and device records stay on your Mac; the limited diagnostics described below are shared separately.
+This notice covers the Terento website, the macOS app and the web installer. No account is needed. Your maps and device records stay on your Mac or in your browser; the limited diagnostics and statistics described below are shared separately.
 
 ## Who to contact
 
@@ -15,9 +15,27 @@ Two diagnostic streams are enabled by default to improve installation reliabilit
 
 Reports exclude Garmin Unit IDs, serial-number values, account details, local paths, map files and raw logs. Individual reports are private; only reviewed aggregate compatibility results are published. The basis is legitimate interests in improving reliability and device coverage, under GDPR Article 6(1)(f).
 
+## Web installer
+
+The web installer lets you install maps on your watch from Google Chrome, without the app. Chrome reads what it needs from the watch, such as its model, free space and maps, on your computer.
+
+When you choose a map, Terento’s server downloads it from the original provider and passes it to your browser. The copy is made for your request only, is not shared and is deleted once your browser has it, or after two hours if it is not collected. The provider sees Terento’s server, not you. For each copy, the server keeps a record of the map (provider, map, region and release), its size, how much of it reached your browser, the times and the result, with nothing about you, your browser or your watch. These records are kept for 24 months.
+
+The page sends Terento short notes that do not identify you, one for each step: whether this browser can be used, whether the watch connected and how each map installation, update or removal ended. They include:
+
+- the watch model and software version
+- the operating system and browser, with their main version numbers
+- the map provider, the map, its size range and whether it was a new installation or an update
+- the step that failed, a fixed reason code, standard error codes from the browser, our server or the watch, and how long writing and checking took
+- a random code created each time the page opens, so the steps of one visit can be grouped
+
+They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
+
+Some data stays in your browser, not on our server: which maps the web installer installed and on which watch, so it can update or remove them safely later; a temporary copy of a map until it is installed; and the language you choose. To recognise the watch, it stores a one-way code made from the watch details and a random value, which cannot be turned back into the serial number. Clearing the web installer’s site data in Chrome removes all of this. The web installer does not load website statistics.
+
 ## Website and app connections
 
-Website, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. Catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando or BBBike, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
+Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando or BBBike, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
 
 These connections serve content, provide requested app functions and protect against abuse. Security processing relies on legitimate interests under GDPR Article 6(1)(f).
 
@@ -41,9 +59,9 @@ The site remembers a language you choose as `terento-language` in local storage.
 
 ## Recipients and storage
 
-Website, API and database hosting use Hostinger; Cloudflare delivers and protects website/API traffic. Umami runs at `stats.enduristas.lt`. See [Cloudflare](https://www.cloudflare.com/privacypolicy/) and [Hostinger](https://www.hostinger.com/legal/privacy-policy) for their processing information. Provider configurations may involve processing outside the EEA; contact us for details of applicable arrangements.
+Website, web installer, API and database hosting use Hostinger; Cloudflare delivers and protects website, web installer and API traffic. Umami runs at `stats.enduristas.lt`. See [Cloudflare](https://www.cloudflare.com/privacypolicy/) and [Hostinger](https://www.hostinger.com/legal/privacy-policy) for their processing information. Provider configurations may involve processing outside the EEA; contact us for details of applicable arrangements.
 
-The retention policy for uploaded app diagnostics is 24 months. Access is restricted to project administration. Encrypted backups of the API database and server configuration are kept on separate equipment controlled by the project for up to 14 days. Support correspondence is kept while needed to resolve the request and related disputes or legal obligations. Contact us about other service-specific storage periods or a particular report.
+The retention policy for uploaded app diagnostics and web installer notes is 24 months. Access is restricted to project administration. Encrypted backups of the API database and server configuration are kept on separate equipment controlled by the project for up to 14 days. Support correspondence is kept while needed to resolve the request and related disputes or legal obligations. Contact us about other service-specific storage periods or a particular report.
 
 ## Your choices and rights
 
@@ -57,4 +75,4 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 9 October 2026.
+Updated: 10 October 2026.
