@@ -142,9 +142,9 @@ class DashboardRevisionTests(unittest.TestCase):
             self.assertNotEqual(base, self.render(shown)["mapActivity"], key)
 
     def test_undisplayed_first_run_data_does_not_change_the_revision(self):
-        # Waiting models are shown under their outcome row; a model whose
-        # outcome has no row, the population text and zero trend buckets that
-        # only move with the rolling window are not displayed data.
+        # The Dashboard names at most three waiting models (plus "+N more") and
+        # not their catalog status; the population text and zero trend
+        # buckets that only move with the rolling window are not displayed.
         payload = overview()
         payload["funnel"]["modelsNeedingReview"] = [
             {"baseModel": name, "outcome": "PENDING", "sessionCount": 1}
@@ -155,13 +155,17 @@ class DashboardRevisionTests(unittest.TestCase):
             {"bucket": "2026-10-10T09:00:00+00:00", "sessionCount": 1, "connectedSessionCount": 1},
         ]
         hidden = copy.deepcopy(payload)
-        hidden["funnel"]["modelsNeedingReview"].append({"baseModel": "Edge 1050", "outcome": "AMBIGUOUS", "sessionCount": 1})
+        hidden["funnel"]["modelsNeedingReview"][0]["catalogStatus"] = "NOT_IN_CATALOG"
         hidden["funnel"]["population"] = "changed description"
         hidden["funnel"]["trend"][0]["bucket"] = "2026-10-10T07:00:00+00:00"
         self.assertEqual(self.render(payload)["funnel"], self.render(hidden)["funnel"])
         shown = copy.deepcopy(payload)
-        shown["funnel"]["modelsNeedingReview"][0]["catalogStatus"] = "NOT_IN_CATALOG"
+        shown["funnel"]["modelsNeedingReview"].append({"baseModel": "Edge 1050", "outcome": "AMBIGUOUS", "sessionCount": 1})
         self.assertNotEqual(self.render(payload)["funnel"], self.render(shown)["funnel"])
+        # On First run the catalog status is shown, so it moves that revision.
+        self.assertNotEqual(
+            revisions(first_run_page(payload["funnel"], USER, "csrf", period="24h"))["funnel"],
+            revisions(first_run_page(hidden["funnel"], USER, "csrf", period="24h"))["funnel"])
 
 
 class DashboardHttpRevisionTests(unittest.TestCase):
