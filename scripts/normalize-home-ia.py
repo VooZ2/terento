@@ -456,7 +456,7 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="{copy["provider_list_label"]}">
             {provider_cards}
           </div>
-          <p class="provider-compare"><a class="text-link" href="{"/map-styles/" if locale == "en" else f"/{locale}/map-styles/"}" data-umami-event="navigation-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}<span aria-hidden="true"> →</span></a></p>
+          <p class="provider-compare"><a class="text-link" href="{"/map-styles/" if locale == "en" else f"/{locale}/map-styles/"}" data-umami-event="maps-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}<span aria-hidden="true"> →</span></a></p>
         </div>
       </section>'''
     values = {**copy, "provider_section": provider_section}

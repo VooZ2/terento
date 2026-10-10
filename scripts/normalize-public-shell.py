@@ -64,7 +64,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     active = {"about": page == "about", "compatibility": page == "compatibility", "styles": page == "map-styles", "guide": page == "guide", "troubleshooting": page == "troubleshooting", "download": page == "download"}
     nav_events = {
         "about": "navigation-link-click",
-        "styles": "navigation-link-click",
+        "styles": "maps-link-click",
         "compatibility": "compatibility-link-click",
         "guide": "guide-link-click",
         "faq": "faq-link-click",
@@ -205,7 +205,9 @@ def _internal_link_metadata(tag: str, page: str) -> tuple[str, str] | None:
         return "guide-link-click", page_location
     if _internal_route(path, "download"):
         return "download-cta-click", page_location
-    if _internal_route(path, "about") or _internal_route(path, "map-styles"):
+    if _internal_route(path, "map-styles"):
+        return "maps-link-click", page_location
+    if _internal_route(path, "about"):
         return "navigation-link-click", page_location
     if _internal_route(path, "legal"):
         return "legal-link-click", page_location

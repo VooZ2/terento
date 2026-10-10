@@ -2246,13 +2246,14 @@ def _attention_row(label: str, count: int | None, href: str, icon: str, *, unava
 
 # First run breakdown groups: (title, stage, outcome labels). Labels are per
 # stage because outcome codes repeat across stages (UPDATE_REQUIRED, AUTHORIZATION).
+_FUNNEL_CONNECT_LABELS = {
+    "TIMEOUT_NO_USB": "No watch plugged in", "TIMEOUT_USB_PRESENT": "Didn't get ready",
+    "NOT_MTP_MODE": "Not in file-transfer mode", "BUSY": "Watch in use by another app",
+    "MULTIPLE_DEVICES": "Several Garmins", "DISCONNECTED": "Disconnected after connecting",
+    "FAILED": "Stopped responding",
+}
 _FUNNEL_GROUPS: tuple[tuple[str, str, dict[str, str]], ...] = (
-    ("Connection problems", "DEVICE_CONNECT", {
-        "TIMEOUT_NO_USB": "No watch plugged in", "TIMEOUT_USB_PRESENT": "Didn't get ready",
-        "NOT_MTP_MODE": "Not in file-transfer mode", "BUSY": "Watch in use by another app",
-        "MULTIPLE_DEVICES": "Several Garmins", "DISCONNECTED": "Disconnected after connecting",
-        "FAILED": "Stopped responding",
-    }),
+    ("Connection problems", "DEVICE_CONNECT", _FUNNEL_CONNECT_LABELS),
     ("Authorization", "AUTHORIZATION", {
         "APPROVED": "Approved", "PENDING": "Pending", "OUT_OF_SCOPE": "Out of scope",
         "UNKNOWN_MODEL": "Unknown model", "AMBIGUOUS": "Ambiguous",
@@ -2268,15 +2269,45 @@ _FUNNEL_GROUPS: tuple[tuple[str, str, dict[str, str]], ...] = (
         "LOCAL_CAPABILITY": "Watch not identified", "OTHER": "Other",
     }),
 )
-_FUNNEL_NOTES = {"Connection problems": "A session can hit several problems and still connect."}
+# One short visible meaning per non-obvious outcome (stage, outcome).
+_FUNNEL_HINTS = {
+    ("AUTHORIZATION", "PENDING"): "Model not in the catalog, or its Maps value is unknown or mixed",
+    ("AUTHORIZATION", "OUT_OF_SCOPE"): "The catalog says this model has no maps",
+    ("AUTHORIZATION", "UNKNOWN_MODEL"): "The watch reported no usable model name",
+    ("AUTHORIZATION", "AMBIGUOUS"): "The watch reported conflicting model names",
+    ("AUTHORIZATION", "CATALOG_UNAVAILABLE"): "The policy check failed (network or server); nothing was written",
+    ("AUTHORIZATION", "UPDATE_REQUIRED"): "This app version is too old for the current policy",
+    ("CATALOG", "REMOTE_PARTIAL"): "Some map packages were left out as invalid",
+    ("CATALOG", "BUNDLED_FALLBACK"): "The server catalog did not load; the app used its bundled list",
+    ("CATALOG", "UPDATE_REQUIRED"): "This app version is too old for the current catalog",
+    ("INSTALL_BLOCKED", "AUTHORIZATION"): "Install was refused because the watch was not approved",
+}
+_FUNNEL_NOTES = {
+    "Connection problems": "Every session, including those that connected later.",
+    "Why not connected": "Sessions that never connected; one can show several signals.",
+}
+# What the current policy says about a waiting model (diagnostic only).
+_FUNNEL_MODEL_STATUS = {
+    "NOT_IN_CATALOG": "Not in catalog",
+    "MAPS_UNKNOWN": "Maps unknown",
+    "MIXED": "Variants differ",
+    "NO_MAPS": "No maps",
+    "WITHDRAWN": "Withdrawn",
+    "APPROVED_NOW": "Approved now",
+    "UNAVAILABLE": "Catalog status unavailable",
+}
+_FUNNEL_PREVIOUS_LABELS = {
+    "today": "yesterday", "24h": "previous 24 h", "7d": "previous 7 days", "30d": "previous 30 days",
+}
 
 
 def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
     """Exactly what the First run card shows (also its freshness revision).
 
-    Tiles: period sessions, sessions that connected and sessions that never
-    connected. Groups list non-zero per-session outcome counts, largest first;
-    a session can appear in several rows of one group.
+    Journey: sessions, sessions that connected and connected sessions whose
+    watch was approved, each with the previous period's value. Groups list
+    non-zero per-session outcome counts, largest first; a session can appear in
+    several rows of one group. Waiting models sit under their outcome row.
     """
     stages = {
         str(stage.get("stage")): {
@@ -2288,32 +2319,162 @@ def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
     sessions = _optional_nonnegative_int(funnel.get("sessionCount"))
     if not sessions:
         return {"sessions": sessions}
-    groups: list[tuple[str, list[tuple[str, int]]]] = []
+    connected = stages.get("DEVICE_CONNECT", {}).get("CONNECTED", 0)
+    journey = funnel.get("journey") if isinstance(funnel.get("journey"), dict) else {}
+    approved = _optional_nonnegative_int(journey.get("approvedSessionCount"))
+    previous = funnel.get("previous") if isinstance(funnel.get("previous"), dict) else None
+    models: dict[str, list[tuple[str, int, str]]] = {}
+    for item in funnel.get("modelsNeedingReview") or []:
+        if isinstance(item, dict) and item.get("baseModel"):
+            models.setdefault(str(item.get("outcome") or "PENDING"), []).append((
+                str(item["baseModel"]),
+                _optional_nonnegative_int(item.get("sessionCount")) or 0,
+                _FUNNEL_MODEL_STATUS.get(str(item.get("catalogStatus") or ""), ""),
+            ))
+    groups: list[tuple[str, list[tuple[str, int, str, list[tuple[str, int, str]]]]]] = []
+    never = funnel.get("neverConnected") if isinstance(funnel.get("neverConnected"), dict) else None
+    never_count = _optional_nonnegative_int(funnel.get("neverConnectedSessionCount"))
+    if never is not None and never_count:
+        rows = [
+            (_FUNNEL_CONNECT_LABELS.get(str(item.get("outcome")), str(item.get("outcome")).replace("_", " ").capitalize()),
+             _optional_nonnegative_int(item.get("sessionCount")) or 0, "", [])
+            for item in never.get("outcomes") or [] if isinstance(item, dict)
+        ]
+        silent = _optional_nonnegative_int(never.get("withoutConnectionSignalCount")) or 0
+        if silent:
+            rows.append(("Closed before any watch signal", silent, "", []))
+        groups.append(("Why not connected", sorted(
+            [row for row in rows if row[1]], key=lambda row: (-row[1], row[0]))))
     for title, stage, labels in _FUNNEL_GROUPS:
         items = {
             key: value for key, value in stages.get(stage, {}).items()
             if value and not (stage == "DEVICE_CONNECT" and key == "CONNECTED")
         }
         groups.append((title, [
-            (labels.get(key, key.replace("_", " ").capitalize()), value)
+            (labels.get(key, key.replace("_", " ").capitalize()), value,
+             _FUNNEL_HINTS.get((stage, key), ""),
+             models.pop(key, []) if stage == "AUTHORIZATION" else [])
             for key, value in sorted(items.items(), key=lambda item: (-item[1], item[0]))
         ]))
-    waiting = [
-        (str(item["baseModel"]), _optional_nonnegative_int(item.get("sessionCount")) or 0)
-        for item in funnel.get("modelsNeedingReview") or []
-        if isinstance(item, dict) and item.get("baseModel")
-    ][:3]
-    groups.append(("Waiting models", waiting))
+    trend = [
+        (str(item.get("bucket") or ""), _optional_nonnegative_int(item.get("sessionCount")) or 0,
+         _optional_nonnegative_int(item.get("connectedSessionCount")) or 0)
+        for item in funnel.get("trend") or [] if isinstance(item, dict)
+    ]
     return {
         "sessions": sessions,
-        "connected": stages.get("DEVICE_CONNECT", {}).get("CONNECTED", 0),
-        "neverConnected": _optional_nonnegative_int(funnel.get("neverConnectedSessionCount")),
+        "connected": connected,
+        "approved": approved,
+        "neverConnected": never_count,
+        "previous": None if previous is None else {
+            key: _optional_nonnegative_int(previous.get(field))
+            for key, field in (("sessions", "sessionCount"), ("connected", "connectedSessionCount"),
+                               ("approved", "approvedSessionCount"))
+        },
+        "trend": trend,
+        "bucket": str(funnel.get("bucket") or ""),
         "groups": groups,
     }
 
 
-def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
-    """First run: sessions, connected and never connected, then per-stage outcomes."""
+def _funnel_revision(display: dict[str, Any]) -> dict[str, Any]:
+    """Displayed First run values without the zero trend buckets that only move
+    with the rolling window."""
+    return {**display, "trend": [item for item in display.get("trend") or [] if item[1]]}
+
+
+def _funnel_share(part: int | None, whole: int | None) -> str:
+    if part is None or not whole:
+        return ""
+    return f"{round(part / whole * 100)}%"
+
+
+def _funnel_delta(current: int | None, previous: int | None, period: str) -> str:
+    """Change against the previous period as text with an arrow (never colour alone)."""
+    if current is None or previous is None:
+        return ""
+    against = _FUNNEL_PREVIOUS_LABELS.get(period, "previous period")
+    change = current - previous
+    if change == 0:
+        text, arrow = f"Same as {against}", "="
+    else:
+        text, arrow = f"{change:+,} vs {against}", "▲" if change > 0 else "▼"
+    return (f"<span class='funnel-step-delta' title='{html.escape(against.capitalize(), quote=True)}: {previous:,}'>"
+            f"<span aria-hidden='true'>{arrow}</span> {html.escape(text)}</span>")
+
+
+def _funnel_journey(display: dict[str, Any], period: str) -> str:
+    """Opened app → Watch connected → Install allowed, with shares and drop-offs."""
+    sessions, connected, approved = display["sessions"], display["connected"], display["approved"]
+    previous = display.get("previous") or {}
+    steps = [
+        ("Opened app", sessions, "", "sessions"),
+        ("Watch connected", connected, _funnel_share(connected, sessions) and
+         _funnel_share(connected, sessions) + " of opened", "connected"),
+        ("Install allowed", approved, _funnel_share(approved, connected) and
+         _funnel_share(approved, connected) + " of connected", "approved"),
+    ]
+    items = []
+    for label, value, share, key in steps:
+        width = min(100.0, (value or 0) / sessions * 100) if sessions else 0.0
+        value_text = f"{value:,}" if value is not None else "—"
+        share_markup = f"<span class='funnel-step-share'>{html.escape(share)}</span>" if share else ""
+        items.append(
+            f"<li class='funnel-step' data-step='{key}'>"
+            f"<span class='funnel-step-label'>{html.escape(label)}</span>"
+            f"<strong class='funnel-step-value'>{value_text}</strong>{share_markup}"
+            f"<span class='funnel-step-bar' aria-hidden='true'><i style='width:{width:.1f}%'></i></span>"
+            f"{_funnel_delta(value, previous.get(key), period)}</li>"
+        )
+    drops = []
+    never = display.get("neverConnected")
+    if never:
+        drops.append(f"<strong>{never:,}</strong> never connected")
+    if approved is not None and connected > approved:
+        drops.append(f"<strong>{connected - approved:,}</strong> connected but not allowed")
+    drop_markup = (
+        "<p class='funnel-dropoff'>" + _admin_icon("arrow-right") + " Lost on the way: " + " · ".join(drops) + "</p>"
+        if drops else ""
+    )
+    return (
+        "<ol class='funnel-journey' aria-label='First run journey'>" + "".join(items) + "</ol>" + drop_markup
+    )
+
+
+def _funnel_trend_strip(display: dict[str, Any], time_zone: str) -> str:
+    """Sessions per hour or day: connected and never connected stacked; each
+    bucket is focusable and names its values."""
+    trend = display.get("trend") or []
+    if len(trend) < 2:
+        return ""
+    bucket = display.get("bucket") or "hour"
+    peak = max((total for _, total, _ in trend), default=0) or 1
+    bars = []
+    for stamp, total, connected in trend:
+        label = _overview_chart_bucket_label(stamp, bucket, time_zone)
+        never = max(0, total - connected)
+        description = f"{label}: {total} sessions, {connected} connected, {never} never connected"
+        bars.append(
+            f"<li tabindex='0' aria-label='{html.escape(description, quote=True)}' title='{html.escape(description, quote=True)}'>"
+            f"<span class='funnel-trend-never' style='height:{never / peak * 100:.1f}%'></span>"
+            f"<span class='funnel-trend-connected' style='height:{connected / peak * 100:.1f}%'></span></li>"
+        )
+    first = _overview_chart_bucket_label(trend[0][0], bucket, time_zone)
+    last = _overview_chart_bucket_label(trend[-1][0], bucket, time_zone)
+    return (
+        "<div class='funnel-trend'>"
+        "<h3>Sessions over time</h3>"
+        f"<ol class='funnel-trend-bars' aria-label='Sessions per {html.escape(bucket)}'>" + "".join(bars) + "</ol>"
+        f"<div class='funnel-trend-axis' aria-hidden='true'><span>{html.escape(first)}</span><span>{html.escape(last)}</span></div>"
+        "<ul class='funnel-trend-legend admin-legend' aria-label='Sessions over time legend'>"
+        "<li><i class='funnel-trend-connected' aria-hidden='true'></i><span>Connected</span></li>"
+        "<li><i class='funnel-trend-never' aria-hidden='true'></i><span>Never connected</span></li></ul>"
+        "</div>"
+    )
+
+
+def _funnel_card(funnel: dict[str, Any] | None, period: str, time_zone: str = "UTC") -> str:
+    """First run: the journey with drop-offs, sessions over time, then why."""
     if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
         return _unavailable_card("First run", "overview-funnel")
     display = _funnel_display(funnel)
@@ -2321,29 +2482,39 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str) -> str:
     if not sessions:
         body = _empty_state("empty", "No first-run sessions in this period.")
     else:
-        tiles = _metric_row([
-            _metric_tile("Sessions", sessions),
-            _metric_tile("Connected", display["connected"]),
-            _metric_tile("Never connected", display["neverConnected"], failure=True),
-        ], label="First run sessions", css="overview-funnel-metrics")
-
-        def bars(title: str, items: list[tuple[str, int]]) -> str:
-            """Label, a bar scaled to the share of sessions, and the count."""
-            rows = "".join(
-                f"<li><span class='overview-funnel-label'>{html.escape(label)}</span>"
-                f"<span class='overview-funnel-bar' aria-hidden='true'><i style='width:{min(100.0, value / sessions * 100):.1f}%'></i></span>"
-                f"<strong>{value:,}</strong><span class='sr-only'> of {sessions:,} sessions</span></li>"
-                for label, value in items
-            ) or "<li class='overview-funnel-none'><span class='overview-funnel-label'>—</span></li>"
+        def bars(title: str, items: list[tuple[str, int, str, list[tuple[str, int, str]]]]) -> str:
+            """Label (with an optional meaning and waiting models), a bar scaled
+            to the share of the group's population and the count."""
+            whole = display["neverConnected"] if title == "Why not connected" else sessions
+            noun = "never-connected sessions" if title == "Why not connected" else "sessions"
+            rows = []
+            for label, value, hint, models in items:
+                hint_markup = f"<small class='funnel-hint'>{html.escape(hint)}</small>" if hint else ""
+                model_markup = ""
+                if models:
+                    model_markup = "<ul class='funnel-models' aria-label='" + html.escape(label + " models", quote=True) + "'>" + "".join(
+                        f"<li><a href='/admin/devices?{urlencode({'search': model})}'>{html.escape(model)}</a>"
+                        + (f"<span class='funnel-model-status'>{html.escape(status)}</span>" if status else "")
+                        + f"<strong>{count:,}</strong></li>"
+                        for model, count, status in models
+                    ) + "</ul>"
+                rows.append(
+                    f"<li><span class='overview-funnel-label'>{html.escape(label)}{hint_markup}</span>"
+                    f"<span class='overview-funnel-bar' aria-hidden='true'><i style='width:{min(100.0, value / (whole or 1) * 100):.1f}%'></i></span>"
+                    f"<strong>{value:,}</strong><span class='sr-only'> of {whole:,} {noun}</span>{model_markup}</li>"
+                )
+            row_markup = "".join(rows) or "<li class='overview-funnel-none'><span class='overview-funnel-label'>—</span></li>"
             note = _FUNNEL_NOTES.get(title) if items else None
             note_markup = f"<p class='overview-funnel-note muted-value'>{html.escape(note)}</p>" if note else ""
             return (
                 f"<div class='overview-funnel-group'><h3>{html.escape(title)}</h3>{note_markup}"
-                f"<ul class='overview-funnel-bars' aria-label='{html.escape(title, quote=True)}'>{rows}</ul></div>"
+                f"<ul class='overview-funnel-bars' aria-label='{html.escape(title, quote=True)}'>{row_markup}</ul></div>"
             )
 
-        body = tiles + (
-            "<div class='overview-funnel-breakdown'>"
+        body = (
+            _funnel_journey(display, period)
+            + _funnel_trend_strip(display, time_zone)
+            + "<div class='overview-funnel-breakdown'>"
             + "".join(bars(title, items) for title, items in display["groups"])
             + "</div>"
         )
@@ -2528,7 +2699,7 @@ def overview_page(
     else:
         downloads_section = ""
 
-    funnel_section = _funnel_card(overview.get("funnel"), period) if "funnel" in overview else ""
+    funnel_section = _funnel_card(overview.get("funnel"), period, time_zone) if "funnel" in overview else ""
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
@@ -2572,7 +2743,8 @@ def _overview_revision_sections(
         "review": {key: review.get(key) for key, *_ in _ATTENTION_ROWS} if review is not None else None,
         "funnel": (
             None if not isinstance(funnel, dict)
-            else _funnel_display(funnel) if funnel.get("available") is not False and "stages" in funnel
+            else _funnel_revision(_funnel_display(funnel))
+            if funnel.get("available") is not False and "stages" in funnel
             else {"available": False}
         ),
         "supportReports": overview.get("supportReports"),
@@ -9897,9 +10069,36 @@ ADMIN_STYLES += """
 .overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
 .overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
 .overview-chart-values:empty{display:none}
-/* First run keeps its three tiles on one row at every width (owner 2026-10-07); a wrapped label never moves its number off the shared baseline. */
-.overview-funnel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
-.overview-funnel-metrics .admin-metric-value{margin-top:auto}
+/* First run journey (owner 2026-10-10): three steps on one row at every width;
+   label, number, share, bar and change share rows so numbers keep one baseline. */
+.funnel-journey{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto auto auto auto auto;column-gap:16px;margin:4px 0 0;padding:0;list-style:none}
+.funnel-step{display:grid;grid-row:span 5;grid-template-rows:subgrid;min-width:0;align-items:end}
+.funnel-step-label{color:var(--secondary);font:500 13px/18px var(--font-ui);overflow-wrap:anywhere;align-self:start}
+.funnel-step-value{color:var(--graphite);font:600 var(--admin-type-kpi-value-size,28px)/1.15 var(--font-ui);font-variant-numeric:tabular-nums}
+.funnel-step-share{grid-row:3;color:var(--secondary);font:500 12px/16px var(--font-ui)}
+.funnel-step-bar{grid-row:4;display:block;height:8px;margin:6px 0 4px;border-radius:4px;background:var(--surface-muted)}
+.funnel-step-bar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--interactive)}
+.funnel-step-delta{grid-row:5;color:var(--secondary);font:400 12px/16px var(--font-ui);font-variant-numeric:tabular-nums}
+.funnel-dropoff{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 0;color:var(--secondary);font:400 13px/18px var(--font-ui)}
+.funnel-dropoff strong{color:var(--danger);font-weight:600}
+.funnel-dropoff svg{width:12px;height:12px}
+.funnel-trend{margin:14px 0 0}
+.funnel-trend h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
+.funnel-trend-bars{display:flex;align-items:flex-end;gap:2px;height:56px;margin:0;padding:0;list-style:none;border-bottom:1px solid var(--border)}
+.funnel-trend-bars li{display:flex;flex:1 1 0;flex-direction:column-reverse;height:100%;min-width:2px;border-radius:2px 2px 0 0;cursor:default}
+.funnel-trend-bars li:focus-visible{outline:2px solid var(--admin-focus-color);outline-offset:2px}
+.funnel-trend-connected{display:block;background:var(--interactive)}
+.funnel-trend-never{display:block;background:var(--danger)}
+.funnel-trend-axis{display:flex;justify-content:space-between;margin-top:4px;color:var(--secondary);font:400 11px/14px var(--font-ui)}
+.funnel-trend-legend{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 0;padding:0;list-style:none;font-size:12px}
+.funnel-trend-legend li{display:inline-flex;align-items:center;gap:6px}
+.funnel-trend-legend i{display:inline-block;width:10px;height:10px;border-radius:2px}
+.funnel-hint{display:block;color:var(--secondary);font:400 12px/16px var(--font-ui)}
+.funnel-models{grid-column:1/-1;display:grid;row-gap:2px;margin:2px 0 4px 12px;padding:0;list-style:none;font-size:12px}
+.overview-funnel-bars .funnel-models li{display:flex;grid-column:auto;flex-wrap:wrap;align-items:baseline;gap:8px}
+.funnel-models a{color:var(--interactive);font-weight:500}
+.funnel-model-status{padding:0 6px;border:1px solid var(--status-neutral-border);border-radius:999px;background:var(--status-neutral-surface);color:var(--status-neutral-text);font-size:11px;line-height:16px}
+.overview-funnel-bars .funnel-models strong{margin-left:auto;font-weight:600;color:var(--graphite);font-variant-numeric:tabular-nums}
 /* Labels keep their full width (one aligned label column via subgrid); the bar
    track takes what is left and shrinks first, down to 24 px. */
 .overview-funnel-breakdown{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);column-gap:8px;row-gap:12px;margin:12px 0 0}
