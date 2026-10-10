@@ -286,6 +286,15 @@ class FailureContextTests(unittest.TestCase):
         self.assertIn('cleanup', _failure_context_summary([row]))
         technical = _diagnostic_technical_details(row, 1)
         self.assertIn('targetItemIDMatches', technical)
+        # Telemetry strings are escaped even when they look like markup; only
+        # the module's own Yes/No/— markup is emitted as is.
+        hostile = _diagnostic_technical_details(dict(
+            row, transport="<span></dd></dl></details></dialog><a href='https://evil.example'>Sign in</a>",
+            raw_mtp_model="<span>fenix</span>", cleanup_attempted=None, cleanup_succeeded=True), 1)
+        self.assertNotIn("<a href='https://evil.example'>", hostile)
+        self.assertIn("&lt;span&gt;&lt;/dd&gt;", hostile)
+        self.assertIn("&lt;span&gt;fenix&lt;/span&gt;", hostile)
+        self.assertIn("<dt>Cleanup succeeded</dt><dd>Yes</dd>", hostile)
         self.assertNotIn('postwrite_protection', _failure_context_summary([sibling]))
         malicious = dict(row, failure_context={'boundary': '/Users/private', 'filename': 'secret.img'})
         _, report = _github_issue_report('Test watch', [malicious])

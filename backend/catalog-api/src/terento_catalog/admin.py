@@ -873,6 +873,11 @@ def _failure_result_label(result: dict[str, Any], number: int) -> str:
     return f'mapResultIndex {index}' if type(index) is int and 0 <= index < 100 else f'displayed result {number} (mapResultIndex unavailable)'
 
 
+class _TrustedMarkup(str):
+    """Markup this module built itself; every other value (all app telemetry,
+    such as the transport or raw MTP model) is escaped."""
+
+
 def _diagnostic_technical_details(result: dict[str, Any], result_number: int) -> str:
     fields: list[tuple[str, Any]] = []
     for label, key in (
@@ -899,7 +904,7 @@ def _diagnostic_technical_details(result: dict[str, Any], result_number: int) ->
         ("Cleanup succeeded", "cleanup_succeeded"),
     ):
         if result.get(key) is not None:
-            fields.append((label, _diagnostic_boolean(result.get(key))))
+            fields.append((label, _TrustedMarkup(_diagnostic_boolean(result.get(key)))))
     metrics = result.get("inventory_metrics")
     if isinstance(metrics, str):
         try:
@@ -923,7 +928,7 @@ def _diagnostic_technical_details(result: dict[str, Any], result_number: int) ->
         else:
             fields.extend((f'{prefix}: {label}', value) for label, value in _failure_context_fields(result, key, technical=result.get(key) is not None))
     rows = "".join(
-        f"<div><dt>{html.escape(label)}</dt><dd>{value if isinstance(value, str) and value.startswith('<span') else _diagnostic_value(value)}</dd></div>"
+        f"<div><dt>{html.escape(label)}</dt><dd>{value if isinstance(value, _TrustedMarkup) else _diagnostic_value(value)}</dd></div>"
         for label, value in fields
     )
     content = (
