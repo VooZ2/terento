@@ -322,17 +322,43 @@ are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`, never map downloads), shows its
 period increases in the legend and its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
-population for the period. Its Sessions, Connected and Never connected tiles
-show the period's distinct sessions, the sessions that connected and the
-sessions that never connected (`neverConnectedSessionCount`, danger tone only
-above zero); they stay on one row of three equal columns at every width, label
-above number; a label may wrap but the numbers share one baseline. Below them,
-in this order, Connection problems (every non-connected `DEVICE_CONNECT`
-outcome, with the muted note `A session can hit several problems and still
-connect.`), Authorization, Catalog, Install blocked and Waiting models (top
-three) list one row per outcome or model with its label, a small horizontal bar
+population for the period (owner redesign 2026-10-10). It opens with the
+journey: three steps on one row of three equal columns at every width, label
+above number with the numbers on one baseline: `Opened app` (the period's
+distinct sessions), `Watch connected` (sessions with `DEVICE_CONNECT`
+`CONNECTED`, with its share `N% of opened`) and `Install allowed` (connected
+sessions with `AUTHORIZATION` `APPROVED`, with `N% of connected`; `—` when the
+read model does not report it). Each step has a bar scaled to its share of the
+period's sessions and, when the read model reports the previous window, its
+change as text with an arrow (`▲ +4 vs previous 24 h`, `▼ -2 vs yesterday`,
+`= Same as previous 7 days`); colour is never the only signal. A `Lost on the
+way` line names `N never connected` (`neverConnectedSessionCount`) and `N
+connected but not allowed` when above zero. With at least two buckets,
+`Sessions over time` shows one small stacked bar per hour (Today, Last 24
+hours), day (Last 7 days), week (Last 30 days) or month (All time):
+connected sessions in the interactive colour, never-connected sessions in the
+danger colour, each bucket focusable with its values as text, the first and
+last bucket labels below and a two-entry legend. Below, in this order, `Why
+not connected` (only when sessions never connected: the `DEVICE_CONNECT`
+signals of those sessions alone, plus `Closed before any watch signal` for
+never-connected sessions with no connection signal, scaled to the
+never-connected count, with the muted note `Sessions that never connected;
+one can show several signals.`), Connection problems (every non-connected
+`DEVICE_CONNECT` outcome across all sessions, with the muted note `Every
+session, including those that connected later.`), Authorization, Catalog and
+Install blocked list one row per outcome with its label, a small horizontal bar
 scaled to its share of the period's sessions and its count as text, largest
-first; zero rows are omitted and an empty group shows `—`. Labels keep their
+first; zero rows are omitted and an empty group shows `—`. Non-obvious outcome
+rows carry one short muted meaning under the label (for example Pending
+`Model not in the catalog, or its Maps value is unknown or mixed`, Catalog
+unavailable `The policy check failed (network or server); nothing was
+written`, Built-in copy `The server catalog did not load; the app used its
+bundled list`). The models waiting for review are listed under their
+Pending, Unknown model or Ambiguous row (there is no separate Waiting models
+group): each model links to Devices filtered by that name and shows what the
+current installation policy says about it (`Not in catalog`, `Maps unknown`,
+`Variants differ`, `No maps`, `Withdrawn`, `Approved now`); this status is
+diagnostic and never grants or revokes write authority. Labels keep their
 full width and the bar track shrinks first. When the card sits beside App
 downloads (>900 px) and is wide enough for label, bar and count in half columns
 (card content at least 620 px), the groups flow into two balanced columns and a
@@ -347,7 +373,7 @@ connecting`, `Stopped responding`; Catalog `Loaded`, `Partly loaded`,
 `Built-in copy`, `App update required`; Install blocked `Not allowed for this
 watch`, `Watch storage full`, `Mac storage problem`, `Map not verified`, `Watch
 not identified`, `Other`. The Dashboard freshness revision for First run covers
-exactly these displayed values. One-card KPI rows follow the two-row rule in Responsive and
+exactly these displayed values, without zero trend buckets that only move with the rolling window. One-card KPI rows follow the two-row rule in Responsive and
 layout invariants. It never
 mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.

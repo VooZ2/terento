@@ -7,6 +7,7 @@ import hmac
 import re
 import secrets
 import time
+import unicodedata
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime, parsedate_to_datetime
@@ -60,7 +61,7 @@ from .asset_storage import AssetStorage
 from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
 from .config import DEFAULT_TRUSTED_PROXIES
-from .db import Database, IdentityResolutionError
+from .db import Database, IdentityResolutionError, _next_overview_bucket, _overview_bucket_floor
 from .device_catalog import (
     CONTROLLED_ASSET_PREFIX,
     _official_source_image_url,
@@ -150,6 +151,42 @@ class ProviderActivationBlocked(ValueError):
     def __init__(self, gate: dict[str, Any]) -> None:
         self.gate = gate
         super().__init__("provider_activation_blocked")
+
+
+def _funnel_model_key(value: Any) -> str:
+    """The app's model normalization: case and diacritics folded, non-alphanumerics as spaces."""
+    text = unicodedata.normalize("NFKD", str(value or "")).casefold()
+    text = "".join(character for character in text if not unicodedata.combining(character))
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def _funnel_trend(
+    rows: list[dict[str, Any]], *, bucket: str, since: datetime | None, until: datetime, time_zone: str,
+) -> list[dict[str, Any]]:
+    """Sessions per bucket with display-only zero buckets across the period."""
+    indexed = {
+        _overview_bucket_floor(row["bucket"], bucket, time_zone=time_zone): row
+        for row in rows if isinstance(row.get("bucket"), datetime)
+    }
+    if not indexed:
+        return []
+    current = _overview_bucket_floor(since, bucket, time_zone=time_zone) if since else min(indexed)
+    end = _overview_bucket_floor(until, bucket, time_zone=time_zone)
+    trend = []
+    while current <= end:
+        row = indexed.get(current) or {}
+        sessions = int(row.get("sessionCount") or 0)
+        connected = int(row.get("connectedSessionCount") or 0)
+        trend.append({
+            "bucket": current.isoformat(),
+            "sessionCount": sessions,
+            "connectedSessionCount": connected,
+            "neverConnectedSessionCount": sessions - connected,
+        })
+        current = _overview_bucket_floor(
+            _next_overview_bucket(current, bucket, time_zone=time_zone), bucket, time_zone=time_zone,
+        )
+    return trend
 
 
 class CatalogService:
@@ -506,8 +543,32 @@ class CatalogService:
         time_zone = _admin_time_zone(query.get("timeZone"))
         until = datetime.now(timezone.utc)
         since = period_start(period, now=until, time_zone=time_zone)
-        summary = self.database.app_funnel_summary(since, until)
+        bucket = PERIOD_BUCKETS[period]
+        summary = self.database.app_funnel_summary(
+            since, until, trend_bucket=bucket, time_zone=time_zone,
+        )
         counts = {(row["stage"], row["outcome"]): row["sessionCount"] for row in summary["stages"]}
+        connected = counts.get(("DEVICE_CONNECT", "CONNECTED"), 0)
+        previous = None
+        if since is not None:
+            # Today compares with yesterday up to the same time; rolling
+            # periods with the equally long window just before them.
+            span = timedelta(days=1) if period == "today" else until - since
+            previous_since, previous_until = (
+                (since - span, until - span) if period == "today" else (since - span, since)
+            )
+            previous_summary = self.database.app_funnel_summary(previous_since, previous_until)
+            previous_counts = {
+                (row["stage"], row["outcome"]): row["sessionCount"] for row in previous_summary["stages"]
+            }
+            previous = {
+                "since": previous_since.isoformat(),
+                "until": previous_until.isoformat(),
+                "sessionCount": previous_summary["sessionCount"],
+                "connectedSessionCount": previous_counts.get(("DEVICE_CONNECT", "CONNECTED"), 0),
+                "neverConnectedSessionCount": previous_summary["neverConnectedSessionCount"],
+                "approvedSessionCount": previous_summary.get("approvedSessionCount", 0),
+            }
         return {
             "schemaVersion": 1,
             "period": period,
@@ -517,6 +578,27 @@ class CatalogService:
             "population": "distinct app sessions; local test builds excluded; separate from install, update and download statistics",
             "sessionCount": summary["sessionCount"],
             "neverConnectedSessionCount": summary["neverConnectedSessionCount"],
+            "journey": {
+                "sessionCount": summary["sessionCount"],
+                "connectedSessionCount": connected,
+                "approvedSessionCount": summary.get("approvedSessionCount", 0),
+            },
+            "neverConnected": {
+                "sessionCount": summary["neverConnectedSessionCount"],
+                "withoutConnectionSignalCount": summary.get("neverConnectedWithoutSignalCount", 0),
+                "outcomes": [
+                    {"outcome": outcome, "sessionCount": count}
+                    for outcome, count in sorted(
+                        ((row["outcome"], row["sessionCount"]) for row in summary.get("neverConnectedOutcomes") or []),
+                        key=lambda item: (-item[1], item[0]),
+                    )
+                    if count
+                ],
+            },
+            "previous": previous,
+            "bucket": bucket,
+            "trend": _funnel_trend(summary.get("trend") or [], bucket=bucket, since=since,
+                                   until=until, time_zone=time_zone),
             "stages": [
                 {
                     "stage": stage,
@@ -527,8 +609,44 @@ class CatalogService:
                 }
                 for stage, outcomes in FUNNEL_OUTCOMES.items()
             ],
-            "modelsNeedingReview": summary["modelsNeedingReview"],
+            "modelsNeedingReview": self._funnel_model_catalog_status(summary["modelsNeedingReview"]),
         }
+
+    def _funnel_model_catalog_status(self, models: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Add what the current installation policy says about each waiting model.
+
+        Diagnostic only: it explains a PENDING result in Admin and never grants
+        or revokes write authority. Matching is the policy's exact normalized
+        base model, never a family or prefix.
+        """
+        if not models:
+            return []
+        try:
+            rows, updated_at = self.database.installation_policy_snapshot()
+            devices = build_installation_policy(rows, updated_at)["devices"]
+        except Exception:
+            LOGGER.exception("installation policy unavailable for the first-run model status")
+            return [{**item, "catalogStatus": "UNAVAILABLE"} for item in models]
+        result = []
+        for item in models:
+            key = _funnel_model_key(item.get("baseModel"))
+            candidates = [row for row in devices if _funnel_model_key(row.get("baseModel")) == key]
+            active = [row for row in candidates if row.get("active")]
+            capabilities = {row.get("mapCapable") for row in active}
+            if not candidates:
+                status = "NOT_IN_CATALOG"
+            elif not active:
+                status = "WITHDRAWN"
+            elif None in capabilities:
+                status = "MAPS_UNKNOWN"
+            elif capabilities == {True}:
+                status = "APPROVED_NOW"
+            elif capabilities == {False}:
+                status = "NO_MAPS"
+            else:
+                status = "MIXED"
+            result.append({**item, "catalogStatus": status})
+        return result
 
     def receive_map_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
         event = validate_map_event(body)

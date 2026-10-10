@@ -132,18 +132,26 @@ class DashboardRevisionTests(unittest.TestCase):
         self.assertNotEqual(base["review"], revisions(overview_page(review_payload, user, "csrf"))["review"])
 
     def test_undisplayed_first_run_data_does_not_change_the_revision(self):
-        # The card shows the top three waiting models (label and count) only;
-        # a fourth model or the outcome behind a shown model is not displayed.
+        # Waiting models are shown under their outcome row; a model whose
+        # outcome has no row, the population text and zero trend buckets that
+        # only move with the rolling window are not displayed data.
         payload = overview()
         payload["funnel"]["modelsNeedingReview"] = [
             {"baseModel": name, "outcome": "PENDING", "sessionCount": 1}
             for name in ("fenix 8", "Forerunner 965", "Venu X1")
         ]
+        payload["funnel"]["trend"] = [
+            {"bucket": "2026-10-10T08:00:00+00:00", "sessionCount": 0, "connectedSessionCount": 0},
+            {"bucket": "2026-10-10T09:00:00+00:00", "sessionCount": 1, "connectedSessionCount": 1},
+        ]
         hidden = copy.deepcopy(payload)
-        hidden["funnel"]["modelsNeedingReview"][0]["outcome"] = "UNKNOWN_MODEL"
         hidden["funnel"]["modelsNeedingReview"].append({"baseModel": "Edge 1050", "outcome": "AMBIGUOUS", "sessionCount": 1})
         hidden["funnel"]["population"] = "changed description"
+        hidden["funnel"]["trend"][0]["bucket"] = "2026-10-10T07:00:00+00:00"
         self.assertEqual(self.render(payload)["funnel"], self.render(hidden)["funnel"])
+        shown = copy.deepcopy(payload)
+        shown["funnel"]["modelsNeedingReview"][0]["catalogStatus"] = "NOT_IN_CATALOG"
+        self.assertNotEqual(self.render(payload)["funnel"], self.render(shown)["funnel"])
 
 
 class DashboardHttpRevisionTests(unittest.TestCase):
