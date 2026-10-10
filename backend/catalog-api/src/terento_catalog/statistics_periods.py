@@ -33,6 +33,13 @@ PERIOD_BUCKETS: dict[str, str] = {
     "all": "month",
 }
 
+
+
+def all_time_bucket(span: timedelta) -> str:
+    """The ``all`` trend grid for an observed span: day, week or month."""
+    return "day" if span <= timedelta(days=14) else "week" if span <= timedelta(days=60) else "month"
+
+
 _ROLLING_PERIODS: dict[str, timedelta] = {
     "24h": timedelta(hours=24),
     "7d": timedelta(days=7),

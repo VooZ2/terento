@@ -143,9 +143,9 @@ def validate_event(raw: bytes, *, now: datetime | None = None) -> dict[str, Any]
     occurred = _time(body.pop("occurredAt", None), "invalid_occurredAt")
     row["occurred_at"] = now if occurred > now + FUTURE_SKEW else occurred
     stage, outcome = body.pop("stage", None), body.pop("outcome", None)
-    if stage not in STAGES:
+    if not isinstance(stage, str) or stage not in STAGES:
         raise WebInstallerValidationError("invalid_stage")
-    if outcome not in STAGES[stage]:
+    if not isinstance(outcome, str) or outcome not in STAGES[stage]:
         raise WebInstallerValidationError("invalid_outcome")
     row["stage"], row["outcome"] = stage, outcome
     allowed = {**_SYSTEM, **_FIELDS[stage], **(_DIAGNOSTIC if outcome not in _SUCCESS_OUTCOMES else {})}
@@ -162,9 +162,10 @@ def validate_event(raw: bytes, *, now: datetime | None = None) -> dict[str, Any]
     return row
 
 
-def validate_relay_job(raw: bytes) -> dict[str, Any]:
+def validate_relay_job(raw: bytes, *, now: datetime | None = None) -> dict[str, Any]:
     """A web_installer_relay_job row, or ``WebInstallerValidationError`` (HTTP 400)."""
     body = _document(raw)
+    now = now or datetime.now(timezone.utc)
     row: dict[str, Any] = {"is_test": _is_test(body)}
     job_id = body.pop("id", None)
     if not isinstance(job_id, str) or not re.fullmatch(r"[0-9a-f]{16,32}", job_id):
@@ -172,10 +173,13 @@ def validate_relay_job(raw: bytes) -> dict[str, Any]:
     row["job_id"] = job_id
     row["requested_at"] = _time(body.pop("requestedAt", None), "invalid_requestedAt")
     row["finished_at"] = _time(body.pop("finishedAt", None), "invalid_finishedAt")
-    if row["finished_at"] < row["requested_at"]:
+    # The installer server and the API share a host clock, so a future time is an error.
+    if not row["requested_at"] <= row["finished_at"] <= now + FUTURE_SKEW:
         raise WebInstallerValidationError("invalid_finishedAt")
     if "readyAt" in body:
         row["ready_at"] = _time(body.pop("readyAt"), "invalid_readyAt")
+        if not row["requested_at"] <= row["ready_at"] <= row["finished_at"]:
+            raise WebInstallerValidationError("invalid_readyAt")
     for key, column, rule in (("provider", "provider", _PROVIDER), ("packageId", "package_id", _PACKAGE)):
         value = body.pop(key, None)
         if not _allowed(rule, value):
@@ -195,11 +199,12 @@ def validate_relay_job(raw: bytes) -> dict[str, Any]:
             raise WebInstallerValidationError("invalid_" + key)
         row[column] = value
     outcome = body.pop("outcome", None)
-    if outcome not in RELAY_OUTCOMES:
+    if not isinstance(outcome, str) or outcome not in RELAY_OUTCOMES:
         raise WebInstallerValidationError("invalid_outcome")
     row["outcome"] = outcome
     reason = body.pop("reason", None)
-    if (reason is None) != (outcome not in RELAY_REASON_OUTCOMES) or (reason is not None and reason not in RELAY_REASONS):
+    if (reason is None) != (outcome not in RELAY_REASON_OUTCOMES) or (
+            reason is not None and (not isinstance(reason, str) or reason not in RELAY_REASONS)):
         raise WebInstallerValidationError("invalid_reason")
     row["reason"] = reason
     if "providerHttpStatus" in body:
@@ -221,8 +226,12 @@ def _seconds(start: Any, end: Any) -> float | None:
     return (end - start).total_seconds() if start and end else None
 
 
+def joined(*values: Any) -> str | None:
+    return " ".join(str(v) for v in values if v is not None) or None
+
+
 def _system(row: dict[str, Any]) -> str | None:
-    return " ".join(str(v) for v in (row.get("os_family"), row.get("os_major")) if v is not None) or None
+    return joined(row.get("os_family"), row.get("os_major"))
 
 
 def final_map_results(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -279,7 +288,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
     for row in events:
         if row["stage"] != "GATE":
             continue
-        browser = " ".join(str(v) for v in (row.get("browser_family"), row.get("browser_major")) if v is not None) or None
+        browser = joined(row.get("browser_family"), row.get("browser_major"))
         item = systems.setdefault((_system(row), browser), {"system": _system(row), "browser": browser, "visits": 0, "blocked": 0})
         item["visits"] += 1
         item["blocked"] += row["outcome"].startswith("BLOCKED")
@@ -287,10 +296,10 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
     requests = [job for job in jobs if job["outcome"] != "REFUSED"]
     delivered = [job for job in jobs if job["outcome"] == "DELIVERED"]
     providers: dict[str, dict[str, Any]] = {}
-    for job in requests:
+    for job in jobs:
         item = providers.setdefault(job["provider"], {"provider": job["provider"], "requests": 0, "delivered": 0,
                                                       "failed": 0, "servedBytes": 0})
-        item["requests"] += 1
+        item["requests"] += job["outcome"] != "REFUSED"
         item["delivered"] += job["outcome"] == "DELIVERED"
         item["failed"] += job["outcome"] in RELAY_REASON_OUTCOMES
         item["servedBytes"] += job["served_bytes"] or 0

@@ -15,6 +15,7 @@ from terento_catalog.web_installer import (
     STAGES,
     WebInstallerValidationError,
     final_map_results,
+    summarize,
     validate_event,
     validate_relay_job,
 )
@@ -79,6 +80,8 @@ class ValidationTests(unittest.TestCase):
         self.invalid(event(isTest="yes"), "invalid_isTest")
         self.invalid(event(schemaVersion=2), "unsupported_schema")
         self.invalid(event(id="not-a-uuid"), "invalid_id")
+        self.invalid(event(stage=["GATE"]), "invalid_stage")
+        self.invalid(event(outcome={}), "invalid_outcome")
         self.invalid(event(occurredAt="2026-10-10T20:00:00"), "invalid_occurredAt")
 
     def test_far_future_time_uses_receipt_time(self):
@@ -96,6 +99,18 @@ class ValidationTests(unittest.TestCase):
         self.invalid(relay_job(finishedAt="2026-10-10T20:00:00Z"), "invalid_finishedAt", validate_relay_job)
         self.invalid(relay_job(id="JOBKEY-secret"), "invalid_id", validate_relay_job)
         self.invalid(relay_job(region="Lat\nvia"), "invalid_region", validate_relay_job)
+        self.invalid(relay_job(outcome=["FAILED"]), "invalid_outcome", validate_relay_job)
+        self.invalid(relay_job(reason={}), "invalid_reason", validate_relay_job)
+        self.invalid(relay_job(readyAt="2026-10-10T20:00:00Z"), "invalid_readyAt", validate_relay_job)
+        self.invalid(relay_job(readyAt="2026-10-10T20:02:00Z"), "invalid_readyAt", validate_relay_job)
+        self.invalid(relay_job(requestedAt="2099-01-01T00:00:00Z", finishedAt="2099-01-01T00:01:00Z"),
+                     "invalid_finishedAt", validate_relay_job)
+
+    def test_refused_jobs_count_as_failed_in_the_provider_row_too(self):
+        refused = validate_relay_job(encode(relay_job(outcome="REFUSED", reason="NOT_REVIEWED", providerHttpStatus=...)))
+        server = summarize([], [refused])["server"]
+        self.assertEqual((server["requests"], server["failed"]), (0, 1))
+        self.assertEqual(server["providers"], [{"provider": "opentopomap", "requests": 0, "delivered": 0, "failed": 1, "servedBytes": 0}])
 
     def test_final_result_is_the_last_one_of_the_page_load(self):
         rows = [validate_event(encode(body), now=NOW) for body in session_events()]

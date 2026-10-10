@@ -106,8 +106,8 @@ Sent once, when the job ends (a job that a restart cut short is sent as
 | `schemaVersion` | integer `1` |
 | `id` | the server's job reference, `[0-9a-f]{16,32}`; never the browser's job key |
 | `isTest` | optional boolean |
-| `requestedAt`, `finishedAt` | RFC 3339 UTC; `finishedAt` ≥ `requestedAt` |
-| `readyAt` | optional RFC 3339 UTC, when the map copy was ready for the browser |
+| `requestedAt`, `finishedAt` | RFC 3339 UTC; `requestedAt` ≤ `finishedAt` ≤ API time + 10 minutes |
+| `readyAt` | optional RFC 3339 UTC, when the map copy was ready for the browser; between `requestedAt` and `finishedAt` |
 | `provider` | `[a-z0-9-]{1,40}` |
 | `packageId` | `[A-Za-z0-9._-]{1,120}` |
 | `region` | optional text, 1–120, no control characters |

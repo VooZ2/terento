@@ -125,7 +125,7 @@ from .provider_catalog import (
     OpenTopoMapProviderAdapter,
 )
 from .provider_health import check_provider as run_provider_health_check
-from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, local_day_start, period_start
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, all_time_bucket, local_day_start, period_start
 
 LOGGER = logging.getLogger(__name__)
 
@@ -559,11 +559,10 @@ class CatalogService:
     def web_installer_chart(self, since: datetime | None, period: str, time_zone: str) -> dict[str, Any]:
         """Dashboard Web switch: web downloads and installs in the app chart shape."""
         until = datetime.now(timezone.utc)
-        events, jobs, _ = self.database.web_installer_rows(since, until)
+        events, jobs, _ = self.database.web_installer_rows(since, until, with_tests=False)
         first = min([row["occurred_at"] for row in events] + [job["requested_at"] for job in jobs], default=until)
         start = since or first
-        bucket = PERIOD_BUCKETS.get(period, "hour") if period != "all" else (
-            "day" if until - first <= timedelta(days=14) else "week" if until - first <= timedelta(days=60) else "month")
+        bucket = all_time_bucket(until - first) if period == "all" else PERIOD_BUCKETS.get(period, "hour")
         summary = web_installer_chart_summary(
             events, jobs, lambda moment: _overview_bucket_floor(moment, bucket, time_zone=time_zone))
         summary["trend"] = _fill_overview_trend_buckets(

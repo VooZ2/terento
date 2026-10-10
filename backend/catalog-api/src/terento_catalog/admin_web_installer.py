@@ -25,6 +25,7 @@ from .admin import (
     _unavailable_card,
 )
 from .statistics_periods import ADMIN_PERIOD_LABELS, ADMIN_PERIODS
+from .web_installer import joined
 
 WORDS = {
     # Connection outcomes
@@ -117,10 +118,8 @@ def _outcome(value: str) -> str:
 def _table(caption: str, headers: list[str], rows: list[list[str]], empty: str) -> str:
     if not rows:
         return _empty_state("empty", empty)
-    head = "".join(
-        f"<th scope='col'{' class=' + chr(39) + 'column-number' + chr(39) if h.startswith('#') else ''}>{html.escape(h.lstrip('#'))}</th>"
-        for h in headers
-    )
+    number = " class='column-number'"
+    head = "".join(f"<th scope='col'{number if h.startswith('#') else ''}>{html.escape(h.lstrip('#'))}</th>" for h in headers)
     body = "".join("<tr>" + "".join(row) + "</tr>" for row in rows)
     return (
         f"<div class='table-wrap'><table class='admin-table web-installer-table'><caption class='sr-only'>{html.escape(caption)}</caption>"
@@ -167,7 +166,7 @@ def _watch_sections(watch: dict[str, Any], period: str) -> str:
     recent = _table("Recent results on watches", ["Time", "Watch", "System", "Action", "Map", "Result", "#Writing", "#Checking"], [[
         _td(_timestamp_markup(r["occurred_at"])),
         _td(_text(r.get("model")) + (_code("firmware " + r["firmware"]) if r.get("firmware") else "")),
-        _td(_text(" ".join(str(v) for v in (r.get("os_family"), r.get("os_major")) if v is not None))),
+        _td(_text(joined(r.get("os_family"), r.get("os_major")))),
         _td("Remove" if r["stage"] == "REMOVE" else "Update" if r.get("operation") == "update" else "Install"),
         _td(_text(r.get("package_id")) + _code(r.get("provider")) if r.get("package_id") else _provider(r.get("provider"))),
         _td(_outcome(r["outcome"]) + ("" if r["outcome"] == "SUCCEEDED" else

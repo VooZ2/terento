@@ -42,7 +42,7 @@ CREATE TABLE web_installer_relay_job (
     received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     is_test BOOLEAN NOT NULL DEFAULT false,
     requested_at TIMESTAMPTZ NOT NULL,
-    ready_at TIMESTAMPTZ,
+    ready_at TIMESTAMPTZ CHECK (ready_at BETWEEN requested_at AND finished_at),
     finished_at TIMESTAMPTZ NOT NULL CHECK (finished_at >= requested_at),
     provider TEXT NOT NULL CHECK (length(provider) BETWEEN 1 AND 40),
     package_id TEXT NOT NULL CHECK (length(package_id) BETWEEN 1 AND 120),

@@ -10525,6 +10525,16 @@ ADMIN_DROPDOWN_STYLES = """
 @media(max-width:760px){.admin-dropdown-option{min-height:44px}}
 """
 ADMIN_STYLES += ADMIN_DROPDOWN_STYLES
+ADMIN_STYLES += """
+.web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
+.web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
+@media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
+.web-installer-table td{white-space:normal;overflow-wrap:anywhere}
+.web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
+.web-installer-why{display:block;margin-top:4px;font-size:12px}
+.web-installer-tests{margin:20px 0 0;font-size:12px}
+.overview-source-switch{margin:0 0 10px}.overview-source-totals{display:contents}.overview-source-totals[hidden]{display:none}
+"""
 # Signed-in pages link one cacheable stylesheet; the content hash in the name
 # changes whenever the CSS changes (served by the admin map-assets route).
 ADMIN_STYLESHEET_PATH = "/admin/map-assets/admin." + hashlib.sha256(ADMIN_STYLES.encode("utf-8")).hexdigest()[:16] + ".css"
@@ -11318,16 +11328,3 @@ def _admin_freshness_script() -> str:
 
 def _decode_base64(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
-
-ADMIN_STYLES += """
-.web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
-.web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
-@media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
-.web-installer-table td{white-space:normal;overflow-wrap:anywhere}
-.web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
-.web-installer-why{display:block;margin-top:4px;font-size:12px}
-.web-installer-tests{margin:20px 0 0;font-size:12px}
-"""
-ADMIN_STYLES += """
-.overview-source-switch{margin:0 0 10px}.overview-source-totals{display:contents}.overview-source-totals[hidden]{display:none}
-"""

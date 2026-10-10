@@ -26,7 +26,7 @@ from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
 from .telemetry import is_local_release_label
 from .statistics_exclusions import classify_compatibility_event
-from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, period_start
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, all_time_bucket, period_start
 
 
 # One predicate for the "install failed · no device diagnostic" review task,
@@ -831,12 +831,7 @@ class Database:
         ]
         authoritative_markers = [dict(row) for row in release_markers]
         if period == "all" and observations:
-            observed_span = now - observations[0]["observed_at"].astimezone(timezone.utc)
-            bucket = (
-                "day" if observed_span <= timedelta(days=14)
-                else "week" if observed_span <= timedelta(days=60)
-                else "month"
-            )
+            bucket = all_time_bucket(now - observations[0]["observed_at"].astimezone(timezone.utc))
         period_observations = [row for row in observations if row["observed_at"] >= start]
         first_period_index = observations.index(period_observations[0]) if period_observations else len(observations)
         raw_trend: list[dict[str, Any]] = []
@@ -4290,10 +4285,13 @@ class Database:
         return inserted is not None
 
     def web_installer_rows(
-        self, since: datetime | None, until: datetime | None = None,
+        self, since: datetime | None, until: datetime | None = None, *, with_tests: bool = True,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
         """Period events and relay jobs without test records (newest first), and
-        the count and last receipt of test records for the delivery check."""
+        the count and last receipt of test records for the delivery check.
+
+        shortcut: whole period rows are summarized in Python; at beta web
+        traffic this is small. Move the counts to SQL GROUP BY when it grows."""
         def period(column: str) -> tuple[str, list[Any]]:
             clauses, values = ["is_test IS NOT TRUE"], []
             if since is not None:
@@ -4312,7 +4310,7 @@ class Database:
             jobs = list(connection.execute(
                 f"SELECT * FROM web_installer_relay_job WHERE {job_where} ORDER BY requested_at DESC", job_values,
             ).fetchall())
-            tests = connection.execute(
+            tests = {} if not with_tests else connection.execute(
                 """
                 SELECT count(*) AS count, max(received_at) AS last FROM (
                     SELECT received_at FROM web_installer_event WHERE is_test
@@ -5099,12 +5097,7 @@ class Database:
         if isinstance(since, datetime) and since.tzinfo is None:
             since = since.replace(tzinfo=timezone.utc)
         if period == "all" and isinstance(since, datetime):
-            span = until - since.astimezone(timezone.utc)
-            bucket = (
-                "day" if span <= timedelta(days=14)
-                else "week" if span <= timedelta(days=60)
-                else "month"
-            )
+            bucket = all_time_bucket(until - since.astimezone(timezone.utc))
         else:
             bucket = PERIOD_BUCKETS.get(period, "hour")
         rows = self.map_statistics(
