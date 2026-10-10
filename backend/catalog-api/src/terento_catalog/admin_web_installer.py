@@ -7,7 +7,6 @@ traced to its cause. Read-only; a separate population from app statistics.
 from __future__ import annotations
 
 import html
-import json
 from typing import Any
 
 from .admin import (
@@ -226,7 +225,7 @@ def _server_sections(server: dict[str, Any], period: str) -> str:
     )
 
 
-def web_installer_page(data: dict[str, Any] | None, user: dict[str, Any], csrf_token: str, *, period: str) -> bytes:
+def web_installer_page(data: dict[str, Any] | None, user: dict[str, Any], csrf_token: str, *, period: str, time_zone: str = "UTC") -> bytes:
     if period not in ADMIN_PERIODS:
         period = "7d"
     options = "".join(
@@ -246,13 +245,11 @@ def web_installer_page(data: dict[str, Any] | None, user: dict[str, Any], csrf_t
     content = f"""
       {_admin_header(user, csrf_token, active='web-installer')}
       <main class='dashboard overview-page web-installer-page' id='main-content'>
-        <div class='heading-row overview-heading'><div><h1>Web installer</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/web-installer'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><h1>Web installer</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/web-installer' data-time-zone='{html.escape(time_zone, quote=True)}'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{options}</select></label></form></div>
         {body}
         {tests}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
     """
-    # Rows hold UUIDs and datetimes; the revision only needs their text.
-    revision = None if not isinstance(data, dict) else json.loads(json.dumps(
-        {key: data.get(key) for key in ("watch", "server", "testRecords")}, default=str))
+    revision = None if not isinstance(data, dict) else {key: data.get(key) for key in ("watch", "server", "testRecords")}
     return _layout("Web installer", content, sections={"webInstaller": revision})

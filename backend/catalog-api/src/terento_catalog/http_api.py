@@ -539,11 +539,7 @@ class CatalogService:
 
     def web_installer(self, query: dict[str, str]) -> dict[str, Any]:
         """Admin read model for the Web installer page (test records excluded)."""
-        if set(query) - {"period", "timeZone"}:
-            raise WebInstallerValidationError("unknown_filter")
-        period = query.get("period") or "7d"
-        if period not in ADMIN_PERIODS:
-            raise WebInstallerValidationError("invalid_period")
+        period = query["period"]
         time_zone = _admin_time_zone(query.get("timeZone"))
         until = datetime.now(timezone.utc)
         since = period_start(period, now=until, time_zone=time_zone)
@@ -559,12 +555,11 @@ class CatalogService:
     def web_installer_chart(self, since: datetime | None, period: str, time_zone: str) -> dict[str, Any]:
         """Dashboard Web switch: web downloads and installs in the app chart shape."""
         until = datetime.now(timezone.utc)
-        events, jobs, _ = self.database.web_installer_rows(since, until, with_tests=False)
-        first = min([row["occurred_at"] for row in events] + [job["requested_at"] for job in jobs], default=until)
+        first = (self.database.web_installer_first_at() or until) if since is None else since
         start = since or first
         bucket = all_time_bucket(until - first) if period == "all" else PERIOD_BUCKETS.get(period, "hour")
         summary = web_installer_chart_summary(
-            events, jobs, lambda moment: _overview_bucket_floor(moment, bucket, time_zone=time_zone))
+            self.database.web_installer_trend(since, until, bucket=bucket, time_zone=time_zone))
         summary["trend"] = _fill_overview_trend_buckets(
             summary["trend"], bucket=bucket, since=start, until=until, all_time=period == "all", time_zone=time_zone,
         ) if summary["trend"] else []
@@ -2108,8 +2103,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 period = query.get("period", ["7d"])[-1]
                 if period not in ADMIN_PERIODS:
                     period = "7d"
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
-                    data = service.web_installer({"period": period, "timeZone": query.get("timeZone", ["UTC"])[-1]})
+                    data = service.web_installer({"period": period, "timeZone": time_zone})
                 except Exception:
                     LOGGER.exception("admin web installer failed")
                     data = None
@@ -2118,10 +2114,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "web_installer_unavailable"},
                                         send_body=send_body, cache_control="no-store", noindex=True)
                     else:
-                        self._send_json(HTTPStatus.OK, json.loads(json.dumps(data, default=str)),
+                        self._send_json(HTTPStatus.OK, data,
                                         send_body=send_body, cache_control="no-store", noindex=True)
                     return
-                self._send_admin_html(web_installer_page(data, session, csrf_token, period=period), send_body=send_body)
+                self._send_admin_html(web_installer_page(data, session, csrf_token, period=period, time_zone=(data or {}).get("timeZone", time_zone)), send_body=send_body)
                 return
             if request_path in {"/admin/first-run", "/admin/first-run/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)

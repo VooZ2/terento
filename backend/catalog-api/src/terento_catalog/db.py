@@ -175,6 +175,17 @@ def _overview_time_zone(value: str) -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
+def _web_installer_period(column: str, since: datetime | None, until: datetime | None) -> tuple[str, list[Any]]:
+    """Non-test web installer rows whose ``column`` lies in the period."""
+    clauses, values = ["is_test IS NOT TRUE"], []
+    if since is not None:
+        clauses.append(f"{column} >= %s")
+        values.append(since)
+    if until is not None:
+        clauses.append(f"{column} <= %s")
+        values.append(until)
+    return " AND ".join(clauses), values
+
 def _overview_bucket_floor(
     value: datetime, bucket: str, *, time_zone: str = "UTC",
 ) -> datetime:
@@ -4285,24 +4296,15 @@ class Database:
         return inserted is not None
 
     def web_installer_rows(
-        self, since: datetime | None, until: datetime | None = None, *, with_tests: bool = True,
+        self, since: datetime | None, until: datetime | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
         """Period events and relay jobs without test records (newest first), and
         the count and last receipt of test records for the delivery check.
 
         shortcut: whole period rows are summarized in Python; at beta web
         traffic this is small. Move the counts to SQL GROUP BY when it grows."""
-        def period(column: str) -> tuple[str, list[Any]]:
-            clauses, values = ["is_test IS NOT TRUE"], []
-            if since is not None:
-                clauses.append(f"{column} >= %s")
-                values.append(since)
-            if until is not None:
-                clauses.append(f"{column} <= %s")
-                values.append(until)
-            return " AND ".join(clauses), values
-        event_where, event_values = period("occurred_at")
-        job_where, job_values = period("requested_at")
+        event_where, event_values = _web_installer_period("occurred_at", since, until)
+        job_where, job_values = _web_installer_period("requested_at", since, until)
         with self.connection() as connection:
             events = list(connection.execute(
                 f"SELECT * FROM web_installer_event WHERE {event_where} ORDER BY occurred_at DESC", event_values,
@@ -4310,7 +4312,7 @@ class Database:
             jobs = list(connection.execute(
                 f"SELECT * FROM web_installer_relay_job WHERE {job_where} ORDER BY requested_at DESC", job_values,
             ).fetchall())
-            tests = {} if not with_tests else connection.execute(
+            tests = connection.execute(
                 """
                 SELECT count(*) AS count, max(received_at) AS last FROM (
                     SELECT received_at FROM web_installer_event WHERE is_test
@@ -4318,9 +4320,65 @@ class Database:
                 ) AS t
                 """
             ).fetchone() or {}
-        return [dict(r) for r in events], [dict(r) for r in jobs], {
+        text_ids = lambda row: {**row, **{k: str(row[k]) for k in ("event_id", "session_id") if row.get(k) is not None}}
+        return [text_ids(dict(r)) for r in events], [dict(r) for r in jobs], {
             "count": int(tests.get("count") or 0), "last": tests.get("last"),
         }
+
+    def web_installer_first_at(self) -> datetime | None:
+        """Earliest non-test web installer record, for the ``all`` trend grid."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT least(
+                    (SELECT min(occurred_at) FROM web_installer_event WHERE is_test IS NOT TRUE),
+                    (SELECT min(requested_at) FROM web_installer_relay_job WHERE is_test IS NOT TRUE)
+                ) AS first_at
+                """
+            ).fetchone()
+        return row["first_at"] if row else None
+
+    def web_installer_trend(
+        self, since: datetime | None, until: datetime | None, *, bucket: str, time_zone: str = "UTC",
+    ) -> list[dict[str, Any]]:
+        """Dashboard Web view counts per bucket, in the app trend field names:
+        final map results by occurredAt and finished relay jobs by requestedAt."""
+        local = {"hour": "hour", "day": "day", "week": "week", "month": "month"}.get(bucket)
+        if local is None:
+            raise ValueError("invalid web installer trend bucket")
+        bucket_sql = ("at - (local_at - date_trunc('hour', local_at))" if bucket == "hour"
+                      else f"(date_trunc('{local}', local_at) AT TIME ZONE %s)")
+        event_where, event_values = _web_installer_period("occurred_at", since, until)
+        job_where, job_values = _web_installer_period("requested_at", since, until)
+        with self.connection() as connection:
+            rows = connection.execute(
+                f"""
+                WITH final AS (
+                    SELECT DISTINCT ON (session_id, package_id, operation) occurred_at, outcome, operation
+                    FROM web_installer_event
+                    WHERE stage = 'MAP_RESULT' AND {event_where}
+                    ORDER BY session_id, package_id, operation, occurred_at DESC
+                ), counted AS (
+                    SELECT occurred_at AS at, CASE
+                        WHEN outcome = 'SUCCEEDED' AND operation = 'update' THEN 'map_update_success_count'
+                        WHEN outcome = 'SUCCEEDED' THEN 'success_count'
+                        WHEN outcome = 'FAILED' AND operation = 'update' THEN 'map_update_failed_count'
+                        WHEN outcome = 'FAILED' THEN 'failed_count' END AS field
+                    FROM final
+                    UNION ALL
+                    SELECT requested_at, CASE WHEN outcome = 'DELIVERED' THEN 'download_success_count'
+                        ELSE 'download_failed_count' END
+                    FROM web_installer_relay_job
+                    WHERE outcome IN ('DELIVERED', 'FAILED', 'REFUSED', 'INTERRUPTED') AND {job_where}
+                ), localized AS (
+                    SELECT field, at, timezone(%s, at) AS local_at FROM counted WHERE field IS NOT NULL
+                )
+                SELECT {bucket_sql} AS bucket, field, count(*) AS count
+                FROM localized GROUP BY 1, 2
+                """,
+                [*event_values, *job_values, time_zone, *([] if bucket == "hour" else [time_zone])],
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def app_funnel_summary(
         self, since: datetime | None, until: datetime | None = None, *, model_limit: int = 10,

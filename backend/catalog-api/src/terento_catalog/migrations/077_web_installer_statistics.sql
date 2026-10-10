@@ -36,6 +36,7 @@ CREATE TABLE web_installer_event (
 
 CREATE INDEX web_installer_event_occurred_idx ON web_installer_event (occurred_at);
 CREATE INDEX web_installer_event_received_idx ON web_installer_event (received_at);
+CREATE INDEX web_installer_event_test_idx ON web_installer_event (received_at) WHERE is_test;
 
 CREATE TABLE web_installer_relay_job (
     job_id TEXT PRIMARY KEY CHECK (job_id ~ '^[0-9a-f]{16,32}$'),
@@ -64,3 +65,4 @@ CREATE TABLE web_installer_relay_job (
 
 CREATE INDEX web_installer_relay_job_requested_idx ON web_installer_relay_job (requested_at);
 CREATE INDEX web_installer_relay_job_received_idx ON web_installer_relay_job (received_at);
+CREATE INDEX web_installer_relay_job_test_idx ON web_installer_relay_job (received_at) WHERE is_test;

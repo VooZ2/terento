@@ -216,7 +216,11 @@ class WebInstallerEndToEndTests(PGliteTestCase):
 
         response, payload = self.request("GET", "/admin/web-installer.json?period=24h", secret=None, admin=True)
         self.assertEqual(response.status, 200)
-        self.assertEqual(json.loads(payload)["watch"]["installed"], 1)
+        document = json.loads(payload)
+        self.assertEqual(document["watch"]["installed"], 1)
+        self.assertTrue(document["watch"]["recent"][0]["occurred_at"].endswith("Z"))  # admin JSON time format
+        _, page = self.request("GET", "/admin/web-installer?period=24h&timeZone=Europe/Vilnius", secret=None, admin=True)
+        self.assertIn("data-time-zone='Europe/Vilnius'", page)
 
     def test_dashboard_web_switch_shows_web_records_only_behind_web(self):
         for body in session_events():
@@ -227,6 +231,10 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual((web["completedInstallCount"], web["failedInstallCount"], web["failedDownloadCount"]), (1, 0, 1))
         self.assertEqual(sum(row.get("success_count", 0) for row in web["trend"]), 1)
         self.assertEqual(overview["data"].get("completedInstallCount") or 0, 0)  # App view stays app-only
+        for period in ("7d", "all"):  # day/month buckets counted in SQL, in the admin time zone
+            web = self.service.admin_overview(period, "Europe/Vilnius")["web"]
+            self.assertEqual((sum(row.get("success_count", 0) for row in web["trend"]),
+                              sum(row.get("download_failed_count", 0) for row in web["trend"])), (1, 1))
         response, page = self.request("GET", "/admin?period=24h", secret=None, admin=True)
         self.assertEqual(response.status, 200)
         installs = page.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]

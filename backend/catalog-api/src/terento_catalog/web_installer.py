@@ -347,31 +347,24 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
     }
 
 
-def chart_summary(events: list[dict[str, Any]], jobs: list[dict[str, Any]], bucket_of: Any) -> dict[str, Any]:
-    """Dashboard Web view: the same row shape as the app trend, from web records
-    only. Downloads are relay jobs; installs are final map results."""
-    buckets: dict[Any, dict[str, int]] = {}
-    def add(moment: datetime, field: str) -> None:
-        row = buckets.setdefault(bucket_of(moment), {"bucket": bucket_of(moment)})
-        row[field] = row.get(field, 0) + 1
-    final = final_map_results(events)
-    for row in final:
-        if row["outcome"] in ("SUCCEEDED", "FAILED"):
-            update = row.get("operation") == "update"
-            add(row["occurred_at"], ("map_update_success_count" if update else "success_count") if row["outcome"] == "SUCCEEDED"
-                else ("map_update_failed_count" if update else "failed_count"))
-    for job in jobs:
-        if job["outcome"] == "DELIVERED" or job["outcome"] in RELAY_REASON_OUTCOMES:
-            add(job["requested_at"], "download_success_count" if job["outcome"] == "DELIVERED" else "download_failed_count")
+def chart_summary(counts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Dashboard Web view from per-bucket counts (bucket, field, count): the
+    same row shape as the app trend. Downloads are relay jobs; installs are
+    final map results."""
+    buckets: dict[Any, dict[str, Any]] = {}
+    totals: dict[str, int] = {}
+    for row in counts:
+        point = buckets.setdefault(row["bucket"], {"bucket": row["bucket"]})
+        point[row["field"]] = point.get(row["field"], 0) + int(row["count"])
+        totals[row["field"]] = totals.get(row["field"], 0) + int(row["count"])
+    total = lambda field: totals.get(field, 0)
     rate = lambda ok, bad: ok / (ok + bad) * 100 if ok + bad else None
-    installs = sum(r["outcome"] == "SUCCEEDED" and r.get("operation") != "update" for r in final)
-    failed = sum(r["outcome"] == "FAILED" and r.get("operation") != "update" for r in final)
-    delivered = sum(j["outcome"] == "DELIVERED" for j in jobs)
-    download_failed = sum(j["outcome"] in RELAY_REASON_OUTCOMES for j in jobs)
     return {
         "trend": [buckets[key] for key in sorted(buckets)],
-        "completedInstallCount": installs, "failedInstallCount": failed, "installSuccessRate": rate(installs, failed),
-        "mapUpdateCount": sum(r["outcome"] in ("SUCCEEDED", "FAILED") and r.get("operation") == "update" for r in final),
-        "completedDownloadCount": delivered, "failedDownloadCount": download_failed,
-        "downloadSuccessRate": rate(delivered, download_failed),
+        "completedInstallCount": total("success_count"), "failedInstallCount": total("failed_count"),
+        "installSuccessRate": rate(total("success_count"), total("failed_count")),
+        "mapUpdateCount": total("map_update_success_count") + total("map_update_failed_count"),
+        "completedDownloadCount": total("download_success_count"),
+        "failedDownloadCount": total("download_failed_count"),
+        "downloadSuccessRate": rate(total("download_success_count"), total("download_failed_count")),
     }
