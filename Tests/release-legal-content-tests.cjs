@@ -45,7 +45,7 @@ for (const locale of locales) {
   assert.ok(section, `${locale}: privacy notice describes support reports`);
   for (const signal of signals) assert.match(section, signal, `${locale}: support report section ${signal}`);
   const headings = sections.map((chunk) => chunk.split("\n", 1)[0]);
-  assert.equal(headings.indexOf(heading), 5, `${locale}: support reports follow help and public issues`);
+  assert.equal(headings.indexOf(heading), 6, `${locale}: support reports follow help and public issues`);
   assert.ok(privacyPage.includes(`<h2>${heading.slice(3)}</h2>`), `${locale}: rendered support report heading`);
 }
 assert.ok(!fs.existsSync(path.join(root, "legal/web/LEGAL-PAGE-LT.md")));
