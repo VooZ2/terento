@@ -672,3 +672,19 @@ Garmin device types 006-B3769, 006-B3771 and 006-B3516). The existing fēnix
 6/6S/6X rows are unchanged, and the standard fēnix 6 and 6S Dual Power
 editions are not added because Garmin publishes no map row for them. The
 previous revision reads every row unchanged.
+
+### Migration077: web installer statistics
+
+Additive and rollback-compatible: two new tables the previous revision never
+reads or writes ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
+`web_installer_event` (event UUID primary key, random per-page-load
+`session_id`, `occurred_at`, `received_at`, `is_test`, `stage`, `outcome`, OS
+and browser family/major, watch `model`, `firmware`, `base_model`,
+`operation`, `provider`, `package_id`, `size_bucket`, `failure_stage`,
+`reason`, `write_started`, `write_s`, `verify_s`, `error_name`, `http_status`,
+`mtp_response`) and `web_installer_relay_job` (server job reference primary
+key, `received_at`, `is_test`, requested/ready/finished times, `provider`,
+`package_id`, `region`, `release`, `size_bytes`, `served_bytes`, `outcome`,
+`reason` required exactly for FAILED/REFUSED/INTERRUPTED, and
+`provider_http_status` only with `PROVIDER_HTTP_ERROR`). Both are a separate
+population, never read by app statistics, and deleted 24 months after receipt.

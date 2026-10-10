@@ -284,8 +284,8 @@ while a measured zero is 0.
 
 ## Page and navigation behavior
 
-The primary sequence is `Dashboard`, `Installations`, `First run`, `Devices`,
-`Maps`, `Providers`, and `Health`, followed by Tools and account controls. Dashboard
+The primary sequence is `Dashboard`, `Installations`, `First run`, `Web installer`,
+`Devices`, `Maps`, `Providers`, and `Health`, followed by Tools and account controls. Dashboard
 Needs attention is the entry point for actionable review work; there is no
 duplicate Review navigation item.
 
@@ -298,7 +298,14 @@ Each chart card holds exactly three things (owner decision 2026-10-06): a
 header with the period scope chip and, top right, the period totals as compact
 value chips (Successful, Failed — danger only when positive — and Success rate;
 Installs counts fresh installs only); the chart; and a legend naming each
-series by colour without counts. No All time line, purpose breakdown or other
+series by colour without counts. Above the chart an `App`/`Web` switch (owner
+decision 2026-10-10; App is the default and the choice per card survives a
+period change) swaps the chart and its header totals: App is the app-only
+statistic below, unchanged; Web shows only web installer records
+([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)):
+Downloads are relay jobs (sent, failed on the server) and Installs are final
+web map results (install and update, succeeded and failed; no Custom .img
+series). Web records never enter the App view or any other app number. No All time line, purpose breakdown or other
 explanatory text is shown in these cards; all-time totals live on Maps. Header totals and charts use the same period
 population, so they agree. A legend elsewhere shows a count only where it adds
 information no total shows (the Maps Custom .img install split and the App
@@ -332,6 +339,25 @@ Ambiguous outcomes, most sessions first, each linking to Devices filtered by
 that name with its catalog status and session count, then `+N more on First
 run`), and a `View all` action to `/admin/first-run` for the same period. It
 shows no Sessions over time and no outcome groups.
+
+The Web installer page (`/admin/web-installer`, primary navigation after First
+run; owner decision 2026-10-10, replacing the lab admin page from an empty
+start) has the Dashboard period picker (default Last 7 days) and shows only the
+web installer population. It has no explanatory lead text. `On the watch`: the
+tiles Watch connected, Maps installed, Maps updated, Failed and Writing (median
+writing time, then median checking time); `Watch models` (model as the watch
+reports it, the system it was connected from, firmware seen, connected
+sessions, final installs, updates and failures, last seen); `Systems and
+browsers`; `Connection problems` and `Install and removal problems`, where every
+failed attempt is grouped and shown in plain words with its stored codes next to
+them (step, reason, browser error name, HTTP status, MTP response code) so the
+cause can be traced; and `Recent results on watches` (newest 30 final results:
+one per page load, map and operation, plus removals). `On the server`: the
+tiles Requests, Sent (with data sent), Failed, Preparing and Sending (medians);
+`Providers`; `Problems` (server reason in words with its code and provider HTTP
+status); and `Recent requests` (newest 50). There is no live "now on the server"
+view and no most-requested list. A last line counts test records (stored, kept
+out of every number) with the last receipt time, for delivery checks.
 
 The First run page (`/admin/first-run`, primary navigation after
 Installations) has the Dashboard period picker (default Last 24 hours; an

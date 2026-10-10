@@ -46,6 +46,7 @@ def main() -> int:
     expect(["contracts/map-catalog.schema.json"], set(MODULE.ALL_SUITES))
     expect(["contracts/fixtures/map-event.valid.json"], set(MODULE.ALL_SUITES))
     expect(["contracts/README.md"], baseline | {"backend"})
+    expect(["contracts/fixtures/web-installer-events.valid-session.json"], baseline | {"backend"})
     expect(["app/TerentoCore/README.md"], baseline)
     expect(["reports/history.md"], baseline)
     expect(["app/TerentoCore/Tests/TerentoPoCTests/Fixtures/issue148-failure-report.md"], baseline | {"app", "native"})
@@ -98,6 +99,7 @@ def main() -> int:
                 r"(?:Tests|app/TerentoCore/Tests)/[\w./-]+\.(?:py|cjs|js|swift|sh)",
                 sources[0].read_text(encoding="utf-8")) if (root / ref).is_file()]
             for source in sources:
+                assert "web-installer-" not in source.read_text(encoding="utf-8"), f"{source} reads web installer fixtures, which skip {suite}"
                 for ref in re.findall(r"(?:\.github|scripts|site-deploy)/[\w./-]+",
                                       source.read_text(encoding="utf-8")):
                     assert suite in MODULE.select_suites([ref]), f"{source} reads {ref}, which skips {suite}"
