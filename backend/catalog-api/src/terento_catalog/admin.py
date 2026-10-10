@@ -1679,6 +1679,12 @@ _DOWNLOAD_CHART_SERIES = (
     ("download-success", "Download successful", "download_success_count"),
     ("download-failed", "Download failed", "download_failed_count"),
 )
+# First run sessions per bucket (owner 2026-10-10: the same chart as the
+# Dashboard Downloads and Installs cards).
+_SESSION_CHART_SERIES = (
+    ("success", "Connected", "connected_count"),
+    ("failed", "Never connected", "never_count"),
+)
 
 
 _LEGEND_NAME_ONLY = object()  # legend entry that names its series without a count
@@ -1709,11 +1715,12 @@ def _overview_trend_chart(
     if not trend:
         if has_activity:
             return _empty_state("unavailable", "Trend data is unavailable for this period.", css="overview-empty-state")
-        empty_label = "downloads" if metric == "downloads" else "map installations"
+        empty_label = {"downloads": "downloads", "sessions": "first-run sessions"}.get(metric, "map installations")
         return f"<p class='overview-empty-state admin-empty' data-state='empty'>No {empty_label} in this period.</p>"
-    series = (_DOWNLOAD_CHART_SERIES if metric == "downloads"
-              else _WEB_INSTALL_CHART_SERIES if metric == "web-installs" else _INSTALL_CHART_SERIES)
-    chart_label = "Map download trend" if metric == "downloads" else "Map installation and update trend"
+    series = {"downloads": _DOWNLOAD_CHART_SERIES, "web-installs": _WEB_INSTALL_CHART_SERIES,
+              "sessions": _SESSION_CHART_SERIES}.get(metric, _INSTALL_CHART_SERIES)
+    chart_label = {"downloads": "Map download trend", "sessions": "First run sessions trend"}.get(
+        metric, "Map installation and update trend")
     chart_key = re.sub(r"[^a-z0-9-]", "-", (chart_id or metric).lower()) + ("-mobile" if _compact else "-desktop")
     pattern_id = f"update-failed-{chart_key}"
     values = []
@@ -2391,10 +2398,11 @@ def _funnel_delta(current: int | None, previous: int | None, period: str) -> str
 
 # First run page parts: (heading, card titles). Each card is one group of the
 # display (or Waiting models), so a topic reads heading → card → rows.
-_FUNNEL_PARTS = (
-    ("Connecting the watch", ("Why not connected", "Connection problems")),
-    ("Install permission", ("Permission check", "Waiting models")),
-    ("Maps", ("Map list", "Install blocked")),
+# Journey order, two cards per row: connecting the watch, install
+# permission, maps.
+_FUNNEL_CARDS = (
+    "Why not connected", "Connection problems", "Permission check", "Waiting models",
+    "Map list", "Install blocked",
 )
 _FUNNEL_CARD_IDS = {
     "Why not connected": "first-run-not-connected", "Connection problems": "first-run-connection",
@@ -2432,33 +2440,17 @@ def _funnel_tiles(display: dict[str, Any], period: str) -> str:
     ], label="First run journey")
 
 
-def _funnel_trend_strip(display: dict[str, Any], time_zone: str) -> str:
-    """Sessions per hour or day: connected and never connected stacked; each
-    bucket is focusable and names its values."""
-    trend = display.get("trend") or []
-    if len(trend) < 2:
-        return ""
-    bucket = display.get("bucket") or "hour"
-    peak = max((total for _, total, _ in trend), default=0) or 1
-    bars = []
-    for stamp, total, connected in trend:
-        label = _overview_chart_bucket_label(stamp, bucket, time_zone)
-        never = max(0, total - connected)
-        description = f"{label}: {total} sessions, {connected} connected, {never} never connected"
-        bars.append(
-            f"<li tabindex='0' aria-label='{html.escape(description, quote=True)}' title='{html.escape(description, quote=True)}'>"
-            f"<span class='funnel-trend-never' style='height:{never / peak * 100:.1f}%'></span>"
-            f"<span class='funnel-trend-connected' style='height:{connected / peak * 100:.1f}%'></span></li>"
-        )
-    first = _overview_chart_bucket_label(trend[0][0], bucket, time_zone)
-    last = _overview_chart_bucket_label(trend[-1][0], bucket, time_zone)
-    return (
-        f"<ol class='funnel-trend-bars' aria-label='Sessions per {html.escape(bucket)}'>" + "".join(bars) + "</ol>"
-        f"<div class='funnel-trend-axis' aria-hidden='true'><span>{html.escape(first)}</span><span>{html.escape(last)}</span></div>"
-        "<ul class='funnel-trend-legend admin-legend' aria-label='Sessions over time legend'>"
-        "<li><i class='funnel-trend-connected' aria-hidden='true'></i><span>Connected</span></li>"
-        "<li><i class='funnel-trend-never' aria-hidden='true'></i><span>Never connected</span></li></ul>"
-    )
+def _funnel_trend_chart(display: dict[str, Any], time_zone: str) -> str:
+    """Sessions per bucket in the Dashboard chart: connected and never
+    connected stacked."""
+    trend = [
+        {"bucket": stamp, "connected_count": connected, "never_count": max(0, total - connected)}
+        for stamp, total, connected in display.get("trend") or []
+    ]
+    return _overview_trend_chart(
+        trend, display.get("bucket") or "hour", time_zone, metric="sessions", chart_id="first-run-sessions",
+        counted=frozenset(), has_activity=bool(display.get("sessions")),
+    ) if trend else ""
 
 
 def _funnel_table(caption: str, headers: list[str], rows: list[str]) -> str:
@@ -2506,8 +2498,8 @@ def _funnel_waiting_card(display: dict[str, Any]) -> str:
 
 
 def _funnel_page_body(funnel: dict[str, Any] | None, period: str, time_zone: str) -> str:
-    """First run page: journey tiles, sessions over time, then one heading per
-    topic with its cards in a two-column grid."""
+    """First run page: journey tiles, sessions over time, then the cards in
+    journey order in a two-column grid."""
     if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
         return _unavailable_card("First run", "overview-funnel", retry_href=f"/admin/first-run?period={period}")
     display = _funnel_display(funnel)
@@ -2515,20 +2507,17 @@ def _funnel_page_body(funnel: dict[str, Any] | None, period: str, time_zone: str
         return _section_card("First run", _empty_state("empty", "No first-run sessions in this period."),
                              card_id="overview-funnel", scope=period)
     groups = dict(display["groups"])
-    trend = _funnel_trend_strip(display, time_zone)
-    parts = "".join(
-        f"<h2 class='web-installer-part'>{html.escape(heading)}</h2><div class='web-installer-grid'>"
-        + "".join(
-            _funnel_waiting_card(display) if title == "Waiting models"
-            else _funnel_group_card(title, groups.get(title, []), display)
-            for title in titles
-        ) + "</div>"
-        for heading, titles in _FUNNEL_PARTS
+    trend = _funnel_trend_chart(display, time_zone)
+    cards = "".join(
+        _funnel_waiting_card(display) if title == "Waiting models"
+        else _funnel_group_card(title, groups.get(title, []), display)
+        for title in _FUNNEL_CARDS
     )
     return (
         _funnel_tiles(display, period)
-        + (_section_card("Sessions over time", trend, card_id="first-run-trend") if trend else "")
-        + parts
+        + (_section_card("Sessions over time", trend, card_id="first-run-trend", scope=period,
+                         css="overview-panel overview-chart-panel") if trend else "")
+        + f"<div class='web-installer-grid'>{cards}</div>"
     )
 
 
@@ -2713,8 +2702,10 @@ def overview_page(
     attention_status = ""
     if not review_available:
         attention_status = _empty_state("unavailable", "Review counts are unavailable.", action=("", "Retry"))
-    # Nothing open: the card collapses to its header (owner 2026-10-10); the
-    # 0 Total chip says it.
+    elif attention_total == 0:
+        attention_status = _empty_state("empty", "Nothing to review.", css="overview-empty-state")
+    # Nothing open: the card keeps its row height and says so in the middle,
+    # like an empty chart.
     attention_section = _section_card(
         "Needs attention",
         review_notice + attention_status
@@ -2816,7 +2807,7 @@ def overview_page(
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin' data-time-zone='{html.escape(time_zone, quote=True)}'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
-        <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
+        <div class='overview-composition-grid'>{attention_section}{funnel_section}{activity_section}{downloads_section}</div>
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_overview_source_switch_script()}</script>
     """
@@ -10143,15 +10134,6 @@ ADMIN_STYLES += """
 .overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
 .overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
 .overview-chart-values:empty{display:none}
-.funnel-trend-bars{display:flex;align-items:flex-end;gap:2px;height:56px;margin:0;padding:0;list-style:none;border-bottom:1px solid var(--border)}
-.funnel-trend-bars li{display:flex;flex:1 1 0;flex-direction:column-reverse;height:100%;min-width:2px;border-radius:2px 2px 0 0;cursor:default}
-.funnel-trend-bars li:focus-visible{outline:2px solid var(--admin-focus-color);outline-offset:2px}
-.funnel-trend-connected{display:block;background:var(--interactive)}
-.funnel-trend-never{display:block;background:var(--danger)}
-.funnel-trend-axis{display:flex;justify-content:space-between;margin-top:4px;color:var(--secondary);font:400 11px/14px var(--font-ui)}
-.funnel-trend-legend{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 0;padding:0;list-style:none;font-size:12px}
-.funnel-trend-legend li{display:inline-flex;align-items:center;gap:6px}
-.funnel-trend-legend i{display:inline-block;width:10px;height:10px;border-radius:2px}
 .funnel-hint{display:block;color:var(--secondary);font:400 12px/16px var(--font-ui)}
 .overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
 .overview-chart-values-date{color:var(--graphite)}
@@ -10513,6 +10495,8 @@ ADMIN_STYLES += ADMIN_DROPDOWN_STYLES
 ADMIN_STYLES += """
 .admin-card-note{margin:0 0 12px;font-size:13px}
 /* First run tables: number columns share one width so side-by-side cards line up. */
+main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run-page>.web-installer-grid>*{margin:0}
+@media(min-width:701px){main.first-run-page>:not(.heading-row)+*{margin-top:var(--admin-card-gap)}}
 .first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}
 .web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
 .web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
@@ -10522,7 +10506,7 @@ ADMIN_STYLES += """
 .web-installer-why{display:block;margin-top:4px;font-size:12px}
 .web-installer-tests{margin:20px 0 0;font-size:12px}
 .overview-chart-panel .overview-empty-state{justify-content:center;padding:32px 0;text-align:center}
-.overview-attention-empty{align-self:start}
+.overview-attention-empty{display:flex;flex-direction:column}.overview-attention-empty>.overview-empty-state{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 0}
 .overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
 .overview-source-switch{display:inline-flex;box-sizing:border-box;height:24px;padding:1px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted)}
 .overview-source-switch button{min-height:0;height:20px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--secondary);font:inherit;font-size:var(--admin-type-support-size);line-height:20px;cursor:pointer}
