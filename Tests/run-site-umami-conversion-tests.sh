@@ -94,6 +94,7 @@ allowed_internal_events = {
     "internal-link-click",
     "language-switch-click",
     "legal-link-click",
+    "maps-link-click",
     "navigation-link-click",
     "privacy-link-click",
 }
@@ -113,6 +114,8 @@ for path in sorted((root / "site").rglob("*.html")):
         normalized_target = href.split("?", 1)[0].split("#", 1)[0].rstrip("/") or "/"
         if normalized_target == "/privacy":
             assert event == "privacy-link-click", f"{path}: privacy link must use privacy-link-click"
+        if re.fullmatch(r"(?:/[a-z]{2})?/map-styles", normalized_target) and "language-option" not in item["class"]:
+            assert event == "maps-link-click", f"{path}: Maps link must use maps-link-click"
 
     email_tags = re.findall(r'<a\b[^>]*href="mailto:[^"]+"[^>]*>', html, flags=re.IGNORECASE)
     for tag in email_tags:
