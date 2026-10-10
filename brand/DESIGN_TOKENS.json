@@ -208,7 +208,7 @@
           "$type": "color"
         },
         "error": {
-          "$value": "#C9857C",
+          "$value": "#D4958C",
           "$type": "color"
         },
         "info": {
