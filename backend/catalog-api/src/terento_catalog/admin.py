@@ -2692,8 +2692,8 @@ def overview_page(
     attention_status = ""
     if not review_available:
         attention_status = _empty_state("unavailable", "Review counts are unavailable.", action=("", "Retry"))
-    elif attention_total == 0:
-        attention_status = _empty_state("empty", "Nothing to review.")
+    # Nothing open: the card collapses to its header (owner 2026-10-10); the
+    # 0 Total chip says it.
     attention_section = _section_card(
         "Needs attention",
         review_notice + attention_status
@@ -10535,6 +10535,8 @@ ADMIN_STYLES += """
 .web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
 .web-installer-why{display:block;margin-top:4px;font-size:12px}
 .web-installer-tests{margin:20px 0 0;font-size:12px}
+.overview-chart-panel .overview-empty-state{justify-content:center;padding:32px 0;text-align:center}
+.overview-attention-empty{align-self:start}
 .overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
 .overview-source-switch{display:inline-flex;box-sizing:border-box;height:24px;padding:1px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted)}
 .overview-source-switch button{min-height:0;height:20px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--secondary);font:inherit;font-size:var(--admin-type-support-size);line-height:20px;cursor:pointer}

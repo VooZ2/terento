@@ -144,14 +144,15 @@ class DashboardPresentationTests(unittest.TestCase):
         # The header total is exactly the sum of the rendered category rows.
         self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong><small>Total</small>", head)
 
-    def test_needs_attention_with_nothing_open_says_so_without_rows(self):
+    def test_needs_attention_with_nothing_open_collapses_to_its_header(self):
         zero_review = {"available": True, "installationIssues": 0, "githubIssuesInProgress": 0,
                        "identityPending": 0, "readyToPublish": 0, "missingDiagnostics": 0}
         body = self.render(review=zero_review, supportReports={"openCount": 0})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
-        self.assertIn("Nothing to review.", attention)
+        self.assertNotIn("Nothing to review.", attention)
         self.assertNotIn("overview-attention-row", attention)
         self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
+        self.assertTrue(attention.endswith("</header>"))  # collapsed: header only
 
     FIRST_RUN = dict(
         sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,

@@ -469,7 +469,8 @@ leaves out. An unavailable Health snapshot adds no row. Maps unknown models and
 provider problems are not Needs attention rows; they stay on Devices
 (`/admin/devices?maps=unknown&active=1`) and Providers. Only rows with a positive or unavailable
 count are listed (owner decision 2026-10-06); a measured zero renders no row,
-and when every count is zero the card shows `Nothing to review.` instead. Review
+and when every count is zero the card collapses to its header with `0 Total`
+(owner decision 2026-10-10). Review
 counts come only from the canonical review read model and the support-report
 count, and System checks only from the Health check states; there is no
 fallback from another definition.
