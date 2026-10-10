@@ -5,7 +5,7 @@ canonical: https://terento.app/privacy/
 
 # Privacy
 
-This notice covers the Terento website and macOS app. No account is needed to use the app. Your maps and device records stay on your Mac; the limited diagnostics described below are shared separately.
+This notice covers the Terento website, the macOS app and the web installer. No account is needed. Your maps and device records stay on your Mac or in your browser; the limited diagnostics and statistics described below are shared separately.
 
 ## Who to contact
 
@@ -20,9 +20,27 @@ Two diagnostic streams are enabled by default to improve installation reliabilit
 
 Reports exclude Garmin Unit IDs, serial-number values, account details, local paths, map files and raw logs. Individual reports are private; only reviewed aggregate compatibility results are published. The basis is legitimate interests in improving reliability and device coverage, under GDPR Article 6(1)(f).
 
+## Web installer
+
+The web installer lets you install maps on your watch from Google Chrome, without the app. Chrome reads what it needs from the watch, such as its model, free space and maps, on your computer.
+
+When you choose a map, Terento’s server downloads it from the original provider and passes it to your browser. The copy is made for your request only, is not shared and is deleted once your browser has it, or after two hours if it is not collected. The provider sees Terento’s server, not you.
+
+The page sends short anonymous notes to Terento about each step: whether this browser can be used, whether the watch connected and how each map installation, update or removal ended. They include:
+
+- the watch model and software version
+- the operating system and browser, with their main version numbers
+- the map provider, the map, its size range and whether it was a new installation or an update
+- the step that failed, a fixed reason code and how long writing and checking took
+- a random code created each time the page opens, so the steps of one visit can be grouped
+
+They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
+
+Some data stays in your browser, not on our server: which maps the web installer installed and on which watch, so it can update or remove them safely later; a temporary copy of a map until it is installed; and the language you choose. To recognise the watch, it stores a one-way code made from the watch details and a random value, which cannot be turned back into the serial number. Clearing the web installer’s site data in Chrome removes all of this. The web installer does not load website statistics.
+
 ## Website and app connections
 
-Website, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. Catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando or BBBike, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
+Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando or BBBike, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
 
 These connections serve content, provide requested app functions and protect against abuse. Security processing relies on legitimate interests under GDPR Article 6(1)(f).
 
@@ -46,9 +64,9 @@ The site remembers a language you choose as `terento-language` in local storage.
 
 ## Recipients and storage
 
-Website, API and database hosting use Hostinger; Cloudflare delivers and protects website/API traffic. Umami runs at `stats.enduristas.lt`. See [Cloudflare](https://www.cloudflare.com/privacypolicy/) and [Hostinger](https://www.hostinger.com/legal/privacy-policy) for their processing information. Provider configurations may involve processing outside the EEA; contact us for details of applicable arrangements.
+Website, web installer, API and database hosting use Hostinger; Cloudflare delivers and protects website, web installer and API traffic. Umami runs at `stats.enduristas.lt`. See [Cloudflare](https://www.cloudflare.com/privacypolicy/) and [Hostinger](https://www.hostinger.com/legal/privacy-policy) for their processing information. Provider configurations may involve processing outside the EEA; contact us for details of applicable arrangements.
 
-The retention policy for uploaded app diagnostics is 24 months. Access is restricted to project administration. Encrypted backups of the API database and server configuration are kept on separate equipment controlled by the project for up to 14 days. Support correspondence is kept while needed to resolve the request and related disputes or legal obligations. Contact us about other service-specific storage periods or a particular report.
+The retention policy for uploaded app diagnostics and web installer notes is 24 months. Access is restricted to project administration. Encrypted backups of the API database and server configuration are kept on separate equipment controlled by the project for up to 14 days. Support correspondence is kept while needed to resolve the request and related disputes or legal obligations. Contact us about other service-specific storage periods or a particular report.
 
 ## Your choices and rights
 
@@ -62,11 +80,11 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 9 October 2026.
+Updated: 10 October 2026.
 
 # Datenschutz
 
-Dieser Hinweis gilt für die Terento-Website und die macOS-App. Für die App ist kein Konto nötig. Karten und Gerätedaten bleiben auf deinem Mac; die unten beschriebenen begrenzten Diagnosen werden getrennt übermittelt.
+Dieser Hinweis gilt für die Terento-Website, die macOS-App und den Web-Installer. Ein Konto ist nicht nötig. Karten und Gerätedaten bleiben auf deinem Mac oder in deinem Browser; die unten beschriebenen begrenzten Diagnosen und Statistiken werden getrennt übermittelt.
 
 ## Kontakt
 
@@ -81,9 +99,27 @@ Zwei Diagnoseströme sind standardmäßig aktiviert, um Installation und Kompati
 
 Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokalen Pfade, Kartendateien oder Rohprotokolle. Einzelberichte sind privat; nur geprüfte zusammengefasste Kompatibilitätsergebnisse werden veröffentlicht. Grundlage sind berechtigte Interessen an Zuverlässigkeit und Geräteabdeckung nach Art. 6 Abs. 1 lit. f DSGVO.
 
+## Web-Installer
+
+Mit dem Web-Installer installierst du Karten aus Google Chrome auf deine Uhr, ohne die App. Chrome liest auf deinem Computer, was es von der Uhr braucht, etwa Modell, freien Speicher und Karten.
+
+Wenn du eine Karte wählst, lädt der Terento-Server sie vom ursprünglichen Anbieter und gibt sie an deinen Browser weiter. Die Kopie entsteht nur für deine Anfrage, wird nicht geteilt und gelöscht, sobald dein Browser sie hat, oder nach zwei Stunden, wenn sie nicht abgeholt wird. Der Anbieter sieht den Terento-Server, nicht dich.
+
+Die Seite sendet Terento kurze anonyme Meldungen zu jedem Schritt: ob dieser Browser nutzbar ist, ob die Uhr verbunden wurde und wie jede Installation, Aktualisierung oder Entfernung einer Karte ausging. Sie enthalten:
+
+- Uhrenmodell und Softwareversion
+- Betriebssystem und Browser mit ihrer Hauptversion
+- Kartenanbieter, Karte, Größenbereich und ob es eine neue Installation oder ein Update war
+- den fehlgeschlagenen Schritt, einen festen Grundcode und die Dauer von Schreiben und Prüfen
+- einen zufälligen Code, der bei jedem Öffnen der Seite neu entsteht, damit die Schritte eines Besuchs zusammengehören
+
+Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird nur kurz im Arbeitsspeicher gehalten, um zu begrenzen, wie viele Anfragen ein Computer stellen kann, und nicht gespeichert. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.
+
+Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten der Web-Installer auf welcher Uhr installiert hat, damit er sie später sicher aktualisieren oder entfernen kann, eine vorübergehende Kopie einer Karte bis zur Installation und die gewählte Sprache. Um die Uhr wiederzuerkennen, speichert er einen Einwegcode aus Uhrendaten und einem Zufallswert, aus dem sich die Seriennummer nicht zurückgewinnen lässt. Wenn du in Chrome die Websitedaten des Web-Installers löschst, wird all das entfernt. Der Web-Installer lädt keine Website-Statistik.
+
 ## Verbindungen von Website und App
 
-Bei Website-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. Katalogkarten werden direkt von Freizeitkarte, OpenTopoMap, MapRando oder BBBike geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
+Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando oder BBBike geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
 
 Diese Verbindungen liefern Inhalte, ermöglichen angeforderte Funktionen und schützen vor Missbrauch. Die Sicherheitsverarbeitung beruht auf berechtigten Interessen nach Art. 6 Abs. 1 lit. f DSGVO.
 
@@ -107,9 +143,9 @@ Eine von dir gewählte Sprache wird als `terento-language` im lokalen Speicher g
 
 ## Empfänger und Speicherung
 
-Website, API und Datenbank nutzen Hostinger; Cloudflare liefert und schützt Website-/API-Verkehr. Umami läuft unter `stats.enduristas.lt`. Informationen der Anbieter findest du bei [Cloudflare](https://www.cloudflare.com/privacypolicy/) und [Hostinger](https://www.hostinger.com/legal/privacy-policy). Je nach Konfiguration kann eine Verarbeitung außerhalb des EWR stattfinden; kontaktiere uns zu den geltenden Regelungen.
+Website, Web-Installer, API und Datenbank nutzen Hostinger; Cloudflare liefert und schützt Website-, Web-Installer- und API-Verkehr. Umami läuft unter `stats.enduristas.lt`. Informationen der Anbieter findest du bei [Cloudflare](https://www.cloudflare.com/privacypolicy/) und [Hostinger](https://www.hostinger.com/legal/privacy-policy). Je nach Konfiguration kann eine Verarbeitung außerhalb des EWR stattfinden; kontaktiere uns zu den geltenden Regelungen.
 
-Die Aufbewahrungsrichtlinie für hochgeladene App-Diagnosen beträgt 24 Monate. Zugriff hat nur die Projektverwaltung. Verschlüsselte Sicherungen der API-Datenbank und der Serverkonfiguration werden bis zu 14 Tage auf separater, vom Projekt kontrollierter Hardware aufbewahrt. Support-Nachrichten werden so lange aufbewahrt, wie sie zur Klärung der Anfrage, damit verbundener Streitigkeiten oder gesetzlicher Pflichten nötig sind. Frage uns nach weiteren dienstspezifischen Fristen oder einem bestimmten Bericht.
+Die Aufbewahrungsrichtlinie für hochgeladene App-Diagnosen und Meldungen des Web-Installers beträgt 24 Monate. Zugriff hat nur die Projektverwaltung. Verschlüsselte Sicherungen der API-Datenbank und der Serverkonfiguration werden bis zu 14 Tage auf separater, vom Projekt kontrollierter Hardware aufbewahrt. Support-Nachrichten werden so lange aufbewahrt, wie sie zur Klärung der Anfrage, damit verbundener Streitigkeiten oder gesetzlicher Pflichten nötig sind. Frage uns nach weiteren dienstspezifischen Fristen oder einem bestimmten Bericht.
 
 ## Auswahl und Rechte
 
@@ -123,11 +159,11 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 9. Oktober 2026.
+Aktualisiert: 10. Oktober 2026.
 
 # Confidentialité
 
-Cet avis concerne le site Terento et l’application macOS. Aucun compte n’est nécessaire. Vos cartes et données d’appareil restent sur votre Mac ; les diagnostics limités décrits ci-dessous sont transmis séparément.
+Cet avis concerne le site Terento, l’application macOS et l’installateur web. Aucun compte n’est nécessaire. Vos cartes et données d’appareil restent sur votre Mac ou dans votre navigateur ; les diagnostics et statistiques limités décrits ci-dessous sont transmis séparément.
 
 ## Contact
 
@@ -142,9 +178,27 @@ Deux flux sont activés par défaut pour améliorer la fiabilité et la compatib
 
 Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, comptes, chemins locaux, cartes et journaux bruts. Les rapports individuels sont privés ; seuls des résultats agrégés de compatibilité vérifiés sont publiés. Le fondement est l’intérêt légitime à améliorer la fiabilité et la couverture des appareils, selon l’article 6(1)(f) du RGPD.
 
+## Installateur web
+
+L’installateur web permet d’installer des cartes sur votre montre depuis Google Chrome, sans l’application. Chrome lit sur votre ordinateur ce dont il a besoin, comme le modèle de la montre, l’espace libre et les cartes.
+
+Quand vous choisissez une carte, le serveur de Terento la télécharge depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie est faite pour votre seule demande, n’est pas partagée et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Le fournisseur voit le serveur de Terento, pas vous.
+
+La page envoie à Terento de courtes notes anonymes à chaque étape : si ce navigateur peut être utilisé, si la montre s’est connectée et comment chaque installation, mise à jour ou suppression de carte s’est terminée. Elles contiennent :
+
+- le modèle de la montre et sa version logicielle
+- le système d’exploitation et le navigateur, avec leur version principale
+- le fournisseur, la carte, sa tranche de taille et s’il s’agit d’une nouvelle installation ou d’une mise à jour
+- l’étape en échec, un code de motif fixe et la durée d’écriture et de vérification
+- un code aléatoire créé à chaque ouverture de la page, pour regrouper les étapes d’une même visite
+
+Elles ne contiennent jamais le numéro de série ou l’Unit ID de votre montre, votre adresse IP, des noms de fichiers, la liste des cartes de votre montre ni de texte d’erreur. Votre adresse IP n’est gardée que brièvement en mémoire pour limiter le nombre de requêtes d’un même ordinateur, et n’est pas enregistrée. Ces notes nous montrent quelles montres et quels systèmes et navigateurs fonctionnent et nous aident à corriger les échecs. La base est l’intérêt légitime selon l’article 6(1)(f) du RGPD. La page n’a pas d’interrupteur ; contactez-nous pour vous opposer. Les notes individuelles sont privées et conservées 24 mois.
+
+Certaines données restent dans votre navigateur, pas sur notre serveur : les cartes installées par l’installateur web et sur quelle montre, pour pouvoir les mettre à jour ou les supprimer en toute sécurité, une copie temporaire d’une carte jusqu’à son installation et la langue choisie. Pour reconnaître la montre, il enregistre un code à sens unique tiré des données de la montre et d’une valeur aléatoire, qui ne permet pas de retrouver le numéro de série. Effacer dans Chrome les données du site de l’installateur web supprime tout cela. L’installateur web ne charge pas les statistiques du site.
+
 ## Connexions du site et de l’application
 
-Les requêtes au site, à l’API, au catalogue et aux mises à jour peuvent communiquer votre adresse IP et des métadonnées aux hébergeurs et services de sécurité. Les cartes du catalogue sont téléchargées directement depuis Freizeitkarte, OpenTopoMap, MapRando ou BBBike ; leurs règles de confidentialité s’appliquent à ces connexions. La vérification au démarrage récupère des informations de version, pas l’application.
+Les requêtes au site, à l’installateur web, à l’API, au catalogue et aux mises à jour peuvent communiquer votre adresse IP et des métadonnées aux hébergeurs et services de sécurité. Dans l’application, les cartes du catalogue sont téléchargées directement depuis Freizeitkarte, OpenTopoMap, MapRando ou BBBike ; leurs règles de confidentialité s’appliquent à ces connexions. La vérification au démarrage récupère des informations de version, pas l’application.
 
 Ces connexions fournissent le contenu et les fonctions demandées et protègent contre les abus. Le traitement de sécurité repose sur l’intérêt légitime selon l’article 6(1)(f) du RGPD.
 
@@ -168,9 +222,9 @@ Une langue choisie est mémorisée sous `terento-language` dans le stockage loca
 
 ## Destinataires et conservation
 
-Le site, l’API et la base de données utilisent Hostinger ; Cloudflare assure la diffusion et la protection du trafic. Umami fonctionne à `stats.enduristas.lt`. Consultez [Cloudflare](https://www.cloudflare.com/privacypolicy/) et [Hostinger](https://www.hostinger.com/legal/privacy-policy) pour leurs traitements. Les configurations peuvent impliquer des traitements hors EEE ; contactez-nous pour les modalités applicables.
+Le site, l’installateur web, l’API et la base de données utilisent Hostinger ; Cloudflare assure la diffusion et la protection du trafic. Umami fonctionne à `stats.enduristas.lt`. Consultez [Cloudflare](https://www.cloudflare.com/privacypolicy/) et [Hostinger](https://www.hostinger.com/legal/privacy-policy) pour leurs traitements. Les configurations peuvent impliquer des traitements hors EEE ; contactez-nous pour les modalités applicables.
 
-La politique de conservation des diagnostics transmis est de 24 mois. L’accès est réservé à l’administration du projet. Des sauvegardes chiffrées de la base de données de l’API et de la configuration du serveur sont conservées jusqu’à 14 jours sur un équipement distinct contrôlé par le projet. Les échanges d’assistance sont conservés tant que nécessaires au traitement de la demande, des litiges associés ou des obligations légales. Contactez-nous au sujet d’autres durées propres aux services ou d’un rapport précis.
+La politique de conservation des diagnostics transmis et des notes de l’installateur web est de 24 mois. L’accès est réservé à l’administration du projet. Des sauvegardes chiffrées de la base de données de l’API et de la configuration du serveur sont conservées jusqu’à 14 jours sur un équipement distinct contrôlé par le projet. Les échanges d’assistance sont conservés tant que nécessaires au traitement de la demande, des litiges associés ou des obligations légales. Contactez-nous au sujet d’autres durées propres aux services ou d’un rapport précis.
 
 ## Vos choix et droits
 
@@ -184,11 +238,11 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 9 octobre 2026.
+Mise à jour : 10 octobre 2026.
 
 # Prywatność
 
-Informacja dotyczy witryny Terento i aplikacji macOS. Korzystanie z aplikacji nie wymaga konta. Mapy i dane urządzenia pozostają na Twoim Macu; opisana poniżej ograniczona diagnostyka jest wysyłana oddzielnie.
+Informacja dotyczy witryny Terento, aplikacji macOS i instalatora webowego. Korzystanie z nich nie wymaga konta. Mapy i dane urządzenia pozostają na Twoim Macu lub w przeglądarce; ograniczona diagnostyka i statystyki opisane poniżej są wysyłane oddzielnie.
 
 ## Kontakt
 
@@ -203,9 +257,27 @@ Dwa strumienie są domyślnie włączone, aby poprawiać niezawodność i zgodno
 
 Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, lokalnych ścieżek, map ani surowych logów. Raporty indywidualne są prywatne; publikowane są tylko sprawdzone zbiorcze wyniki zgodności. Podstawą jest uzasadniony interes w poprawie niezawodności i obsługi urządzeń, zgodnie z art. 6 ust. 1 lit. f RODO.
 
+## Instalator webowy
+
+Instalator webowy pozwala instalować mapy na zegarku z Google Chrome, bez aplikacji. Chrome odczytuje z zegarka na Twoim komputerze to, czego potrzebuje, np. model, wolne miejsce i mapy.
+
+Gdy wybierzesz mapę, serwer Terento pobiera ją od pierwotnego dostawcy i przekazuje do Twojej przeglądarki. Kopia powstaje tylko dla Twojego żądania, nie jest udostępniana innym i jest usuwana, gdy przeglądarka ją otrzyma, albo po dwóch godzinach, jeśli nie zostanie odebrana. Dostawca widzi serwer Terento, nie Ciebie.
+
+Strona wysyła do Terento krótkie anonimowe informacje o każdym kroku: czy tej przeglądarki można użyć, czy zegarek się połączył i jak zakończyła się każda instalacja, aktualizacja lub usunięcie mapy. Zawierają one:
+
+- model zegarka i wersję oprogramowania
+- system operacyjny i przeglądarkę z ich główną wersją
+- dostawcę, mapę, przedział rozmiaru oraz to, czy była to nowa instalacja, czy aktualizacja
+- krok, który się nie powiódł, stały kod przyczyny oraz czas zapisu i sprawdzania
+- losowy kod tworzony przy każdym otwarciu strony, aby połączyć kroki jednej wizyty
+
+Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
+
+Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które mapy instalator webowy zainstalował i na którym zegarku, aby później bezpiecznie je aktualizować lub usuwać, tymczasowa kopia mapy do czasu instalacji oraz wybrany język. Aby rozpoznać zegarek, zapisuje jednokierunkowy kod utworzony z danych zegarka i losowej wartości, z którego nie da się odtworzyć numeru seryjnego. Wyczyszczenie w Chrome danych witryny instalatora webowego usuwa to wszystko. Instalator webowy nie ładuje statystyk witryny.
+
 ## Połączenia witryny i aplikacji
 
-Żądania do witryny, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. Mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando lub BBBike; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
+Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando lub BBBike; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
 
 Połączenia dostarczają treści i żądane funkcje oraz chronią przed nadużyciami. Przetwarzanie dla bezpieczeństwa opiera się na uzasadnionym interesie zgodnie z art. 6 ust. 1 lit. f RODO.
 
@@ -229,9 +301,9 @@ Wybrany język jest zapisywany jako `terento-language` w pamięci lokalnej. Ta �
 
 ## Odbiorcy i przechowywanie
 
-Witryna, API i baza danych korzystają z Hostinger; Cloudflare dostarcza i chroni ruch. Umami działa pod `stats.enduristas.lt`. Informacje dostawców znajdziesz w [Cloudflare](https://www.cloudflare.com/privacypolicy/) i [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfiguracje mogą obejmować przetwarzanie poza EOG; zapytaj nas o stosowane rozwiązania.
+Witryna, instalator webowy, API i baza danych korzystają z Hostinger; Cloudflare dostarcza i chroni ruch. Umami działa pod `stats.enduristas.lt`. Informacje dostawców znajdziesz w [Cloudflare](https://www.cloudflare.com/privacypolicy/) i [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfiguracje mogą obejmować przetwarzanie poza EOG; zapytaj nas o stosowane rozwiązania.
 
-Polityka przechowywania wysłanej diagnostyki wynosi 24 miesiące. Dostęp ma administracja projektu. Zaszyfrowane kopie zapasowe bazy danych API i konfiguracji serwera są przechowywane do 14 dni na osobnym sprzęcie kontrolowanym przez projekt. Korespondencja pomocy jest przechowywana tak długo, jak wymaga obsługa zgłoszenia, powiązanych sporów lub obowiązków prawnych. Zapytaj o inne okresy właściwe dla usług lub konkretny raport.
+Polityka przechowywania wysłanej diagnostyki i informacji z instalatora webowego wynosi 24 miesiące. Dostęp ma administracja projektu. Zaszyfrowane kopie zapasowe bazy danych API i konfiguracji serwera są przechowywane do 14 dni na osobnym sprzęcie kontrolowanym przez projekt. Korespondencja pomocy jest przechowywana tak długo, jak wymaga obsługa zgłoszenia, powiązanych sporów lub obowiązków prawnych. Zapytaj o inne okresy właściwe dla usług lub konkretny raport.
 
 ## Twoje wybory i prawa
 
@@ -245,11 +317,11 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 9 października 2026 r.
+Aktualizacja: 10 października 2026 r.
 
 # Soukromí
 
-Oznámení se vztahuje na web Terento a aplikaci macOS. Aplikace nevyžaduje účet. Mapy a záznamy zařízení zůstávají na vašem Macu; omezená diagnostika popsaná níže se sdílí samostatně.
+Oznámení se vztahuje na web Terento, aplikaci macOS a webový instalátor. Nevyžadují účet. Mapy a záznamy zařízení zůstávají na vašem Macu nebo v prohlížeči; omezená diagnostika a statistiky popsané níže se sdílejí samostatně.
 
 ## Kontakt
 
@@ -264,9 +336,27 @@ Dva proudy jsou standardně zapnuté pro zlepšení spolehlivosti a kompatibilit
 
 Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místní cesty, mapy ani surové protokoly. Jednotlivé zprávy jsou soukromé; zveřejňují se jen ověřené souhrnné výsledky kompatibility. Základem jsou oprávněné zájmy na spolehlivosti a pokrytí zařízení podle čl. 6 odst. 1 písm. f GDPR.
 
+## Webový instalátor
+
+Webový instalátor umožňuje instalovat mapy do hodinek z Google Chrome, bez aplikace. Chrome na vašem počítači přečte z hodinek, co potřebuje, například model, volné místo a mapy.
+
+Když zvolíte mapu, server Terento ji stáhne od původního poskytovatele a předá ji vašemu prohlížeči. Kopie vzniká jen pro váš požadavek, nesdílí se a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Poskytovatel vidí server Terento, ne vás.
+
+Stránka posílá Terento krátké anonymní zprávy o každém kroku: zda lze tento prohlížeč použít, zda se hodinky připojily a jak skončila každá instalace, aktualizace nebo odebrání mapy. Obsahují:
+
+- model hodinek a verzi softwaru
+- operační systém a prohlížeč s jejich hlavní verzí
+- poskytovatele, mapu, rozsah velikosti a zda šlo o novou instalaci, nebo aktualizaci
+- krok, který selhal, pevný kód důvodu a dobu zápisu a kontroly
+- náhodný kód vytvořený při každém otevření stránky, aby bylo možné spojit kroky jedné návštěvy
+
+Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
+
+Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: které mapy webový instalátor nainstaloval a do kterých hodinek, aby je později mohl bezpečně aktualizovat nebo odebrat, dočasná kopie mapy do dokončení instalace a zvolený jazyk. K rozpoznání hodinek ukládá jednosměrný kód vytvořený z údajů hodinek a náhodné hodnoty, ze kterého nelze zjistit sériové číslo. Vymazáním dat webu webového instalátoru v Chromu se to vše odstraní. Webový instalátor nenačítá statistiky webu.
+
 ## Připojení webu a aplikace
 
-Požadavky na web, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. Mapy se stahují přímo od Freizeitkarte, OpenTopoMap, MapRando či BBBike; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci.
+Požadavky na web, webový instalátor, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. V aplikaci se mapy stahují přímo od Freizeitkarte, OpenTopoMap, MapRando či BBBike; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci.
 
 Připojení poskytují obsah, požadované funkce a ochranu před zneužitím. Bezpečnostní zpracování se opírá o oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR.
 
@@ -290,9 +380,9 @@ Vybraný jazyk se ukládá jako `terento-language` do místního úložiště. T
 
 ## Příjemci a uchovávání
 
-Web, API a databáze využívají Hostinger; Cloudflare poskytuje a chrání provoz. Umami běží na `stats.enduristas.lt`. Podrobnosti poskytovatelů: [Cloudflare](https://www.cloudflare.com/privacypolicy/) a [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfigurace mohou zahrnovat zpracování mimo EHP; kontaktujte nás pro platná opatření.
+Web, webový instalátor, API a databáze využívají Hostinger; Cloudflare poskytuje a chrání provoz. Umami běží na `stats.enduristas.lt`. Podrobnosti poskytovatelů: [Cloudflare](https://www.cloudflare.com/privacypolicy/) a [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfigurace mohou zahrnovat zpracování mimo EHP; kontaktujte nás pro platná opatření.
 
-Pravidlo uchovávání odeslané diagnostiky je 24 měsíců. Přístup má správa projektu. Šifrované zálohy databáze API a konfigurace serveru se uchovávají až 14 dní na samostatném zařízení pod kontrolou projektu. Korespondence podpory se uchovává po dobu potřebnou k vyřízení žádosti, souvisejících sporů nebo právních povinností. Zeptejte se na další lhůty konkrétních služeb nebo zprávu.
+Pravidlo uchovávání odeslané diagnostiky a zpráv webového instalátoru je 24 měsíců. Přístup má správa projektu. Šifrované zálohy databáze API a konfigurace serveru se uchovávají až 14 dní na samostatném zařízení pod kontrolou projektu. Korespondence podpory se uchovává po dobu potřebnou k vyřízení žádosti, souvisejících sporů nebo právních povinností. Zeptejte se na další lhůty konkrétních služeb nebo zprávu.
 
 ## Vaše volby a práva
 
@@ -306,11 +396,11 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 9. října 2026.
+Aktualizováno: 10. října 2026.
 
 # Privacy
 
-Questa informativa riguarda il sito Terento e l’app macOS. Non serve un account. Mappe e dati del dispositivo restano sul Mac; la diagnostica limitata descritta sotto viene condivisa separatamente.
+Questa informativa riguarda il sito Terento, l’app macOS e l’installer web. Non serve un account. Mappe e dati del dispositivo restano sul Mac o nel browser; la diagnostica e le statistiche limitate descritte sotto vengono condivise separatamente.
 
 ## Contatti
 
@@ -325,9 +415,27 @@ Due flussi sono attivi per impostazione predefinita per migliorare affidabilità
 
 I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, percorsi locali, mappe e log grezzi. I rapporti individuali sono privati; vengono pubblicati solo risultati aggregati di compatibilità verificati. La base è il legittimo interesse a migliorare affidabilità e copertura dei dispositivi, ai sensi dell’art. 6(1)(f) GDPR.
 
+## Installer web
+
+L’installer web ti permette di installare mappe sull’orologio da Google Chrome, senza l’app. Chrome legge dall’orologio, sul tuo computer, ciò che gli serve, come modello, spazio libero e mappe.
+
+Quando scegli una mappa, il server di Terento la scarica dal fornitore originale e la passa al tuo browser. La copia è creata solo per la tua richiesta, non viene condivisa ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Il fornitore vede il server di Terento, non te.
+
+La pagina invia a Terento brevi note anonime su ogni passaggio: se questo browser può essere usato, se l’orologio si è collegato e come si è conclusa ogni installazione, aggiornamento o rimozione di mappa. Contengono:
+
+- modello dell’orologio e versione del software
+- sistema operativo e browser, con la loro versione principale
+- fornitore, mappa, fascia di dimensione e se si trattava di una nuova installazione o di un aggiornamento
+- il passaggio non riuscito, un codice di motivo fisso e la durata di scrittura e verifica
+- un codice casuale creato a ogni apertura della pagina, per raggruppare i passaggi di una visita
+
+Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP resta solo brevemente in memoria per limitare quante richieste può fare un computer e non viene salvato. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.
+
+Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’installer web ha installato e su quale orologio, per poterle aggiornare o rimuovere in sicurezza in seguito, una copia temporanea di una mappa fino all’installazione e la lingua scelta. Per riconoscere l’orologio salva un codice a senso unico ricavato dai dati dell’orologio e da un valore casuale, da cui non si può risalire al numero di serie. Cancellare in Chrome i dati del sito dell’installer web rimuove tutto questo. L’installer web non carica le statistiche del sito.
+
 ## Connessioni del sito e dell’app
 
-Le richieste al sito, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando o BBBike; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
+Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando o BBBike; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
 
 Le connessioni forniscono contenuti e funzioni richieste e proteggono dagli abusi. Il trattamento per sicurezza si basa sul legittimo interesse ai sensi dell’art. 6(1)(f) GDPR.
 
@@ -351,9 +459,9 @@ La lingua scelta viene memorizzata come `terento-language` nella memoria locale.
 
 ## Destinatari e conservazione
 
-Sito, API e database usano Hostinger; Cloudflare distribuisce e protegge il traffico. Umami opera su `stats.enduristas.lt`. Consulta [Cloudflare](https://www.cloudflare.com/privacypolicy/) e [Hostinger](https://www.hostinger.com/legal/privacy-policy) per i loro trattamenti. Le configurazioni possono comportare trattamenti fuori dallo SEE; contattaci per le disposizioni applicabili.
+Sito, installer web, API e database usano Hostinger; Cloudflare distribuisce e protegge il traffico. Umami opera su `stats.enduristas.lt`. Consulta [Cloudflare](https://www.cloudflare.com/privacypolicy/) e [Hostinger](https://www.hostinger.com/legal/privacy-policy) per i loro trattamenti. Le configurazioni possono comportare trattamenti fuori dallo SEE; contattaci per le disposizioni applicabili.
 
-La politica di conservazione della diagnostica inviata è di 24 mesi. L’accesso è riservato all’amministrazione del progetto. I backup cifrati del database dell’API e della configurazione del server sono conservati fino a 14 giorni su un dispositivo separato controllato dal progetto. La corrispondenza di assistenza è conservata finché necessaria per la richiesta, controversie collegate o obblighi legali. Chiedici altri periodi specifici dei servizi o informazioni su un rapporto.
+La politica di conservazione della diagnostica inviata e delle note dell’installer web è di 24 mesi. L’accesso è riservato all’amministrazione del progetto. I backup cifrati del database dell’API e della configurazione del server sono conservati fino a 14 giorni su un dispositivo separato controllato dal progetto. La corrispondenza di assistenza è conservata finché necessaria per la richiesta, controversie collegate o obblighi legali. Chiedici altri periodi specifici dei servizi o informazioni su un rapporto.
 
 ## Scelte e diritti
 
@@ -367,4 +475,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 9 ottobre 2026.
+Aggiornamento: 10 ottobre 2026.

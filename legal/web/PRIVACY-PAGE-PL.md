@@ -1,6 +1,6 @@
 # Prywatność
 
-Informacja dotyczy witryny Terento i aplikacji macOS. Korzystanie z aplikacji nie wymaga konta. Mapy i dane urządzenia pozostają na Twoim Macu; opisana poniżej ograniczona diagnostyka jest wysyłana oddzielnie.
+Informacja dotyczy witryny Terento, aplikacji macOS i instalatora webowego. Korzystanie z nich nie wymaga konta. Mapy i dane urządzenia pozostają na Twoim Macu lub w przeglądarce; ograniczona diagnostyka i statystyki opisane poniżej są wysyłane oddzielnie.
 
 ## Kontakt
 
@@ -15,9 +15,27 @@ Dwa strumienie są domyślnie włączone, aby poprawiać niezawodność i zgodno
 
 Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, lokalnych ścieżek, map ani surowych logów. Raporty indywidualne są prywatne; publikowane są tylko sprawdzone zbiorcze wyniki zgodności. Podstawą jest uzasadniony interes w poprawie niezawodności i obsługi urządzeń, zgodnie z art. 6 ust. 1 lit. f RODO.
 
+## Instalator webowy
+
+Instalator webowy pozwala instalować mapy na zegarku z Google Chrome, bez aplikacji. Chrome odczytuje z zegarka na Twoim komputerze to, czego potrzebuje, np. model, wolne miejsce i mapy.
+
+Gdy wybierzesz mapę, serwer Terento pobiera ją od pierwotnego dostawcy i przekazuje do Twojej przeglądarki. Kopia powstaje tylko dla Twojego żądania, nie jest udostępniana innym i jest usuwana, gdy przeglądarka ją otrzyma, albo po dwóch godzinach, jeśli nie zostanie odebrana. Dostawca widzi serwer Terento, nie Ciebie.
+
+Strona wysyła do Terento krótkie anonimowe informacje o każdym kroku: czy tej przeglądarki można użyć, czy zegarek się połączył i jak zakończyła się każda instalacja, aktualizacja lub usunięcie mapy. Zawierają one:
+
+- model zegarka i wersję oprogramowania
+- system operacyjny i przeglądarkę z ich główną wersją
+- dostawcę, mapę, przedział rozmiaru oraz to, czy była to nowa instalacja, czy aktualizacja
+- krok, który się nie powiódł, stały kod przyczyny oraz czas zapisu i sprawdzania
+- losowy kod tworzony przy każdym otwarciu strony, aby połączyć kroki jednej wizyty
+
+Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
+
+Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które mapy instalator webowy zainstalował i na którym zegarku, aby później bezpiecznie je aktualizować lub usuwać, tymczasowa kopia mapy do czasu instalacji oraz wybrany język. Aby rozpoznać zegarek, zapisuje jednokierunkowy kod utworzony z danych zegarka i losowej wartości, z którego nie da się odtworzyć numeru seryjnego. Wyczyszczenie w Chrome danych witryny instalatora webowego usuwa to wszystko. Instalator webowy nie ładuje statystyk witryny.
+
 ## Połączenia witryny i aplikacji
 
-Żądania do witryny, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. Mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando lub BBBike; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
+Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando lub BBBike; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
 
 Połączenia dostarczają treści i żądane funkcje oraz chronią przed nadużyciami. Przetwarzanie dla bezpieczeństwa opiera się na uzasadnionym interesie zgodnie z art. 6 ust. 1 lit. f RODO.
 
@@ -41,9 +59,9 @@ Wybrany język jest zapisywany jako `terento-language` w pamięci lokalnej. Ta �
 
 ## Odbiorcy i przechowywanie
 
-Witryna, API i baza danych korzystają z Hostinger; Cloudflare dostarcza i chroni ruch. Umami działa pod `stats.enduristas.lt`. Informacje dostawców znajdziesz w [Cloudflare](https://www.cloudflare.com/privacypolicy/) i [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfiguracje mogą obejmować przetwarzanie poza EOG; zapytaj nas o stosowane rozwiązania.
+Witryna, instalator webowy, API i baza danych korzystają z Hostinger; Cloudflare dostarcza i chroni ruch. Umami działa pod `stats.enduristas.lt`. Informacje dostawców znajdziesz w [Cloudflare](https://www.cloudflare.com/privacypolicy/) i [Hostinger](https://www.hostinger.com/legal/privacy-policy). Konfiguracje mogą obejmować przetwarzanie poza EOG; zapytaj nas o stosowane rozwiązania.
 
-Polityka przechowywania wysłanej diagnostyki wynosi 24 miesiące. Dostęp ma administracja projektu. Zaszyfrowane kopie zapasowe bazy danych API i konfiguracji serwera są przechowywane do 14 dni na osobnym sprzęcie kontrolowanym przez projekt. Korespondencja pomocy jest przechowywana tak długo, jak wymaga obsługa zgłoszenia, powiązanych sporów lub obowiązków prawnych. Zapytaj o inne okresy właściwe dla usług lub konkretny raport.
+Polityka przechowywania wysłanej diagnostyki i informacji z instalatora webowego wynosi 24 miesiące. Dostęp ma administracja projektu. Zaszyfrowane kopie zapasowe bazy danych API i konfiguracji serwera są przechowywane do 14 dni na osobnym sprzęcie kontrolowanym przez projekt. Korespondencja pomocy jest przechowywana tak długo, jak wymaga obsługa zgłoszenia, powiązanych sporów lub obowiązków prawnych. Zapytaj o inne okresy właściwe dla usług lub konkretny raport.
 
 ## Twoje wybory i prawa
 
@@ -57,4 +75,4 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 9 października 2026 r.
+Aktualizacja: 10 października 2026 r.

@@ -1,6 +1,6 @@
 # Datenschutz
 
-Dieser Hinweis gilt für die Terento-Website und die macOS-App. Für die App ist kein Konto nötig. Karten und Gerätedaten bleiben auf deinem Mac; die unten beschriebenen begrenzten Diagnosen werden getrennt übermittelt.
+Dieser Hinweis gilt für die Terento-Website, die macOS-App und den Web-Installer. Ein Konto ist nicht nötig. Karten und Gerätedaten bleiben auf deinem Mac oder in deinem Browser; die unten beschriebenen begrenzten Diagnosen und Statistiken werden getrennt übermittelt.
 
 ## Kontakt
 
@@ -15,9 +15,27 @@ Zwei Diagnoseströme sind standardmäßig aktiviert, um Installation und Kompati
 
 Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokalen Pfade, Kartendateien oder Rohprotokolle. Einzelberichte sind privat; nur geprüfte zusammengefasste Kompatibilitätsergebnisse werden veröffentlicht. Grundlage sind berechtigte Interessen an Zuverlässigkeit und Geräteabdeckung nach Art. 6 Abs. 1 lit. f DSGVO.
 
+## Web-Installer
+
+Mit dem Web-Installer installierst du Karten aus Google Chrome auf deine Uhr, ohne die App. Chrome liest auf deinem Computer, was es von der Uhr braucht, etwa Modell, freien Speicher und Karten.
+
+Wenn du eine Karte wählst, lädt der Terento-Server sie vom ursprünglichen Anbieter und gibt sie an deinen Browser weiter. Die Kopie entsteht nur für deine Anfrage, wird nicht geteilt und gelöscht, sobald dein Browser sie hat, oder nach zwei Stunden, wenn sie nicht abgeholt wird. Der Anbieter sieht den Terento-Server, nicht dich.
+
+Die Seite sendet Terento kurze anonyme Meldungen zu jedem Schritt: ob dieser Browser nutzbar ist, ob die Uhr verbunden wurde und wie jede Installation, Aktualisierung oder Entfernung einer Karte ausging. Sie enthalten:
+
+- Uhrenmodell und Softwareversion
+- Betriebssystem und Browser mit ihrer Hauptversion
+- Kartenanbieter, Karte, Größenbereich und ob es eine neue Installation oder ein Update war
+- den fehlgeschlagenen Schritt, einen festen Grundcode und die Dauer von Schreiben und Prüfen
+- einen zufälligen Code, der bei jedem Öffnen der Seite neu entsteht, damit die Schritte eines Besuchs zusammengehören
+
+Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird nur kurz im Arbeitsspeicher gehalten, um zu begrenzen, wie viele Anfragen ein Computer stellen kann, und nicht gespeichert. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.
+
+Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten der Web-Installer auf welcher Uhr installiert hat, damit er sie später sicher aktualisieren oder entfernen kann, eine vorübergehende Kopie einer Karte bis zur Installation und die gewählte Sprache. Um die Uhr wiederzuerkennen, speichert er einen Einwegcode aus Uhrendaten und einem Zufallswert, aus dem sich die Seriennummer nicht zurückgewinnen lässt. Wenn du in Chrome die Websitedaten des Web-Installers löschst, wird all das entfernt. Der Web-Installer lädt keine Website-Statistik.
+
 ## Verbindungen von Website und App
 
-Bei Website-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. Katalogkarten werden direkt von Freizeitkarte, OpenTopoMap, MapRando oder BBBike geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
+Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando oder BBBike geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
 
 Diese Verbindungen liefern Inhalte, ermöglichen angeforderte Funktionen und schützen vor Missbrauch. Die Sicherheitsverarbeitung beruht auf berechtigten Interessen nach Art. 6 Abs. 1 lit. f DSGVO.
 
@@ -41,9 +59,9 @@ Eine von dir gewählte Sprache wird als `terento-language` im lokalen Speicher g
 
 ## Empfänger und Speicherung
 
-Website, API und Datenbank nutzen Hostinger; Cloudflare liefert und schützt Website-/API-Verkehr. Umami läuft unter `stats.enduristas.lt`. Informationen der Anbieter findest du bei [Cloudflare](https://www.cloudflare.com/privacypolicy/) und [Hostinger](https://www.hostinger.com/legal/privacy-policy). Je nach Konfiguration kann eine Verarbeitung außerhalb des EWR stattfinden; kontaktiere uns zu den geltenden Regelungen.
+Website, Web-Installer, API und Datenbank nutzen Hostinger; Cloudflare liefert und schützt Website-, Web-Installer- und API-Verkehr. Umami läuft unter `stats.enduristas.lt`. Informationen der Anbieter findest du bei [Cloudflare](https://www.cloudflare.com/privacypolicy/) und [Hostinger](https://www.hostinger.com/legal/privacy-policy). Je nach Konfiguration kann eine Verarbeitung außerhalb des EWR stattfinden; kontaktiere uns zu den geltenden Regelungen.
 
-Die Aufbewahrungsrichtlinie für hochgeladene App-Diagnosen beträgt 24 Monate. Zugriff hat nur die Projektverwaltung. Verschlüsselte Sicherungen der API-Datenbank und der Serverkonfiguration werden bis zu 14 Tage auf separater, vom Projekt kontrollierter Hardware aufbewahrt. Support-Nachrichten werden so lange aufbewahrt, wie sie zur Klärung der Anfrage, damit verbundener Streitigkeiten oder gesetzlicher Pflichten nötig sind. Frage uns nach weiteren dienstspezifischen Fristen oder einem bestimmten Bericht.
+Die Aufbewahrungsrichtlinie für hochgeladene App-Diagnosen und Meldungen des Web-Installers beträgt 24 Monate. Zugriff hat nur die Projektverwaltung. Verschlüsselte Sicherungen der API-Datenbank und der Serverkonfiguration werden bis zu 14 Tage auf separater, vom Projekt kontrollierter Hardware aufbewahrt. Support-Nachrichten werden so lange aufbewahrt, wie sie zur Klärung der Anfrage, damit verbundener Streitigkeiten oder gesetzlicher Pflichten nötig sind. Frage uns nach weiteren dienstspezifischen Fristen oder einem bestimmten Bericht.
 
 ## Auswahl und Rechte
 
@@ -57,4 +75,4 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 9. Oktober 2026.
+Aktualisiert: 10. Oktober 2026.

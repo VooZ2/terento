@@ -1,12 +1,12 @@
 # Note legali
 
-Terento è un’app macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin. Queste note riguardano l’app e questo sito.
+Terento è un’app macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin. Con l’installer web puoi installare mappe anche da Google Chrome. Queste note riguardano l’app, l’installer web e questo sito.
 
 ## Il progetto
 
 Terento è un progetto indipendente pubblicato da un privato. Scopri l’autore nella pagina [Informazioni](/it/about/). Contatto: [hello@terento.app](mailto:hello@terento.app).
 
-L’app è una beta pubblica per Mac con Apple Silicon. La compatibilità viene valutata per ogni modello e variante esatta di orologio. Controlla la [compatibilità](/it/compatibility/) prima dell’uso. Le donazioni sono facoltative e non sbloccano funzioni, mappe o fornitori.
+L’app è una beta pubblica per Mac con Apple Silicon. Anche l’installer web è una beta e richiede Google Chrome su un computer. La compatibilità viene valutata per ogni modello e variante esatta di orologio. Controlla la [compatibilità](/it/compatibility/) prima dell’uso. Le donazioni sono facoltative e non sbloccano funzioni, mappe o fornitori.
 
 ## Licenze del software e dei componenti
 
@@ -20,11 +20,11 @@ La licenza software non concede diritti sul marchio Terento. Le versioni modific
 
 Le mappe provengono da [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/) e [BBBike](https://garmin.bbbike.org) e restano soggette alle licenze dei fornitori e all’[attribuzione OpenStreetMap](https://www.openstreetmap.org/copyright). Le mappe importate dall’utente mantengono le proprie condizioni.
 
-Terento non crea queste mappe, non ne cambia la licenza e non ospita, replica o ridistribuisce i file sui propri server. Le mappe del catalogo vengono scaricate dal fornitore originale sul Mac e poi sull’orologio. Per la pagina [Stili di mappa](/it/map-styles/), il server di Terento scarica temporaneamente alcune mappe del catalogo dal fornitore originale, ne ricava piccole immagini di anteprima e poi elimina i file delle mappe. Le anteprime riportano l’attribuzione del fornitore e di OpenStreetMap.
+Terento non crea queste mappe, non ne cambia la licenza, non gestisce una libreria di mappe e non replica i file dei fornitori. Nell’app le mappe del catalogo vengono scaricate dal fornitore originale sul Mac e poi sull’orologio. Con l’installer web, il server di Terento scarica la mappa scelta dal fornitore originale e la passa al tuo browser. Questa copia serve solo alla tua richiesta ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Per la pagina [Stili di mappa](/it/map-styles/), il server di Terento scarica temporaneamente alcune mappe del catalogo dal fornitore originale, ne ricava piccole immagini di anteprima e poi elimina i file delle mappe. Le anteprime riportano l’attribuzione del fornitore e di OpenStreetMap.
 
 ## Nomi e indipendenza
 
-Garmin e i nomi dei suoi prodotti sono marchi di Garmin Ltd. Apple, Mac, macOS e Apple Silicon sono marchi di Apple Inc. Sono usati a scopo descrittivo. Terento non è affiliato, approvato o certificato da nessuna delle due società.
+Garmin e i nomi dei suoi prodotti sono marchi di Garmin Ltd. Apple, Mac, macOS e Apple Silicon sono marchi di Apple Inc. Google e Chrome sono marchi di Google LLC. Sono usati a scopo descrittivo. Terento non è affiliato, approvato o certificato da nessuna di queste società.
 
 ## Beta e diritti dell’utente
 
@@ -36,4 +36,4 @@ Nessuna nota esclude o limita la responsabilità quando la legge lo vieta, anche
 
 Per il trattamento dei dati, la diagnostica e le statistiche del sito, leggi l’[informativa sulla privacy](/privacy/).
 
-Aggiornamento: 5 settembre 2026.
+Aggiornamento: 10 ottobre 2026.

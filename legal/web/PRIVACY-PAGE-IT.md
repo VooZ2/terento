@@ -1,6 +1,6 @@
 # Privacy
 
-Questa informativa riguarda il sito Terento e l’app macOS. Non serve un account. Mappe e dati del dispositivo restano sul Mac; la diagnostica limitata descritta sotto viene condivisa separatamente.
+Questa informativa riguarda il sito Terento, l’app macOS e l’installer web. Non serve un account. Mappe e dati del dispositivo restano sul Mac o nel browser; la diagnostica e le statistiche limitate descritte sotto vengono condivise separatamente.
 
 ## Contatti
 
@@ -15,9 +15,27 @@ Due flussi sono attivi per impostazione predefinita per migliorare affidabilità
 
 I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, percorsi locali, mappe e log grezzi. I rapporti individuali sono privati; vengono pubblicati solo risultati aggregati di compatibilità verificati. La base è il legittimo interesse a migliorare affidabilità e copertura dei dispositivi, ai sensi dell’art. 6(1)(f) GDPR.
 
+## Installer web
+
+L’installer web ti permette di installare mappe sull’orologio da Google Chrome, senza l’app. Chrome legge dall’orologio, sul tuo computer, ciò che gli serve, come modello, spazio libero e mappe.
+
+Quando scegli una mappa, il server di Terento la scarica dal fornitore originale e la passa al tuo browser. La copia è creata solo per la tua richiesta, non viene condivisa ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Il fornitore vede il server di Terento, non te.
+
+La pagina invia a Terento brevi note anonime su ogni passaggio: se questo browser può essere usato, se l’orologio si è collegato e come si è conclusa ogni installazione, aggiornamento o rimozione di mappa. Contengono:
+
+- modello dell’orologio e versione del software
+- sistema operativo e browser, con la loro versione principale
+- fornitore, mappa, fascia di dimensione e se si trattava di una nuova installazione o di un aggiornamento
+- il passaggio non riuscito, un codice di motivo fisso e la durata di scrittura e verifica
+- un codice casuale creato a ogni apertura della pagina, per raggruppare i passaggi di una visita
+
+Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP resta solo brevemente in memoria per limitare quante richieste può fare un computer e non viene salvato. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.
+
+Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’installer web ha installato e su quale orologio, per poterle aggiornare o rimuovere in sicurezza in seguito, una copia temporanea di una mappa fino all’installazione e la lingua scelta. Per riconoscere l’orologio salva un codice a senso unico ricavato dai dati dell’orologio e da un valore casuale, da cui non si può risalire al numero di serie. Cancellare in Chrome i dati del sito dell’installer web rimuove tutto questo. L’installer web non carica le statistiche del sito.
+
 ## Connessioni del sito e dell’app
 
-Le richieste al sito, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando o BBBike; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
+Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando o BBBike; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
 
 Le connessioni forniscono contenuti e funzioni richieste e proteggono dagli abusi. Il trattamento per sicurezza si basa sul legittimo interesse ai sensi dell’art. 6(1)(f) GDPR.
 
@@ -41,9 +59,9 @@ La lingua scelta viene memorizzata come `terento-language` nella memoria locale.
 
 ## Destinatari e conservazione
 
-Sito, API e database usano Hostinger; Cloudflare distribuisce e protegge il traffico. Umami opera su `stats.enduristas.lt`. Consulta [Cloudflare](https://www.cloudflare.com/privacypolicy/) e [Hostinger](https://www.hostinger.com/legal/privacy-policy) per i loro trattamenti. Le configurazioni possono comportare trattamenti fuori dallo SEE; contattaci per le disposizioni applicabili.
+Sito, installer web, API e database usano Hostinger; Cloudflare distribuisce e protegge il traffico. Umami opera su `stats.enduristas.lt`. Consulta [Cloudflare](https://www.cloudflare.com/privacypolicy/) e [Hostinger](https://www.hostinger.com/legal/privacy-policy) per i loro trattamenti. Le configurazioni possono comportare trattamenti fuori dallo SEE; contattaci per le disposizioni applicabili.
 
-La politica di conservazione della diagnostica inviata è di 24 mesi. L’accesso è riservato all’amministrazione del progetto. I backup cifrati del database dell’API e della configurazione del server sono conservati fino a 14 giorni su un dispositivo separato controllato dal progetto. La corrispondenza di assistenza è conservata finché necessaria per la richiesta, controversie collegate o obblighi legali. Chiedici altri periodi specifici dei servizi o informazioni su un rapporto.
+La politica di conservazione della diagnostica inviata e delle note dell’installer web è di 24 mesi. L’accesso è riservato all’amministrazione del progetto. I backup cifrati del database dell’API e della configurazione del server sono conservati fino a 14 giorni su un dispositivo separato controllato dal progetto. La corrispondenza di assistenza è conservata finché necessaria per la richiesta, controversie collegate o obblighi legali. Chiedici altri periodi specifici dei servizi o informazioni su un rapporto.
 
 ## Scelte e diritti
 
@@ -57,4 +75,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 9 ottobre 2026.
+Aggiornamento: 10 ottobre 2026.
