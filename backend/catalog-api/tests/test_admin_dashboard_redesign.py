@@ -246,25 +246,26 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertLess(positions[0], card_positions[0])
         self.assertLess(card_positions[1], positions[1])
         self.assertEqual(main.count("<div class='web-installer-grid'>"), 3)
+        # Number columns share one width so side-by-side cards line up.
+        self.assertIn(".first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}", ADMIN_STYLES)
         self.assertNotIn("<h3>", main)
 
         def card(card_id):
             return main.split(f"id='{card_id}'", 1)[1].split("</section>", 1)[0]
 
-        def row(label, count, share, hint="", of="of sessions"):
-            hint = f"<small class='funnel-hint'>{hint}</small>" if hint else ""
-            return (f"<tr><td>{label}{hint}</td><td class='column-number'>{count}</td>"
+        def row(label, count, share, of="of sessions"):
+            return (f"<tr><td>{label}</td><td class='column-number'>{count}</td>"
                     f"<td class='column-number'>{share}<span class='sr-only'> {of}</span></td></tr>")
         self.assertIn(row("No watch plugged in", 1, "100%", of="of never-connected sessions"),
                       card("first-run-not-connected"))
         self.assertIn("<th scope='col'>Result</th><th scope='col' class='column-number'>Sessions</th>"
                       "<th scope='col' class='column-number'>Share</th>", card("first-run-connection"))
         self.assertIn(row("No watch plugged in", 1, "20%"), card("first-run-connection"))
-        self.assertIn("<p class='admin-card-note muted-value'>Every session, including those that connected later.</p>",
-                      card("first-run-connection"))
         permission = card("first-run-permission")
-        self.assertIn(row("Approved", 3, "60%") + row(
-            "Pending", 1, "20%", "Model not in the catalog, or its Maps value is unknown or mixed"), permission)
+        self.assertIn(row("Approved", 3, "60%") + row("Pending", 1, "20%"), permission)
+        # Owner 2026-10-10: Admin uses no explanatory text (no notes, no hints).
+        for gone in ("admin-card-note", "funnel-hint", "Model not in the catalog", "Every session, including"):
+            self.assertNotIn(gone, main)
         self.assertIn("<tr><td><a href='/admin/devices?search=fenix+8'>fenix 8</a></td><td>Pending</td>"
                       "<td>Not in catalog</td><td class='column-number'>1</td></tr>", card("first-run-models"))
         self.assertIn(row("Loaded", 4, "80%"), card("first-run-catalog"))
@@ -335,10 +336,8 @@ class DashboardPresentationTests(unittest.TestCase):
         all_connected = first_run_page(_funnel(sessions=3, connected=3, never_connected=0, remote=3,
                                                blocked_authorization=1, local_capability=2),
                                        {"username": "operator"}, "csrf", period="24h").decode()
-        self.assertNotIn("admin-card-note", all_connected.split("id='first-run-not-connected'", 1)[1].split("</section>", 1)[0])
         self.assertIn("<td>Watch not identified</td>", all_connected)
-        self.assertIn("<td>Not allowed for this watch<small class='funnel-hint'>"
-                      "Install was refused because the watch was not approved</small></td>", all_connected)
+        self.assertIn("<td>Not allowed for this watch</td>", all_connected)
         # The never-connected breakdown counts only those sessions, including
         # ones that closed before any connection signal.
         explained = first_run_page(_funnel(sessions=6, connected=2, never_connected=4, no_usb=5, never={
@@ -346,7 +345,6 @@ class DashboardPresentationTests(unittest.TestCase):
             "outcomes": [{"outcome": "TIMEOUT_NO_USB", "sessionCount": 2}, {"outcome": "BUSY", "sessionCount": 1}],
         }), {"username": "operator"}, "csrf", period="24h").decode()
         group = explained.split("id='first-run-not-connected'", 1)[1].split("</section>", 1)[0]
-        self.assertIn("Sessions that never connected; one can show several signals.", group)
         self.assertLess(group.index("No watch plugged in"), group.index("Closed before any watch signal"))
         self.assertIn("<td class='column-number'>25%<span class='sr-only'> of never-connected sessions</span></td>", group)
 

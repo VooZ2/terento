@@ -392,19 +392,14 @@ two-entry legend. Then three topics, each a heading with two cards side by
 side above 900 px: `Connecting the watch` (`Why not connected`, `Connection
 problems`), `Install permission` (`Permission check`, `Waiting models`) and
 `Maps` (`Map list`, `Install blocked`). Every outcome card is a table with
-Result (label and, for non-obvious outcomes, one short muted meaning, for
-example Pending `Model not in the catalog, or its Maps value is unknown or
-mixed`, Catalog unavailable `The policy check failed (network or server);
-nothing was written`, Built-in copy `The server catalog did not load; the app
-used its bundled list`), Sessions and Share, largest first; zero rows are
-omitted and an empty card says so. `Why not connected` covers only sessions
-that never connected: their `DEVICE_CONNECT` signals plus `Closed before any
-watch signal` for never-connected sessions with no connection signal, with the
-share of the never-connected count and the muted note `Sessions that never
-connected; one can show several signals.` (without such sessions it says
-`Every session connected a watch.`). `Connection problems` lists every
-non-connected `DEVICE_CONNECT` outcome across all sessions with the muted note
-`Every session, including those that connected later.` `Permission check`
+Result, Sessions and Share, largest first; zero rows are omitted and an empty
+card says so. The page has no explanatory text: no lead, card notes or
+per-row meanings (owner rule 2026-10-10). `Why not connected` covers only
+sessions that never connected: their `DEVICE_CONNECT` signals plus `Closed
+before any watch signal` for never-connected sessions with no connection
+signal, with the share of the never-connected count (without such sessions it
+says `Every session connected a watch.`). `Connection problems` lists every
+non-connected `DEVICE_CONNECT` outcome across all sessions. `Permission check`
 (the `AUTHORIZATION` stage), `Map list` (`CATALOG`) and `Install blocked` show
 their shares of the period's sessions. `Waiting models` lists the models
 waiting for review, most sessions first: the model linking to Devices filtered

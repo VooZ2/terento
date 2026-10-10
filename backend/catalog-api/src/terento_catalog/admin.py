@@ -2273,23 +2273,6 @@ _FUNNEL_GROUPS: tuple[tuple[str, str, dict[str, str]], ...] = (
         "LOCAL_CAPABILITY": "Watch not identified", "OTHER": "Other",
     }),
 )
-# One short visible meaning per non-obvious outcome (stage, outcome).
-_FUNNEL_HINTS = {
-    ("AUTHORIZATION", "PENDING"): "Model not in the catalog, or its Maps value is unknown or mixed",
-    ("AUTHORIZATION", "OUT_OF_SCOPE"): "The catalog says this model has no maps",
-    ("AUTHORIZATION", "UNKNOWN_MODEL"): "The watch reported no usable model name",
-    ("AUTHORIZATION", "AMBIGUOUS"): "The watch reported conflicting model names",
-    ("AUTHORIZATION", "CATALOG_UNAVAILABLE"): "The policy check failed (network or server); nothing was written",
-    ("AUTHORIZATION", "UPDATE_REQUIRED"): "This app version is too old for the current policy",
-    ("CATALOG", "REMOTE_PARTIAL"): "Some map packages were left out as invalid",
-    ("CATALOG", "BUNDLED_FALLBACK"): "The server catalog did not load; the app used its bundled list",
-    ("CATALOG", "UPDATE_REQUIRED"): "This app version is too old for the current catalog",
-    ("INSTALL_BLOCKED", "AUTHORIZATION"): "Install was refused because the watch was not approved",
-}
-_FUNNEL_NOTES = {
-    "Connection problems": "Every session, including those that connected later.",
-    "Why not connected": "Sessions that never connected; one can show several signals.",
-}
 # What the current policy says about a waiting model (diagnostic only).
 _FUNNEL_MODEL_STATUS = {
     "NOT_IN_CATALOG": "Not in catalog",
@@ -2335,18 +2318,18 @@ def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
         for item in funnel.get("modelsNeedingReview") or []
         if isinstance(item, dict) and item.get("baseModel")
     ), key=lambda model: (-model[1], model[0]))
-    groups: list[tuple[str, list[tuple[str, int, str]]]] = []
+    groups: list[tuple[str, list[tuple[str, int]]]] = []
     never = funnel.get("neverConnected") if isinstance(funnel.get("neverConnected"), dict) else None
     never_count = _optional_nonnegative_int(funnel.get("neverConnectedSessionCount"))
     if never is not None and never_count:
         rows = [
             (_FUNNEL_CONNECT_LABELS.get(str(item.get("outcome")), str(item.get("outcome")).replace("_", " ").capitalize()),
-             _optional_nonnegative_int(item.get("sessionCount")) or 0, "")
+             _optional_nonnegative_int(item.get("sessionCount")) or 0)
             for item in never.get("outcomes") or [] if isinstance(item, dict)
         ]
         silent = _optional_nonnegative_int(never.get("withoutConnectionSignalCount")) or 0
         if silent:
-            rows.append(("Closed before any watch signal", silent, ""))
+            rows.append(("Closed before any watch signal", silent))
         groups.append(("Why not connected", sorted(
             [row for row in rows if row[1]], key=lambda row: (-row[1], row[0]))))
     for title, stage, labels in _FUNNEL_GROUPS:
@@ -2355,7 +2338,7 @@ def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
             if value and not (stage == "DEVICE_CONNECT" and key == "CONNECTED")
         }
         groups.append((title, [
-            (labels.get(key, key.replace("_", " ").capitalize()), value, _FUNNEL_HINTS.get((stage, key), ""))
+            (labels.get(key, key.replace("_", " ").capitalize()), value)
             for key, value in sorted(items.items(), key=lambda item: (-item[1], item[0]))
         ]))
     trend = [
@@ -2490,28 +2473,25 @@ def _funnel_table(caption: str, headers: list[str], rows: list[str]) -> str:
     )
 
 
-def _funnel_group_card(title: str, items: list[tuple[str, int, str]], display: dict[str, Any], period: str) -> str:
-    """One outcome group: result (with its meaning), sessions and share of the
-    group's population, largest first; zero rows are not listed."""
+def _funnel_group_card(title: str, items: list[tuple[str, int]], display: dict[str, Any]) -> str:
+    """One outcome group: result, sessions and share of the group's
+    population, largest first; zero rows are not listed (no explanatory text,
+    owner 2026-10-10)."""
     card_id = _FUNNEL_CARD_IDS[title]
     whole = display["neverConnected"] if title == "Why not connected" else display["sessions"]
     of = "of never-connected sessions" if title == "Why not connected" else "of sessions"
     if not items:
         body = _empty_state("empty", _FUNNEL_EMPTY.get(title, "Nothing in this period."))
     else:
-        note = _FUNNEL_NOTES.get(title)
-        body = (f"<p class='admin-card-note muted-value'>{html.escape(note)}</p>" if note else "") + _funnel_table(
-            title, ["Result", "#Sessions", "#Share"], [
-                f"<tr><td>{html.escape(label)}"
-                + (f"<small class='funnel-hint'>{html.escape(hint)}</small>" if hint else "")
-                + f"</td><td class='column-number'>{value:,}</td>"
-                f"<td class='column-number'>{_funnel_share(value, whole) or '—'}<span class='sr-only'> {of}</span></td></tr>"
-                for label, value, hint in items
-            ])
+        body = _funnel_table(title, ["Result", "#Sessions", "#Share"], [
+            f"<tr><td>{html.escape(label)}</td><td class='column-number'>{value:,}</td>"
+            f"<td class='column-number'>{_funnel_share(value, whole) or '—'}<span class='sr-only'> {of}</span></td></tr>"
+            for label, value in items
+        ])
     return _section_card(title, body, card_id=card_id)
 
 
-def _funnel_waiting_card(display: dict[str, Any], period: str) -> str:
+def _funnel_waiting_card(display: dict[str, Any]) -> str:
     """Models the permission check could not approve, with what the current
     catalog says about each (diagnostic only; never grants write authority)."""
     waiting = display.get("waiting") or []
@@ -2539,8 +2519,8 @@ def _funnel_page_body(funnel: dict[str, Any] | None, period: str, time_zone: str
     parts = "".join(
         f"<h2 class='web-installer-part'>{html.escape(heading)}</h2><div class='web-installer-grid'>"
         + "".join(
-            _funnel_waiting_card(display, period) if title == "Waiting models"
-            else _funnel_group_card(title, groups.get(title, []), display, period)
+            _funnel_waiting_card(display) if title == "Waiting models"
+            else _funnel_group_card(title, groups.get(title, []), display)
             for title in titles
         ) + "</div>"
         for heading, titles in _FUNNEL_PARTS
@@ -10518,6 +10498,8 @@ ADMIN_DROPDOWN_STYLES = """
 ADMIN_STYLES += ADMIN_DROPDOWN_STYLES
 ADMIN_STYLES += """
 .admin-card-note{margin:0 0 12px;font-size:13px}
+/* First run tables: number columns share one width so side-by-side cards line up. */
+.first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}
 .web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
 .web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
 @media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
