@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20261006-map-styles-shell-v1"
+SHELL_VERSION = "20261010-web-installer-shell-v1"
 PROVIDER_SCRIPT_VERSION = "20261006-map-styles-link-v1"
 STYLE_VERSION = "20261007-map-styles-v8"
 IMAGE_VERSION = "20260912-app-screens-v2"
@@ -19,13 +19,16 @@ COMPATIBILITY_LOCALES_VERSION = "20260918-compatibility-successful-snapshot-v1"
 COMPATIBILITY_VERSION = "20260918-compatibility-successful-snapshot-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 PAGE_LANGUAGE_VERSION = "20261006-shared-page-language-v2"
+# Footer Web installer link (lab host until the terento.app/install/ launch).
+# Localized pages add ?lang=; site-shell.js sets it on Legal/Privacy after a language switch.
+WEB_INSTALLER_URL = "https://lab.terento.app/install/"
 LOCALES = {
-    "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "styles": "Maps", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "troubleshooting": "Troubleshooting", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento"},
-    "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "styles": "Karten", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "troubleshooting": "Fehlerbehebung", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento"},
-    "fr": {"flag": "🇫🇷", "name": "Français", "home": "Accueil Terento", "primary": "Navigation principale", "menu": "Menu", "close": "Fermer le menu", "about": "À propos", "styles": "Cartes", "compatibility": "Compatibilité", "guide": "Guide", "faq": "FAQ", "troubleshooting": "Dépannage", "download": "Télécharger", "language": "Choisir la langue", "footer": "Navigation du pied de page", "status": "Projet open source", "legal": "Mentions légales", "privacy": "Confidentialité", "support": "Support Terento"},
-    "pl": {"flag": "🇵🇱", "name": "Polski", "home": "Strona główna Terento", "primary": "Główna nawigacja", "menu": "Menu", "close": "Zamknij menu", "about": "O projekcie", "styles": "Mapy", "compatibility": "Kompatybilność", "guide": "Poradnik", "faq": "FAQ", "troubleshooting": "Rozwiązywanie problemów", "download": "Pobierz", "language": "Wybierz język", "footer": "Nawigacja w stopce", "status": "Projekt open source", "legal": "Informacje prawne", "privacy": "Prywatność", "support": "Support Terento"},
-    "cs": {"flag": "🇨🇿", "name": "Čeština", "home": "Domů Terento", "primary": "Hlavní navigace", "menu": "Menu", "close": "Zavřít menu", "about": "O projektu", "styles": "Mapy", "compatibility": "Kompatibilita", "guide": "Průvodce", "faq": "FAQ", "troubleshooting": "Řešení potíží", "download": "Stáhnout", "language": "Vybrat jazyk", "footer": "Navigace v zápatí", "status": "Open-source projekt", "legal": "Právní informace", "privacy": "Soukromí", "support": "Support Terento"},
-    "it": {"flag": "🇮🇹", "name": "Italiano", "home": "Home Terento", "primary": "Navigazione principale", "menu": "Menu", "close": "Chiudi menu", "about": "Informazioni", "styles": "Mappe", "compatibility": "Compatibilità", "guide": "Guida", "faq": "FAQ", "troubleshooting": "Risoluzione dei problemi", "download": "Scarica", "language": "Scegli la lingua", "footer": "Navigazione del piè di pagina", "status": "Progetto open source", "legal": "Note legali", "privacy": "Privacy", "support": "Support Terento"},
+    "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "styles": "Maps", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "troubleshooting": "Troubleshooting", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "web_installer": "Web installer"},
+    "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "styles": "Karten", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "troubleshooting": "Fehlerbehebung", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "web_installer": "Web-Installer"},
+    "fr": {"flag": "🇫🇷", "name": "Français", "home": "Accueil Terento", "primary": "Navigation principale", "menu": "Menu", "close": "Fermer le menu", "about": "À propos", "styles": "Cartes", "compatibility": "Compatibilité", "guide": "Guide", "faq": "FAQ", "troubleshooting": "Dépannage", "download": "Télécharger", "language": "Choisir la langue", "footer": "Navigation du pied de page", "status": "Projet open source", "legal": "Mentions légales", "privacy": "Confidentialité", "support": "Support Terento", "web_installer": "Installateur web"},
+    "pl": {"flag": "🇵🇱", "name": "Polski", "home": "Strona główna Terento", "primary": "Główna nawigacja", "menu": "Menu", "close": "Zamknij menu", "about": "O projekcie", "styles": "Mapy", "compatibility": "Kompatybilność", "guide": "Poradnik", "faq": "FAQ", "troubleshooting": "Rozwiązywanie problemów", "download": "Pobierz", "language": "Wybierz język", "footer": "Nawigacja w stopce", "status": "Projekt open source", "legal": "Informacje prawne", "privacy": "Prywatność", "support": "Support Terento", "web_installer": "Instalator webowy"},
+    "cs": {"flag": "🇨🇿", "name": "Čeština", "home": "Domů Terento", "primary": "Hlavní navigace", "menu": "Menu", "close": "Zavřít menu", "about": "O projektu", "styles": "Mapy", "compatibility": "Kompatibilita", "guide": "Průvodce", "faq": "FAQ", "troubleshooting": "Řešení potíží", "download": "Stáhnout", "language": "Vybrat jazyk", "footer": "Navigace v zápatí", "status": "Open-source projekt", "legal": "Právní informace", "privacy": "Soukromí", "support": "Support Terento", "web_installer": "Webový instalátor"},
+    "it": {"flag": "🇮🇹", "name": "Italiano", "home": "Home Terento", "primary": "Navigazione principale", "menu": "Menu", "close": "Chiudi menu", "about": "Informazioni", "styles": "Mappe", "compatibility": "Compatibilità", "guide": "Guida", "faq": "FAQ", "troubleshooting": "Risoluzione dei problemi", "download": "Scarica", "language": "Scegli la lingua", "footer": "Navigazione del piè di pagina", "status": "Progetto open source", "legal": "Note legali", "privacy": "Privacy", "support": "Support Terento", "web_installer": "Installer web"},
 }
 
 
@@ -55,6 +58,7 @@ def language_links(locale: str, route: str, location: str, in_page: bool = False
 def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     copy = LOCALES[locale]
     root = localized_root(locale)
+    web_installer = WEB_INSTALLER_URL if locale == "en" else f"{WEB_INSTALLER_URL}?lang={locale}"
     compatibility = route_for(locale, "compatibility/")
     download = route_for(locale, "download/")
     guide = route_for(locale, "guides/install-garmin-maps-mac/")
@@ -117,7 +121,8 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
           <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">{copy["status"]}</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">{copy["support"]}</a></div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="{copy["footer"]}">
-          {nav_link("about", location="footer-nav")}{nav_link("compatibility", location="footer-nav")}{nav_link("styles", location="footer-nav")}{nav_link("guide", location="footer-nav")}{nav_link("faq", location="footer-nav")}{nav_link("troubleshooting", location="footer-nav")}{nav_link("download", location="footer-nav")}
+          {nav_link("faq", location="footer-nav")}{nav_link("troubleshooting", location="footer-nav")}
+          <a data-shell-copy="web_installer" href="{web_installer}"{umami_attributes("web-installer-link-click", "footer-nav")}>{copy["web_installer"]}</a>
           <a data-shell-copy="legal" href="/legal/"{umami_attributes("legal-link-click", "footer-nav")}>{copy["legal"]}</a>
           <a data-shell-copy="privacy" href="/privacy/"{umami_attributes("privacy-link-click", "footer-nav")}>{copy["privacy"]}</a>
         </nav>
