@@ -786,7 +786,12 @@ struct Stage1ProviderNeutralTests {
             let parser = GarminIMGMetadataParser()
             let versionParser = OpenTopoMapVersionParser()
 
-            let allRowsPass = packages.count == 177 && packages.allSatisfy { package in
+            // The bundled catalog is exact; a live catalog lists only installable maps.
+            let usesBundledCatalog = identityContractCatalogURL == packageRoot.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            )
+            let allRowsPass = (usesBundledCatalog ? packages.count == 177 : !packages.isEmpty)
+                && packages.allSatisfy { package in
                 let providerRegion = package.providerRegionId
                 let version = package.version
                 let day = 24
@@ -888,7 +893,12 @@ struct Stage1ProviderNeutralTests {
             let packages = catalog.packages.filter { $0.providerId == "freizeitkarte" }
             let parser = GarminIMGMetadataParser()
 
-            let allRowsPass = packages.count == 63 && packages.allSatisfy { package in
+            // The bundled catalog is exact; a live catalog lists only installable maps.
+            let usesBundledCatalog = identityContractCatalogURL == packageRoot.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            )
+            let allRowsPass = (usesBundledCatalog ? packages.count == 63 : !packages.isEmpty)
+                && packages.allSatisfy { package in
                 let metadata = parser.parse(
                     Array(
                         makeFreizeitkarteIMG(token: package.providerRegionId, version: package.version)
