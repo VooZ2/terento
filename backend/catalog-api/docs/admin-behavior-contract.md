@@ -693,8 +693,9 @@ card carries no visible country/install count line; the world map's accessible
 name states when coverage is empty or partially unavailable. Russia, where maps
 are never offered, is hatched grey instead of shaded as zero installs; its
 tooltip shows only the country name, with no explanatory text. The map opens at
-100% (the whole world); zoom in works, zoom out stops at 100% and its button is
-off there (owner decision 2026-10-10). Top maps names are
+the whole world; zoom in works, zoom out stops at the whole world and its
+button is off there. The controls are only +, − and Reset map, with no zoom
+percentage (owner decisions 2026-10-10). Top maps names are
 plain text with the provider and last-install date below, not links; Top
 countries names stay buttons that highlight their country on the world map.
 The filter bar names the selected period, so Maps cards carry no scope chips and

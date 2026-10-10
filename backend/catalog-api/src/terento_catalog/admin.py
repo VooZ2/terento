@@ -4908,7 +4908,7 @@ def map_statistics_page(
     )
     coverage = f"""
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installs by country'>
-          {_section_card('Countries', "<div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out' disabled>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', css='provider-card map-statistics-world-map-card')}
+          {_section_card('Countries', "<div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out' disabled>−</button><button type='button' data-map-zoom='reset'>Reset map</button></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div>", card_id='map-statistics-world-map-card', css='provider-card map-statistics-world-map-card')}
           {_section_card('Top countries', "<div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table' data-own-mobile-layout><caption class='sr-only'>Top countries</caption><thead><tr><th scope='col'>Country</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div>", card_id='top-countries', css='provider-card map-statistics-popularity', mobile_collapse=True)}
         </section>"""
     stream_buttons = "".join(
@@ -5222,8 +5222,7 @@ def _map_statistics_script() -> str:
           unavailable: [...unavailableCountries], unavailableLabel: 'maps are not offered here',
           onCountry: (item, code) => { if (code) showWorldMapTooltip(item, code); else if (worldMapTooltip) worldMapTooltip.hidden = true; },
           onZoom: (zoom, initial) => {
-            const status = document.querySelector('#world-map-zoom-status'); if (status) status.textContent = `${Math.round(Math.pow(2, zoom - initial) * 100)}%`;
-            // 100% is the smallest view; zoom out is off there.
+            // The full-world view is the smallest; zoom out is off there.
             const zoomOut = document.querySelector("[data-map-zoom='out']"); if (zoomOut) zoomOut.disabled = zoom <= initial + 0.001;
           }
         });
@@ -9651,7 +9650,6 @@ main.dashboard>.heading-row h1{margin:0}
 .world-map-controls{display:flex;align-items:center;gap:8px;padding:4px 10px 10px}
 .world-map-controls button{min-height:40px;min-width:40px;padding:6px 10px;border-radius:var(--admin-control-radius);background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 .world-map-controls button:disabled{cursor:not-allowed;opacity:.45}
-.world-map-controls span{font-size:12px;color:var(--secondary)}
 .world-map-svg{height:420px;min-height:300px;touch-action:none;cursor:grab;overflow:hidden;user-select:none;-webkit-user-select:none}.world-map-svg *{user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 .world-map-svg:active{cursor:grabbing}
 .world-map-svg:focus-visible{outline:var(--admin-focus-ring);outline-offset:-2px}
@@ -9742,8 +9740,7 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-statistics-world-map-card .map-statistics-world-map{padding:0;min-height:0}
 .map-statistics-world-map-card .world-map-svg{height:auto;min-height:0;aspect-ratio:900 / 365}
 .map-statistics-world-map-card .world-map-controls{position:absolute;z-index:3;top:8px;left:8px;padding:0;gap:6px}
-.map-statistics-world-map-card .world-map-controls span{padding:4px 6px;border-radius:var(--admin-control-radius);background:var(--surface)}
-@media(max-width:700px){.map-statistics-world-map-card .world-map-controls{position:static;padding:8px;gap:4px}.map-statistics-world-map-card .world-map-controls button{padding:6px 8px;white-space:nowrap}.map-statistics-world-map-card .world-map-controls span{padding:4px}}
+@media(max-width:700px){.map-statistics-world-map-card .world-map-controls{position:static;padding:8px;gap:4px}.map-statistics-world-map-card .world-map-controls button{padding:6px 8px;white-space:nowrap}}
 .map-statistics-popularity .table-wrap th{white-space:normal;overflow-wrap:normal}
 @media(max-width:700px){.world-map-controls button{min-width:44px;min-height:44px}}
 @media(max-width:700px){
