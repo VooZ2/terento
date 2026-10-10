@@ -261,6 +261,7 @@ for (const pageName of ["legal", "privacy", "home", "guide"]) {
     const node = makeNode({shellCopy: key, shellRoute: key});
     nodes.set(key, node);
   }
+  const installer = makeNode();
   const aria = makeNode({shellAria: "primary"});
   const home = makeNode();
   const code = makeNode();
@@ -270,7 +271,7 @@ for (const pageName of ["legal", "privacy", "home", "guide"]) {
   const document = {
     documentElement: htmlRoot,
     querySelector(selector) { return {".menu-toggle": menu, ".mobile-nav": mobile, "#shell-translations": {textContent: JSON.stringify(translations)}}[selector]; },
-    querySelectorAll(selector) { return {"[data-shell-copy]": [...nodes.values()], "[data-shell-route]": [nodes.get("guide"), nodes.get("troubleshooting"), nodes.get("download")], "[data-shell-aria]": [aria], "[data-shell-root]": [home], ".language-code": [code], ".mobile-language-label": [name]}[selector] || []; },
+    querySelectorAll(selector) { return {"[data-shell-copy]": [...nodes.values()], "[data-shell-route]": [nodes.get("guide"), nodes.get("troubleshooting"), nodes.get("download")], '[data-shell-copy="web_installer"]': [installer], "[data-shell-aria]": [aria], "[data-shell-root]": [home], ".language-code": [code], ".mobile-language-label": [name]}[selector] || []; },
     addEventListener(name, action) { events[name] = action; },
   };
   const window = {location: new URL("https://terento.app/legal/")};
@@ -285,6 +286,7 @@ for (const pageName of ["legal", "privacy", "home", "guide"]) {
     assert.equal(nodes.get("troubleshooting").href, prefix + "guides/troubleshooting/");
     assert.equal(aria.attributes["aria-label"], translations[locale].primary);
     assert.equal(home.href, prefix);
+    assert.equal(installer.search, locale === "en" ? "" : "?lang=" + locale);
     assert.equal(code.textContent, locale.toUpperCase());
     assert.equal(name.textContent, translations[locale].name);
     menu.events.click();

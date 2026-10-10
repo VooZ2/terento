@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20261006-map-styles-shell-v1"
+SHELL_VERSION = "20261010-web-installer-shell-v1"
 PROVIDER_SCRIPT_VERSION = "20261006-map-styles-link-v1"
 STYLE_VERSION = "20261007-map-styles-v8"
 IMAGE_VERSION = "20260912-app-screens-v2"
