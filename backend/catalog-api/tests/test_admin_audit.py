@@ -181,7 +181,7 @@ class AdminAuditTests(unittest.TestCase):
                      ".filter-bar input,.filter-bar select{font-weight:400}",
                      ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}"):
             self.assertIn(rule, ADMIN_STYLES)
-        self.assertIn("coverage-map-v1.js?v=20260913-coverage-sidebar-3", body)
+        self.assertIn("coverage-map-v1.js?v=20261010-not-offered-1", body)
         result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
                                  str(Path(__file__).with_name('coverage-map-tests.cjs'))],
                                 capture_output=True, text=True)
