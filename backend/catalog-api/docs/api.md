@@ -813,8 +813,12 @@ requires an admin session and returns the distinct non-local session count
 (`sessionCount`), the additive `neverConnectedSessionCount` (period sessions
 without a `DEVICE_CONNECT`/`CONNECTED` event in the period), distinct session
 counts per stage/outcome (zero-filled; not exclusive) plus the top base models
-with authorization outcome `PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`. The visual Admin presentation is not
-part of this route.
+with authorization outcome `PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`, each with
+the additive diagnostic `catalogStatus` from the current installation policy.
+Additive fields `journey`, `neverConnected`, `previous`, `bucket` and `trend`
+carry the connected and approved session counts, the never-connected
+breakdown, the previous window and sessions per bucket (meanings in the
+contract). The visual Admin presentation is not part of this route.
 
 ## `POST /support/reports`
 

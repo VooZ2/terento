@@ -4649,12 +4649,15 @@ class Database:
 
     def app_funnel_summary(
         self, since: datetime | None, until: datetime | None = None, *, model_limit: int = 10,
+        trend_bucket: str | None = None, time_zone: str = "UTC",
     ) -> dict[str, Any]:
         """Distinct-session funnel counts for a period (local test builds excluded).
 
         A separate population: it never enters install, update, download or
         compatibility counts. Period membership uses the same receipt-time rule
         for far-future client clocks as the map-statistics read model.
+        ``trend_bucket`` (hour, day, week or month in ``time_zone``) adds the
+        period's sessions per bucket of each session's first event.
         """
         effective = _effective_occurred_at_sql("e")
         clauses = ["e.is_local_test IS NOT TRUE"]
@@ -4666,20 +4669,27 @@ class Database:
             clauses.append(f"{effective} <= %s")
             values.append(until)
         where = " AND ".join(clauses)
+        # One row per period session. A session that never reported
+        # DEVICE_CONNECT=CONNECTED in the period counts as never connected;
+        # Install allowed needs CONNECTED and AUTHORIZATION=APPROVED.
+        sessions_sql = f"""
+            SELECT e.session_id,
+                   min({effective}) AS first_at,
+                   bool_or(e.stage = 'DEVICE_CONNECT' AND e.outcome = 'CONNECTED') AS connected,
+                   bool_or(e.stage = 'AUTHORIZATION' AND e.outcome = 'APPROVED') AS approved,
+                   bool_or(e.stage = 'DEVICE_CONNECT') AS connect_signal
+            FROM app_funnel_event AS e
+            WHERE {where}
+            GROUP BY e.session_id
+        """
         with self.connection() as connection:
-            # One row per period session; a session that never reported
-            # DEVICE_CONNECT=CONNECTED in the period counts as never connected.
             totals = connection.execute(
                 f"""
                 SELECT count(*) AS session_count,
-                       count(*) FILTER (WHERE NOT s.connected) AS never_connected_count
-                FROM (
-                    SELECT e.session_id,
-                           bool_or(e.stage = 'DEVICE_CONNECT' AND e.outcome = 'CONNECTED') AS connected
-                    FROM app_funnel_event AS e
-                    WHERE {where}
-                    GROUP BY e.session_id
-                ) AS s
+                       count(*) FILTER (WHERE NOT s.connected) AS never_connected_count,
+                       count(*) FILTER (WHERE s.connected AND s.approved) AS approved_count,
+                       count(*) FILTER (WHERE NOT s.connected AND NOT s.connect_signal) AS no_signal_count
+                FROM ({sessions_sql}) AS s
                 """,
                 values,
             ).fetchone() or {}
@@ -4691,6 +4701,18 @@ class Database:
                 GROUP BY e.stage, e.outcome
                 """,
                 values,
+            ).fetchall())
+            # Connection signals of the sessions that never connected only, so
+            # these rows explain the Never connected number.
+            never_connected = list(connection.execute(
+                f"""
+                SELECT e.outcome, count(DISTINCT e.session_id) AS session_count
+                FROM app_funnel_event AS e
+                JOIN ({sessions_sql}) AS s ON s.session_id = e.session_id AND NOT s.connected
+                WHERE {where} AND e.stage = 'DEVICE_CONNECT'
+                GROUP BY e.outcome
+                """,
+                values + values,
             ).fetchall())
             models = list(connection.execute(
                 f"""
@@ -4706,12 +4728,33 @@ class Database:
                 """,
                 values + [model_limit],
             ).fetchall())
-        return {
+            trend_rows: list[dict[str, Any]] = []
+            if trend_bucket is not None:
+                if trend_bucket not in {"hour", "day", "week", "month"}:
+                    raise ValueError("invalid funnel trend bucket")
+                trend_rows = list(connection.execute(
+                    f"""
+                    SELECT date_trunc('{trend_bucket}', timezone(%s, s.first_at)) AS local_bucket,
+                           count(*) AS session_count,
+                           count(*) FILTER (WHERE s.connected) AS connected_count
+                    FROM ({sessions_sql}) AS s
+                    GROUP BY local_bucket
+                    ORDER BY local_bucket
+                    """,
+                    [time_zone] + values,
+                ).fetchall())
+        summary: dict[str, Any] = {
             "sessionCount": int(totals.get("session_count") or 0),
             "neverConnectedSessionCount": int(totals.get("never_connected_count") or 0),
+            "approvedSessionCount": int(totals.get("approved_count") or 0),
+            "neverConnectedWithoutSignalCount": int(totals.get("no_signal_count") or 0),
             "stages": [
                 {"stage": row["stage"], "outcome": row["outcome"], "sessionCount": int(row["session_count"] or 0)}
                 for row in stages
+            ],
+            "neverConnectedOutcomes": [
+                {"outcome": row["outcome"], "sessionCount": int(row["session_count"] or 0)}
+                for row in never_connected
             ],
             "modelsNeedingReview": [
                 {"baseModel": row["base_model"], "outcome": row["outcome"],
@@ -4719,6 +4762,23 @@ class Database:
                 for row in models
             ],
         }
+        if trend_bucket is not None:
+            zone = _overview_time_zone(time_zone)
+            trend = []
+            for row in trend_rows:
+                local = row["local_bucket"]
+                if isinstance(local, str):
+                    local = datetime.fromisoformat(local)
+                if not isinstance(local, datetime):
+                    continue
+                bucket_start = (local if local.tzinfo else local.replace(tzinfo=zone)).astimezone(timezone.utc)
+                trend.append({
+                    "bucket": bucket_start,
+                    "sessionCount": int(row["session_count"] or 0),
+                    "connectedSessionCount": int(row["connected_count"] or 0),
+                })
+            summary["trend"] = trend
+        return summary
 
     def local_test_telemetry_summary(self) -> dict[str, Any]:
         """Return only purgeable local-test telemetry for the admin screen."""

@@ -177,7 +177,7 @@ class FunnelDatabase(FakeProviderDatabase):
         super().__init__()
         self.funnel_windows: list[tuple] = []
 
-    def app_funnel_summary(self, since, until=None):
+    def app_funnel_summary(self, since, until=None, **_):
         self.funnel_windows.append((since, until))
         return {"sessionCount": 0, "neverConnectedSessionCount": 0, "stages": [], "modelsNeedingReview": []}
 
