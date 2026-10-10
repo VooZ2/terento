@@ -133,8 +133,14 @@ Migration 075 applies these decisions; the per-row evidence is stored in
   Adventurer – Damascus Steel Edition, fēnix 8 Dual Power (47/51 mm), quatix 6X
   Dual Power, Forerunner 955 Dual Power, and quatix 8 Pro 51 mm (listed by
   Garmin's Connect IQ device list; Maps from the quatix 8 Pro specifications).
-  The fēnix 6 family is end of life: its rows stay exactly as they are and no
-  fēnix 6 Pro or fēnix 6 Dual Power rows are added. Edge, handheld and
+  The original fēnix 6 / 6S / 6X rows stay exactly as they are. *fēnix 6
+  editions (owner, 2026-10-10)*: migration 076 adds the map-capable fēnix 6
+  Pro, 6S Pro and 6X Pro rows (the Pro Solar names normalize to them), the
+  Japanese fēnix 6/6S/6X Pro Dual Power names and fēnix 6X Asia (the Asian
+  fēnix 6X Pro), from the Garmin product specifications or the fēnix 6 Pro
+  Series owner's manual. The standard fēnix 6 and 6S Dual Power editions are
+  not added: Garmin publishes no map row for them, so they stay `PENDING`.
+  Edge, handheld and
   non-map products are not added. Current-category models (for example
   Enduro 4, Approach S72) are added by the weekly collector from their
   specification rows.

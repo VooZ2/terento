@@ -650,3 +650,18 @@ changes, and the previous revision reads every row unchanged.
 
 Rollback to the previous revision is safe: its collector would again mark a
 model inactive after three missed complete runs, which is that revision's rule.
+
+### Migration076: fēnix 6 map editions
+
+Owner decision of 2026-10-10 (canonical rule:
+[`contracts/INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md)).
+Data-only and additive: inserts seven `HISTORICAL_REVIEWED`,
+`collector_managed = false`, active Maps=Yes rows (`ON CONFLICT (id) DO
+NOTHING`) whose `model` label gives the base model the watch reports: fēnix 6
+Pro, 6S Pro and 6X Pro (`Full vector map: yes` on their Garmin product pages;
+the Pro Solar names normalize to these), the Japanese fēnix 6/6S/6X Pro Dual
+Power names, and fēnix 6X Asia (fēnix 6 Pro Series owner's manual Map topic;
+Garmin device types 006-B3769, 006-B3771 and 006-B3516). The existing fēnix
+6/6S/6X rows are unchanged, and the standard fēnix 6 and 6S Dual Power
+editions are not added because Garmin publishes no map row for them. The
+previous revision reads every row unchanged.

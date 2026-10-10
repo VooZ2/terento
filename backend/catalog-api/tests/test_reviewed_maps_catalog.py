@@ -178,12 +178,13 @@ class MigratedCatalogTests(PGliteTestCase):
                          ("APPROVED", ["garmin-quatix-8-pro-51-amoled"]))
 
     def test_fenix_6_edge_and_unknown_models_are_unchanged(self):
+        # Migration 075 leaves the original fēnix 6 rows as they are; the Pro
+        # editions are added by migration 076 (test_fenix_6_map_editions.py).
         document = self.policy()
-        fenix_6 = {d["id"]: d for d in document["devices"] if d["baseModel"].startswith("fenix 6")}
+        fenix_6 = {d["id"]: d for d in document["devices"] if d["id"] in FENIX_6_ROWS}
         self.assertEqual(set(fenix_6), FENIX_6_ROWS)
         for row in fenix_6.values():
             self.assertEqual((row["active"], row["mapCapable"], row["variant"]), (True, True, row["variant"]))
-        self.assertEqual(app_resolve(document, garmin("fēnix 6X Pro"))[0], "PENDING")
         self.assertEqual(app_resolve(document, garmin("fēnix 6 Dual Power"))[0], "PENDING")
         self.assertEqual(app_resolve(document, garmin("fēnix 6X Sapphire")), ("APPROVED", ["garmin-fenix-6x-51"]))
         for reported in ("Edge 840", "Edge 1050", "GPSMAP 67", "Enduro 4", "Approach S72", "MARQ Captain (Gen 3)"):
