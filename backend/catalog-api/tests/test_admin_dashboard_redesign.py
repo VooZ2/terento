@@ -144,15 +144,35 @@ class DashboardPresentationTests(unittest.TestCase):
         # The header total is exactly the sum of the rendered category rows.
         self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong><small>Total</small>", head)
 
-    def test_needs_attention_with_nothing_open_collapses_to_its_header(self):
+    def test_needs_attention_with_nothing_open_says_so_in_the_middle(self):
+        # Owner 2026-10-10: cards in a Dashboard row share one height, so an
+        # empty Needs attention keeps its row height and centres its state.
         zero_review = {"available": True, "installationIssues": 0, "githubIssuesInProgress": 0,
                        "identityPending": 0, "readyToPublish": 0, "missingDiagnostics": 0}
         body = self.render(review=zero_review, supportReports={"openCount": 0})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
-        self.assertNotIn("Nothing to review.", attention)
         self.assertNotIn("overview-attention-row", attention)
         self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
-        self.assertTrue(attention.endswith("</header>"))  # collapsed: header only
+        self.assertTrue(attention.endswith(
+            "</header><p class='admin-empty overview-empty-state' data-state='empty'><span>Nothing to review.</span></p>"))
+        self.assertIn("overview-panel overview-attention-panel overview-attention-empty", body)
+        self.assertIn(".overview-attention-empty>.overview-empty-state{flex:1;display:flex;align-items:center;"
+                      "justify-content:center;", ADMIN_STYLES)
+        self.assertNotIn(".overview-attention-empty{align-self:start}", ADMIN_STYLES)
+
+    def test_dashboard_rows_pair_cards_of_similar_height(self):
+        # Owner 2026-10-10: Needs attention beside First run, Activity beside
+        # App downloads; cards in a row stretch to one height.
+        body = self.render(funnel=_funnel(**self.FIRST_RUN), downloads={
+            "hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "day", "trend": [
+                {"bucket": "2026-10-01T00:00:00Z", "observed_at": "2026-10-01T00:00:00Z",
+                 "state": "observed_increase", "dmg_count": 1, "zip_count": 0}]})
+        grid = body.split("<div class='overview-composition-grid'>", 1)[1].split("</main>", 1)[0]
+        order = [grid.index(f"id='{card}-title'") for card in
+                 ("overview-attention", "overview-funnel", "overview-activity", "overview-downloads")]
+        self.assertEqual(order, sorted(order))
+        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));"
+                      "align-items:stretch;", ADMIN_STYLES)
 
     FIRST_RUN = dict(
         sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,
@@ -223,12 +243,12 @@ class DashboardPresentationTests(unittest.TestCase):
 
     def test_first_run_page_follows_the_admin_page_structure(self):
         # Owner 2026-10-10: the page reads like the other Admin pages: journey
-        # tiles, Sessions over time, then one heading per topic with its cards
-        # (Admin tables) in a two-column grid.
+        # tiles, Sessions over time, then the cards (Admin tables) in journey
+        # order in one two-column grid; card titles are the only headings.
         body = first_run_page(_funnel(**self.FIRST_RUN), {"username": "operator"}, "csrf", period="7d").decode()
         main = body.split("<main", 1)[1].split("</main>", 1)[0]
         tiles = main.split("<div class='admin-metric-row' role='group' aria-label='First run journey'>", 1)[1].split(
-            "<h2 class='web-installer-part'>", 1)[0]
+            "<div class='web-installer-grid'>", 1)[0]
         self.assertEqual(tiles.count("class='admin-metric'"), 5)
         for label in ("Opened app", "Watch connected", "Install allowed", "Never connected", "Not allowed"):
             self.assertIn(f"<span class='admin-metric-label'>{label}</span>", tiles)
@@ -237,16 +257,16 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("<span aria-hidden='true'>▲</span> +2 vs previous 7 days</span>", tiles)
         self.assertIn("<span aria-hidden='true'>=</span> Same as previous 7 days</span>", tiles)
         self.assertIn("data-tone='danger'", tiles)  # measured losses above zero
-        headings = ["Connecting the watch", "Install permission", "Maps"]
         cards = ["Why not connected", "Connection problems", "Permission check", "Waiting models",
                  "Map list", "Install blocked"]
-        positions = [main.index(f"<h2 class='web-installer-part'>{title}</h2>") for title in headings]
-        self.assertEqual(positions, sorted(positions))
         card_positions = [main.index(f"-title'>{title}</h2>") for title in cards]
         self.assertEqual(card_positions, sorted(card_positions))
-        self.assertLess(positions[0], card_positions[0])
-        self.assertLess(card_positions[1], positions[1])
-        self.assertEqual(main.count("<div class='web-installer-grid'>"), 3)
+        self.assertNotIn("web-installer-part", main)
+        for heading in ("Connecting the watch", "Install permission", ">Maps<"):
+            self.assertNotIn(heading, main)
+        grid = main.split("<div class='web-installer-grid'>", 1)[1]
+        self.assertEqual(main.count("<div class='web-installer-grid'>"), 1)
+        self.assertEqual(grid.count("<section class='admin-card"), 6)
         # Number columns share one width so side-by-side cards line up.
         self.assertIn(".first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}", ADMIN_STYLES)
         self.assertNotIn("<h3>", main)
@@ -275,7 +295,9 @@ class DashboardPresentationTests(unittest.TestCase):
                        "Not allowed for this watch", "Watch not identified", "Update required<"):
             self.assertNotIn(hidden, main)  # zero outcomes are not listed
 
-    def test_first_run_sessions_over_time_is_focusable_and_textual(self):
+    def test_first_run_sessions_over_time_uses_the_dashboard_chart(self):
+        # Owner 2026-10-10: the same chart, styling and size as the Dashboard
+        # Downloads and Installs cards.
         trend = [
             {"bucket": "2026-10-10T08:00:00+00:00", "sessionCount": 2, "connectedSessionCount": 1},
             {"bucket": "2026-10-10T09:00:00+00:00", "sessionCount": 0, "connectedSessionCount": 0},
@@ -285,16 +307,16 @@ class DashboardPresentationTests(unittest.TestCase):
                               {"username": "operator"}, "csrf", period="24h").decode()
         card = page.split("id='first-run-trend'", 1)[1].split("</section>", 1)[0]
         self.assertIn(">Sessions over time</h2>", card)
-        self.assertIn("<li tabindex='0' aria-label='08:00: 2 sessions, 1 connected, 1 never connected'", card)
-        self.assertIn("<span class='funnel-trend-never' style='height:25.0%'></span>"
-                      "<span class='funnel-trend-connected' style='height:25.0%'></span>", card)
-        self.assertIn("<span class='funnel-trend-connected' style='height:100.0%'></span>", card)
-        self.assertIn("<span>Connected</span>", card)
-        self.assertIn("<span>Never connected</span>", card)
-        # One bucket draws no card.
-        one = first_run_page(_funnel(sessions=1, connected=1, trend=trend[:1]), {"username": "operator"}, "csrf",
-                             period="24h").decode()
-        self.assertNotIn("Sessions over time", one)
+        self.assertIn("<section class='admin-card overview-panel overview-chart-panel'", page)
+        self.assertIn("class='overview-chart-wrap'", card)
+        self.assertIn("role='img' tabindex='0'", card)
+        self.assertIn("aria-label='08:00 · Total: 2 · Connected: 1 · Never connected: 1 · UTC'", card)
+        self.assertIn("aria-label='10:00 · Total: 4 · Connected: 4 · Never connected: 0 · UTC'", card)
+        self.assertIn("<li><i class='overview-chart-success' aria-hidden='true'></i><span>Connected</span></li>"
+                      "<li><i class='overview-chart-failed' aria-hidden='true'></i><span>Never connected</span></li>",
+                      card)
+        self.assertNotIn("funnel-trend", page)
+        self.assertNotIn("funnel-trend", ADMIN_STYLES)
 
     def test_one_card_kpi_rows_fit_two_rows_on_phones(self):
         # Owner 2026-10-07: at <=760 px a one-card KPI row uses three columns

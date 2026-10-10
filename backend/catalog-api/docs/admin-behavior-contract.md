@@ -312,11 +312,12 @@ population, so they agree. A legend elsewhere shows a count only where it adds
 information no total shows (the Maps Custom .img install split and the App
 downloads period increases). The Needs attention header shows its `Now` total
 as one chip (`—` when any row is unavailable). Below the
-charts, Needs attention and Activity share a row, then First run and App
-downloads share the next row; when one of those cards is omitted the remaining
-one spans the row, so no Dashboard row leaves an empty grid cell at ≥1024 px.
-The narrow order is Downloads, Installs, Needs attention, Activity, First
-run, then App downloads.
+charts, Needs attention and First run share a row, then Activity and App
+downloads share the next row (owner decision 2026-10-10: each row pairs cards
+of similar height); cards in a row stretch to one height, and when one card is
+omitted the last one spans the row, so no Dashboard row leaves an empty grid
+cell at ≥1024 px. The narrow order is Downloads, Installs, Needs attention,
+First run, Activity, then App downloads.
 
 Every number shows its scope as visible text (`Today`, `Last 24 hours`,
 `Last 7 days`, `Last 30 days`, `All time` or `Now`); hover-only scope is not
@@ -384,15 +385,15 @@ unknown when the read model does not report it), `Never connected`
 danger tone when above zero. When the read model reports the previous window,
 the three journey tiles add the change as text with an arrow (`▲ +4 vs
 previous 24 h`, `▼ -2 vs yesterday`, `= Same as previous 7 days`); colour is
-never the only signal. With at least two buckets, the `Sessions over time` card
-shows one small stacked bar per hour (Today, Last 24 hours), day (Last 7 days),
-week (Last 30 days) or month (All time): connected sessions in the interactive
-colour, never-connected sessions in the danger colour, each bucket focusable
-with its values as text, the first and last bucket labels below and a
-two-entry legend. Then three topics, each a heading with two cards side by
-side above 900 px: `Connecting the watch` (`Why not connected`, `Connection
-problems`), `Install permission` (`Permission check`, `Waiting models`) and
-`Maps` (`Map list`, `Install blocked`). Every outcome card is a table with
+never the only signal. The `Sessions over time` card uses the Dashboard
+Downloads and Installs chart, with its styling, size, axis, focusable buckets,
+values strip and legend (owner decision 2026-10-10): one stacked bar per hour
+(Today, Last 24 hours), day (Last 7 days), week (Last 30 days) or month (All
+time), `Connected` in the success colour and `Never connected` in the failed
+colour. Then six cards in one grid, two side by side above 900 px, in journey
+order: `Why not connected`, `Connection problems`, `Permission check`,
+`Waiting models`, `Map list`, `Install blocked`; card titles are the only
+headings (owner decision 2026-10-10). Every outcome card is a table with
 Result, Sessions and Share, largest first; zero rows are omitted and an empty
 card says so. The page has no explanatory text: no lead, card notes or
 per-row meanings (owner rule 2026-10-10). `Why not connected` covers only
@@ -471,8 +472,9 @@ leaves out. An unavailable Health snapshot adds no row. Maps unknown models and
 provider problems are not Needs attention rows; they stay on Devices
 (`/admin/devices?maps=unknown&active=1`) and Providers. Only rows with a positive or unavailable
 count are listed (owner decision 2026-10-06); a measured zero renders no row,
-and when every count is zero the card collapses to its header with `0 Total`
-(owner decision 2026-10-10). Review
+and when every count is zero the card shows `0 Total` and `Nothing to review.`
+centred in the card, which keeps its row height (owner decision 2026-10-10).
+Review
 counts come only from the canonical review read model and the support-report
 count, and System checks only from the Health check states; there is no
 fallback from another definition.
