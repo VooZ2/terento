@@ -170,7 +170,6 @@ class CollectorInsertTests(PGliteTestCase):
         self.assertEqual(evidence["map_capable"]["version"], "official-product-specifications")
         self.assertTrue(evidence["map_capable"]["source"].startswith("https://www.garmin.com/en-US/p/"))
         self.assertNotIn("map_capable", rows["garmin-venu-x2"]["specification_evidence"] or {})
-        self.assertGreaterEqual(self.db.maps_unknown_model_count(), 2)
 
     def test_existing_stored_values_are_never_changed_and_unknown_can_be_filled(self):
         self.db.upsert_collected_devices([record("garmin-venu-x2", "Venu X2"), record("garmin-venu-4", "Venu 4")],

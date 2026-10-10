@@ -37,8 +37,11 @@ def ensure_retry_allowed(database, provider_id):
 
 def enqueue(database, provider_id, package_id, admin_id):
     with database.connection() as c:
-        if not c.execute("SELECT id FROM map_provider WHERE id=%s AND status <> 'RETIRED' FOR UPDATE", (provider_id,)).fetchone():
+        provider = c.execute("SELECT status FROM map_provider WHERE id=%s FOR UPDATE", (provider_id,)).fetchone()
+        if not provider:
             raise LookupError('provider_not_found')
+        if provider['status'] == 'RETIRED':
+            raise LookupError('provider_retired')
         if package_id and not c.execute("SELECT id FROM map_package WHERE id=%s AND provider_id=%s AND availability <> 'RETIRED'", (package_id,provider_id)).fetchone():
             raise LookupError('package_not_found')
         # Enforce a provider cooldown across page reloads and repeated jobs.
@@ -61,11 +64,9 @@ def jobs(database, provider_id):
 def inspect_artifact(row):
     """Use the provider's existing validator; no user-supplied URLs."""
     from .provider_catalog import ProviderCollectionError
-    codes = row.get('country_codes') or []
-    if row['provider_id'] == 'freizeitkarte':
-        from .provider_catalog import freizeitkarte_policy_country_codes
-        codes = freizeitkarte_policy_country_codes(row.get('provider_region_id', ''), codes)
-    if row.get('availability') == 'WITHHELD' or 'RU' in codes or ('UA' in codes and row.get('region', '').upper() == 'CRIMEA'):
+    from .provider_catalog import acquisition_withheld
+    if acquisition_withheld(row['provider_id'], row.get('provider_region_id'), row.get('country_codes'),
+                            row.get('region'), row.get('availability')):
         raise ValueError('acquisition_withheld')
     url, provider = row['source_url'], row['provider_id']
     opener = build_opener(_NoRedirect())

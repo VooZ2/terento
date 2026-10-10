@@ -45,7 +45,7 @@ def apply_closed_issue(connection, number: int, reason: str | None) -> int:
     """
     reference = f"#{number}"
     rows = connection.execute("""
-        SELECT event_id, diagnostic_status, linked_github_issue,
+        SELECT event_id, diagnostic_status, diagnostic_workflow_status, linked_github_issue,
                COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key
         FROM compatibility_evidence_event
         WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) IN (
@@ -134,20 +134,27 @@ def sync_once(database, *, fetch=fetch_issue) -> int:
             ORDER BY s.checked_at ASC NULLS FIRST, issue_number
             LIMIT %s
         """, (MAX_ISSUES,)).fetchall()
+        # Fetch every issue before locking any evidence row, so slow GitHub
+        # calls never block admin actions; apply_* re-locks and rechecks.
+        checks = []
         for target in targets:
             number = int(target["issue_number"])
-            state, error, stop = None, None, False
+            state, reason, error, stop = None, None, None, False
             try:
                 issue = fetch(number)
-                state = issue["state"]
-                if state == "closed":
-                    changed += apply_closed_issue(connection, number, issue.get("state_reason"))
-                    changed += apply_closed_update_issue(connection, number, issue.get("state_reason"))
+                state, reason = issue["state"], issue.get("state_reason")
             except HTTPError as exc:
                 error = f"GitHub HTTP {exc.code}"
                 stop = exc.code in {403, 429}
             except (ValueError, OSError, KeyError):
                 error = "GitHub state could not be verified"
+            checks.append((number, state, reason, error))
+            if stop:
+                break
+        for number, state, reason, error in checks:
+            if state == "closed":
+                changed += apply_closed_issue(connection, number, reason)
+                changed += apply_closed_update_issue(connection, number, reason)
             connection.execute("""
                 INSERT INTO admin_github_issue_sync (issue_number, state, error)
                 VALUES (%s, %s, %s)
@@ -155,8 +162,6 @@ def sync_once(database, *, fetch=fetch_issue) -> int:
                     state = COALESCE(EXCLUDED.state, admin_github_issue_sync.state),
                     checked_at = now(), error = EXCLUDED.error
             """, (number, state, error))
-            if stop:
-                break
     return changed
 
 

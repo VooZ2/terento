@@ -1,12 +1,12 @@
 # Právní informace
 
-Terento je bezplatná aplikace macOS s otevřeným zdrojovým kódem pro instalaci a správu map třetích stran na hodinkách Garmin. Tyto informace se vztahují na aplikaci a tento web.
+Terento je bezplatná aplikace macOS s otevřeným zdrojovým kódem pro instalaci a správu map třetích stran na hodinkách Garmin. Webový instalátor umožňuje instalovat mapy také z Google Chrome. Tyto informace se vztahují na aplikaci, webový instalátor a tento web.
 
 ## Projekt
 
 Terento je nezávislý projekt vydávaný soukromou osobou. Tvůrce najdete na stránce [O projektu](/cs/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikace je veřejná beta pro Macy s Apple Silicon. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
+Aplikace je veřejná beta pro Macy s Apple Silicon. Webový instalátor je také beta a vyžaduje Google Chrome na počítači. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
 
 ## Licence softwaru a dalších součástí
 
@@ -20,11 +20,11 @@ Softwarová licence neposkytuje práva k ochranné známce Terento. Upravené ve
 
 Mapy pocházejí od [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/) a [BBBike](https://garmin.bbbike.org) a podléhají jejich licencím a [uvedení autorství OpenStreetMap](https://www.openstreetmap.org/copyright). Pro vlastní importované mapy nadále platí příslušné podmínky.
 
-Terento tyto mapy nevytváří, nemění jejich licence ani jejich soubory nehostuje, nezrcadlí či nešíří na svých serverech. Katalogové mapy se stahují od původního poskytovatele na váš Mac a pak do hodinek. Pro stránku [Styly map](/cs/map-styles/) server Terento dočasně stáhne vybrané katalogové mapy od původního poskytovatele, vytvoří z nich malé náhledové obrázky a soubory map poté smaže. Náhledy uvádějí poskytovatele a OpenStreetMap.
+Terento tyto mapy nevytváří, nemění jejich licence, neprovozuje knihovnu map a nezrcadlí soubory poskytovatelů. V aplikaci se katalogové mapy stahují od původního poskytovatele na váš Mac a pak do hodinek. U webového instalátoru server Terento stáhne zvolenou mapu od původního poskytovatele a předá ji vašemu prohlížeči. Tato kopie slouží jen vašemu požadavku a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Pro stránku [Styly map](/cs/map-styles/) server Terento dočasně stáhne vybrané katalogové mapy od původního poskytovatele, vytvoří z nich malé náhledové obrázky a soubory map poté smaže. Náhledy uvádějí poskytovatele a OpenStreetMap.
 
 ## Názvy a nezávislost
 
-Garmin a názvy jeho produktů jsou ochranné známky Garmin Ltd. Apple, Mac, macOS a Apple Silicon jsou ochranné známky Apple Inc. Používají se popisně. Terento není s těmito společnostmi spojeno ani jimi podporováno nebo certifikováno.
+Garmin a názvy jeho produktů jsou ochranné známky Garmin Ltd. Apple, Mac, macOS a Apple Silicon jsou ochranné známky Apple Inc. Google a Chrome jsou ochranné známky Google LLC. Používají se popisně. Terento není s těmito společnostmi spojeno ani jimi podporováno nebo certifikováno.
 
 ## Beta a vaše práva
 
@@ -36,4 +36,4 @@ Beta může obsahovat chyby ovlivňující mapy, fungování zařízení nebo da
 
 Informace o zpracování dat, diagnostice a statistikách webu najdete v [oznámení o soukromí](/privacy/).
 
-Aktualizováno: 5. září 2026.
+Aktualizováno: 10. října 2026.

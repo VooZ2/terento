@@ -168,6 +168,11 @@ def build(root):
         (root/(name+'.html')).write_bytes(body.replace(
             b'https://terento.app/assets/fonts/', b'/admin/fonts/',
         ))
+    # Signed-in pages link the content-versioned Admin stylesheet and world map.
+    (root / ADMIN_STYLESHEET_PATH.lstrip('/')).parent.mkdir(parents=True, exist_ok=True)
+    (root / ADMIN_STYLESHEET_PATH.lstrip('/')).write_text(
+        ADMIN_STYLES.replace('https://terento.app/assets/fonts/', '/admin/fonts/'), encoding='utf-8')
+    (root / WORLD_MAP_SCRIPT_PATH.lstrip('/')).write_text(WORLD_MAP_SCRIPT, encoding='utf-8')
     return pages
 
 if __name__=='__main__':

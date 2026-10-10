@@ -1,12 +1,12 @@
 # Mentions légales
 
-Terento est une application macOS gratuite et open source pour installer et gérer des cartes tierces sur les montres Garmin. Ces mentions concernent l’application et ce site.
+Terento est une application macOS gratuite et open source pour installer et gérer des cartes tierces sur les montres Garmin. L’installateur web permet aussi d’installer des cartes depuis Google Chrome. Ces mentions concernent l’application, l’installateur web et ce site.
 
 ## Le projet
 
 Terento est un projet indépendant publié par un particulier. Découvrez son créateur sur la page [À propos](/fr/about/). Contact : [hello@terento.app](mailto:hello@terento.app).
 
-L’application est une bêta publique pour Mac avec Apple Silicon. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
+L’application est une bêta publique pour Mac avec Apple Silicon. L’installateur web est aussi une bêta et nécessite Google Chrome sur un ordinateur. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
 
 ## Licences du logiciel et des composants tiers
 
@@ -20,11 +20,11 @@ La licence du logiciel n’accorde pas de droits sur la marque Terento. Une vers
 
 Les cartes proviennent de [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), d’[OpenTopoMap](https://garmin.opentopomap.org/) et de [BBBike](https://garmin.bbbike.org). Elles restent soumises aux licences de leurs fournisseurs et à l’[attribution OpenStreetMap](https://www.openstreetmap.org/copyright). Vos cartes importées restent soumises à leurs propres conditions.
 
-Terento ne crée pas ces cartes, ne change pas leurs licences et ne les héberge, copie en miroir ou redistribue pas sur ses serveurs. Les cartes du catalogue sont téléchargées depuis le fournisseur d’origine vers votre Mac, puis votre montre. Pour la page [Styles de carte](/fr/map-styles/), le serveur de Terento télécharge temporairement certaines cartes du catalogue depuis le fournisseur d’origine, en tire de petites images d’aperçu, puis supprime les fichiers de carte. Les aperçus affichent l’attribution du fournisseur et d’OpenStreetMap.
+Terento ne crée pas ces cartes, ne change pas leurs licences, n’héberge pas de bibliothèque de cartes et ne copie pas en miroir les fichiers des fournisseurs. Dans l’application, les cartes du catalogue sont téléchargées depuis le fournisseur d’origine vers votre Mac, puis votre montre. Avec l’installateur web, le serveur de Terento télécharge la carte choisie depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie ne sert qu’à votre demande et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Pour la page [Styles de carte](/fr/map-styles/), le serveur de Terento télécharge temporairement certaines cartes du catalogue depuis le fournisseur d’origine, en tire de petites images d’aperçu, puis supprime les fichiers de carte. Les aperçus affichent l’attribution du fournisseur et d’OpenStreetMap.
 
 ## Noms et indépendance
 
-Garmin et ses noms de produits sont des marques de Garmin Ltd. Apple, Mac, macOS et Apple Silicon sont des marques d’Apple Inc. Leur utilisation est descriptive. Terento n’est affilié à aucune de ces sociétés et n’est ni approuvé ni certifié par elles.
+Garmin et ses noms de produits sont des marques de Garmin Ltd. Apple, Mac, macOS et Apple Silicon sont des marques d’Apple Inc. Google et Chrome sont des marques de Google LLC. Leur utilisation est descriptive. Terento n’est affilié à aucune de ces sociétés et n’est ni approuvé ni certifié par elles.
 
 ## Bêta et vos droits
 
@@ -36,4 +36,4 @@ Aucune mention n’exclut ni ne limite une responsabilité lorsque la loi l’in
 
 Pour le traitement des données, les diagnostics et les statistiques du site, consultez la [politique de confidentialité](/privacy/).
 
-Mise à jour : 5 septembre 2026.
+Mise à jour : 10 octobre 2026.

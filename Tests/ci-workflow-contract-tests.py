@@ -261,7 +261,8 @@ def verify_released_fixture_adapter():
         assert "Release 26.05" not in patched
         assert "version: package.version" in patched
         assert patched.count("for catalogURL in matrixURLs") == 2
-        assert patched.count("provider != nil && packages.count == expectedRowCount") == 2
+        assert patched.count("provider != nil && rowCountMatches") == 2
+        assert patched.count("? packages.count == expectedRowCount : !packages.isEmpty") == 2
         assert patched.count("installationEligibility = provider.map") == 2
         assert patched.count("actualRows=") == 2 and patched.count("expectedRows=") == 2
         assert patched.count("missing-provider") == 2

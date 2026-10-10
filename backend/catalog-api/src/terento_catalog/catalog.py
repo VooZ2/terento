@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import CATALOG_VERSION
+from .provider_catalog import acquisition_withheld
 from .provider_monitoring import provider_block_reason
+
+# Garmin storage is FAT32: one file cannot exceed 4 GiB - 1 byte.
+MAX_INSTALL_FILE_BYTES = 4 * 1024**3 - 1
 
 
 def build_catalog(
@@ -175,7 +179,7 @@ def _build_provider_neutral_catalog(
             },
         )
         package_id = row.get("package_id")
-        if not package_id:
+        if not package_id or _is_unlisted(row):
             continue
         artifact_id = row.get("artifact_id")
         artifact_source_url = row.get("artifact_source_url")
@@ -329,6 +333,24 @@ def _build_provider_neutral_catalog(
         "updatedAt": _format_timestamp(updated_at),
         "providers": [providers[key] for key in sorted(providers)],
     }
+
+
+def _is_unlisted(row: dict[str, Any]) -> bool:
+    """Owner rule: selection lists show only maps that can be installed.
+
+    russia/Crimea packages and artifacts whose installed file cannot fit on
+    FAT32 are not published. A too-large required artifact hides its package
+    because the package keeps no main artifact; an optional one only drops out.
+    """
+
+    country = row.get("package_country")
+    if acquisition_withheld(str(row["provider_id"]), row.get("provider_region_id"),
+                            [*(row.get("country_codes") or []), *([country] if country else [])],
+                            row.get("canonical_region_id") or row.get("package_region"),
+                            row.get("availability")):
+        return True
+    size = row.get("artifact_install_size_bytes") or row.get("artifact_size_bytes") or 0
+    return int(size) > MAX_INSTALL_FILE_BYTES
 
 
 def _contour_is_publishable(

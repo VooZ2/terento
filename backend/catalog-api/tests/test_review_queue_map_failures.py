@@ -1,5 +1,4 @@
 """Exercise the actual review SQL with independent telemetry stream fixtures."""
-from datetime import datetime, timezone
 import sqlite3
 import unittest
 
@@ -101,7 +100,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
 
     def test_only_unlinked_real_install_failures_need_diagnostics(self):
         recording = RecordingDatabase()
-        recording.admin_overview_map_snapshot(datetime.now(timezone.utc))
+        recording.missing_diagnostic_failures()
         query, parameters = next(
             (sql, args) for sql, args in recording.calls
             if 'AS total_missing_diagnostics' in sql
@@ -150,7 +149,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
         self.assertTrue(all(r['total_missing_diagnostics'] == 4 for r in rows))
         # Arrival of the matching report removes the gap, even after resolution.
         diagnostic('missing', status='RESOLVED')
-        rows = db.execute(query.replace('%s', '?'), (1,)).fetchall()
+        rows = db.execute(query.replace('%s', '?'), (1, 0)).fetchall()
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]['total_missing_diagnostics'], 3)
         db.close()

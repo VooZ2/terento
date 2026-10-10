@@ -126,17 +126,22 @@ def _collect_once(database: Database, *, dry_run: bool = False) -> int:
     return len(records)
 
 
-def collect_provider_once(database, adapter, *, dry_run=False):
+def collect_provider_once(database, adapter, *, dry_run=False, audit=None):
     from .provider_rechecks import provider_lock, ensure_retry_allowed
     with provider_lock(database, adapter.definition.id):
         ensure_retry_allowed(database, adapter.definition.id)
-        return _collect_provider_once(database, adapter, dry_run=dry_run)
+        return _collect_provider_once(database, adapter, dry_run=dry_run, audit=audit)
 
 
 def _collect_provider_once(
-    database: Database, adapter: ProviderAdapter, *, dry_run: bool = False
+    database: Database, adapter: ProviderAdapter, *, dry_run: bool = False,
+    audit: dict | None = None,
 ) -> dict[str, int | str]:
-    """Collect one known provider and persist one auditable collection run."""
+    """Collect one known provider and persist one auditable collection run.
+
+    ``audit`` (admin user and request) is written in the run's finishing
+    transaction; a busy lock or cooldown never starts a run and is not audited.
+    """
 
     provider_id = adapter.definition.id
     run_id = None if dry_run else database.begin_catalog_collection(provider_id)
@@ -147,23 +152,26 @@ def _collect_provider_once(
         snapshot = adapter.collect()
         if not snapshot.packages:
             raise ProviderCollectionError("provider returned no packages")
+        result = {
+            "provider": provider_id,
+            "runId": int(run_id) if run_id is not None else 0,
+            "packages": len(snapshot.packages),
+            "artifacts": sum(len(item.artifacts) for item in snapshot.packages),
+        }
         if not dry_run:
             database.upsert_provider_snapshot(snapshot, run_id=run_id)
             latest_release, fingerprint = snapshot_release_evidence(snapshot)
             database.finish_catalog_collection(
                 int(run_id),
                 status="SUCCEEDED",
-                package_count=len(snapshot.packages),
-                artifact_count=sum(len(item.artifacts) for item in snapshot.packages),
+                package_count=result["packages"],
+                artifact_count=result["artifacts"],
                 latest_release=latest_release,
                 catalog_fingerprint=fingerprint,
+                audit=audit and {**audit, "action": "provider.catalog_collected",
+                                 "provider_id": provider_id, "details": result},
             )
-        return {
-            "provider": provider_id,
-            "runId": int(run_id) if run_id is not None else 0,
-            "packages": len(snapshot.packages),
-            "artifacts": sum(len(item.artifacts) for item in snapshot.packages),
-        }
+        return result
     except Exception as exc:
         if run_id is not None:
             database.finish_catalog_collection(
@@ -171,6 +179,9 @@ def _collect_provider_once(
                 status="FAILED",
                 error_code=type(exc).__name__,
                 error_detail=str(exc)[:500],
+                audit=audit and {**audit, "action": "provider.catalog_collection_failed",
+                                 "provider_id": provider_id,
+                                 "details": {"error": type(exc).__name__, "detail": str(exc)[:500]}},
             )
         raise
 

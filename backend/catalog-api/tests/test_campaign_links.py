@@ -8,7 +8,7 @@ import subprocess
 import unittest
 from html.parser import HTMLParser
 
-from terento_catalog.admin import _campaign_links_script, campaign_links_page
+from terento_catalog.admin import ADMIN_STYLES, _campaign_links_script, campaign_links_page
 from terento_catalog.campaign_links import (
     CAMPAIGN_SUGGESTIONS,
     CHANNELS,
@@ -162,7 +162,7 @@ class CampaignLinkPageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.body = campaign_links_page({"username": "operator"}, "csrf").decode()
-        cls.main = cls.body.split("</style>", 1)[1]
+        cls.main = cls.body.split("</head>", 1)[1]
         cls.markup = _Markup()
         cls.markup.feed(cls.main)
 
@@ -248,7 +248,7 @@ class CampaignLinkPageTests(unittest.TestCase):
             self.assertIn(f"data-icon='{state}'><svg class='admin-icon admin-icon-{icon}'", self.main)
 
     def test_styles_use_admin_controls_and_mono_only_for_the_url(self):
-        body = self.body
+        body = ADMIN_STYLES
         self.assertIn(".campaign-form input[type='text'],.campaign-url{width:100%;max-width:480px;height:var(--admin-control-height)", body)
         self.assertIn("font-family:var(--font-mono);font-size:13px", body)
         self.assertIn(".campaign-url-row .campaign-url::placeholder{font-family:var(--font-ui)}", body)

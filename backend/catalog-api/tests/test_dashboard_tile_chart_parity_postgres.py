@@ -102,5 +102,36 @@ class DashboardTileChartParityTests(PGliteTestCase):
                 self.assertEqual(summary["failedMapUpdates"], total("map_update_failed_count"))
 
 
+
+class DashboardActivityTests(PGliteTestCase):
+    """Activity lists the period's real rows (audit #16, #22b)."""
+
+    def setUp(self):
+        super().setUp()
+        self.rows = StatisticsRows(self.server)
+        self.now = self.sql("SELECT now() AS now")[0]["now"]
+
+    def activity(self):
+        snapshot = self.db.admin_overview_map_snapshot(self.now - timedelta(hours=24), period="24h")
+        return [row["event_type"] for row in snapshot["recentActivity"]]
+
+    def test_unfinished_downloads_do_not_push_installs_out_of_activity(self):
+        for minutes in range(3):
+            self.rows.map_event(occurred_at=self.now - timedelta(hours=2, minutes=minutes))
+        # Ten acquisitions whose app was killed before any outcome, all newer.
+        for minutes in range(10):
+            self.rows.map_event(event_type="DOWNLOAD_STARTED", outcome="UNKNOWN", acquisition_id=self.rows.uuid(),
+                                component_kind="main", occurred_at=self.now - timedelta(minutes=minutes))
+        self.assertEqual(self.activity(), ["INSTALL_SUCCEEDED"] * 3)
+
+    def test_activity_period_uses_the_effective_time_of_the_totals(self):
+        # A client clock two days ahead: the totals place the install at its
+        # receipt time, three days ago, so it is outside the last 24 hours.
+        self.rows.map_event(occurred_at=self.now + timedelta(days=2), received_at=self.now - timedelta(days=3))
+        self.assertEqual(self.activity(), [])
+        self.rows.map_event(occurred_at=self.now + timedelta(days=2), received_at=self.now - timedelta(hours=1))
+        self.assertEqual(self.activity(), ["INSTALL_SUCCEEDED"])
+
+
 if __name__ == "__main__":
     unittest.main()

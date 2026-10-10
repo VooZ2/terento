@@ -99,6 +99,15 @@ class GitHubIssueSyncTests(unittest.TestCase):
         self.assertIn('FROM map_update_diagnostic WHERE is_local_test IS FALSE',targets)
         self.assertIn("e.diagnostic_status = 'ACTIVE'",targets)
 
+    def test_github_fetches_finish_before_any_evidence_row_is_locked(self):
+        connection = Connection([event(1)], [{'issue_number': 94}, {'issue_number': 95}])
+        locked_during_fetch = []
+        def fetch(number):
+            locked_during_fetch.append(any('FOR UPDATE' in sql for sql, _ in connection.calls))
+            return {'state': 'closed', 'state_reason': 'completed'}
+        self.assertEqual(sync_once(Database(connection), fetch=fetch), 1)
+        self.assertEqual(locked_during_fetch, [False, False])
+
     def test_open_issue_keeps_diagnostic_open_and_checks_are_bounded(self):
         connection = Connection([event(1)], [{'issue_number': i} for i in range(1, 21)])
         calls = []

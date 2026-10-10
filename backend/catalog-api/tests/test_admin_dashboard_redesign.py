@@ -9,7 +9,9 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
-from terento_catalog.admin import ADMIN_STYLES, _funnel_card, _provider_problem_state, overview_page
+from terento_catalog.admin import (
+    ADMIN_STYLES, _funnel_card, _overview_period_script, _provider_problem_state, first_run_page, overview_page,
+)
 from terento_catalog.http_api import CatalogService, make_handler
 
 
@@ -48,6 +50,13 @@ def _funnel(**counts):
             ]},
         ],
         "modelsNeedingReview": counts.get("models", []),
+        **({"journey": {"sessionCount": counts.get("sessions", 0),
+                        "connectedSessionCount": counts.get("connected", 0),
+                        "approvedSessionCount": counts["journey_approved"]}}
+           if "journey_approved" in counts else {}),
+        **({"neverConnected": counts["never"]} if "never" in counts else {}),
+        **({"previous": counts["previous"]} if "previous" in counts else {}),
+        **({"trend": counts["trend"], "bucket": counts.get("bucket", "hour")} if "trend" in counts else {}),
     }
 
 
@@ -106,7 +115,9 @@ class DashboardPresentationTests(unittest.TestCase):
             self.assertNotIn("<strong>", legend)
             self.assertNotIn("class='overview-all-time'", card)
             self.assertNotIn("Downloads by purpose", card)
-            self.assertEqual(card.split("</ul>", 1)[1].replace("</div>", "").strip(), "")
+            # After the App chart only the hidden Web panel follows (App/Web switch).
+            rest = card.split("</ul>", 1)[1].replace("</div>", "").strip()
+            self.assertTrue(rest.startswith("<div data-source-panel='web' hidden>"), rest[:80])
 
     def test_needs_attention_lists_only_nonzero_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})
@@ -142,39 +153,97 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertNotIn("overview-attention-row", attention)
         self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
 
-    def test_first_run_card_shows_tiles_and_per_stage_groups(self):
-        body = self.render()
+    FIRST_RUN = dict(
+        sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,
+        catalog_update=1, device_storage=1, journey_approved=3,
+        models=[{"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1,
+                 "catalogStatus": "NOT_IN_CATALOG"}],
+        never={"sessionCount": 1, "withoutConnectionSignalCount": 0,
+               "outcomes": [{"outcome": "TIMEOUT_NO_USB", "sessionCount": 1}]},
+        previous={"sessionCount": 3, "connectedSessionCount": 4, "approvedSessionCount": 3},
+    )
+
+    def test_dashboard_first_run_is_a_short_review_summary(self):
+        # Owner 2026-10-10: the full First run view moved to /admin/first-run;
+        # the Dashboard keeps the journey and the models waiting for review.
+        body = self.render(funnel=_funnel(**self.FIRST_RUN))
+        card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
+        self.assertIn("<a class='admin-card-action section-link' href='/admin/first-run?period=7d'>View all", card)
+        self.assertIn("<ol class='funnel-journey' aria-label='First run journey'>", card)
+        self.assertIn("Lost on the way: <strong>1</strong> never connected · <strong>1</strong> connected but not allowed", card)
+        self.assertIn("<div class='funnel-review'><h3>Waiting models</h3><ul class='funnel-models' aria-label='Waiting models'><li>"
+                      "<a href='/admin/devices?search=fenix+8'>fenix 8</a>"
+                      "<span class='funnel-model-status'>Not in catalog</span><strong>1</strong>"
+                      "<span class='sr-only'> sessions</span></li></ul></div>", card)
+        for detail in ("Sessions over time", "Why not connected", "Connection problems", "overview-funnel-bars"):
+            self.assertNotIn(detail, card)
+        self.assertIn('<a href="/admin/first-run">First run</a>', body)
+
+    def test_dashboard_first_run_lists_at_most_three_waiting_models(self):
+        models = [{"baseModel": f"model {index}", "outcome": "PENDING", "sessionCount": index}
+                  for index in range(1, 6)]
+        body = self.render(funnel=_funnel(**{**self.FIRST_RUN, "models": models}))
+        card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
+        self.assertEqual(card.count("<li><a href='/admin/devices?search="), 3)
+        self.assertLess(card.index(">model 5<"), card.index(">model 3<"))
+        self.assertNotIn(">model 2<", card)
+        self.assertIn("+2 more on First run", card)
+
+    def test_first_run_page_has_the_period_picker_and_active_nav(self):
+        body = first_run_page(_funnel(**self.FIRST_RUN), {"username": "operator"}, "csrf", period="nope").decode()
+        self.assertIn("<h1>First run</h1>", body)
+        self.assertIn("id='overview-period-form' method='get' action='/admin/first-run'", body)
+        self.assertIn("<option value='24h' selected>", body)  # unknown period falls back to 24 h
+        self.assertIn('<a class=\'active\' href="/admin/first-run">First run</a>', body)
+        self.assertIn("getAttribute('action') || '/admin'", body)
+        self.assertIn("data-admin-revisions=", body)
+        unavailable = first_run_page({"available": False}, {"username": "operator"}, "csrf", period="7d").decode()
+        self.assertIn("id='overview-funnel'", unavailable)
+
+    def test_first_run_card_shows_the_journey_and_per_stage_groups(self):
+        body = first_run_page(_funnel(**self.FIRST_RUN), {"username": "operator"}, "csrf", period="7d").decode()
         card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
         self.assertIn(">First run</h2>", body)
         self.assertIn("data-scope='period'>Last 7 days</span>", card)
-        self.assertIn("<span class='admin-metric-label'>Sessions</span><strong class='admin-metric-value'>5</strong>", card)
-        self.assertIn("<span class='admin-metric-label'>Connected</span><strong class='admin-metric-value'>4</strong>", card)
-        self.assertIn("data-tone='danger'><span class='admin-metric-label'>Never connected</span>"
-                      "<strong class='admin-metric-value'>1</strong>", card)
-        self.assertNotIn("Not connected", card)
-        # Each outcome is a small bar with its label and count as text; the bar
-        # width is the share of the period's first-run sessions.
-        def bar(label, count, share):
-            return (f"<li><span class='overview-funnel-label'>{label}</span>"
+        # Owner 2026-10-10: Opened app -> Watch connected -> Install allowed,
+        # each with its share of the step before and the change vs the
+        # previous period as text with an arrow.
+        self.assertIn("<ol class='funnel-journey' aria-label='First run journey'>", card)
+        self.assertIn("<span class='funnel-step-label'>Opened app</span><strong class='funnel-step-value'>5</strong>", card)
+        self.assertIn("<span class='funnel-step-label'>Watch connected</span><strong class='funnel-step-value'>4</strong>"
+                      "<span class='funnel-step-share'>80% of opened</span>", card)
+        self.assertIn("<span class='funnel-step-label'>Install allowed</span><strong class='funnel-step-value'>3</strong>"
+                      "<span class='funnel-step-share'>75% of connected</span>", card)
+        self.assertIn("<span aria-hidden='true'>▲</span> +2 vs previous 7 days</span>", card)
+        self.assertIn("<span aria-hidden='true'>=</span> Same as previous 7 days</span>", card)
+        self.assertIn("Lost on the way: <strong>1</strong> never connected · <strong>1</strong> connected but not allowed", card)
+        def bar(label, count, share, whole=5, noun="sessions", hint=""):
+            hint = f"<small class='funnel-hint'>{hint}</small>" if hint else ""
+            return (f"<li><span class='overview-funnel-label'>{label}{hint}</span>"
                     f"<span class='overview-funnel-bar' aria-hidden='true'><i style='width:{share:.1f}%'></i></span>"
-                    f"<strong>{count}</strong><span class='sr-only'> of 5 sessions</span></li>")
+                    f"<strong>{count}</strong><span class='sr-only'> of {whole} {noun}</span>")
+        self.assertIn(bar("No watch plugged in", 1, 100, 1, "never-connected sessions"), card)
         self.assertIn(bar("No watch plugged in", 1, 20), card)
-        self.assertIn(bar("Approved", 3, 60) + bar("Pending", 1, 20), card)  # ordered by count
-        self.assertIn(bar("Loaded", 4, 80) + bar("App update required", 1, 20), card)
+        self.assertIn(bar("Approved", 3, 60) + "</li>" + bar(
+            "Pending", 1, 20, hint="Model not in the catalog, or its Maps value is unknown or mixed"), card)
+        # Waiting models sit under their outcome with the catalog's reason.
+        self.assertIn("<ul class='funnel-models' aria-label='Pending models'><li>"
+                      "<a href='/admin/devices?search=fenix+8'>fenix 8</a>"
+                      "<span class='funnel-model-status'>Not in catalog</span><strong>1</strong></li></ul>", card)
+        self.assertNotIn("Waiting models", card)
+        self.assertIn(bar("Loaded", 4, 80), card)
         self.assertIn(bar("Watch storage full", 1, 20), card)
-        self.assertIn(bar("fenix 8", 1, 20), card)
-        titles = ("Connection problems", "Authorization", "Catalog", "Install blocked", "Waiting models")
+        titles = ("Why not connected", "Connection problems", "Authorization", "Catalog", "Install blocked")
         for title in titles:
             self.assertIn(f"<h3>{title}</h3>", card)
             self.assertIn(f"<ul class='overview-funnel-bars' aria-label='{title}'>", card)
         self.assertEqual([card.index(f"<h3>{title}</h3>") for title in titles],
                          sorted(card.index(f"<h3>{title}</h3>") for title in titles))
         self.assertIn("<h3>Connection problems</h3><p class='overview-funnel-note muted-value'>"
-                      "A session can hit several problems and still connect.</p>", card)
+                      "Every session, including those that connected later.</p>", card)
         for hidden in ("Not in file-transfer mode", "Watch in use by another app", "Built-in copy",
                        "Not allowed for this watch", "Watch not identified", "Update required<"):
             self.assertNotIn(hidden, card)  # zero outcomes are not listed
-        self.assertNotIn("<dl class='overview-funnel-breakdown'>", card)
         # Owner 2026-10-07: beside App downloads a wide card shows the groups in
         # two balanced columns (a group is never split); labels keep their width.
         self.assertIn(".overview-funnel-panel{container:overview-funnel/inline-size}", ADMIN_STYLES)
@@ -182,15 +251,29 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn(".overview-funnel-breakdown{display:block;columns:2;column-gap:24px}", ADMIN_STYLES)
         self.assertIn(".overview-funnel-group{display:block;break-inside:avoid;padding-bottom:12px}", ADMIN_STYLES)
         self.assertIn(".overview-funnel-bars{grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);", ADMIN_STYLES)
-        # One column: one aligned label column for every group; the bar shrinks first.
         self.assertIn(".overview-funnel-breakdown{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);", ADMIN_STYLES)
         self.assertIn(".overview-funnel-bars li{display:grid;grid-template-columns:subgrid;grid-column:1/-1;", ADMIN_STYLES)
-        # Owner 2026-10-07: the three First run tiles stay on one row at every
-        # width with numbers on one baseline; other metric rows keep auto-fit.
-        self.assertIn("<div class='admin-metric-row overview-funnel-metrics' role='group' aria-label='First run sessions'>", card)
-        self.assertIn(".overview-funnel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}", ADMIN_STYLES)
-        self.assertIn(".overview-funnel-metrics .admin-metric-value{margin-top:auto}", ADMIN_STYLES)
-        self.assertIn(".admin-metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));", ADMIN_STYLES)
+        # The three journey steps stay on one row at every width with their
+        # numbers on one baseline (subgrid rows).
+        self.assertIn(".funnel-journey{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));", ADMIN_STYLES)
+        self.assertIn(".funnel-step{display:grid;grid-row:span 5;grid-template-rows:subgrid;", ADMIN_STYLES)
+
+    def test_first_run_sessions_over_time_is_focusable_and_textual(self):
+        trend = [
+            {"bucket": "2026-10-10T08:00:00+00:00", "sessionCount": 2, "connectedSessionCount": 1},
+            {"bucket": "2026-10-10T09:00:00+00:00", "sessionCount": 0, "connectedSessionCount": 0},
+            {"bucket": "2026-10-10T10:00:00+00:00", "sessionCount": 4, "connectedSessionCount": 4},
+        ]
+        card = _funnel_card(_funnel(sessions=6, connected=5, never_connected=1, trend=trend), "24h")
+        self.assertIn("<h3>Sessions over time</h3>", card)
+        self.assertIn("<li tabindex='0' aria-label='08:00: 2 sessions, 1 connected, 1 never connected'", card)
+        self.assertIn("<span class='funnel-trend-never' style='height:25.0%'></span>"
+                      "<span class='funnel-trend-connected' style='height:25.0%'></span>", card)
+        self.assertIn("<span class='funnel-trend-connected' style='height:100.0%'></span>", card)
+        self.assertIn("<span>Connected</span>", card)
+        self.assertIn("<span>Never connected</span>", card)
+        # One bucket draws no strip.
+        self.assertNotIn("Sessions over time", _funnel_card(_funnel(sessions=1, connected=1, trend=trend[:1]), "24h"))
 
     def test_one_card_kpi_rows_fit_two_rows_on_phones(self):
         # Owner 2026-10-07: at <=760 px a one-card KPI row uses three columns
@@ -217,29 +300,40 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("Could not load this section.", _funnel_card({"available": False}, "7d"))
         self.assertIn("No first-run sessions in this period.", _funnel_card(_funnel(), "7d"))
 
-    def test_never_connected_tile_is_the_session_count_not_the_sum_of_problems(self):
+    def test_never_connected_is_the_session_count_not_the_sum_of_problems(self):
         # Owner 2026-10-07: 12 sessions, 8 connected; problem rows overlap and
-        # their sum (19) exceeded the sessions. The tile is the API's distinct
-        # never-connected count; failure tone only above zero.
+        # their sum (19) exceeded the sessions. The drop-off is the API's
+        # distinct never-connected count.
         card = _funnel_card(_funnel(sessions=12, connected=8, never_connected=4, no_usb=9, not_mtp=6,
                                     busy=4), "24h")
-        self.assertIn("<span class='admin-metric-label'>Never connected</span>"
-                      "<strong class='admin-metric-value'>4</strong>", card)
+        self.assertIn("Lost on the way: <strong>4</strong> never connected", card)
         self.assertNotIn(">19<", card)
         self.assertIn("<span class='overview-funnel-label'>No watch plugged in</span>", card)
         self.assertIn("<span class='overview-funnel-label'>Not in file-transfer mode</span>", card)
         self.assertIn("<span class='overview-funnel-label'>Watch in use by another app</span>", card)
         self.assertLess(card.index("No watch plugged in"), card.index("Not in file-transfer mode"))
+        self.assertNotIn("Why not connected", card)  # older payload: no never-connected breakdown
         for title in ("Catalog", "Install blocked"):
             group = card.split(f"<h3>{title}</h3>", 1)[1].split("</ul>", 1)[0]
             self.assertIn("overview-funnel-none", group)  # empty groups show "—"
         all_connected = _funnel_card(_funnel(sessions=3, connected=3, never_connected=0, remote=3,
                                              blocked_authorization=1, local_capability=2), "24h")
-        self.assertIn("data-tone='neutral'><span class='admin-metric-label'>Never connected</span>"
-                      "<strong class='admin-metric-value'>0</strong>", all_connected)
+        self.assertNotIn("funnel-dropoff", all_connected)
         self.assertNotIn("overview-funnel-note", all_connected)  # no problems, no note
         self.assertIn("<span class='overview-funnel-label'>Watch not identified</span>", all_connected)
-        self.assertIn("<span class='overview-funnel-label'>Not allowed for this watch</span>", all_connected)
+        self.assertIn("<span class='overview-funnel-label'>Not allowed for this watch"
+                      "<small class='funnel-hint'>Install was refused because the watch was not approved</small></span>",
+                      all_connected)
+        # The never-connected breakdown counts only those sessions, including
+        # ones that closed before any connection signal.
+        explained = _funnel_card(_funnel(sessions=6, connected=2, never_connected=4, no_usb=5, never={
+            "sessionCount": 4, "withoutConnectionSignalCount": 1,
+            "outcomes": [{"outcome": "TIMEOUT_NO_USB", "sessionCount": 2}, {"outcome": "BUSY", "sessionCount": 1}],
+        }), "24h")
+        group = explained.split("<h3>Why not connected</h3>", 1)[1].split("</ul>", 1)[0]
+        self.assertIn("Sessions that never connected; one can show several signals.", group)
+        self.assertLess(group.index("No watch plugged in"), group.index("Closed before any watch signal"))
+        self.assertIn("<strong>1</strong><span class='sr-only'> of 4 never-connected sessions</span>", group)
 
     def test_unavailable_map_snapshot_keeps_the_page_and_marks_sections(self):
         body = self.render(data={"available": False})
@@ -284,7 +378,7 @@ class CountingDatabase(FakeProviderDatabase):
             raise RuntimeError("map snapshot unavailable")
         return super().admin_overview_map_snapshot(since, period=period, time_zone=time_zone)
 
-    def app_funnel_summary(self, since, until=None, *, model_limit=10):
+    def app_funnel_summary(self, since, until=None, *, model_limit=10, **_):
         return {"sessionCount": 2, "neverConnectedSessionCount": 0,
                 "stages": [{"stage": "DEVICE_CONNECT", "outcome": "CONNECTED", "sessionCount": 2}],
                 "modelsNeedingReview": []}
@@ -331,6 +425,33 @@ class DashboardHttpTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(self.database.review_calls, 1)
         self.assertIn("aria-label='Open problems: 2'", body)
+
+    def test_first_run_page_route(self):
+        response, body = self.request("GET", "/admin/first-run?period=7d")
+        self.assertEqual(response.status, 200)
+        self.assertIn("text/html", response.headers["Content-Type"])
+        self.assertIn("<h1>First run</h1>", body)
+        self.assertIn("id='overview-funnel'", body)
+        self.assertEqual(self.database.review_calls, 0)
+        response, body = self.request("GET", "/admin/first-run?period=bogus")
+        self.assertEqual(response.status, 200)
+        self.assertIn("<option value='24h' selected>", body)
+
+    def test_saved_time_zone_cookie_is_the_default_so_the_page_is_built_once(self):
+        # Nav links carry no timeZone; the zone the script saved renders the
+        # page directly instead of a UTC render plus a client refetch (audit #10).
+        zone_cookie = {"Cookie": COOKIE + "; terento_admin_tz=Europe/Vilnius"}
+        for path, zone in (("/admin", "Europe/Vilnius"), ("/admin?timeZone=Asia%2FTokyo", "Asia/Tokyo")):
+            _, body = self.request("GET", path, headers=zone_cookie)
+            self.assertEqual(self.database.overview_map_requests[-1][2], zone, path)
+            self.assertIn(f"action='/admin' data-time-zone='{zone}'", body)
+        _, body = self.request("GET", "/admin/first-run", headers=zone_cookie)
+        self.assertIn("action='/admin/first-run' data-time-zone='Europe/Vilnius'", body)
+        _, body = self.request("GET", "/admin", headers={"Cookie": COOKIE + "; terento_admin_tz=Mars/Base"})
+        self.assertEqual(self.database.overview_map_requests[-1][2], "UTC")
+        script = _overview_period_script()
+        self.assertIn("document.cookie = `terento_admin_tz=${timeZone}; Path=/admin; SameSite=Strict; Secure`", script)
+        self.assertIn("if (renderedTimeZone !== timeZone) load(period, false, timeZone);", script)
 
     def test_failing_map_snapshot_renders_unavailable_sections_not_json(self):
         self.database.fail_map = True

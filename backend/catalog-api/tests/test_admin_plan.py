@@ -77,7 +77,7 @@ class AdminPlanTests(unittest.TestCase):
         self.assertNotEqual(a['eventDetail'], b['eventDetail'])
 
     def test_all_activity_outcomes_have_text_icon_and_semantic_color(self):
-        tones = {'DOWNLOAD_STARTED':'info','DOWNLOAD_PROCESSING':'info','DOWNLOAD_SUCCEEDED':'success',
+        tones = {'DOWNLOAD_SUCCEEDED':'success',
             'DOWNLOAD_FAILED':'error','DOWNLOAD_CANCELLED':'neutral','DOWNLOAD_INTERRUPTED':'warning',
             'INSTALL_SUCCEEDED':'success','INSTALL_FAILED':'error','MAP_UPDATE_SUCCEEDED':'success','MAP_UPDATE_FAILED':'error','UNKNOWN':'neutral'}
         for event, tone in tones.items():

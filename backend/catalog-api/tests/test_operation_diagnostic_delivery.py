@@ -20,7 +20,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from terento_catalog.admin import (
-    _github_issue_report, _failure_context_summary, _diagnostic_technical_details,
+    _github_issue_report, _diagnostic_technical_details,
     _admin_device_payload, _diagnostic_summary_by_identity, diagnostics_page, device_detail_page,
     hash_password, overview_page, token_hash,
 )
@@ -177,7 +177,7 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         self.assertIn('Failure stage: cleanup', report)
         self.assertIn(r'Original failure boundary: postwrite\_protection', report)
         self.assertIn('Failure component: contours', report)
-        self.assertIn('cleanup', _failure_context_summary([row]))
+        self.assertIn('cleanup', _diagnostic_technical_details(row, 1))
         changed = deepcopy(payload)
         changed['failureContext']['devicePresence'] = 'absent'
         self.assertEqual(self.send(changed)[0], 200)
@@ -207,9 +207,9 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
             replay = {**payload, 'failureContext': None, 'originalFailureContext': None}
             self.assertEqual(self.send(replay)[0], 200)
             row['event_id'] = base['id']  # Compare rendering without unrelated unique test IDs.
-            rendered.append((_failure_context_summary([row]), _diagnostic_technical_details(row, 1), _github_issue_report('Test watch', [row])))
+            rendered.append((_diagnostic_technical_details(row, 1), _github_issue_report('Test watch', [row])))
         self.assertTrue(all(value == rendered[0] for value in rendered))
-        self.assertIn('Failure boundary: unavailable', rendered[0][2][1])
+        self.assertIn('Failure boundary: unavailable', rendered[0][1][1])
         self.assertEqual(len(self.db.rows()), 4)
 
     def test_every_native_failure_code_is_accepted_by_schema_and_api(self):
@@ -311,7 +311,7 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
                 self.assertEqual(row['map_result_index'], payload['mapResultIndex'])
                 self.assertEqual(row['phase_outcome'], payload['phaseOutcome'])
                 _, report = _github_issue_report('Test watch', [row])
-                summary = _failure_context_summary([row])
+                summary = _diagnostic_technical_details(row, 1)
                 context = payload.get('failureContext') or {}
                 if context:
                     self.assertIn('Failure boundary: ' + context['boundary'].replace('_', r'\_'), report)

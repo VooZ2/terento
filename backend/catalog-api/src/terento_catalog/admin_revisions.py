@@ -95,5 +95,5 @@ def section_revisions(sections: dict[str, Any]) -> dict[str, str]:
 def statistics_revisions(payload: dict[str, Any]) -> dict[str, str]:
     return section_revisions({
         'statistics': {key: payload.get(key) for key in ('rows', 'summary', 'allTimeSummary', 'linkage')},
-        'eventDetail': {key: payload.get(key) for key in ('detailRows', 'detailTotal', 'detailPage', 'detailPageSize')},
+        'eventDetail': {key: payload.get(key) for key in ('detailRows', 'detailTotal', 'detailEventCount', 'detailPage', 'detailPageSize')},
     })

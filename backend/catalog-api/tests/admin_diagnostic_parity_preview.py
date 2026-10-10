@@ -4,7 +4,7 @@ PYTHONPATH=src python3.13 tests/admin_diagnostic_parity_preview.py /tmp/admin-pa
 Serve the directory locally and run admin_diagnostic_parity_browser.cjs.
 """
 from pathlib import Path
-from terento_catalog.admin import diagnostics_page, device_detail_page, _admin_device_payload
+from terento_catalog.admin import ADMIN_STYLES, ADMIN_STYLESHEET_PATH, diagnostics_page, device_detail_page, _admin_device_payload
 from terento_catalog.update_diagnostics import update_diagnostics_page
 
 DEVICE = 'fenix-8-51-amoled'
@@ -75,6 +75,9 @@ def build(root):
     pages['device-updates'] = device_detail_page(device, user, 'fixture', **args)
     for name, body in pages.items():
         (root / (name + '.html')).write_bytes(body)
+    # Signed-in pages link the content-versioned Admin stylesheet.
+    (root / ADMIN_STYLESHEET_PATH.lstrip('/')).parent.mkdir(parents=True, exist_ok=True)
+    (root / ADMIN_STYLESHEET_PATH.lstrip('/')).write_text(ADMIN_STYLES, encoding='utf-8')
     return pages
 
 

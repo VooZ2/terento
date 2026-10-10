@@ -14,8 +14,15 @@ class MapRandoTests(unittest.TestCase):
                 return ''.join(f'<a href="MapRando_{region}_2026_09_{day}.img">map</a>' for day in ('01', '02')) + '<a href="BaseCamp/">BaseCamp/</a>'
             def measure_img(self, url):
                 assert url.endswith('_2026_09_02.img')
-                return ImageMeasurement(1024)
-        snapshot = MapRandoProviderAdapter(fetcher=Fetcher()).collect()
+                # A title/date that cannot confirm the release keeps the package out.
+                return ImageMeasurement(1024, 'Haiti' not in url)
+        def fetch_text(url):
+            if url == root:
+                return Fetcher.fetch_text(None, url) + '<a href="Haiti/">Haiti/</a>'
+            return Fetcher.fetch_text(None, url)
+        fetcher = Fetcher()
+        fetcher.fetch_text = fetch_text
+        snapshot = MapRandoProviderAdapter(fetcher=fetcher).collect()
         self.assertEqual(snapshot.definition.default_status, 'ACTIVE')
         self.assertEqual([p.id for p in snapshot.packages], ['maprando-france', 'maprando-france-courbes-ign'])
         self.assertEqual([p.name for p in snapshot.packages], ['France', 'France (IGN contours)'])

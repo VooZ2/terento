@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
-from terento_catalog.admin import _admin_device_payload, _device_information_markup, device_detail_page, device_identification_page, devices_page
+from terento_catalog.admin import ADMIN_STYLES, _admin_device_payload, _device_information_markup, device_detail_page, device_identification_page, devices_page
 
 
 UTC = timezone.utc
@@ -43,7 +43,7 @@ class DeviceInformationLayoutTests(unittest.TestCase):
         self.assertIn("historical-catalog-tooltip'>Historical catalog entry</span>", row)
         self.assertIn("/admin/devices/historical-example?from=devices", row)
         self.assertNotIn("table-secondary'>Historical catalog entry", row)
-        self.assertIn(".device-model-button:focus-visible .historical-catalog-tooltip", body)
+        self.assertIn(".device-model-button:focus-visible .historical-catalog-tooltip", ADMIN_STYLES)
 
     def test_primary_facts_keep_unknown_features_and_hide_identifiers(self):
         device = dict(model='Watch <Example>', caseSizeMm=51, screenTechnology='AMOLED',
@@ -505,9 +505,6 @@ class AdminDevicesTests(unittest.TestCase):
             "Maps: Unknown", "Approved", "Blocked", "Pending", "Last success",
             "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
-            "position:sticky",
-            "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
-            "table-layout:fixed", "overflow-y:visible",
             "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
             "data-device-sort=\"authorization\"", "data-device-sort=\"status\"",
             "data-device-sort=\"attempts\"", "data-device-sort=\"success\"", "data-device-sort=\"evidence\"",
@@ -519,11 +516,17 @@ class AdminDevicesTests(unittest.TestCase):
             # The rate is a separate, half-size part on the count's line on phones,
             # where Covered spans two columns (owner 2026-10-07).
             "data-stat='covered'>1/1 <span class='admin-metric-rate'>(100%)</span>",
-            ".device-summary-strip>.admin-metric-row>.admin-metric:has([data-stat='covered']){grid-column:span 2}",
-            ".device-summary-strip [data-stat='covered'] .admin-metric-rate{font-size:.5em}",
             "class='page-meta device-summary-sync'><strong>Last sync</strong>",
         ):
             self.assertIn(value, body)
+        for value in (
+            "position:sticky",
+            "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
+            "table-layout:fixed", "overflow-y:visible",
+            ".device-summary-strip>.admin-metric-row>.admin-metric:has([data-stat='covered']){grid-column:span 2}",
+            ".device-summary-strip [data-stat='covered'] .admin-metric-rate{font-size:.5em}",
+        ):
+            self.assertIn(value, ADMIN_STYLES)
         table_header = body[body.index("<thead>"):body.index("</thead>")]
         header_positions = [table_header.index(value) for value in (
             "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
@@ -539,7 +542,7 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("generic-garmin-watch.png", body)
         self.assertIn("Evidence", body)
         self.assertIn('<span class="sr-only">Filter by family</span>', body)
-        self.assertNotIn(".filter-bar label>.sr-only{position:static", body)
+        self.assertNotIn(".filter-bar label>.sr-only{position:static", ADMIN_STYLES)
         self.assertIn("title=\"Install policy\"", body)
         self.assertNotIn("Support decision", body)
         self.assertNotIn("Evidence status", body)
@@ -551,8 +554,8 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("formatToParts", body)
         self.assertIn("${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}", body)
         self.assertNotIn("timeZoneName: 'short'", body)
-        self.assertIn("white-space:nowrap;cursor:pointer", body)
-        self.assertIn(".device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}", body)
+        self.assertIn("white-space:nowrap;cursor:pointer", ADMIN_STYLES)
+        self.assertIn(".device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}", ADMIN_STYLES)
         self.assertIn("[device.id, device.model", body)
         self.assertIn("let sortKey = 'model'", body)
         self.assertIn("let sortDirection = 'ascending'", body)
@@ -564,12 +567,12 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("mapOrder = {unknown: 0, no: 1, yes: 2}", body)
         self.assertIn("authorizationOrder = {PENDING: 0, BLOCKED: 1, APPROVED: 2}", body)
         self.assertIn("if (aValue === null || aValue === undefined || aValue === '')", body)
-        self.assertIn('th[aria-sort="ascending"] .device-sort-button', body)
-        self.assertIn('th[aria-sort="descending"] .device-sort-button', body)
+        self.assertIn('th[aria-sort="ascending"] .device-sort-button', ADMIN_STYLES)
+        self.assertIn('th[aria-sort="descending"] .device-sort-button', ADMIN_STYLES)
         self.assertIn('class="device-sticky-header"', body)
         self.assertIn("stickyHeaderTable.style.transform = `translateX(${-tableScroll.scrollLeft}px)`", body)
         self.assertIn("tableScroll?.addEventListener('scroll', syncStickyHeader", body)
-        self.assertIn(".device-table-wrap thead{display:none}", body)
+        self.assertIn(".device-table-wrap thead{display:none}", ADMIN_STYLES)
         columns = (
             '<colgroup class="device-table-columns">'
             '<col class="device-column-model"><col class="device-column-variant">'
@@ -583,9 +586,9 @@ class AdminDevicesTests(unittest.TestCase):
             ("model", 20), ("variant", 18), ("maps", 9), ("authorization", 14),
             ("status", 11), ("attempts", 9), ("successful", 8), ("last-success", 11),
         ):
-            self.assertIn(f".device-column-{column}{{width:{width}%}}", body)
-        self.assertIn("white-space:nowrap;text-transform:uppercase", body)
-        self.assertIn("opacity:.2", body)
+            self.assertIn(f".device-column-{column}{{width:{width}%}}", ADMIN_STYLES)
+        self.assertIn("white-space:nowrap;text-transform:uppercase", ADMIN_STYLES)
+        self.assertIn("opacity:.2", ADMIN_STYLES)
         self.assertNotIn("<dialog id='device-dialog'", body)
         self.assertIn("parameters.has(key) ? parameters.get(key) : saved[key]", body)
         # A plain visit opens at Maps: Yes; only an explicit ?maps= link (or the
@@ -675,14 +678,14 @@ class AdminDevicesTests(unittest.TestCase):
             '</colgroup>'
         )
         self.assertEqual(body.count(columns), 2)
-        self.assertIn("table-layout:fixed", body)
+        self.assertIn("table-layout:fixed", ADMIN_STYLES)
         self.assertIn(
             "@media(max-width:760px){.filter-bar .device-mobile-sort{display:block}",
-            body,
+            ADMIN_STYLES,
         )
         self.assertIn("stickyHeaderTable.style.transform = `translateX(${-tableScroll.scrollLeft}px)`", body)
         self.assertIn("tableScroll?.addEventListener('scroll', syncStickyHeader", body)
-        self.assertIn("white-space:nowrap;text-transform:uppercase", body)
+        self.assertIn("white-space:nowrap;text-transform:uppercase", ADMIN_STYLES)
 
     def test_device_variant_display_normalizes_case_size_without_mutating_input(self):
         row = device_row(variant="51mm, AMOLED", case_size_mm=51)

@@ -1,6 +1,6 @@
 import unittest
 
-from terento_catalog.admin import _identity_checks_markup
+from terento_catalog.admin import _identity_observations_markup
 from terento_catalog.identity_assessment import assess_identity
 
 
@@ -49,13 +49,13 @@ class IdentityVariantTests(unittest.TestCase):
     def test_received_unmapped_codes_and_reported_model_are_visible(self):
         e = self.event()
         result = assess_identity(e, [self.device()], [])
-        markup = _identity_checks_markup([dict(current_identity_assessment=result,
+        markup = _identity_observations_markup([dict(current_identity_assessment=result,
             garmin_model_description=e['garminModelDescription'])])
         for text in ('006-B4953-00', '091e:5359', 'mapping not confirmed',
                      'fenix 9 Pro - inReach, 47mm'):
             self.assertIn(text, markup)
         missing = assess_identity(self.event(usbVendorID=None), [self.device()], [])
-        self.assertIn('Not reported', _identity_checks_markup([dict(current_identity_assessment=missing)]))
+        self.assertIn('Not reported', _identity_observations_markup([dict(current_identity_assessment=missing)]))
 
     def test_normal_selector_excludes_conflicting_variants(self):
         from terento_catalog.admin import _diagnostic_detail_dialog

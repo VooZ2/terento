@@ -7,7 +7,7 @@ import unittest
 from jsonschema import Draft202012Validator
 from terento_catalog.compatibility_evidence import validate_event, EvidenceValidationError
 from terento_catalog.failure_context import CONTEXT_ENUMS, PROTECTION_ENUMS, COUNT_FIELDS, TARGET_FIELDS, BOUNDARIES, BOUNDARY_STAGES
-from terento_catalog.admin import _github_issue_report, _failure_context_summary, _diagnostic_technical_details
+from terento_catalog.admin import _github_issue_report, _diagnostic_technical_details
 from test_operation_diagnostic_delivery import IntakeDatabase
 from test_compatibility_evidence import event as legacy_event
 
@@ -283,10 +283,19 @@ class FailureContextTests(unittest.TestCase):
         self.assertIn('Original failure protection reason: preexisting-object-changed', second)
         self.assertIn('Failure boundary: unavailable', first)
         self.assertNotIn('postwrite_protection', first)
-        self.assertIn('cleanup', _failure_context_summary([row]))
         technical = _diagnostic_technical_details(row, 1)
+        self.assertIn('cleanup', technical)
         self.assertIn('targetItemIDMatches', technical)
-        self.assertNotIn('postwrite_protection', _failure_context_summary([sibling]))
+        # Telemetry strings are escaped even when they look like markup; only
+        # the module's own Yes/No/— markup is emitted as is.
+        hostile = _diagnostic_technical_details(dict(
+            row, transport="<span></dd></dl></details></dialog><a href='https://evil.example'>Sign in</a>",
+            raw_mtp_model="<span>fenix</span>", cleanup_attempted=None, cleanup_succeeded=True), 1)
+        self.assertNotIn("<a href='https://evil.example'>", hostile)
+        self.assertIn("&lt;span&gt;&lt;/dd&gt;", hostile)
+        self.assertIn("&lt;span&gt;fenix&lt;/span&gt;", hostile)
+        self.assertIn("<dt>Cleanup succeeded</dt><dd>Yes</dd>", hostile)
+        self.assertNotIn('postwrite_protection', _diagnostic_technical_details(sibling, 1))
         malicious = dict(row, failure_context={'boundary': '/Users/private', 'filename': 'secret.img'})
         _, report = _github_issue_report('Test watch', [malicious])
         self.assertNotIn('/Users/private', report)

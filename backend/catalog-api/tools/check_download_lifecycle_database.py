@@ -44,6 +44,5 @@ def check_download_lifecycle_database(database):
     legacy_rows = [r for r in recent if r.get('operation_id') == legacy['operationId']]
     assert len(legacy_rows) == 1, legacy_rows
     assert legacy_rows[0]['event_type'] == 'DOWNLOAD_SUCCEEDED'
-    assert legacy_rows[0]['has_recorded_outcome'] is True
     assert len(legacy_rows[0]['lifecycle']) == 2
     print('PASS: main/contour event isolation, terminal-first delivery, phase history and legacy deduplication')

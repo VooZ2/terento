@@ -65,6 +65,10 @@ def select_suites(paths: list[str]) -> list[str]:
         if text in {".github/workflows/deploy-site.yml", ".github/indexnow/site-state.json"}:
             selected.add("site")
             continue
+        if text.startswith("contracts/fixtures/web-installer-"):
+            # Web installer statistics: only the catalog API tests read these.
+            selected.add("backend")
+            continue
         if text == ".github/workflows/swift-ci.yml" or text.startswith("contracts/"):
             return list(ALL_SUITES)
         if text.startswith(".github/"):

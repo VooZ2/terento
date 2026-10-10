@@ -11,7 +11,6 @@ from uuid import uuid4
 
 from jsonschema import Draft202012Validator
 
-from api_test_fixtures import FakeProviderDatabase
 from pglite_support import PGliteTestCase
 from terento_catalog import http_api
 from terento_catalog.support_reports import (
@@ -336,13 +335,6 @@ class SupportReportHTTPTests(PGliteTestCase):
         with patch.object(self.db, "insert_support_report", side_effect=RuntimeError("down")):
             with self.assertLogs("terento_catalog.http_api", level="ERROR"):
                 self.assertEqual(self.post(encode(support())), (503, {"error": "support_reports_unavailable"}))
-
-
-class FakeDatabaseCompatibilityTests(unittest.TestCase):
-    def test_local_test_data_without_support_reports_keeps_working(self):
-        service = CatalogService(FakeProviderDatabase())
-        self.assertNotIn("supportReports", service.local_test_data())
-        self.assertNotIn("supportReportCount", service.purge_local_test_data(admin_user_id=1))
 
 
 if __name__ == "__main__":

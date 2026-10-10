@@ -27,6 +27,7 @@ class Settings:
     admin_session_ttl_seconds: int = 28_800
     public_compatibility_stats_enabled: bool = False
     operations_ingest_secret: str | None = None
+    web_installer_ingest_secret: str | None = None
     opentopomap_contour_mode: str = "off"
     opentopomap_contour_allowlist: tuple[str, ...] = ()
     trusted_proxies: tuple[str, ...] = DEFAULT_TRUSTED_PROXIES
@@ -65,6 +66,7 @@ class Settings:
             admin_session_ttl_seconds=_positive_int("ADMIN_SESSION_TTL_SECONDS", 28_800),
             public_compatibility_stats_enabled=_boolean("PUBLIC_COMPATIBILITY_STATS_ENABLED", False),
             operations_ingest_secret=_optional_secret("OPERATIONS_INGEST_SECRET"),
+            web_installer_ingest_secret=_optional_secret("WEB_INSTALLER_INGEST_SECRET"),
             opentopomap_contour_mode=_contour_mode(),
             opentopomap_contour_allowlist=_csv("OPENTOPO_MAP_CONTOUR_ALLOWLIST"),
             map_preview_enabled=_boolean("MAP_PREVIEW_ENABLED", False),

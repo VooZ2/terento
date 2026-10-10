@@ -4,7 +4,7 @@ PYTHONPATH=src python3.13 tests/admin_recovery_preview.py /tmp/admin-recovery
 Serve that directory locally, then run admin_recovery_browser.cjs.
 """
 from pathlib import Path
-from terento_catalog.admin import overview_page, provider_detail_page
+from terento_catalog.admin import ADMIN_STYLES, ADMIN_STYLESHEET_PATH, overview_page, provider_detail_page
 from terento_catalog.update_diagnostics import update_diagnostics_page
 
 HISTORICAL = '11111111-1111-4111-8111-111111111111'
@@ -68,6 +68,9 @@ def build(root):
         'update-source': update_diagnostics_page({'detail': source_detail}, user, 'fixture')}
     for name, body in pages.items():
         (root / (name + '.html')).write_bytes(body)
+    # Signed-in pages link the content-versioned Admin stylesheet.
+    (root / ADMIN_STYLESHEET_PATH.lstrip('/')).parent.mkdir(parents=True, exist_ok=True)
+    (root / ADMIN_STYLESHEET_PATH.lstrip('/')).write_text(ADMIN_STYLES, encoding='utf-8')
     return pages
 
 

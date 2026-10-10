@@ -82,8 +82,9 @@ class DashboardQueryCostTests(PGliteTestCase):
                     if "FROM compatibility_model_statistics" in sql:
                         view_reads += 1
                         self.assertIn("SET LOCAL jit = off", statements[:position], (period, sql[:80]))
-            # Needs attention summary and the review-required list.
-            self.assertEqual(view_reads, 2, period)
+            # Needs attention summary only: the unrendered compatibility
+            # snapshot (review-required list) is no longer read.
+            self.assertEqual(view_reads, 1, period)
 
     def test_statement_count_does_not_grow_with_history(self):
         before = {period: sum(map(len, self.dashboard_transactions(period))) for period in PERIODS}

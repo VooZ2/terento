@@ -94,6 +94,7 @@ allowed_internal_events = {
     "internal-link-click",
     "language-switch-click",
     "legal-link-click",
+    "maps-link-click",
     "navigation-link-click",
     "privacy-link-click",
 }
@@ -102,8 +103,13 @@ for path in sorted((root / "site").rglob("*.html")):
     for heading in re.findall(r"<h1\b[^>]*>([\s\S]*?)</h1>", html, flags=re.IGNORECASE):
         text = re.sub(r"<[^>]+>", "", heading).strip()
         assert not text.endswith("."), f"{path}: H1 must not end with a full stop"
+    if '<footer class="site-footer">' in html and "<nav class=\"footer-nav\"" in html:
+        assert html.count('data-umami-event="web-installer-link-click"') == 1, f"{path}: footer must link the Web installer once"
     for item in anchors(path):
         href = item["href"]
+        if href.startswith("https://lab.terento.app/install/"):
+            assert item["attributes"].get("data-umami-event") == "web-installer-link-click", f"{path}: Web installer link must use web-installer-link-click"
+            assert item["attributes"].get("data-umami-event-location") == "footer-nav", f"{path}: Web installer link has no footer-nav location"
         if not (href.startswith("/") or href.startswith("#")):
             continue
         event = item["attributes"].get("data-umami-event")
@@ -113,6 +119,8 @@ for path in sorted((root / "site").rglob("*.html")):
         normalized_target = href.split("?", 1)[0].split("#", 1)[0].rstrip("/") or "/"
         if normalized_target == "/privacy":
             assert event == "privacy-link-click", f"{path}: privacy link must use privacy-link-click"
+        if re.fullmatch(r"(?:/[a-z]{2})?/map-styles", normalized_target) and "language-option" not in item["class"]:
+            assert event == "maps-link-click", f"{path}: Maps link must use maps-link-click"
 
     email_tags = re.findall(r'<a\b[^>]*href="mailto:[^"]+"[^>]*>', html, flags=re.IGNORECASE)
     for tag in email_tags:

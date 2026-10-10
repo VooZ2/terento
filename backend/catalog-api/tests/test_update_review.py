@@ -91,6 +91,20 @@ class UpdateReviewTests(unittest.TestCase):
         db.review_update_diagnostic(EVENT,action='resolve',resolution_reason='FIXED',admin_user_id=7)
         with self.assertRaises(ValueError): db.review_update_diagnostic(EVENT,action='workflow',workflow_status='UNDER_REVIEW',admin_user_id=7)
 
+    def test_reopen_active_and_resolve_resolved_are_no_op_successes(self):
+        db=ReviewDatabase()
+        db.review_update_diagnostic(EVENT,action='issue',linked_github_issue='#12',admin_user_id=7)
+        db.review_update_diagnostic(EVENT,action='workflow',workflow_status='UNDER_REVIEW',admin_user_id=7)
+        db.calls.clear()
+        self.assertTrue(db.review_update_diagnostic(EVENT,action='reopen',admin_user_id=8))
+        self.assertEqual(db.row['diagnostic_workflow_status'],'UNDER_REVIEW')
+        self.assertFalse(any(sql.lstrip().startswith(('UPDATE','INSERT')) for sql,_ in db.calls))
+        apply_closed_update_issue(db,12,'completed')
+        db.calls.clear()
+        self.assertTrue(db.review_update_diagnostic(EVENT,action='resolve',resolution_reason='OTHER',admin_user_id=8))
+        self.assertEqual(db.row['resolution_code'],'FIXED')
+        self.assertFalse(any(sql.lstrip().startswith(('UPDATE','INSERT')) for sql,_ in db.calls))
+
     def test_github_close_resolves_exact_update_and_does_not_rewrite_result(self):
         db=ReviewDatabase()
         db.review_update_diagnostic(EVENT,action='issue',linked_github_issue='#12',admin_user_id=7)

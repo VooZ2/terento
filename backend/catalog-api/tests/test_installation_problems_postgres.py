@@ -92,6 +92,31 @@ class InstallationProblemParityTests(PGliteTestCase):
         self.assertEqual(int(KPI.search(body).group(1)), 1)
         self.assertIn("data-tone='danger'", body.split("data-stat='openProblems'", 1)[0].rsplit("<div class='admin-metric'", 1)[1])
 
+    def test_legacy_and_unresolved_rows_of_one_identity_render_once(self):
+        # The view keeps a legacy (no assessment) and an unresolved row for the
+        # same reported identity; Installations renders one (audit #20).
+        for assessment in (None, '{"state":"UNRESOLVED"}'):
+            self.rows.diagnostic(canonical_device_model_id=None, identity_resolution_state="UNRESOLVED",
+                                 compatibility_identity="Venu X1", model="Venu X1", identity_assessment=assessment,
+                                 phase_outcome="FAILED", failure_stage="write", failure_code="INSTALL_FAILED_WRITE")
+        view_rows = [row for row in self.service.compatibility_statistics() if row["model"] == "Venu X1"]
+        self.assertEqual(len(view_rows), 2)
+        body = dashboard_page(
+            self.service.compatibility_statistics(), {"username": "test"}, "csrf",
+            diagnostic_summary=self.service.compatibility_diagnostic_summary(),
+        ).decode()
+        rendered = ROW.findall(body)
+        self.assertEqual([identity for identity, _ in rendered], ["identity:Venu X1"])
+        self.assertEqual(sum(int(count) for _, count in rendered), int(KPI.search(body).group(1)))
+        self.assertIn("data-attempts='2'", body)
+
+    def test_identity_details_read_several_identities_in_one_query(self):
+        for identity in ("Venu X1", "Edge 1050", "Instinct 3"):
+            self.rows.diagnostic(canonical_device_model_id=None, identity_resolution_state="UNRESOLVED",
+                                 compatibility_identity=identity, model=identity)
+        rows = self.service.compatibility_identity_details("ACTIVE", identity=["Venu X1", "Edge 1050"])
+        self.assertEqual(sorted(row["compatibility_identity"] for row in rows), ["Edge 1050", "Venu X1"])
+
     def test_operation_spanning_identities_counts_once(self):
         operation = self.rows.uuid()
         self.rows.diagnostic(operation_id=operation, map_result_index=0, selected_map_count=2,

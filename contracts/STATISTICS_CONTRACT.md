@@ -43,7 +43,12 @@ reports can be lost, and old releases emitted less information.
 Terento keeps four related but separate populations. App first-run funnel
 sessions ([`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md)) are a fifth,
 independent population: they are never mixed into acquisition, fresh-install,
-update, download, compatibility or Needs attention counts. User-sent support
+update, download, compatibility or Needs attention counts. Web installer page
+loads and relay jobs ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](WEB_INSTALLER_STATISTICS_CONTRACT.md))
+are another independent population with the same rule: every count below
+(installs, updates, downloads, failures, watch and model statistics) is app-only,
+and web records appear only on the Admin Web installer page and behind the
+Dashboard charts' Web switch. User-sent support
 reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
 statistical population at all: they are review work only and never change any
 count, rate or chart. Optional installation-report `inventoryMetrics`
@@ -122,7 +127,7 @@ F_success_rate = F_success / F_completed, when F_completed > 0
 
 When `F_completed = 0`, the UI displays an em dash rather than zero percent.
 The pure reference classifier (`statistics_semantics.py`) and the SQL read models
-(`compatibility_model_statistics`, `map_statistics`, `admin_overview_snapshot`)
+(`compatibility_model_statistics`, `map_statistics`)
 run the same fixture cases in a PostgreSQL parity test; when they disagree, this
 contract decides which side is corrected. Conflicts are detected per logical
 result over classification, provider, region and assessed device, and legacy
@@ -284,7 +289,9 @@ fresh-install totals, compatibility promotion, provider popularity or map covera
 ## Charts, cards, and activity
 
 The Dashboard installation trend is an installation-outcome chart. It must never
-include download or pre-install acquisition events.
+include download or pre-install acquisition events. Its App view (the default)
+and every rule in this section are app-only; the Web view of both Dashboard
+charts is defined by the web installer statistics contract.
 
 Fresh-install outcomes and map-update outcomes are separate statistical
 populations. Updates must never change fresh-install counts or success rates.

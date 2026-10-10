@@ -13,6 +13,7 @@ const input = JSON.parse(fs.readFileSync(0, 'utf8'));
       phase_outcome TEXT, occurred_at TIMESTAMPTZ, is_local_test BOOLEAN NOT NULL);
     CREATE TABLE map_download_event(event_id UUID PRIMARY KEY, operation_id UUID, release_label TEXT,
       outcome TEXT, occurred_at TIMESTAMPTZ, is_local_test BOOLEAN NOT NULL);
+    CREATE TABLE support_report(id UUID PRIMARY KEY, is_local_test BOOLEAN NOT NULL);
     CREATE TABLE admin_audit_log(admin_user_id BIGINT, action TEXT, provider_id TEXT, old_status TEXT,
       new_status TEXT, reason TEXT, target TEXT, request_id TEXT, details JSONB);
   `);

@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 
 from pglite_support import PGliteTestCase
 from terento_catalog.app_funnel import ALLOWED_FUNNEL_KEYS, FUNNEL_OUTCOMES, FunnelValidationError, validate_funnel_event
-from terento_catalog.http_api import CatalogService, make_handler
+from terento_catalog.http_api import CatalogService, _funnel_trend, make_handler
 
 CONTRACTS = Path(__file__).resolve().parents[3] / "contracts"
 SCHEMA = Draft202012Validator(json.loads((CONTRACTS / "app-funnel-event.schema.json").read_text()))
@@ -93,6 +93,39 @@ class ValidationMatrixTests(unittest.TestCase):
         self.assertFalse(validate_funnel_event(json.dumps(funnel()).encode())["isLocalTest"])
 
 
+class WaitingModelCatalogStatusTests(unittest.TestCase):
+    def test_status_explains_pending_from_the_current_policy_without_family_matching(self):
+        def row(device_id, model, map_capable, active=True):
+            return {"device_id": device_id, "manufacturer": "Garmin", "model": model, "canonical_model": model,
+                    "active": active, "map_capable": map_capable}
+
+        class PolicyDatabase:
+            def installation_policy_snapshot(self):
+                return [
+                    row("garmin-fenix-6x-51", "fēnix 6X", True),
+                    row("garmin-venu-x1", "Venu X1", None),
+                    row("garmin-a-47", "Instinct 9", True), row("garmin-a-51", "Instinct 9 51 mm", False),
+                    row("garmin-fr-70", "Forerunner 70", False),
+                    row("garmin-old", "Old Watch", True, active=False),
+                ], datetime(2026, 10, 9, tzinfo=timezone.utc)
+
+        service = CatalogService(PolicyDatabase())
+        models = [{"baseModel": name, "outcome": "PENDING", "sessionCount": 1} for name in (
+            "fenix 6x pro", "fenix 6x asia", "fēnix 6X", "Venu X1", "instinct 9", "forerunner 70", "old watch")]
+        statuses = [item["catalogStatus"] for item in service._funnel_model_catalog_status(models)]
+        self.assertEqual(statuses, ["NOT_IN_CATALOG", "NOT_IN_CATALOG", "APPROVED_NOW", "MAPS_UNKNOWN",
+                                    "MIXED", "NO_MAPS", "WITHDRAWN"])
+        self.assertEqual(service._funnel_model_catalog_status([]), [])
+
+        class BrokenDatabase:
+            def installation_policy_snapshot(self):
+                raise RuntimeError("down")
+
+        with self.assertLogs("terento_catalog.http_api", level="ERROR"):
+            broken = CatalogService(BrokenDatabase())._funnel_model_catalog_status(models[:1])
+        self.assertEqual(broken[0]["catalogStatus"], "UNAVAILABLE")
+
+
 class FunnelStorageTests(PGliteTestCase):
     def store(self, **changes):
         return self.db.insert_app_funnel_event(validate_funnel_event(json.dumps(funnel(**changes)).encode()))
@@ -160,6 +193,53 @@ class FunnelStorageTests(PGliteTestCase):
         self.assertEqual((all_time["sessionCount"], all_time["neverConnectedSessionCount"]), (6, 3))
         self.assertEqual(self.db.app_funnel_summary(now + timedelta(days=1))["neverConnectedSessionCount"], 0)
 
+    def test_journey_never_connected_reasons_and_trend(self):
+        now = self.sql("SELECT now() AS now")[0]["now"]
+        approved, pending, busy_only, silent = (str(uuid4()) for _ in range(4))
+        self.store(sessionId=approved, outcome="BUSY")
+        self.store(sessionId=approved)
+        self.store(sessionId=approved, stage="AUTHORIZATION", outcome="APPROVED", baseModel="fenix 8")
+        self.store(sessionId=pending)
+        self.store(sessionId=pending, stage="AUTHORIZATION", outcome="PENDING", baseModel="fenix 6x pro")
+        self.store(sessionId=busy_only, outcome="BUSY")
+        self.store(sessionId=busy_only, outcome="TIMEOUT_NO_USB")
+        self.store(sessionId=silent, stage="CATALOG", outcome="REMOTE")
+        summary = self.db.app_funnel_summary(now - timedelta(days=1), trend_bucket="hour", time_zone="Europe/Vilnius")
+        self.assertEqual((summary["sessionCount"], summary["neverConnectedSessionCount"],
+                          summary["approvedSessionCount"], summary["neverConnectedWithoutSignalCount"]), (4, 2, 1, 1))
+        # Only never-connected sessions: BUSY of the approved session is not here.
+        self.assertEqual(sorted((row["outcome"], row["sessionCount"]) for row in summary["neverConnectedOutcomes"]),
+                         [("BUSY", 1), ("TIMEOUT_NO_USB", 1)])
+        self.assertEqual(sum(row["sessionCount"] for row in summary["trend"]), 4)
+        self.assertEqual(sum(row["connectedSessionCount"] for row in summary["trend"]), 2)
+        self.assertTrue(all(row["bucket"].tzinfo is not None and row["bucket"].minute == 0 for row in summary["trend"]))
+        self.assertNotIn("trend", self.db.app_funnel_summary(None))
+
+    def test_hourly_trend_keeps_the_repeated_dst_hour_apart(self):
+        # 2026-10-25 Europe/Vilnius: local 03:00-04:00 happens twice (audit #18).
+        for at in ("2026-10-25T00:30:00Z", "2026-10-25T01:30:00Z"):
+            self.store(occurredAt=at)
+        self.sql("UPDATE app_funnel_event SET received_at = occurred_at")
+        since, until = datetime(2026, 10, 24, 21, tzinfo=timezone.utc), datetime(2026, 10, 25, 4, tzinfo=timezone.utc)
+        summary = self.db.app_funnel_summary(since, until, trend_bucket="hour", time_zone="Europe/Vilnius")
+        self.assertEqual([(row["bucket"], row["sessionCount"]) for row in summary["trend"]],
+                         [(datetime(2026, 10, 25, 0, tzinfo=timezone.utc), 1),
+                          (datetime(2026, 10, 25, 1, tzinfo=timezone.utc), 1)])
+        trend = _funnel_trend(summary["trend"], bucket="hour", since=since, until=until, time_zone="Europe/Vilnius")
+        self.assertEqual([(row["bucket"], row["sessionCount"]) for row in trend if row["sessionCount"]],
+                         [("2026-10-25T00:00:00+00:00", 1), ("2026-10-25T01:00:00+00:00", 1)])
+        self.assertEqual(len(trend), 8)  # 00:00 to 04:00 local is eight real hours
+
+    def test_waiting_models_are_the_top_ten_models_with_all_their_outcomes(self):
+        # Ten models with two waiting outcomes each, and one smaller model (audit #22a).
+        for number in range(10):
+            for outcome in ("PENDING", "PENDING", "AMBIGUOUS"):
+                self.store(sessionId=str(uuid4()), stage="AUTHORIZATION", outcome=outcome, baseModel=f"Model {number}")
+        self.store(stage="AUTHORIZATION", outcome="PENDING", baseModel="Model X")
+        models = self.db.app_funnel_summary(None)["modelsNeedingReview"]
+        self.assertEqual({row["baseModel"] for row in models}, {f"Model {number}" for number in range(10)})
+        self.assertEqual(len(models), 20)
+
     def test_funnel_never_enters_install_statistics(self):
         self.store(stage="INSTALL_BLOCKED", outcome="DEVICE_STORAGE")
         self.assertEqual(self.db.map_statistics({}), [])
@@ -209,7 +289,18 @@ class FunnelHTTPTests(PGliteTestCase):
         self.assertEqual(set(stages), set(FUNNEL_OUTCOMES))
         self.assertEqual(stages["AUTHORIZATION"]["PENDING"], 1)
         self.assertEqual(stages["CATALOG"]["REMOTE"], 0)
-        self.assertEqual(payload["modelsNeedingReview"], [{"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1}])
+        # The current policy approves fenix 8, so that Pending predates or
+        # differs from today's catalog; the status is diagnostic only.
+        self.assertEqual(payload["modelsNeedingReview"], [
+            {"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1, "catalogStatus": "APPROVED_NOW"},
+        ])
+        self.assertEqual(payload["journey"], {"sessionCount": 1, "connectedSessionCount": 0, "approvedSessionCount": 0})
+        self.assertEqual(payload["neverConnected"], {"sessionCount": 1, "withoutConnectionSignalCount": 1, "outcomes": []})
+        self.assertEqual(payload["previous"]["sessionCount"], 0)
+        self.assertEqual(payload["bucket"], "hour")
+        self.assertEqual(sum(item["sessionCount"] for item in payload["trend"]), 1)
+        self.assertGreaterEqual(len(payload["trend"]), 24)
+        self.assertIsNone(self.service.app_funnel({"period": "all"})["previous"])
         for bad in ({"period": "1y"}, {"other": "x"}):
             with self.assertRaises(FunnelValidationError):
                 self.service.app_funnel(bad)

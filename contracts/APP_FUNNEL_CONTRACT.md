@@ -84,6 +84,33 @@ sessions that did not connect. Period membership uses the event time, except tha
 than 10 minutes after server receipt is treated as the receipt time (the same
 rule as map statistics).
 
+The read model also reports, for the same population:
+
+- `journey`: `sessionCount`, `connectedSessionCount` (sessions with
+  `DEVICE_CONNECT` `CONNECTED`) and `approvedSessionCount` (sessions with both
+  `CONNECTED` and `AUTHORIZATION` `APPROVED` in the period).
+- `neverConnected`: `sessionCount` (equal to `neverConnectedSessionCount`),
+  `withoutConnectionSignalCount` (never-connected sessions with no
+  `DEVICE_CONNECT` event at all) and `outcomes`, the distinct-session count of
+  each `DEVICE_CONNECT` outcome among the never-connected sessions only,
+  non-zero, largest first. These rows are not exclusive either.
+- `previous`: the same `sessionCount`, `connectedSessionCount`,
+  `neverConnectedSessionCount` and `approvedSessionCount` for the window just
+  before the period (`today` compares with yesterday from midnight up to the
+  same time; the rolling periods with the equally long window ending at
+  `since`), with its `since`/`until`; `null` for `all`.
+- `bucket` and `trend`: one entry per `hour` (`today`, `24h`), `day` (`7d`),
+  `week` (`30d`) or `month` (`all`) in `timeZone`, with `sessionCount`,
+  `connectedSessionCount` and `neverConnectedSessionCount`; a session counts
+  once, in the bucket of its first event in the period. Empty buckets inside
+  the period are filled with zeros for display; they are not telemetry.
+- `catalogStatus` on each `modelsNeedingReview` entry: what the current
+  installation policy says about that exact normalized base model
+  (`NOT_IN_CATALOG`, `MAPS_UNKNOWN`, `MIXED`, `NO_MAPS`, `WITHDRAWN`,
+  `APPROVED_NOW`, or `UNAVAILABLE` when the policy could not be read). It is a
+  diagnostic explanation for Admin and never grants or revokes write
+  authorization.
+
 ## Population boundary
 
 Funnel sessions are a separate population. They are never mixed into fresh

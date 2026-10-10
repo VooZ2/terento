@@ -16,7 +16,7 @@ from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 
 from test_admin_dashboard_redesign import COOKIE, REVIEW, CountingDatabase, _funnel
-from terento_catalog.admin import map_statistics_page, overview_page
+from terento_catalog.admin import first_run_page, map_statistics_page, overview_page
 from terento_catalog.admin_revisions import active_trend_buckets, section_revisions
 from terento_catalog.http_api import CatalogService, make_handler
 
@@ -43,18 +43,12 @@ def overview(*, now: str = "2026-10-07T10:00:00+00:00", since: str = "2026-10-06
             "hasData": True, "eventCount": 3, "completedInstallCount": 2, "failedInstallCount": 1,
             "installSuccessRate": 66.7, "completedDownloadCount": 4, "failedDownloadCount": 0,
             "downloadSuccessRate": 100.0, "mapUpdateCount": 0, "completedMapUpdateCount": 0,
-            "failedMapUpdateCount": 0, "allTimeSuccessCount": 20, "allTimeFailedCount": 2,
+            "failedMapUpdateCount": 0,
+            # The read model leaves unfinished downloads out of Activity.
             "recentActivity": [
                 {"event_id": "done", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED",
                  "provider_id": "freizeitkarte", "display_name": "Germany", "occurred_at": "2026-10-07T09:00:00+00:00"},
-                # In-progress downloads are not rendered on the Dashboard; their
-                # stale flag is computed from now().
-                {"event_id": "busy", "event_type": "DOWNLOAD_STARTED", "outcome": None,
-                 "provider_id": "freizeitkarte", "occurred_at": "2026-10-07T08:00:00+00:00",
-                 "is_stale": now >= "2026-10-07T10:30"},
             ],
-            "attention": [], "missingDiagnosticFailures": [{"event_id": now}],
-            "missingDiagnosticFailureCount": 1,
             "trend": [
                 zero_bucket(f"{hour}:00:00+00:00"),  # current hour filler moves with the clock
                 {**zero_bucket("2026-10-07T09:00:00+00:00"), "success_count": 2, "failed_count": 1},
@@ -62,10 +56,8 @@ def overview(*, now: str = "2026-10-07T10:00:00+00:00", since: str = "2026-10-06
             "bucket": "hour",
         },
         # Not rendered on the Dashboard.
-        "compatibility": {"rows": [{"checked": now}]},
         "providers": [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY",
                        "lastCollectionAttempt": now, "lastCollectionFinished": now}],
-        "mapsUnknown": {"modelCount": int(now[11:13])},
         "downloads": {"hasData": True, "dmgTotal": 10, "zipTotal": 2, "lastObservedAt": now, "bucket": "hour",
                       "trend": [{"bucket": f"{hour}:00:00+00:00", "state": "period_boundary", "uncertain": True,
                                  "dmg_count": 0, "zip_count": 0, "observed_at": now}]},
@@ -111,13 +103,18 @@ class DashboardRevisionTests(unittest.TestCase):
         never_connected["funnel"]["neverConnectedSessionCount"] = 2
         self.assertNotEqual(base["funnel"], self.render(never_connected)["funnel"])
 
+        # The breakdown is on First run (owner 2026-10-10), so it moves only
+        # that page's revision, not the Dashboard's.
         for stage, outcome in (("CATALOG", "REMOTE"), ("INSTALL_BLOCKED", "DEVICE_STORAGE")):
             shown = overview()
             for item in shown["funnel"]["stages"]:
                 for row in item["outcomes"]:
                     if (item["stage"], row["outcome"]) == (stage, outcome):
                         row["sessionCount"] = 2
-            self.assertNotEqual(base["funnel"], self.render(shown)["funnel"], stage)
+            self.assertEqual(base["funnel"], self.render(shown)["funnel"], stage)
+            self.assertNotEqual(
+                revisions(first_run_page(overview()["funnel"], USER, "csrf", period="24h"))["funnel"],
+                revisions(first_run_page(shown["funnel"], USER, "csrf", period="24h"))["funnel"], stage)
 
         new_report = overview()
         new_report["supportReports"] = {"openCount": 1}
@@ -131,19 +128,40 @@ class DashboardRevisionTests(unittest.TestCase):
         user = {**USER, "admin_review_summary": {**REVIEW, "installationIssues": 3}}
         self.assertNotEqual(base["review"], revisions(overview_page(review_payload, user, "csrf"))["review"])
 
+    def test_undisplayed_map_fields_do_not_change_the_revision(self):
+        # Only displayed values are hashed (audit #21): raw event counts, the
+        # purpose breakdown, update outcome splits and all-time values are not.
+        base = self.render(overview())["mapActivity"]
+        hidden = overview()
+        hidden["data"].update(eventCount=99, hasData=False, downloadPurposes={"install": 4},
+                              completedMapUpdateCount=1, failedMapUpdateCount=1, allTimeSuccessCount=21)
+        self.assertEqual(base, self.render(hidden)["mapActivity"])
+        for key, value in (("failedDownloadCount", 1), ("installSuccessRate", 50.0), ("mapUpdateCount", 2)):
+            shown = overview()
+            shown["data"][key] = value
+            self.assertNotEqual(base, self.render(shown)["mapActivity"], key)
+
     def test_undisplayed_first_run_data_does_not_change_the_revision(self):
-        # The card shows the top three waiting models (label and count) only;
-        # a fourth model or the outcome behind a shown model is not displayed.
+        # Waiting models are shown under their outcome row; a model whose
+        # outcome has no row, the population text and zero trend buckets that
+        # only move with the rolling window are not displayed data.
         payload = overview()
         payload["funnel"]["modelsNeedingReview"] = [
             {"baseModel": name, "outcome": "PENDING", "sessionCount": 1}
             for name in ("fenix 8", "Forerunner 965", "Venu X1")
         ]
+        payload["funnel"]["trend"] = [
+            {"bucket": "2026-10-10T08:00:00+00:00", "sessionCount": 0, "connectedSessionCount": 0},
+            {"bucket": "2026-10-10T09:00:00+00:00", "sessionCount": 1, "connectedSessionCount": 1},
+        ]
         hidden = copy.deepcopy(payload)
-        hidden["funnel"]["modelsNeedingReview"][0]["outcome"] = "UNKNOWN_MODEL"
         hidden["funnel"]["modelsNeedingReview"].append({"baseModel": "Edge 1050", "outcome": "AMBIGUOUS", "sessionCount": 1})
         hidden["funnel"]["population"] = "changed description"
+        hidden["funnel"]["trend"][0]["bucket"] = "2026-10-10T07:00:00+00:00"
         self.assertEqual(self.render(payload)["funnel"], self.render(hidden)["funnel"])
+        shown = copy.deepcopy(payload)
+        shown["funnel"]["modelsNeedingReview"][0]["catalogStatus"] = "NOT_IN_CATALOG"
+        self.assertNotEqual(self.render(payload)["funnel"], self.render(shown)["funnel"])
 
 
 class DashboardHttpRevisionTests(unittest.TestCase):

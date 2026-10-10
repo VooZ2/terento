@@ -55,7 +55,8 @@ class PreviewDatabase:
                 (enabled, provider_id),
             ).fetchone()
             if not row:
-                raise LookupError("provider_not_found")
+                exists = c.execute("SELECT 1 FROM map_provider WHERE id=%s", (provider_id,)).fetchone()
+                raise LookupError("provider_retired" if exists else "provider_not_found")
             self.database._insert_admin_audit(
                 c, admin_user_id=admin_user_id,
                 action="provider.previews_enabled" if enabled else "provider.previews_disabled",
