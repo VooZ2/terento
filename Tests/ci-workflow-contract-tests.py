@@ -272,6 +272,16 @@ def verify_released_fixture_adapter():
         assert 'health = "HEALTHY"' not in patched
         adapter.prepare(root)
         assert target.read_text() == patched
+        modern = "    private static func testBlockedCatalogStaysVisible() {}\n" + "\n".join(
+            new for _, new, count in adapter.REPLACEMENTS for _ in range(count)) + "".join(
+            f"\n            let allRowsPass = packages.count == {count} && packages.allSatisfy {{ package in"
+            for _, _, count in adapter.MATRICES)
+        target.write_text(modern)
+        adapter.prepare(root)
+        modern_patched = target.read_text()
+        assert "? packages.count == 177 : !packages.isEmpty" in modern_patched
+        assert "? packages.count == 63 : !packages.isEmpty" in modern_patched
+        assert "let allRowsPass = packages.count ==" not in modern_patched
         assert runtime.read_text() == "immutable released production source"
         for drift in (historical.replace("Release 26.05", "Release 26.09"), historical + "\nRelease 26.05", historical.replace("packages.count == 63", "packages.count >= 63"), historical.replace("testEveryBundledFreizeitkarteRowMatchesProviderIdentity", "unknownMatrix")):
             target.write_text(drift)
