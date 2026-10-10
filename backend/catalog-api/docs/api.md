@@ -13,6 +13,7 @@ This describes the local implementation, not deployed route availability.
 - `POST /admin/providers/{id}/rechecks`: authenticated and CSRF protected;
   body `{}` selects failed/unavailable artifacts, or `{ "packageId": "..." }`
   selects one provider-owned, non-retired package. Returns `{ "jobId": ... }`.
+  A retired provider returns `409 provider_retired`.
   The same active scope reuses its queued/running job. Another active scope
   returns provider-busy; recent completed checks return an explicit cooldown
   with the earliest retry time.
@@ -34,14 +35,17 @@ This describes the local implementation, not deployed route availability.
   or ambiguous diagnostic renders an explicit availability message.
 - `POST /admin/update-diagnostics/issue|resolve|reopen|workflow`: authenticated,
   CSRF-protected form actions targeting one `diagnostic_id` UUID. Issue actions
-  link a validated repository issue number or unlink it; they do not create
+  link a validated repository issue number (`#1` or higher; `#0` is `400`) or
+  unlink it; they do not create
   GitHub issues. Resolve requires an allowed `resolution_reason` and accepts
   an optional note up to 2,000 characters. Workflow accepts the existing
   `OPEN`, `IN_PROGRESS`, `UNDER_REVIEW` states and rejects changes to resolved
   reports or `OPEN` with a linked issue. A missing report returns 404, invalid
-  input 400. Review changes are audited without changing original outcome
-  facts. Closed linked GitHub issues resolve active reports during the existing
-  synchronization job; reopening remains an explicit admin action.
+  input 400. Reopen of an active report and resolve of a resolved report are
+  no-op successes (redirect, no write, no audit). Review changes are audited
+  without changing original outcome facts. Closed linked GitHub issues resolve
+  active reports during the existing synchronization job; reopening remains an
+  explicit admin action.
 
 Exact-model device detail includes separate reported update counters and
 paginated update history (`updateOutcome`, `updateOffset`, `updateLifecycle`).
@@ -216,8 +220,13 @@ an input to counts.
 Returns the authenticated operator Dashboard. The default period is the last 24
 hours; `?period=today`, `?period=7d`, `?period=30d`, and `?period=all` are also
 supported, and an unknown value falls back to the default. `today` runs from
-midnight in `?timeZone=` (the selected Admin time zone; absent or unknown is
-UTC) until now, with hourly trends. Every period-scoped section (chart totals and
+midnight in `?timeZone=` (the selected Admin time zone; unknown is UTC) until
+now, with hourly trends. Without `?timeZone=` the page uses the zone that the
+Admin time-zone script saves in the `terento_admin_tz` cookie (`Path=/admin;
+SameSite=Strict; Secure`; an absent or unknown value is UTC), so navigation
+links render in the operator's zone once; the script reloads the content only
+when the browser zone differs from the zone the page was rendered in
+(`data-time-zone` on the period form). Every period-scoped section (chart totals and
 trends, Activity, First run and App downloads) uses the same window.
 
 There is no summary tile row. The Downloads and Installs chart cards come
@@ -241,11 +250,16 @@ problems are not rendered there; an unavailable query shows
 `/admin/app-funnel.json` read model for the period (journey and up to three
 waiting models) with `View all` to `/admin/first-run`. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
-and internally scrollable. Generic rows have no Maps link unless an exact
-event/detail destination exists.
+and internally scrollable: the newest rows of the period, selected by the same
+effective time as the totals (receipt time for a client clock more than 10
+minutes ahead), with unfinished acquisitions (download started or processing
+without an outcome) left out before the bound. Generic rows have no Maps link
+unless an exact event/detail destination exists.
 
-`admin_overview` reads every section independently (map snapshot,
-compatibility snapshot, GitHub downloads, providers, system health, funnel);
+`admin_overview` reads every section independently (map snapshot, GitHub
+downloads, providers, system health, funnel, support reports); it reads no
+compatibility snapshot, all-time map totals, Maps unknown count or missing-report
+rows, which the Dashboard does not render;
 one failing read model is logged and renders that card as unavailable while the
 page returns 200. The review summary query runs only for `/admin`.
 
@@ -295,7 +309,12 @@ Authenticated HTML routes answer errors with an HTML page inside the admin
 chrome (400 invalid link, 404 not found, 503 unavailable); JSON routes
 (`*.json`, provider JSON resources and `/admin/providers/{id}/rechecks`) keep JSON
 errors, and the recheck status route now returns `503
-provider_rechecks_unavailable` instead of dropping the connection. Inline
+provider_rechecks_unavailable` instead of dropping the connection. Every
+`POST /admin*` (forms and provider JSON actions, including the session lookup)
+that hits a storage failure without a more specific error returns JSON `503
+{"error":"admin_unavailable"}` instead of dropping the connection; existing
+`400`/`303` answers are unchanged. Admin form fields containing a NUL character
+are rejected with `400 invalid_form`. Inline
 scripts carry the CSP nonce only at their template sites through a per-process
 unguessable placeholder; the assembled body is never post-processed for
 `<script>`. Open pages check freshness every two minutes while visible and once
@@ -309,19 +328,56 @@ origin assertion. The application then requires its native admin session and
 CSRF checks. A local preview that bypasses Access is not production authorization
 evidence. The first administrator can be created only once through `/admin/setup`
 with the environment bootstrap secret. Passwords use salted PBKDF2-SHA256;
-opaque session and CSRF values are stored only as SHA-256 hashes. Cookies are
+opaque session and CSRF values are stored only as SHA-256 hashes. Login and
+setup allow 10 failed attempts per client address per 15 minutes; each attempt
+is counted before the password check and cleared by a success, and an unknown
+username is checked against a fixed hash so it takes as long as a wrong
+password. Changing the password on `/admin/account` signs out every other
+session of that administrator in the same transaction. Cookies are
 Secure, HttpOnly, SameSite=Strict. Authenticated Admin responses are no-store and
-noindex.
+noindex, except two content-versioned static assets: signed-in pages link the
+Admin stylesheet `/admin/map-assets/admin.<hash>.css`, and Maps loads the world
+map as `/admin/map-assets/world-map.<hash>.js` (`<hash>` = the first 16 hex
+digits of the content SHA-256, so a change is a new URL). Both are served
+behind the same session and CSRF checks as the other map assets with
+`Cache-Control: private, max-age=31536000, immutable`. The sign-in and setup
+pages keep the same CSS inline because that route needs a session.
 
 ## `GET https://api.terento.app/admin/first-run`
 
 Returns the authenticated First run page: the full app first-run funnel card
 (journey, Sessions over time and the per-stage outcome groups with waiting
 models) for `?period=` (`today`, `24h`, `7d`, `30d`, `all`; default and
-fallback `24h`) in `?timeZone=` (absent or unknown is UTC). It reads the same
+fallback `24h`) in `?timeZone=` (absent: the `terento_admin_tz` cookie, as on
+`/admin`; unknown is UTC). It reads the same
 `app_funnel()` read model as `/admin/app-funnel.json`; a failed read renders the
 card as unavailable while the page returns 200. It does not run the review
 summary query.
+
+## `GET https://api.terento.app/admin/web-installer` and `GET /admin/web-installer.json`
+
+The authenticated Web installer page and its JSON read model for `?period=`
+(`today`, `24h`, `7d`, `30d`, `all`; default and fallback `7d`) in `?timeZone=`.
+The read model (`schemaVersion`, `period`, `timeZone`, `since`, `until`,
+`population`, `testRecords` {`count`, `last`}, `watch`, `server`) follows
+[`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md);
+test records are excluded from `watch` and `server`. A failed read renders the
+page as unavailable (200) and the JSON as `503 web_installer_unavailable`.
+The Dashboard overview adds the section `web` (the same chart row shape as the
+app trend, from web records only) for the charts' Web switch.
+
+## `POST /internal/web-installer/events` and `POST /internal/web-installer/relay-jobs`
+
+Web installer page events and relay jobs, forwarded by the web installer
+server only; meaning, fields and limits are owned by
+[`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md).
+Requests require `Authorization: Bearer` with the separately configured
+`WEB_INSTALLER_INGEST_SECRET` (the operations secret is not accepted; without
+the setting every request is `401`), JSON of at most 4 KiB (`413`, `415`),
+and allow 1200 requests per client address per minute (`429`). Unknown fields
+or values are `400` with a short code; `201` stored, `200` duplicate `id`.
+Responses are no-store and noindex. The routes store normalized columns only,
+never the body or the client address.
 
 ## `GET https://api.terento.app/admin/installations`
 
@@ -378,8 +434,8 @@ native, public, or existing device API contract.
 Returns the authenticated, no-store/noindex Identity review queue, the
 Dashboard Needs attention Identity review destination. It reads only existing
 service methods: `compatibility_diagnostic_summary()` names the reported
-identities with `identity_pending > 0`, `compatibility_identity_details("ACTIVE",
-identity=…)` supplies their active operations (local-test and
+identities with `identity_pending > 0`, one `compatibility_identity_details("ACTIVE",
+identity=[…])` read supplies the active operations of all of them (local-test and
 statistics-excluded rows are already excluded), and `admin_devices()` supplies
 the catalog picker. Items are install operations with at least one result that
 `_identity_is_pending` keeps, newest first, grouped by reported identity with an
@@ -388,7 +444,10 @@ form (`csrf_token`, `operation_key`, `return_to=/admin/review/identity`,
 `canonical_device_model_id`, `identity_action`) posting to
 `POST /admin/diagnostics/identity`; an assignment still redirects to the
 device page, which the queue's script does not follow, and the other identity
-actions accept `/admin/review/identity` as `return_to`. A failed read renders
+actions accept `/admin/review/identity` as `return_to`. Repeating a result's
+identical latest identity decision succeeds without a second audit record;
+`POST /admin/diagnostics/workflow` on only resolved results returns 400
+(`invalid_diagnostic_workflow`). A failed read renders
 an Unavailable card inside the admin chrome. No write route, form field or
 schema changes.
 
@@ -548,8 +607,12 @@ Responses use `Cache-Control: no-store`.
 Returns an additive provider-neutral catalog. `schemaVersion: 2` identifies the
 new provider/package/artifact fields, while `catalogVersion: 1`, the legacy map
 fields, and `sourceURL` remain for existing macOS clients. The response
-contains all validated packages known to enabled or paused prebuilt adapters;
-catalog membership is distinct from acquisition availability. The collector
+contains the validated packages known to enabled or paused prebuilt adapters,
+except packages withheld by the russia/Crimea acquisition policy and packages
+whose required IMG exceeds the FAT32 file limit of 4 GiB − 1 byte (owner rule
+2026-10-10: lists show only installable maps); an optional artifact above that
+limit is dropped alone. Other blocked packages stay listed with
+`downloadBlockReason`. The collector
 keeps original provider download URLs and never downloads or proxies map
 packages through Terento.
 
@@ -729,7 +792,8 @@ and collection evidence are not deleted by this cleanup.
 `{"packageId":"…","enabled":false,"reason":"…"}`. Both require the existing
 Admin session and CSRF token and create audit records. Disabling requires a
 non-empty reason of at most 500 characters; enabling clears it. The reason is
-private Admin evidence. The package must belong to this provider. The separate
+private Admin evidence. The package must belong to this provider; a package of
+a retired provider returns `409 provider_retired`. The separate
 package override survives catalog refreshes; it does not change source
 validation or remove installed files.
 
@@ -758,7 +822,8 @@ clients do not interpret the new fields. No map data passes through the API.
 
 ## `POST /admin/providers/{id}/check`
 
-Runs one authenticated CSRF-protected health check and records an audit row.
+Runs one authenticated CSRF-protected health check and records an audit row
+in the same transaction as the health observation.
 The request body is an empty JSON object. The response includes the health
 check ID and the component result. Health checks are operational metadata, not
 device compatibility evidence.
@@ -778,6 +843,8 @@ the existing admin session and CSRF token and writes an `admin_audit_log`
 record with the admin user, provider, old status, new status, timestamp, and
 reason. Changing to `ACTIVE` is rejected with HTTP `409` and
 `provider_activation_blocked` when `activationGate.canActivate` is false. The
+activation gate and the status change run under the provider lock; while a
+check, collection or recheck holds it the request returns `400 provider_busy`. The
 HTML `Activate` control is disabled in the same state. It cannot upload parser
 code, execute arbitrary provider logic, or activate an unknown provider.
 
@@ -785,7 +852,10 @@ code, execute arbitrary provider logic, or activate an unknown provider.
 
 Runs one known server-side adapter, stores metadata-only package/artifact
 records, records a `catalog_collection_run`, and returns counts. The body is
-an empty JSON object. Provider map binaries remain direct provider → user's
+an empty JSON object. The `provider.catalog_collected` or
+`provider.catalog_collection_failed` audit row is written in the transaction
+that finishes the run; a busy provider or an active cooldown starts no run and
+writes no collection audit. Provider map binaries remain direct provider → user's
 Mac.
 
 ## `POST /admin/providers/{id}/previews`
@@ -795,8 +865,11 @@ Turns map style previews on or off for one provider. The JSON body is exactly
 `invalid_preview_control`. The action requires the admin session and CSRF
 token, sets `map_provider.preview_enabled` and writes a
 `provider.previews_enabled` or `provider.previews_disabled` audit record.
-Retired providers cannot be changed. Turning previews off hides the provider's
-layers from the public manifest within a minute; it does not change catalog,
+Retired providers cannot be changed and return `409 provider_retired`
+(unknown providers stay `404 provider_not_found`). Turning previews off hides
+the provider's layers from the public manifest of the API process that handled
+the switch at once (a manifest build that overlapped the switch is discarded)
+and from any other process within a minute; it does not change catalog,
 download or installation behaviour.
 
 The provider detail page shows the switch as a secondary action in its action
@@ -823,8 +896,9 @@ the additive `timeZone` field)
 requires an admin session and returns the distinct non-local session count
 (`sessionCount`), the additive `neverConnectedSessionCount` (period sessions
 without a `DEVICE_CONNECT`/`CONNECTED` event in the period), distinct session
-counts per stage/outcome (zero-filled; not exclusive) plus the top base models
-with authorization outcome `PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`, each with
+counts per stage/outcome (zero-filled; not exclusive) plus the top ten base
+models (each with all of its rows) with authorization outcome `PENDING`,
+`UNKNOWN_MODEL` or `AMBIGUOUS`, each with
 the additive diagnostic `catalogStatus` from the current installation policy.
 Additive fields `journey`, `neverConnected`, `previous`, `bucket` and `trend`
 carry the connected and approved session counts, the never-connected
@@ -848,10 +922,10 @@ The Admin routes are `GET /admin/support-reports?status=open|handled&offset=N`
 (detail, including local test reports reached from Test data) and the
 CSRF-protected form posts `/admin/support-reports/handle`, `/reopen` and
 `/issue` (`reference`, optional `note` ≤ 2000 characters, `linked_github_issue`
-as `#123` or empty to unlink). Each action writes `support_report_audit` and
+as `#123` or empty to unlink; `#0` is invalid). Each action writes `support_report_audit` and
 `admin_audit_log` and redirects to the detail; an unknown reference is `404`,
 invalid input `400`. Local test reports are listed on `/admin/test-data` and
-deleted by its purge.
+deleted by its purge, in the same transaction as local telemetry.
 
 ## `POST /map-events`
 
@@ -879,7 +953,8 @@ attributed exactly once the package is published. A successful
 insert returns `201`, a duplicate returns `200`, and both return the
 `operationId`. Local rows are excluded from production map statistics and can
 be removed only by an authenticated, CSRF-protected admin action at
-`/admin/test-data`; the purge deletes both telemetry streams in one transaction.
+`/admin/test-data`; the purge deletes both telemetry streams and local support
+reports in one transaction.
 
 `MAP_UPDATE_*` events represent a safe replacement of an already installed
 Terento-owned provider map. They are counted separately from first
@@ -958,8 +1033,9 @@ additive `trend`, `bucket`, and `timeZone` fields carry the selected-period
 download/install series and its display boundary. Period selection therefore
 changes the series while the all-time badges remain all-time. The additive
 `detailRows` projection is bounded for the Event detail disclosure.
-`detailPage` and `detailPageSize` (`25` or `50`) select its page, and
-`detailTotal` reports the number of detail-filtered aggregate groups. An empty
+`detailPage` and `detailPageSize` (`25` or `50`) select its page,
+`detailTotal` reports the number of detail-filtered aggregate groups and the
+additive `detailEventCount` the raw event records across all of those groups. An empty
 detail projection does not turn a non-empty population into an overall no-data
 state. These pagination parameters are private admin presentation controls.
 
@@ -1287,7 +1363,9 @@ service is added by this selection/interaction fix.
 Admin Map statistics uses self-hosted Leaflet 1.9.4 (BSD-2-Clause), loaded only
 on that page. Exact allowlisted `/admin/map-assets/` JS/CSS routes require the
 existing session and CSRF cookie checks. Assets are privately cached; script
-nonces and same-origin stylesheet policy preserve the admin CSP.
+nonces and same-origin stylesheet policy preserve the admin CSP. The bundled
+world-map SVG is a versioned nonce script setting `window.terentoWorldMapSvg`
+before the page script runs, not inline page data.
 
 `static/map/coverage-map-v1.js` exposes `TerentoCoverageMap(container, options)`:
 trusted bundled SVG, country names, callbacks, `update([{code,count,name}])`,
@@ -1373,7 +1451,7 @@ may download successfully and stop before device writing; the download outcome
 and update outcome remain separate facts. These are metadata only, never filenames or device IDs.
 A repeated event/phase is idempotent and one acquisition admits one terminal.
 Recent activity groups the new acquisition phases with component and history;
-non-terminal observations are explicitly labelled `Outcome not received`.
+it shows only acquisitions with a recorded outcome.
 Cancellation/interruption are excluded from download failure/success ratios.
 The API and migration supporting this contract must be deployed before a client
 that emits these fields is distributed.

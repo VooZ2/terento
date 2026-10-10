@@ -328,9 +328,11 @@ network failure keeps the existing local-catalog fallback. Connect and the
 five-minute refresh share one load, merge and validate path, and the refresh is
 skipped while the review or install step is open, so selections are not pruned.
 
-Maps come directly from provider infrastructure. Catalog visibility is separate
-from acquisition: canonical Russia and Crimea packages are withheld before
-workspace creation or HTTP acquisition. Existing device files remain protected.
+Maps come directly from provider infrastructure. The server catalog no longer
+lists russia and Crimea packages or maps whose IMG exceeds the FAT32 file limit;
+the app still withholds canonical russia and Crimea packages (for example from
+the bundled fallback) before workspace creation or HTTP acquisition. Existing
+device files remain protected.
 
 Manifests and device identifiers stay on the Mac. Compatibility and map-use
 reports are privacy-minimised and enabled by default; either stream can be

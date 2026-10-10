@@ -148,7 +148,7 @@ class MonitoringPostgresTests(unittest.TestCase):
         enable=db.commands[:];db.commands=[]
         db.due_provider_health_checks();due=db.commands[0];db.commands=[]
         db.prune_provider_health_history();prune=db.commands[0];db.commands=[]
-        db.provider_health_history('due',1000);history=db.commands[0]
+        db.provider_detail('due');history=next(c for c in db.commands if "interval '30 days'" in c[0])
         from terento_catalog.provider_health import check_provider
         from terento_catalog.provider_catalog import OPENTOPO_MAP
         from test_provider_health import Probe

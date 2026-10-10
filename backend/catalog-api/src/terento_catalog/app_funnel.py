@@ -39,8 +39,6 @@ FUNNEL_OUTCOMES: dict[str, frozenset[str]] = {
         "AUTHORIZATION", "DEVICE_STORAGE", "MAC_STORAGE", "CATALOG_UNVERIFIED", "LOCAL_CAPABILITY", "OTHER",
     }),
 }
-# Outcomes whose model is reported in the Admin read model's top-model list.
-MODEL_REVIEW_OUTCOMES = ("PENDING", "UNKNOWN_MODEL", "AMBIGUOUS")
 _UUID_TEXT = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 _POSTGRES_INTEGER_MAX = 2_147_483_647
 

@@ -190,7 +190,7 @@ class RecheckEnqueueTests(unittest.TestCase):
     def database(self, recent):
         db = Mock()
         connection = Mock()
-        connection.execute.side_effect = [Result([{'id':'bbbike'}]), Result([{'id':'pkg'}]), Result([recent])]
+        connection.execute.side_effect = [Result([{'status':'ACTIVE'}]), Result([{'id':'pkg'}]), Result([recent])]
         db.connection.return_value.__enter__ = Mock(return_value=connection)
         db.connection.return_value.__exit__ = Mock(return_value=False)
         return db

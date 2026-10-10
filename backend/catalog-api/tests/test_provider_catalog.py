@@ -440,7 +440,7 @@ class ProviderCatalogTests(unittest.TestCase):
             Path(__file__).parents[1]
             / "src"
             / "terento_catalog"
-            / "http_api.py"
+            / "collect.py"
         ).read_text(encoding="utf-8")
         self.assertIn('"detail": str(exc)[:500]', source)
 

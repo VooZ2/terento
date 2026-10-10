@@ -16,7 +16,6 @@ from .identity_assessment import (
     selected_identity_conflicts,
     validate_correction,
 )
-from .failure_reasons import normalize_failure_reason
 from .failure_context import validate_event_contexts
 from .compatibility_status import calculate_compatibility_status
 from .models import RETAIL_RETIREMENT_MISSED_RUNS, CollectedDevice, CollectedMap
@@ -27,11 +26,8 @@ from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
 from .telemetry import is_local_release_label
 from .statistics_exclusions import classify_compatibility_event
-from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, period_start
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, all_time_bucket, period_start
 
-
-OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
-ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS = 4
 
 # One predicate for the "install failed · no device diagnostic" review task,
 # shared by the Needs attention count and the Dashboard item list. Expects the
@@ -178,6 +174,17 @@ def _overview_time_zone(value: str) -> ZoneInfo:
     except (ZoneInfoNotFoundError, ValueError):
         return ZoneInfo("UTC")
 
+
+def _web_installer_period(column: str, since: datetime | None, until: datetime | None) -> tuple[str, list[Any]]:
+    """Non-test web installer rows whose ``column`` lies in the period."""
+    clauses, values = ["is_test IS NOT TRUE"], []
+    if since is not None:
+        clauses.append(f"{column} >= %s")
+        values.append(since)
+    if until is not None:
+        clauses.append(f"{column} <= %s")
+        values.append(until)
+    return " AND ".join(clauses), values
 
 def _overview_bucket_floor(
     value: datetime, bucket: str, *, time_zone: str = "UTC",
@@ -835,12 +842,7 @@ class Database:
         ]
         authoritative_markers = [dict(row) for row in release_markers]
         if period == "all" and observations:
-            observed_span = now - observations[0]["observed_at"].astimezone(timezone.utc)
-            bucket = (
-                "day" if observed_span <= timedelta(days=14)
-                else "week" if observed_span <= timedelta(days=60)
-                else "month"
-            )
+            bucket = all_time_bucket(now - observations[0]["observed_at"].astimezone(timezone.utc))
         period_observations = [row for row in observations if row["observed_at"] >= start]
         first_period_index = observations.index(period_observations[0]) if period_observations else len(observations)
         raw_trend: list[dict[str, Any]] = []
@@ -1163,40 +1165,14 @@ class Database:
                 )
         return inserted
 
-    @staticmethod
-    def _ensure_historical_device(connection: Any, spec: Any) -> None:
-        connection.execute(
-            """
-            INSERT INTO device_family (id, manufacturer, name, canonical_name, source_url)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (id) DO NOTHING
-            """,
-            (spec.family_id, spec.manufacturer, spec.family_name, spec.canonical_model.split()[0], spec.source_url),
-        )
-        connection.execute(
-            """
-            INSERT INTO device_model (
-                id, family_id, manufacturer, model, canonical_model, variant,
-                case_size_mm, display_type, product_url, source_url,
-                source_image_url, active, map_capable, support_status,
-                record_source, collector_managed
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, TRUE,
-                       'NOT_EVALUATED', 'HISTORICAL_REVIEWED', FALSE)
-            ON CONFLICT (id) DO NOTHING
-            """,
-            (
-                spec.id, spec.family_id, spec.manufacturer, spec.model,
-                spec.canonical_model, spec.variant, spec.case_size_mm,
-                spec.display_type, spec.product_url, spec.source_url,
-                spec.source_image_url,
-            ),
-        )
-
     def prune_compatibility_events(self) -> int:
         with self.connection() as connection:
             connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
             # App funnel events follow the same 24-month receipt-time retention.
             connection.execute("DELETE FROM app_funnel_event WHERE received_at < now() - interval '24 months'")
+            # Web installer events and relay jobs: the same 24-month retention.
+            connection.execute("DELETE FROM web_installer_event WHERE received_at < now() - interval '24 months'")
+            connection.execute("DELETE FROM web_installer_relay_job WHERE received_at < now() - interval '24 months'")
             # Support reports are kept 12 months after receipt, whatever their status.
             connection.execute("DELETE FROM support_report WHERE received_at < now() - interval '12 months'")
             result = connection.execute(
@@ -1248,7 +1224,7 @@ class Database:
     def compatibility_resolved_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("RESOLVED", limit)
 
-    def compatibility_identity_details(self, diagnostic_status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
+    def compatibility_identity_details(self, diagnostic_status: str, *, device_id: str = "", identity: str | list[str] = "") -> list[dict[str, Any]]:
         if not device_id and not identity:
             raise ValueError("Diagnostic identity is required")
         return self._compatibility_operation_details(
@@ -1256,7 +1232,7 @@ class Database:
             exclude_statistics=True,
         )
 
-    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str = "", exclude_statistics: bool = False) -> list[dict[str, Any]]:
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str | list[str] = "", exclude_statistics: bool = False) -> list[dict[str, Any]]:
         limit_clause = "LIMIT %s" if limit is not None else ""
         identity_clause = ""
         scope_values = []
@@ -1264,7 +1240,9 @@ class Database:
             identity_clause = " AND canonical_device_model_id = %s"
             scope_values = [device_id]
         elif identity:
-            identity_clause = " AND canonical_device_model_id IS NULL AND COALESCE(NULLIF(trim(compatibility_identity), ''), model, 'Unknown') = %s"
+            # A list reads several reported identities in one query.
+            identity_clause = (" AND canonical_device_model_id IS NULL AND COALESCE(NULLIF(trim(compatibility_identity), ''), model, 'Unknown') "
+                               + ("= ANY(%s)" if isinstance(identity, list) else "= %s"))
             scope_values = [identity]
         statistics_clause = " AND statistics_exclusion_code IS NULL" if exclude_statistics else ""
         query = """
@@ -1659,284 +1637,6 @@ class Database:
             )
         return True
 
-    def admin_overview_snapshot(
-        self,
-        since: datetime,
-        *,
-        recent_limit: int = 8,
-    ) -> dict[str, Any]:
-        """Return bounded operational aggregates for the authenticated Overview.
-
-        This deliberately uses the existing compatibility evidence table and
-        counts each retained map result independently of its batch identity. It
-        does not create telemetry, alter the public API, or pretend that the
-        compatibility and map-operation success rates are interchangeable.
-        """
-        operation_cte = """
-            WITH classified_results AS (
-                SELECT
-                    e.*,
-                    COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
-                        AS operation_key,
-                    CASE
-                        WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
-                            THEN e.operation_id::text || ':' || e.map_result_index::text
-                        ELSE 'event:' || e.event_id::text
-                    END AS result_key,
-                    terento_fresh_result_classification(
-                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
-                        e.schema_version, e.app_build, e.release_label
-                    ) AS result_classification
-                FROM compatibility_evidence_event AS e
-                WHERE e.is_local_test IS NOT TRUE
-                  AND e.statistics_exclusion_code IS NULL
-            ), result_flags AS (
-                SELECT
-                    result_key,
-                    bool_or(result_classification = 'SUCCESS') AS has_success,
-                    bool_or(result_classification = 'FAILURE') AS has_failure,
-                    count(DISTINCT (result_classification, provider, region, canonical_device_model_id)) > 1
-                        AS has_conflict
-                FROM classified_results
-                GROUP BY result_key
-            ), deduplicated_results AS (
-                SELECT DISTINCT ON (c.result_key)
-                    c.*,
-                    CASE
-                        WHEN f.has_conflict THEN 'UNKNOWN'
-                        WHEN f.has_success THEN 'SUCCESS'
-                        WHEN f.has_failure THEN 'FAILURE'
-                        ELSE c.result_classification
-                    END AS result_classification_effective
-                FROM classified_results AS c
-                JOIN result_flags AS f USING (result_key)
-                ORDER BY c.result_key, c.occurred_at DESC NULLS LAST, c.event_id DESC
-            ), operation_rows AS (
-                SELECT
-                    result_key,
-                    operation_key,
-                    canonical_device_model_id,
-                    compatibility_identity,
-                    model,
-                    variant,
-                    provider,
-                    region,
-                    release_label,
-                    app_build,
-                    failure_stage,
-                    failure_code,
-                    error_category,
-                    linked_github_issue,
-                    diagnostic_workflow_status,
-                    occurred_at AS last_occurred_at,
-                    (write_started IS TRUE) AS write_started,
-                    (result_classification_effective = 'SUCCESS') AS operation_succeeded,
-                    (result_classification_effective = 'FAILURE') AS fresh_failure,
-                    (
-                        phase_outcome = 'FAILED'
-                        AND NOT (
-                            write_started IS FALSE
-                            AND (
-                                failure_stage = 'download'
-                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                            )
-                        )
-                    ) AS has_failed,
-                    (
-                        phase_outcome = 'FAILED'
-                        AND write_started IS FALSE
-                        AND (
-                            failure_stage = 'download'
-                            OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                        )
-                    ) AS preinstall_download_failure,
-                    (result_classification_effective = 'NOT_STARTED') AS has_not_started,
-                    (diagnostic_status = 'ACTIVE' AND
-                        linked_github_issue IS NOT NULL AND btrim(linked_github_issue) <> '')
-                        AS has_github_issue,
-                    (diagnostic_status = 'ACTIVE' AND
-                        canonical_device_model_id IS NULL AND
-                        COALESCE(identity_resolution_state, 'UNRESOLVED')
-                            NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
-                        AND NOT (
-                            write_started IS FALSE
-                            AND (
-                                failure_stage = 'download'
-                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                            )
-                        )) AS identity_pending,
-                    (diagnostic_status = 'ACTIVE' AND NOT (
-                        write_started IS FALSE
-                        AND (
-                            failure_stage = 'download'
-                            OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                        )
-                    ) AND (
-                        phase_outcome IN ('FAILED', 'NOT_STARTED')
-                        OR result_classification_effective = 'UNKNOWN'
-                        OR failure_stage IS NOT NULL
-                        OR failure_code IS NOT NULL
-                        OR error_category IS NOT NULL
-                    )) AS open_error
-                FROM deduplicated_results
-            )
-        """
-        scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
-        with self.connection() as connection:
-            # The last read below uses compatibility_model_statistics.
-            _skip_jit_compilation(connection)
-            attention = list(connection.execute(
-                f"""{operation_cte}
-                SELECT *, count(*) FILTER (WHERE open_error) OVER () AS total_open_errors,
-                    count(*) FILTER (WHERE identity_pending) OVER () AS total_identity_pending
-                FROM operation_rows WHERE open_error OR identity_pending OR has_github_issue
-                ORDER BY open_error DESC, last_occurred_at DESC, operation_key
-                LIMIT %s
-                """, (recent_limit,),
-            ).fetchall())
-            summary = connection.execute(
-                f"""
-                {scoped}
-                SELECT
-                    count(*) AS operation_count,
-                    count(*) FILTER (WHERE operation_succeeded)
-                        AS successful_install_count,
-                    count(*) FILTER (
-                        WHERE fresh_failure
-                    ) AS failed_install_count,
-                    count(*) FILTER (WHERE open_error) AS open_error_count,
-                    count(*) FILTER (WHERE operation_succeeded OR fresh_failure)
-                        AS write_started_count,
-                    count(DISTINCT COALESCE(
-                        canonical_device_model_id::text,
-                        NULLIF(compatibility_identity, ''),
-                        NULLIF(model, '')
-                    )) FILTER (WHERE operation_succeeded OR fresh_failure) AS variant_count
-                FROM scoped_operations
-                """,
-                (since,),
-            ).fetchone() or {}
-            recent = list(connection.execute(
-                f"""
-                {scoped}
-                SELECT
-                    operation_key, canonical_device_model_id,
-                    compatibility_identity, model, variant, provider, region,
-                    release_label, app_build, failure_stage, failure_code,
-                    error_category, last_occurred_at, operation_succeeded,
-                    has_failed, has_not_started, preinstall_download_failure,
-                    open_error,
-                    linked_github_issue, diagnostic_workflow_status, has_github_issue
-                FROM scoped_operations
-                ORDER BY last_occurred_at DESC, operation_key
-                LIMIT %s
-                """,
-                (since, recent_limit),
-            ).fetchall())
-            failure_reason_rows = list(connection.execute(
-                f"""
-                {scoped}
-                SELECT error_category, failure_stage, failure_code,
-                       count(*) AS count
-                FROM scoped_operations
-                WHERE has_failed
-                GROUP BY error_category, failure_stage, failure_code
-                """,
-                (since,),
-            ).fetchall())
-            model_activity = list(connection.execute(
-                f"""
-                {scoped}
-                SELECT
-                    COALESCE(
-                        canonical_device_model_id::text,
-                        NULLIF(compatibility_identity, ''),
-                        NULLIF(model, ''),
-                        'unknown-device'
-                    ) AS model_key,
-                    operation_key,
-                    canonical_device_model_id::text AS canonical_device_model_id,
-                    compatibility_identity,
-                    model,
-                    variant,
-                    1 AS operation_count,
-                    CASE WHEN operation_succeeded THEN 1 ELSE 0 END
-                        AS successful_count,
-                    CASE WHEN fresh_failure THEN 1 ELSE 0 END AS failed_count,
-                    CASE WHEN open_error THEN 1 ELSE 0 END AS open_error_count,
-                    last_occurred_at
-                FROM scoped_operations
-                WHERE COALESCE(
-                    canonical_device_model_id::text,
-                    NULLIF(compatibility_identity, ''),
-                    NULLIF(model, '')
-                ) IS NOT NULL
-                ORDER BY last_occurred_at DESC, operation_key
-                LIMIT %s
-                """,
-                (since, OVERVIEW_MODEL_ACTIVITY_LIMIT),
-            ).fetchall())
-            review_required = list(connection.execute(
-                """
-                SELECT
-                    canonical_device_model_id::text AS canonical_device_model_id,
-                    compatibility_identity, model, variant,
-                    review_status, public_statistics_enabled, public_display_name,
-                    last_evidence
-                FROM compatibility_model_statistics
-                WHERE canonical_device_model_id IS NOT NULL
-                  AND (
-                      calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
-                      OR successful_install_count > 0
-                  )
-                  AND (
-                      review_status = 'PENDING'
-                      OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
-                  )
-                ORDER BY last_evidence DESC NULLS LAST, model, variant
-                LIMIT 8
-                """,
-            ).fetchall())
-        failure_reason_counts: dict[str, int] = {}
-        for row in failure_reason_rows:
-            reason = normalize_failure_reason(
-                row.get("error_category"),
-                failure_stage=row.get("failure_stage"),
-                failure_code=row.get("failure_code"),
-            )
-            failure_reason_counts[reason] = (
-                failure_reason_counts.get(reason, 0) + int(row.get("count") or 0)
-            )
-        failure_reasons = [
-            {"reason": reason, "count": count}
-            for reason, count in sorted(
-                failure_reason_counts.items(), key=lambda item: (-item[1], item[0])
-            )[:8]
-        ]
-        return {
-            "attention": [dict(row) for row in attention],
-            "allTimeOpenErrorCount": int(attention[0].get("total_open_errors") or 0) if attention else 0,
-            "allTimeIdentityPendingCount": int(attention[0].get("total_identity_pending") or 0) if attention else 0,
-            "operationCount": int(summary.get("operation_count") or 0),
-            "successfulInstallCount": int(summary.get("successful_install_count") or 0),
-            "failedInstallCount": int(summary.get("failed_install_count") or 0),
-            "openErrorCount": int(summary.get("open_error_count") or 0),
-            "writeStartedCount": int(summary.get("write_started_count") or 0),
-            "variantCount": int(summary.get("variant_count") or 0),
-            "evidenceSuccessRate": (
-                int(summary.get("successful_install_count") or 0)
-                / int(summary.get("write_started_count") or 1)
-                * 100
-                if int(summary.get("write_started_count") or 0)
-                else None
-            ),
-            "hasData": int(summary.get("operation_count") or 0) > 0,
-            "recentActivity": [dict(row) for row in recent],
-            "failureReasons": failure_reasons,
-            "modelActivity": [dict(row) for row in model_activity],
-            "reviewRequired": [dict(row) for row in review_required],
-        }
-
     @staticmethod
     def _update_not_started_activity(connection, since: datetime, limit: int) -> list[dict[str, Any]]:
         """Retained pre-write update outcomes for Activity only, never KPI evidence."""
@@ -1992,7 +1692,6 @@ class Database:
         period: str = "24h",
         time_zone: str = "UTC",
         recent_limit: int = 8,
-        attention_limit: int = 6,
     ) -> dict[str, Any]:
         """Return map-operation aggregates for the authenticated Overview.
 
@@ -2010,13 +1709,7 @@ class Database:
         # a second install population.
         metric_filters = {} if period == "all" else {"dateFrom": since}
         canonical_rows = self.map_statistics(metric_filters)
-        all_time_rows = (
-            canonical_rows
-            if period == "all"
-            else self.map_statistics({})
-        )
         period_metrics = _canonical_map_statistics_summary(canonical_rows)
-        all_time_metrics = _canonical_map_statistics_summary(all_time_rows)
         canonical_event_count = sum(
             int(row.get("event_count") or 0) for row in canonical_rows
         )
@@ -2032,13 +1725,18 @@ class Database:
         trend, bucket = self.map_statistics_trend(
             trend_filters, period=period, time_zone=time_zone,
         )
-        event_scope = """
-            FROM map_download_event AS e
+        # Period membership uses the KPI's effective time (receipt time for a
+        # client clock far ahead), so Activity and the totals agree.
+        event_scope = f"""
+            FROM acquisition_activity AS e
             LEFT JOIN map_provider AS p ON p.id = e.provider_id
             LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
-            WHERE e.occurred_at >= %s
+            WHERE {_effective_occurred_at_sql("e")} >= %s
               AND e.is_local_test IS NOT TRUE
               AND e.statistics_exclusion_code IS NULL
+              -- Unfinished acquisitions are not shown; dropping them before the
+              -- LIMIT keeps them from pushing real activity out.
+              AND e.event_type NOT IN ('DOWNLOAD_STARTED', 'DOWNLOAD_PROCESSING')
         """
         compatibility_fallback_cte = """
             WITH classified_fallback AS (
@@ -2097,7 +1795,7 @@ class Database:
                          THEN 'FAILED' ELSE 'SUCCEEDED' END AS outcome
                 FROM deduplicated_fallback AS e
                 WHERE e.result_classification_effective IN ('SUCCESS', 'FAILURE')
-                  AND e.occurred_at >= %s
+                  AND """ + _effective_occurred_at_sql("e") + """ >= %s
                    -- A final compatibility failure is an installation
                    -- outcome only when writing actually started. False and
                    -- current unknown write facts remain outside installs.
@@ -2173,10 +1871,7 @@ class Database:
                             PARTITION BY e.lifecycle_key
                             ORDER BY e.occurred_at, CASE e.event_type WHEN 'DOWNLOAD_STARTED' THEN 0 WHEN 'DOWNLOAD_PROCESSING' THEN 1 ELSE 2 END, e.event_id
                             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-                        ) AS lifecycle,
-                        bool_or(e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED')) OVER (
-                            PARTITION BY e.lifecycle_key
-                        ) AS has_recorded_outcome
+                        ) AS lifecycle
                     FROM acquisition_events AS e
                     ORDER BY e.lifecycle_key,
                         CASE WHEN e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED') THEN 0 ELSE 1 END,
@@ -2199,17 +1894,11 @@ class Database:
                     e.occurred_at,
                     e.component_kind,
                     e.lifecycle,
-                    e.has_recorded_outcome,
                     NULL AS canonical_device_model_id,
                     NULL AS compatibility_identity,
                     NULL AS model,
-                    NULL AS variant,
-                    (
-                        e.event_type IN ('DOWNLOAD_STARTED', 'DOWNLOAD_PROCESSING')
-                        AND NOT e.has_recorded_outcome
-                        AND e.occurred_at < now() - interval '{ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS} hours'
-                    ) AS is_stale
-                {event_scope.replace('FROM map_download_event AS e', 'FROM acquisition_activity AS e')}
+                    NULL AS variant
+                {event_scope}
                 UNION ALL
                 SELECT
                     NULL::text AS event_id,
@@ -2229,12 +1918,10 @@ class Database:
                     c.occurred_at,
                     NULL AS component_kind,
                     NULL AS lifecycle,
-                    false AS has_recorded_outcome,
                     c.canonical_device_model_id,
                     c.compatibility_identity,
                     c.model,
-                    c.variant,
-                    false AS is_stale
+                    c.variant
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
                 ORDER BY occurred_at DESC
@@ -2246,26 +1933,6 @@ class Database:
             recent.extend(self._update_not_started_activity(connection, since, recent_limit))
             recent.sort(key=lambda row: (row['occurred_at'], str(row.get('event_id') or '')), reverse=True)
             recent = recent[:recent_limit]
-            # A failed install can arrive without compatibility diagnostics
-            # (the streams have separate sharing controls and delivery). Surface
-            # this evidence gap, but never resurrect a linked resolved report.
-            # Match the package region as well as the batch operation ID.
-            missing_diagnostics = list(connection.execute(
-                """
-                SELECT e.*, p.name AS provider_name, mp.name AS map_package_name,
-                       count(*) OVER () AS total_missing_diagnostics
-                FROM map_download_event AS e
-                LEFT JOIN map_provider AS p ON p.id = e.provider_id
-                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
-                LEFT JOIN admin_map_review_task AS review_task
-                  ON review_task.event_id = e.event_id
-                 AND review_task.task_type = 'MISSING_DIAGNOSTIC'
-                WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE + """
-                ORDER BY e.occurred_at DESC, e.event_id
-                LIMIT %s
-                """, (attention_limit,),
-            ).fetchall())
-            attention: list[dict[str, Any]] = []
         trend_rows = [dict(row) for row in trend]
         if trend_rows:
             trend_rows = _fill_overview_trend_buckets(
@@ -2282,12 +1949,6 @@ class Database:
         failed_updates = period_metrics["failedMapUpdateCount"]
         completed_downloads = period_metrics["completedDownloadCount"]
         failed_downloads = period_metrics["failedDownloadCount"]
-        all_time_install_successes = all_time_metrics["completedInstallCount"]
-        all_time_install_failures = all_time_metrics["failedInstallCount"]
-        all_time_download_successes = all_time_metrics["completedDownloadCount"]
-        all_time_download_failures = all_time_metrics["failedDownloadCount"]
-        all_time_update_successes = all_time_metrics["completedMapUpdateCount"]
-        all_time_update_failures = all_time_metrics["failedMapUpdateCount"]
         return {
             "eventCount": canonical_event_count,
             "completedInstallCount": completed,
@@ -2300,33 +1961,8 @@ class Database:
             "completedMapUpdateCount": completed_updates,
             "failedMapUpdateCount": failed_updates,
             "mapUpdateCount": completed_updates + failed_updates,
-            "allTimeSuccessCount": all_time_install_successes,
-            "allTimeFailedCount": all_time_install_failures,
-            "allTimeInstallSuccessRate": all_time_metrics["installSuccessRate"],
-            "allTimeCompletedDownloadCount": all_time_download_successes,
-            "allTimeFailedDownloadCount": all_time_download_failures,
-            "allTimeDownloadSuccessRate": all_time_metrics["downloadSuccessRate"],
-            "allTimeCustomCount": sum(
-                int(row.get("operation_count") or 0)
-                for row in all_time_rows
-                if row.get("event_type") == "INSTALL_SUCCEEDED"
-                and row.get("outcome") == "SUCCEEDED"
-                and row.get("provider_id") == "custom"
-            ),
-            "allTimeMapUpdateSuccessRate": (
-                all_time_update_successes / (all_time_update_successes + all_time_update_failures) * 100
-                if all_time_update_successes + all_time_update_failures else None
-            ),
-            "allTimeMapUpdateCount": all_time_update_successes + all_time_update_failures,
-            "allTimeMapUpdateSuccessCount": all_time_update_successes,
-            "allTimeMapUpdateFailedCount": all_time_update_failures,
             "hasData": bool(canonical_rows or recent),
             "recentActivity": [dict(row) for row in recent],
-            "attention": [dict(row) for row in attention],
-            "missingDiagnosticFailures": [dict(row) for row in missing_diagnostics],
-            "missingDiagnosticFailureCount": int(
-                missing_diagnostics[0].get("total_missing_diagnostics") or 0
-            ) if missing_diagnostics else 0,
             "trend": trend_rows,
             "bucket": bucket,
         }
@@ -2377,14 +2013,25 @@ class Database:
         with self.connection() as connection:
             connection.execute("DELETE FROM admin_session WHERE token_hash = %s", (session_hash,))
 
-    def update_admin_user(self, user_id: int, username: str, password_hash: str) -> dict[str, Any]:
+    def update_admin_user(
+        self, user_id: int, username: str, password_hash: str, *, keep_session_hash: str | None = None,
+    ) -> dict[str, Any]:
+        """A password change signs out every other session of this user in the same transaction."""
         query = """
             UPDATE admin_user SET username = %s, password_hash = %s, updated_at = now()
             WHERE id = %s
             RETURNING id, username, password_hash, created_at, last_login_at
         """
         with self.connection() as connection:
+            previous = connection.execute(
+                "SELECT password_hash FROM admin_user WHERE id = %s FOR UPDATE", (user_id,),
+            ).fetchone()
             row = connection.execute(query, (username, password_hash, user_id)).fetchone()
+            if previous and previous["password_hash"] != password_hash:
+                connection.execute(
+                    "DELETE FROM admin_session WHERE admin_user_id = %s AND token_hash IS DISTINCT FROM %s",
+                    (user_id, keep_session_hash),
+                )
         return dict(row)
 
     def update_device_support_status(
@@ -2504,6 +2151,14 @@ class Database:
                 """,
                 (compatibility_identity,),
             ).fetchone()
+            review_model_key = compatibility_identity
+            if review is None and connection.execute(
+                "SELECT 1 FROM compatibility_model_review WHERE model = %s",
+                (compatibility_identity,),
+            ).fetchone():
+                # Legacy rows (migration 013) keep this model key for another identity;
+                # readers match identity_key, so the new row only needs a free primary key.
+                review_model_key = f"identity:{compatibility_identity}"
             new_review_status = "APPROVED" if normalized_action == "PUBLISH" else "PENDING"
             new_enabled = normalized_action == "PUBLISH"
             previous_status = str(review["review_status"]) if review else None
@@ -2523,7 +2178,7 @@ class Database:
                     ) VALUES (%s, %s, %s, %s, %s, now())
                     """,
                     (
-                        compatibility_identity, compatibility_identity,
+                        review_model_key, compatibility_identity,
                         new_review_status, new_enabled, public_display_name,
                     ),
                 )
@@ -2630,6 +2285,10 @@ class Database:
                 FROM map_update_diagnostic WHERE event_id=%s AND is_local_test IS FALSE FOR UPDATE""", (identifier,)).fetchone()
             if not row:
                 return False
+            # Like the install lifecycle, a row already in the target status is a no-op:
+            # never rewrite its workflow, resolution facts or resolver.
+            if (action, row['diagnostic_status']) in {('reopen','ACTIVE'),('resolve','RESOLVED')}:
+                return True
             previous = {key:row.get(key) for key in ('diagnostic_status','diagnostic_workflow_status','linked_github_issue','resolution_code','resolution_note')}
             next_state = dict(previous)
             if action == 'issue':
@@ -2694,7 +2353,7 @@ class Database:
             raise ValueError("invalid diagnostic record")
         linked_issue = (linked_github_issue or "").strip() or None
         if linked_issue:
-            issue_match = re.fullmatch(r"#?(\d{1,10})", linked_issue)
+            issue_match = re.fullmatch(r"#?([1-9]\d{0,9})", linked_issue)
             if not issue_match:
                 raise ValueError("invalid GitHub issue reference")
             linked_issue = f"#{int(issue_match.group(1))}"
@@ -2707,6 +2366,7 @@ class Database:
                        linked_github_issue
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
+                ORDER BY event_id
                 FOR UPDATE
                 """,
                 scope_parameters,
@@ -2781,7 +2441,7 @@ class Database:
             raise ValueError("invalid diagnostic record")
         raw_issue = (linked_github_issue or "").strip()
         if raw_issue:
-            match = re.fullmatch(r"#?(\d{1,10})", raw_issue)
+            match = re.fullmatch(r"#?([1-9]\d{0,9})", raw_issue)
             if not match:
                 raise ValueError("invalid GitHub issue reference")
             linked_github_issue = f"#{int(match.group(1))}"
@@ -2795,6 +2455,7 @@ class Database:
                        linked_github_issue
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
+                ORDER BY event_id
                 FOR UPDATE
                 """,
                 scope_parameters,
@@ -2809,6 +2470,8 @@ class Database:
                     if not linked_github_issue and previous_workflow in {"IN_PROGRESS", "UNDER_REVIEW"}
                     else previous_workflow
                 )
+                if current_issue == linked_github_issue and previous_workflow == next_workflow:
+                    continue
                 connection.execute(
                     """
                     UPDATE compatibility_evidence_event
@@ -2818,19 +2481,18 @@ class Database:
                     """,
                     (linked_github_issue, next_workflow, row["event_id"]),
                 )
-                if previous_workflow != next_workflow:
-                    connection.execute(
-                        """
-                        INSERT INTO compatibility_diagnostic_lifecycle_audit (
-                            event_id, previous_status, new_status,
-                            linked_github_issue, changed_by,
-                            previous_workflow_status, new_workflow_status
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        """,
-                        (row["event_id"], row.get("diagnostic_status") or "ACTIVE",
-                         row.get("diagnostic_status") or "ACTIVE", linked_github_issue,
-                         admin_user_id, previous_workflow, next_workflow),
-                    )
+                connection.execute(
+                    """
+                    INSERT INTO compatibility_diagnostic_lifecycle_audit (
+                        event_id, previous_status, new_status,
+                        linked_github_issue, changed_by,
+                        previous_workflow_status, new_workflow_status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (row["event_id"], row.get("diagnostic_status") or "ACTIVE",
+                     row.get("diagnostic_status") or "ACTIVE", linked_github_issue,
+                     admin_user_id, previous_workflow, next_workflow),
+                )
             return len(rows)
 
     def update_diagnostic_workflow(
@@ -2856,10 +2518,13 @@ class Database:
                        linked_github_issue
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
+                ORDER BY event_id
                 FOR UPDATE
                 """,
                 scope_parameters,
             ).fetchall()
+            if rows and all(str(row.get("diagnostic_status") or "ACTIVE") != "ACTIVE" for row in rows):
+                raise ValueError("a resolved diagnostic cannot change workflow")
             for row in rows:
                 if str(row.get("diagnostic_status") or "ACTIVE") != "ACTIVE":
                     continue
@@ -3028,6 +2693,7 @@ class Database:
                 SELECT *
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
+                ORDER BY event_id
                 FOR UPDATE
                 """,
                 scope_parameters,
@@ -3111,9 +2777,34 @@ class Database:
                         "The selected model conflicts with reported information. Use manual assignment to confirm it.",
                         details={"conflicts": conflict_details},
                     )
+            target_state = "RESOLVED" if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"} else (
+                "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
+            )
+            audit_action = "ASSIGN" if normalized_action == "MANUAL_ASSIGN" else normalized_action
             for row in rows:
                 reviewed = reviewed_assessments.get(row["event_id"])
                 previous_id = str(row.get("canonical_device_model_id") or "").strip() or None
+                # The admin decision lives only in the audit trail. A retry of
+                # the identical latest decision (double submit, second tab)
+                # returns success without a second decision or any write.
+                latest = connection.execute(
+                    """
+                    SELECT action, new_canonical_device_model_id
+                    FROM compatibility_identity_resolution_audit
+                    WHERE event_id = %s
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (row["event_id"],),
+                ).fetchone()
+                if (
+                    latest
+                    and latest["action"] == audit_action
+                    and latest["new_canonical_device_model_id"] == canonical_device_model_id
+                    and previous_id == canonical_device_model_id
+                    and row.get("identity_resolution_state") == target_state
+                ):
+                    continue
                 if reviewed:
                     audit_reason = reviewed[2]
                 elif reason:
@@ -3129,28 +2820,8 @@ class Database:
                         identity_resolution_state = %s
                     WHERE event_id = %s
                     """,
-                    (canonical_device_model_id,
-                     "RESOLVED" if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"} else (
-                         "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
-                     ), row["event_id"]),
+                    (canonical_device_model_id, target_state, row["event_id"]),
                 )
-                prior_assessment = row.get("identity_assessment")
-                if isinstance(prior_assessment, str):
-                    try:
-                        prior_assessment = json.loads(prior_assessment)
-                    except json.JSONDecodeError:
-                        prior_assessment = None
-                prior_decision = prior_assessment.get("decision") if isinstance(prior_assessment, dict) else None
-                # A retry of the identical confirmed result is idempotent. It
-                # returns success to the HTTP caller but does not add a second
-                # administrative decision or alter installation statistics.
-                if (
-                    normalized_action in {"ASSIGN", "MANUAL_ASSIGN"}
-                    and previous_id == canonical_device_model_id
-                    and isinstance(prior_decision, dict)
-                    and prior_decision.get("deviceId") == canonical_device_model_id
-                ):
-                    continue
                 connection.execute(
                     """
                     INSERT INTO compatibility_identity_resolution_audit (
@@ -3162,7 +2833,7 @@ class Database:
                     """,
                     (row["event_id"], str(row.get("compatibility_identity") or "Identity unresolved"),
                      row.get("canonical_device_model_id"), new_identity,
-                     canonical_device_model_id, "ASSIGN" if normalized_action == "MANUAL_ASSIGN" else normalized_action,
+                     canonical_device_model_id, audit_action,
                      audit_reason, note, admin_user_id, reviewed[0] if reviewed else None),
                 )
             return len(rows)
@@ -3668,6 +3339,7 @@ class Database:
         error_detail: str | None = None,
         latest_release: str | None = None,
         catalog_fingerprint: str | None = None,
+        audit: dict[str, Any] | None = None,
     ) -> None:
         with self.connection() as connection:
             previous = None
@@ -3710,6 +3382,8 @@ class Database:
                     latest_release, catalog_fingerprint, release_change_detected, run_id,
                 ),
             )
+            if audit:
+                self._insert_admin_audit(connection, **audit)
 
     def upsert_provider_snapshot(self, snapshot: ProviderSnapshot, *, run_id: int | None = None) -> None:
         """Persist a complete metadata snapshot without storing map payloads."""
@@ -4072,7 +3746,8 @@ class Database:
                 RETURNING id""",
                 (not enabled, reason.strip() if not enabled else None, package_id, provider_id)).fetchone()
             if not row:
-                raise LookupError('package_not_found')
+                provider = connection.execute("SELECT status FROM map_provider WHERE id=%s", (provider_id,)).fetchone()
+                raise LookupError('provider_retired' if provider and provider['status'] == 'RETIRED' else 'package_not_found')
             self._insert_admin_audit(connection, admin_user_id=admin_user_id,
                 action='package.downloads_enabled' if enabled else 'package.downloads_disabled',
                 provider_id=provider_id, target=package_id, reason=reason.strip(), request_id=request_id,
@@ -4080,7 +3755,7 @@ class Database:
         return {'packageId': package_id, 'enabled': enabled}
 
     def provider_download_urls(self, provider_id: str) -> list[dict[str, Any]]:
-        from .provider_catalog import freizeitkarte_policy_country_codes
+        from .provider_catalog import acquisition_withheld
         with self.connection() as connection:
             rows = connection.execute(
                 """
@@ -4100,13 +3775,9 @@ class Database:
         samples = []
         seen = set()
         for row in rows:
-            codes = [str(code).upper() for code in (row.get("country_codes") or [])]
-            if row.get("country"):
-                codes.append(str(row["country"]).upper())
-            if provider_id == "freizeitkarte":
-                codes = freizeitkarte_policy_country_codes(row.get("provider_region_id") or "", codes)
-            if (row.get("availability") == "WITHHELD" or "RU" in codes
-                    or ("UA" in codes and str(row.get("canonical_region_id") or row.get("region") or "").upper() == "CRIMEA")):
+            codes = [*(row.get("country_codes") or []), *([row["country"]] if row.get("country") else [])]
+            if acquisition_withheld(provider_id, row.get("provider_region_id"), codes,
+                                    row.get("canonical_region_id") or row.get("region"), row.get("availability")):
                 continue
             if row["source_url"] in seen:
                 continue
@@ -4131,19 +3802,9 @@ class Database:
                 (provider_id, limit),
             ).fetchall())
 
-    def provider_health_history(self, provider_id: str, limit: int = 11) -> list[dict[str, Any]]:
-        with self.connection() as connection:
-            return list(connection.execute(
-                """
-                SELECT * FROM provider_health_check
-                WHERE provider_id = %s AND checked_at >= now() - interval '30 days'
-                ORDER BY checked_at DESC, id DESC
-                LIMIT %s
-                """,
-                (provider_id, max(1, min(11, limit))),
-            ).fetchall())
-
-    def record_provider_health(self, result: ProviderHealthResult) -> int:
+    def record_provider_health(
+        self, result: ProviderHealthResult, *, audit: dict[str, Any] | None = None,
+    ) -> int:
         values = result.as_database_values()
         with self.connection() as connection:
             row = connection.execute(
@@ -4175,6 +3836,10 @@ class Database:
                 """,
                 (values.get("retry_after_seconds"), values.get("retry_after_seconds"), values["provider_id"]),
             )
+            if audit:
+                self._insert_admin_audit(
+                    connection, provider_id=values["provider_id"], target=str(row["id"]), **audit,
+                )
         return int(row["id"])
 
     def set_provider_status(
@@ -4189,7 +3854,7 @@ class Database:
     ) -> bool:
         with self.connection() as connection:
             current = connection.execute(
-                "SELECT status FROM map_provider WHERE id = %s",
+                "SELECT status FROM map_provider WHERE id = %s FOR UPDATE",
                 (provider_id,),
             ).fetchone()
             if current is None:
@@ -4406,14 +4071,6 @@ class Database:
             for row in rows
         ]
 
-    def maps_unknown_model_count(self) -> int:
-        """Needs attention: active catalog models whose Maps value is Unknown (NULL)."""
-        with self.connection() as connection:
-            row = connection.execute(
-                "SELECT count(*) AS n FROM device_model WHERE active IS TRUE AND map_capable IS NULL"
-            ).fetchone() or {}
-        return int(row.get("n") or 0)
-
     def support_report_open_count(self) -> int:
         """Needs attention: open reports from public (non-local) builds."""
         with self.connection() as connection:
@@ -4602,31 +4259,6 @@ class Database:
             )
         return True
 
-    def purge_local_support_reports(
-        self, *, admin_user_id: int | None, request_id: str | None = None,
-    ) -> int:
-        """Delete only server-classified local test support reports (Test data purge)."""
-        with self.connection() as connection:
-            row = connection.execute(
-                """
-                WITH deleted AS (
-                    DELETE FROM support_report WHERE is_local_test IS TRUE RETURNING id
-                )
-                SELECT count(*) AS report_count FROM deleted
-                """
-            ).fetchone() or {}
-            count = int(row.get("report_count") or 0)
-            self._insert_admin_audit(
-                connection,
-                admin_user_id=admin_user_id,
-                action="support_report.local_test_purged",
-                target="local-test-support-reports",
-                request_id=request_id,
-                reason="Authenticated admin purge of server-classified local support reports",
-                details={"supportReportCount": count},
-            )
-        return count
-
     def insert_app_funnel_event(self, event: dict[str, Any]) -> bool:
         """Store one validated funnel event; a replayed event ID is a no-op."""
         with self.connection() as connection:
@@ -4646,6 +4278,103 @@ class Database:
                 ),
             ).fetchone()
         return row is not None
+
+    def insert_web_installer_row(self, table: str, row: dict[str, Any]) -> bool:
+        """Store one validated web installer event or relay job; a replayed ID is a no-op."""
+        key = {"web_installer_event": "event_id", "web_installer_relay_job": "job_id"}[table]
+        columns = ", ".join(row)
+        with self.connection() as connection:
+            inserted = connection.execute(
+                f"INSERT INTO {table} ({columns}) VALUES ({', '.join(['%s'] * len(row))}) "
+                f"ON CONFLICT ({key}) DO NOTHING RETURNING {key}",
+                tuple(row.values()),
+            ).fetchone()
+        return inserted is not None
+
+    def web_installer_rows(
+        self, since: datetime | None, until: datetime | None = None,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+        """Period events and relay jobs without test records (newest first), and
+        the count and last receipt of test records for the delivery check.
+
+        shortcut: whole period rows are summarized in Python; at beta web
+        traffic this is small. Move the counts to SQL GROUP BY when it grows."""
+        event_where, event_values = _web_installer_period("occurred_at", since, until)
+        job_where, job_values = _web_installer_period("requested_at", since, until)
+        with self.connection() as connection:
+            events = list(connection.execute(
+                f"SELECT * FROM web_installer_event WHERE {event_where} ORDER BY occurred_at DESC", event_values,
+            ).fetchall())
+            jobs = list(connection.execute(
+                f"SELECT * FROM web_installer_relay_job WHERE {job_where} ORDER BY requested_at DESC", job_values,
+            ).fetchall())
+            tests = connection.execute(
+                """
+                SELECT count(*) AS count, max(received_at) AS last FROM (
+                    SELECT received_at FROM web_installer_event WHERE is_test
+                    UNION ALL SELECT received_at FROM web_installer_relay_job WHERE is_test
+                ) AS t
+                """
+            ).fetchone() or {}
+        text_ids = lambda row: {**row, **{k: str(row[k]) for k in ("event_id", "session_id") if row.get(k) is not None}}
+        return [text_ids(dict(r)) for r in events], [dict(r) for r in jobs], {
+            "count": int(tests.get("count") or 0), "last": tests.get("last"),
+        }
+
+    def web_installer_first_at(self) -> datetime | None:
+        """Earliest non-test web installer record, for the ``all`` trend grid."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT least(
+                    (SELECT min(occurred_at) FROM web_installer_event WHERE is_test IS NOT TRUE),
+                    (SELECT min(requested_at) FROM web_installer_relay_job WHERE is_test IS NOT TRUE)
+                ) AS first_at
+                """
+            ).fetchone()
+        return row["first_at"] if row else None
+
+    def web_installer_trend(
+        self, since: datetime | None, until: datetime | None, *, bucket: str, time_zone: str = "UTC",
+    ) -> list[dict[str, Any]]:
+        """Dashboard Web view counts per bucket, in the app trend field names:
+        final map results by occurredAt and finished relay jobs by requestedAt."""
+        local = {"hour": "hour", "day": "day", "week": "week", "month": "month"}.get(bucket)
+        if local is None:
+            raise ValueError("invalid web installer trend bucket")
+        bucket_sql = ("at - (local_at - date_trunc('hour', local_at))" if bucket == "hour"
+                      else f"(date_trunc('{local}', local_at) AT TIME ZONE %s)")
+        event_where, event_values = _web_installer_period("occurred_at", since, until)
+        job_where, job_values = _web_installer_period("requested_at", since, until)
+        with self.connection() as connection:
+            rows = connection.execute(
+                f"""
+                WITH final AS (
+                    SELECT DISTINCT ON (session_id, package_id, operation) occurred_at, outcome, operation
+                    FROM web_installer_event
+                    WHERE stage = 'MAP_RESULT' AND {event_where}
+                    ORDER BY session_id, package_id, operation, occurred_at DESC
+                ), counted AS (
+                    SELECT occurred_at AS at, CASE
+                        WHEN outcome = 'SUCCEEDED' AND operation = 'update' THEN 'map_update_success_count'
+                        WHEN outcome = 'SUCCEEDED' THEN 'success_count'
+                        WHEN outcome = 'FAILED' AND operation = 'update' THEN 'map_update_failed_count'
+                        WHEN outcome = 'FAILED' THEN 'failed_count' END AS field
+                    FROM final
+                    UNION ALL
+                    SELECT requested_at, CASE WHEN outcome = 'DELIVERED' THEN 'download_success_count'
+                        ELSE 'download_failed_count' END
+                    FROM web_installer_relay_job
+                    WHERE outcome IN ('DELIVERED', 'FAILED', 'REFUSED', 'INTERRUPTED') AND {job_where}
+                ), localized AS (
+                    SELECT field, at, timezone(%s, at) AS local_at FROM counted WHERE field IS NOT NULL
+                )
+                SELECT {bucket_sql} AS bucket, field, count(*) AS count
+                FROM localized GROUP BY 1, 2
+                """,
+                [*event_values, *job_values, time_zone, *([] if bucket == "hour" else [time_zone])],
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def app_funnel_summary(
         self, since: datetime | None, until: datetime | None = None, *, model_limit: int = 10,
@@ -4714,17 +4443,26 @@ class Database:
                 """,
                 values + values,
             ).fetchall())
+            # The top ``model_limit`` base models by distinct sessions, each
+            # with all of its waiting outcomes.
             models = list(connection.execute(
                 f"""
-                SELECT e.base_model, e.outcome, count(DISTINCT e.session_id) AS session_count
-                FROM app_funnel_event AS e
-                WHERE {where}
-                  AND e.stage = 'AUTHORIZATION'
-                  AND e.outcome IN ('PENDING', 'UNKNOWN_MODEL', 'AMBIGUOUS')
-                  AND e.base_model IS NOT NULL
-                GROUP BY e.base_model, e.outcome
-                ORDER BY session_count DESC, e.base_model, e.outcome
-                LIMIT %s
+                WITH waiting AS (
+                    SELECT e.base_model, e.outcome, e.session_id
+                    FROM app_funnel_event AS e
+                    WHERE {where}
+                      AND e.stage = 'AUTHORIZATION'
+                      AND e.outcome IN ('PENDING', 'UNKNOWN_MODEL', 'AMBIGUOUS')
+                      AND e.base_model IS NOT NULL
+                ), top_models AS (
+                    SELECT base_model FROM waiting GROUP BY base_model
+                    ORDER BY count(DISTINCT session_id) DESC, base_model
+                    LIMIT %s
+                )
+                SELECT w.base_model, w.outcome, count(DISTINCT w.session_id) AS session_count
+                FROM waiting AS w JOIN top_models USING (base_model)
+                GROUP BY w.base_model, w.outcome
+                ORDER BY session_count DESC, w.base_model, w.outcome
                 """,
                 values + [model_limit],
             ).fetchall())
@@ -4732,16 +4470,23 @@ class Database:
             if trend_bucket is not None:
                 if trend_bucket not in {"hour", "day", "week", "month"}:
                     raise ValueError("invalid funnel trend bucket")
+                # Hour buckets are real instants, like the map trend, so the
+                # local hour repeated by a DST change stays two buckets.
+                local_first = "timezone(%s, s.first_at)"
+                bucket_sql = (
+                    f"s.first_at - ({local_first} - date_trunc('hour', {local_first}))"
+                    if trend_bucket == "hour" else f"date_trunc('{trend_bucket}', {local_first})"
+                )
                 trend_rows = list(connection.execute(
                     f"""
-                    SELECT date_trunc('{trend_bucket}', timezone(%s, s.first_at)) AS local_bucket,
+                    SELECT {bucket_sql} AS local_bucket,
                            count(*) AS session_count,
                            count(*) FILTER (WHERE s.connected) AS connected_count
                     FROM ({sessions_sql}) AS s
                     GROUP BY local_bucket
                     ORDER BY local_bucket
                     """,
-                    [time_zone] + values,
+                    [time_zone] * bucket_sql.count("%s") + values,
                 ).fetchall())
         summary: dict[str, Any] = {
             "sessionCount": int(totals.get("session_count") or 0),
@@ -4862,7 +4607,7 @@ class Database:
         admin_user_id: int | None,
         request_id: str | None = None,
     ) -> dict[str, int]:
-        """Atomically delete only server-classified local test events.
+        """Atomically delete only server-classified local test events and support reports.
 
         The shared operation UUID is intentionally not used as the delete
         predicate: ``is_local_test`` is the immutable server-side boundary,
@@ -4927,6 +4672,24 @@ class Database:
                 request_id=request_id,
                 reason="Authenticated admin purge of server-classified local telemetry",
                 details=counts,
+            )
+            report_row = connection.execute(
+                """
+                WITH deleted AS (
+                    DELETE FROM support_report WHERE is_local_test IS TRUE RETURNING id
+                )
+                SELECT count(*) AS report_count FROM deleted
+                """
+            ).fetchone() or {}
+            counts["supportReportCount"] = int(report_row.get("report_count") or 0)
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="support_report.local_test_purged",
+                target="local-test-support-reports",
+                request_id=request_id,
+                reason="Authenticated admin purge of server-classified local support reports",
+                details={"supportReportCount": counts["supportReportCount"]},
             )
         return counts
 
@@ -5388,12 +5151,7 @@ class Database:
         if isinstance(since, datetime) and since.tzinfo is None:
             since = since.replace(tzinfo=timezone.utc)
         if period == "all" and isinstance(since, datetime):
-            span = until - since.astimezone(timezone.utc)
-            bucket = (
-                "day" if span <= timedelta(days=14)
-                else "week" if span <= timedelta(days=60)
-                else "month"
-            )
+            bucket = all_time_bucket(until - since.astimezone(timezone.utc))
         else:
             bucket = PERIOD_BUCKETS.get(period, "hour")
         rows = self.map_statistics(

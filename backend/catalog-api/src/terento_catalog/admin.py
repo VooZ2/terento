@@ -111,6 +111,10 @@ def verify_password(password: str, encoded: str) -> bool:
     return hmac.compare_digest(actual, expected_bytes)
 
 
+# Verified for unknown usernames so a failed login costs the same PBKDF2 time.
+UNKNOWN_USER_PASSWORD_HASH = f"pbkdf2-sha256${PBKDF2_ITERATIONS}${'A' * 22}${'A' * 43}"
+
+
 def new_token() -> str:
     return secrets.token_urlsafe(32)
 
@@ -166,16 +170,6 @@ def _parse_timestamp(value: Any) -> datetime | None:
 def _timestamp_iso(value: Any) -> str:
     parsed = _parse_timestamp(value)
     return parsed.isoformat() if parsed is not None else ""
-
-
-def _latest_data_timestamp(rows: list[dict[str, Any]]) -> datetime | None:
-    values = [
-        _parse_timestamp(row.get(key))
-        for row in rows
-        for key in ("last_success", "last_failure", "last_evidence")
-    ]
-    parsed = [value for value in values if value is not None]
-    return max(parsed) if parsed else None
 
 
 def _row_compatibility_status(row: dict[str, Any]) -> CompatibilityStatus | None:
@@ -774,7 +768,7 @@ def _normalise_github_issue_reference(value: Any) -> str | None:
     raw = str(value or "").strip()
     if not raw:
         return None
-    match = re.fullmatch(r"#?(\d{1,10})", raw)
+    match = re.fullmatch(r"#?([1-9]\d{0,9})", raw)
     if not match:
         raise ValueError("GitHub issue must be a Terento issue number such as #32")
     return f"#{int(match.group(1))}"
@@ -855,17 +849,6 @@ def _failure_context_fields(result: dict[str, Any], key: str, *, technical: bool
             'targetKindMatches', 'targetFilenameMatches', 'targetSizeMatches', 'targetPathMatches', 'targetItemIDMatches',
         ))
     return [(label, 'unavailable' if value is None else value) for label, value in fields]
-
-
-def _failure_context_summary(results: list[dict[str, Any]]) -> str:
-    summaries = []
-    for number, result in enumerate(results, 1):
-        context = result.get('failure_context') or {}
-        stage = result.get('optional_component_failure_stage') if isinstance(context, dict) and context.get('componentKind') == 'contours' else result.get('failure_stage')
-        fields = [('Stage', stage or 'unavailable')] + _failure_context_fields(result, 'failure_context')
-        rows = ''.join(f'<div><dt>{html.escape(label)}</dt><dd>{_diagnostic_value(value)}</dd></div>' for label, value in fields)
-        summaries.append(f'<p>Failure context · {html.escape(_failure_result_label(result, number))}</p><dl class="diagnostic-detail-summary">{rows}</dl>')
-    return ''.join(summaries)
 
 
 def _failure_result_label(result: dict[str, Any], number: int) -> str:
@@ -956,6 +939,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     campaign_class = " class='active'" if active == "campaigns" else ""
     devices_class = " class='active'" if active == "devices" else ""
     first_run_class = " class='active'" if active == "first-run" else ""
+    web_installer_class = " class='active'" if active == "web-installer" else ""
     providers_class = " class='active'" if active == "providers" else ""
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
@@ -976,7 +960,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     return f"""<a class="admin-skip-link" href="#main-content">Skip to content</a><header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website {_admin_icon('external')}</a></div>
       <button id="admin-menu-toggle" class="secondary-button" type="button" aria-controls="admin-menu-panel" aria-expanded="false" hidden>Menu</button>
-      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{first_run_class} href="/admin/first-run">First run</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
+      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{first_run_class} href="/admin/first-run">First run</a><a{web_installer_class} href="/admin/web-installer">Web installer</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</select></label><a class="admin-user{account_class}" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
       <a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website {_admin_icon('external')}</a><form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav></div>
     </div></header>"""
@@ -1085,6 +1069,7 @@ def setup_page(*, error: str | None = None) -> bytes:
           </form>
         </main>
         """.format(error=_error(error), brand=_admin_brand()),
+        inline_styles=True,  # Before sign-in the stylesheet route is not available.
     )
 
 
@@ -1105,6 +1090,7 @@ def login_page(*, error: str | None = None) -> bytes:
           </form>
         </main>
         """.format(error=_error(error), brand=_admin_brand()),
+        inline_styles=True,  # Before sign-in the stylesheet route is not available.
     )
 
 
@@ -1159,8 +1145,6 @@ def _overview_missing_diagnostic_item(
 
 
 _MAP_ACTIVITY_STATES = {
-    "DOWNLOAD_STARTED": ("Download started · Outcome not received", "started", "info"),
-    "DOWNLOAD_PROCESSING": ("Checking / unpacking · Outcome not received", "started", "info"),
     "DOWNLOAD_CANCELLED": ("Download cancelled", "unknown", "neutral"),
     "DOWNLOAD_INTERRUPTED": ("Download interrupted", "unknown", "warning"),
     # One vocabulary with the charts and tiles (Successful / Failed /
@@ -1173,23 +1157,6 @@ _MAP_ACTIVITY_STATES = {
     "MAP_UPDATE_FAILED": ("Update failed", "failed", "error"),
     "MAP_UPDATE_NOT_STARTED": ("Update blocked before writing", "unknown", "warning"),
 }
-
-
-def _overview_map_event_label(event: dict[str, Any]) -> tuple[str, str]:
-    if event.get("event_type") == "DOWNLOAD_STARTED" and event.get("has_recorded_outcome"):
-        return "Download started · Outcome recorded", "started"
-    if (
-        event.get("event_type") in {"DOWNLOAD_STARTED", "DOWNLOAD_PROCESSING"}
-        and event.get("is_stale")
-    ):
-        return (
-            "Download started · Outcome missing"
-            if event.get("event_type") == "DOWNLOAD_STARTED"
-            else "Checking / unpacking · Outcome missing",
-            "stale",
-        )
-    return _MAP_ACTIVITY_STATES.get(str(event.get("event_type") or "").upper(),
-                                    ("Map activity", "unknown", "neutral"))[:2]
 
 
 def _admin_event_outcome_label(value: Any) -> str:
@@ -1386,10 +1353,7 @@ def _admin_region_identity(
         return _ADMIN_REGION_IDENTITY_ALIASES.get(
             country_identity, country_identity,
         )
-    region_identity = _admin_region_token(region)
-    return _ADMIN_REGION_IDENTITY_ALIASES.get(
-        region_identity, region_identity or "UNKNOWN",
-    )
+    return "UNKNOWN"
 
 
 def _admin_map_display_name(*values: Any) -> str:
@@ -1522,11 +1486,8 @@ def _download_history_icon(event_type: str) -> str:
 
 
 def _overview_map_activity_row(event: dict[str, Any]) -> str:
-    label, state = _overview_map_event_label(event)
     event_type = str(event.get("event_type") or "")
-    tone = _MAP_ACTIVITY_STATES.get(event_type.upper(), ("Map activity", "unknown", "neutral"))[2]
-    if state == "stale":
-        tone = "neutral"
+    label, state, tone = _MAP_ACTIVITY_STATES.get(event_type.upper(), ("Map activity", "unknown", "neutral"))
     status_markup = _download_history_icon(event_type) + html.escape(label)
     if event_type == 'MAP_UPDATE_NOT_STARTED' and event.get('diagnostic_report_id'):
         status_markup += f" <a href='/admin/update-diagnostics?diagnosticId={quote(str(event['diagnostic_report_id']), safe='')}'>View details</a>"
@@ -1712,6 +1673,8 @@ _INSTALL_CHART_SERIES = (
     ("update-failed", "Update failed", "map_update_failed_count"),
 )
 _LEGEND_COUNTED_SERIES = frozenset({"custom"})
+# The web installer has no custom .img import, so its chart has no such series.
+_WEB_INSTALL_CHART_SERIES = tuple(item for item in _INSTALL_CHART_SERIES if item[0] != "custom")
 _DOWNLOAD_CHART_SERIES = (
     ("download-success", "Download successful", "download_success_count"),
     ("download-failed", "Download failed", "download_failed_count"),
@@ -1748,7 +1711,8 @@ def _overview_trend_chart(
             return _empty_state("unavailable", "Trend data is unavailable for this period.", css="overview-empty-state")
         empty_label = "downloads" if metric == "downloads" else "map installations"
         return f"<p class='overview-empty-state admin-empty' data-state='empty'>No {empty_label} in this period.</p>"
-    series = _DOWNLOAD_CHART_SERIES if metric == "downloads" else _INSTALL_CHART_SERIES
+    series = (_DOWNLOAD_CHART_SERIES if metric == "downloads"
+              else _WEB_INSTALL_CHART_SERIES if metric == "web-installs" else _INSTALL_CHART_SERIES)
     chart_label = "Map download trend" if metric == "downloads" else "Map installation and update trend"
     chart_key = re.sub(r"[^a-z0-9-]", "-", (chart_id or metric).lower()) + ("-mobile" if _compact else "-desktop")
     pattern_id = f"update-failed-{chart_key}"
@@ -2165,11 +2129,40 @@ def _overview_period_script() -> str:
         const url = new URL(window.location.href);
         const period = url.searchParams.get('period') || document.querySelector('#overview-period')?.value || '24h';
         const timeZone = activeTimeZone();
-        if (url.searchParams.get('timeZone') !== timeZone) load(period, false, timeZone);
+        // The server renders in this zone when a link has no timeZone, so the
+        // page is reloaded only when the zone it was rendered in differs.
+        document.cookie = `terento_admin_tz=${timeZone}; Path=/admin; SameSite=Strict; Secure`;
+        const renderedTimeZone = document.querySelector('#overview-period-form')?.dataset.timeZone;
+        if (renderedTimeZone !== timeZone) load(period, false, timeZone);
       };
       window.addEventListener('terento-admin-timezone-ready', synchronizeTimeZone);
       window.addEventListener('terento-admin-timezone-change', synchronizeTimeZone);
       bind();
+    })();"""
+
+
+def _overview_source_switch_script() -> str:
+    """Dashboard chart App/Web switch; the choice per card survives period reloads."""
+    return r"""(() => {
+      const chosen = {};
+      const show = (card, source) => {
+        card.querySelectorAll('[data-source-switch]').forEach((button) => {
+          const on = button.dataset.sourceSwitch === source;
+          button.classList.toggle('active', on);
+          button.setAttribute('aria-pressed', String(on));
+        });
+        card.querySelectorAll('[data-source-panel]').forEach((panel) => { panel.hidden = panel.dataset.sourcePanel !== source; });
+      };
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-source-switch]');
+        const card = button?.closest('section[id]');
+        if (!card) return;
+        chosen[card.id] = button.dataset.sourceSwitch;
+        show(card, chosen[card.id]);
+      });
+      window.addEventListener('terento-admin-content-changed', () => {
+        Object.entries(chosen).forEach(([id, source]) => { const card = document.getElementById(id); if (card) show(card, source); });
+      });
     })();"""
 
 
@@ -2595,7 +2588,7 @@ def first_run_page(
     content = f"""
       {_admin_header(user, csrf_token, active='first-run')}
       <main class='dashboard overview-page first-run-page' id='main-content'>
-        <div class='heading-row overview-heading'><div><h1>First run</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/first-run'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><h1>First run</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/first-run' data-time-zone='{html.escape(time_zone, quote=True)}'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
         {_funnel_card(funnel, period, time_zone)}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
@@ -2646,11 +2639,7 @@ def overview_page(
         f"<option value='{value}'{' selected' if value == period else ''}>{ADMIN_PERIOD_LABELS[value]}</option>"
         for value in ADMIN_PERIODS
     )
-    recent = [
-        item for item in data.get("recentActivity") or []
-        if str(item.get("event_type") or "").upper()
-        not in {"DOWNLOAD_STARTED", "DOWNLOAD_PROCESSING"}
-    ]
+    recent = list(data.get("recentActivity") or [])
     map_statistics_href = "/admin/map-statistics?" + urlencode({"period": period})
 
     # --- Needs attention: fixed category rows, explicit unavailable state ----
@@ -2717,32 +2706,46 @@ def overview_page(
     )
 
     # --- Charts with an explicit all-time line -------------------------------
+    web = overview.get("web") if isinstance(overview.get("web"), dict) else {"available": False}
     trend = list(data.get("trend") or [])
     bucket = str(data.get("bucket") or "day")
     if data_available:
-        downloads_chart = _section_card(
-            "Downloads",
-            _overview_trend_chart(
-                trend, bucket, time_zone, metric="downloads", chart_id="overview-downloads",
-                counted=frozenset(),
-                has_activity=bool((data.get("completedDownloadCount") or 0) + (data.get("failedDownloadCount") or 0)),
-            ),
-            card_id="overview-download-trend", scope=period,
-            totals=_period_totals(data, "completedDownloadCount", "failedDownloadCount", "downloadSuccessRate",
-                                  label="Downloads in this period"),
-            css="overview-panel overview-chart-panel",
-        )
-        installs_chart = _section_card(
-            "Installs",
-            _overview_trend_chart(
-                trend, bucket, time_zone, chart_id="overview-installs", counted=frozenset(),
-                has_activity=bool((data.get("completedInstallCount") or 0) + (data.get("failedInstallCount") or 0) + (data.get("mapUpdateCount") or 0)),
-            ),
-            card_id="overview-trend", scope=period,
-            totals=_period_totals(data, "completedInstallCount", "failedInstallCount", "installSuccessRate",
-                                  label="Installs in this period"),
-            css="overview-panel overview-chart-panel",
-        )
+        def chart(source: dict[str, Any], kind: str, chart_id: str) -> tuple[str, str]:
+            if source.get("available") is False:
+                return _empty_state("unavailable", "Could not load this chart."), ""
+            if kind == "downloads":
+                keys = ("completedDownloadCount", "failedDownloadCount", "downloadSuccessRate")
+                activity = (source.get(keys[0]) or 0) + (source.get(keys[1]) or 0)
+            else:
+                keys = ("completedInstallCount", "failedInstallCount", "installSuccessRate")
+                activity = (source.get(keys[0]) or 0) + (source.get(keys[1]) or 0) + (source.get("mapUpdateCount") or 0)
+            metric = kind if source is data else "web-installs" if kind == "installs" else kind
+            body = _overview_trend_chart(
+                list(source.get("trend") or []), str(source.get("bucket") or "day"), time_zone, metric=metric,
+                chart_id=chart_id, counted=frozenset(), has_activity=bool(activity),
+            )
+            return body, _period_totals(source, *keys, label=f"{kind.title()} in this period")
+
+        def switched_card(title: str, kind: str, card_id: str, chart_id: str) -> str:
+            """App/Web switch (owner decision 2026-10-10): App is the app-only
+            statistic it always was; Web shows web installer records only."""
+            app_body, app_totals = chart(data, kind, chart_id)
+            web_body, web_totals = chart(web, kind, chart_id + "-web")
+            switch = (
+                f"<div class='quick-filter-group overview-source-switch' role='group' aria-label='{title} source'>"
+                "<button type='button' class='quick-filter active' data-source-switch='app' aria-pressed='true'>App</button>"
+                "<button type='button' class='quick-filter' data-source-switch='web' aria-pressed='false'>Web</button></div>"
+            )
+            return _section_card(
+                title, switch + f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
+                card_id=card_id, scope=period,
+                totals=f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
+                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span>",
+                css="overview-panel overview-chart-panel",
+            )
+
+        downloads_chart = switched_card("Downloads", "downloads", "overview-download-trend", "overview-downloads")
+        installs_chart = switched_card("Installs", "installs", "overview-trend", "overview-installs")
     else:
         downloads_chart = _unavailable_card("Downloads", "overview-download-trend")
         installs_chart = _unavailable_card("Installs", "overview-trend")
@@ -2788,21 +2791,23 @@ def overview_page(
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
-        <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin' data-time-zone='{html.escape(time_zone, quote=True)}'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
         <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
-      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_overview_source_switch_script()}</script>
     """
     return _layout("Dashboard", content, sections=_overview_revision_sections(
         overview, data, recent, downloads, review if review_available else None, system_issues,
     ))
 
 
-# Dashboard map-activity fields that the page does not render.
-_OVERVIEW_UNSHOWN_ACTIVITY = frozenset({
-    "recentActivity", "attention", "missingDiagnosticFailures", "missingDiagnosticFailureCount", "trend",
-})
+# Dashboard map-activity fields the page renders: the chart-card totals and
+# mapUpdateCount, which decides the Installs chart's empty state.
+_OVERVIEW_SHOWN_ACTIVITY = (
+    "completedDownloadCount", "failedDownloadCount", "downloadSuccessRate",
+    "completedInstallCount", "failedInstallCount", "installSuccessRate", "mapUpdateCount", "bucket",
+)
 
 
 def _overview_revision_sections(
@@ -2820,7 +2825,7 @@ def _overview_revision_sections(
     return {
         "mapActivity": {
             "available": bool(data),
-            **{key: value for key, value in data.items() if key not in _OVERVIEW_UNSHOWN_ACTIVITY},
+            **{key: data.get(key) for key in _OVERVIEW_SHOWN_ACTIVITY},
             "trend": active_trend_buckets(data.get("trend")),
             "recentActivity": recent,
         },
@@ -2834,6 +2839,10 @@ def _overview_revision_sections(
         ),
         "supportReports": overview.get("supportReports"),
         "system": [(card["title"], card["status"]) for card in system_issues],
+        "web": (
+            {**{k: v for k, v in web.items() if k != "trend"}, "trend": active_trend_buckets(web.get("trend"))}
+            if isinstance(web := overview.get("web"), dict) else None
+        ),
     }
 
 
@@ -3725,8 +3734,27 @@ def dashboard_page(
         operations or [], resolved_operations or [],
     )
     summary_source = diagnostic_summary
+    # The view keeps a legacy row and an unresolved row for one reported
+    # identity; both carry that identity's open problems, so render one row.
+    merged: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = _identity_group_key(row)
+        if key not in merged:
+            merged[key] = dict(row)
+            continue
+        first = merged[key]
+        for count in ("attempted_install_count", "successful_install_count", "failed_install_count",
+                      "prewrite_failure_count"):
+            if count in row or count in first:
+                first[count] = int(first.get(count) or 0) + int(row.get(count) or 0)
+        for latest in ("last_success", "last_failure", "last_evidence"):
+            first[latest] = max((value for value in (first.get(latest), row.get(latest)) if value is not None),
+                                key=_timestamp_iso, default=None)
+        first["recognized_map_capable_evidence"] = (
+            first.get("recognized_map_capable_evidence") is True or row.get("recognized_map_capable_evidence") is True
+        )
     rows = [
-        row for row in rows
+        row for row in merged.values()
         if not (
             int(row.get("attempted_install_count") or 0) == 0
             and int(row.get("prewrite_failure_count") or 0) > 0
@@ -4276,34 +4304,6 @@ def _provider_health_history_item(health: dict[str, Any]) -> str:
     )
 
 
-def _provider_health_row(health: dict[str, Any]) -> str:
-    components = (
-        ("website_status", "Website"), ("catalog_status", "Catalog"),
-        ("redirect_status", "Redirects"), ("download_status", "Download"),
-        ("mime_status", "MIME"), ("magic_status", "Magic bytes"),
-        ("zip_status", "ZIP"), ("img_status", "IMG"),
-        ("last_update_status", "Freshness"),
-    )
-    component_markup = " ".join(
-        f"<span class='provider-component'><span>{html.escape(label)}</span>{_provider_check_badge(health.get(key))}</span>"
-        for key, label in components
-    )
-    error = str(health.get("error_code") or health.get("error_detail") or "").strip()
-    error_markup = (
-        f"<span class='provider-error' title='{html.escape(error, quote=True)}'>{html.escape(error)}</span>"
-        if error else "<span class='muted-value'>—</span>"
-    )
-    http_status = _optional_nonnegative_int(health.get("http_status"))
-    if http_status is not None and not 100 <= http_status <= 599:
-        http_status = None
-    return (
-        f"<tr><td class='column-date'>{_timestamp_markup(health.get('checked_at'))}</td><td class='column-status'>{_provider_status_badge(health.get('status'), kind='health')}</td>"
-        f"<td class='column-status'><div class='provider-component-list'>{component_markup}</div></td><td class='column-number'>{_optional_count_label(http_status)}</td>"
-        f"<td class='column-number'>{_optional_count_label(health.get('artifact_count'))}</td><td class='column-number'>{_optional_count_label(health.get('duration_ms'), ' ms')}</td>"
-        f"<td>{error_markup}</td></tr>"
-    )
-
-
 def _provider_update_count(run: dict[str, Any]) -> str:
     new, updated = run.get('new_package_count'), run.get('updated_package_count')
     if run.get('status') != 'SUCCEEDED' or new is None or updated is None:
@@ -4768,6 +4768,12 @@ def _map_statistics_rows(rows: list[dict[str, Any]], providers: dict[str, str] |
     return "".join(markup)
 
 
+# The world map never changes between releases: Maps loads it as one cacheable,
+# content-versioned script (served by the admin map-assets route).
+WORLD_MAP_SCRIPT = "window.terentoWorldMapSvg = " + _admin_json(WORLD_MAP_SVG) + ";"
+WORLD_MAP_SCRIPT_PATH = "/admin/map-assets/world-map." + hashlib.sha256(WORLD_MAP_SCRIPT.encode("utf-8")).hexdigest()[:16] + ".js"
+
+
 def map_statistics_page(
     statistics: dict[str, Any], providers: list[dict[str, Any]], user: dict[str, Any],
     csrf_token: str, *, selected_filters: dict[str, str] | None = None,
@@ -4804,18 +4810,15 @@ def map_statistics_page(
     detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
     detail_start = min(detail_total, (detail_page - 1) * detail_page_size + 1) if detail_total else 0
     detail_end = min(detail_total, detail_page * detail_page_size)
-    detail_event_counts = [_optional_nonnegative_int(row.get("event_count")) for row in detail_rows]
-    detail_event_count = (
-        sum(count for count in detail_event_counts if count is not None)
-        if all(count is not None for count in detail_event_counts) else None
-    )
-    if detail_rows:
+    # Counts cover every matching group, not only the current page.
+    detail_event_count = _optional_nonnegative_int(statistics.get("detailEventCount"))
+    if detail_total:
         detail_event_label = (
-            f"{detail_event_count} event record{'s' if detail_event_count != 1 else ''}"
+            f"{detail_event_count:,} event record{'s' if detail_event_count != 1 else ''}"
             if detail_event_count is not None else "— event records"
         )
         event_status = (
-            f"{len(detail_rows)} event group{'s' if len(detail_rows) != 1 else ''} · "
+            f"{detail_total:,} event group{'s' if detail_total != 1 else ''} · "
             f"{detail_event_label}"
         )
 
@@ -4946,7 +4949,7 @@ def map_statistics_page(
         {"" if not has_event_data else coverage + provider_table + ranking + events}
         {trends}
       </main>
-      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
+      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="{WORLD_MAP_SCRIPT_PATH}"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
     # Maps shows provider names only (filter options); provider health and
     # collection clocks are not part of this page's freshness revision.
@@ -5949,41 +5952,6 @@ def _identity_observations_markup(
             + "</div>")
 
 
-def _identity_checks_markup(
-    results: list[dict[str, Any]], identity_devices: list[dict[str, Any]] | None = None,
-) -> str:
-    assigned = _identity_selected_id(results)
-    candidate = _identity_candidate(results, assigned)
-    decision = {}
-    for result in results:
-        value = (result.get("identity_decision") or {}).get("decision")
-        if isinstance(value, dict):
-            decision = value
-            break
-    selected_id = assigned or (str(candidate.get("deviceId")) if candidate else None)
-    conflict_lines = _identity_conflict_lines(results, selected_id, identity_devices)
-    candidate_conflict = bool(conflict_lines) or bool(candidate and (candidate.get("conflict") or any(
-        check.get("state") == "CONFLICT" for check in candidate.get("checks", []))))
-    if candidate_conflict:
-        title = "Conflicting assignment"
-        details = (" " + "<br>".join(html.escape(line) for line in conflict_lines)) if conflict_lines else ""
-        action = ("A regular Confirm is blocked for this selection. Use the explicit manual assignment action "
-                  "if the report is known to be wrong." + details)
-    elif decision.get("decisionType") == "MANUAL_ASSIGNMENT":
-        title, action = "Manual assignment", "The reported conflict and the administrator's choice remain in the audit."
-    elif decision.get("deviceId"):
-        title, action = "Confirmed by administrator", "The selected catalog model is saved for this diagnostic result."
-    elif assigned:
-        title, action = "Assigned catalog model", "The existing catalog assignment is shown below. Use Edit only if it needs correction."
-    elif candidate:
-        title, action = "Review model assignment", "Review the compact facts and confirm the suggested model, or use Edit to choose another variant."
-    else:
-        title, action = "Select catalog variant", "Missing evidence remains visible, but it does not prevent an explicit catalog selection."
-    return ("<section class='identity-summary identity-outcome'><h3>" + title + "</h3><p>" + action + "</p>"
-            + _identity_observations_markup(results, identity_devices)
-            + "</section>")
-
-
 def _identity_device_label(device: dict[str, Any] | None) -> str:
     if not device:
         return "No catalog model selected"
@@ -6362,20 +6330,6 @@ def _github_issue_report(
     if note:
         rendered_sections.append(f"## Admin note\n\n{note}")
     return _sanitised_issue_value(title, max_length=180), "\n\n".join(rendered_sections)
-
-
-def _github_issue_url(
-    identity: str,
-    results: list[dict[str, Any]],
-    *,
-    device: dict[str, Any] | None = None,
-    admin_note: str | None = None,
-) -> tuple[str, bool]:
-    title, body = _github_issue_report(identity, results, device=device, admin_note=admin_note)
-    candidate = GITHUB_NEW_ISSUE_URL + "?" + urlencode({"title": title, "body": body})
-    if len(candidate) > GITHUB_ISSUE_URL_MAX_LENGTH:
-        return GITHUB_NEW_ISSUE_URL, False
-    return candidate, True
 
 
 # Every <details> in the installation dialog and the update report uses this one
@@ -10571,6 +10525,19 @@ ADMIN_DROPDOWN_STYLES = """
 @media(max-width:760px){.admin-dropdown-option{min-height:44px}}
 """
 ADMIN_STYLES += ADMIN_DROPDOWN_STYLES
+ADMIN_STYLES += """
+.web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
+.web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
+@media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
+.web-installer-table td{white-space:normal;overflow-wrap:anywhere}
+.web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
+.web-installer-why{display:block;margin-top:4px;font-size:12px}
+.web-installer-tests{margin:20px 0 0;font-size:12px}
+.overview-source-switch{margin:0 0 10px}.overview-source-totals{display:contents}.overview-source-totals[hidden]{display:none}
+"""
+# Signed-in pages link one cacheable stylesheet; the content hash in the name
+# changes whenever the CSS changes (served by the admin map-assets route).
+ADMIN_STYLESHEET_PATH = "/admin/map-assets/admin." + hashlib.sha256(ADMIN_STYLES.encode("utf-8")).hexdigest()[:16] + ".css"
 
 def _error(message: str | None) -> str:
     return f"<p class='error'>{html.escape(message)}</p>" if message else ""
@@ -10585,7 +10552,7 @@ def _script_tag(code: str) -> str:
     return f'<script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{code}</script>'
 
 
-def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None, revisions: dict[str, str] | None = None) -> bytes:
+def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None, revisions: dict[str, str] | None = None, inline_styles: bool = False) -> bytes:
     if 'id="main-content"' in content or "id='main-content'" in content:
         revisions = revisions if revisions is not None else section_revisions(sections or {})
         revision = html.escape(json.dumps(revisions, sort_keys=True), quote=True)
@@ -10594,7 +10561,7 @@ def _layout(title: str, content: str, *, sections: dict[str, Any] | None = None,
     # Scripts get the nonce at their template site; the assembled body is never
     # post-processed, so data that slipped through escaping gets no nonce.
     content = f"{content}{_script_tag(_admin_timezone_script())}"
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body class="admin-shell">{content}</body></html>""".encode("utf-8")
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title>{f"<style>{ADMIN_STYLES}</style>" if inline_styles else f'<link rel="stylesheet" href="{ADMIN_STYLESHEET_PATH}">'}</head><body class="admin-shell">{content}</body></html>""".encode("utf-8")
 
 
 def _admin_table_sort_script() -> str:

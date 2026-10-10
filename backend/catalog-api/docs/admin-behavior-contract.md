@@ -284,8 +284,8 @@ while a measured zero is 0.
 
 ## Page and navigation behavior
 
-The primary sequence is `Dashboard`, `Installations`, `First run`, `Devices`,
-`Maps`, `Providers`, and `Health`, followed by Tools and account controls. Dashboard
+The primary sequence is `Dashboard`, `Installations`, `First run`, `Web installer`,
+`Devices`, `Maps`, `Providers`, and `Health`, followed by Tools and account controls. Dashboard
 Needs attention is the entry point for actionable review work; there is no
 duplicate Review navigation item.
 
@@ -298,7 +298,14 @@ Each chart card holds exactly three things (owner decision 2026-10-06): a
 header with the period scope chip and, top right, the period totals as compact
 value chips (Successful, Failed — danger only when positive — and Success rate;
 Installs counts fresh installs only); the chart; and a legend naming each
-series by colour without counts. No All time line, purpose breakdown or other
+series by colour without counts. Above the chart an `App`/`Web` switch (owner
+decision 2026-10-10; App is the default and the choice per card survives a
+period change) swaps the chart and its header totals: App is the app-only
+statistic below, unchanged; Web shows only web installer records
+([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)):
+Downloads are relay jobs (sent, failed on the server) and Installs are final
+web map results (install and update, succeeded and failed; no Custom .img
+series). Web records never enter the App view or any other app number. No All time line, purpose breakdown or other
 explanatory text is shown in these cards; all-time totals live on Maps. Header totals and charts use the same period
 population, so they agree. A legend elsewhere shows a count only where it adds
 information no total shows (the Maps Custom .img install split and the App
@@ -315,7 +322,10 @@ Every number shows its scope as visible text (`Today`, `Last 24 hours`,
 used. Every Admin period picker (the Dashboard period dropdown and the Maps time
 range) offers, in this order, Today, Last 24 hours, Last 7 days, Last 30 days and
 All time (owner request 2026-10-07); Today covers the current day from midnight
-in the selected Admin time zone up to now. The Dashboard default stays Last 24
+in the selected Admin time zone up to now. The Dashboard and First run use the
+zone saved by the time-zone control (cookie `terento_admin_tz`) when a link
+carries no `timeZone`, so they are built once; the page reloads its content only
+when the browser zone differs from the zone it was rendered in. The Dashboard default stays Last 24
 hours and the Maps default stays All time; an unknown Dashboard period falls
 back to Last 24 hours. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
@@ -329,6 +339,25 @@ Ambiguous outcomes, most sessions first, each linking to Devices filtered by
 that name with its catalog status and session count, then `+N more on First
 run`), and a `View all` action to `/admin/first-run` for the same period. It
 shows no Sessions over time and no outcome groups.
+
+The Web installer page (`/admin/web-installer`, primary navigation after First
+run; owner decision 2026-10-10, replacing the lab admin page from an empty
+start) has the Dashboard period picker (default Last 7 days) and shows only the
+web installer population. It has no explanatory lead text. `On the watch`: the
+tiles Watch connected, Maps installed, Maps updated, Failed and Writing (median
+writing time, then median checking time); `Watch models` (model as the watch
+reports it, the system it was connected from, firmware seen, connected
+sessions, final installs, updates and failures, last seen); `Systems and
+browsers`; `Connection problems` and `Install and removal problems`, where every
+failed attempt is grouped and shown in plain words with its stored codes next to
+them (step, reason, browser error name, HTTP status, MTP response code) so the
+cause can be traced; and `Recent results on watches` (newest 30 final results:
+one per page load, map and operation, plus removals). `On the server`: the
+tiles Requests, Sent (with data sent), Failed, Preparing and Sending (medians);
+`Providers`; `Problems` (server reason in words with its code and provider HTTP
+status); and `Recent requests` (newest 50). There is no live "now on the server"
+view and no most-requested list. A last line counts test records (stored, kept
+out of every number) with the last receipt time, for delivery checks.
 
 The First run page (`/admin/first-run`, primary navigation after
 Installations) has the Dashboard period picker (default Last 24 hours; an
@@ -389,7 +418,10 @@ for First run cover exactly these displayed values, without zero trend buckets t
 layout invariants. It never
 mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
-Activity is internally scrollable and must not force page height. A generic
+Activity is internally scrollable and must not force page height. It lists the
+period's newest rows by the same effective time as the chart totals; unfinished
+acquisitions (download started or processing without an outcome) are not
+listed and never take a place in the bounded list. A generic
 activity row has no Maps link unless an exact useful destination exists.
 Installation and update activity use two text rows: status, then map/region,
 provider and exact assessed model/variant separated by middle dots. The catalog
@@ -509,6 +541,8 @@ problems use the operation-level Needs attention installation predicate, so
 Dashboard `Installation problems` equals Installations `Open problems`. Each
 operation is attributed to exactly one identity; the KPI is the sum of the rendered
 rows and an identity with an open problem stays listed even with zero attempts.
+Each identity renders one row: evidence rows that group to the same identity
+(for example its legacy and unresolved rows) are merged, with their counts summed.
 Model history rows marked open are the per-map results of those operations.
 Maps applies the same fresh main-map write-boundary contract. A current
 map-side failure with no reliable write evidence, a pre-write failure, and an
@@ -558,7 +592,8 @@ pending the page says `No installations wait for identity review.`; a failed
 read renders an `Unavailable` card with Retry.
 
 Discovery reuses the Installations source (identities whose active results are
-identity pending) and the existing per-identity detail read; the Needs
+identity pending) and the existing detail read, once for all pending identities
+(never one read per identity); the Needs
 attention count is the SQL operation count. Both use the same row predicate
 (active, nonlocal, not statistics-excluded, no catalog model, not resolved or
 not identifiable, not a provider download failure) and the same operation
@@ -679,7 +714,8 @@ it never shows populated all-time numbers as if they were the period. Diagnostic
 linkage coverage may remain in the private API contract but is not shown as an
 Admin block. Events uses human labels (event type, provider, map name) with the
 raw code in the title, and shows Results (counted) and Events (raw records)
-separately. The Maps page carries the selected time zone in its form so chart
+separately. Its summary (`N event groups · N event records`) counts every
+matching group across all pages, not only the visible page. The Maps page carries the selected time zone in its form so chart
 buckets and period boundaries use it; changing the zone reloads them. The Maps
 heading carries no Update reports link; the update report list is reached from
 Tools → Update reports.
@@ -771,8 +807,11 @@ model is selected; changing the search clears a stale selection. Reported facts 
 missing facts stay distinct; catalog facts may enrich only a consistent exact
 target. A conflicting normal assignment requires the separate explicit manual
 action and an audit record. Scope remains one exact result unless the operator
-explicitly submits an operation-level scope. Identity decisions never alter
-installation outcomes, device files, telemetry, statistics, or publication.
+explicitly submits an operation-level scope. The newest identity audit record
+per result is its administrator decision; repeating that identical decision
+(double submit, second tab) succeeds without another audit record. Identity
+decisions never alter installation outcomes, device files, telemetry,
+statistics, or publication.
 
 The reported-identity page (`/admin/diagnostics?identity=…` for an identity
 without a catalog model) follows the device page: an Installs card with the
@@ -812,10 +851,16 @@ preview and copy, accept an optional bounded admin note, and link or unlink an
 existing issue. Preparing opens the GitHub composer; the administrator reviews
 and submits it there. Oversized reports use the same copy fallback. No report is
 posted automatically. Update issue links and lifecycle actions target one exact
-diagnostic UUID, require authentication/CSRF and record an audit. Resolving,
+diagnostic UUID, require authentication/CSRF and record an audit. Every issue
+link, relink or unlink that changes a result is audited, including on resolved
+results; an identical link is a no-op. Reopening an active result or resolving
+a resolved one is a no-op success that keeps its workflow, resolution and
+resolver; a workflow change on resolved results is rejected. Resolving,
 reopening or linking never changes the received outcome, write fact or counts.
-The bounded issue synchronizer resolves active linked diagnostics when GitHub
-confirms closure; reopening remains an explicit administrator action.
+The bounded issue synchronizer reads GitHub before locking any diagnostic,
+resolves active linked diagnostics when GitHub confirms closure and audits each
+one's actual previous workflow state; reopening remains an explicit
+administrator action.
 
 An update report links to the model detail only through a server-assessed exact
 catalog identity. Reported model text and unresolved/conflicting identity remain
@@ -1063,13 +1108,18 @@ re-reads its own URL every two minutes, and once when the tab becomes visible
 again, and compares the fresh revisions with the rendered ones. A notice appears
 only when a revision differs, so a refresh with no new data never brings it back
 on the next poll; a client-side section render acknowledges its own sections.
+Signed-in pages link one content-versioned, privately cached stylesheet (and
+Maps one world-map script) instead of inlining them, so each re-read transfers
+only the page markup and data.
 
 Revisions hash displayed data only (owner report 2026-10-07). They exclude
 request-time values (for example the First run `since`/`until` window, render
 time, CSRF and nonce values), observation and schedule clocks (health check,
 heartbeat, download poll and next-check times), payloads a page does not render
-(the Dashboard hashes no compatibility evidence, provider rows or Maps unknown,
-and no in-progress download rows; Maps hashes provider names only), zero chart
+(the Dashboard map section hashes only the chart-card totals and rates, the
+update count that picks the Installs empty state, the bucket, the active chart
+buckets and the Activity rows — no raw event count, purpose breakdown or
+provider rows; Maps hashes provider names only), zero chart
 buckets that only move with the rolling window, and list order. A new or
 changed installation, report, count, status or displayed row still changes the
 revision, as does an event leaving a rolling period.

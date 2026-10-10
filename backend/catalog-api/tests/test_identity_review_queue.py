@@ -189,8 +189,9 @@ class QueueDatabase(FakeProviderDatabase):
 
     def compatibility_identity_details(self, status, *, device_id="", identity=""):
         self.identity_calls.append((status, identity))
+        identities = identity if isinstance(identity, list) else [identity]
         return [event for event in _operations()
-                if event["diagnostic_status"] == status and event["compatibility_identity"] == identity]
+                if event["diagnostic_status"] == status and event["compatibility_identity"] in identities]
 
     def admin_device_snapshot(self):
         return [{**device, "map_capable": True, "active": True} for device in DEVICES], None
@@ -230,7 +231,8 @@ class IdentityReviewHttpTests(unittest.TestCase):
         response, body = self.request("GET", "/admin/review/identity")
         self.assertEqual(response.status, 200)
         self.assertIn("no-store", response.headers["Cache-Control"])
-        self.assertEqual(sorted(self.database.identity_calls), [("ACTIVE", "Forerunner 965"), ("ACTIVE", "fēnix 8")])
+        # One read for every pending identity, never one per identity (audit #13).
+        self.assertEqual(self.database.identity_calls, [("ACTIVE", ["Forerunner 965", "fēnix 8"])])
         self.assertEqual(body.count("data-identity-review-item "), 4)
         form = next(form for form in _forms(body) if _fields(form)["operation_key"].endswith("000000000003:0"))
         fields = {**_fields(form), "identity_action": "ASSIGN"}

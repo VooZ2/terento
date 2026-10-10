@@ -362,7 +362,10 @@ current client does not create a separate post-install confirmation signal.
 Migration 011 removed older beta events that had no deletion token, rather than
 retaining reports the revised client could not erase. `compatibility_model_review`
 stores maintainer-reviewed physical-device evidence, notes, review state, and
-the default-false public-statistics switch/display name.
+the default-false public-statistics switch/display name. Readers match a
+review by `COALESCE(identity_key, model)`; when a legacy row already holds the
+identity text as its `model` key for another identity, a new review uses
+`identity:<identity>` as its primary key.
 
 Migration 017 adds schema-v3 structured diagnostics. `operation_id` groups the
 per-map rows produced by one Install action; map index/count, app build/release,
@@ -406,7 +409,10 @@ evidence projections. New beta.6 and later events remain active by default.
 
 Migration 021 adds additive diagnostic resolution fields and lifecycle audit
 rows, exact identity-resolution state/audit rows, and installation-
-authorization audit rows. It also installs the canonical threshold function
+authorization audit rows. The newest `compatibility_identity_resolution_audit`
+row per event is the administrator identity decision; an identical retry adds
+no row. `compatibility_diagnostic_lifecycle_audit` records every issue link or
+workflow change with the real previous workflow state. It also installs the canonical threshold function
 used by the live compatibility view: recognized map-capable evidence is
 required, then 0 successful operations is `TESTING`, 1–2 is `TESTED`, 3–4 is
 `SUPPORTED`, and 5+ is `VERIFIED`; unrecognized or non-map records have no
@@ -516,7 +522,8 @@ from the card, while every failure received before the epoch remains excluded.
 
 `admin_user` stores a unique username and salted PBKDF2-SHA256 password hash;
 no recoverable password is stored. `admin_session` stores only hashes of the
-opaque session and CSRF tokens with an expiry and user foreign key. PostgreSQL
+opaque session and CSRF tokens with an expiry and user foreign key; a password
+change deletes the user's other sessions in the same transaction. PostgreSQL
 is not published outside the private Docker network.
 
 ## Operational health
@@ -665,3 +672,19 @@ Garmin device types 006-B3769, 006-B3771 and 006-B3516). The existing fēnix
 6/6S/6X rows are unchanged, and the standard fēnix 6 and 6S Dual Power
 editions are not added because Garmin publishes no map row for them. The
 previous revision reads every row unchanged.
+
+### Migration077: web installer statistics
+
+Additive and rollback-compatible: two new tables the previous revision never
+reads or writes ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
+`web_installer_event` (event UUID primary key, random per-page-load
+`session_id`, `occurred_at`, `received_at`, `is_test`, `stage`, `outcome`, OS
+and browser family/major, watch `model`, `firmware`, `base_model`,
+`operation`, `provider`, `package_id`, `size_bucket`, `failure_stage`,
+`reason`, `write_started`, `write_s`, `verify_s`, `error_name`, `http_status`,
+`mtp_response`) and `web_installer_relay_job` (server job reference primary
+key, `received_at`, `is_test`, requested/ready/finished times, `provider`,
+`package_id`, `region`, `release`, `size_bytes`, `served_bytes`, `outcome`,
+`reason` required exactly for FAILED/REFUSED/INTERRUPTED, and
+`provider_http_status` only with `PROVIDER_HTTP_ERROR`). Both are a separate
+population, never read by app statistics, and deleted 24 months after receipt.
