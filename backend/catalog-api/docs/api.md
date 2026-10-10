@@ -247,8 +247,9 @@ checks other than the provider Catalogs check; it links to
 client-side query the Health status filter honours. Maps unknown and provider
 problems are not rendered there; an unavailable query shows
 `—` and `Unavailable`. The Identity review row links to `/admin/review/identity`. First run shows a short review of the
-`/admin/app-funnel.json` read model for the period (journey and up to three
-waiting models) with `View all` to `/admin/first-run`. App downloads is the separate Terento `.dmg` and `.zip`
+`/admin/app-funnel.json` read model for the period (journey totals, one row per
+loss with its most common reason, and up to three waiting model names) with
+`View all` to `/admin/first-run`. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
 and internally scrollable: the newest rows of the period, selected by the same
 effective time as the totals (receipt time for a client clock more than 10
@@ -345,8 +346,8 @@ pages keep the same CSS inline because that route needs a session.
 
 ## `GET https://api.terento.app/admin/first-run`
 
-Returns the authenticated First run page: the full app first-run funnel card
-(journey, Sessions over time and the per-stage outcome groups with waiting
+Returns the authenticated First run page: the full app first-run funnel
+(journey tiles, Sessions over time, the per-stage outcome tables and Waiting
 models) for `?period=` (`today`, `24h`, `7d`, `30d`, `all`; default and
 fallback `24h`) in `?timeZone=` (absent: the `terento_admin_tz` cookie, as on
 `/admin`; unknown is UTC). It reads the same
