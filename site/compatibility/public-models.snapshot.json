@@ -68,8 +68,8 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 11,
-      "lastSuccessfulInstallation": "2026-10-08T04:28:40+00:00"
+      "successfulInstallations": 12,
+      "lastSuccessfulInstallation": "2026-10-10T08:06:15+00:00"
     },
     {
       "model": "fēnix 7X Pro · Historical",
@@ -352,5 +352,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-09T21:56:30.795740+00:00"
+  "generatedAt": "2026-10-10T11:29:02.791803+00:00"
 }
