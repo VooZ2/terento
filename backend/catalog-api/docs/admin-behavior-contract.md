@@ -298,8 +298,9 @@ Each chart card holds exactly three things (owner decision 2026-10-06): a
 header with the period scope chip and, top right, the period totals as compact
 value chips (Successful, Failed — danger only when positive — and Success rate;
 Installs counts fresh installs only); the chart; and a legend naming each
-series by colour without counts. Above the chart an `App`/`Web` switch (owner
-decision 2026-10-10; App is the default and the choice per card survives a
+series by colour without counts. An `App`/`Web` switch, the first header chip
+before Successful and the same size as the chips (owner decision 2026-10-10;
+App is the default and the choice per card survives a
 period change) swaps the chart and its header totals: App is the app-only
 statistic below, unchanged; Web shows only web installer records
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)):
@@ -468,7 +469,8 @@ leaves out. An unavailable Health snapshot adds no row. Maps unknown models and
 provider problems are not Needs attention rows; they stay on Devices
 (`/admin/devices?maps=unknown&active=1`) and Providers. Only rows with a positive or unavailable
 count are listed (owner decision 2026-10-06); a measured zero renders no row,
-and when every count is zero the card shows `Nothing to review.` instead. Review
+and when every count is zero the card collapses to its header with `0 Total`
+(owner decision 2026-10-10). Review
 counts come only from the canonical review read model and the support-report
 count, and System checks only from the Health check states; there is no
 fallback from another definition.
