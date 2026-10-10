@@ -298,8 +298,9 @@ Each chart card holds exactly three things (owner decision 2026-10-06): a
 header with the period scope chip and, top right, the period totals as compact
 value chips (Successful, Failed — danger only when positive — and Success rate;
 Installs counts fresh installs only); the chart; and a legend naming each
-series by colour without counts. Above the chart an `App`/`Web` switch (owner
-decision 2026-10-10; App is the default and the choice per card survives a
+series by colour without counts. An `App`/`Web` switch, the first header chip
+before Successful and the same size as the chips (owner decision 2026-10-10;
+App is the default and the choice per card survives a
 period change) swaps the chart and its header totals: App is the app-only
 statistic below, unchanged; Web shows only web installer records
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)):
@@ -332,13 +333,21 @@ are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`, never map downloads), shows its
 period increases in the legend and its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists.
-The Dashboard First run card is a short review (owner decision 2026-10-10): the
-journey below with its `Lost on the way` line, then `Waiting models` (only when
-any model waits: at most three models across the Pending, Unknown model and
-Ambiguous outcomes, most sessions first, each linking to Devices filtered by
-that name with its catalog status and session count, then `+N more on First
-run`), and a `View all` action to `/admin/first-run` for the same period. It
-shows no Sessions over time and no outcome groups.
+The Dashboard First run card is a short review that says whether the First run
+page is worth opening (owner decisions 2026-10-10). Its header shows the
+journey totals as chips: `Opened` (the period's distinct sessions),
+`Connected` and `Allowed` (`—` when the read model does not report it). Below,
+in the Needs attention row style, one row per loss above zero: `Never
+connected` (`neverConnectedSessionCount`, with `Mostly: <reason> (N)` from Why
+not connected), `Connected but not allowed` (connected minus allowed, with the
+most common Permission check outcome other than Approved) and `Waiting models`
+(the number of models waiting, with at most three names, most sessions first,
+then `+N more`). Each row links to its card on `/admin/first-run` for the same
+period. With no losses the card says `Every session connected and was allowed
+to install.` When the read model reports the previous window, one muted line
+gives its three totals (`Previous 7 days: 19 opened · 14 connected · 12
+allowed`). A `View all` action opens `/admin/first-run` for the same period.
+The card shows no chart, tiles or tables.
 
 The Web installer page (`/admin/web-installer`, primary navigation after First
 run; owner decision 2026-10-10, replacing the lab admin page from an empty
@@ -361,62 +370,56 @@ out of every number) with the last receipt time, for delivery checks.
 
 The First run page (`/admin/first-run`, primary navigation after
 Installations) has the Dashboard period picker (default Last 24 hours; an
-unknown period falls back to it) and one First run card that shows the separate
-app first-run funnel population for the period (owner redesign 2026-10-10;
-moved off the Dashboard the same day). It opens with the
-journey: three steps on one row of three equal columns at every width, label
-above number with the numbers on one baseline: `Opened app` (the period's
-distinct sessions), `Watch connected` (sessions with `DEVICE_CONNECT`
-`CONNECTED`, with its share `N% of opened`) and `Install allowed` (connected
-sessions with `AUTHORIZATION` `APPROVED`, with `N% of connected`; `—` when the
-read model does not report it). Each step has a bar scaled to its share of the
-period's sessions and, when the read model reports the previous window, its
-change as text with an arrow (`▲ +4 vs previous 24 h`, `▼ -2 vs yesterday`,
-`= Same as previous 7 days`); colour is never the only signal. A `Lost on the
-way` line names `N never connected` (`neverConnectedSessionCount`) and `N
-connected but not allowed` when above zero. With at least two buckets,
-`Sessions over time` shows one small stacked bar per hour (Today, Last 24
-hours), day (Last 7 days), week (Last 30 days) or month (All time):
-connected sessions in the interactive colour, never-connected sessions in the
-danger colour, each bucket focusable with its values as text, the first and
-last bucket labels below and a two-entry legend. Below, in this order, `Why
-not connected` (only when sessions never connected: the `DEVICE_CONNECT`
-signals of those sessions alone, plus `Closed before any watch signal` for
-never-connected sessions with no connection signal, scaled to the
-never-connected count, with the muted note `Sessions that never connected;
-one can show several signals.`), Connection problems (every non-connected
-`DEVICE_CONNECT` outcome across all sessions, with the muted note `Every
-session, including those that connected later.`), Authorization, Catalog and
-Install blocked list one row per outcome with its label, a small horizontal bar
-scaled to its share of the period's sessions and its count as text, largest
-first; zero rows are omitted and an empty group shows `—`. Non-obvious outcome
-rows carry one short muted meaning under the label (for example Pending
-`Model not in the catalog, or its Maps value is unknown or mixed`, Catalog
-unavailable `The policy check failed (network or server); nothing was
-written`, Built-in copy `The server catalog did not load; the app used its
-bundled list`). On this page the models waiting for review are listed under their
-Pending, Unknown model or Ambiguous row (there is no separate Waiting models
-group): each model links to Devices filtered by that name and shows what the
-current installation policy says about it (`Not in catalog`, `Maps unknown`,
-`Variants differ`, `No maps`, `Withdrawn`, `Approved now`); this status is
-diagnostic and never grants or revokes write authority. Labels keep their
-full width and the bar track shrinks first. Above 900 px, when the card is
-wide enough for label, bar and count in half columns
-(card content at least 620 px), the groups flow into two balanced columns and a
-group is never split; otherwise they stay in one column with one aligned label
-column. Rows count sessions
-per outcome and are not exclusive: one session can appear in several rows, and
-most connection problems are signals seen while the app keeps waiting, so their
-sum is not a failure count. Outcome labels use outcome wording: Connection
-problems `No watch plugged in`, `Didn't get ready`, `Not in file-transfer
-mode`, `Watch in use by another app`, `Several Garmins`, `Disconnected after
-connecting`, `Stopped responding`; Catalog `Loaded`, `Partly loaded`,
-`Built-in copy`, `App update required`; Install blocked `Not allowed for this
-watch`, `Watch storage full`, `Mac storage problem`, `Map not verified`, `Watch
-not identified`, `Other`. The Dashboard and First run page freshness revisions
-for First run cover exactly these displayed values, without zero trend buckets that only move with the rolling window. One-card KPI rows follow the two-row rule in Responsive and
-layout invariants. It never
-mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
+unknown period falls back to it) and shows the separate app first-run funnel
+population for the period. It follows the structure of the other Admin pages
+(owner decision 2026-10-10, replacing the single First run card): metric
+tiles, then cards with one- or two-word titles grouped under topic headings,
+with Admin tables and the shared Admin type scale. The tiles are `Opened app`
+(the period's distinct sessions), `Watch connected` (sessions with
+`DEVICE_CONNECT` `CONNECTED`, with `N% of opened`), `Install allowed`
+(connected sessions with `AUTHORIZATION` `APPROVED`, with `N% of connected`;
+unknown when the read model does not report it), `Never connected`
+(`neverConnectedSessionCount`, with `N% of opened`) and `Not allowed`
+(connected minus allowed, with `N% of connected`); the two losses use the
+danger tone when above zero. When the read model reports the previous window,
+the three journey tiles add the change as text with an arrow (`▲ +4 vs
+previous 24 h`, `▼ -2 vs yesterday`, `= Same as previous 7 days`); colour is
+never the only signal. With at least two buckets, the `Sessions over time` card
+shows one small stacked bar per hour (Today, Last 24 hours), day (Last 7 days),
+week (Last 30 days) or month (All time): connected sessions in the interactive
+colour, never-connected sessions in the danger colour, each bucket focusable
+with its values as text, the first and last bucket labels below and a
+two-entry legend. Then three topics, each a heading with two cards side by
+side above 900 px: `Connecting the watch` (`Why not connected`, `Connection
+problems`), `Install permission` (`Permission check`, `Waiting models`) and
+`Maps` (`Map list`, `Install blocked`). Every outcome card is a table with
+Result, Sessions and Share, largest first; zero rows are omitted and an empty
+card says so. The page has no explanatory text: no lead, card notes or
+per-row meanings (owner rule 2026-10-10). `Why not connected` covers only
+sessions that never connected: their `DEVICE_CONNECT` signals plus `Closed
+before any watch signal` for never-connected sessions with no connection
+signal, with the share of the never-connected count (without such sessions it
+says `Every session connected a watch.`). `Connection problems` lists every
+non-connected `DEVICE_CONNECT` outcome across all sessions. `Permission check`
+(the `AUTHORIZATION` stage), `Map list` (`CATALOG`) and `Install blocked` show
+their shares of the period's sessions. `Waiting models` lists the models
+waiting for review, most sessions first: the model linking to Devices filtered
+by that name, its Permission check result (Pending, Unknown model or
+Ambiguous), what the current installation policy says about it (`Not in
+catalog`, `Maps unknown`, `Variants differ`, `No maps`, `Withdrawn`, `Approved
+now`) and its sessions; this status is diagnostic and never grants or revokes
+write authority. Rows count sessions per outcome and are not exclusive: one
+session can appear in several rows, and most connection problems are signals
+seen while the app keeps waiting, so their sum is not a failure count. Outcome
+labels use outcome wording: Connection problems `No watch plugged in`, `Didn't
+get ready`, `Not in file-transfer mode`, `Watch in use by another app`,
+`Several Garmins`, `Disconnected after connecting`, `Stopped responding`; Map
+list `Loaded`, `Partly loaded`, `Built-in copy`, `App update required`;
+Install blocked `Not allowed for this watch`, `Watch storage full`, `Mac
+storage problem`, `Map not verified`, `Watch not identified`, `Other`. The
+Dashboard and First run page freshness revisions for First run cover exactly
+these displayed values, without zero trend buckets that only move with the
+rolling window. It never mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
 Activity is internally scrollable and must not force page height. It lists the
 period's newest rows by the same effective time as the chart totals; unfinished
@@ -468,7 +471,8 @@ leaves out. An unavailable Health snapshot adds no row. Maps unknown models and
 provider problems are not Needs attention rows; they stay on Devices
 (`/admin/devices?maps=unknown&active=1`) and Providers. Only rows with a positive or unavailable
 count are listed (owner decision 2026-10-06); a measured zero renders no row,
-and when every count is zero the card shows `Nothing to review.` instead. Review
+and when every count is zero the card collapses to its header with `0 Total`
+(owner decision 2026-10-10). Review
 counts come only from the canonical review read model and the support-report
 count, and System checks only from the Health check states; there is no
 fallback from another definition.

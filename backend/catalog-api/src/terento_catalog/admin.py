@@ -2221,9 +2221,12 @@ _ATTENTION_ROWS = (
 )
 
 
-def _attention_row(label: str, count: int | None, href: str, icon: str, *, unavailable: bool = False) -> str:
-    """Needs attention row: icon, label, count (or —) and an arrow. A measured
-    zero has nothing to act on, so it renders no row."""
+def _attention_row(
+    label: str, count: int | None, href: str, icon: str, *, unavailable: bool = False, detail: str = "",
+) -> str:
+    """Needs attention row: icon, label (with an optional muted detail line),
+    count (or —) and an arrow. A measured zero has nothing to act on, so it
+    renders no row."""
     if not unavailable and count == 0:
         return ""
     if unavailable or count is None:
@@ -2234,10 +2237,13 @@ def _attention_row(label: str, count: int | None, href: str, icon: str, *, unava
         value = f"{count:,}"
         state = "active"
         aria = f"{label}: {count}"
+    if detail:
+        aria += f". {detail}"
     return (
         f"<li class='overview-attention-row' data-state='{state}'>"
         f"<a href='{html.escape(href, quote=True)}' aria-label='{html.escape(aria, quote=True)}'>"
-        f"{_admin_icon(icon)}<span class='overview-attention-label'>{html.escape(label)}</span>"
+        f"{_admin_icon(icon)}<span class='overview-attention-label'>{html.escape(label)}"
+        + (f"<small class='funnel-hint'>{html.escape(detail)}</small>" if detail else "") + "</span>"
         f"<strong>{value}</strong>{_admin_icon('arrow-right')}</a></li>"
     )
 
@@ -2252,12 +2258,12 @@ _FUNNEL_CONNECT_LABELS = {
 }
 _FUNNEL_GROUPS: tuple[tuple[str, str, dict[str, str]], ...] = (
     ("Connection problems", "DEVICE_CONNECT", _FUNNEL_CONNECT_LABELS),
-    ("Authorization", "AUTHORIZATION", {
+    ("Permission check", "AUTHORIZATION", {
         "APPROVED": "Approved", "PENDING": "Pending", "OUT_OF_SCOPE": "Out of scope",
         "UNKNOWN_MODEL": "Unknown model", "AMBIGUOUS": "Ambiguous",
         "CATALOG_UNAVAILABLE": "Catalog unavailable", "UPDATE_REQUIRED": "Update required",
     }),
-    ("Catalog", "CATALOG", {
+    ("Map list", "CATALOG", {
         "REMOTE": "Loaded", "REMOTE_PARTIAL": "Partly loaded", "BUNDLED_FALLBACK": "Built-in copy",
         "UPDATE_REQUIRED": "App update required",
     }),
@@ -2267,23 +2273,6 @@ _FUNNEL_GROUPS: tuple[tuple[str, str, dict[str, str]], ...] = (
         "LOCAL_CAPABILITY": "Watch not identified", "OTHER": "Other",
     }),
 )
-# One short visible meaning per non-obvious outcome (stage, outcome).
-_FUNNEL_HINTS = {
-    ("AUTHORIZATION", "PENDING"): "Model not in the catalog, or its Maps value is unknown or mixed",
-    ("AUTHORIZATION", "OUT_OF_SCOPE"): "The catalog says this model has no maps",
-    ("AUTHORIZATION", "UNKNOWN_MODEL"): "The watch reported no usable model name",
-    ("AUTHORIZATION", "AMBIGUOUS"): "The watch reported conflicting model names",
-    ("AUTHORIZATION", "CATALOG_UNAVAILABLE"): "The policy check failed (network or server); nothing was written",
-    ("AUTHORIZATION", "UPDATE_REQUIRED"): "This app version is too old for the current policy",
-    ("CATALOG", "REMOTE_PARTIAL"): "Some map packages were left out as invalid",
-    ("CATALOG", "BUNDLED_FALLBACK"): "The server catalog did not load; the app used its bundled list",
-    ("CATALOG", "UPDATE_REQUIRED"): "This app version is too old for the current catalog",
-    ("INSTALL_BLOCKED", "AUTHORIZATION"): "Install was refused because the watch was not approved",
-}
-_FUNNEL_NOTES = {
-    "Connection problems": "Every session, including those that connected later.",
-    "Why not connected": "Sessions that never connected; one can show several signals.",
-}
 # What the current policy says about a waiting model (diagnostic only).
 _FUNNEL_MODEL_STATUS = {
     "NOT_IN_CATALOG": "Not in catalog",
@@ -2300,12 +2289,12 @@ _FUNNEL_PREVIOUS_LABELS = {
 
 
 def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
-    """Exactly what the First run card shows (also its freshness revision).
+    """Exactly what the First run page shows (also its freshness revision).
 
     Journey: sessions, sessions that connected and connected sessions whose
     watch was approved, each with the previous period's value. Groups list
     non-zero per-session outcome counts, largest first; a session can appear in
-    several rows of one group. Waiting models sit under their outcome row.
+    several rows of one group. Waiting models: most sessions first.
     """
     stages = {
         str(stage.get("stage")): {
@@ -2321,26 +2310,26 @@ def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
     journey = funnel.get("journey") if isinstance(funnel.get("journey"), dict) else {}
     approved = _optional_nonnegative_int(journey.get("approvedSessionCount"))
     previous = funnel.get("previous") if isinstance(funnel.get("previous"), dict) else None
-    models: dict[str, list[tuple[str, int, str]]] = {}
-    for item in funnel.get("modelsNeedingReview") or []:
-        if isinstance(item, dict) and item.get("baseModel"):
-            models.setdefault(str(item.get("outcome") or "PENDING"), []).append((
-                str(item["baseModel"]),
-                _optional_nonnegative_int(item.get("sessionCount")) or 0,
-                _FUNNEL_MODEL_STATUS.get(str(item.get("catalogStatus") or ""), ""),
-            ))
-    groups: list[tuple[str, list[tuple[str, int, str, list[tuple[str, int, str]]]]]] = []
+    permission_labels = _FUNNEL_GROUPS[1][2]
+    waiting = sorted((
+        (str(item["baseModel"]), _optional_nonnegative_int(item.get("sessionCount")) or 0,
+         _FUNNEL_MODEL_STATUS.get(str(item.get("catalogStatus") or ""), ""),
+         permission_labels.get(str(item.get("outcome") or "PENDING"), "Pending"))
+        for item in funnel.get("modelsNeedingReview") or []
+        if isinstance(item, dict) and item.get("baseModel")
+    ), key=lambda model: (-model[1], model[0]))
+    groups: list[tuple[str, list[tuple[str, int]]]] = []
     never = funnel.get("neverConnected") if isinstance(funnel.get("neverConnected"), dict) else None
     never_count = _optional_nonnegative_int(funnel.get("neverConnectedSessionCount"))
     if never is not None and never_count:
         rows = [
             (_FUNNEL_CONNECT_LABELS.get(str(item.get("outcome")), str(item.get("outcome")).replace("_", " ").capitalize()),
-             _optional_nonnegative_int(item.get("sessionCount")) or 0, "", [])
+             _optional_nonnegative_int(item.get("sessionCount")) or 0)
             for item in never.get("outcomes") or [] if isinstance(item, dict)
         ]
         silent = _optional_nonnegative_int(never.get("withoutConnectionSignalCount")) or 0
         if silent:
-            rows.append(("Closed before any watch signal", silent, "", []))
+            rows.append(("Closed before any watch signal", silent))
         groups.append(("Why not connected", sorted(
             [row for row in rows if row[1]], key=lambda row: (-row[1], row[0]))))
     for title, stage, labels in _FUNNEL_GROUPS:
@@ -2349,9 +2338,7 @@ def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
             if value and not (stage == "DEVICE_CONNECT" and key == "CONNECTED")
         }
         groups.append((title, [
-            (labels.get(key, key.replace("_", " ").capitalize()), value,
-             _FUNNEL_HINTS.get((stage, key), ""),
-             models.pop(key, []) if stage == "AUTHORIZATION" else [])
+            (labels.get(key, key.replace("_", " ").capitalize()), value)
             for key, value in sorted(items.items(), key=lambda item: (-item[1], item[0]))
         ]))
     trend = [
@@ -2372,6 +2359,7 @@ def _funnel_display(funnel: dict[str, Any]) -> dict[str, Any]:
         "trend": trend,
         "bucket": str(funnel.get("bucket") or ""),
         "groups": groups,
+        "waiting": waiting,
     }
 
 
@@ -2397,46 +2385,51 @@ def _funnel_delta(current: int | None, previous: int | None, period: str) -> str
         text, arrow = f"Same as {against}", "="
     else:
         text, arrow = f"{change:+,} vs {against}", "▲" if change > 0 else "▼"
-    return (f"<span class='funnel-step-delta' title='{html.escape(against.capitalize(), quote=True)}: {previous:,}'>"
+    return (f"<span class='funnel-delta' title='{html.escape(against.capitalize(), quote=True)}: {previous:,}'>"
             f"<span aria-hidden='true'>{arrow}</span> {html.escape(text)}</span>")
 
 
-def _funnel_journey(display: dict[str, Any], period: str) -> str:
-    """Opened app → Watch connected → Install allowed, with shares and drop-offs."""
+# First run page parts: (heading, card titles). Each card is one group of the
+# display (or Waiting models), so a topic reads heading → card → rows.
+_FUNNEL_PARTS = (
+    ("Connecting the watch", ("Why not connected", "Connection problems")),
+    ("Install permission", ("Permission check", "Waiting models")),
+    ("Maps", ("Map list", "Install blocked")),
+)
+_FUNNEL_CARD_IDS = {
+    "Why not connected": "first-run-not-connected", "Connection problems": "first-run-connection",
+    "Permission check": "first-run-permission", "Waiting models": "first-run-models",
+    "Map list": "first-run-catalog", "Install blocked": "first-run-blocked",
+}
+_FUNNEL_EMPTY = {
+    "Why not connected": "Every session connected a watch.",
+    "Waiting models": "No models are waiting.",
+}
+
+
+def _funnel_tiles(display: dict[str, Any], period: str) -> str:
+    """The journey as Admin metric tiles: three steps with their share of the
+    step before and the change vs the previous period, then the two losses."""
     sessions, connected, approved = display["sessions"], display["connected"], display["approved"]
-    previous = display.get("previous") or {}
-    steps = [
-        ("Opened app", sessions, "", "sessions"),
-        ("Watch connected", connected, _funnel_share(connected, sessions) and
-         _funnel_share(connected, sessions) + " of opened", "connected"),
-        ("Install allowed", approved, _funnel_share(approved, connected) and
-         _funnel_share(approved, connected) + " of connected", "approved"),
-    ]
-    items = []
-    for label, value, share, key in steps:
-        width = min(100.0, (value or 0) / sessions * 100) if sessions else 0.0
-        value_text = f"{value:,}" if value is not None else "—"
-        share_markup = f"<span class='funnel-step-share'>{html.escape(share)}</span>" if share else ""
-        items.append(
-            f"<li class='funnel-step' data-step='{key}'>"
-            f"<span class='funnel-step-label'>{html.escape(label)}</span>"
-            f"<strong class='funnel-step-value'>{value_text}</strong>{share_markup}"
-            f"<span class='funnel-step-bar' aria-hidden='true'><i style='width:{width:.1f}%'></i></span>"
-            f"{_funnel_delta(value, previous.get(key), period)}</li>"
-        )
-    drops = []
     never = display.get("neverConnected")
-    if never:
-        drops.append(f"<strong>{never:,}</strong> never connected")
-    if approved is not None and connected > approved:
-        drops.append(f"<strong>{connected - approved:,}</strong> connected but not allowed")
-    drop_markup = (
-        "<p class='funnel-dropoff'>" + _admin_icon("arrow-right") + " Lost on the way: " + " · ".join(drops) + "</p>"
-        if drops else ""
-    )
-    return (
-        "<ol class='funnel-journey' aria-label='First run journey'>" + "".join(items) + "</ol>" + drop_markup
-    )
+    not_allowed = None if approved is None else max(0, connected - approved)
+    previous = display.get("previous") or {}
+
+    def secondary(share: str, key: str | None, value: int | None) -> str:
+        delta = _funnel_delta(value, previous.get(key), period) if key else ""
+        return " · ".join(part for part in (html.escape(share), delta) if part)
+
+    return _metric_row([
+        _metric_tile("Opened app", sessions, scope=period, secondary=secondary("", "sessions", sessions)),
+        _metric_tile("Watch connected", connected, scope=period, secondary=secondary(
+            _funnel_share(connected, sessions) and _funnel_share(connected, sessions) + " of opened", "connected", connected)),
+        _metric_tile("Install allowed", approved, scope=period, secondary=secondary(
+            _funnel_share(approved, connected) and _funnel_share(approved, connected) + " of connected", "approved", approved)),
+        _metric_tile("Never connected", never, scope=period, failure=True, secondary=secondary(
+            _funnel_share(never, sessions) and _funnel_share(never, sessions) + " of opened", None, never)),
+        _metric_tile("Not allowed", not_allowed, scope=period, failure=True, secondary=secondary(
+            _funnel_share(not_allowed, connected) and _funnel_share(not_allowed, connected) + " of connected", None, not_allowed)),
+    ], label="First run journey")
 
 
 def _funnel_trend_strip(display: dict[str, Any], time_zone: str) -> str:
@@ -2460,117 +2453,145 @@ def _funnel_trend_strip(display: dict[str, Any], time_zone: str) -> str:
     first = _overview_chart_bucket_label(trend[0][0], bucket, time_zone)
     last = _overview_chart_bucket_label(trend[-1][0], bucket, time_zone)
     return (
-        "<div class='funnel-trend'>"
-        "<h3>Sessions over time</h3>"
         f"<ol class='funnel-trend-bars' aria-label='Sessions per {html.escape(bucket)}'>" + "".join(bars) + "</ol>"
         f"<div class='funnel-trend-axis' aria-hidden='true'><span>{html.escape(first)}</span><span>{html.escape(last)}</span></div>"
         "<ul class='funnel-trend-legend admin-legend' aria-label='Sessions over time legend'>"
         "<li><i class='funnel-trend-connected' aria-hidden='true'></i><span>Connected</span></li>"
         "<li><i class='funnel-trend-never' aria-hidden='true'></i><span>Never connected</span></li></ul>"
-        "</div>"
     )
 
 
-def _funnel_card(funnel: dict[str, Any] | None, period: str, time_zone: str = "UTC") -> str:
-    """First run: the journey with drop-offs, sessions over time, then why."""
-    if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
-        return _unavailable_card("First run", "overview-funnel")
-    display = _funnel_display(funnel)
-    sessions = display["sessions"]
-    if not sessions:
-        body = _empty_state("empty", "No first-run sessions in this period.")
+def _funnel_table(caption: str, headers: list[str], rows: list[str]) -> str:
+    """An Admin table; a header starting with # is a number column."""
+    head = "".join(
+        f"<th scope='col'{' class=' + chr(39) + 'column-number' + chr(39) if title.startswith('#') else ''}>"
+        f"{html.escape(title.lstrip('#'))}</th>" for title in headers
+    )
+    return (
+        f"<div class='table-wrap'><table class='admin-table first-run-table'><caption class='sr-only'>{html.escape(caption)}</caption>"
+        f"<thead><tr>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>"
+    )
+
+
+def _funnel_group_card(title: str, items: list[tuple[str, int]], display: dict[str, Any]) -> str:
+    """One outcome group: result, sessions and share of the group's
+    population, largest first; zero rows are not listed (no explanatory text,
+    owner 2026-10-10)."""
+    card_id = _FUNNEL_CARD_IDS[title]
+    whole = display["neverConnected"] if title == "Why not connected" else display["sessions"]
+    of = "of never-connected sessions" if title == "Why not connected" else "of sessions"
+    if not items:
+        body = _empty_state("empty", _FUNNEL_EMPTY.get(title, "Nothing in this period."))
     else:
-        def bars(title: str, items: list[tuple[str, int, str, list[tuple[str, int, str]]]]) -> str:
-            """Label (with an optional meaning and waiting models), a bar scaled
-            to the share of the group's population and the count."""
-            whole = display["neverConnected"] if title == "Why not connected" else sessions
-            noun = "never-connected sessions" if title == "Why not connected" else "sessions"
-            rows = []
-            for label, value, hint, models in items:
-                hint_markup = f"<small class='funnel-hint'>{html.escape(hint)}</small>" if hint else ""
-                model_markup = ""
-                if models:
-                    model_markup = "<ul class='funnel-models' aria-label='" + html.escape(label + " models", quote=True) + "'>" + "".join(
-                        f"<li><a href='/admin/devices?{urlencode({'search': model})}'>{html.escape(model)}</a>"
-                        + (f"<span class='funnel-model-status'>{html.escape(status)}</span>" if status else "")
-                        + f"<strong>{count:,}</strong></li>"
-                        for model, count, status in models
-                    ) + "</ul>"
-                rows.append(
-                    f"<li><span class='overview-funnel-label'>{html.escape(label)}{hint_markup}</span>"
-                    f"<span class='overview-funnel-bar' aria-hidden='true'><i style='width:{min(100.0, value / (whole or 1) * 100):.1f}%'></i></span>"
-                    f"<strong>{value:,}</strong><span class='sr-only'> of {whole:,} {noun}</span>{model_markup}</li>"
-                )
-            row_markup = "".join(rows) or "<li class='overview-funnel-none'><span class='overview-funnel-label'>—</span></li>"
-            note = _FUNNEL_NOTES.get(title) if items else None
-            note_markup = f"<p class='overview-funnel-note muted-value'>{html.escape(note)}</p>" if note else ""
-            return (
-                f"<div class='overview-funnel-group'><h3>{html.escape(title)}</h3>{note_markup}"
-                f"<ul class='overview-funnel-bars' aria-label='{html.escape(title, quote=True)}'>{row_markup}</ul></div>"
-            )
+        body = _funnel_table(title, ["Result", "#Sessions", "#Share"], [
+            f"<tr><td>{html.escape(label)}</td><td class='column-number'>{value:,}</td>"
+            f"<td class='column-number'>{_funnel_share(value, whole) or '—'}<span class='sr-only'> {of}</span></td></tr>"
+            for label, value in items
+        ])
+    return _section_card(title, body, card_id=card_id)
 
-        body = (
-            _funnel_journey(display, period)
-            + _funnel_trend_strip(display, time_zone)
-            + "<div class='overview-funnel-breakdown'>"
-            + "".join(bars(title, items) for title, items in display["groups"])
-            + "</div>"
-        )
-    return _section_card(
-        "First run", body, card_id="overview-funnel", scope=period,
-        css="overview-panel overview-funnel-panel",
+
+def _funnel_waiting_card(display: dict[str, Any]) -> str:
+    """Models the permission check could not approve, with what the current
+    catalog says about each (diagnostic only; never grants write authority)."""
+    waiting = display.get("waiting") or []
+    body = _empty_state("empty", _FUNNEL_EMPTY["Waiting models"]) if not waiting else _funnel_table(
+        "Waiting models", ["Model", "Result", "Catalog says", "#Sessions"], [
+            f"<tr><td><a href='/admin/devices?{urlencode({'search': model})}'>{html.escape(model)}</a></td>"
+            f"<td>{html.escape(outcome)}</td><td>{html.escape(status) if status else '—'}</td>"
+            f"<td class='column-number'>{count:,}</td></tr>"
+            for model, count, status, outcome in waiting
+        ])
+    return _section_card("Waiting models", body, card_id=_FUNNEL_CARD_IDS["Waiting models"])
+
+
+def _funnel_page_body(funnel: dict[str, Any] | None, period: str, time_zone: str) -> str:
+    """First run page: journey tiles, sessions over time, then one heading per
+    topic with its cards in a two-column grid."""
+    if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
+        return _unavailable_card("First run", "overview-funnel", retry_href=f"/admin/first-run?period={period}")
+    display = _funnel_display(funnel)
+    if not display["sessions"]:
+        return _section_card("First run", _empty_state("empty", "No first-run sessions in this period."),
+                             card_id="overview-funnel", scope=period)
+    groups = dict(display["groups"])
+    trend = _funnel_trend_strip(display, time_zone)
+    parts = "".join(
+        f"<h2 class='web-installer-part'>{html.escape(heading)}</h2><div class='web-installer-grid'>"
+        + "".join(
+            _funnel_waiting_card(display) if title == "Waiting models"
+            else _funnel_group_card(title, groups.get(title, []), display)
+            for title in titles
+        ) + "</div>"
+        for heading, titles in _FUNNEL_PARTS
+    )
+    return (
+        _funnel_tiles(display, period)
+        + (_section_card("Sessions over time", trend, card_id="first-run-trend") if trend else "")
+        + parts
     )
 
 
-def _funnel_waiting_models(display: dict[str, Any]) -> list[tuple[str, int, str]]:
-    return sorted(
-        (model for _, items in display.get("groups") or [] for *_, models in items for model in models),
-        key=lambda model: (-model[1], model[0]),
-    )
-
-
-def _funnel_summary_revision(display: dict[str, Any]) -> dict[str, Any]:
-    """Only what the Dashboard First run card shows: the journey and the first
-    three waiting models (the trend and the breakdown live on First run)."""
+def _funnel_summary(display: dict[str, Any]) -> dict[str, Any]:
+    """What the Dashboard First run card shows: the three journey totals, the
+    previous period and one row per loss with its most common reason."""
     if not display.get("sessions"):
         return {"sessions": display.get("sessions")}
-    waiting = _funnel_waiting_models(display)
+    groups = dict(display.get("groups") or [])
+
+    def mostly(title: str, skip: str = "") -> str:
+        rows = [row for row in groups.get(title, []) if row[0] != skip]
+        return f"Mostly: {rows[0][0]} ({rows[0][1]:,})" if rows else ""
+
+    connected, approved = display["connected"], display["approved"]
+    waiting = display.get("waiting") or []
+    names = ", ".join(model for model, *_ in waiting[:3]) + (f" +{len(waiting) - 3:,} more" if len(waiting) > 3 else "")
     return {
-        **{key: display.get(key) for key in ("sessions", "connected", "approved", "neverConnected", "previous")},
-        "waiting": waiting[:3],
-        "waitingMore": max(0, len(waiting) - 3),
+        **{key: display.get(key) for key in ("sessions", "connected", "approved", "previous")},
+        "rows": [
+            (label, count, anchor, icon, detail) for label, count, anchor, icon, detail in (
+                ("Never connected", display.get("neverConnected"), "first-run-not-connected", "alert",
+                 mostly("Why not connected")),
+                ("Connected but not allowed", None if approved is None else max(0, connected - approved),
+                 "first-run-permission", "x-circle", mostly("Permission check", skip="Approved")),
+                ("Waiting models", len(waiting), "first-run-models", "question", names),
+            ) if count
+        ],
     }
 
 
 def _funnel_summary_card(funnel: dict[str, Any] | None, period: str) -> str:
-    """Dashboard First run: the journey with its drop-offs and the models
-    waiting for review; the full breakdown lives on /admin/first-run."""
+    """Dashboard First run: journey totals in the header, then one row per loss
+    with its most common reason, each linking to its card on /admin/first-run."""
     if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
         return _unavailable_card("First run", "overview-funnel")
-    display = _funnel_display(funnel)
-    if not display["sessions"]:
+    summary = _funnel_summary(_funnel_display(funnel))
+    page = "/admin/first-run?" + urlencode({"period": period})
+    totals = ""
+    if not summary["sessions"]:
         body = _empty_state("empty", "No first-run sessions in this period.")
     else:
-        waiting = _funnel_waiting_models(display)
-        review = ""
-        if waiting:
-            review = (
-                "<div class='funnel-review'><h3>Waiting models</h3>"
-                "<ul class='funnel-models' aria-label='Waiting models'>" + "".join(
-                    f"<li><a href='/admin/devices?{urlencode({'search': model})}'>{html.escape(model)}</a>"
-                    + (f"<span class='funnel-model-status'>{html.escape(status)}</span>" if status else "")
-                    + f"<strong>{count:,}</strong><span class='sr-only'> sessions</span></li>"
-                    for model, count, status in waiting[:3]
-                ) + "</ul>"
-                + (f"<p class='funnel-review-more muted-value'>+{len(waiting) - 3:,} more on First run</p>"
-                   if len(waiting) > 3 else "")
-                + "</div>"
-            )
-        body = _funnel_journey(display, period) + review
+        totals = _card_totals([
+            (f"<strong>{value:,}</strong>" if value is not None else "<strong>—</strong>", noun)
+            for value, noun in ((summary["sessions"], "Opened"), (summary["connected"], "Connected"),
+                                (summary["approved"], "Allowed"))
+        ], label="First run totals")
+        rows = "".join(
+            _attention_row(label, count, f"{page}#{anchor}", icon, detail=detail)
+            for label, count, anchor, icon, detail in summary["rows"]
+        )
+        body = ("<ul class='overview-attention-rows'>" + rows + "</ul>") if rows else _empty_state(
+            "empty", "Every session connected and was allowed to install.")
+        previous = summary.get("previous")
+        if previous and all(previous.get(key) is not None for key in ("sessions", "connected", "approved")):
+            against = _FUNNEL_PREVIOUS_LABELS.get(period, "previous period")
+            body += (f"<p class='admin-card-note muted-value'>{html.escape(against.capitalize())}: "
+                     f"{previous['sessions']:,} opened · {previous['connected']:,} connected · "
+                     f"{previous['approved']:,} allowed</p>")
     return _section_card(
-        "First run", body, card_id="overview-funnel", scope=period,
-        action=("/admin/first-run?" + urlencode({"period": period}), "View all"),
-        css="overview-panel overview-funnel-panel overview-funnel-summary",
+        "First run", body, card_id="overview-funnel", scope=period, totals=totals,
+        action=(page, "View all"),
+        css="overview-panel",
     )
 
 
@@ -2578,7 +2599,7 @@ def first_run_page(
     funnel: dict[str, Any] | None, user: dict[str, Any], csrf_token: str, *, period: str, time_zone: str = "UTC",
 ) -> bytes:
     """First run: the app first-run funnel for one period (journey, sessions
-    over time and why sessions did not get to an install)."""
+    over time and, per topic, why sessions did not get to an install)."""
     if period not in ADMIN_PERIODS:
         period = "24h"
     period_options = "".join(
@@ -2589,7 +2610,7 @@ def first_run_page(
       {_admin_header(user, csrf_token, active='first-run')}
       <main class='dashboard overview-page first-run-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>First run</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/first-run' data-time-zone='{html.escape(time_zone, quote=True)}'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
-        {_funnel_card(funnel, period, time_zone)}
+        {_funnel_page_body(funnel, period, time_zone)}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
     """
@@ -2692,8 +2713,8 @@ def overview_page(
     attention_status = ""
     if not review_available:
         attention_status = _empty_state("unavailable", "Review counts are unavailable.", action=("", "Retry"))
-    elif attention_total == 0:
-        attention_status = _empty_state("empty", "Nothing to review.")
+    # Nothing open: the card collapses to its header (owner 2026-10-10); the
+    # 0 Total chip says it.
     attention_section = _section_card(
         "Needs attention",
         review_notice + attention_status
@@ -2731,16 +2752,18 @@ def overview_page(
             statistic it always was; Web shows web installer records only."""
             app_body, app_totals = chart(data, kind, chart_id)
             web_body, web_totals = chart(web, kind, chart_id + "-web")
+            # The switch is the first chip of the header totals, in the same size.
             switch = (
-                f"<div class='quick-filter-group overview-source-switch' role='group' aria-label='{title} source'>"
-                "<button type='button' class='quick-filter active' data-source-switch='app' aria-pressed='true'>App</button>"
-                "<button type='button' class='quick-filter' data-source-switch='web' aria-pressed='false'>Web</button></div>"
+                f"<span class='overview-source-switch' role='group' aria-label='{title} source'>"
+                "<button type='button' class='active' data-source-switch='app' aria-pressed='true'>App</button>"
+                "<button type='button' data-source-switch='web' aria-pressed='false'>Web</button></span>"
             )
             return _section_card(
-                title, switch + f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
+                title, f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
                 card_id=card_id, scope=period,
-                totals=f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
-                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span>",
+                totals=f"<div class='overview-card-totals overview-source-head'>{switch}"
+                       f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
+                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span></div>",
                 css="overview-panel overview-chart-panel",
             )
 
@@ -2833,7 +2856,7 @@ def _overview_revision_sections(
         "review": {key: review.get(key) for key, *_ in _ATTENTION_ROWS} if review is not None else None,
         "funnel": (
             None if not isinstance(funnel, dict)
-            else _funnel_summary_revision(_funnel_display(funnel))
+            else _funnel_summary(_funnel_display(funnel))
             if funnel.get("available") is not False and "stages" in funnel
             else {"available": False}
         ),
@@ -10120,21 +10143,6 @@ ADMIN_STYLES += """
 .overview-download-all-time>.overview-chart-note{margin:0 0 0 auto}
 .overview-chart-values{min-height:20px;margin:8px 0 0;font-size:12px}
 .overview-chart-values:empty{display:none}
-/* First run journey (owner 2026-10-10): three steps on one row at every width;
-   label, number, share, bar and change share rows so numbers keep one baseline. */
-.funnel-journey{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto auto auto auto auto;column-gap:16px;margin:4px 0 0;padding:0;list-style:none}
-.funnel-step{display:grid;grid-row:span 5;grid-template-rows:subgrid;min-width:0;align-items:end}
-.funnel-step-label{color:var(--secondary);font:500 13px/18px var(--font-ui);overflow-wrap:anywhere;align-self:start}
-.funnel-step-value{color:var(--graphite);font:600 var(--admin-type-kpi-value-size,28px)/1.15 var(--font-ui);font-variant-numeric:tabular-nums}
-.funnel-step-share{grid-row:3;color:var(--secondary);font:500 12px/16px var(--font-ui)}
-.funnel-step-bar{grid-row:4;display:block;height:8px;margin:6px 0 4px;border-radius:4px;background:var(--surface-muted)}
-.funnel-step-bar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--interactive)}
-.funnel-step-delta{grid-row:5;color:var(--secondary);font:400 12px/16px var(--font-ui);font-variant-numeric:tabular-nums}
-.funnel-dropoff{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 0;color:var(--secondary);font:400 13px/18px var(--font-ui)}
-.funnel-dropoff strong{color:var(--danger);font-weight:600}
-.funnel-dropoff svg{width:12px;height:12px}
-.funnel-trend{margin:14px 0 0}
-.funnel-trend h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
 .funnel-trend-bars{display:flex;align-items:flex-end;gap:2px;height:56px;margin:0;padding:0;list-style:none;border-bottom:1px solid var(--border)}
 .funnel-trend-bars li{display:flex;flex:1 1 0;flex-direction:column-reverse;height:100%;min-width:2px;border-radius:2px 2px 0 0;cursor:default}
 .funnel-trend-bars li:focus-visible{outline:2px solid var(--admin-focus-color);outline-offset:2px}
@@ -10145,41 +10153,6 @@ ADMIN_STYLES += """
 .funnel-trend-legend li{display:inline-flex;align-items:center;gap:6px}
 .funnel-trend-legend i{display:inline-block;width:10px;height:10px;border-radius:2px}
 .funnel-hint{display:block;color:var(--secondary);font:400 12px/16px var(--font-ui)}
-.funnel-models{grid-column:1/-1;display:grid;row-gap:2px;margin:2px 0 4px 12px;padding:0;list-style:none;font-size:12px}
-.overview-funnel-bars .funnel-models li{display:flex;grid-column:auto;flex-wrap:wrap;align-items:baseline;gap:8px}
-.funnel-models a{color:var(--interactive);font-weight:500}
-.funnel-model-status{padding:0 6px;border:1px solid var(--status-neutral-border);border-radius:999px;background:var(--status-neutral-surface);color:var(--status-neutral-text);font-size:11px;line-height:16px}
-.overview-funnel-bars .funnel-models strong{margin-left:auto;font-weight:600;color:var(--graphite);font-variant-numeric:tabular-nums}
-/* Labels keep their full width (one aligned label column via subgrid); the bar
-   track takes what is left and shrinks first, down to 24 px. */
-.overview-funnel-breakdown{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);column-gap:8px;row-gap:12px;margin:12px 0 0}
-.overview-funnel-group{display:grid;grid-template-columns:subgrid;grid-column:1/-1;min-width:0}
-.overview-funnel-group>*{grid-column:1/-1}
-.overview-funnel-group h3{margin:0 0 6px;color:var(--secondary);font:600 12px/16px var(--font-ui)}
-.overview-funnel-note{margin:-2px 0 6px;font:400 12px/16px var(--font-ui)}
-.overview-funnel-bars{display:grid;grid-template-columns:subgrid;row-gap:4px;margin:0;padding:0;list-style:none;font-size:13px}
-.overview-funnel-bars li{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-width:0}
-.overview-funnel-label{min-width:0;overflow-wrap:anywhere}
-.overview-funnel-bar{display:block;height:8px;border-radius:4px;background:var(--surface-muted)}
-.overview-funnel-bar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--status-neutral-text)}
-.overview-funnel-bars strong{color:var(--graphite);font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
-/* Owner 2026-10-07: beside App downloads (two-column Dashboard, >900 px) a wide
-   First run card lays its groups out in two balanced columns without splitting a
-   group; each group aligns its own label column. Below the container threshold
-   the half columns cannot fit label, bar and count, so the breakdown stays one
-   column (also at 900 px and narrower). */
-.overview-funnel-panel{container:overview-funnel/inline-size}
-.funnel-review{margin:14px 0 0}.funnel-review h3{margin:0 0 6px;font:600 13px/18px var(--font-ui);color:var(--graphite)}
-.funnel-review .funnel-models{margin:0;font-size:13px;row-gap:4px}
-.funnel-review .funnel-models li{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
-.funnel-review .funnel-models strong{margin-left:auto;font-weight:600;color:var(--graphite);font-variant-numeric:tabular-nums}
-.funnel-review-more{margin:6px 0 0;font-size:12px}
-@media(min-width:901px){@container overview-funnel (min-width:620px){
-  .overview-funnel-breakdown{display:block;columns:2;column-gap:24px}
-  .overview-funnel-group{display:block;break-inside:avoid;padding-bottom:12px}
-  .overview-funnel-group:last-child{padding-bottom:0}
-  .overview-funnel-bars{grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(24px,auto);column-gap:8px}
-}}
 .overview-chart-values>span{display:inline-flex;align-items:center;gap:6px}
 .overview-chart-values-date{color:var(--graphite)}
 .overview-trend-chart .overview-chart-group{cursor:pointer}
@@ -10538,6 +10511,9 @@ ADMIN_DROPDOWN_STYLES = """
 """
 ADMIN_STYLES += ADMIN_DROPDOWN_STYLES
 ADMIN_STYLES += """
+.admin-card-note{margin:0 0 12px;font-size:13px}
+/* First run tables: number columns share one width so side-by-side cards line up. */
+.first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}
 .web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
 .web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
 @media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
@@ -10545,7 +10521,12 @@ ADMIN_STYLES += """
 .web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
 .web-installer-why{display:block;margin-top:4px;font-size:12px}
 .web-installer-tests{margin:20px 0 0;font-size:12px}
-.overview-source-switch{margin:0 0 10px}.overview-source-totals{display:contents}.overview-source-totals[hidden]{display:none}
+.overview-chart-panel .overview-empty-state{justify-content:center;padding:32px 0;text-align:center}
+.overview-attention-empty{align-self:start}
+.overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
+.overview-source-switch{display:inline-flex;box-sizing:border-box;height:24px;padding:1px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted)}
+.overview-source-switch button{min-height:0;height:20px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--secondary);font:inherit;font-size:var(--admin-type-support-size);line-height:20px;cursor:pointer}
+.overview-source-switch button.active{background:var(--surface);color:var(--graphite);font-weight:650;box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 8%,transparent)}
 """
 # Signed-in pages link one cacheable stylesheet; the content hash in the name
 # changes whenever the CSS changes (served by the admin map-assets route).
