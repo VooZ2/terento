@@ -149,6 +149,10 @@ runtime dependencies.
 - `POST /internal/operations/observations` accepts only bounded CI or
   deployment metadata authenticated with the independent
   `OPERATIONS_INGEST_SECRET`. It does not accept raw logs or execute tests.
+- `POST /internal/web-installer/events` and `/internal/web-installer/relay-jobs`
+  accept allowlisted web installer records from the web installer server,
+  authenticated with the independent `WEB_INSTALLER_INGEST_SECRET`
+  ([contract](../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
 - `GET /internal/operations/report-context` exposes bounded provider catalog
   freshness and release-change metadata to the weekly workflow under the same
   independent bearer secret. It is not a public catalog endpoint.

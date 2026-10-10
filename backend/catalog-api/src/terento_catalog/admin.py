@@ -939,6 +939,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     campaign_class = " class='active'" if active == "campaigns" else ""
     devices_class = " class='active'" if active == "devices" else ""
     first_run_class = " class='active'" if active == "first-run" else ""
+    web_installer_class = " class='active'" if active == "web-installer" else ""
     providers_class = " class='active'" if active == "providers" else ""
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
@@ -959,7 +960,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     return f"""<a class="admin-skip-link" href="#main-content">Skip to content</a><header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website {_admin_icon('external')}</a></div>
       <button id="admin-menu-toggle" class="secondary-button" type="button" aria-controls="admin-menu-panel" aria-expanded="false" hidden>Menu</button>
-      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{first_run_class} href="/admin/first-run">First run</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
+      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{first_run_class} href="/admin/first-run">First run</a><a{web_installer_class} href="/admin/web-installer">Web installer</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</select></label><a class="admin-user{account_class}" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
       <a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website {_admin_icon('external')}</a><form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav></div>
     </div></header>"""
@@ -1672,6 +1673,8 @@ _INSTALL_CHART_SERIES = (
     ("update-failed", "Update failed", "map_update_failed_count"),
 )
 _LEGEND_COUNTED_SERIES = frozenset({"custom"})
+# The web installer has no custom .img import, so its chart has no such series.
+_WEB_INSTALL_CHART_SERIES = tuple(item for item in _INSTALL_CHART_SERIES if item[0] != "custom")
 _DOWNLOAD_CHART_SERIES = (
     ("download-success", "Download successful", "download_success_count"),
     ("download-failed", "Download failed", "download_failed_count"),
@@ -1708,7 +1711,8 @@ def _overview_trend_chart(
             return _empty_state("unavailable", "Trend data is unavailable for this period.", css="overview-empty-state")
         empty_label = "downloads" if metric == "downloads" else "map installations"
         return f"<p class='overview-empty-state admin-empty' data-state='empty'>No {empty_label} in this period.</p>"
-    series = _DOWNLOAD_CHART_SERIES if metric == "downloads" else _INSTALL_CHART_SERIES
+    series = (_DOWNLOAD_CHART_SERIES if metric == "downloads"
+              else _WEB_INSTALL_CHART_SERIES if metric == "web-installs" else _INSTALL_CHART_SERIES)
     chart_label = "Map download trend" if metric == "downloads" else "Map installation and update trend"
     chart_key = re.sub(r"[^a-z0-9-]", "-", (chart_id or metric).lower()) + ("-mobile" if _compact else "-desktop")
     pattern_id = f"update-failed-{chart_key}"
@@ -2134,6 +2138,31 @@ def _overview_period_script() -> str:
       window.addEventListener('terento-admin-timezone-ready', synchronizeTimeZone);
       window.addEventListener('terento-admin-timezone-change', synchronizeTimeZone);
       bind();
+    })();"""
+
+
+def _overview_source_switch_script() -> str:
+    """Dashboard chart App/Web switch; the choice per card survives period reloads."""
+    return r"""(() => {
+      const chosen = {};
+      const show = (card, source) => {
+        card.querySelectorAll('[data-source-switch]').forEach((button) => {
+          const on = button.dataset.sourceSwitch === source;
+          button.classList.toggle('active', on);
+          button.setAttribute('aria-pressed', String(on));
+        });
+        card.querySelectorAll('[data-source-panel]').forEach((panel) => { panel.hidden = panel.dataset.sourcePanel !== source; });
+      };
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-source-switch]');
+        const card = button?.closest('section[id]');
+        if (!card) return;
+        chosen[card.id] = button.dataset.sourceSwitch;
+        show(card, chosen[card.id]);
+      });
+      window.addEventListener('terento-admin-content-changed', () => {
+        Object.entries(chosen).forEach(([id, source]) => { const card = document.getElementById(id); if (card) show(card, source); });
+      });
     })();"""
 
 
@@ -2677,32 +2706,46 @@ def overview_page(
     )
 
     # --- Charts with an explicit all-time line -------------------------------
+    web = overview.get("web") if isinstance(overview.get("web"), dict) else {"available": False}
     trend = list(data.get("trend") or [])
     bucket = str(data.get("bucket") or "day")
     if data_available:
-        downloads_chart = _section_card(
-            "Downloads",
-            _overview_trend_chart(
-                trend, bucket, time_zone, metric="downloads", chart_id="overview-downloads",
-                counted=frozenset(),
-                has_activity=bool((data.get("completedDownloadCount") or 0) + (data.get("failedDownloadCount") or 0)),
-            ),
-            card_id="overview-download-trend", scope=period,
-            totals=_period_totals(data, "completedDownloadCount", "failedDownloadCount", "downloadSuccessRate",
-                                  label="Downloads in this period"),
-            css="overview-panel overview-chart-panel",
-        )
-        installs_chart = _section_card(
-            "Installs",
-            _overview_trend_chart(
-                trend, bucket, time_zone, chart_id="overview-installs", counted=frozenset(),
-                has_activity=bool((data.get("completedInstallCount") or 0) + (data.get("failedInstallCount") or 0) + (data.get("mapUpdateCount") or 0)),
-            ),
-            card_id="overview-trend", scope=period,
-            totals=_period_totals(data, "completedInstallCount", "failedInstallCount", "installSuccessRate",
-                                  label="Installs in this period"),
-            css="overview-panel overview-chart-panel",
-        )
+        def chart(source: dict[str, Any], kind: str, chart_id: str) -> tuple[str, str]:
+            if source.get("available") is False:
+                return _empty_state("unavailable", "Could not load this chart."), ""
+            if kind == "downloads":
+                keys = ("completedDownloadCount", "failedDownloadCount", "downloadSuccessRate")
+                activity = (source.get(keys[0]) or 0) + (source.get(keys[1]) or 0)
+            else:
+                keys = ("completedInstallCount", "failedInstallCount", "installSuccessRate")
+                activity = (source.get(keys[0]) or 0) + (source.get(keys[1]) or 0) + (source.get("mapUpdateCount") or 0)
+            metric = kind if source is data else "web-installs" if kind == "installs" else kind
+            body = _overview_trend_chart(
+                list(source.get("trend") or []), str(source.get("bucket") or "day"), time_zone, metric=metric,
+                chart_id=chart_id, counted=frozenset(), has_activity=bool(activity),
+            )
+            return body, _period_totals(source, *keys, label=f"{kind.title()} in this period")
+
+        def switched_card(title: str, kind: str, card_id: str, chart_id: str) -> str:
+            """App/Web switch (owner decision 2026-10-10): App is the app-only
+            statistic it always was; Web shows web installer records only."""
+            app_body, app_totals = chart(data, kind, chart_id)
+            web_body, web_totals = chart(web, kind, chart_id + "-web")
+            switch = (
+                f"<div class='quick-filter-group overview-source-switch' role='group' aria-label='{title} source'>"
+                "<button type='button' class='quick-filter active' data-source-switch='app' aria-pressed='true'>App</button>"
+                "<button type='button' class='quick-filter' data-source-switch='web' aria-pressed='false'>Web</button></div>"
+            )
+            return _section_card(
+                title, switch + f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
+                card_id=card_id, scope=period,
+                totals=f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
+                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span>",
+                css="overview-panel overview-chart-panel",
+            )
+
+        downloads_chart = switched_card("Downloads", "downloads", "overview-download-trend", "overview-downloads")
+        installs_chart = switched_card("Installs", "installs", "overview-trend", "overview-installs")
     else:
         downloads_chart = _unavailable_card("Downloads", "overview-download-trend")
         installs_chart = _unavailable_card("Installs", "overview-trend")
@@ -2752,7 +2795,7 @@ def overview_page(
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
         <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
-      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_overview_source_switch_script()}</script>
     """
     return _layout("Dashboard", content, sections=_overview_revision_sections(
         overview, data, recent, downloads, review if review_available else None, system_issues,
@@ -2796,6 +2839,10 @@ def _overview_revision_sections(
         ),
         "supportReports": overview.get("supportReports"),
         "system": [(card["title"], card["status"]) for card in system_issues],
+        "web": (
+            {**{k: v for k, v in web.items() if k != "trend"}, "trend": active_trend_buckets(web.get("trend"))}
+            if isinstance(web := overview.get("web"), dict) else None
+        ),
     }
 
 
@@ -11271,3 +11318,16 @@ def _admin_freshness_script() -> str:
 
 def _decode_base64(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+ADMIN_STYLES += """
+.web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
+.web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
+@media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
+.web-installer-table td{white-space:normal;overflow-wrap:anywhere}
+.web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
+.web-installer-why{display:block;margin-top:4px;font-size:12px}
+.web-installer-tests{margin:20px 0 0;font-size:12px}
+"""
+ADMIN_STYLES += """
+.overview-source-switch{margin:0 0 10px}.overview-source-totals{display:contents}.overview-source-totals[hidden]{display:none}
+"""

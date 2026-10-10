@@ -354,6 +354,31 @@ fallback `24h`) in `?timeZone=` (absent: the `terento_admin_tz` cookie, as on
 card as unavailable while the page returns 200. It does not run the review
 summary query.
 
+## `GET https://api.terento.app/admin/web-installer` and `GET /admin/web-installer.json`
+
+The authenticated Web installer page and its JSON read model for `?period=`
+(`today`, `24h`, `7d`, `30d`, `all`; default and fallback `7d`) in `?timeZone=`.
+The read model (`schemaVersion`, `period`, `timeZone`, `since`, `until`,
+`population`, `testRecords` {`count`, `last`}, `watch`, `server`) follows
+[`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md);
+test records are excluded from `watch` and `server`. A failed read renders the
+page as unavailable (200) and the JSON as `503 web_installer_unavailable`.
+The Dashboard overview adds the section `web` (the same chart row shape as the
+app trend, from web records only) for the charts' Web switch.
+
+## `POST /internal/web-installer/events` and `POST /internal/web-installer/relay-jobs`
+
+Web installer page events and relay jobs, forwarded by the web installer
+server only; meaning, fields and limits are owned by
+[`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md).
+Requests require `Authorization: Bearer` with the separately configured
+`WEB_INSTALLER_INGEST_SECRET` (the operations secret is not accepted; without
+the setting every request is `401`), JSON of at most 4 KiB (`413`, `415`),
+and allow 1200 requests per client address per minute (`429`). Unknown fields
+or values are `400` with a short code; `201` stored, `200` duplicate `id`.
+Responses are no-store and noindex. The routes store normalized columns only,
+never the body or the client address.
+
 ## `GET https://api.terento.app/admin/installations`
 
 Returns the authenticated all-time model installation evidence view. Its summary

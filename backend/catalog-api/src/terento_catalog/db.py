@@ -1164,6 +1164,9 @@ class Database:
             connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
             # App funnel events follow the same 24-month receipt-time retention.
             connection.execute("DELETE FROM app_funnel_event WHERE received_at < now() - interval '24 months'")
+            # Web installer events and relay jobs: the same 24-month retention.
+            connection.execute("DELETE FROM web_installer_event WHERE received_at < now() - interval '24 months'")
+            connection.execute("DELETE FROM web_installer_relay_job WHERE received_at < now() - interval '24 months'")
             # Support reports are kept 12 months after receipt, whatever their status.
             connection.execute("DELETE FROM support_report WHERE received_at < now() - interval '12 months'")
             result = connection.execute(
@@ -4273,6 +4276,53 @@ class Database:
                 ),
             ).fetchone()
         return row is not None
+
+    def insert_web_installer_row(self, table: str, row: dict[str, Any]) -> bool:
+        """Store one validated web installer event or relay job; a replayed ID is a no-op."""
+        key = {"web_installer_event": "event_id", "web_installer_relay_job": "job_id"}[table]
+        columns = ", ".join(row)
+        with self.connection() as connection:
+            inserted = connection.execute(
+                f"INSERT INTO {table} ({columns}) VALUES ({', '.join(['%s'] * len(row))}) "
+                f"ON CONFLICT ({key}) DO NOTHING RETURNING {key}",
+                tuple(row.values()),
+            ).fetchone()
+        return inserted is not None
+
+    def web_installer_rows(
+        self, since: datetime | None, until: datetime | None = None,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+        """Period events and relay jobs without test records (newest first), and
+        the count and last receipt of test records for the delivery check."""
+        def period(column: str) -> tuple[str, list[Any]]:
+            clauses, values = ["is_test IS NOT TRUE"], []
+            if since is not None:
+                clauses.append(f"{column} >= %s")
+                values.append(since)
+            if until is not None:
+                clauses.append(f"{column} <= %s")
+                values.append(until)
+            return " AND ".join(clauses), values
+        event_where, event_values = period("occurred_at")
+        job_where, job_values = period("requested_at")
+        with self.connection() as connection:
+            events = list(connection.execute(
+                f"SELECT * FROM web_installer_event WHERE {event_where} ORDER BY occurred_at DESC", event_values,
+            ).fetchall())
+            jobs = list(connection.execute(
+                f"SELECT * FROM web_installer_relay_job WHERE {job_where} ORDER BY requested_at DESC", job_values,
+            ).fetchall())
+            tests = connection.execute(
+                """
+                SELECT count(*) AS count, max(received_at) AS last FROM (
+                    SELECT received_at FROM web_installer_event WHERE is_test
+                    UNION ALL SELECT received_at FROM web_installer_relay_job WHERE is_test
+                ) AS t
+                """
+            ).fetchone() or {}
+        return [dict(r) for r in events], [dict(r) for r in jobs], {
+            "count": int(tests.get("count") or 0), "last": tests.get("last"),
+        }
 
     def app_funnel_summary(
         self, since: datetime | None, until: datetime | None = None, *, model_limit: int = 10,

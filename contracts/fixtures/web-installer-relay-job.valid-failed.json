@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "id": "3f2a9c1b7d4e5a60", "requestedAt": "2026-10-10T20:01:00Z", "finishedAt": "2026-10-10T20:01:20Z", "provider": "opentopomap", "packageId": "otm-latvia", "region": "Latvia", "release": "2026-09", "servedBytes": 0, "outcome": "FAILED", "reason": "PROVIDER_HTTP_ERROR", "providerHttpStatus": 503}
