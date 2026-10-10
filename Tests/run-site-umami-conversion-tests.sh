@@ -103,8 +103,13 @@ for path in sorted((root / "site").rglob("*.html")):
     for heading in re.findall(r"<h1\b[^>]*>([\s\S]*?)</h1>", html, flags=re.IGNORECASE):
         text = re.sub(r"<[^>]+>", "", heading).strip()
         assert not text.endswith("."), f"{path}: H1 must not end with a full stop"
+    if '<footer class="site-footer">' in html and "<nav class=\"footer-nav\"" in html:
+        assert html.count('data-umami-event="web-installer-link-click"') == 1, f"{path}: footer must link the Web installer once"
     for item in anchors(path):
         href = item["href"]
+        if href.startswith("https://lab.terento.app/install/"):
+            assert item["attributes"].get("data-umami-event") == "web-installer-link-click", f"{path}: Web installer link must use web-installer-link-click"
+            assert item["attributes"].get("data-umami-event-location") == "footer-nav", f"{path}: Web installer link has no footer-nav location"
         if not (href.startswith("/") or href.startswith("#")):
             continue
         event = item["attributes"].get("data-umami-event")
