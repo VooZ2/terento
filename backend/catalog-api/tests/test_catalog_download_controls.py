@@ -41,3 +41,32 @@ class CatalogDownloadControlsTests(unittest.TestCase):
                    'artifact_required':False, 'artifact_validation_status':'FAILED'}
         result = build_catalog([row,contour],datetime.now(timezone.utc),contour_mode='public')
         self.assertIsNone(result['providers'][0]['maps'][0]['downloadBlockReason'])
+
+    def test_withheld_and_too_large_packages_are_not_listed(self):
+        limit = 4 * 1024**3 - 1
+        hidden = (
+            {'package_id':'freizeitkarte-rus-central', 'provider_region_id':'RUS_CENTRAL', 'country_codes':['RUS-CENTRAL']},
+            {'package_id':'freizeitkarte-rus-crimea', 'provider_region_id':'RUS_CRIMEA', 'country_codes':['RUS-CRIMEA']},
+            {'provider_id':'opentopomap', 'package_id':'opentopomap-russia-european-part', 'country_codes':['RU']},
+            {'provider_id':'maprando', 'package_id':'maprando-crimee', 'provider_region_id':'crimee', 'release':'2026-05-03',
+             'country_codes':['UA'], 'canonical_region_id':'CRIMEA'},
+            {'availability':'WITHHELD'},
+            {'artifact_install_size_bytes':limit + 1},
+            {'artifact_install_size_bytes':None, 'artifact_size_bytes':limit + 1},
+        )
+        for changes in hidden:
+            with self.subTest(changes=changes):
+                row = self.row(); row.update(changes)
+                provider = self.catalog(row)
+                self.assertEqual(provider['maps'], [])
+        self.assertEqual(len(self.catalog(self.row(artifact_install_size_bytes=limit))['maps']), 1)
+        ukraine = self.row(); ukraine.update(provider_id='maprando', provider_region_id='ukraine', release='2026-05-03',
+                                             country_codes=['UA'], canonical_region_id='UKRAINE')
+        self.assertEqual(len(self.catalog(ukraine)['maps']), 1)
+
+    def test_too_large_optional_artifact_drops_without_hiding_main(self):
+        row = self.row()
+        contour = {**row, 'artifact_id':'lt-contours', 'artifact_kind':'contours', 'artifact_required':False,
+                   'artifact_install_size_bytes':4 * 1024**3}
+        package = build_catalog([contour, row], datetime.now(timezone.utc), contour_mode='public')['providers'][0]['maps'][0]
+        self.assertEqual([item['id'] for item in package['artifacts']], ['lt-main'])
