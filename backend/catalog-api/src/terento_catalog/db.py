@@ -1248,7 +1248,7 @@ class Database:
     def compatibility_resolved_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("RESOLVED", limit)
 
-    def compatibility_identity_details(self, diagnostic_status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
+    def compatibility_identity_details(self, diagnostic_status: str, *, device_id: str = "", identity: str | list[str] = "") -> list[dict[str, Any]]:
         if not device_id and not identity:
             raise ValueError("Diagnostic identity is required")
         return self._compatibility_operation_details(
@@ -1256,7 +1256,7 @@ class Database:
             exclude_statistics=True,
         )
 
-    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str = "", exclude_statistics: bool = False) -> list[dict[str, Any]]:
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str | list[str] = "", exclude_statistics: bool = False) -> list[dict[str, Any]]:
         limit_clause = "LIMIT %s" if limit is not None else ""
         identity_clause = ""
         scope_values = []
@@ -1264,7 +1264,9 @@ class Database:
             identity_clause = " AND canonical_device_model_id = %s"
             scope_values = [device_id]
         elif identity:
-            identity_clause = " AND canonical_device_model_id IS NULL AND COALESCE(NULLIF(trim(compatibility_identity), ''), model, 'Unknown') = %s"
+            # A list reads several reported identities in one query.
+            identity_clause = (" AND canonical_device_model_id IS NULL AND COALESCE(NULLIF(trim(compatibility_identity), ''), model, 'Unknown') "
+                               + ("= ANY(%s)" if isinstance(identity, list) else "= %s"))
             scope_values = [identity]
         statistics_clause = " AND statistics_exclusion_code IS NULL" if exclude_statistics else ""
         query = """
@@ -1992,7 +1994,6 @@ class Database:
         period: str = "24h",
         time_zone: str = "UTC",
         recent_limit: int = 8,
-        attention_limit: int = 6,
     ) -> dict[str, Any]:
         """Return map-operation aggregates for the authenticated Overview.
 
@@ -2010,13 +2011,7 @@ class Database:
         # a second install population.
         metric_filters = {} if period == "all" else {"dateFrom": since}
         canonical_rows = self.map_statistics(metric_filters)
-        all_time_rows = (
-            canonical_rows
-            if period == "all"
-            else self.map_statistics({})
-        )
         period_metrics = _canonical_map_statistics_summary(canonical_rows)
-        all_time_metrics = _canonical_map_statistics_summary(all_time_rows)
         canonical_event_count = sum(
             int(row.get("event_count") or 0) for row in canonical_rows
         )
@@ -2032,13 +2027,18 @@ class Database:
         trend, bucket = self.map_statistics_trend(
             trend_filters, period=period, time_zone=time_zone,
         )
-        event_scope = """
-            FROM map_download_event AS e
+        # Period membership uses the KPI's effective time (receipt time for a
+        # client clock far ahead), so Activity and the totals agree.
+        event_scope = f"""
+            FROM acquisition_activity AS e
             LEFT JOIN map_provider AS p ON p.id = e.provider_id
             LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
-            WHERE e.occurred_at >= %s
+            WHERE {_effective_occurred_at_sql("e")} >= %s
               AND e.is_local_test IS NOT TRUE
               AND e.statistics_exclusion_code IS NULL
+              -- Unfinished acquisitions are not shown; dropping them before the
+              -- LIMIT keeps them from pushing real activity out.
+              AND e.event_type NOT IN ('DOWNLOAD_STARTED', 'DOWNLOAD_PROCESSING')
         """
         compatibility_fallback_cte = """
             WITH classified_fallback AS (
@@ -2097,7 +2097,7 @@ class Database:
                          THEN 'FAILED' ELSE 'SUCCEEDED' END AS outcome
                 FROM deduplicated_fallback AS e
                 WHERE e.result_classification_effective IN ('SUCCESS', 'FAILURE')
-                  AND e.occurred_at >= %s
+                  AND """ + _effective_occurred_at_sql("e") + """ >= %s
                    -- A final compatibility failure is an installation
                    -- outcome only when writing actually started. False and
                    -- current unknown write facts remain outside installs.
@@ -2209,7 +2209,7 @@ class Database:
                         AND NOT e.has_recorded_outcome
                         AND e.occurred_at < now() - interval '{ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS} hours'
                     ) AS is_stale
-                {event_scope.replace('FROM map_download_event AS e', 'FROM acquisition_activity AS e')}
+                {event_scope}
                 UNION ALL
                 SELECT
                     NULL::text AS event_id,
@@ -2246,26 +2246,6 @@ class Database:
             recent.extend(self._update_not_started_activity(connection, since, recent_limit))
             recent.sort(key=lambda row: (row['occurred_at'], str(row.get('event_id') or '')), reverse=True)
             recent = recent[:recent_limit]
-            # A failed install can arrive without compatibility diagnostics
-            # (the streams have separate sharing controls and delivery). Surface
-            # this evidence gap, but never resurrect a linked resolved report.
-            # Match the package region as well as the batch operation ID.
-            missing_diagnostics = list(connection.execute(
-                """
-                SELECT e.*, p.name AS provider_name, mp.name AS map_package_name,
-                       count(*) OVER () AS total_missing_diagnostics
-                FROM map_download_event AS e
-                LEFT JOIN map_provider AS p ON p.id = e.provider_id
-                LEFT JOIN map_package AS mp ON mp.id = COALESCE(e.map_package_id, e.reported_map_id)
-                LEFT JOIN admin_map_review_task AS review_task
-                  ON review_task.event_id = e.event_id
-                 AND review_task.task_type = 'MISSING_DIAGNOSTIC'
-                WHERE """ + MISSING_DIAGNOSTIC_GAP_WHERE + """
-                ORDER BY e.occurred_at DESC, e.event_id
-                LIMIT %s
-                """, (attention_limit,),
-            ).fetchall())
-            attention: list[dict[str, Any]] = []
         trend_rows = [dict(row) for row in trend]
         if trend_rows:
             trend_rows = _fill_overview_trend_buckets(
@@ -2282,12 +2262,6 @@ class Database:
         failed_updates = period_metrics["failedMapUpdateCount"]
         completed_downloads = period_metrics["completedDownloadCount"]
         failed_downloads = period_metrics["failedDownloadCount"]
-        all_time_install_successes = all_time_metrics["completedInstallCount"]
-        all_time_install_failures = all_time_metrics["failedInstallCount"]
-        all_time_download_successes = all_time_metrics["completedDownloadCount"]
-        all_time_download_failures = all_time_metrics["failedDownloadCount"]
-        all_time_update_successes = all_time_metrics["completedMapUpdateCount"]
-        all_time_update_failures = all_time_metrics["failedMapUpdateCount"]
         return {
             "eventCount": canonical_event_count,
             "completedInstallCount": completed,
@@ -2300,33 +2274,8 @@ class Database:
             "completedMapUpdateCount": completed_updates,
             "failedMapUpdateCount": failed_updates,
             "mapUpdateCount": completed_updates + failed_updates,
-            "allTimeSuccessCount": all_time_install_successes,
-            "allTimeFailedCount": all_time_install_failures,
-            "allTimeInstallSuccessRate": all_time_metrics["installSuccessRate"],
-            "allTimeCompletedDownloadCount": all_time_download_successes,
-            "allTimeFailedDownloadCount": all_time_download_failures,
-            "allTimeDownloadSuccessRate": all_time_metrics["downloadSuccessRate"],
-            "allTimeCustomCount": sum(
-                int(row.get("operation_count") or 0)
-                for row in all_time_rows
-                if row.get("event_type") == "INSTALL_SUCCEEDED"
-                and row.get("outcome") == "SUCCEEDED"
-                and row.get("provider_id") == "custom"
-            ),
-            "allTimeMapUpdateSuccessRate": (
-                all_time_update_successes / (all_time_update_successes + all_time_update_failures) * 100
-                if all_time_update_successes + all_time_update_failures else None
-            ),
-            "allTimeMapUpdateCount": all_time_update_successes + all_time_update_failures,
-            "allTimeMapUpdateSuccessCount": all_time_update_successes,
-            "allTimeMapUpdateFailedCount": all_time_update_failures,
             "hasData": bool(canonical_rows or recent),
             "recentActivity": [dict(row) for row in recent],
-            "attention": [dict(row) for row in attention],
-            "missingDiagnosticFailures": [dict(row) for row in missing_diagnostics],
-            "missingDiagnosticFailureCount": int(
-                missing_diagnostics[0].get("total_missing_diagnostics") or 0
-            ) if missing_diagnostics else 0,
             "trend": trend_rows,
             "bucket": bucket,
         }
@@ -4734,17 +4683,26 @@ class Database:
                 """,
                 values + values,
             ).fetchall())
+            # The top ``model_limit`` base models by distinct sessions, each
+            # with all of its waiting outcomes.
             models = list(connection.execute(
                 f"""
-                SELECT e.base_model, e.outcome, count(DISTINCT e.session_id) AS session_count
-                FROM app_funnel_event AS e
-                WHERE {where}
-                  AND e.stage = 'AUTHORIZATION'
-                  AND e.outcome IN ('PENDING', 'UNKNOWN_MODEL', 'AMBIGUOUS')
-                  AND e.base_model IS NOT NULL
-                GROUP BY e.base_model, e.outcome
-                ORDER BY session_count DESC, e.base_model, e.outcome
-                LIMIT %s
+                WITH waiting AS (
+                    SELECT e.base_model, e.outcome, e.session_id
+                    FROM app_funnel_event AS e
+                    WHERE {where}
+                      AND e.stage = 'AUTHORIZATION'
+                      AND e.outcome IN ('PENDING', 'UNKNOWN_MODEL', 'AMBIGUOUS')
+                      AND e.base_model IS NOT NULL
+                ), top_models AS (
+                    SELECT base_model FROM waiting GROUP BY base_model
+                    ORDER BY count(DISTINCT session_id) DESC, base_model
+                    LIMIT %s
+                )
+                SELECT w.base_model, w.outcome, count(DISTINCT w.session_id) AS session_count
+                FROM waiting AS w JOIN top_models USING (base_model)
+                GROUP BY w.base_model, w.outcome
+                ORDER BY session_count DESC, w.base_model, w.outcome
                 """,
                 values + [model_limit],
             ).fetchall())
@@ -4752,16 +4710,23 @@ class Database:
             if trend_bucket is not None:
                 if trend_bucket not in {"hour", "day", "week", "month"}:
                     raise ValueError("invalid funnel trend bucket")
+                # Hour buckets are real instants, like the map trend, so the
+                # local hour repeated by a DST change stays two buckets.
+                local_first = "timezone(%s, s.first_at)"
+                bucket_sql = (
+                    f"s.first_at - ({local_first} - date_trunc('hour', {local_first}))"
+                    if trend_bucket == "hour" else f"date_trunc('{trend_bucket}', {local_first})"
+                )
                 trend_rows = list(connection.execute(
                     f"""
-                    SELECT date_trunc('{trend_bucket}', timezone(%s, s.first_at)) AS local_bucket,
+                    SELECT {bucket_sql} AS local_bucket,
                            count(*) AS session_count,
                            count(*) FILTER (WHERE s.connected) AS connected_count
                     FROM ({sessions_sql}) AS s
                     GROUP BY local_bucket
                     ORDER BY local_bucket
                     """,
-                    [time_zone] + values,
+                    [time_zone] * bucket_sql.count("%s") + values,
                 ).fetchall())
         summary: dict[str, Any] = {
             "sessionCount": int(totals.get("session_count") or 0),

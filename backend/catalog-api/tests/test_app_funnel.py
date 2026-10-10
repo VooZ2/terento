@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 
 from pglite_support import PGliteTestCase
 from terento_catalog.app_funnel import ALLOWED_FUNNEL_KEYS, FUNNEL_OUTCOMES, FunnelValidationError, validate_funnel_event
-from terento_catalog.http_api import CatalogService, make_handler
+from terento_catalog.http_api import CatalogService, _funnel_trend, make_handler
 
 CONTRACTS = Path(__file__).resolve().parents[3] / "contracts"
 SCHEMA = Draft202012Validator(json.loads((CONTRACTS / "app-funnel-event.schema.json").read_text()))
@@ -214,6 +214,31 @@ class FunnelStorageTests(PGliteTestCase):
         self.assertEqual(sum(row["connectedSessionCount"] for row in summary["trend"]), 2)
         self.assertTrue(all(row["bucket"].tzinfo is not None and row["bucket"].minute == 0 for row in summary["trend"]))
         self.assertNotIn("trend", self.db.app_funnel_summary(None))
+
+    def test_hourly_trend_keeps_the_repeated_dst_hour_apart(self):
+        # 2026-10-25 Europe/Vilnius: local 03:00-04:00 happens twice (audit #18).
+        for at in ("2026-10-25T00:30:00Z", "2026-10-25T01:30:00Z"):
+            self.store(occurredAt=at)
+        self.sql("UPDATE app_funnel_event SET received_at = occurred_at")
+        since, until = datetime(2026, 10, 24, 21, tzinfo=timezone.utc), datetime(2026, 10, 25, 4, tzinfo=timezone.utc)
+        summary = self.db.app_funnel_summary(since, until, trend_bucket="hour", time_zone="Europe/Vilnius")
+        self.assertEqual([(row["bucket"], row["sessionCount"]) for row in summary["trend"]],
+                         [(datetime(2026, 10, 25, 0, tzinfo=timezone.utc), 1),
+                          (datetime(2026, 10, 25, 1, tzinfo=timezone.utc), 1)])
+        trend = _funnel_trend(summary["trend"], bucket="hour", since=since, until=until, time_zone="Europe/Vilnius")
+        self.assertEqual([(row["bucket"], row["sessionCount"]) for row in trend if row["sessionCount"]],
+                         [("2026-10-25T00:00:00+00:00", 1), ("2026-10-25T01:00:00+00:00", 1)])
+        self.assertEqual(len(trend), 8)  # 00:00 to 04:00 local is eight real hours
+
+    def test_waiting_models_are_the_top_ten_models_with_all_their_outcomes(self):
+        # Ten models with two waiting outcomes each, and one smaller model (audit #22a).
+        for number in range(10):
+            for outcome in ("PENDING", "PENDING", "AMBIGUOUS"):
+                self.store(sessionId=str(uuid4()), stage="AUTHORIZATION", outcome=outcome, baseModel=f"Model {number}")
+        self.store(stage="AUTHORIZATION", outcome="PENDING", baseModel="Model X")
+        models = self.db.app_funnel_summary(None)["modelsNeedingReview"]
+        self.assertEqual({row["baseModel"] for row in models}, {f"Model {number}" for number in range(10)})
+        self.assertEqual(len(models), 20)
 
     def test_funnel_never_enters_install_statistics(self):
         self.store(stage="INSTALL_BLOCKED", outcome="DEVICE_STORAGE")

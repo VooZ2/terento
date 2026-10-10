@@ -232,6 +232,24 @@ class TodayServiceTests(unittest.TestCase):
             with self.assertRaises(FunnelValidationError):
                 service.app_funnel(bad)
 
+    def test_app_funnel_today_compares_with_yesterday_across_dst_changes(self):
+        # Yesterday runs from its local midnight to the same local time, even
+        # when a DST change makes one of the days 23 or 25 hours long (audit #17).
+        cases = (
+            (datetime(2026, 3, 30, 7, tzinfo=UTC), datetime(2026, 3, 28, 22, tzinfo=UTC), datetime(2026, 3, 29, 7, tzinfo=UTC)),
+            (datetime(2026, 10, 26, 8, tzinfo=UTC), datetime(2026, 10, 24, 21, tzinfo=UTC), datetime(2026, 10, 25, 8, tzinfo=UTC)),
+            # 03:30 does not exist on 29 March: same time since midnight (04:30 EEST).
+            (datetime(2026, 3, 30, 0, 30, tzinfo=UTC), datetime(2026, 3, 28, 22, tzinfo=UTC), datetime(2026, 3, 29, 1, 30, tzinfo=UTC)),
+            # 03:30 happens twice on 25 October: the first occurrence.
+            (datetime(2026, 10, 26, 1, 30, tzinfo=UTC), datetime(2026, 10, 24, 21, tzinfo=UTC), datetime(2026, 10, 25, 0, 30, tzinfo=UTC)),
+        )
+        for now, previous_since, previous_until in cases:
+            with self.subTest(now=now), patch("terento_catalog.http_api.datetime", frozen_datetime(now)):
+                previous = CatalogService(FunnelDatabase()).app_funnel(
+                    {"period": "today", "timeZone": "Europe/Vilnius"})["previous"]
+            self.assertEqual((previous["since"], previous["until"]),
+                             (previous_since.isoformat(), previous_until.isoformat()))
+
     def test_dashboard_today_scopes_every_period_section_to_local_midnight(self):
         database = FunnelDatabase()
         with patch("terento_catalog.http_api.datetime", frozen_datetime(self.now)):
@@ -246,6 +264,21 @@ class TodayServiceTests(unittest.TestCase):
         # Unknown values keep falling back to the unchanged default.
         self.assertEqual(fallback["period"], "24h")
         self.assertEqual(database.overview_map_requests[1][0], self.now - timedelta(hours=24))
+
+
+class MapEventSummaryTests(unittest.TestCase):
+    def test_events_summary_counts_every_matching_group_not_only_the_page(self):
+        class ManyGroupsDatabase(FakeProviderDatabase):
+            def map_statistics(self, filters):
+                row = super().map_statistics(filters)[0]
+                return [{**row, "region": f"R{number}", "event_count": 2} for number in range(30)]
+
+        payload = CatalogService(ManyGroupsDatabase()).map_statistics({"period": "all"})
+        self.assertEqual((len(payload["detailRows"]), payload["detailTotal"], payload["detailEventCount"]), (25, 30, 60))
+        body = map_statistics_page(payload, [{"id": "freizeitkarte", "name": "Freizeitkarte"}],
+                                   {"username": "operator"}, "csrf", selected_filters={"period": "all"}).decode()
+        self.assertIn("Events <span class='disclosure-meta'>· 30 event groups · 60 event records</span>", body)
+        self.assertIn("aria-live='polite'>30 event groups · 60 event records</p>", body)
 
 
 class PickerOptions(HTMLParser):

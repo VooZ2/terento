@@ -112,7 +112,7 @@ from .provider_catalog import (
     OpenTopoMapProviderAdapter,
 )
 from .provider_health import check_provider as run_provider_health_check
-from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, period_start
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, local_day_start, period_start
 
 LOGGER = logging.getLogger(__name__)
 
@@ -539,12 +539,18 @@ class CatalogService:
         connected = counts.get(("DEVICE_CONNECT", "CONNECTED"), 0)
         previous = None
         if since is not None:
-            # Today compares with yesterday up to the same time; rolling
-            # periods with the equally long window just before them.
-            span = timedelta(days=1) if period == "today" else until - since
-            previous_since, previous_until = (
-                (since - span, until - span) if period == "today" else (since - span, since)
-            )
+            # Today compares with yesterday from local midnight up to the same
+            # local time (a DST day is not 24 h long); rolling periods with the
+            # equally long window just before them. A local time that does not
+            # exist yesterday keeps its offset (same time since midnight); a
+            # repeated one is its first occurrence.
+            if period == "today":
+                local_until = until.astimezone(ZoneInfo(time_zone))
+                previous_until = (local_until.replace(tzinfo=None) - timedelta(days=1)).replace(
+                    tzinfo=local_until.tzinfo).astimezone(timezone.utc)
+                previous_since = local_day_start(previous_until, time_zone)
+            else:
+                previous_since, previous_until = since - (until - since), since
             previous_summary = self.database.app_funnel_summary(previous_since, previous_until)
             previous_counts = {
                 (row["stage"], row["outcome"]): row["sessionCount"] for row in previous_summary["stages"]
@@ -763,6 +769,7 @@ class CatalogService:
             "timeZone": time_zone,
             "detailRows": detail_rows,
             "detailTotal": detail_total,
+            "detailEventCount": sum(int(row.get("event_count") or 0) for row in detail_source_rows),
             "detailPage": detail_page,
             "detailPageSize": detail_page_size,
             "linkage": linkage,
@@ -812,7 +819,6 @@ class CatalogService:
             "data": section("map", lambda: self.database.admin_overview_map_snapshot(
                 since, period=period, time_zone=time_zone,
             ), dict(unavailable)),
-            "compatibility": section("compatibility", lambda: self.database.admin_overview_snapshot(since), dict(unavailable)),
             "downloads": section("downloads", lambda: downloads_getter(
                 time_zone=time_zone, period=period,
             ) if callable(downloads_getter) else {
@@ -823,17 +829,11 @@ class CatalogService:
                 "trend": [],
             }, dict(unavailable)),
             "providers": providers,
-            "providersAvailable": providers_payload is not None,
             "system": section("system", system_health, dict(unavailable)),
             "funnel": section("funnel", lambda: self.app_funnel({"period": period, "timeZone": time_zone}), dict(unavailable)),
             "supportReports": section(
                 "supportReports",
                 lambda: {"openCount": self.database.support_report_open_count()},
-                dict(unavailable),
-            ),
-            "mapsUnknown": section(
-                "mapsUnknown",
-                lambda: {"modelCount": self.database.maps_unknown_model_count()},
                 dict(unavailable),
             ),
         }
@@ -939,7 +939,7 @@ class CatalogService:
             return None
         return int(problems["byIdentity"].get(identity_key, 0))
 
-    def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
+    def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str | list[str] = "") -> list[dict[str, Any]]:
         getter = getattr(self.database, "compatibility_identity_details", None)
         if callable(getter):
             return getter(status, device_id=device_id, identity=identity)
@@ -1791,10 +1791,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         key.removeprefix("identity:") for key, values in summary.items()
                         if key.startswith("identity:") and int(values.get("identity_pending") or 0) > 0
                     )
-                    pending_operations: list[dict[str, Any]] | None = [
-                        event for identity in identities
-                        for event in service.compatibility_identity_details("ACTIVE", identity=identity)
-                    ]
+                    # One query for every pending identity (no per-identity reads).
+                    pending_operations: list[dict[str, Any]] | None = (
+                        service.compatibility_identity_details("ACTIVE", identity=identities) if identities else []
+                    )
                 except Exception:
                     LOGGER.exception("identity review queue failed")
                     pending_operations = None
@@ -2030,7 +2030,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path in {"/admin", "/admin/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 period = query.get("period", ["24h"])[-1]
-                time_zone = query.get("timeZone", ["UTC"])[-1]
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
                     body = overview_page(
                         service.admin_overview(period, time_zone),
@@ -2050,7 +2050,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 period = query.get("period", ["24h"])[-1]
                 if period not in ADMIN_PERIODS:
                     period = "24h"
-                time_zone = query.get("timeZone", ["UTC"])[-1]
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
                     funnel = service.app_funnel({"period": period, "timeZone": time_zone})
                 except Exception:

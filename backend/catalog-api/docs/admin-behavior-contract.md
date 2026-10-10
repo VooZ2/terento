@@ -315,7 +315,10 @@ Every number shows its scope as visible text (`Today`, `Last 24 hours`,
 used. Every Admin period picker (the Dashboard period dropdown and the Maps time
 range) offers, in this order, Today, Last 24 hours, Last 7 days, Last 30 days and
 All time (owner request 2026-10-07); Today covers the current day from midnight
-in the selected Admin time zone up to now. The Dashboard default stays Last 24
+in the selected Admin time zone up to now. The Dashboard and First run use the
+zone saved by the time-zone control (cookie `terento_admin_tz`) when a link
+carries no `timeZone`, so they are built once; the page reloads its content only
+when the browser zone differs from the zone it was rendered in. The Dashboard default stays Last 24
 hours and the Maps default stays All time; an unknown Dashboard period falls
 back to Last 24 hours. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
@@ -389,7 +392,10 @@ for First run cover exactly these displayed values, without zero trend buckets t
 layout invariants. It never
 mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.
-Activity is internally scrollable and must not force page height. A generic
+Activity is internally scrollable and must not force page height. It lists the
+period's newest rows by the same effective time as the chart totals; unfinished
+acquisitions (download started or processing without an outcome) are not
+listed and never take a place in the bounded list. A generic
 activity row has no Maps link unless an exact useful destination exists.
 Installation and update activity use two text rows: status, then map/region,
 provider and exact assessed model/variant separated by middle dots. The catalog
@@ -509,6 +515,8 @@ problems use the operation-level Needs attention installation predicate, so
 Dashboard `Installation problems` equals Installations `Open problems`. Each
 operation is attributed to exactly one identity; the KPI is the sum of the rendered
 rows and an identity with an open problem stays listed even with zero attempts.
+Each identity renders one row: evidence rows that group to the same identity
+(for example its legacy and unresolved rows) are merged, with their counts summed.
 Model history rows marked open are the per-map results of those operations.
 Maps applies the same fresh main-map write-boundary contract. A current
 map-side failure with no reliable write evidence, a pre-write failure, and an
@@ -558,7 +566,8 @@ pending the page says `No installations wait for identity review.`; a failed
 read renders an `Unavailable` card with Retry.
 
 Discovery reuses the Installations source (identities whose active results are
-identity pending) and the existing per-identity detail read; the Needs
+identity pending) and the existing detail read, once for all pending identities
+(never one read per identity); the Needs
 attention count is the SQL operation count. Both use the same row predicate
 (active, nonlocal, not statistics-excluded, no catalog model, not resolved or
 not identifiable, not a provider download failure) and the same operation
@@ -679,7 +688,8 @@ it never shows populated all-time numbers as if they were the period. Diagnostic
 linkage coverage may remain in the private API contract but is not shown as an
 Admin block. Events uses human labels (event type, provider, map name) with the
 raw code in the title, and shows Results (counted) and Events (raw records)
-separately. The Maps page carries the selected time zone in its form so chart
+separately. Its summary (`N event groups · N event records`) counts every
+matching group across all pages, not only the visible page. The Maps page carries the selected time zone in its form so chart
 buckets and period boundaries use it; changing the zone reloads them. The Maps
 heading carries no Update reports link; the update report list is reached from
 Tools → Update reports.
@@ -1077,8 +1087,10 @@ Revisions hash displayed data only (owner report 2026-10-07). They exclude
 request-time values (for example the First run `since`/`until` window, render
 time, CSRF and nonce values), observation and schedule clocks (health check,
 heartbeat, download poll and next-check times), payloads a page does not render
-(the Dashboard hashes no compatibility evidence, provider rows or Maps unknown,
-and no in-progress download rows; Maps hashes provider names only), zero chart
+(the Dashboard map section hashes only the chart-card totals and rates, the
+update count that picks the Installs empty state, the bucket, the active chart
+buckets and the Activity rows — no raw event count, purpose breakdown or
+provider rows; Maps hashes provider names only), zero chart
 buckets that only move with the rolling window, and list order. A new or
 changed installation, report, count, status or displayed row still changes the
 revision, as does an event leaving a rolling period.

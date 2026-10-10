@@ -1709,7 +1709,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         snapshot = database.admin_overview_map_snapshot(since, period="7d")
 
         self.assertEqual(snapshot["bucket"], "day")
-        self.assertEqual(database.metric_filters, [{"dateFrom": since}, {}])
+        # The period population only; the Dashboard renders no all-time totals.
+        self.assertEqual(database.metric_filters, [{"dateFrom": since}])
         self.assertEqual(database.trend_filters, [({"dateFrom": since}, "7d", "UTC")])
         self.assertEqual(snapshot["completedInstallCount"], 2)
         self.assertEqual(snapshot["failedInstallCount"], 0)
@@ -1770,11 +1771,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         }
 
         self.assertEqual(
-            (dashboard["allTimeSuccessCount"], dashboard["allTimeFailedCount"]),
+            (dashboard["completedInstallCount"], dashboard["failedInstallCount"]),
             (maps_summary["completedInstalls"], maps_summary["failedInstalls"]),
         )
-        self.assertEqual((dashboard["allTimeSuccessCount"], dashboard["allTimeFailedCount"]), (96, 10))
-        self.assertAlmostEqual(dashboard["allTimeInstallSuccessRate"], 96 / 106 * 100)
+        self.assertEqual((dashboard["completedInstallCount"], dashboard["failedInstallCount"]), (96, 10))
+        self.assertAlmostEqual(dashboard["installSuccessRate"], 96 / 106 * 100)
         self.assertAlmostEqual(maps_summary["installSuccessRate"], 96 / 106 * 100)
         self.assertEqual(model_evidence, {
             "attempts": 109,
@@ -1782,7 +1783,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "failed": 10,
             "rate": 99 / 109 * 100,
         })
-        self.assertNotEqual(dashboard["allTimeSuccessCount"], model_evidence["successful"])
+        self.assertNotEqual(dashboard["completedInstallCount"], model_evidence["successful"])
         self.assertEqual(
             database.trend_filters,
             [({"dateFrom": datetime(2026, 1, 1, tzinfo=timezone.utc)}, "all", "Europe/Vilnius")],

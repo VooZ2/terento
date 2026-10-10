@@ -220,8 +220,13 @@ an input to counts.
 Returns the authenticated operator Dashboard. The default period is the last 24
 hours; `?period=today`, `?period=7d`, `?period=30d`, and `?period=all` are also
 supported, and an unknown value falls back to the default. `today` runs from
-midnight in `?timeZone=` (the selected Admin time zone; absent or unknown is
-UTC) until now, with hourly trends. Every period-scoped section (chart totals and
+midnight in `?timeZone=` (the selected Admin time zone; unknown is UTC) until
+now, with hourly trends. Without `?timeZone=` the page uses the zone that the
+Admin time-zone script saves in the `terento_admin_tz` cookie (`Path=/admin;
+SameSite=Strict; Secure`; an absent or unknown value is UTC), so navigation
+links render in the operator's zone once; the script reloads the content only
+when the browser zone differs from the zone the page was rendered in
+(`data-time-zone` on the period form). Every period-scoped section (chart totals and
 trends, Activity, First run and App downloads) uses the same window.
 
 There is no summary tile row. The Downloads and Installs chart cards come
@@ -245,11 +250,16 @@ problems are not rendered there; an unavailable query shows
 `/admin/app-funnel.json` read model for the period (journey and up to three
 waiting models) with `View all` to `/admin/first-run`. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
-and internally scrollable. Generic rows have no Maps link unless an exact
-event/detail destination exists.
+and internally scrollable: the newest rows of the period, selected by the same
+effective time as the totals (receipt time for a client clock more than 10
+minutes ahead), with unfinished acquisitions (download started or processing
+without an outcome) left out before the bound. Generic rows have no Maps link
+unless an exact event/detail destination exists.
 
-`admin_overview` reads every section independently (map snapshot,
-compatibility snapshot, GitHub downloads, providers, system health, funnel);
+`admin_overview` reads every section independently (map snapshot, GitHub
+downloads, providers, system health, funnel, support reports); it reads no
+compatibility snapshot, all-time map totals, Maps unknown count or missing-report
+rows, which the Dashboard does not render;
 one failing read model is logged and renders that card as unavailable while the
 page returns 200. The review summary query runs only for `/admin`.
 
@@ -332,7 +342,8 @@ noindex.
 Returns the authenticated First run page: the full app first-run funnel card
 (journey, Sessions over time and the per-stage outcome groups with waiting
 models) for `?period=` (`today`, `24h`, `7d`, `30d`, `all`; default and
-fallback `24h`) in `?timeZone=` (absent or unknown is UTC). It reads the same
+fallback `24h`) in `?timeZone=` (absent: the `terento_admin_tz` cookie, as on
+`/admin`; unknown is UTC). It reads the same
 `app_funnel()` read model as `/admin/app-funnel.json`; a failed read renders the
 card as unavailable while the page returns 200. It does not run the review
 summary query.
@@ -392,8 +403,8 @@ native, public, or existing device API contract.
 Returns the authenticated, no-store/noindex Identity review queue, the
 Dashboard Needs attention Identity review destination. It reads only existing
 service methods: `compatibility_diagnostic_summary()` names the reported
-identities with `identity_pending > 0`, `compatibility_identity_details("ACTIVE",
-identity=…)` supplies their active operations (local-test and
+identities with `identity_pending > 0`, one `compatibility_identity_details("ACTIVE",
+identity=[…])` read supplies the active operations of all of them (local-test and
 statistics-excluded rows are already excluded), and `admin_devices()` supplies
 the catalog picker. Items are install operations with at least one result that
 `_identity_is_pending` keeps, newest first, grouped by reported identity with an
@@ -850,8 +861,9 @@ the additive `timeZone` field)
 requires an admin session and returns the distinct non-local session count
 (`sessionCount`), the additive `neverConnectedSessionCount` (period sessions
 without a `DEVICE_CONNECT`/`CONNECTED` event in the period), distinct session
-counts per stage/outcome (zero-filled; not exclusive) plus the top base models
-with authorization outcome `PENDING`, `UNKNOWN_MODEL` or `AMBIGUOUS`, each with
+counts per stage/outcome (zero-filled; not exclusive) plus the top ten base
+models (each with all of its rows) with authorization outcome `PENDING`,
+`UNKNOWN_MODEL` or `AMBIGUOUS`, each with
 the additive diagnostic `catalogStatus` from the current installation policy.
 Additive fields `journey`, `neverConnected`, `previous`, `bucket` and `trend`
 carry the connected and approved session counts, the never-connected
@@ -986,8 +998,9 @@ additive `trend`, `bucket`, and `timeZone` fields carry the selected-period
 download/install series and its display boundary. Period selection therefore
 changes the series while the all-time badges remain all-time. The additive
 `detailRows` projection is bounded for the Event detail disclosure.
-`detailPage` and `detailPageSize` (`25` or `50`) select its page, and
-`detailTotal` reports the number of detail-filtered aggregate groups. An empty
+`detailPage` and `detailPageSize` (`25` or `50`) select its page,
+`detailTotal` reports the number of detail-filtered aggregate groups and the
+additive `detailEventCount` the raw event records across all of those groups. An empty
 detail projection does not turn a non-empty population into an overall no-data
 state. These pagination parameters are private admin presentation controls.
 

@@ -2169,7 +2169,11 @@ def _overview_period_script() -> str:
         const url = new URL(window.location.href);
         const period = url.searchParams.get('period') || document.querySelector('#overview-period')?.value || '24h';
         const timeZone = activeTimeZone();
-        if (url.searchParams.get('timeZone') !== timeZone) load(period, false, timeZone);
+        // The server renders in this zone when a link has no timeZone, so the
+        // page is reloaded only when the zone it was rendered in differs.
+        document.cookie = `terento_admin_tz=${timeZone}; Path=/admin; SameSite=Strict; Secure`;
+        const renderedTimeZone = document.querySelector('#overview-period-form')?.dataset.timeZone;
+        if (renderedTimeZone !== timeZone) load(period, false, timeZone);
       };
       window.addEventListener('terento-admin-timezone-ready', synchronizeTimeZone);
       window.addEventListener('terento-admin-timezone-change', synchronizeTimeZone);
@@ -2599,7 +2603,7 @@ def first_run_page(
     content = f"""
       {_admin_header(user, csrf_token, active='first-run')}
       <main class='dashboard overview-page first-run-page' id='main-content'>
-        <div class='heading-row overview-heading'><div><h1>First run</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/first-run'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><h1>First run</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/first-run' data-time-zone='{html.escape(time_zone, quote=True)}'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
         {_funnel_card(funnel, period, time_zone)}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
@@ -2650,11 +2654,7 @@ def overview_page(
         f"<option value='{value}'{' selected' if value == period else ''}>{ADMIN_PERIOD_LABELS[value]}</option>"
         for value in ADMIN_PERIODS
     )
-    recent = [
-        item for item in data.get("recentActivity") or []
-        if str(item.get("event_type") or "").upper()
-        not in {"DOWNLOAD_STARTED", "DOWNLOAD_PROCESSING"}
-    ]
+    recent = list(data.get("recentActivity") or [])
     map_statistics_href = "/admin/map-statistics?" + urlencode({"period": period})
 
     # --- Needs attention: fixed category rows, explicit unavailable state ----
@@ -2792,7 +2792,7 @@ def overview_page(
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
-        <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin' data-time-zone='{html.escape(time_zone, quote=True)}'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
         <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
@@ -2803,10 +2803,12 @@ def overview_page(
     ))
 
 
-# Dashboard map-activity fields that the page does not render.
-_OVERVIEW_UNSHOWN_ACTIVITY = frozenset({
-    "recentActivity", "attention", "missingDiagnosticFailures", "missingDiagnosticFailureCount", "trend",
-})
+# Dashboard map-activity fields the page renders: the chart-card totals and
+# mapUpdateCount, which decides the Installs chart's empty state.
+_OVERVIEW_SHOWN_ACTIVITY = (
+    "completedDownloadCount", "failedDownloadCount", "downloadSuccessRate",
+    "completedInstallCount", "failedInstallCount", "installSuccessRate", "mapUpdateCount", "bucket",
+)
 
 
 def _overview_revision_sections(
@@ -2824,7 +2826,7 @@ def _overview_revision_sections(
     return {
         "mapActivity": {
             "available": bool(data),
-            **{key: value for key, value in data.items() if key not in _OVERVIEW_UNSHOWN_ACTIVITY},
+            **{key: data.get(key) for key in _OVERVIEW_SHOWN_ACTIVITY},
             "trend": active_trend_buckets(data.get("trend")),
             "recentActivity": recent,
         },
@@ -3729,8 +3731,27 @@ def dashboard_page(
         operations or [], resolved_operations or [],
     )
     summary_source = diagnostic_summary
+    # The view keeps a legacy row and an unresolved row for one reported
+    # identity; both carry that identity's open problems, so render one row.
+    merged: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = _identity_group_key(row)
+        if key not in merged:
+            merged[key] = dict(row)
+            continue
+        first = merged[key]
+        for count in ("attempted_install_count", "successful_install_count", "failed_install_count",
+                      "prewrite_failure_count"):
+            if count in row or count in first:
+                first[count] = int(first.get(count) or 0) + int(row.get(count) or 0)
+        for latest in ("last_success", "last_failure", "last_evidence"):
+            first[latest] = max((value for value in (first.get(latest), row.get(latest)) if value is not None),
+                                key=_timestamp_iso, default=None)
+        first["recognized_map_capable_evidence"] = (
+            first.get("recognized_map_capable_evidence") is True or row.get("recognized_map_capable_evidence") is True
+        )
     rows = [
-        row for row in rows
+        row for row in merged.values()
         if not (
             int(row.get("attempted_install_count") or 0) == 0
             and int(row.get("prewrite_failure_count") or 0) > 0
@@ -4808,18 +4829,15 @@ def map_statistics_page(
     detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
     detail_start = min(detail_total, (detail_page - 1) * detail_page_size + 1) if detail_total else 0
     detail_end = min(detail_total, detail_page * detail_page_size)
-    detail_event_counts = [_optional_nonnegative_int(row.get("event_count")) for row in detail_rows]
-    detail_event_count = (
-        sum(count for count in detail_event_counts if count is not None)
-        if all(count is not None for count in detail_event_counts) else None
-    )
-    if detail_rows:
+    # Counts cover every matching group, not only the current page.
+    detail_event_count = _optional_nonnegative_int(statistics.get("detailEventCount"))
+    if detail_total:
         detail_event_label = (
-            f"{detail_event_count} event record{'s' if detail_event_count != 1 else ''}"
+            f"{detail_event_count:,} event record{'s' if detail_event_count != 1 else ''}"
             if detail_event_count is not None else "— event records"
         )
         event_status = (
-            f"{len(detail_rows)} event group{'s' if len(detail_rows) != 1 else ''} · "
+            f"{detail_total:,} event group{'s' if detail_total != 1 else ''} · "
             f"{detail_event_label}"
         )
 
