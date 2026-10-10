@@ -2525,6 +2525,26 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str, time_zone: str = "U
     )
 
 
+def _funnel_waiting_models(display: dict[str, Any]) -> list[tuple[str, int, str]]:
+    return sorted(
+        (model for _, items in display.get("groups") or [] for *_, models in items for model in models),
+        key=lambda model: (-model[1], model[0]),
+    )
+
+
+def _funnel_summary_revision(display: dict[str, Any]) -> dict[str, Any]:
+    """Only what the Dashboard First run card shows: the journey and the first
+    three waiting models (the trend and the breakdown live on First run)."""
+    if not display.get("sessions"):
+        return {"sessions": display.get("sessions")}
+    waiting = _funnel_waiting_models(display)
+    return {
+        **{key: display.get(key) for key in ("sessions", "connected", "approved", "neverConnected", "previous")},
+        "waiting": waiting[:3],
+        "waitingMore": max(0, len(waiting) - 3),
+    }
+
+
 def _funnel_summary_card(funnel: dict[str, Any] | None, period: str) -> str:
     """Dashboard First run: the journey with its drop-offs and the models
     waiting for review; the full breakdown lives on /admin/first-run."""
@@ -2534,10 +2554,7 @@ def _funnel_summary_card(funnel: dict[str, Any] | None, period: str) -> str:
     if not display["sessions"]:
         body = _empty_state("empty", "No first-run sessions in this period.")
     else:
-        waiting = sorted(
-            (model for _, items in display["groups"] for *_, models in items for model in models),
-            key=lambda model: (-model[1], model[0]),
-        )
+        waiting = _funnel_waiting_models(display)
         review = ""
         if waiting:
             review = (
@@ -2807,7 +2824,7 @@ def _overview_revision_sections(
         "review": {key: review.get(key) for key, *_ in _ATTENTION_ROWS} if review is not None else None,
         "funnel": (
             None if not isinstance(funnel, dict)
-            else _funnel_revision(_funnel_display(funnel))
+            else _funnel_summary_revision(_funnel_display(funnel))
             if funnel.get("available") is not False and "stages" in funnel
             else {"available": False}
         ),

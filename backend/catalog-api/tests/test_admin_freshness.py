@@ -16,7 +16,7 @@ from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 
 from test_admin_dashboard_redesign import COOKIE, REVIEW, CountingDatabase, _funnel
-from terento_catalog.admin import map_statistics_page, overview_page
+from terento_catalog.admin import first_run_page, map_statistics_page, overview_page
 from terento_catalog.admin_revisions import active_trend_buckets, section_revisions
 from terento_catalog.http_api import CatalogService, make_handler
 
@@ -111,13 +111,18 @@ class DashboardRevisionTests(unittest.TestCase):
         never_connected["funnel"]["neverConnectedSessionCount"] = 2
         self.assertNotEqual(base["funnel"], self.render(never_connected)["funnel"])
 
+        # The breakdown is on First run (owner 2026-10-10), so it moves only
+        # that page's revision, not the Dashboard's.
         for stage, outcome in (("CATALOG", "REMOTE"), ("INSTALL_BLOCKED", "DEVICE_STORAGE")):
             shown = overview()
             for item in shown["funnel"]["stages"]:
                 for row in item["outcomes"]:
                     if (item["stage"], row["outcome"]) == (stage, outcome):
                         row["sessionCount"] = 2
-            self.assertNotEqual(base["funnel"], self.render(shown)["funnel"], stage)
+            self.assertEqual(base["funnel"], self.render(shown)["funnel"], stage)
+            self.assertNotEqual(
+                revisions(first_run_page(overview()["funnel"], USER, "csrf", period="24h"))["funnel"],
+                revisions(first_run_page(shown["funnel"], USER, "csrf", period="24h"))["funnel"], stage)
 
         new_report = overview()
         new_report["supportReports"] = {"openCount": 1}
