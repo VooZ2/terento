@@ -115,7 +115,9 @@ class DashboardPresentationTests(unittest.TestCase):
             self.assertNotIn("<strong>", legend)
             self.assertNotIn("class='overview-all-time'", card)
             self.assertNotIn("Downloads by purpose", card)
-            self.assertEqual(card.split("</ul>", 1)[1].replace("</div>", "").strip(), "")
+            # After the App chart only the hidden Web panel follows (App/Web switch).
+            rest = card.split("</ul>", 1)[1].replace("</div>", "").strip()
+            self.assertTrue(rest.startswith("<div data-source-panel='web' hidden>"), rest[:80])
 
     def test_needs_attention_lists_only_nonzero_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})

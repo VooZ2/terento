@@ -68,7 +68,7 @@ from .asset_storage import AssetStorage
 from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
 from .config import DEFAULT_TRUSTED_PROXIES
-from .db import Database, IdentityResolutionError, _next_overview_bucket, _overview_bucket_floor
+from .db import Database, IdentityResolutionError, _fill_overview_trend_buckets, _next_overview_bucket, _overview_bucket_floor
 from .device_catalog import (
     CONTROLLED_ASSET_PREFIX,
     _official_source_image_url,
@@ -87,6 +87,15 @@ from .compatibility_evidence import (
 )
 from .compatibility_status import calculate_compatibility_status
 from .collect import collect_provider_once
+from .admin_web_installer import web_installer_page
+from .web_installer import (
+    MAX_WEB_INSTALLER_BYTES,
+    WebInstallerValidationError,
+    chart_summary as web_installer_chart_summary,
+    summarize as summarize_web_installer,
+    validate_event as validate_web_installer_event,
+    validate_relay_job,
+)
 from .app_funnel import (
     FUNNEL_OUTCOMES,
     MAX_FUNNEL_EVENT_BYTES,
@@ -116,7 +125,7 @@ from .provider_catalog import (
     OpenTopoMapProviderAdapter,
 )
 from .provider_health import check_provider as run_provider_health_check
-from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, local_day_start, period_start
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, all_time_bucket, local_day_start, period_start
 
 LOGGER = logging.getLogger(__name__)
 
@@ -129,6 +138,8 @@ MAP_EVENT_RATE_LIMIT = 600
 COMPATIBILITY_EVENT_RATE_LIMIT = 300
 # A session sends at most one event per (stage, outcome, baseModel).
 APP_FUNNEL_EVENT_RATE_LIMIT = 120
+# Web installer records come from one installer server, which limits each computer.
+WEB_INSTALLER_RATE_LIMIT = 1200
 # A user sends a support report only by explicit choice; retries reuse the id.
 SUPPORT_REPORT_RATE_LIMIT = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
@@ -203,6 +214,7 @@ class CatalogService:
         admin_session_ttl_seconds: int = 28_800,
         public_compatibility_stats_enabled: bool = False,
         operations_ingest_secret: str | None = None,
+        web_installer_ingest_secret: str | None = None,
         opentopomap_contour_mode: str = "off",
         opentopomap_contour_allowlist: tuple[str, ...] = (),
         public_base_url: str = "https://api.terento.app",
@@ -220,6 +232,7 @@ class CatalogService:
         self.admin_session_ttl_seconds = admin_session_ttl_seconds
         self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
         self.operations_ingest_secret = operations_ingest_secret
+        self.web_installer_ingest_secret = web_installer_ingest_secret
         self.opentopomap_contour_mode = opentopomap_contour_mode
         self.opentopomap_contour_allowlist = frozenset(opentopomap_contour_allowlist)
 
@@ -518,6 +531,39 @@ class CatalogService:
     def receive_support_report(self, body: bytes) -> tuple[dict[str, Any], str]:
         report = validate_support_report(body)
         return report, self.database.insert_support_report(report)
+
+    def receive_web_installer_record(self, kind: str, body: bytes) -> bool:
+        if kind == "events":
+            return self.database.insert_web_installer_row("web_installer_event", validate_web_installer_event(body))
+        return self.database.insert_web_installer_row("web_installer_relay_job", validate_relay_job(body))
+
+    def web_installer(self, query: dict[str, str]) -> dict[str, Any]:
+        """Admin read model for the Web installer page (test records excluded)."""
+        period = query["period"]
+        time_zone = _admin_time_zone(query.get("timeZone"))
+        until = datetime.now(timezone.utc)
+        since = period_start(period, now=until, time_zone=time_zone)
+        events, jobs, tests = self.database.web_installer_rows(since, until)
+        return {
+            "schemaVersion": 1, "period": period, "timeZone": time_zone,
+            "since": since.isoformat() if since else None, "until": until.isoformat(),
+            "population": "web installer page loads and relay jobs; test records excluded; separate from app statistics",
+            "testRecords": tests,
+            **summarize_web_installer(events, jobs),
+        }
+
+    def web_installer_chart(self, since: datetime | None, period: str, time_zone: str) -> dict[str, Any]:
+        """Dashboard Web switch: web downloads and installs in the app chart shape."""
+        until = datetime.now(timezone.utc)
+        first = (self.database.web_installer_first_at() or until) if since is None else since
+        start = since or first
+        bucket = all_time_bucket(until - first) if period == "all" else PERIOD_BUCKETS.get(period, "hour")
+        summary = web_installer_chart_summary(
+            self.database.web_installer_trend(since, until, bucket=bucket, time_zone=time_zone))
+        summary["trend"] = _fill_overview_trend_buckets(
+            summary["trend"], bucket=bucket, since=start, until=until, all_time=period == "all", time_zone=time_zone,
+        ) if summary["trend"] else []
+        return {**summary, "bucket": bucket}
 
     def receive_app_funnel_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
         event = validate_funnel_event(body)
@@ -823,6 +869,9 @@ class CatalogService:
             "providers": providers,
             "system": section("system", system_health, dict(unavailable)),
             "funnel": section("funnel", lambda: self.app_funnel({"period": period, "timeZone": time_zone}), dict(unavailable)),
+            # Web installer records stay out of "data" (app only); the charts
+            # show them only behind their Web switch.
+            "web": section("web", lambda: self.web_installer_chart(since, period, time_zone), dict(unavailable)),
             "supportReports": section(
                 "supportReports",
                 lambda: {"openCount": self.database.support_report_open_count()},
@@ -1184,6 +1233,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/internal/operations/observations":
                 self._handle_operational_observation()
                 return
+            if request_path in {"/internal/web-installer/events", "/internal/web-installer/relay-jobs"}:
+                self._handle_web_installer_record(request_path.rsplit("/", 1)[1])
+                return
             if request_path == "/map-events":
                 self._handle_map_event()
                 return
@@ -1238,8 +1290,35 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 noindex=True,
             )
 
+        def _handle_web_installer_record(self, kind: str) -> None:
+            client = f"web-installer:{self._client_ip()}"
+            reply = lambda status, body: self._send_json(status, body, send_body=True, cache_control="no-store", noindex=True)
+            if self._rate_limited(client, limit=WEB_INSTALLER_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
+                return reply(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"})
+            if not self._bearer_matches(service.web_installer_ingest_secret):
+                return reply(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_WEB_INSTALLER_BYTES:
+                return reply(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"})
+            if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
+                return reply(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"})
+            request_times[client].append(time.monotonic())
+            try:
+                inserted = service.receive_web_installer_record(kind, self.rfile.read(length))
+            except WebInstallerValidationError as exc:
+                return reply(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+            except Exception:
+                LOGGER.exception("web installer record storage failed")
+                return reply(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "web_installer_unavailable"})
+            reply(HTTPStatus.CREATED if inserted else HTTPStatus.OK, {"status": "stored" if inserted else "duplicate"})
+
         def _operations_authorized(self) -> bool:
-            configured_secret = service.operations_ingest_secret
+            return self._bearer_matches(service.operations_ingest_secret)
+
+        def _bearer_matches(self, configured_secret: str | None) -> bool:
             authorization = self.headers.get("Authorization", "")
             supplied_secret = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
             return bool(
@@ -2018,6 +2097,27 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "The Dashboard could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path in {"/admin/web-installer", "/admin/web-installer/", "/admin/web-installer.json"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                period = query.get("period", ["7d"])[-1]
+                if period not in ADMIN_PERIODS:
+                    period = "7d"
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
+                try:
+                    data = service.web_installer({"period": period, "timeZone": time_zone})
+                except Exception:
+                    LOGGER.exception("admin web installer failed")
+                    data = None
+                if request_path.endswith(".json"):
+                    if data is None:
+                        self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "web_installer_unavailable"},
+                                        send_body=send_body, cache_control="no-store", noindex=True)
+                    else:
+                        self._send_json(HTTPStatus.OK, data,
+                                        send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                self._send_admin_html(web_installer_page(data, session, csrf_token, period=period, time_zone=(data or {}).get("timeZone", time_zone)), send_body=send_body)
                 return
             if request_path in {"/admin/first-run", "/admin/first-run/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)

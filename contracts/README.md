@@ -14,6 +14,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
 | `app-funnel-event.schema.json` | `POST /app-funnel/events` request body | `schemaVersion: 1`; meaning owned by [`APP_FUNNEL_CONTRACT.md`](APP_FUNNEL_CONTRACT.md) |
+| none (fixtures `web-installer-*.json`) | `POST /internal/web-installer/events` and `/relay-jobs` (web installer server only) | `schemaVersion: 1`; meaning owned by [`WEB_INSTALLER_STATISTICS_CONTRACT.md`](WEB_INSTALLER_STATISTICS_CONTRACT.md) |
 | `support-report.schema.json` | `POST /support/reports` request body | `schemaVersion: 1`; meaning owned by [`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md) |
 | `map-preview-manifest.schema.json` | `GET /maps/previews/manifest.json` | `schemaVersion: 1` |
 | `map-preview-areas.schema.json` | `map-preview-areas.json` (curated preview areas, not an HTTP payload) | `schemaVersion: 1` |
