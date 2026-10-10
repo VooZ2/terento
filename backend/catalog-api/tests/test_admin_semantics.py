@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import html
 from html.parser import HTMLParser
 import inspect
 import json
@@ -36,16 +37,16 @@ from terento_catalog.admin import (
     _diagnostic_summary_by_identity,
     _diagnostics_script,
     _github_issue_report,
-    _github_issue_url,
+    _github_issue_controls,
     _sanitised_issue_value,
-    _identity_checks_markup,
+    _identity_review_form,
     _map_statistics_summary,
     _normalise_variant,
     _overview_period_script,
     _overview_chart_bucket_label,
     _overview_downloads_chart,
     _map_statistics_script,
-    _provider_health_row,
+    _provider_current_health,
     _provider_package_row,
     _provider_detail_script,
     format_timestamp,
@@ -88,6 +89,12 @@ WORKFLOW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "040_diag
 AUTHORIZED_TEST_CLEANUP_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "041_remove_authorized_test_install.sql"
 FOLLOWUP_TEST_CLEANUP_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "043_remove_authorized_test_install_2.sql"
 MISSING_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "060_missing_diagnostic_review_tasks.sql"
+
+
+def _rendered_issue_link(title: str, body: str) -> tuple[str, bool]:
+    markup = _github_issue_controls(title, body, issue=None, csrf_token="t", identifier="x", return_to="/admin")
+    href = markup.split("href='", 1)[1].split("'", 1)[0]
+    return html.unescape(href), "data-prefilled='true'" in markup
 
 
 class RecordingResult:
@@ -415,7 +422,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             self.assertIn(f"<span class='admin-metric-label'>{label}", detail_panel)
         self.assertIn("data-stat='lastReport'>—<span class='sr-only'>Unknown</span>", detail_panel)
         self.assertIn("class='model-evidence-grid'", detail)
-        self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", detail)
+        self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", ADMIN_STYLES)
         detail_grid = detail.split("class='model-evidence-grid'", 1)[1].split("{''.join", 1)[0]
         positions = [detail_grid.index(label) for label in (
             "model-installation-kpis-title", "Administration", "Device information",
@@ -630,38 +637,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("href='/admin/installations?state=open'", counted)
         self.assertNotIn("aria-label='Open problems: 3'", counted)
 
-    def test_overview_query_uses_independent_unresolved_queue(self):
-        from unittest.mock import MagicMock
-        connection = MagicMock()
-        connection.execute.return_value.fetchall.return_value = []
-        connection.execute.return_value.fetchone.return_value = {}
-        database = Database("unused")
-        database.connection = MagicMock()
-        database.connection.return_value.__enter__.return_value = connection
-        since = datetime(2026, 9, 5, tzinfo=timezone.utc)
-        database.admin_overview_snapshot(since)
-        queries = [call.args for call in connection.execute.call_args_list]
-        attention = next(args for args in queries if "total_open_errors" in args[0])
-        self.assertNotIn("last_occurred_at >=", attention[0])
-        self.assertIn("WHERE open_error OR identity_pending", attention[0])
-        self.assertEqual(attention[1], (8,))
-        review = next(args for args in queries if "FROM compatibility_model_statistics" in args[0])
-        self.assertNotIn("last_evidence >=", review[0])
-        self.assertIn("('TESTED', 'SUPPORTED', 'VERIFIED')", review[0])
-        activity = next(args for args in queries if "AS model_key" in args[0])
-        self.assertEqual(activity[1], (since, 5))
-
     def test_overview_model_activity_keeps_resolved_failures_in_historical_counts(self):
-        source = inspect.getsource(Database.admin_overview_snapshot)
-        self.assertIn("WHERE e.is_local_test IS NOT TRUE", source)
-        self.assertIn("diagnostic_status = 'ACTIVE'", source)
-        self.assertIn("result_classification_effective", source)
-        self.assertNotIn(
-            "WHERE e.diagnostic_status = 'ACTIVE'\n                  AND e.is_local_test IS NOT TRUE",
-            source,
-        )
-        self.assertNotIn("WHERE write_started AND operation_succeeded", source)
-        self.assertNotIn("WHERE write_started AND has_failed", source)
         body = overview_page(
             {
                 "period": "7d",
@@ -692,14 +668,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("class='overview-model-item", body)
 
     def test_overview_model_activity_shows_five_latest_operations(self):
-        source = inspect.getsource(Database.admin_overview_snapshot)
-        model_query = source.split("model_activity = list(connection.execute(", 1)[1].split(
-            "review_required = list(connection.execute(", 1
-        )[0]
-        self.assertIn("ORDER BY last_occurred_at DESC, operation_key", model_query)
-        self.assertIn("LIMIT %s", model_query)
-        self.assertNotIn("GROUP BY 1", model_query)
-
         model_activity = [
             {
                 "model": f"Model {index}",
@@ -2178,13 +2146,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             {"event_id": "event-1", "canonical_device_model_id": "selected", "identity_assessment": assessment()},
             {"event_id": "event-2", "canonical_device_model_id": "selected", "identity_assessment": assessment()},
         ]
-        body = _identity_checks_markup(results, [selected, mapped])
+        body = _identity_review_form("operation", results, csrf_token="t", identity_devices=[selected, mapped],
+                                     return_to="/admin", id_suffix="x")
         self.assertIn("Diagnostic result event-1", body)
         self.assertIn("Diagnostic result event-2", body)
         self.assertIn("Case size: reported 47 from caseSizeMm", body)
         self.assertIn("USB mapping", body)
         self.assertIn("fēnix 7 · 47 mm, MIP", body)
-        self.assertIn("regular Confirm is blocked", body)
+        self.assertIn("Use the explicit manual assignment action", body)
         script = _diagnostics_script()
         self.assertIn("identityConflictMessage", script)
         self.assertIn("clearStaleSelectionState", script)
@@ -2243,7 +2212,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "aria-label=\"Maps\"", "aria-label=\"Install policy\"",
             "aria-label=\"Successful installations\"", "position:sticky", "z-index:3",
         ):
-            self.assertIn(label, body if "aria-label" in label or "position:" in label or "z-index" in label else admin_source)
+            self.assertIn(label, body if "aria-label" in label else ADMIN_STYLES if "position:" in label or "z-index" in label else admin_source)
         self.assertIn("sticky", admin_source)
         self.assertNotIn("Support decision", body)
         self.assertNotIn("Last tested", body)
@@ -2324,7 +2293,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("matchMedia('(max-width: 760px)')", body)
         self.assertIn(
             "grid-template-columns:minmax(300px,1fr) max-content minmax(335px,1fr)",
-            body,
+            ADMIN_STYLES,
         )
 
     def test_modal_campaign_and_timezone_details_keep_the_refined_workflows(self):
@@ -2355,8 +2324,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Save support metadata", detail_body)
         self.assertIn("Device information", detail_body)
         self.assertIn("device-information-section", detail_body)
-        self.assertIn(".device-information-section .model-information-list{max-width:780px}", detail_body)
-        self.assertIn("grid-template-columns:150px minmax(0,1fr)", detail_body)
+        self.assertIn(".device-information-section .model-information-list{max-width:780px}", ADMIN_STYLES)
+        self.assertIn("grid-template-columns:150px minmax(0,1fr)", ADMIN_STYLES)
         self.assertNotIn("Change history", detail_body)
         self.assertIn("placeholder='garmin_maps'", campaign_body)
         self.assertIn("Rarely needed: only for paid search keywords.", campaign_body)
@@ -2738,14 +2707,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         # (failed in-progress and resolved here); empty disclosures are omitted.
         self.assertEqual(body.count("<summary>Review administration</summary>"), 2)
         self.assertEqual(body.count("<summary>Technical details</summary>"), 4)
-        self.assertIn(".diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px))", body)
-        self.assertNotIn("width:min(860px,calc(100% - 32px))", body)
-        self.assertIn(".github-review{overflow-wrap:anywhere}", body)
-        self.assertIn(".diagnostic-technical-details{margin:10px 0 0;padding:9px 11px", body)
-        self.assertNotIn(".diagnostic-technical-details{margin:10px 0 0;padding:0", body)
-        self.assertIn(".diagnostic-id code{overflow-wrap:anywhere", body)
-        self.assertIn(".diagnostic-technical-details dd{min-width:0", body)
-        self.assertIn(".diagnostic-detail-dialog{width:calc(100% - 32px);max-width:none", body)
+        self.assertIn(".diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px))", ADMIN_STYLES)
+        self.assertNotIn("width:min(860px,calc(100% - 32px))", ADMIN_STYLES)
+        self.assertIn(".github-review{overflow-wrap:anywhere}", ADMIN_STYLES)
+        self.assertIn(".diagnostic-technical-details{margin:10px 0 0;padding:9px 11px", ADMIN_STYLES)
+        self.assertNotIn(".diagnostic-technical-details{margin:10px 0 0;padding:0", ADMIN_STYLES)
+        self.assertIn(".diagnostic-id code{overflow-wrap:anywhere", ADMIN_STYLES)
+        self.assertIn(".diagnostic-technical-details dd{min-width:0", ADMIN_STYLES)
+        self.assertIn(".diagnostic-detail-dialog{width:calc(100% - 32px);max-width:none", ADMIN_STYLES)
         self.assertIn("<details class='admin-disclosure diagnostic-disclosure github-link-disclosure'>", body)
         self.assertIn("Link or manage an existing issue", body)
         self.assertIn("Change linked issue", body)
@@ -2753,11 +2722,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("#32 <svg class='admin-icon admin-icon-external'", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
-        self.assertIn(":is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form{display:flex;flex-wrap:wrap;align-items:flex-end", body)
-        self.assertIn(":is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure{min-width:0;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}", body)
-        self.assertNotIn(".diagnostic-actions-grid>form.diagnostic-action-form", body)
-        self.assertIn(".identity-review-form{grid-column:auto}", body)
-        self.assertNotIn(".identity-review-form{grid-column:1/-1}", body)
+        self.assertIn(":is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form{display:flex;flex-wrap:wrap;align-items:flex-end", ADMIN_STYLES)
+        self.assertIn(":is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure{min-width:0;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}", ADMIN_STYLES)
+        self.assertNotIn(".diagnostic-actions-grid>form.diagnostic-action-form", ADMIN_STYLES)
+        self.assertIn(".identity-review-form{grid-column:auto}", ADMIN_STYLES)
+        self.assertNotIn(".identity-review-form{grid-column:1/-1}", ADMIN_STYLES)
         # The former select values are quick filters now (owner decision 2026-10-06).
         self.assertIn("data-history-filter='all' aria-pressed='true'>All</button>", body)
         for value in ('succeeded', 'failed', 'open', 'resolved', 'identity-pending', 'with-issue'):
@@ -3222,18 +3191,14 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 "validation_status": "UNKNOWN",
             }],
         })
-        health = _provider_health_row({
+        health = _provider_current_health({
             "status": "HEALTHY",
-            "http_status": 0,
             "artifact_count": 0,
             "duration_ms": 0,
-        })
+        }, {})
         self.assertIn("Download: — bytes · IMG: 0 bytes", package)
         self.assertIn("<td class='column-number numeric'>—</td>", package)
-        self.assertIn("><span class='admin-pill admin-pill-success' data-status='HEALTHY'", health)
-        self.assertIn(">—</td>", health)
-        self.assertIn(">0</td>", health)
-        self.assertIn(">0 ms</td>", health)
+        self.assertIn("HTTP: — · Artifacts sampled: 0 · Duration: 0 ms", visible_text(health))
 
     def test_provider_detail_uses_progressive_disclosure_and_human_audit_actions(self):
         body = provider_detail_page(
@@ -3547,9 +3512,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         title, body = _github_issue_report(
             "Bearer FAKE_TOKEN · access_token=FAKE api_key=FAKE", results,
         )
-        url, prefilled = _github_issue_url(
-            "Bearer FAKE_TOKEN · access_token=FAKE api_key=FAKE", results,
-        )
+        url, prefilled = _rendered_issue_link(title, body)
         decoded = parse_qs(urlsplit(url).query)
         combined = title + body + str(decoded)
         for forbidden in fake_values:
@@ -3572,10 +3535,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertLessEqual(len(rendered_note), GITHUB_ADMIN_NOTE_MAX_LENGTH + 40)
         self.assertNotIn("<script", rendered_note)
         self.assertNotIn("ghp_FAKE_TOKEN_123", rendered_note)
-        normal_url, normal_prefilled = _github_issue_url("fēnix 8 · 51 mm", results, admin_note="Reviewed")
+        normal_url, normal_prefilled = _rendered_issue_link(*_github_issue_report("fēnix 8 · 51 mm", results, admin_note="Reviewed"))
         self.assertTrue(normal_prefilled)
         self.assertLessEqual(len(normal_url), GITHUB_ISSUE_URL_MAX_LENGTH)
-        oversized_url, oversized_prefilled = _github_issue_url("x" * 8_000 + " · 51 mm", results)
+        oversized_url, oversized_prefilled = _rendered_issue_link(*_github_issue_report("x" * 8_000 + " · 51 mm", results))
         self.assertFalse(oversized_prefilled)
         self.assertEqual(oversized_url, "https://github.com/VooZ2/terento/issues/new")
 

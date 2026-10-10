@@ -92,18 +92,6 @@ class FakeEvidenceDatabase:
             "total": 3,
         }
 
-    def admin_overview_snapshot(self, since):
-        return {
-            "operationCount": 1,
-            "successfulInstallCount": 1,
-            "failedInstallCount": 0,
-            "openErrorCount": 0,
-            "writeStartedCount": 1,
-            "hasData": True,
-            "recentActivity": [],
-            "failureReasons": [],
-        }
-
     def admin_overview_map_snapshot(self, since, *, period="24h", time_zone="UTC"):
         return {
             "eventCount": 0,
@@ -153,6 +141,15 @@ class FakeEvidenceDatabase:
 
     def compatibility_resolved_operation_details(self):
         return []
+
+    def compatibility_diagnostic_population(self):
+        return [dict(row, diagnostic_status="ACTIVE") for row in self.compatibility_operations]
+
+    def compatibility_identity_details(self, status, *, device_id="", identity=""):
+        return self.compatibility_operations if status == "ACTIVE" else []
+
+    def installation_problem_counts(self):
+        return {"total": 0, "byIdentity": {}}
 
     def resolve_compatibility_identity(
         self, operation_key, *, action, canonical_device_model_id,

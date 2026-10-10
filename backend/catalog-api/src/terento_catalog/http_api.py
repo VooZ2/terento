@@ -23,6 +23,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .admin_revisions import statistics_revisions
 from .admin import (
+    ADMIN_STYLES,
+    ADMIN_STYLESHEET_PATH,
+    WORLD_MAP_SCRIPT,
+    WORLD_MAP_SCRIPT_PATH,
     AdminValidationError,
     account_page,
     campaign_links_page,
@@ -749,13 +753,8 @@ class CatalogService:
             ]
             if observed_starts:
                 trend_filters["dateFrom"] = min(observed_starts)
-        trend_reader = getattr(self.database, "map_statistics_trend", None)
-        trend, bucket = (
-            trend_reader(
-                trend_filters, period=period, time_zone=time_zone,
-            )
-            if callable(trend_reader)
-            else ([], PERIOD_BUCKETS[period])
+        trend, bucket = self.database.map_statistics_trend(
+            trend_filters, period=period, time_zone=time_zone,
         )
         payload = {
             "schemaVersion": 1,
@@ -786,7 +785,6 @@ class CatalogService:
         since = period_start(
             period, now=datetime.now(timezone.utc), time_zone=time_zone,
         ) or datetime(1970, 1, 1, tzinfo=timezone.utc)
-        downloads_getter = getattr(self.database, "github_downloads_snapshot", None)
 
         def section(name: str, reader: Any, fallback: Any) -> Any:
             # Section-level resilience (ADM-26): one failing read model marks
@@ -819,15 +817,9 @@ class CatalogService:
             "data": section("map", lambda: self.database.admin_overview_map_snapshot(
                 since, period=period, time_zone=time_zone,
             ), dict(unavailable)),
-            "downloads": section("downloads", lambda: downloads_getter(
+            "downloads": section("downloads", lambda: self.database.github_downloads_snapshot(
                 time_zone=time_zone, period=period,
-            ) if callable(downloads_getter) else {
-                "hasData": False,
-                "dmgTotal": None,
-                "zipTotal": None,
-                "lastObservedAt": None,
-                "trend": [],
-            }, dict(unavailable)),
+            ), dict(unavailable)),
             "providers": providers,
             "system": section("system", system_health, dict(unavailable)),
             "funnel": section("funnel", lambda: self.app_funnel({"period": period, "timeZone": time_zone}), dict(unavailable)),
@@ -907,65 +899,41 @@ class CatalogService:
         return self._canonicalize_statistics(self.database.compatibility_statistics())
 
     def compatibility_diagnostic_summary(self) -> dict[str, dict[str, int]]:
-        getter = getattr(self.database, "compatibility_diagnostic_population", None)
-        if not callable(getter):
-            return _diagnostic_summary_by_identity(self.compatibility_operation_details(), self.compatibility_resolved_operation_details())
-        rows = getter()
+        rows = self.database.compatibility_diagnostic_population()
         summary = _diagnostic_summary_by_identity(
             [r for r in rows if r["diagnostic_status"] == "ACTIVE"],
             [r for r in rows if r["diagnostic_status"] == "RESOLVED"],
         )
-        problems = self.installation_problem_counts()
-        if problems is not None:
-            # Open problems use the canonical Needs attention predicate and unit
-            # (operations), never the per-result twin above.
-            by_identity = problems["byIdentity"]
-            for identity, values in summary.items():
-                values["open_errors"] = values["errors"] = int(by_identity.get(identity, 0))
-            for identity, count in by_identity.items():
-                summary.setdefault(identity, {
-                    "errors": count, "open_errors": count, "failed": 0,
-                    "attempts": 0, "successful": 0, "identity_pending": 0,
-                })
+        # Open problems use the canonical Needs attention predicate and unit
+        # (operations), never the per-result twin above.
+        by_identity = self.database.installation_problem_counts()["byIdentity"]
+        for identity, values in summary.items():
+            values["open_errors"] = values["errors"] = int(by_identity.get(identity, 0))
+        for identity, count in by_identity.items():
+            summary.setdefault(identity, {
+                "errors": count, "open_errors": count, "failed": 0,
+                "attempts": 0, "successful": 0, "identity_pending": 0,
+            })
         return summary
 
-    def installation_problem_counts(self) -> dict[str, Any] | None:
-        getter = getattr(self.database, "installation_problem_counts", None)
-        return getter() if callable(getter) else None
-
-    def installation_problem_count(self, identity_key: str) -> int | None:
-        problems = self.installation_problem_counts()
-        if problems is None:
-            return None
-        return int(problems["byIdentity"].get(identity_key, 0))
+    def installation_problem_count(self, identity_key: str) -> int:
+        return int(self.database.installation_problem_counts()["byIdentity"].get(identity_key, 0))
 
     def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str | list[str] = "") -> list[dict[str, Any]]:
-        getter = getattr(self.database, "compatibility_identity_details", None)
-        if callable(getter):
-            return getter(status, device_id=device_id, identity=identity)
-        return self.compatibility_operation_details() if status == "ACTIVE" else self.compatibility_resolved_operation_details()
-
-    def compatibility_operation_details(self) -> list[dict[str, Any]]:
-        return self.database.compatibility_operation_details()
+        return self.database.compatibility_identity_details(status, device_id=device_id, identity=identity)
 
     def compatibility_issue_queue_operations(self) -> list[dict[str, Any]]:
-        getter = getattr(self.database, "compatibility_issue_queue_operations", None)
-        return getter() if callable(getter) else self.database.compatibility_operation_details()
+        return self.database.compatibility_issue_queue_operations()
 
     def compatibility_resolved_operation_details(self) -> list[dict[str, Any]]:
-        getter = getattr(self.database, "compatibility_resolved_operation_details", None)
-        return getter() if getter is not None else []
+        return self.database.compatibility_resolved_operation_details()
 
     def admin_devices(self) -> dict[str, Any]:
         rows, sync = self.database.admin_device_snapshot()
         return _admin_device_payload(rows, sync)
 
     def update_issue_queue_diagnostics(self):
-        getter = getattr(self.database, 'update_issue_queue_diagnostics', None)
-        return getter() if getter else []
-
-    def update_device_support_status(self, device_id: str, support_status: str) -> bool:
-        return self.database.update_device_support_status(device_id, support_status)
+        return self.database.update_issue_queue_diagnostics()
 
     def update_device_authorization(
         self,
@@ -1086,15 +1054,13 @@ class CatalogService:
 
     def local_test_data(self) -> dict[str, Any]:
         summary = dict(self.database.local_test_telemetry_summary())
-        reader = getattr(self.database, "support_reports", None)
-        if callable(reader):
-            # Local support reports appear only here; a failed read marks only
-            # their card unavailable.
-            try:
-                summary["supportReports"] = reader(status="ALL", local=True, limit=50)
-            except Exception:
-                LOGGER.exception("local support report summary failed")
-                summary["supportReports"] = {"available": False}
+        # Local support reports appear only here; a failed read marks only
+        # their card unavailable.
+        try:
+            summary["supportReports"] = self.database.support_reports(status="ALL", local=True, limit=50)
+        except Exception:
+            LOGGER.exception("local support report summary failed")
+            summary["supportReports"] = {"available": False}
         return summary
 
     def purge_local_test_data(
@@ -1560,10 +1526,18 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             map_assets = {"leaflet-1.9.4.js": "text/javascript", "leaflet-1.9.4.css": "text/css", "coverage-map-v1.js": "text/javascript", "coverage-map-v1.css": "text/css"}
             asset_name = request_path.removeprefix("/admin/map-assets/")
-            if request_path.startswith("/admin/map-assets/") and asset_name in map_assets:
-                body = (Path(__file__).parent / "static" / "map" / asset_name).read_bytes()
+            # Content-versioned names: a changed stylesheet or world map is a new URL.
+            versioned_assets = {ADMIN_STYLESHEET_PATH: (ADMIN_STYLES, "text/css; charset=utf-8"),
+                                WORLD_MAP_SCRIPT_PATH: (WORLD_MAP_SCRIPT, "text/javascript; charset=utf-8")}
+            if request_path in versioned_assets or (request_path.startswith("/admin/map-assets/") and asset_name in map_assets):
+                if request_path in versioned_assets:
+                    text, content_type = versioned_assets[request_path]
+                    body, cache_control = text.encode("utf-8"), "private, max-age=31536000, immutable"
+                else:
+                    body = (Path(__file__).parent / "static" / "map" / asset_name).read_bytes()
+                    content_type, cache_control = map_assets[asset_name], "private, max-age=86400"
                 self.send_response(HTTPStatus.OK)
-                self._common_headers(content_type=map_assets[asset_name], content_length=len(body), cache_control="private, max-age=86400")
+                self._common_headers(content_type=content_type, content_length=len(body), cache_control=cache_control)
                 self.send_header("X-Robots-Tag", "noindex, nofollow")
                 self.end_headers()
                 if send_body:

@@ -117,8 +117,8 @@ def _deduplicate_results(events: Iterable[dict[str, Any]]) -> list[dict[str, Any
     for group in groups.values():
         # A logical result whose reports disagree on classification, provider,
         # region or assessed device is a conflict and stays out of the rates,
-        # exactly like the SQL read models (compatibility_model_statistics,
-        # map_statistics and admin_overview_snapshot).
+        # exactly like the SQL read models (compatibility_model_statistics
+        # and map_statistics).
         classes = {
             (
                 classify_fresh_result(event),

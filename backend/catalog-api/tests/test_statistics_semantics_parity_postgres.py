@@ -1,12 +1,12 @@
 """The documented pure classifier and the real SQL read models must agree (audit H3).
 
 Every case is run through ``statistics_semantics`` and through PostgreSQL with
-all migrations applied: ``compatibility_model_statistics`` (view), the Maps /
-Dashboard ``map_statistics`` read model and ``admin_overview_snapshot``.
+all migrations applied: ``compatibility_model_statistics`` (view) and the Maps /
+Dashboard ``map_statistics`` read model.
 """
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from pglite_support import PGliteTestCase
 from statistics_fixtures import FENIX_8, StatisticsRows
@@ -86,11 +86,9 @@ class FreshParityTests(PGliteTestCase):
         totals = {}
         for row in self.db.map_statistics({}):
             totals[row["event_type"]] = totals.get(row["event_type"], 0) + int(row["operation_count"] or 0)
-        overview = self.db.admin_overview_snapshot(datetime(2000, 1, 1, tzinfo=timezone.utc))
         return {
             "view": (view["s"], view["f"]),
             "map_statistics": (totals.get("INSTALL_SUCCEEDED", 0), totals.get("INSTALL_FAILED", 0)),
-            "admin_overview_snapshot": (overview["successfulInstallCount"], overview["failedInstallCount"]),
         }
 
     def test_every_case_agrees_across_pure_and_sql_read_models(self):

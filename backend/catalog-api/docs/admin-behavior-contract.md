@@ -1082,6 +1082,9 @@ re-reads its own URL every two minutes, and once when the tab becomes visible
 again, and compares the fresh revisions with the rendered ones. A notice appears
 only when a revision differs, so a refresh with no new data never brings it back
 on the next poll; a client-side section render acknowledges its own sections.
+Signed-in pages link one content-versioned, privately cached stylesheet (and
+Maps one world-map script) instead of inlining them, so each re-read transfers
+only the page markup and data.
 
 Revisions hash displayed data only (owner report 2026-10-07). They exclude
 request-time values (for example the First run `since`/`until` window, render

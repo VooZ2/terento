@@ -16,7 +16,6 @@ from .identity_assessment import (
     selected_identity_conflicts,
     validate_correction,
 )
-from .failure_reasons import normalize_failure_reason
 from .failure_context import validate_event_contexts
 from .compatibility_status import calculate_compatibility_status
 from .models import RETAIL_RETIREMENT_MISSED_RUNS, CollectedDevice, CollectedMap
@@ -29,9 +28,6 @@ from .telemetry import is_local_release_label
 from .statistics_exclusions import classify_compatibility_event
 from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, period_start
 
-
-OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
-ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS = 4
 
 # One predicate for the "install failed · no device diagnostic" review task,
 # shared by the Needs attention count and the Dashboard item list. Expects the
@@ -1163,35 +1159,6 @@ class Database:
                 )
         return inserted
 
-    @staticmethod
-    def _ensure_historical_device(connection: Any, spec: Any) -> None:
-        connection.execute(
-            """
-            INSERT INTO device_family (id, manufacturer, name, canonical_name, source_url)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (id) DO NOTHING
-            """,
-            (spec.family_id, spec.manufacturer, spec.family_name, spec.canonical_model.split()[0], spec.source_url),
-        )
-        connection.execute(
-            """
-            INSERT INTO device_model (
-                id, family_id, manufacturer, model, canonical_model, variant,
-                case_size_mm, display_type, product_url, source_url,
-                source_image_url, active, map_capable, support_status,
-                record_source, collector_managed
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, TRUE,
-                       'NOT_EVALUATED', 'HISTORICAL_REVIEWED', FALSE)
-            ON CONFLICT (id) DO NOTHING
-            """,
-            (
-                spec.id, spec.family_id, spec.manufacturer, spec.model,
-                spec.canonical_model, spec.variant, spec.case_size_mm,
-                spec.display_type, spec.product_url, spec.source_url,
-                spec.source_image_url,
-            ),
-        )
-
     def prune_compatibility_events(self) -> int:
         with self.connection() as connection:
             connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
@@ -1661,284 +1628,6 @@ class Database:
             )
         return True
 
-    def admin_overview_snapshot(
-        self,
-        since: datetime,
-        *,
-        recent_limit: int = 8,
-    ) -> dict[str, Any]:
-        """Return bounded operational aggregates for the authenticated Overview.
-
-        This deliberately uses the existing compatibility evidence table and
-        counts each retained map result independently of its batch identity. It
-        does not create telemetry, alter the public API, or pretend that the
-        compatibility and map-operation success rates are interchangeable.
-        """
-        operation_cte = """
-            WITH classified_results AS (
-                SELECT
-                    e.*,
-                    COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
-                        AS operation_key,
-                    CASE
-                        WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
-                            THEN e.operation_id::text || ':' || e.map_result_index::text
-                        ELSE 'event:' || e.event_id::text
-                    END AS result_key,
-                    terento_fresh_result_classification(
-                        e.phase_outcome, e.automatic_finishing_result, e.write_started,
-                        e.schema_version, e.app_build, e.release_label
-                    ) AS result_classification
-                FROM compatibility_evidence_event AS e
-                WHERE e.is_local_test IS NOT TRUE
-                  AND e.statistics_exclusion_code IS NULL
-            ), result_flags AS (
-                SELECT
-                    result_key,
-                    bool_or(result_classification = 'SUCCESS') AS has_success,
-                    bool_or(result_classification = 'FAILURE') AS has_failure,
-                    count(DISTINCT (result_classification, provider, region, canonical_device_model_id)) > 1
-                        AS has_conflict
-                FROM classified_results
-                GROUP BY result_key
-            ), deduplicated_results AS (
-                SELECT DISTINCT ON (c.result_key)
-                    c.*,
-                    CASE
-                        WHEN f.has_conflict THEN 'UNKNOWN'
-                        WHEN f.has_success THEN 'SUCCESS'
-                        WHEN f.has_failure THEN 'FAILURE'
-                        ELSE c.result_classification
-                    END AS result_classification_effective
-                FROM classified_results AS c
-                JOIN result_flags AS f USING (result_key)
-                ORDER BY c.result_key, c.occurred_at DESC NULLS LAST, c.event_id DESC
-            ), operation_rows AS (
-                SELECT
-                    result_key,
-                    operation_key,
-                    canonical_device_model_id,
-                    compatibility_identity,
-                    model,
-                    variant,
-                    provider,
-                    region,
-                    release_label,
-                    app_build,
-                    failure_stage,
-                    failure_code,
-                    error_category,
-                    linked_github_issue,
-                    diagnostic_workflow_status,
-                    occurred_at AS last_occurred_at,
-                    (write_started IS TRUE) AS write_started,
-                    (result_classification_effective = 'SUCCESS') AS operation_succeeded,
-                    (result_classification_effective = 'FAILURE') AS fresh_failure,
-                    (
-                        phase_outcome = 'FAILED'
-                        AND NOT (
-                            write_started IS FALSE
-                            AND (
-                                failure_stage = 'download'
-                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                            )
-                        )
-                    ) AS has_failed,
-                    (
-                        phase_outcome = 'FAILED'
-                        AND write_started IS FALSE
-                        AND (
-                            failure_stage = 'download'
-                            OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                        )
-                    ) AS preinstall_download_failure,
-                    (result_classification_effective = 'NOT_STARTED') AS has_not_started,
-                    (diagnostic_status = 'ACTIVE' AND
-                        linked_github_issue IS NOT NULL AND btrim(linked_github_issue) <> '')
-                        AS has_github_issue,
-                    (diagnostic_status = 'ACTIVE' AND
-                        canonical_device_model_id IS NULL AND
-                        COALESCE(identity_resolution_state, 'UNRESOLVED')
-                            NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
-                        AND NOT (
-                            write_started IS FALSE
-                            AND (
-                                failure_stage = 'download'
-                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                            )
-                        )) AS identity_pending,
-                    (diagnostic_status = 'ACTIVE' AND NOT (
-                        write_started IS FALSE
-                        AND (
-                            failure_stage = 'download'
-                            OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
-                        )
-                    ) AND (
-                        phase_outcome IN ('FAILED', 'NOT_STARTED')
-                        OR result_classification_effective = 'UNKNOWN'
-                        OR failure_stage IS NOT NULL
-                        OR failure_code IS NOT NULL
-                        OR error_category IS NOT NULL
-                    )) AS open_error
-                FROM deduplicated_results
-            )
-        """
-        scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
-        with self.connection() as connection:
-            # The last read below uses compatibility_model_statistics.
-            _skip_jit_compilation(connection)
-            attention = list(connection.execute(
-                f"""{operation_cte}
-                SELECT *, count(*) FILTER (WHERE open_error) OVER () AS total_open_errors,
-                    count(*) FILTER (WHERE identity_pending) OVER () AS total_identity_pending
-                FROM operation_rows WHERE open_error OR identity_pending OR has_github_issue
-                ORDER BY open_error DESC, last_occurred_at DESC, operation_key
-                LIMIT %s
-                """, (recent_limit,),
-            ).fetchall())
-            summary = connection.execute(
-                f"""
-                {scoped}
-                SELECT
-                    count(*) AS operation_count,
-                    count(*) FILTER (WHERE operation_succeeded)
-                        AS successful_install_count,
-                    count(*) FILTER (
-                        WHERE fresh_failure
-                    ) AS failed_install_count,
-                    count(*) FILTER (WHERE open_error) AS open_error_count,
-                    count(*) FILTER (WHERE operation_succeeded OR fresh_failure)
-                        AS write_started_count,
-                    count(DISTINCT COALESCE(
-                        canonical_device_model_id::text,
-                        NULLIF(compatibility_identity, ''),
-                        NULLIF(model, '')
-                    )) FILTER (WHERE operation_succeeded OR fresh_failure) AS variant_count
-                FROM scoped_operations
-                """,
-                (since,),
-            ).fetchone() or {}
-            recent = list(connection.execute(
-                f"""
-                {scoped}
-                SELECT
-                    operation_key, canonical_device_model_id,
-                    compatibility_identity, model, variant, provider, region,
-                    release_label, app_build, failure_stage, failure_code,
-                    error_category, last_occurred_at, operation_succeeded,
-                    has_failed, has_not_started, preinstall_download_failure,
-                    open_error,
-                    linked_github_issue, diagnostic_workflow_status, has_github_issue
-                FROM scoped_operations
-                ORDER BY last_occurred_at DESC, operation_key
-                LIMIT %s
-                """,
-                (since, recent_limit),
-            ).fetchall())
-            failure_reason_rows = list(connection.execute(
-                f"""
-                {scoped}
-                SELECT error_category, failure_stage, failure_code,
-                       count(*) AS count
-                FROM scoped_operations
-                WHERE has_failed
-                GROUP BY error_category, failure_stage, failure_code
-                """,
-                (since,),
-            ).fetchall())
-            model_activity = list(connection.execute(
-                f"""
-                {scoped}
-                SELECT
-                    COALESCE(
-                        canonical_device_model_id::text,
-                        NULLIF(compatibility_identity, ''),
-                        NULLIF(model, ''),
-                        'unknown-device'
-                    ) AS model_key,
-                    operation_key,
-                    canonical_device_model_id::text AS canonical_device_model_id,
-                    compatibility_identity,
-                    model,
-                    variant,
-                    1 AS operation_count,
-                    CASE WHEN operation_succeeded THEN 1 ELSE 0 END
-                        AS successful_count,
-                    CASE WHEN fresh_failure THEN 1 ELSE 0 END AS failed_count,
-                    CASE WHEN open_error THEN 1 ELSE 0 END AS open_error_count,
-                    last_occurred_at
-                FROM scoped_operations
-                WHERE COALESCE(
-                    canonical_device_model_id::text,
-                    NULLIF(compatibility_identity, ''),
-                    NULLIF(model, '')
-                ) IS NOT NULL
-                ORDER BY last_occurred_at DESC, operation_key
-                LIMIT %s
-                """,
-                (since, OVERVIEW_MODEL_ACTIVITY_LIMIT),
-            ).fetchall())
-            review_required = list(connection.execute(
-                """
-                SELECT
-                    canonical_device_model_id::text AS canonical_device_model_id,
-                    compatibility_identity, model, variant,
-                    review_status, public_statistics_enabled, public_display_name,
-                    last_evidence
-                FROM compatibility_model_statistics
-                WHERE canonical_device_model_id IS NOT NULL
-                  AND (
-                      calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
-                      OR successful_install_count > 0
-                  )
-                  AND (
-                      review_status = 'PENDING'
-                      OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
-                  )
-                ORDER BY last_evidence DESC NULLS LAST, model, variant
-                LIMIT 8
-                """,
-            ).fetchall())
-        failure_reason_counts: dict[str, int] = {}
-        for row in failure_reason_rows:
-            reason = normalize_failure_reason(
-                row.get("error_category"),
-                failure_stage=row.get("failure_stage"),
-                failure_code=row.get("failure_code"),
-            )
-            failure_reason_counts[reason] = (
-                failure_reason_counts.get(reason, 0) + int(row.get("count") or 0)
-            )
-        failure_reasons = [
-            {"reason": reason, "count": count}
-            for reason, count in sorted(
-                failure_reason_counts.items(), key=lambda item: (-item[1], item[0])
-            )[:8]
-        ]
-        return {
-            "attention": [dict(row) for row in attention],
-            "allTimeOpenErrorCount": int(attention[0].get("total_open_errors") or 0) if attention else 0,
-            "allTimeIdentityPendingCount": int(attention[0].get("total_identity_pending") or 0) if attention else 0,
-            "operationCount": int(summary.get("operation_count") or 0),
-            "successfulInstallCount": int(summary.get("successful_install_count") or 0),
-            "failedInstallCount": int(summary.get("failed_install_count") or 0),
-            "openErrorCount": int(summary.get("open_error_count") or 0),
-            "writeStartedCount": int(summary.get("write_started_count") or 0),
-            "variantCount": int(summary.get("variant_count") or 0),
-            "evidenceSuccessRate": (
-                int(summary.get("successful_install_count") or 0)
-                / int(summary.get("write_started_count") or 1)
-                * 100
-                if int(summary.get("write_started_count") or 0)
-                else None
-            ),
-            "hasData": int(summary.get("operation_count") or 0) > 0,
-            "recentActivity": [dict(row) for row in recent],
-            "failureReasons": failure_reasons,
-            "modelActivity": [dict(row) for row in model_activity],
-            "reviewRequired": [dict(row) for row in review_required],
-        }
-
     @staticmethod
     def _update_not_started_activity(connection, since: datetime, limit: int) -> list[dict[str, Any]]:
         """Retained pre-write update outcomes for Activity only, never KPI evidence."""
@@ -2173,10 +1862,7 @@ class Database:
                             PARTITION BY e.lifecycle_key
                             ORDER BY e.occurred_at, CASE e.event_type WHEN 'DOWNLOAD_STARTED' THEN 0 WHEN 'DOWNLOAD_PROCESSING' THEN 1 ELSE 2 END, e.event_id
                             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-                        ) AS lifecycle,
-                        bool_or(e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED')) OVER (
-                            PARTITION BY e.lifecycle_key
-                        ) AS has_recorded_outcome
+                        ) AS lifecycle
                     FROM acquisition_events AS e
                     ORDER BY e.lifecycle_key,
                         CASE WHEN e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED') THEN 0 ELSE 1 END,
@@ -2199,16 +1885,10 @@ class Database:
                     e.occurred_at,
                     e.component_kind,
                     e.lifecycle,
-                    e.has_recorded_outcome,
                     NULL AS canonical_device_model_id,
                     NULL AS compatibility_identity,
                     NULL AS model,
-                    NULL AS variant,
-                    (
-                        e.event_type IN ('DOWNLOAD_STARTED', 'DOWNLOAD_PROCESSING')
-                        AND NOT e.has_recorded_outcome
-                        AND e.occurred_at < now() - interval '{ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS} hours'
-                    ) AS is_stale
+                    NULL AS variant
                 {event_scope}
                 UNION ALL
                 SELECT
@@ -2229,12 +1909,10 @@ class Database:
                     c.occurred_at,
                     NULL AS component_kind,
                     NULL AS lifecycle,
-                    false AS has_recorded_outcome,
                     c.canonical_device_model_id,
                     c.compatibility_identity,
                     c.model,
-                    c.variant,
-                    false AS is_stale
+                    c.variant
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
                 ORDER BY occurred_at DESC
@@ -4119,18 +3797,6 @@ class Database:
                 (provider_id, limit),
             ).fetchall())
 
-    def provider_health_history(self, provider_id: str, limit: int = 11) -> list[dict[str, Any]]:
-        with self.connection() as connection:
-            return list(connection.execute(
-                """
-                SELECT * FROM provider_health_check
-                WHERE provider_id = %s AND checked_at >= now() - interval '30 days'
-                ORDER BY checked_at DESC, id DESC
-                LIMIT %s
-                """,
-                (provider_id, max(1, min(11, limit))),
-            ).fetchall())
-
     def record_provider_health(
         self, result: ProviderHealthResult, *, audit: dict[str, Any] | None = None,
     ) -> int:
@@ -4399,14 +4065,6 @@ class Database:
             }
             for row in rows
         ]
-
-    def maps_unknown_model_count(self) -> int:
-        """Needs attention: active catalog models whose Maps value is Unknown (NULL)."""
-        with self.connection() as connection:
-            row = connection.execute(
-                "SELECT count(*) AS n FROM device_model WHERE active IS TRUE AND map_capable IS NULL"
-            ).fetchone() or {}
-        return int(row.get("n") or 0)
 
     def support_report_open_count(self) -> int:
         """Needs attention: open reports from public (non-local) builds."""

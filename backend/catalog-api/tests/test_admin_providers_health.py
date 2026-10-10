@@ -7,7 +7,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from admin_test_utils import metric_tone, metric_value, visible_text
-from terento_catalog.admin import _system_health_cards, overview_page, provider_detail_page, providers_page, system_health_page
+from terento_catalog.admin import ADMIN_STYLES, _system_health_cards, overview_page, provider_detail_page, providers_page, system_health_page
 
 
 def _package(index: int, *, reason: str = "Download unavailable", broken: bool = True) -> dict:
@@ -179,8 +179,8 @@ class ProvidersListTests(unittest.TestCase):
         issue_cells = zero + positive + unknown
         self.assertNotIn("<svg", issue_cells)
         self.assertNotIn("admin-pill", issue_cells)
-        self.assertIn(".provider-issue-count.is-positive{color:var(--danger)}", body)
-        self.assertNotIn("border-radius:999px;color:var(--graphite);font-weight:750}.provider-issue-count", body)
+        self.assertIn(".provider-issue-count.is-positive{color:var(--danger)}", ADMIN_STYLES)
+        self.assertNotIn("border-radius:999px;color:var(--graphite);font-weight:750}.provider-issue-count", ADMIN_STYLES)
 
     def test_summary_is_one_card_without_scope_chips_and_last_sync_in_heading(self):
         body = self._page([

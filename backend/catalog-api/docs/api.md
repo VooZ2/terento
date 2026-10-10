@@ -335,7 +335,13 @@ username is checked against a fixed hash so it takes as long as a wrong
 password. Changing the password on `/admin/account` signs out every other
 session of that administrator in the same transaction. Cookies are
 Secure, HttpOnly, SameSite=Strict. Authenticated Admin responses are no-store and
-noindex.
+noindex, except two content-versioned static assets: signed-in pages link the
+Admin stylesheet `/admin/map-assets/admin.<hash>.css`, and Maps loads the world
+map as `/admin/map-assets/world-map.<hash>.js` (`<hash>` = the first 16 hex
+digits of the content SHA-256, so a change is a new URL). Both are served
+behind the same session and CSRF checks as the other map assets with
+`Cache-Control: private, max-age=31536000, immutable`. The sign-in and setup
+pages keep the same CSS inline because that route needs a session.
 
 ## `GET https://api.terento.app/admin/first-run`
 
@@ -1328,7 +1334,9 @@ service is added by this selection/interaction fix.
 Admin Map statistics uses self-hosted Leaflet 1.9.4 (BSD-2-Clause), loaded only
 on that page. Exact allowlisted `/admin/map-assets/` JS/CSS routes require the
 existing session and CSRF cookie checks. Assets are privately cached; script
-nonces and same-origin stylesheet policy preserve the admin CSP.
+nonces and same-origin stylesheet policy preserve the admin CSP. The bundled
+world-map SVG is a versioned nonce script setting `window.terentoWorldMapSvg`
+before the page script runs, not inline page data.
 
 `static/map/coverage-map-v1.js` exposes `TerentoCoverageMap(container, options)`:
 trusted bundled SVG, country names, callbacks, `update([{code,count,name}])`,
@@ -1414,7 +1422,7 @@ may download successfully and stop before device writing; the download outcome
 and update outcome remain separate facts. These are metadata only, never filenames or device IDs.
 A repeated event/phase is idempotent and one acquisition admits one terminal.
 Recent activity groups the new acquisition phases with component and history;
-non-terminal observations are explicitly labelled `Outcome not received`.
+it shows only acquisitions with a recorded outcome.
 Cancellation/interruption are excluded from download failure/success ratios.
 The API and migration supporting this contract must be deployed before a client
 that emits these fields is distributed.
