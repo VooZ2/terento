@@ -273,7 +273,7 @@ class FakeEvidenceDatabase:
     def delete_admin_session(self, session_hash):
         self.sessions.pop(session_hash, None)
 
-    def update_admin_user(self, user_id, username, password_hash):
+    def update_admin_user(self, user_id, username, password_hash, keep_session_hash=None):
         user = next(user for user in self.users if user["id"] == user_id)
         user.update(username=username, password_hash=password_hash)
         return user

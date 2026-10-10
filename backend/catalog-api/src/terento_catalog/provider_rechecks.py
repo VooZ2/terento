@@ -37,8 +37,11 @@ def ensure_retry_allowed(database, provider_id):
 
 def enqueue(database, provider_id, package_id, admin_id):
     with database.connection() as c:
-        if not c.execute("SELECT id FROM map_provider WHERE id=%s AND status <> 'RETIRED' FOR UPDATE", (provider_id,)).fetchone():
+        provider = c.execute("SELECT status FROM map_provider WHERE id=%s FOR UPDATE", (provider_id,)).fetchone()
+        if not provider:
             raise LookupError('provider_not_found')
+        if provider['status'] == 'RETIRED':
+            raise LookupError('provider_retired')
         if package_id and not c.execute("SELECT id FROM map_package WHERE id=%s AND provider_id=%s AND availability <> 'RETIRED'", (package_id,provider_id)).fetchone():
             raise LookupError('package_not_found')
         # Enforce a provider cooldown across page reloads and repeated jobs.

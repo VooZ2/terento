@@ -13,6 +13,7 @@ This describes the local implementation, not deployed route availability.
 - `POST /admin/providers/{id}/rechecks`: authenticated and CSRF protected;
   body `{}` selects failed/unavailable artifacts, or `{ "packageId": "..." }`
   selects one provider-owned, non-retired package. Returns `{ "jobId": ... }`.
+  A retired provider returns `409 provider_retired`.
   The same active scope reuses its queued/running job. Another active scope
   returns provider-busy; recent completed checks return an explicit cooldown
   with the earliest retry time.
@@ -34,7 +35,8 @@ This describes the local implementation, not deployed route availability.
   or ambiguous diagnostic renders an explicit availability message.
 - `POST /admin/update-diagnostics/issue|resolve|reopen|workflow`: authenticated,
   CSRF-protected form actions targeting one `diagnostic_id` UUID. Issue actions
-  link a validated repository issue number or unlink it; they do not create
+  link a validated repository issue number (`#1` or higher; `#0` is `400`) or
+  unlink it; they do not create
   GitHub issues. Resolve requires an allowed `resolution_reason` and accepts
   an optional note up to 2,000 characters. Workflow accepts the existing
   `OPEN`, `IN_PROGRESS`, `UNDER_REVIEW` states and rejects changes to resolved
@@ -295,7 +297,12 @@ Authenticated HTML routes answer errors with an HTML page inside the admin
 chrome (400 invalid link, 404 not found, 503 unavailable); JSON routes
 (`*.json`, provider JSON resources and `/admin/providers/{id}/rechecks`) keep JSON
 errors, and the recheck status route now returns `503
-provider_rechecks_unavailable` instead of dropping the connection. Inline
+provider_rechecks_unavailable` instead of dropping the connection. Every
+`POST /admin*` (forms and provider JSON actions, including the session lookup)
+that hits a storage failure without a more specific error returns JSON `503
+{"error":"admin_unavailable"}` instead of dropping the connection; existing
+`400`/`303` answers are unchanged. Admin form fields containing a NUL character
+are rejected with `400 invalid_form`. Inline
 scripts carry the CSP nonce only at their template sites through a per-process
 unguessable placeholder; the assembled body is never post-processed for
 `<script>`. Open pages check freshness every two minutes while visible and once
@@ -309,7 +316,12 @@ origin assertion. The application then requires its native admin session and
 CSRF checks. A local preview that bypasses Access is not production authorization
 evidence. The first administrator can be created only once through `/admin/setup`
 with the environment bootstrap secret. Passwords use salted PBKDF2-SHA256;
-opaque session and CSRF values are stored only as SHA-256 hashes. Cookies are
+opaque session and CSRF values are stored only as SHA-256 hashes. Login and
+setup allow 10 failed attempts per client address per 15 minutes; each attempt
+is counted before the password check and cleared by a success, and an unknown
+username is checked against a fixed hash so it takes as long as a wrong
+password. Changing the password on `/admin/account` signs out every other
+session of that administrator in the same transaction. Cookies are
 Secure, HttpOnly, SameSite=Strict. Authenticated Admin responses are no-store and
 noindex.
 
@@ -729,7 +741,8 @@ and collection evidence are not deleted by this cleanup.
 `{"packageId":"…","enabled":false,"reason":"…"}`. Both require the existing
 Admin session and CSRF token and create audit records. Disabling requires a
 non-empty reason of at most 500 characters; enabling clears it. The reason is
-private Admin evidence. The package must belong to this provider. The separate
+private Admin evidence. The package must belong to this provider; a package of
+a retired provider returns `409 provider_retired`. The separate
 package override survives catalog refreshes; it does not change source
 validation or remove installed files.
 
@@ -758,7 +771,8 @@ clients do not interpret the new fields. No map data passes through the API.
 
 ## `POST /admin/providers/{id}/check`
 
-Runs one authenticated CSRF-protected health check and records an audit row.
+Runs one authenticated CSRF-protected health check and records an audit row
+in the same transaction as the health observation.
 The request body is an empty JSON object. The response includes the health
 check ID and the component result. Health checks are operational metadata, not
 device compatibility evidence.
@@ -778,6 +792,8 @@ the existing admin session and CSRF token and writes an `admin_audit_log`
 record with the admin user, provider, old status, new status, timestamp, and
 reason. Changing to `ACTIVE` is rejected with HTTP `409` and
 `provider_activation_blocked` when `activationGate.canActivate` is false. The
+activation gate and the status change run under the provider lock; while a
+check, collection or recheck holds it the request returns `400 provider_busy`. The
 HTML `Activate` control is disabled in the same state. It cannot upload parser
 code, execute arbitrary provider logic, or activate an unknown provider.
 
@@ -785,7 +801,10 @@ code, execute arbitrary provider logic, or activate an unknown provider.
 
 Runs one known server-side adapter, stores metadata-only package/artifact
 records, records a `catalog_collection_run`, and returns counts. The body is
-an empty JSON object. Provider map binaries remain direct provider → user's
+an empty JSON object. The `provider.catalog_collected` or
+`provider.catalog_collection_failed` audit row is written in the transaction
+that finishes the run; a busy provider or an active cooldown starts no run and
+writes no collection audit. Provider map binaries remain direct provider → user's
 Mac.
 
 ## `POST /admin/providers/{id}/previews`
@@ -795,8 +814,11 @@ Turns map style previews on or off for one provider. The JSON body is exactly
 `invalid_preview_control`. The action requires the admin session and CSRF
 token, sets `map_provider.preview_enabled` and writes a
 `provider.previews_enabled` or `provider.previews_disabled` audit record.
-Retired providers cannot be changed. Turning previews off hides the provider's
-layers from the public manifest within a minute; it does not change catalog,
+Retired providers cannot be changed and return `409 provider_retired`
+(unknown providers stay `404 provider_not_found`). Turning previews off hides
+the provider's layers from the public manifest of the API process that handled
+the switch at once (a manifest build that overlapped the switch is discarded)
+and from any other process within a minute; it does not change catalog,
 download or installation behaviour.
 
 The provider detail page shows the switch as a secondary action in its action
@@ -848,10 +870,10 @@ The Admin routes are `GET /admin/support-reports?status=open|handled&offset=N`
 (detail, including local test reports reached from Test data) and the
 CSRF-protected form posts `/admin/support-reports/handle`, `/reopen` and
 `/issue` (`reference`, optional `note` ≤ 2000 characters, `linked_github_issue`
-as `#123` or empty to unlink). Each action writes `support_report_audit` and
+as `#123` or empty to unlink; `#0` is invalid). Each action writes `support_report_audit` and
 `admin_audit_log` and redirects to the detail; an unknown reference is `404`,
 invalid input `400`. Local test reports are listed on `/admin/test-data` and
-deleted by its purge.
+deleted by its purge, in the same transaction as local telemetry.
 
 ## `POST /map-events`
 
@@ -879,7 +901,8 @@ attributed exactly once the package is published. A successful
 insert returns `201`, a duplicate returns `200`, and both return the
 `operationId`. Local rows are excluded from production map statistics and can
 be removed only by an authenticated, CSRF-protected admin action at
-`/admin/test-data`; the purge deletes both telemetry streams in one transaction.
+`/admin/test-data`; the purge deletes both telemetry streams and local support
+reports in one transaction.
 
 `MAP_UPDATE_*` events represent a safe replacement of an already installed
 Terento-owned provider map. They are counted separately from first

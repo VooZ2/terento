@@ -516,7 +516,8 @@ from the card, while every failure received before the epoch remains excluded.
 
 `admin_user` stores a unique username and salted PBKDF2-SHA256 password hash;
 no recoverable password is stored. `admin_session` stores only hashes of the
-opaque session and CSRF tokens with an expiry and user foreign key. PostgreSQL
+opaque session and CSRF tokens with an expiry and user foreign key; a password
+change deletes the user's other sessions in the same transaction. PostgreSQL
 is not published outside the private Docker network.
 
 ## Operational health

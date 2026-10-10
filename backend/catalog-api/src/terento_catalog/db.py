@@ -2377,14 +2377,25 @@ class Database:
         with self.connection() as connection:
             connection.execute("DELETE FROM admin_session WHERE token_hash = %s", (session_hash,))
 
-    def update_admin_user(self, user_id: int, username: str, password_hash: str) -> dict[str, Any]:
+    def update_admin_user(
+        self, user_id: int, username: str, password_hash: str, *, keep_session_hash: str | None = None,
+    ) -> dict[str, Any]:
+        """A password change signs out every other session of this user in the same transaction."""
         query = """
             UPDATE admin_user SET username = %s, password_hash = %s, updated_at = now()
             WHERE id = %s
             RETURNING id, username, password_hash, created_at, last_login_at
         """
         with self.connection() as connection:
+            previous = connection.execute(
+                "SELECT password_hash FROM admin_user WHERE id = %s FOR UPDATE", (user_id,),
+            ).fetchone()
             row = connection.execute(query, (username, password_hash, user_id)).fetchone()
+            if previous and previous["password_hash"] != password_hash:
+                connection.execute(
+                    "DELETE FROM admin_session WHERE admin_user_id = %s AND token_hash IS DISTINCT FROM %s",
+                    (user_id, keep_session_hash),
+                )
         return dict(row)
 
     def update_device_support_status(
@@ -2694,7 +2705,7 @@ class Database:
             raise ValueError("invalid diagnostic record")
         linked_issue = (linked_github_issue or "").strip() or None
         if linked_issue:
-            issue_match = re.fullmatch(r"#?(\d{1,10})", linked_issue)
+            issue_match = re.fullmatch(r"#?([1-9]\d{0,9})", linked_issue)
             if not issue_match:
                 raise ValueError("invalid GitHub issue reference")
             linked_issue = f"#{int(issue_match.group(1))}"
@@ -2707,6 +2718,7 @@ class Database:
                        linked_github_issue
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
+                ORDER BY event_id
                 FOR UPDATE
                 """,
                 scope_parameters,
@@ -2781,7 +2793,7 @@ class Database:
             raise ValueError("invalid diagnostic record")
         raw_issue = (linked_github_issue or "").strip()
         if raw_issue:
-            match = re.fullmatch(r"#?(\d{1,10})", raw_issue)
+            match = re.fullmatch(r"#?([1-9]\d{0,9})", raw_issue)
             if not match:
                 raise ValueError("invalid GitHub issue reference")
             linked_github_issue = f"#{int(match.group(1))}"
@@ -2795,6 +2807,7 @@ class Database:
                        linked_github_issue
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
+                ORDER BY event_id
                 FOR UPDATE
                 """,
                 scope_parameters,
@@ -2856,6 +2869,7 @@ class Database:
                        linked_github_issue
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
+                ORDER BY event_id
                 FOR UPDATE
                 """,
                 scope_parameters,
@@ -3028,6 +3042,7 @@ class Database:
                 SELECT *
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
+                ORDER BY event_id
                 FOR UPDATE
                 """,
                 scope_parameters,
@@ -3668,6 +3683,7 @@ class Database:
         error_detail: str | None = None,
         latest_release: str | None = None,
         catalog_fingerprint: str | None = None,
+        audit: dict[str, Any] | None = None,
     ) -> None:
         with self.connection() as connection:
             previous = None
@@ -3710,6 +3726,8 @@ class Database:
                     latest_release, catalog_fingerprint, release_change_detected, run_id,
                 ),
             )
+            if audit:
+                self._insert_admin_audit(connection, **audit)
 
     def upsert_provider_snapshot(self, snapshot: ProviderSnapshot, *, run_id: int | None = None) -> None:
         """Persist a complete metadata snapshot without storing map payloads."""
@@ -4072,7 +4090,8 @@ class Database:
                 RETURNING id""",
                 (not enabled, reason.strip() if not enabled else None, package_id, provider_id)).fetchone()
             if not row:
-                raise LookupError('package_not_found')
+                provider = connection.execute("SELECT status FROM map_provider WHERE id=%s", (provider_id,)).fetchone()
+                raise LookupError('provider_retired' if provider and provider['status'] == 'RETIRED' else 'package_not_found')
             self._insert_admin_audit(connection, admin_user_id=admin_user_id,
                 action='package.downloads_enabled' if enabled else 'package.downloads_disabled',
                 provider_id=provider_id, target=package_id, reason=reason.strip(), request_id=request_id,
@@ -4143,7 +4162,9 @@ class Database:
                 (provider_id, max(1, min(11, limit))),
             ).fetchall())
 
-    def record_provider_health(self, result: ProviderHealthResult) -> int:
+    def record_provider_health(
+        self, result: ProviderHealthResult, *, audit: dict[str, Any] | None = None,
+    ) -> int:
         values = result.as_database_values()
         with self.connection() as connection:
             row = connection.execute(
@@ -4175,6 +4196,10 @@ class Database:
                 """,
                 (values.get("retry_after_seconds"), values.get("retry_after_seconds"), values["provider_id"]),
             )
+            if audit:
+                self._insert_admin_audit(
+                    connection, provider_id=values["provider_id"], target=str(row["id"]), **audit,
+                )
         return int(row["id"])
 
     def set_provider_status(
@@ -4189,7 +4214,7 @@ class Database:
     ) -> bool:
         with self.connection() as connection:
             current = connection.execute(
-                "SELECT status FROM map_provider WHERE id = %s",
+                "SELECT status FROM map_provider WHERE id = %s FOR UPDATE",
                 (provider_id,),
             ).fetchone()
             if current is None:
@@ -4602,31 +4627,6 @@ class Database:
             )
         return True
 
-    def purge_local_support_reports(
-        self, *, admin_user_id: int | None, request_id: str | None = None,
-    ) -> int:
-        """Delete only server-classified local test support reports (Test data purge)."""
-        with self.connection() as connection:
-            row = connection.execute(
-                """
-                WITH deleted AS (
-                    DELETE FROM support_report WHERE is_local_test IS TRUE RETURNING id
-                )
-                SELECT count(*) AS report_count FROM deleted
-                """
-            ).fetchone() or {}
-            count = int(row.get("report_count") or 0)
-            self._insert_admin_audit(
-                connection,
-                admin_user_id=admin_user_id,
-                action="support_report.local_test_purged",
-                target="local-test-support-reports",
-                request_id=request_id,
-                reason="Authenticated admin purge of server-classified local support reports",
-                details={"supportReportCount": count},
-            )
-        return count
-
     def insert_app_funnel_event(self, event: dict[str, Any]) -> bool:
         """Store one validated funnel event; a replayed event ID is a no-op."""
         with self.connection() as connection:
@@ -4862,7 +4862,7 @@ class Database:
         admin_user_id: int | None,
         request_id: str | None = None,
     ) -> dict[str, int]:
-        """Atomically delete only server-classified local test events.
+        """Atomically delete only server-classified local test events and support reports.
 
         The shared operation UUID is intentionally not used as the delete
         predicate: ``is_local_test`` is the immutable server-side boundary,
@@ -4927,6 +4927,24 @@ class Database:
                 request_id=request_id,
                 reason="Authenticated admin purge of server-classified local telemetry",
                 details=counts,
+            )
+            report_row = connection.execute(
+                """
+                WITH deleted AS (
+                    DELETE FROM support_report WHERE is_local_test IS TRUE RETURNING id
+                )
+                SELECT count(*) AS report_count FROM deleted
+                """
+            ).fetchone() or {}
+            counts["supportReportCount"] = int(report_row.get("report_count") or 0)
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="support_report.local_test_purged",
+                target="local-test-support-reports",
+                request_id=request_id,
+                reason="Authenticated admin purge of server-classified local support reports",
+                details={"supportReportCount": counts["supportReportCount"]},
             )
         return counts
 

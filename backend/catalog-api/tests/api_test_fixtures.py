@@ -196,7 +196,9 @@ class FakeProviderDatabase:
     def audit_rows(self, provider_id):
         return []
 
-    def record_provider_health(self, result):
+    def record_provider_health(self, result, audit=None):
+        if audit:
+            self.audits.append(audit)
         return 11
 
     def record_admin_audit(self, **kwargs):

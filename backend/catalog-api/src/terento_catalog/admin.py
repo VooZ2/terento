@@ -111,6 +111,10 @@ def verify_password(password: str, encoded: str) -> bool:
     return hmac.compare_digest(actual, expected_bytes)
 
 
+# Verified for unknown usernames so a failed login costs the same PBKDF2 time.
+UNKNOWN_USER_PASSWORD_HASH = f"pbkdf2-sha256${PBKDF2_ITERATIONS}${'A' * 22}${'A' * 43}"
+
+
 def new_token() -> str:
     return secrets.token_urlsafe(32)
 
@@ -774,7 +778,7 @@ def _normalise_github_issue_reference(value: Any) -> str | None:
     raw = str(value or "").strip()
     if not raw:
         return None
-    match = re.fullmatch(r"#?(\d{1,10})", raw)
+    match = re.fullmatch(r"#?([1-9]\d{0,9})", raw)
     if not match:
         raise ValueError("GitHub issue must be a Terento issue number such as #32")
     return f"#{int(match.group(1))}"
