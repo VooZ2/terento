@@ -169,7 +169,7 @@ def _watch_sections(watch: dict[str, Any], period: str) -> str:
         _td(_text(r.get("model")) + (_code("firmware " + r["firmware"]) if r.get("firmware") else "")),
         _td(_text(" ".join(str(v) for v in (r.get("os_family"), r.get("os_major")) if v is not None))),
         _td("Remove" if r["stage"] == "REMOVE" else "Update" if r.get("operation") == "update" else "Install"),
-        _td(_text(r.get("package_id")) + _code(r.get("provider"))),
+        _td(_text(r.get("package_id")) + _code(r.get("provider")) if r.get("package_id") else _provider(r.get("provider"))),
         _td(_outcome(r["outcome"]) + ("" if r["outcome"] == "SUCCEEDED" else
             "<span class='web-installer-why'>" + _words(r.get("reason")) + "</span>"
             + _code(r.get("failure_stage"), r.get("reason"), r.get("error_name")))),
