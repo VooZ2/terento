@@ -1369,7 +1369,9 @@ before the page script runs, not inline page data.
 
 `static/map/coverage-map-v1.js` exposes `TerentoCoverageMap(container, options)`:
 trusted bundled SVG, country names, callbacks, `update([{code,count,name}])`,
-`highlight(code, focus)`, `zoom(action)` and `destroy()`. The renderer performs
+`highlight(code, focus)`, `zoom(action)` and `destroy()`. Optional
+`unavailable` country codes get a grey hatched fill and `unavailableLabel` in
+their accessible name. The full-world fit is the minimum zoom (100%). The renderer performs
 no fetches and knows no admin routes, cookies, telemetry IDs or provider query
 schema. Admin aggregates its existing data and owns provider tooltip details.
 A future public page can reuse the renderer with separately approved aggregate
