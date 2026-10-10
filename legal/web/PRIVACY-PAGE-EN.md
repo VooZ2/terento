@@ -26,7 +26,7 @@ The page sends short anonymous notes to Terento about each step: whether this br
 - the watch model and software version
 - the operating system and browser, with their main version numbers
 - the map provider, the map, its size range and whether it was a new installation or an update
-- the step that failed, a fixed reason code and how long writing and checking took
+- the step that failed, a fixed reason code, standard error codes from the browser, our server or the watch, and how long writing and checking took
 - a random code created each time the page opens, so the steps of one visit can be grouped
 
 They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.

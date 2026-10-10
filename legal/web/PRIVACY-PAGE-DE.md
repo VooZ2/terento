@@ -26,7 +26,7 @@ Die Seite sendet Terento kurze anonyme Meldungen zu jedem Schritt: ob dieser Bro
 - Uhrenmodell und Softwareversion
 - Betriebssystem und Browser mit ihrer Hauptversion
 - Kartenanbieter, Karte, Größenbereich und ob es eine neue Installation oder ein Update war
-- den fehlgeschlagenen Schritt, einen festen Grundcode und die Dauer von Schreiben und Prüfen
+- den fehlgeschlagenen Schritt, einen festen Grundcode, Standard-Fehlercodes von Browser, Server oder Uhr und die Dauer von Schreiben und Prüfen
 - einen zufälligen Code, der bei jedem Öffnen der Seite neu entsteht, damit die Schritte eines Besuchs zusammengehören
 
 Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird nur kurz im Arbeitsspeicher gehalten, um zu begrenzen, wie viele Anfragen ein Computer stellen kann, und nicht gespeichert. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.

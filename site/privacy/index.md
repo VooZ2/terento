@@ -31,7 +31,7 @@ The page sends short anonymous notes to Terento about each step: whether this br
 - the watch model and software version
 - the operating system and browser, with their main version numbers
 - the map provider, the map, its size range and whether it was a new installation or an update
-- the step that failed, a fixed reason code and how long writing and checking took
+- the step that failed, a fixed reason code, standard error codes from the browser, our server or the watch, and how long writing and checking took
 - a random code created each time the page opens, so the steps of one visit can be grouped
 
 They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
@@ -110,7 +110,7 @@ Die Seite sendet Terento kurze anonyme Meldungen zu jedem Schritt: ob dieser Bro
 - Uhrenmodell und Softwareversion
 - Betriebssystem und Browser mit ihrer Hauptversion
 - Kartenanbieter, Karte, Größenbereich und ob es eine neue Installation oder ein Update war
-- den fehlgeschlagenen Schritt, einen festen Grundcode und die Dauer von Schreiben und Prüfen
+- den fehlgeschlagenen Schritt, einen festen Grundcode, Standard-Fehlercodes von Browser, Server oder Uhr und die Dauer von Schreiben und Prüfen
 - einen zufälligen Code, der bei jedem Öffnen der Seite neu entsteht, damit die Schritte eines Besuchs zusammengehören
 
 Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird nur kurz im Arbeitsspeicher gehalten, um zu begrenzen, wie viele Anfragen ein Computer stellen kann, und nicht gespeichert. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.
@@ -189,7 +189,7 @@ La page envoie à Terento de courtes notes anonymes à chaque étape : si ce nav
 - le modèle de la montre et sa version logicielle
 - le système d’exploitation et le navigateur, avec leur version principale
 - le fournisseur, la carte, sa tranche de taille et s’il s’agit d’une nouvelle installation ou d’une mise à jour
-- l’étape en échec, un code de motif fixe et la durée d’écriture et de vérification
+- l’étape en échec, un code de motif fixe, des codes d’erreur standard du navigateur, de notre serveur ou de la montre, et la durée d’écriture et de vérification
 - un code aléatoire créé à chaque ouverture de la page, pour regrouper les étapes d’une même visite
 
 Elles ne contiennent jamais le numéro de série ou l’Unit ID de votre montre, votre adresse IP, des noms de fichiers, la liste des cartes de votre montre ni de texte d’erreur. Votre adresse IP n’est gardée que brièvement en mémoire pour limiter le nombre de requêtes d’un même ordinateur, et n’est pas enregistrée. Ces notes nous montrent quelles montres et quels systèmes et navigateurs fonctionnent et nous aident à corriger les échecs. La base est l’intérêt légitime selon l’article 6(1)(f) du RGPD. La page n’a pas d’interrupteur ; contactez-nous pour vous opposer. Les notes individuelles sont privées et conservées 24 mois.
@@ -268,7 +268,7 @@ Strona wysyła do Terento krótkie anonimowe informacje o każdym kroku: czy tej
 - model zegarka i wersję oprogramowania
 - system operacyjny i przeglądarkę z ich główną wersją
 - dostawcę, mapę, przedział rozmiaru oraz to, czy była to nowa instalacja, czy aktualizacja
-- krok, który się nie powiódł, stały kod przyczyny oraz czas zapisu i sprawdzania
+- krok, który się nie powiódł, stały kod przyczyny, standardowe kody błędów przeglądarki, naszego serwera lub zegarka oraz czas zapisu i sprawdzania
 - losowy kod tworzony przy każdym otwarciu strony, aby połączyć kroki jednej wizyty
 
 Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
@@ -347,7 +347,7 @@ Stránka posílá Terento krátké anonymní zprávy o každém kroku: zda lze t
 - model hodinek a verzi softwaru
 - operační systém a prohlížeč s jejich hlavní verzí
 - poskytovatele, mapu, rozsah velikosti a zda šlo o novou instalaci, nebo aktualizaci
-- krok, který selhal, pevný kód důvodu a dobu zápisu a kontroly
+- krok, který selhal, pevný kód důvodu, standardní chybové kódy prohlížeče, našeho serveru nebo hodinek a dobu zápisu a kontroly
 - náhodný kód vytvořený při každém otevření stránky, aby bylo možné spojit kroky jedné návštěvy
 
 Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
@@ -426,7 +426,7 @@ La pagina invia a Terento brevi note anonime su ogni passaggio: se questo browse
 - modello dell’orologio e versione del software
 - sistema operativo e browser, con la loro versione principale
 - fornitore, mappa, fascia di dimensione e se si trattava di una nuova installazione o di un aggiornamento
-- il passaggio non riuscito, un codice di motivo fisso e la durata di scrittura e verifica
+- il passaggio non riuscito, un codice di motivo fisso, codici di errore standard del browser, del nostro server o dell’orologio e la durata di scrittura e verifica
 - un codice casuale creato a ogni apertura della pagina, per raggruppare i passaggi di una visita
 
 Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP resta solo brevemente in memoria per limitare quante richieste può fare un computer e non viene salvato. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.

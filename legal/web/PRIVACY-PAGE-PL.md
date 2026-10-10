@@ -26,7 +26,7 @@ Strona wysyła do Terento krótkie anonimowe informacje o każdym kroku: czy tej
 - model zegarka i wersję oprogramowania
 - system operacyjny i przeglądarkę z ich główną wersją
 - dostawcę, mapę, przedział rozmiaru oraz to, czy była to nowa instalacja, czy aktualizacja
-- krok, który się nie powiódł, stały kod przyczyny oraz czas zapisu i sprawdzania
+- krok, który się nie powiódł, stały kod przyczyny, standardowe kody błędów przeglądarki, naszego serwera lub zegarka oraz czas zapisu i sprawdzania
 - losowy kod tworzony przy każdym otwarciu strony, aby połączyć kroki jednej wizyty
 
 Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.

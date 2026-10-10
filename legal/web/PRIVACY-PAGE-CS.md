@@ -26,7 +26,7 @@ Stránka posílá Terento krátké anonymní zprávy o každém kroku: zda lze t
 - model hodinek a verzi softwaru
 - operační systém a prohlížeč s jejich hlavní verzí
 - poskytovatele, mapu, rozsah velikosti a zda šlo o novou instalaci, nebo aktualizaci
-- krok, který selhal, pevný kód důvodu a dobu zápisu a kontroly
+- krok, který selhal, pevný kód důvodu, standardní chybové kódy prohlížeče, našeho serveru nebo hodinek a dobu zápisu a kontroly
 - náhodný kód vytvořený při každém otevření stránky, aby bylo možné spojit kroky jedné návštěvy
 
 Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
