@@ -19,7 +19,8 @@ COMPATIBILITY_LOCALES_VERSION = "20260918-compatibility-successful-snapshot-v1"
 COMPATIBILITY_VERSION = "20260918-compatibility-successful-snapshot-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 PAGE_LANGUAGE_VERSION = "20261006-shared-page-language-v2"
-# The web installer has its own host; non-English locales open it in the same language.
+# Footer Web installer link (lab host until the terento.app/install/ launch).
+# Localized pages add ?lang=; site-shell.js sets it on Legal/Privacy after a language switch.
 WEB_INSTALLER_URL = "https://lab.terento.app/install/"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "styles": "Maps", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "troubleshooting": "Troubleshooting", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "web_installer": "Web installer"},

@@ -19,9 +19,9 @@ I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, perco
 
 L’installer web ti permette di installare mappe sull’orologio da Google Chrome, senza l’app. Chrome legge dall’orologio, sul tuo computer, ciò che gli serve, come modello, spazio libero e mappe.
 
-Quando scegli una mappa, il server di Terento la scarica dal fornitore originale e la passa al tuo browser. La copia è creata solo per la tua richiesta, non viene condivisa ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Il fornitore vede il server di Terento, non te.
+Quando scegli una mappa, il server di Terento la scarica dal fornitore originale e la passa al tuo browser. La copia è creata solo per la tua richiesta, non viene condivisa ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Il fornitore vede il server di Terento, non te. Per ogni copia il server conserva un registro della mappa (fornitore, mappa, regione e versione), della sua dimensione, di quanto è arrivato al browser, degli orari e dell’esito, senza nulla su di te, sul browser o sull’orologio. Questi registri sono conservati per 24 mesi.
 
-La pagina invia a Terento brevi note anonime su ogni passaggio: se questo browser può essere usato, se l’orologio si è collegato e come si è conclusa ogni installazione, aggiornamento o rimozione di mappa. Contengono:
+La pagina invia a Terento, per ogni passaggio, brevi note che non ti identificano: se questo browser può essere usato, se l’orologio si è collegato e come si è conclusa ogni installazione, aggiornamento o rimozione di mappa. Contengono:
 
 - modello dell’orologio e versione del software
 - sistema operativo e browser, con la loro versione principale

@@ -24,9 +24,9 @@ Reports exclude Garmin Unit IDs, serial-number values, account details, local pa
 
 The web installer lets you install maps on your watch from Google Chrome, without the app. Chrome reads what it needs from the watch, such as its model, free space and maps, on your computer.
 
-When you choose a map, Terento’s server downloads it from the original provider and passes it to your browser. The copy is made for your request only, is not shared and is deleted once your browser has it, or after two hours if it is not collected. The provider sees Terento’s server, not you.
+When you choose a map, Terento’s server downloads it from the original provider and passes it to your browser. The copy is made for your request only, is not shared and is deleted once your browser has it, or after two hours if it is not collected. The provider sees Terento’s server, not you. For each copy, the server keeps a record of the map (provider, map, region and release), its size, how much of it reached your browser, the times and the result, with nothing about you, your browser or your watch. These records are kept for 24 months.
 
-The page sends short anonymous notes to Terento about each step: whether this browser can be used, whether the watch connected and how each map installation, update or removal ended. They include:
+The page sends Terento short notes that do not identify you, one for each step: whether this browser can be used, whether the watch connected and how each map installation, update or removal ended. They include:
 
 - the watch model and software version
 - the operating system and browser, with their main version numbers
@@ -103,9 +103,9 @@ Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokale
 
 Mit dem Web-Installer installierst du Karten aus Google Chrome auf deine Uhr, ohne die App. Chrome liest auf deinem Computer, was es von der Uhr braucht, etwa Modell, freien Speicher und Karten.
 
-Wenn du eine Karte wählst, lädt der Terento-Server sie vom ursprünglichen Anbieter und gibt sie an deinen Browser weiter. Die Kopie entsteht nur für deine Anfrage, wird nicht geteilt und gelöscht, sobald dein Browser sie hat, oder nach zwei Stunden, wenn sie nicht abgeholt wird. Der Anbieter sieht den Terento-Server, nicht dich.
+Wenn du eine Karte wählst, lädt der Terento-Server sie vom ursprünglichen Anbieter und gibt sie an deinen Browser weiter. Die Kopie entsteht nur für deine Anfrage, wird nicht geteilt und gelöscht, sobald dein Browser sie hat, oder nach zwei Stunden, wenn sie nicht abgeholt wird. Der Anbieter sieht den Terento-Server, nicht dich. Zu jeder Kopie speichert der Server einen Eintrag über die Karte (Anbieter, Karte, Region und Version), ihre Größe, wie viel davon deinen Browser erreicht hat, die Zeiten und das Ergebnis, ohne Angaben zu dir, deinem Browser oder deiner Uhr. Diese Einträge werden 24 Monate aufbewahrt.
 
-Die Seite sendet Terento kurze anonyme Meldungen zu jedem Schritt: ob dieser Browser nutzbar ist, ob die Uhr verbunden wurde und wie jede Installation, Aktualisierung oder Entfernung einer Karte ausging. Sie enthalten:
+Die Seite sendet Terento zu jedem Schritt kurze Meldungen, die dich nicht identifizieren: ob dieser Browser nutzbar ist, ob die Uhr verbunden wurde und wie jede Installation, Aktualisierung oder Entfernung einer Karte ausging. Sie enthalten:
 
 - Uhrenmodell und Softwareversion
 - Betriebssystem und Browser mit ihrer Hauptversion
@@ -182,9 +182,9 @@ Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, compte
 
 L’installateur web permet d’installer des cartes sur votre montre depuis Google Chrome, sans l’application. Chrome lit sur votre ordinateur ce dont il a besoin, comme le modèle de la montre, l’espace libre et les cartes.
 
-Quand vous choisissez une carte, le serveur de Terento la télécharge depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie est faite pour votre seule demande, n’est pas partagée et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Le fournisseur voit le serveur de Terento, pas vous.
+Quand vous choisissez une carte, le serveur de Terento la télécharge depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie est faite pour votre seule demande, n’est pas partagée et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Le fournisseur voit le serveur de Terento, pas vous. Pour chaque copie, le serveur conserve un enregistrement de la carte (fournisseur, carte, région et version), de sa taille, de la part reçue par votre navigateur, des horaires et du résultat, sans rien sur vous, votre navigateur ou votre montre. Ces enregistrements sont conservés 24 mois.
 
-La page envoie à Terento de courtes notes anonymes à chaque étape : si ce navigateur peut être utilisé, si la montre s’est connectée et comment chaque installation, mise à jour ou suppression de carte s’est terminée. Elles contiennent :
+La page envoie à Terento, à chaque étape, de courtes notes qui ne vous identifient pas : si ce navigateur peut être utilisé, si la montre s’est connectée et comment chaque installation, mise à jour ou suppression de carte s’est terminée. Elles contiennent :
 
 - le modèle de la montre et sa version logicielle
 - le système d’exploitation et le navigateur, avec leur version principale
@@ -261,9 +261,9 @@ Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, loka
 
 Instalator webowy pozwala instalować mapy na zegarku z Google Chrome, bez aplikacji. Chrome odczytuje z zegarka na Twoim komputerze to, czego potrzebuje, np. model, wolne miejsce i mapy.
 
-Gdy wybierzesz mapę, serwer Terento pobiera ją od pierwotnego dostawcy i przekazuje do Twojej przeglądarki. Kopia powstaje tylko dla Twojego żądania, nie jest udostępniana innym i jest usuwana, gdy przeglądarka ją otrzyma, albo po dwóch godzinach, jeśli nie zostanie odebrana. Dostawca widzi serwer Terento, nie Ciebie.
+Gdy wybierzesz mapę, serwer Terento pobiera ją od pierwotnego dostawcy i przekazuje do Twojej przeglądarki. Kopia powstaje tylko dla Twojego żądania, nie jest udostępniana innym i jest usuwana, gdy przeglądarka ją otrzyma, albo po dwóch godzinach, jeśli nie zostanie odebrana. Dostawca widzi serwer Terento, nie Ciebie. Dla każdej kopii serwer zapisuje informację o mapie (dostawca, mapa, region i wydanie), jej rozmiarze, tym, ile dotarło do przeglądarki, czasach i wyniku, bez danych o Tobie, Twojej przeglądarce czy zegarku. Te zapisy są przechowywane przez 24 miesiące.
 
-Strona wysyła do Terento krótkie anonimowe informacje o każdym kroku: czy tej przeglądarki można użyć, czy zegarek się połączył i jak zakończyła się każda instalacja, aktualizacja lub usunięcie mapy. Zawierają one:
+Strona wysyła do Terento krótkie informacje o każdym kroku, które nie pozwalają Cię zidentyfikować: czy tej przeglądarki można użyć, czy zegarek się połączył i jak zakończyła się każda instalacja, aktualizacja lub usunięcie mapy. Zawierają one:
 
 - model zegarka i wersję oprogramowania
 - system operacyjny i przeglądarkę z ich główną wersją
@@ -340,9 +340,9 @@ Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místn
 
 Webový instalátor umožňuje instalovat mapy do hodinek z Google Chrome, bez aplikace. Chrome na vašem počítači přečte z hodinek, co potřebuje, například model, volné místo a mapy.
 
-Když zvolíte mapu, server Terento ji stáhne od původního poskytovatele a předá ji vašemu prohlížeči. Kopie vzniká jen pro váš požadavek, nesdílí se a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Poskytovatel vidí server Terento, ne vás.
+Když zvolíte mapu, server Terento ji stáhne od původního poskytovatele a předá ji vašemu prohlížeči. Kopie vzniká jen pro váš požadavek, nesdílí se a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Poskytovatel vidí server Terento, ne vás. Ke každé kopii server ukládá záznam o mapě (poskytovatel, mapa, oblast a vydání), její velikosti, kolik z ní dorazilo do prohlížeče, časech a výsledku, bez údajů o vás, vašem prohlížeči nebo hodinkách. Tyto záznamy se uchovávají 24 měsíců.
 
-Stránka posílá Terento krátké anonymní zprávy o každém kroku: zda lze tento prohlížeč použít, zda se hodinky připojily a jak skončila každá instalace, aktualizace nebo odebrání mapy. Obsahují:
+Stránka posílá Terento o každém kroku krátké zprávy, které vás neidentifikují: zda lze tento prohlížeč použít, zda se hodinky připojily a jak skončila každá instalace, aktualizace nebo odebrání mapy. Obsahují:
 
 - model hodinek a verzi softwaru
 - operační systém a prohlížeč s jejich hlavní verzí
@@ -419,9 +419,9 @@ I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, perco
 
 L’installer web ti permette di installare mappe sull’orologio da Google Chrome, senza l’app. Chrome legge dall’orologio, sul tuo computer, ciò che gli serve, come modello, spazio libero e mappe.
 
-Quando scegli una mappa, il server di Terento la scarica dal fornitore originale e la passa al tuo browser. La copia è creata solo per la tua richiesta, non viene condivisa ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Il fornitore vede il server di Terento, non te.
+Quando scegli una mappa, il server di Terento la scarica dal fornitore originale e la passa al tuo browser. La copia è creata solo per la tua richiesta, non viene condivisa ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Il fornitore vede il server di Terento, non te. Per ogni copia il server conserva un registro della mappa (fornitore, mappa, regione e versione), della sua dimensione, di quanto è arrivato al browser, degli orari e dell’esito, senza nulla su di te, sul browser o sull’orologio. Questi registri sono conservati per 24 mesi.
 
-La pagina invia a Terento brevi note anonime su ogni passaggio: se questo browser può essere usato, se l’orologio si è collegato e come si è conclusa ogni installazione, aggiornamento o rimozione di mappa. Contengono:
+La pagina invia a Terento, per ogni passaggio, brevi note che non ti identificano: se questo browser può essere usato, se l’orologio si è collegato e come si è conclusa ogni installazione, aggiornamento o rimozione di mappa. Contengono:
 
 - modello dell’orologio e versione del software
 - sistema operativo e browser, con la loro versione principale

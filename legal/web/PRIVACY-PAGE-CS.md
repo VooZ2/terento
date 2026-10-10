@@ -19,9 +19,9 @@ Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místn
 
 Webový instalátor umožňuje instalovat mapy do hodinek z Google Chrome, bez aplikace. Chrome na vašem počítači přečte z hodinek, co potřebuje, například model, volné místo a mapy.
 
-Když zvolíte mapu, server Terento ji stáhne od původního poskytovatele a předá ji vašemu prohlížeči. Kopie vzniká jen pro váš požadavek, nesdílí se a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Poskytovatel vidí server Terento, ne vás.
+Když zvolíte mapu, server Terento ji stáhne od původního poskytovatele a předá ji vašemu prohlížeči. Kopie vzniká jen pro váš požadavek, nesdílí se a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Poskytovatel vidí server Terento, ne vás. Ke každé kopii server ukládá záznam o mapě (poskytovatel, mapa, oblast a vydání), její velikosti, kolik z ní dorazilo do prohlížeče, časech a výsledku, bez údajů o vás, vašem prohlížeči nebo hodinkách. Tyto záznamy se uchovávají 24 měsíců.
 
-Stránka posílá Terento krátké anonymní zprávy o každém kroku: zda lze tento prohlížeč použít, zda se hodinky připojily a jak skončila každá instalace, aktualizace nebo odebrání mapy. Obsahují:
+Stránka posílá Terento o každém kroku krátké zprávy, které vás neidentifikují: zda lze tento prohlížeč použít, zda se hodinky připojily a jak skončila každá instalace, aktualizace nebo odebrání mapy. Obsahují:
 
 - model hodinek a verzi softwaru
 - operační systém a prohlížeč s jejich hlavní verzí

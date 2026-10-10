@@ -19,9 +19,9 @@ Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokale
 
 Mit dem Web-Installer installierst du Karten aus Google Chrome auf deine Uhr, ohne die App. Chrome liest auf deinem Computer, was es von der Uhr braucht, etwa Modell, freien Speicher und Karten.
 
-Wenn du eine Karte wählst, lädt der Terento-Server sie vom ursprünglichen Anbieter und gibt sie an deinen Browser weiter. Die Kopie entsteht nur für deine Anfrage, wird nicht geteilt und gelöscht, sobald dein Browser sie hat, oder nach zwei Stunden, wenn sie nicht abgeholt wird. Der Anbieter sieht den Terento-Server, nicht dich.
+Wenn du eine Karte wählst, lädt der Terento-Server sie vom ursprünglichen Anbieter und gibt sie an deinen Browser weiter. Die Kopie entsteht nur für deine Anfrage, wird nicht geteilt und gelöscht, sobald dein Browser sie hat, oder nach zwei Stunden, wenn sie nicht abgeholt wird. Der Anbieter sieht den Terento-Server, nicht dich. Zu jeder Kopie speichert der Server einen Eintrag über die Karte (Anbieter, Karte, Region und Version), ihre Größe, wie viel davon deinen Browser erreicht hat, die Zeiten und das Ergebnis, ohne Angaben zu dir, deinem Browser oder deiner Uhr. Diese Einträge werden 24 Monate aufbewahrt.
 
-Die Seite sendet Terento kurze anonyme Meldungen zu jedem Schritt: ob dieser Browser nutzbar ist, ob die Uhr verbunden wurde und wie jede Installation, Aktualisierung oder Entfernung einer Karte ausging. Sie enthalten:
+Die Seite sendet Terento zu jedem Schritt kurze Meldungen, die dich nicht identifizieren: ob dieser Browser nutzbar ist, ob die Uhr verbunden wurde und wie jede Installation, Aktualisierung oder Entfernung einer Karte ausging. Sie enthalten:
 
 - Uhrenmodell und Softwareversion
 - Betriebssystem und Browser mit ihrer Hauptversion

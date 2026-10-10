@@ -19,9 +19,9 @@ Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, loka
 
 Instalator webowy pozwala instalować mapy na zegarku z Google Chrome, bez aplikacji. Chrome odczytuje z zegarka na Twoim komputerze to, czego potrzebuje, np. model, wolne miejsce i mapy.
 
-Gdy wybierzesz mapę, serwer Terento pobiera ją od pierwotnego dostawcy i przekazuje do Twojej przeglądarki. Kopia powstaje tylko dla Twojego żądania, nie jest udostępniana innym i jest usuwana, gdy przeglądarka ją otrzyma, albo po dwóch godzinach, jeśli nie zostanie odebrana. Dostawca widzi serwer Terento, nie Ciebie.
+Gdy wybierzesz mapę, serwer Terento pobiera ją od pierwotnego dostawcy i przekazuje do Twojej przeglądarki. Kopia powstaje tylko dla Twojego żądania, nie jest udostępniana innym i jest usuwana, gdy przeglądarka ją otrzyma, albo po dwóch godzinach, jeśli nie zostanie odebrana. Dostawca widzi serwer Terento, nie Ciebie. Dla każdej kopii serwer zapisuje informację o mapie (dostawca, mapa, region i wydanie), jej rozmiarze, tym, ile dotarło do przeglądarki, czasach i wyniku, bez danych o Tobie, Twojej przeglądarce czy zegarku. Te zapisy są przechowywane przez 24 miesiące.
 
-Strona wysyła do Terento krótkie anonimowe informacje o każdym kroku: czy tej przeglądarki można użyć, czy zegarek się połączył i jak zakończyła się każda instalacja, aktualizacja lub usunięcie mapy. Zawierają one:
+Strona wysyła do Terento krótkie informacje o każdym kroku, które nie pozwalają Cię zidentyfikować: czy tej przeglądarki można użyć, czy zegarek się połączył i jak zakończyła się każda instalacja, aktualizacja lub usunięcie mapy. Zawierają one:
 
 - model zegarka i wersję oprogramowania
 - system operacyjny i przeglądarkę z ich główną wersją

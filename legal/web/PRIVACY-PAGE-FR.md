@@ -19,9 +19,9 @@ Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, compte
 
 L’installateur web permet d’installer des cartes sur votre montre depuis Google Chrome, sans l’application. Chrome lit sur votre ordinateur ce dont il a besoin, comme le modèle de la montre, l’espace libre et les cartes.
 
-Quand vous choisissez une carte, le serveur de Terento la télécharge depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie est faite pour votre seule demande, n’est pas partagée et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Le fournisseur voit le serveur de Terento, pas vous.
+Quand vous choisissez une carte, le serveur de Terento la télécharge depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie est faite pour votre seule demande, n’est pas partagée et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Le fournisseur voit le serveur de Terento, pas vous. Pour chaque copie, le serveur conserve un enregistrement de la carte (fournisseur, carte, région et version), de sa taille, de la part reçue par votre navigateur, des horaires et du résultat, sans rien sur vous, votre navigateur ou votre montre. Ces enregistrements sont conservés 24 mois.
 
-La page envoie à Terento de courtes notes anonymes à chaque étape : si ce navigateur peut être utilisé, si la montre s’est connectée et comment chaque installation, mise à jour ou suppression de carte s’est terminée. Elles contiennent :
+La page envoie à Terento, à chaque étape, de courtes notes qui ne vous identifient pas : si ce navigateur peut être utilisé, si la montre s’est connectée et comment chaque installation, mise à jour ou suppression de carte s’est terminée. Elles contiennent :
 
 - le modèle de la montre et sa version logicielle
 - le système d’exploitation et le navigateur, avec leur version principale

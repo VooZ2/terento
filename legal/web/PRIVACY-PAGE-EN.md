@@ -19,9 +19,9 @@ Reports exclude Garmin Unit IDs, serial-number values, account details, local pa
 
 The web installer lets you install maps on your watch from Google Chrome, without the app. Chrome reads what it needs from the watch, such as its model, free space and maps, on your computer.
 
-When you choose a map, Terento’s server downloads it from the original provider and passes it to your browser. The copy is made for your request only, is not shared and is deleted once your browser has it, or after two hours if it is not collected. The provider sees Terento’s server, not you.
+When you choose a map, Terento’s server downloads it from the original provider and passes it to your browser. The copy is made for your request only, is not shared and is deleted once your browser has it, or after two hours if it is not collected. The provider sees Terento’s server, not you. For each copy, the server keeps a record of the map (provider, map, region and release), its size, how much of it reached your browser, the times and the result, with nothing about you, your browser or your watch. These records are kept for 24 months.
 
-The page sends short anonymous notes to Terento about each step: whether this browser can be used, whether the watch connected and how each map installation, update or removal ended. They include:
+The page sends Terento short notes that do not identify you, one for each step: whether this browser can be used, whether the watch connected and how each map installation, update or removal ended. They include:
 
 - the watch model and software version
 - the operating system and browser, with their main version numbers
