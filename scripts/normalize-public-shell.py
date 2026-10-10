@@ -120,7 +120,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
           <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">{copy["status"]}</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">{copy["support"]}</a></div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="{copy["footer"]}">
-          {nav_link("about", location="footer-nav")}{nav_link("compatibility", location="footer-nav")}{nav_link("styles", location="footer-nav")}{nav_link("guide", location="footer-nav")}{nav_link("faq", location="footer-nav")}{nav_link("troubleshooting", location="footer-nav")}{nav_link("download", location="footer-nav")}
+          {nav_link("faq", location="footer-nav")}{nav_link("troubleshooting", location="footer-nav")}
           <a data-shell-copy="web_installer" href="{web_installer}"{umami_attributes("web-installer-link-click", "footer-nav")}>{copy["web_installer"]}</a>
           <a data-shell-copy="legal" href="/legal/"{umami_attributes("legal-link-click", "footer-nav")}>{copy["legal"]}</a>
           <a data-shell-copy="privacy" href="/privacy/"{umami_attributes("privacy-link-click", "footer-nav")}>{copy["privacy"]}</a>
