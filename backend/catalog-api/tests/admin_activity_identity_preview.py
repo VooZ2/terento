@@ -1,6 +1,6 @@
 """Synthetic Activity identity fixture: no DB, telemetry or device operations."""
 from pathlib import Path
-from terento_catalog.admin import overview_page
+from terento_catalog.admin import ADMIN_STYLES, ADMIN_STYLESHEET_PATH, overview_page
 
 
 def build(directory):
@@ -27,6 +27,9 @@ def build(directory):
         'data': {'hasData': True, 'recentActivity': events}, 'providers': []},
         {'username': 'Activity preview'}, 'fixture')
     (root / 'activity.html').write_bytes(page)
+    # Signed-in pages link the content-versioned Admin stylesheet.
+    (root / ADMIN_STYLESHEET_PATH.lstrip('/')).parent.mkdir(parents=True, exist_ok=True)
+    (root / ADMIN_STYLESHEET_PATH.lstrip('/')).write_text(ADMIN_STYLES, encoding='utf-8')
 
 
 if __name__ == '__main__':

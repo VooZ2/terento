@@ -2,7 +2,7 @@
 import unittest
 
 from pglite_support import PGliteTestCase
-from statistics_fixtures import BASE_TIME, StatisticsRows
+from statistics_fixtures import StatisticsRows
 
 
 class MissingDiagnosticTaskTests(PGliteTestCase):
@@ -12,7 +12,7 @@ class MissingDiagnosticTaskTests(PGliteTestCase):
 
     def tasks(self):
         count = self.db.admin_review_summary()["missingDiagnostics"]
-        items = self.db.admin_overview_map_snapshot(BASE_TIME, period="all")["missingDiagnosticFailures"]
+        items = self.db.missing_diagnostic_failures(limit=200)["rows"]
         self.assertEqual(count, len(items))
         return count
 

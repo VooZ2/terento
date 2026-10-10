@@ -63,25 +63,13 @@ class AdminMapActivityTests(unittest.TestCase):
         self.assertEqual(markup.count('Font Awesome Free 7.3.1'), 4)
         self.assertNotIn('fa-spin', markup.replace('fa-spinner', ''))
 
-    def test_admin_shows_missing_outcome_component_and_timeline(self):
-        row = dict(event_type='DOWNLOAD_PROCESSING', component_kind='contours',
+    def test_admin_shows_component_and_timeline(self):
+        row = dict(event_type='DOWNLOAD_INTERRUPTED', component_kind='contours',
                    lifecycle=[dict(type='DOWNLOAD_STARTED', at='2026-09-14T12:00:00Z'),
-                              dict(type='DOWNLOAD_PROCESSING', at='2026-09-14T12:01:00Z')])
+                              dict(type='DOWNLOAD_PROCESSING', at='2026-09-14T12:01:00Z'),
+                              dict(type='DOWNLOAD_INTERRUPTED', at='2026-09-14T12:02:00Z')])
         markup = _overview_map_activity_row(row)
-        for text in ('Outcome not received', 'Contours', "class='download-history'", 'Processing'):
+        for text in ('Download interrupted', 'Contours', "class='download-history'", 'Processing'):
             self.assertIn(text, markup)
-        legacy = _overview_map_activity_row(dict(event_type='DOWNLOAD_STARTED', has_recorded_outcome=True))
-        self.assertIn('Outcome recorded', legacy)
-        self.assertNotIn('Outcome not received', legacy)
         for event_type in ('DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED'):
             self.assertNotIn('failed', _overview_map_activity_row(dict(event_type=event_type)))
-
-    def test_stale_download_phase_is_history_not_active_work(self):
-        markup = _overview_map_activity_row(dict(
-            event_type='DOWNLOAD_STARTED', is_stale=True,
-            occurred_at='2026-09-18T15:32:00Z',
-        ))
-        self.assertIn('Outcome missing', markup)
-        self.assertNotIn('Outcome not received', markup)
-        self.assertIn('overview-activity-stale', markup)
-        self.assertIn('map-activity-neutral', markup)

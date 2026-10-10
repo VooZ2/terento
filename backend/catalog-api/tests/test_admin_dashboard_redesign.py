@@ -9,7 +9,9 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
-from terento_catalog.admin import ADMIN_STYLES, _funnel_card, _provider_problem_state, first_run_page, overview_page
+from terento_catalog.admin import (
+    ADMIN_STYLES, _funnel_card, _overview_period_script, _provider_problem_state, first_run_page, overview_page,
+)
 from terento_catalog.http_api import CatalogService, make_handler
 
 
@@ -432,6 +434,22 @@ class DashboardHttpTests(unittest.TestCase):
         response, body = self.request("GET", "/admin/first-run?period=bogus")
         self.assertEqual(response.status, 200)
         self.assertIn("<option value='24h' selected>", body)
+
+    def test_saved_time_zone_cookie_is_the_default_so_the_page_is_built_once(self):
+        # Nav links carry no timeZone; the zone the script saved renders the
+        # page directly instead of a UTC render plus a client refetch (audit #10).
+        zone_cookie = {"Cookie": COOKIE + "; terento_admin_tz=Europe/Vilnius"}
+        for path, zone in (("/admin", "Europe/Vilnius"), ("/admin?timeZone=Asia%2FTokyo", "Asia/Tokyo")):
+            _, body = self.request("GET", path, headers=zone_cookie)
+            self.assertEqual(self.database.overview_map_requests[-1][2], zone, path)
+            self.assertIn(f"action='/admin' data-time-zone='{zone}'", body)
+        _, body = self.request("GET", "/admin/first-run", headers=zone_cookie)
+        self.assertIn("action='/admin/first-run' data-time-zone='Europe/Vilnius'", body)
+        _, body = self.request("GET", "/admin", headers={"Cookie": COOKIE + "; terento_admin_tz=Mars/Base"})
+        self.assertEqual(self.database.overview_map_requests[-1][2], "UTC")
+        script = _overview_period_script()
+        self.assertIn("document.cookie = `terento_admin_tz=${timeZone}; Path=/admin; SameSite=Strict; Secure`", script)
+        self.assertIn("if (renderedTimeZone !== timeZone) load(period, false, timeZone);", script)
 
     def test_failing_map_snapshot_renders_unavailable_sections_not_json(self):
         self.database.fail_map = True

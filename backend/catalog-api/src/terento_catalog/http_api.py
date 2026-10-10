@@ -9,6 +9,7 @@ import secrets
 import time
 import unicodedata
 from collections import defaultdict, deque
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime, parsedate_to_datetime
 from http import HTTPStatus
@@ -22,6 +23,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .admin_revisions import statistics_revisions
 from .admin import (
+    ADMIN_STYLES,
+    ADMIN_STYLESHEET_PATH,
+    WORLD_MAP_SCRIPT,
+    WORLD_MAP_SCRIPT_PATH,
     AdminValidationError,
     account_page,
     campaign_links_page,
@@ -54,6 +59,7 @@ from .admin import (
     setup_page,
     system_health_page,
     token_hash,
+    UNKNOWN_USER_PASSWORD_HASH,
     validate_password,
     validate_username,
     verify_password,
@@ -110,7 +116,7 @@ from .provider_catalog import (
     OpenTopoMapProviderAdapter,
 )
 from .provider_health import check_provider as run_provider_health_check
-from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, period_start
+from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, local_day_start, period_start
 
 LOGGER = logging.getLogger(__name__)
 
@@ -208,7 +214,8 @@ class CatalogService:
         )
         self.asset_storage = asset_storage
         self.public_base_url = public_base_url
-        self._preview_manifest_cache: tuple[float, bytes] | None = None
+        self._preview_manifest_cache: tuple[float, bytes, int] | None = None
+        self._preview_manifest_generation = 0
         self.admin_bootstrap_secret = admin_bootstrap_secret
         self.admin_session_ttl_seconds = admin_session_ttl_seconds
         self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
@@ -402,16 +409,15 @@ class CatalogService:
             download_urls=[str(row["source_url"]) for row in sources],
             source_updated_at=source_updated_at,
         )
-        health_id = self.database.record_provider_health(result)
-        if not scheduled:
-            self.database.record_admin_audit(
-                admin_user_id=admin_user_id,
-                action="provider.health_checked",
-                provider_id=provider_id,
-                target=str(health_id),
-                request_id=request_id,
-                details={"status": result.status},
-            )
+        health_id = self.database.record_provider_health(
+            result,
+            audit=None if scheduled else {
+                "admin_user_id": admin_user_id,
+                "action": "provider.health_checked",
+                "request_id": request_id,
+                "details": {"status": result.status},
+            },
+        )
         health_payload = _format_json_value(result.as_database_values())
         return {
             "schemaVersion": 1,
@@ -472,28 +478,10 @@ class CatalogService:
             adapter = MapRandoProviderAdapter()
         else:  # pragma: no cover - guarded by the known registry
             raise LookupError("provider_adapter_not_found")
-        try:
-            result = _format_json_value(collect_provider_once(self.database, adapter))
-        except Exception as exc:
-            self.database.record_admin_audit(
-                admin_user_id=admin_user_id,
-                action="provider.catalog_collection_failed",
-                provider_id=provider_id,
-                request_id=request_id,
-                details={
-                    "error": type(exc).__name__,
-                    "detail": str(exc)[:500],
-                },
-            )
-            raise
-        self.database.record_admin_audit(
-            admin_user_id=admin_user_id,
-            action="provider.catalog_collected",
-            provider_id=provider_id,
-            request_id=request_id,
-            details=result,
-        )
-        return result
+        return _format_json_value(collect_provider_once(
+            self.database, adapter,
+            audit={"admin_user_id": admin_user_id, "request_id": request_id},
+        ))
 
     def set_provider_status(
         self,
@@ -510,18 +498,21 @@ class CatalogService:
         if status not in {"ACTIVE", "PAUSED", "RETIRED"}:
             raise ValueError("invalid_provider_status")
         self.database.ensure_provider_definition(definition)
-        if status == "ACTIVE":
-            gate = self.provider_activation_gate(provider_id)
-            if not gate["canActivate"]:
-                raise ProviderActivationBlocked(gate)
-        if not self.database.set_provider_status(
-            provider_id,
-            status,
-            admin_user_id=admin_user_id,
-            request_id=request_id,
-            reason=reason,
-        ):
-            return None
+        from .provider_rechecks import provider_lock
+        # A check/collect/recheck must not change the gate's evidence before the update commits.
+        with provider_lock(self.database, provider_id) if status == "ACTIVE" else nullcontext():
+            if status == "ACTIVE":
+                gate = self.provider_activation_gate(provider_id)
+                if not gate["canActivate"]:
+                    raise ProviderActivationBlocked(gate)
+            if not self.database.set_provider_status(
+                provider_id,
+                status,
+                admin_user_id=admin_user_id,
+                request_id=request_id,
+                reason=reason,
+            ):
+                return None
         return {"id": provider_id, "status": status}
 
     def receive_support_report(self, body: bytes) -> tuple[dict[str, Any], str]:
@@ -552,12 +543,18 @@ class CatalogService:
         connected = counts.get(("DEVICE_CONNECT", "CONNECTED"), 0)
         previous = None
         if since is not None:
-            # Today compares with yesterday up to the same time; rolling
-            # periods with the equally long window just before them.
-            span = timedelta(days=1) if period == "today" else until - since
-            previous_since, previous_until = (
-                (since - span, until - span) if period == "today" else (since - span, since)
-            )
+            # Today compares with yesterday from local midnight up to the same
+            # local time (a DST day is not 24 h long); rolling periods with the
+            # equally long window just before them. A local time that does not
+            # exist yesterday keeps its offset (same time since midnight); a
+            # repeated one is its first occurrence.
+            if period == "today":
+                local_until = until.astimezone(ZoneInfo(time_zone))
+                previous_until = (local_until.replace(tzinfo=None) - timedelta(days=1)).replace(
+                    tzinfo=local_until.tzinfo).astimezone(timezone.utc)
+                previous_since = local_day_start(previous_until, time_zone)
+            else:
+                previous_since, previous_until = since - (until - since), since
             previous_summary = self.database.app_funnel_summary(previous_since, previous_until)
             previous_counts = {
                 (row["stage"], row["outcome"]): row["sessionCount"] for row in previous_summary["stages"]
@@ -756,13 +753,8 @@ class CatalogService:
             ]
             if observed_starts:
                 trend_filters["dateFrom"] = min(observed_starts)
-        trend_reader = getattr(self.database, "map_statistics_trend", None)
-        trend, bucket = (
-            trend_reader(
-                trend_filters, period=period, time_zone=time_zone,
-            )
-            if callable(trend_reader)
-            else ([], PERIOD_BUCKETS[period])
+        trend, bucket = self.database.map_statistics_trend(
+            trend_filters, period=period, time_zone=time_zone,
         )
         payload = {
             "schemaVersion": 1,
@@ -776,6 +768,7 @@ class CatalogService:
             "timeZone": time_zone,
             "detailRows": detail_rows,
             "detailTotal": detail_total,
+            "detailEventCount": sum(int(row.get("event_count") or 0) for row in detail_source_rows),
             "detailPage": detail_page,
             "detailPageSize": detail_page_size,
             "linkage": linkage,
@@ -792,7 +785,6 @@ class CatalogService:
         since = period_start(
             period, now=datetime.now(timezone.utc), time_zone=time_zone,
         ) or datetime(1970, 1, 1, tzinfo=timezone.utc)
-        downloads_getter = getattr(self.database, "github_downloads_snapshot", None)
 
         def section(name: str, reader: Any, fallback: Any) -> Any:
             # Section-level resilience (ADM-26): one failing read model marks
@@ -825,28 +817,15 @@ class CatalogService:
             "data": section("map", lambda: self.database.admin_overview_map_snapshot(
                 since, period=period, time_zone=time_zone,
             ), dict(unavailable)),
-            "compatibility": section("compatibility", lambda: self.database.admin_overview_snapshot(since), dict(unavailable)),
-            "downloads": section("downloads", lambda: downloads_getter(
+            "downloads": section("downloads", lambda: self.database.github_downloads_snapshot(
                 time_zone=time_zone, period=period,
-            ) if callable(downloads_getter) else {
-                "hasData": False,
-                "dmgTotal": None,
-                "zipTotal": None,
-                "lastObservedAt": None,
-                "trend": [],
-            }, dict(unavailable)),
+            ), dict(unavailable)),
             "providers": providers,
-            "providersAvailable": providers_payload is not None,
             "system": section("system", system_health, dict(unavailable)),
             "funnel": section("funnel", lambda: self.app_funnel({"period": period, "timeZone": time_zone}), dict(unavailable)),
             "supportReports": section(
                 "supportReports",
                 lambda: {"openCount": self.database.support_report_open_count()},
-                dict(unavailable),
-            ),
-            "mapsUnknown": section(
-                "mapsUnknown",
-                lambda: {"modelCount": self.database.maps_unknown_model_count()},
                 dict(unavailable),
             ),
         }
@@ -884,8 +863,10 @@ class CatalogService:
 
     def preview_manifest_response(self) -> bytes:
         """Public preview manifest, rebuilt from the database at most once a minute."""
+        # A build that overlaps a preview switch keeps its older generation and is never served.
+        generation = self._preview_manifest_generation
         cached = self._preview_manifest_cache
-        if cached is not None and time.monotonic() - cached[0] < 60:
+        if cached is not None and cached[2] == generation and time.monotonic() - cached[0] < 60:
             return cached[1]
         from .map_preview.areas import load_areas
         from .map_preview.manifest import build_manifest
@@ -908,7 +889,7 @@ class CatalogService:
             public_base_url=self.public_base_url,
         )
         body = json.dumps(document, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-        self._preview_manifest_cache = (time.monotonic(), body)
+        self._preview_manifest_cache = (time.monotonic(), body, generation)
         return body
 
     def receive_compatibility_event(self, body: bytes) -> bool:
@@ -918,65 +899,41 @@ class CatalogService:
         return self._canonicalize_statistics(self.database.compatibility_statistics())
 
     def compatibility_diagnostic_summary(self) -> dict[str, dict[str, int]]:
-        getter = getattr(self.database, "compatibility_diagnostic_population", None)
-        if not callable(getter):
-            return _diagnostic_summary_by_identity(self.compatibility_operation_details(), self.compatibility_resolved_operation_details())
-        rows = getter()
+        rows = self.database.compatibility_diagnostic_population()
         summary = _diagnostic_summary_by_identity(
             [r for r in rows if r["diagnostic_status"] == "ACTIVE"],
             [r for r in rows if r["diagnostic_status"] == "RESOLVED"],
         )
-        problems = self.installation_problem_counts()
-        if problems is not None:
-            # Open problems use the canonical Needs attention predicate and unit
-            # (operations), never the per-result twin above.
-            by_identity = problems["byIdentity"]
-            for identity, values in summary.items():
-                values["open_errors"] = values["errors"] = int(by_identity.get(identity, 0))
-            for identity, count in by_identity.items():
-                summary.setdefault(identity, {
-                    "errors": count, "open_errors": count, "failed": 0,
-                    "attempts": 0, "successful": 0, "identity_pending": 0,
-                })
+        # Open problems use the canonical Needs attention predicate and unit
+        # (operations), never the per-result twin above.
+        by_identity = self.database.installation_problem_counts()["byIdentity"]
+        for identity, values in summary.items():
+            values["open_errors"] = values["errors"] = int(by_identity.get(identity, 0))
+        for identity, count in by_identity.items():
+            summary.setdefault(identity, {
+                "errors": count, "open_errors": count, "failed": 0,
+                "attempts": 0, "successful": 0, "identity_pending": 0,
+            })
         return summary
 
-    def installation_problem_counts(self) -> dict[str, Any] | None:
-        getter = getattr(self.database, "installation_problem_counts", None)
-        return getter() if callable(getter) else None
+    def installation_problem_count(self, identity_key: str) -> int:
+        return int(self.database.installation_problem_counts()["byIdentity"].get(identity_key, 0))
 
-    def installation_problem_count(self, identity_key: str) -> int | None:
-        problems = self.installation_problem_counts()
-        if problems is None:
-            return None
-        return int(problems["byIdentity"].get(identity_key, 0))
-
-    def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
-        getter = getattr(self.database, "compatibility_identity_details", None)
-        if callable(getter):
-            return getter(status, device_id=device_id, identity=identity)
-        return self.compatibility_operation_details() if status == "ACTIVE" else self.compatibility_resolved_operation_details()
-
-    def compatibility_operation_details(self) -> list[dict[str, Any]]:
-        return self.database.compatibility_operation_details()
+    def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str | list[str] = "") -> list[dict[str, Any]]:
+        return self.database.compatibility_identity_details(status, device_id=device_id, identity=identity)
 
     def compatibility_issue_queue_operations(self) -> list[dict[str, Any]]:
-        getter = getattr(self.database, "compatibility_issue_queue_operations", None)
-        return getter() if callable(getter) else self.database.compatibility_operation_details()
+        return self.database.compatibility_issue_queue_operations()
 
     def compatibility_resolved_operation_details(self) -> list[dict[str, Any]]:
-        getter = getattr(self.database, "compatibility_resolved_operation_details", None)
-        return getter() if getter is not None else []
+        return self.database.compatibility_resolved_operation_details()
 
     def admin_devices(self) -> dict[str, Any]:
         rows, sync = self.database.admin_device_snapshot()
         return _admin_device_payload(rows, sync)
 
     def update_issue_queue_diagnostics(self):
-        getter = getattr(self.database, 'update_issue_queue_diagnostics', None)
-        return getter() if getter else []
-
-    def update_device_support_status(self, device_id: str, support_status: str) -> bool:
-        return self.database.update_device_support_status(device_id, support_status)
+        return self.database.update_issue_queue_diagnostics()
 
     def update_device_authorization(
         self,
@@ -1097,28 +1054,22 @@ class CatalogService:
 
     def local_test_data(self) -> dict[str, Any]:
         summary = dict(self.database.local_test_telemetry_summary())
-        reader = getattr(self.database, "support_reports", None)
-        if callable(reader):
-            # Local support reports appear only here; a failed read marks only
-            # their card unavailable.
-            try:
-                summary["supportReports"] = reader(status="ALL", local=True, limit=50)
-            except Exception:
-                LOGGER.exception("local support report summary failed")
-                summary["supportReports"] = {"available": False}
+        # Local support reports appear only here; a failed read marks only
+        # their card unavailable.
+        try:
+            summary["supportReports"] = self.database.support_reports(status="ALL", local=True, limit=50)
+        except Exception:
+            LOGGER.exception("local support report summary failed")
+            summary["supportReports"] = {"available": False}
         return summary
 
     def purge_local_test_data(
         self, *, admin_user_id: int | None, request_id: str | None = None,
     ) -> dict[str, int]:
-        counts = dict(self.database.purge_local_test_telemetry(
+        return dict(self.database.purge_local_test_telemetry(
             admin_user_id=admin_user_id,
             request_id=request_id,
         ))
-        purge_reports = getattr(self.database, "purge_local_support_reports", None)
-        if callable(purge_reports):
-            counts["supportReportCount"] = purge_reports(admin_user_id=admin_user_id, request_id=request_id)
-        return counts
 
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
@@ -1126,13 +1077,16 @@ class CatalogService:
     def setup_admin(self, username: str, password: str, bootstrap_secret: str) -> dict[str, Any]:
         if self.admin_is_configured():
             raise AdminValidationError("An administrator account already exists.")
-        if not self.admin_bootstrap_secret or not hmac.compare_digest(bootstrap_secret, self.admin_bootstrap_secret):
+        if not self.admin_bootstrap_secret or not hmac.compare_digest(
+            bootstrap_secret.encode(), self.admin_bootstrap_secret.encode()
+        ):
             raise AdminValidationError("The deployment secret is incorrect.")
         return self.database.create_admin_user(validate_username(username), hash_password(password))
 
     def login_admin(self, username: str, password: str) -> tuple[str, str]:
         user = self.database.admin_user_by_username(username.strip())
-        if not user or not verify_password(password, user["password_hash"]):
+        valid = verify_password(password, user["password_hash"] if user else UNKNOWN_USER_PASSWORD_HASH)
+        if not user or not valid:
             raise AdminValidationError("Incorrect username or password.")
         session_token, csrf_token = new_token(), new_token()
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.admin_session_ttl_seconds)
@@ -1158,6 +1112,7 @@ class CatalogService:
     def update_admin_account(
         self, user: dict[str, Any], username: str, current_password: str,
         new_password: str, new_password_confirmation: str,
+        session_token: str | None = None,
     ) -> dict[str, Any]:
         if not verify_password(current_password, user["password_hash"]):
             raise AdminValidationError("Current password is incorrect.")
@@ -1167,7 +1122,10 @@ class CatalogService:
             if new_password != new_password_confirmation:
                 raise AdminValidationError("New passwords do not match.")
             password_hash = hash_password(validate_password(new_password))
-        return self.database.update_admin_user(int(user["id"]), normalized_username, password_hash)
+        return self.database.update_admin_user(
+            int(user["id"]), normalized_username, password_hash,
+            keep_session_hash=token_hash(session_token) if session_token else None,
+        )
 
     def public_statistics(self, limit: int) -> list[dict[str, Any]]:
         if not self.public_compatibility_stats_enabled:
@@ -1238,11 +1196,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
                 return
-            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire|rechecks|health-schedule|downloads|previews)", request_path):
-                self._handle_provider_post(request_path)
-                return
             if request_path.startswith("/admin"):
-                self._handle_admin_post(request_path)
+                # A database failure (restart, deadlock) answers 503 instead of dropping the socket.
+                try:
+                    if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire|rechecks|health-schedule|downloads|previews)", request_path):
+                        self._handle_provider_post(request_path)
+                    else:
+                        self._handle_admin_post(request_path)
+                except Exception:
+                    LOGGER.exception("admin POST failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_unavailable"}, send_body=True, cache_control="no-store")
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 
@@ -1282,7 +1245,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             return bool(
                 configured_secret
                 and supplied_secret
-                and hmac.compare_digest(supplied_secret, configured_secret)
+                and hmac.compare_digest(supplied_secret.encode(), configured_secret.encode())
             )
 
         def _handle_map_event(self) -> None:
@@ -1563,10 +1526,18 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             map_assets = {"leaflet-1.9.4.js": "text/javascript", "leaflet-1.9.4.css": "text/css", "coverage-map-v1.js": "text/javascript", "coverage-map-v1.css": "text/css"}
             asset_name = request_path.removeprefix("/admin/map-assets/")
-            if request_path.startswith("/admin/map-assets/") and asset_name in map_assets:
-                body = (Path(__file__).parent / "static" / "map" / asset_name).read_bytes()
+            # Content-versioned names: a changed stylesheet or world map is a new URL.
+            versioned_assets = {ADMIN_STYLESHEET_PATH: (ADMIN_STYLES, "text/css; charset=utf-8"),
+                                WORLD_MAP_SCRIPT_PATH: (WORLD_MAP_SCRIPT, "text/javascript; charset=utf-8")}
+            if request_path in versioned_assets or (request_path.startswith("/admin/map-assets/") and asset_name in map_assets):
+                if request_path in versioned_assets:
+                    text, content_type = versioned_assets[request_path]
+                    body, cache_control = text.encode("utf-8"), "private, max-age=31536000, immutable"
+                else:
+                    body = (Path(__file__).parent / "static" / "map" / asset_name).read_bytes()
+                    content_type, cache_control = map_assets[asset_name], "private, max-age=86400"
                 self.send_response(HTTPStatus.OK)
-                self._common_headers(content_type=map_assets[asset_name], content_length=len(body), cache_control="private, max-age=86400")
+                self._common_headers(content_type=content_type, content_length=len(body), cache_control=cache_control)
                 self.send_header("X-Robots-Tag", "noindex, nofollow")
                 self.end_headers()
                 if send_body:
@@ -1794,10 +1765,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         key.removeprefix("identity:") for key, values in summary.items()
                         if key.startswith("identity:") and int(values.get("identity_pending") or 0) > 0
                     )
-                    pending_operations: list[dict[str, Any]] | None = [
-                        event for identity in identities
-                        for event in service.compatibility_identity_details("ACTIVE", identity=identity)
-                    ]
+                    # One query for every pending identity (no per-identity reads).
+                    pending_operations: list[dict[str, Any]] | None = (
+                        service.compatibility_identity_details("ACTIVE", identity=identities) if identities else []
+                    )
                 except Exception:
                     LOGGER.exception("identity review queue failed")
                     pending_operations = None
@@ -2033,7 +2004,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path in {"/admin", "/admin/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 period = query.get("period", ["24h"])[-1]
-                time_zone = query.get("timeZone", ["UTC"])[-1]
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
                     body = overview_page(
                         service.admin_overview(period, time_zone),
@@ -2053,7 +2024,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 period = query.get("period", ["24h"])[-1]
                 if period not in ADMIN_PERIODS:
                     period = "24h"
-                time_zone = query.get("timeZone", ["UTC"])[-1]
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
                     funnel = service.app_funnel({"period": period, "timeZone": time_zone})
                 except Exception:
@@ -2242,7 +2213,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         raise ValueError("invalid_preview_control")
                     result = PreviewDatabase(service.database).set_preview_enabled(
                         provider_id, body["enabled"], int(session["id"]), request_id)
-                    service._preview_manifest_cache = None
+                    service._preview_manifest_generation += 1
                 elif action == "downloads":
                     if set(body) != {"packageId", "enabled", "reason"}:
                         raise ValueError("invalid_package_download_control")
@@ -2298,7 +2269,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             except LookupError as exc:
                 self._send_json(
-                    HTTPStatus.NOT_FOUND,
+                    HTTPStatus.CONFLICT if str(exc) == "provider_retired" else HTTPStatus.NOT_FOUND,
                     {"error": str(exc)},
                     send_body=True,
                     cache_control="no-store",
@@ -2475,6 +2446,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         form.get("current_password", ""),
                         form.get("new_password", ""),
                         form.get("new_password_confirmation", ""),
+                        session_token,
                     )
                 except AdminValidationError as exc:
                     body = account_page(session, self._csrf_cookie() or "", error=str(exc))
@@ -2691,10 +2663,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if form.get("password") != form.get("password_confirmation"):
                 self._send_admin_html(setup_page(error="Passwords do not match."), send_body=True, status=HTTPStatus.BAD_REQUEST)
                 return
+            request_times[client].append(time.monotonic())
             try:
                 service.setup_admin(form.get("username", ""), form.get("password", ""), form.get("bootstrap_secret", ""))
             except AdminValidationError as exc:
-                request_times[client].append(time.monotonic())
                 self._send_admin_html(setup_page(error=str(exc)), send_body=True, status=HTTPStatus.BAD_REQUEST)
                 return
             request_times[client].clear()
@@ -2705,10 +2677,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if self._rate_limited(client, limit=10, window=900):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
+            # Counted before the slow password check so parallel attempts cannot all pass the limit.
+            request_times[client].append(time.monotonic())
             try:
                 session_token, csrf_token = service.login_admin(form.get("username", ""), form.get("password", ""))
             except AdminValidationError as exc:
-                request_times[client].append(time.monotonic())
                 self._send_admin_html(login_page(error=str(exc)), send_body=True, status=HTTPStatus.UNAUTHORIZED)
                 return
             request_times[client].clear()
@@ -2831,6 +2804,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return None
             try:
                 values = parse_qs(self.rfile.read(length).decode("utf-8"), keep_blank_values=True, max_num_fields=12)
+                if any("\x00" in key or "\x00" in item for key, items in values.items() for item in items):
+                    raise ValueError("NUL is not valid admin text")
             except (UnicodeDecodeError, ValueError):
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_form"}, send_body=True, cache_control="no-store")
                 return None

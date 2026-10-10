@@ -122,7 +122,7 @@ F_success_rate = F_success / F_completed, when F_completed > 0
 
 When `F_completed = 0`, the UI displays an em dash rather than zero percent.
 The pure reference classifier (`statistics_semantics.py`) and the SQL read models
-(`compatibility_model_statistics`, `map_statistics`, `admin_overview_snapshot`)
+(`compatibility_model_statistics`, `map_statistics`)
 run the same fixture cases in a PostgreSQL parity test; when they disagree, this
 contract decides which side is corrected. Conflicts are detected per logical
 result over classification, provider, region and assessed device, and legacy

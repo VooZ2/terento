@@ -10,7 +10,7 @@ import unittest
 from zoneinfo import ZoneInfo
 
 from terento_catalog.admin import (
-    _admin_map_display_name, _admin_region_display_name, _admin_region_identity, _system_health_card,
+    ADMIN_STYLES, _admin_map_display_name, _admin_region_display_name, _admin_region_identity, _system_health_card,
     _overview_map_event_context, provider_detail_page, local_test_data_page,
     _admin_disclosure_script, _map_statistics_script, _map_statistics_summary,
     map_statistics_page, _identity_parts, _dashboard_script,
@@ -127,10 +127,8 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn("event.submitter?.name", script)
 
     def test_github_actions_share_alignment_without_form_button_margin(self):
-        from terento_catalog.admin import _layout
-        markup = _layout('Test', '').decode()
-        self.assertIn('.github-actions>.secondary-button{display:inline-flex;align-items:center;justify-content:center;margin:0;align-self:stretch;text-align:center;text-decoration:none;white-space:normal}', markup)
-        self.assertIn('.github-actions>.copy-status{flex-basis:100%}', markup)
+        self.assertIn('.github-actions>.secondary-button{display:inline-flex;align-items:center;justify-content:center;margin:0;align-self:stretch;text-align:center;text-decoration:none;white-space:normal}', ADMIN_STYLES)
+        self.assertIn('.github-actions>.copy-status{flex-basis:100%}', ADMIN_STYLES)
 
     def test_mobile_chart_keeps_last_bucket_and_unique_clip_ids(self):
         import re
@@ -181,9 +179,9 @@ class AdminAuditTests(unittest.TestCase):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
         for rule in (".filter-bar>.filter-disclosure{align-self:flex-end}",
                      ".filter-bar input,.filter-bar select{font-weight:400}",
-                     ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}",
-                     "coverage-map-v1.js?v=20260913-coverage-sidebar-3"):
-            self.assertIn(rule, body)
+                     ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}"):
+            self.assertIn(rule, ADMIN_STYLES)
+        self.assertIn("coverage-map-v1.js?v=20260913-coverage-sidebar-3", body)
         result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
                                  str(Path(__file__).with_name('coverage-map-tests.cjs'))],
                                 capture_output=True, text=True)
@@ -194,16 +192,16 @@ class AdminAuditTests(unittest.TestCase):
                  "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1}]
         body = map_statistics_page({"rows": rows}, [{"id": "p", "name": "Provider"}], {"username": "audit"}, "csrf").decode()
         for text in ("Downloads", "Successful", "Failed", "Installs",
-                     "Top countries", "Top maps",
-                     "min-width:560px"):
+                     "Top countries", "Top maps"):
             self.assertIn(text, body)
+        self.assertIn("min-width:560px", ADMIN_STYLES)
         self.assertNotIn("Diagnostic coverage", body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)
         self.assertNotIn("installSuccessFraction", body)
         self.assertNotIn("opted-in", body)
-        self.assertNotIn("table-layout:fixed}", body.split("@media(min-width:701px){", 1)[1].split("}", 1)[0])
-        self.assertIn("min-height:44px", body)
-        self.assertIn(".popularity-search-label", body)
+        self.assertNotIn("table-layout:fixed}", ADMIN_STYLES.split("@media(min-width:701px){", 1)[1].split("}", 1)[0])
+        self.assertIn("min-height:44px", ADMIN_STYLES)
+        self.assertIn(".popularity-search-label", ADMIN_STYLES)
         self.assertNotIn("Popular maps", body)
         self.assertIn("installation-empty", _dashboard_script())
 
@@ -341,7 +339,7 @@ class AdminAuditTests(unittest.TestCase):
     def test_local_activity_caption_keeps_a_readable_mobile_width(self):
         body=local_test_data_page({'activity':[]}, {'username':'audit'},'csrf').decode()
         self.assertIn('<caption class="test-data-activity-caption">Latest local activity',body)
-        self.assertIn('.test-data-activity-caption{display:block;width:100%;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;',body)
+        self.assertIn('.test-data-activity-caption{display:block;width:100%;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;',ADMIN_STYLES)
 
     def test_build_guard_separates_debug_and_public_release(self):
         guard=Path(__file__).resolve().parents[3]/'Packaging'/'verify-release-label.sh'

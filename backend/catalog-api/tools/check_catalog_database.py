@@ -56,7 +56,6 @@ overview = database.admin_overview_map_snapshot(since, time_zone='Europe/Vilnius
 assert overview['completedInstallCount'] == 2, overview
 assert sum(row['success_count'] for row in overview['trend']) == 1
 assert sum(row['custom_count'] for row in overview['trend']) == 1
-assert database.admin_overview_snapshot(since)['successfulInstallCount'] == 2
 statistics = database.map_statistics({})
 assert sum(row['operation_count'] for row in statistics if row['event_type'] == 'INSTALL_SUCCEEDED') == 2
 devices, _ = database.admin_device_snapshot()

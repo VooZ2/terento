@@ -42,6 +42,8 @@ class Connection:
             return Result({"event_count": 5})
         if "DELETE FROM map_download_event" in query:
             return Result({"event_count": 8})
+        if "DELETE FROM support_report" in query:
+            return Result({"report_count": 2})
         return Result({})
 
 
@@ -80,15 +82,15 @@ class LocalTelemetryTests(unittest.TestCase):
         )
         self.assertEqual(
             result,
-            {"diagnosticEventCount": 11, "mapEventCount": 8, "operationCount": 4},
+            {"diagnosticEventCount": 11, "mapEventCount": 8, "operationCount": 4, "supportReportCount": 2},
         )
         delete_queries = [query for query, _ in connection.queries if query.lstrip().startswith("WITH deleted")]
-        self.assertEqual(len(delete_queries), 3)
+        # Telemetry and support reports share the one connection, so one transaction.
+        self.assertEqual(len(delete_queries), 4)
         self.assertTrue(all("WHERE is_local_test IS TRUE" in query for query in delete_queries))
-        audit = next((params for query, params in connection.queries if "INSERT INTO admin_audit_log" in query), None)
-        self.assertIsNotNone(audit)
-        self.assertEqual(audit[1], "telemetry.local_test_purged")
-        self.assertEqual(audit[7], "local-test-1")
+        audits = [params for query, params in connection.queries if "INSERT INTO admin_audit_log" in query]
+        self.assertEqual([audit[1] for audit in audits], ["telemetry.local_test_purged", "support_report.local_test_purged"])
+        self.assertEqual({audit[7] for audit in audits}, {"local-test-1"})
 
 
     def test_actual_postgres_purge_preserves_production_with_shared_operation(self):

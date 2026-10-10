@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from terento_catalog.admin import token_hash
+from terento_catalog.statistics_periods import PERIOD_BUCKETS
 
 
 UTC = timezone.utc
@@ -28,6 +29,16 @@ class FakeProviderDatabase:
     def operational_health_snapshot(self):
         return {}
 
+    def map_statistics_trend(self, filters, *, period, time_zone="UTC"):
+        return [], PERIOD_BUCKETS[period]
+
+    def installation_problem_counts(self):
+        return {"total": 0, "byIdentity": {}}
+
+    def support_reports(self, *, status="OPEN", limit=50, offset=0, local=False):
+        return {"rows": [], "status": status, "limit": limit, "offset": offset, "openCount": 0,
+                "handledCount": 0, "totalCount": 0, "filteredTotal": 0}
+
     def __init__(self) -> None:
         self.events: set[str] = set()
         self.status = "ACTIVE"
@@ -53,9 +64,6 @@ class FakeProviderDatabase:
     def support_report_open_count(self):
         return 0
 
-    def maps_unknown_model_count(self):
-        return 0
-
     def local_test_telemetry_summary(self):
         return {
             "diagnosticEventCount": 2,
@@ -67,18 +75,6 @@ class FakeProviderDatabase:
     def purge_local_test_telemetry(self, **kwargs):
         self.local_purge_calls.append(kwargs)
         return {"diagnosticEventCount": 2, "mapEventCount": 3, "operationCount": 1}
-
-    def admin_overview_snapshot(self, since):
-        return {
-            "operationCount": 0,
-            "successfulInstallCount": 0,
-            "failedInstallCount": 0,
-            "openErrorCount": 0,
-            "writeStartedCount": 0,
-            "hasData": False,
-            "recentActivity": [],
-            "failureReasons": [],
-        }
 
     def admin_overview_map_snapshot(self, since, *, period="24h", time_zone="UTC"):
         self.overview_map_requests.append((since, period, time_zone))
@@ -196,7 +192,9 @@ class FakeProviderDatabase:
     def audit_rows(self, provider_id):
         return []
 
-    def record_provider_health(self, result):
+    def record_provider_health(self, result, audit=None):
+        if audit:
+            self.audits.append(audit)
         return 11
 
     def record_admin_audit(self, **kwargs):
