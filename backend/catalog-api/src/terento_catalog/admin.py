@@ -951,6 +951,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     evidence_class = " class='active'" if active in {"evidence", "installations"} else ""
     campaign_class = " class='active'" if active == "campaigns" else ""
     devices_class = " class='active'" if active == "devices" else ""
+    first_run_class = " class='active'" if active == "first-run" else ""
     providers_class = " class='active'" if active == "providers" else ""
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
@@ -971,7 +972,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     return f"""<a class="admin-skip-link" href="#main-content">Skip to content</a><header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website {_admin_icon('external')}</a></div>
       <button id="admin-menu-toggle" class="secondary-button" type="button" aria-controls="admin-menu-panel" aria-expanded="false" hidden>Menu</button>
-      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
+      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{first_run_class} href="/admin/first-run">First run</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</select></label><a class="admin-user{account_class}" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
       <a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website {_admin_icon('external')}</a><form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav></div>
     </div></header>"""
@@ -2124,7 +2125,7 @@ def _overview_period_script() -> str:
       const load = async (period, push, timeZone = activeTimeZone()) => {
         const current = document.querySelector('#main-content');
         const select = document.querySelector('#overview-period');
-        const url = new URL('/admin', window.location.origin);
+        const url = new URL(document.querySelector('#overview-period-form')?.getAttribute('action') || '/admin', window.location.origin);
         url.searchParams.set('period', period);
         url.searchParams.set('timeZone', timeZone);
         const requestKey = `${period}\u0000${timeZone}`;
@@ -2524,6 +2525,69 @@ def _funnel_card(funnel: dict[str, Any] | None, period: str, time_zone: str = "U
     )
 
 
+def _funnel_summary_card(funnel: dict[str, Any] | None, period: str) -> str:
+    """Dashboard First run: the journey with its drop-offs and the models
+    waiting for review; the full breakdown lives on /admin/first-run."""
+    if not isinstance(funnel, dict) or funnel.get("available") is False or "stages" not in funnel:
+        return _unavailable_card("First run", "overview-funnel")
+    display = _funnel_display(funnel)
+    if not display["sessions"]:
+        body = _empty_state("empty", "No first-run sessions in this period.")
+    else:
+        waiting = sorted(
+            (model for _, items in display["groups"] for *_, models in items for model in models),
+            key=lambda model: (-model[1], model[0]),
+        )
+        review = ""
+        if waiting:
+            review = (
+                "<div class='funnel-review'><h3>Waiting models</h3>"
+                "<ul class='funnel-models' aria-label='Waiting models'>" + "".join(
+                    f"<li><a href='/admin/devices?{urlencode({'search': model})}'>{html.escape(model)}</a>"
+                    + (f"<span class='funnel-model-status'>{html.escape(status)}</span>" if status else "")
+                    + f"<strong>{count:,}</strong><span class='sr-only'> sessions</span></li>"
+                    for model, count, status in waiting[:3]
+                ) + "</ul>"
+                + (f"<p class='funnel-review-more muted-value'>+{len(waiting) - 3:,} more on First run</p>"
+                   if len(waiting) > 3 else "")
+                + "</div>"
+            )
+        body = _funnel_journey(display, period) + review
+    return _section_card(
+        "First run", body, card_id="overview-funnel", scope=period,
+        action=("/admin/first-run?" + urlencode({"period": period}), "View all"),
+        css="overview-panel overview-funnel-panel overview-funnel-summary",
+    )
+
+
+def first_run_page(
+    funnel: dict[str, Any] | None, user: dict[str, Any], csrf_token: str, *, period: str, time_zone: str = "UTC",
+) -> bytes:
+    """First run: the app first-run funnel for one period (journey, sessions
+    over time and why sessions did not get to an install)."""
+    if period not in ADMIN_PERIODS:
+        period = "24h"
+    period_options = "".join(
+        f"<option value='{value}'{' selected' if value == period else ''}>{ADMIN_PERIOD_LABELS[value]}</option>"
+        for value in ADMIN_PERIODS
+    )
+    content = f"""
+      {_admin_header(user, csrf_token, active='first-run')}
+      <main class='dashboard overview-page first-run-page' id='main-content'>
+        <div class='heading-row overview-heading'><div><h1>First run</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/first-run'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
+        {_funnel_card(funnel, period, time_zone)}
+      </main>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
+    """
+    revision = (
+        None if not isinstance(funnel, dict)
+        else _funnel_revision(_funnel_display(funnel))
+        if funnel.get("available") is not False and "stages" in funnel
+        else {"available": False}
+    )
+    return _layout("First run", content, sections={"funnel": revision})
+
+
 def _card_totals(items: list[tuple[str, str]], *, label: str) -> str:
     """Compact value + noun chips that close a card header (Dashboard totals)."""
     return (
@@ -2699,7 +2763,7 @@ def overview_page(
     else:
         downloads_section = ""
 
-    funnel_section = _funnel_card(overview.get("funnel"), period, time_zone) if "funnel" in overview else ""
+    funnel_section = _funnel_summary_card(overview.get("funnel"), period) if "funnel" in overview else ""
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
@@ -10118,6 +10182,11 @@ ADMIN_STYLES += """
    the half columns cannot fit label, bar and count, so the breakdown stays one
    column (also at 900 px and narrower). */
 .overview-funnel-panel{container:overview-funnel/inline-size}
+.funnel-review{margin:14px 0 0}.funnel-review h3{margin:0 0 6px;font:600 13px/18px var(--font-ui);color:var(--graphite)}
+.funnel-review .funnel-models{margin:0;font-size:13px;row-gap:4px}
+.funnel-review .funnel-models li{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
+.funnel-review .funnel-models strong{margin-left:auto;font-weight:600;color:var(--graphite);font-variant-numeric:tabular-nums}
+.funnel-review-more{margin:6px 0 0;font-size:12px}
 @media(min-width:901px){@container overview-funnel (min-width:620px){
   .overview-funnel-breakdown{display:block;columns:2;column-gap:24px}
   .overview-funnel-group{display:block;break-inside:avoid;padding-bottom:12px}

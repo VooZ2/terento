@@ -37,6 +37,7 @@ from .admin import (
     devices_page,
     map_statistics_page,
     local_test_data_page,
+    first_run_page,
     overview_page,
     provider_detail_page,
     providers_page,
@@ -2045,6 +2046,21 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     LOGGER.exception("admin overview failed")
                     self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "The Dashboard could not be loaded.", session, csrf_token, send_body=send_body)
                     return
+                self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path in {"/admin/first-run", "/admin/first-run/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                period = query.get("period", ["24h"])[-1]
+                if period not in ADMIN_PERIODS:
+                    period = "24h"
+                time_zone = query.get("timeZone", ["UTC"])[-1]
+                try:
+                    funnel = service.app_funnel({"period": period, "timeZone": time_zone})
+                except Exception:
+                    LOGGER.exception("admin first run failed")
+                    funnel = {"available": False}
+                body = first_run_page(funnel, session, csrf_token, period=period,
+                                      time_zone=str(funnel.get("timeZone") or "UTC"))
                 self._send_admin_html(body, send_body=send_body)
                 return
             if request_path == "/admin/device-identification":

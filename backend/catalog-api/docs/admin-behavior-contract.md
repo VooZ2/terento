@@ -284,8 +284,8 @@ while a measured zero is 0.
 
 ## Page and navigation behavior
 
-The primary sequence is `Dashboard`, `Installations`, `Devices`, `Maps`,
-`Providers`, and `Health`, followed by Tools and account controls. Dashboard
+The primary sequence is `Dashboard`, `Installations`, `First run`, `Devices`,
+`Maps`, `Providers`, and `Health`, followed by Tools and account controls. Dashboard
 Needs attention is the entry point for actionable review work; there is no
 duplicate Review navigation item.
 
@@ -321,8 +321,20 @@ back to Last 24 hours. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`, never map downloads), shows its
 period increases in the legend and its all-time totals and last update in one
-`All time` line, and is omitted when no usable counter or trend data exists. First run shows the separate app first-run funnel
-population for the period (owner redesign 2026-10-10). It opens with the
+`All time` line, and is omitted when no usable counter or trend data exists.
+The Dashboard First run card is a short review (owner decision 2026-10-10): the
+journey below with its `Lost on the way` line, then `Waiting models` (only when
+any model waits: at most three models across the Pending, Unknown model and
+Ambiguous outcomes, most sessions first, each linking to Devices filtered by
+that name with its catalog status and session count, then `+N more on First
+run`), and a `View all` action to `/admin/first-run` for the same period. It
+shows no Sessions over time and no outcome groups.
+
+The First run page (`/admin/first-run`, primary navigation after
+Installations) has the Dashboard period picker (default Last 24 hours; an
+unknown period falls back to it) and one First run card that shows the separate
+app first-run funnel population for the period (owner redesign 2026-10-10;
+moved off the Dashboard the same day). It opens with the
 journey: three steps on one row of three equal columns at every width, label
 above number with the numbers on one baseline: `Opened app` (the period's
 distinct sessions), `Watch connected` (sessions with `DEVICE_CONNECT`
@@ -353,14 +365,14 @@ rows carry one short muted meaning under the label (for example Pending
 `Model not in the catalog, or its Maps value is unknown or mixed`, Catalog
 unavailable `The policy check failed (network or server); nothing was
 written`, Built-in copy `The server catalog did not load; the app used its
-bundled list`). The models waiting for review are listed under their
+bundled list`). On this page the models waiting for review are listed under their
 Pending, Unknown model or Ambiguous row (there is no separate Waiting models
 group): each model links to Devices filtered by that name and shows what the
 current installation policy says about it (`Not in catalog`, `Maps unknown`,
 `Variants differ`, `No maps`, `Withdrawn`, `Approved now`); this status is
 diagnostic and never grants or revokes write authority. Labels keep their
-full width and the bar track shrinks first. When the card sits beside App
-downloads (>900 px) and is wide enough for label, bar and count in half columns
+full width and the bar track shrinks first. Above 900 px, when the card is
+wide enough for label, bar and count in half columns
 (card content at least 620 px), the groups flow into two balanced columns and a
 group is never split; otherwise they stay in one column with one aligned label
 column. Rows count sessions
@@ -372,8 +384,8 @@ mode`, `Watch in use by another app`, `Several Garmins`, `Disconnected after
 connecting`, `Stopped responding`; Catalog `Loaded`, `Partly loaded`,
 `Built-in copy`, `App update required`; Install blocked `Not allowed for this
 watch`, `Watch storage full`, `Mac storage problem`, `Map not verified`, `Watch
-not identified`, `Other`. The Dashboard freshness revision for First run covers
-exactly these displayed values, without zero trend buckets that only move with the rolling window. One-card KPI rows follow the two-row rule in Responsive and
+not identified`, `Other`. The Dashboard and First run page freshness revisions
+for First run cover exactly these displayed values, without zero trend buckets that only move with the rolling window. One-card KPI rows follow the two-row rule in Responsive and
 layout invariants. It never
 mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
 inside the admin chrome instead of failing the page.

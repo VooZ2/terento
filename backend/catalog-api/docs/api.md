@@ -237,8 +237,9 @@ checks other than the provider Catalogs check; it links to
 `/admin/system-health?status=FAILED` (or `WARNING` when none failed), a
 client-side query the Health status filter honours. Maps unknown and provider
 problems are not rendered there; an unavailable query shows
-`—` and `Unavailable`. The Identity review row links to `/admin/review/identity`. First run shows the `/admin/app-funnel.json` read model
-for the period. App downloads is the separate Terento `.dmg` and `.zip`
+`—` and `Unavailable`. The Identity review row links to `/admin/review/identity`. First run shows a short review of the
+`/admin/app-funnel.json` read model for the period (journey and up to three
+waiting models) with `View all` to `/admin/first-run`. App downloads is the separate Terento `.dmg` and `.zip`
 cumulative-counter trend and is omitted without usable data. Activity is bounded
 and internally scrollable. Generic rows have no Maps link unless an exact
 event/detail destination exists.
@@ -311,6 +312,16 @@ with the environment bootstrap secret. Passwords use salted PBKDF2-SHA256;
 opaque session and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict. Authenticated Admin responses are no-store and
 noindex.
+
+## `GET https://api.terento.app/admin/first-run`
+
+Returns the authenticated First run page: the full app first-run funnel card
+(journey, Sessions over time and the per-stage outcome groups with waiting
+models) for `?period=` (`today`, `24h`, `7d`, `30d`, `all`; default and
+fallback `24h`) in `?timeZone=` (absent or unknown is UTC). It reads the same
+`app_funnel()` read model as `/admin/app-funnel.json`; a failed read renders the
+card as unavailable while the page returns 200. It does not run the review
+summary query.
 
 ## `GET https://api.terento.app/admin/installations`
 

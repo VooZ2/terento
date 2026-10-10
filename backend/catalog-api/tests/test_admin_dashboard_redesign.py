@@ -9,7 +9,7 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
-from terento_catalog.admin import ADMIN_STYLES, _funnel_card, _provider_problem_state, overview_page
+from terento_catalog.admin import ADMIN_STYLES, _funnel_card, _provider_problem_state, first_run_page, overview_page
 from terento_catalog.http_api import CatalogService, make_handler
 
 
@@ -149,16 +149,55 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertNotIn("overview-attention-row", attention)
         self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
 
+    FIRST_RUN = dict(
+        sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,
+        catalog_update=1, device_storage=1, journey_approved=3,
+        models=[{"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1,
+                 "catalogStatus": "NOT_IN_CATALOG"}],
+        never={"sessionCount": 1, "withoutConnectionSignalCount": 0,
+               "outcomes": [{"outcome": "TIMEOUT_NO_USB", "sessionCount": 1}]},
+        previous={"sessionCount": 3, "connectedSessionCount": 4, "approvedSessionCount": 3},
+    )
+
+    def test_dashboard_first_run_is_a_short_review_summary(self):
+        # Owner 2026-10-10: the full First run view moved to /admin/first-run;
+        # the Dashboard keeps the journey and the models waiting for review.
+        body = self.render(funnel=_funnel(**self.FIRST_RUN))
+        card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
+        self.assertIn("<a class='admin-card-action section-link' href='/admin/first-run?period=7d'>View all", card)
+        self.assertIn("<ol class='funnel-journey' aria-label='First run journey'>", card)
+        self.assertIn("Lost on the way: <strong>1</strong> never connected · <strong>1</strong> connected but not allowed", card)
+        self.assertIn("<div class='funnel-review'><h3>Waiting models</h3><ul class='funnel-models' aria-label='Waiting models'><li>"
+                      "<a href='/admin/devices?search=fenix+8'>fenix 8</a>"
+                      "<span class='funnel-model-status'>Not in catalog</span><strong>1</strong>"
+                      "<span class='sr-only'> sessions</span></li></ul></div>", card)
+        for detail in ("Sessions over time", "Why not connected", "Connection problems", "overview-funnel-bars"):
+            self.assertNotIn(detail, card)
+        self.assertIn('<a href="/admin/first-run">First run</a>', body)
+
+    def test_dashboard_first_run_lists_at_most_three_waiting_models(self):
+        models = [{"baseModel": f"model {index}", "outcome": "PENDING", "sessionCount": index}
+                  for index in range(1, 6)]
+        body = self.render(funnel=_funnel(**{**self.FIRST_RUN, "models": models}))
+        card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
+        self.assertEqual(card.count("<li><a href='/admin/devices?search="), 3)
+        self.assertLess(card.index(">model 5<"), card.index(">model 3<"))
+        self.assertNotIn(">model 2<", card)
+        self.assertIn("+2 more on First run", card)
+
+    def test_first_run_page_has_the_period_picker_and_active_nav(self):
+        body = first_run_page(_funnel(**self.FIRST_RUN), {"username": "operator"}, "csrf", period="nope").decode()
+        self.assertIn("<h1>First run</h1>", body)
+        self.assertIn("id='overview-period-form' method='get' action='/admin/first-run'", body)
+        self.assertIn("<option value='24h' selected>", body)  # unknown period falls back to 24 h
+        self.assertIn('<a class=\'active\' href="/admin/first-run">First run</a>', body)
+        self.assertIn("getAttribute('action') || '/admin'", body)
+        self.assertIn("data-admin-revisions=", body)
+        unavailable = first_run_page({"available": False}, {"username": "operator"}, "csrf", period="7d").decode()
+        self.assertIn("id='overview-funnel'", unavailable)
+
     def test_first_run_card_shows_the_journey_and_per_stage_groups(self):
-        body = self.render(funnel=_funnel(
-            sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,
-            catalog_update=1, device_storage=1, journey_approved=3,
-            models=[{"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1,
-                     "catalogStatus": "NOT_IN_CATALOG"}],
-            never={"sessionCount": 1, "withoutConnectionSignalCount": 0,
-                   "outcomes": [{"outcome": "TIMEOUT_NO_USB", "sessionCount": 1}]},
-            previous={"sessionCount": 3, "connectedSessionCount": 4, "approvedSessionCount": 3},
-        ))
+        body = first_run_page(_funnel(**self.FIRST_RUN), {"username": "operator"}, "csrf", period="7d").decode()
         card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
         self.assertIn(">First run</h2>", body)
         self.assertIn("data-scope='period'>Last 7 days</span>", card)
@@ -382,6 +421,17 @@ class DashboardHttpTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(self.database.review_calls, 1)
         self.assertIn("aria-label='Open problems: 2'", body)
+
+    def test_first_run_page_route(self):
+        response, body = self.request("GET", "/admin/first-run?period=7d")
+        self.assertEqual(response.status, 200)
+        self.assertIn("text/html", response.headers["Content-Type"])
+        self.assertIn("<h1>First run</h1>", body)
+        self.assertIn("id='overview-funnel'", body)
+        self.assertEqual(self.database.review_calls, 0)
+        response, body = self.request("GET", "/admin/first-run?period=bogus")
+        self.assertEqual(response.status, 200)
+        self.assertIn("<option value='24h' selected>", body)
 
     def test_failing_map_snapshot_renders_unavailable_sections_not_json(self):
         self.database.fail_map = True
