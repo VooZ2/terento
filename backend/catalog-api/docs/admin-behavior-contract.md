@@ -771,8 +771,11 @@ model is selected; changing the search clears a stale selection. Reported facts 
 missing facts stay distinct; catalog facts may enrich only a consistent exact
 target. A conflicting normal assignment requires the separate explicit manual
 action and an audit record. Scope remains one exact result unless the operator
-explicitly submits an operation-level scope. Identity decisions never alter
-installation outcomes, device files, telemetry, statistics, or publication.
+explicitly submits an operation-level scope. The newest identity audit record
+per result is its administrator decision; repeating that identical decision
+(double submit, second tab) succeeds without another audit record. Identity
+decisions never alter installation outcomes, device files, telemetry,
+statistics, or publication.
 
 The reported-identity page (`/admin/diagnostics?identity=…` for an identity
 without a catalog model) follows the device page: an Installs card with the
@@ -812,10 +815,16 @@ preview and copy, accept an optional bounded admin note, and link or unlink an
 existing issue. Preparing opens the GitHub composer; the administrator reviews
 and submits it there. Oversized reports use the same copy fallback. No report is
 posted automatically. Update issue links and lifecycle actions target one exact
-diagnostic UUID, require authentication/CSRF and record an audit. Resolving,
+diagnostic UUID, require authentication/CSRF and record an audit. Every issue
+link, relink or unlink that changes a result is audited, including on resolved
+results; an identical link is a no-op. Reopening an active result or resolving
+a resolved one is a no-op success that keeps its workflow, resolution and
+resolver; a workflow change on resolved results is rejected. Resolving,
 reopening or linking never changes the received outcome, write fact or counts.
-The bounded issue synchronizer resolves active linked diagnostics when GitHub
-confirms closure; reopening remains an explicit administrator action.
+The bounded issue synchronizer reads GitHub before locking any diagnostic,
+resolves active linked diagnostics when GitHub confirms closure and audits each
+one's actual previous workflow state; reopening remains an explicit
+administrator action.
 
 An update report links to the model detail only through a server-assessed exact
 catalog identity. Reported model text and unresolved/conflicting identity remain

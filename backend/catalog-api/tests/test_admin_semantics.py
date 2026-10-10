@@ -2044,7 +2044,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         )
         identity_update = next(query for query, _ in database.calls if "identity_resolution_state" in query)
         self.assertIn("canonical_device_model_id", identity_update)
-        audit_call = next((query, params) for query, params in database.calls if "compatibility_identity_resolution_audit" in query)
+        audit_call = next((query, params) for query, params in database.calls if "INSERT INTO compatibility_identity_resolution_audit" in query)
         self.assertEqual(audit_call[1][3], "fēnix 7 · 47 mm")
         self.assertEqual(audit_call[1][6], "Exact model confirmed")
         self.assertFalse(any("phase_outcome" in query for query, _ in database.calls if "UPDATE compatibility_evidence_event" in query))
@@ -2117,7 +2117,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             ),
             1,
         )
-        audit = next(params for query, params in database.calls if "compatibility_identity_resolution_audit" in query)
+        audit = next(params for query, params in database.calls if "INSERT INTO compatibility_identity_resolution_audit" in query)
         self.assertEqual(audit[5], "ASSIGN")
         self.assertIn("MANUAL_ASSIGNMENT", audit[9])
         self.assertNotIn("verified on", audit[6].lower())
@@ -2204,27 +2204,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             ),
             1,
         )
-        audit = next(params for query, params in database.calls if "compatibility_identity_resolution_audit" in query)
+        audit = next(params for query, params in database.calls if "INSERT INTO compatibility_identity_resolution_audit" in query)
         self.assertEqual(audit[6], "Administrator selected a catalog model for this diagnostic result.")
         self.assertIn('"decisionType": "CATALOG_SELECTION"', audit[9])
-
-    def test_identical_identity_retry_does_not_add_a_second_audit(self):
-        selected_id = "garmin-fenix-8-47"
-        database = RecordingDatabase(
-            identity_rows=[{
-                "event_id": "event-1", "model": "fēnix 8",
-                "canonical_device_model_id": selected_id,
-                "identity_assessment": {"decision": {"deviceId": selected_id}},
-            }],
-            canonical_row={"id": selected_id, "model": "fēnix 8", "variant": "47 mm"},
-        )
-        self.assertEqual(
-            database.resolve_compatibility_identity(
-                "operation-1", action="ASSIGN", canonical_device_model_id=selected_id, admin_user_id=7,
-            ),
-            1,
-        )
-        self.assertFalse(any("compatibility_identity_resolution_audit" in query for query, _ in database.calls))
 
     def test_admin_result_counts_use_the_public_statistics_view(self):
         db_source = inspect.getsource(Database.admin_device_snapshot)

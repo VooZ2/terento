@@ -362,7 +362,10 @@ current client does not create a separate post-install confirmation signal.
 Migration 011 removed older beta events that had no deletion token, rather than
 retaining reports the revised client could not erase. `compatibility_model_review`
 stores maintainer-reviewed physical-device evidence, notes, review state, and
-the default-false public-statistics switch/display name.
+the default-false public-statistics switch/display name. Readers match a
+review by `COALESCE(identity_key, model)`; when a legacy row already holds the
+identity text as its `model` key for another identity, a new review uses
+`identity:<identity>` as its primary key.
 
 Migration 017 adds schema-v3 structured diagnostics. `operation_id` groups the
 per-map rows produced by one Install action; map index/count, app build/release,
@@ -406,7 +409,10 @@ evidence projections. New beta.6 and later events remain active by default.
 
 Migration 021 adds additive diagnostic resolution fields and lifecycle audit
 rows, exact identity-resolution state/audit rows, and installation-
-authorization audit rows. It also installs the canonical threshold function
+authorization audit rows. The newest `compatibility_identity_resolution_audit`
+row per event is the administrator identity decision; an identical retry adds
+no row. `compatibility_diagnostic_lifecycle_audit` records every issue link or
+workflow change with the real previous workflow state. It also installs the canonical threshold function
 used by the live compatibility view: recognized map-capable evidence is
 required, then 0 successful operations is `TESTING`, 1–2 is `TESTED`, 3–4 is
 `SUPPORTED`, and 5+ is `VERIFIED`; unrecognized or non-map records have no

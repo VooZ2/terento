@@ -41,9 +41,11 @@ This describes the local implementation, not deployed route availability.
   an optional note up to 2,000 characters. Workflow accepts the existing
   `OPEN`, `IN_PROGRESS`, `UNDER_REVIEW` states and rejects changes to resolved
   reports or `OPEN` with a linked issue. A missing report returns 404, invalid
-  input 400. Review changes are audited without changing original outcome
-  facts. Closed linked GitHub issues resolve active reports during the existing
-  synchronization job; reopening remains an explicit admin action.
+  input 400. Reopen of an active report and resolve of a resolved report are
+  no-op successes (redirect, no write, no audit). Review changes are audited
+  without changing original outcome facts. Closed linked GitHub issues resolve
+  active reports during the existing synchronization job; reopening remains an
+  explicit admin action.
 
 Exact-model device detail includes separate reported update counters and
 paginated update history (`updateOutcome`, `updateOffset`, `updateLifecycle`).
@@ -400,7 +402,10 @@ form (`csrf_token`, `operation_key`, `return_to=/admin/review/identity`,
 `canonical_device_model_id`, `identity_action`) posting to
 `POST /admin/diagnostics/identity`; an assignment still redirects to the
 device page, which the queue's script does not follow, and the other identity
-actions accept `/admin/review/identity` as `return_to`. A failed read renders
+actions accept `/admin/review/identity` as `return_to`. Repeating a result's
+identical latest identity decision succeeds without a second audit record;
+`POST /admin/diagnostics/workflow` on only resolved results returns 400
+(`invalid_diagnostic_workflow`). A failed read renders
 an Unavailable card inside the admin chrome. No write route, form field or
 schema changes.
 

@@ -2515,6 +2515,14 @@ class Database:
                 """,
                 (compatibility_identity,),
             ).fetchone()
+            review_model_key = compatibility_identity
+            if review is None and connection.execute(
+                "SELECT 1 FROM compatibility_model_review WHERE model = %s",
+                (compatibility_identity,),
+            ).fetchone():
+                # Legacy rows (migration 013) keep this model key for another identity;
+                # readers match identity_key, so the new row only needs a free primary key.
+                review_model_key = f"identity:{compatibility_identity}"
             new_review_status = "APPROVED" if normalized_action == "PUBLISH" else "PENDING"
             new_enabled = normalized_action == "PUBLISH"
             previous_status = str(review["review_status"]) if review else None
@@ -2534,7 +2542,7 @@ class Database:
                     ) VALUES (%s, %s, %s, %s, %s, now())
                     """,
                     (
-                        compatibility_identity, compatibility_identity,
+                        review_model_key, compatibility_identity,
                         new_review_status, new_enabled, public_display_name,
                     ),
                 )
@@ -2641,6 +2649,10 @@ class Database:
                 FROM map_update_diagnostic WHERE event_id=%s AND is_local_test IS FALSE FOR UPDATE""", (identifier,)).fetchone()
             if not row:
                 return False
+            # Like the install lifecycle, a row already in the target status is a no-op:
+            # never rewrite its workflow, resolution facts or resolver.
+            if (action, row['diagnostic_status']) in {('reopen','ACTIVE'),('resolve','RESOLVED')}:
+                return True
             previous = {key:row.get(key) for key in ('diagnostic_status','diagnostic_workflow_status','linked_github_issue','resolution_code','resolution_note')}
             next_state = dict(previous)
             if action == 'issue':
@@ -2822,6 +2834,8 @@ class Database:
                     if not linked_github_issue and previous_workflow in {"IN_PROGRESS", "UNDER_REVIEW"}
                     else previous_workflow
                 )
+                if current_issue == linked_github_issue and previous_workflow == next_workflow:
+                    continue
                 connection.execute(
                     """
                     UPDATE compatibility_evidence_event
@@ -2831,19 +2845,18 @@ class Database:
                     """,
                     (linked_github_issue, next_workflow, row["event_id"]),
                 )
-                if previous_workflow != next_workflow:
-                    connection.execute(
-                        """
-                        INSERT INTO compatibility_diagnostic_lifecycle_audit (
-                            event_id, previous_status, new_status,
-                            linked_github_issue, changed_by,
-                            previous_workflow_status, new_workflow_status
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        """,
-                        (row["event_id"], row.get("diagnostic_status") or "ACTIVE",
-                         row.get("diagnostic_status") or "ACTIVE", linked_github_issue,
-                         admin_user_id, previous_workflow, next_workflow),
-                    )
+                connection.execute(
+                    """
+                    INSERT INTO compatibility_diagnostic_lifecycle_audit (
+                        event_id, previous_status, new_status,
+                        linked_github_issue, changed_by,
+                        previous_workflow_status, new_workflow_status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (row["event_id"], row.get("diagnostic_status") or "ACTIVE",
+                     row.get("diagnostic_status") or "ACTIVE", linked_github_issue,
+                     admin_user_id, previous_workflow, next_workflow),
+                )
             return len(rows)
 
     def update_diagnostic_workflow(
@@ -2874,6 +2887,8 @@ class Database:
                 """,
                 scope_parameters,
             ).fetchall()
+            if rows and all(str(row.get("diagnostic_status") or "ACTIVE") != "ACTIVE" for row in rows):
+                raise ValueError("a resolved diagnostic cannot change workflow")
             for row in rows:
                 if str(row.get("diagnostic_status") or "ACTIVE") != "ACTIVE":
                     continue
@@ -3126,9 +3141,34 @@ class Database:
                         "The selected model conflicts with reported information. Use manual assignment to confirm it.",
                         details={"conflicts": conflict_details},
                     )
+            target_state = "RESOLVED" if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"} else (
+                "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
+            )
+            audit_action = "ASSIGN" if normalized_action == "MANUAL_ASSIGN" else normalized_action
             for row in rows:
                 reviewed = reviewed_assessments.get(row["event_id"])
                 previous_id = str(row.get("canonical_device_model_id") or "").strip() or None
+                # The admin decision lives only in the audit trail. A retry of
+                # the identical latest decision (double submit, second tab)
+                # returns success without a second decision or any write.
+                latest = connection.execute(
+                    """
+                    SELECT action, new_canonical_device_model_id
+                    FROM compatibility_identity_resolution_audit
+                    WHERE event_id = %s
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (row["event_id"],),
+                ).fetchone()
+                if (
+                    latest
+                    and latest["action"] == audit_action
+                    and latest["new_canonical_device_model_id"] == canonical_device_model_id
+                    and previous_id == canonical_device_model_id
+                    and row.get("identity_resolution_state") == target_state
+                ):
+                    continue
                 if reviewed:
                     audit_reason = reviewed[2]
                 elif reason:
@@ -3144,28 +3184,8 @@ class Database:
                         identity_resolution_state = %s
                     WHERE event_id = %s
                     """,
-                    (canonical_device_model_id,
-                     "RESOLVED" if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"} else (
-                         "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
-                     ), row["event_id"]),
+                    (canonical_device_model_id, target_state, row["event_id"]),
                 )
-                prior_assessment = row.get("identity_assessment")
-                if isinstance(prior_assessment, str):
-                    try:
-                        prior_assessment = json.loads(prior_assessment)
-                    except json.JSONDecodeError:
-                        prior_assessment = None
-                prior_decision = prior_assessment.get("decision") if isinstance(prior_assessment, dict) else None
-                # A retry of the identical confirmed result is idempotent. It
-                # returns success to the HTTP caller but does not add a second
-                # administrative decision or alter installation statistics.
-                if (
-                    normalized_action in {"ASSIGN", "MANUAL_ASSIGN"}
-                    and previous_id == canonical_device_model_id
-                    and isinstance(prior_decision, dict)
-                    and prior_decision.get("deviceId") == canonical_device_model_id
-                ):
-                    continue
                 connection.execute(
                     """
                     INSERT INTO compatibility_identity_resolution_audit (
@@ -3177,7 +3197,7 @@ class Database:
                     """,
                     (row["event_id"], str(row.get("compatibility_identity") or "Identity unresolved"),
                      row.get("canonical_device_model_id"), new_identity,
-                     canonical_device_model_id, "ASSIGN" if normalized_action == "MANUAL_ASSIGN" else normalized_action,
+                     canonical_device_model_id, audit_action,
                      audit_reason, note, admin_user_id, reviewed[0] if reviewed else None),
                 )
             return len(rows)
