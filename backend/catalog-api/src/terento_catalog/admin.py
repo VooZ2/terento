@@ -2731,16 +2731,18 @@ def overview_page(
             statistic it always was; Web shows web installer records only."""
             app_body, app_totals = chart(data, kind, chart_id)
             web_body, web_totals = chart(web, kind, chart_id + "-web")
+            # The switch is the first chip of the header totals, in the same size.
             switch = (
-                f"<div class='quick-filter-group overview-source-switch' role='group' aria-label='{title} source'>"
-                "<button type='button' class='quick-filter active' data-source-switch='app' aria-pressed='true'>App</button>"
-                "<button type='button' class='quick-filter' data-source-switch='web' aria-pressed='false'>Web</button></div>"
+                f"<span class='overview-source-switch' role='group' aria-label='{title} source'>"
+                "<button type='button' class='active' data-source-switch='app' aria-pressed='true'>App</button>"
+                "<button type='button' data-source-switch='web' aria-pressed='false'>Web</button></span>"
             )
             return _section_card(
-                title, switch + f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
+                title, f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
                 card_id=card_id, scope=period,
-                totals=f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
-                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span>",
+                totals=f"<div class='overview-card-totals overview-source-head'>{switch}"
+                       f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
+                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span></div>",
                 css="overview-panel overview-chart-panel",
             )
 
@@ -10533,7 +10535,10 @@ ADMIN_STYLES += """
 .web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
 .web-installer-why{display:block;margin-top:4px;font-size:12px}
 .web-installer-tests{margin:20px 0 0;font-size:12px}
-.overview-source-switch{margin:0 0 10px}.overview-source-totals{display:contents}.overview-source-totals[hidden]{display:none}
+.overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
+.overview-source-switch{display:inline-flex;box-sizing:border-box;height:24px;padding:1px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted)}
+.overview-source-switch button{min-height:0;height:20px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--secondary);font:inherit;font-size:var(--admin-type-support-size);line-height:20px;cursor:pointer}
+.overview-source-switch button.active{background:var(--surface);color:var(--graphite);font-weight:650;box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 8%,transparent)}
 """
 # Signed-in pages link one cacheable stylesheet; the content hash in the name
 # changes whenever the CSS changes (served by the admin map-assets route).
