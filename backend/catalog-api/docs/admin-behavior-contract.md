@@ -295,13 +295,14 @@ Dashboard must answer whether anything is wrong, what happened in the selected
 period, whether activity is changing, and what to inspect next. It has no
 summary tile row: the Downloads and Installs chart cards share the first row.
 Each chart card holds exactly three things (owner decision 2026-10-06): a
-header with the period scope chip and, top right, the period totals as compact
-value chips (Successful, Failed — danger only when positive — and Success rate;
-Installs counts fresh installs only); the chart; and a legend naming each
-series by colour without counts. An `App`/`Web` switch, the first header chip
-before Successful and the same size as the chips (owner decision 2026-10-10;
-App is the default and the choice per card survives a
-period change) swaps the chart and its header totals: App is the app-only
+header with the period scope chip and, top right, the period totals as one
+numbers-only badge `successful / failed / success rate` (owner decision
+2026-10-11; failed in the danger tone only when positive, the words only for
+screen readers; Installs counts fresh installs only); the chart; and a legend
+naming each series by colour without counts. One `App`/`Web` switch beside the
+period picker, in the picker's height, swaps both chart cards at once (owner
+decisions 2026-10-10 and 2026-10-11; App is the default and the choice
+survives a period change): the chart and its header totals. App is the app-only
 statistic below, unchanged; Web shows only web installer records
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)):
 Downloads are relay jobs (sent, failed on the server) and Installs are final
@@ -312,12 +313,13 @@ population, so they agree. A legend elsewhere shows a count only where it adds
 information no total shows (the Maps Custom .img install split and the App
 downloads period increases). The Needs attention header shows its `Now` total
 as one chip (`—` when any row is unavailable). Below the
-charts, Needs attention and First run share a row, then Activity and App
-downloads share the next row (owner decision 2026-10-10: each row pairs cards
-of similar height); cards in a row stretch to one height, and when one card is
-omitted the last one spans the row, so no Dashboard row leaves an empty grid
-cell at ≥1024 px. The narrow order is Downloads, Installs, Needs attention,
-First run, Activity, then App downloads.
+charts, Needs attention and Activity share a row, then First run and App
+downloads share the next row (owner decision 2026-10-11, swapping Activity and
+First run); cards in a row stretch to one height, the First run previous-period
+line closes its card at the bottom like the App downloads All time line, and
+when one card is omitted the last one spans the row, so no Dashboard row leaves
+an empty grid cell at ≥1024 px. The narrow order is Downloads, Installs, Needs
+attention, Activity, First run, then App downloads.
 
 Every number shows its scope as visible text (`Today`, `Last 24 hours`,
 `Last 7 days`, `Last 30 days`, `All time` or `Now`); hover-only scope is not
@@ -389,8 +391,10 @@ danger tone when above zero. When the read model reports the previous window,
 the three journey tiles add the change as text with an arrow (`▲ +4 vs
 previous 24 h`, `▼ -2 vs yesterday`, `= Same as previous 7 days`); colour is
 never the only signal. The `Sessions over time` card uses the Dashboard
-Downloads and Installs chart, with its styling, size, axis, focusable buckets,
-values strip and legend (owner decision 2026-10-10): one stacked bar per hour
+Downloads and Installs chart, with its styling, axis, focusable buckets,
+values strip and legend (owner decision 2026-10-10); in this full-width card it
+fills the card width from 1240 px instead of sitting narrow in the middle
+(owner decision 2026-10-11): one stacked bar per hour
 (Today, Last 24 hours), day (Last 7 days), week (Last 30 days) or month (All
 time), `Connected` in the success colour and `Never connected` in the failed
 colour. Then six cards in one grid, two side by side above 900 px, in journey
@@ -695,8 +699,8 @@ Maps reads top to bottom: the filter bar; Downloads, Installs and Updates tiles
 for the selected period (each with failed count and rate); then Countries (world
 map) and Top countries; then Providers; then Top maps; then the collapsed Events
 disclosure; and last, at the very bottom, the Downloads and Installs trend cards,
-laid out like the Dashboard charts (period Successful, Failed and Success rate
-totals at the top right, a legend without numbers, nothing under the legend)
+laid out like the Dashboard charts (the period successful / failed / success
+rate badge at the top right, a legend without numbers, nothing under the legend)
 (owner decision 2026-10-06). The Countries
 card carries no visible country/install count line; the world map's accessible
 name states when coverage is empty or partially unavailable. Russia, where maps

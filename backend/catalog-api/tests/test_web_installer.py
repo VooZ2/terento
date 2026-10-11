@@ -246,7 +246,7 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         response, page = self.request("GET", "/admin?period=24h", secret=None, admin=True)
         self.assertEqual(response.status, 200)
         installs = page.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]
-        self.assertIn("data-source-switch='web'", installs)
+        self.assertIn("data-source-switch='web'", page.split("id='overview-period-form'", 1)[1].split("</form>", 1)[0])
         web_panel = installs.split("<div data-source-panel='web' hidden>", 1)[1]
         self.assertIn("Install successful", web_panel)
         self.assertNotIn("Custom .img install", web_panel)

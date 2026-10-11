@@ -99,10 +99,22 @@ class DashboardPresentationTests(unittest.TestCase):
         installs = body.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]
         head = installs.split("</header>", 1)[0]
         self.assertIn("data-scope='period'>Last 7 days</span>", head)
-        self.assertIn("data-stat='completedInstallCount'>12</strong><small>Successful</small>", head)
-        self.assertIn("data-stat='failedInstallCount'>", head)
-        self.assertIn("<small>Success rate</small>", head)
+        # One badge, numbers only (owner 2026-10-11): successful / failed / rate.
+        self.assertIn("<span class='overview-card-total overview-card-result'>"
+                      "<strong data-stat='completedInstallCount'>12</strong><span class='sr-only'> successful,</span>"
+                      "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
+                      "<strong class='admin-error-counter is-positive' data-stat='failedInstallCount'>2</strong>"
+                      "<span class='sr-only'> failed,</span>"
+                      "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
+                      "<strong data-stat='installSuccessRate'>85.7%</strong><span class='sr-only'> success rate</span>",
+                      head)
+        self.assertNotIn("<small>", head)
         self.assertNotIn("admin-icon", head)
+        # One App/Web switch beside the period picker swaps both chart cards.
+        self.assertNotIn("data-source-switch", head)
+        form = body.split("id='overview-period-form'", 1)[1].split("</form>", 1)[0]
+        self.assertEqual(form.count("data-source-switch="), 2)
+        self.assertIn("<button type='button' class='active' data-source-switch='app' aria-pressed='true'>App</button>", form)
         # The header totals cover installs only, so the legend names the
         # series and counts the custom .img split and both update series.
         legend = installs.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
@@ -161,7 +173,7 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertNotIn(".overview-attention-empty{align-self:start}", ADMIN_STYLES)
 
     def test_dashboard_rows_pair_cards_of_similar_height(self):
-        # Owner 2026-10-10: Needs attention beside First run, Activity beside
+        # Owner 2026-10-11: Needs attention beside Activity, First run beside
         # App downloads; cards in a row stretch to one height.
         body = self.render(funnel=_funnel(**self.FIRST_RUN), downloads={
             "hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "day", "trend": [
@@ -169,7 +181,7 @@ class DashboardPresentationTests(unittest.TestCase):
                  "state": "observed_increase", "dmg_count": 1, "zip_count": 0}]})
         grid = body.split("<div class='overview-composition-grid'>", 1)[1].split("</main>", 1)[0]
         order = [grid.index(f"id='{card}-title'") for card in
-                 ("overview-attention", "overview-funnel", "overview-activity", "overview-downloads")]
+                 ("overview-attention", "overview-activity", "overview-funnel", "overview-downloads")]
         self.assertEqual(order, sorted(order))
         self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));"
                       "align-items:stretch;", ADMIN_STYLES)
@@ -317,6 +329,12 @@ class DashboardPresentationTests(unittest.TestCase):
                       card)
         self.assertNotIn("funnel-trend", page)
         self.assertNotIn("funnel-trend", ADMIN_STYLES)
+        # Owner 2026-10-11: the full-width card draws a wide variant on wide
+        # screens so the chart fills the card; half-width Dashboard cards don't.
+        self.assertIn("<svg class='overview-trend-chart overview-trend-wide' viewBox='0 0 1200 260'", card)
+        self.assertNotIn("overview-trend-wide", self.render())
+        self.assertIn(".overview-chart-wrap>.overview-trend-wide{display:block;max-width:none;height:auto;"
+                      "aspect-ratio:1200/260}", ADMIN_STYLES)
 
     def test_one_card_kpi_rows_fit_two_rows_on_phones(self):
         # Owner 2026-10-07: at <=760 px a one-card KPI row uses three columns
