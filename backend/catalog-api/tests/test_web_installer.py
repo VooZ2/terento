@@ -127,6 +127,23 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual([row["outcome"] for row in final], ["SUCCEEDED"])
 
 
+class SupportTests(unittest.TestCase):
+    def test_support_follows_the_current_page_rule_not_old_records(self):
+        now = datetime.now(timezone.utc)
+        rows = [{"stage": "GATE", "outcome": outcome, "os_family": os, "os_major": None, "browser_family": browser,
+                 "browser_major": None, "session_id": str(uuid4()), "occurred_at": now}
+                for os, browser, outcome in [
+                    ("Windows", "Edge", "BLOCKED_BROWSER"),  # recorded before Chromium browsers were allowed
+                    ("macOS", "Edge", "BLOCKED_BROWSER"), ("macOS", "Chrome", "PASSED"),
+                    ("Linux", "Chrome", "PASSED_TESTING_PLATFORM"), ("macOS", "Firefox", "BLOCKED_BROWSER"),
+                    ("Android", "Chrome", "BLOCKED_MOBILE"), ("macOS", "Other", "PASSED_TESTING_PLATFORM")]]
+        support = {(s["system"], s["browser"]): s["support"] for s in summarize(rows, [])["watch"]["systems"]}
+        self.assertEqual(support, {
+            ("Windows", "Edge"): "BLOCKED_SYSTEM", ("macOS", "Edge"): "TESTING", ("macOS", "Chrome"): "SUPPORTED",
+            ("Linux", "Chrome"): "TESTING", ("macOS", "Firefox"): "BLOCKED_BROWSER",
+            ("Android", "Chrome"): "BLOCKED_SYSTEM", ("macOS", "Other"): "TESTING"})
+
+
 class WebInstallerEndToEndTests(PGliteTestCase):
     """Page event payload → installer server forward → ingest → storage → Admin page."""
 
@@ -227,7 +244,7 @@ class WebInstallerEndToEndTests(PGliteTestCase):
                      "Watch models", "fenix 8 - 47mm", "macOS 15", "Systems and browsers", "Connection problems",
                      "Install and removal problems", "The connection to the watch ended", "CONNECTION_LOST · NetworkError",
                      "The browser could not open the watch", "OPEN_ACCESS_DENIED · SecurityError",
-                     "Supported", "Testing", "Browser not supported", "<th scope='col'>Browser</th>",
+                     "Supported", "Testing", "title='Browser not supported'", "web-installer-support", "<th scope='col'>Browser</th>",
                      "admin-icon-browser-brave", "admin-icon-browser-firefox", "admin-icon-browser-edge",
                      "MTP 0x200D", "Recent results on watches", "On the server", "Providers", "Problems",
                      "Provider returned an error", "PROVIDER_HTTP_ERROR · HTTP 503", "Recent requests", "Test records: 1",
