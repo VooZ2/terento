@@ -19,7 +19,8 @@ SCHEMA_VERSION = 1
 
 REASONS = frozenset({
     "CANCELLED", "WATCH_FULL", "CHECK_MISMATCH", "CONNECTION_LOST", "CATALOG_CHANGED", "COMPUTER_FULL",
-    "EARLIER_CHANGE", "SERVER_BUSY", "PREPARE_FAILED", "BAD_FILE", "DOWNLOAD_STOPPED", "OTHER",
+    "EARLIER_CHANGE", "SERVER_BUSY", "PREPARE_FAILED", "BAD_FILE", "DOWNLOAD_STOPPED", "DOWNLOAD_BLOCKED",
+    "OTHER",
 })
 STAGES: dict[str, frozenset[str]] = {
     "GATE": frozenset({"PASSED", "PASSED_TESTING_PLATFORM", "BLOCKED_BROWSER", "BLOCKED_MOBILE", "BLOCKED_PLATFORM"}),
@@ -38,6 +39,9 @@ ERROR_NAMES = frozenset({
 })
 RELAY_OUTCOMES = frozenset({"DELIVERED", "NOT_DOWNLOADED", "FAILED", "CANCELLED", "EXPIRED", "REFUSED", "INTERRUPTED"})
 RELAY_REASON_OUTCOMES = frozenset({"FAILED", "REFUSED", "INTERRUPTED"})
+# Which way the map bytes went: straight from the server (dl host), through
+# the Cloudflare-proxied lab host (fallback when the dl port is blocked), or both.
+SERVED_VIA = frozenset({"direct", "proxied", "mixed"})
 RELAY_REASONS = frozenset({
     "NOT_REVIEWED", "SERVER_BUSY", "COMPUTER_LIMIT", "POLICY_WITHHELD", "NO_ARTIFACT", "SOURCE_NOT_ALLOWED",
     "PROVIDER_HTTP_ERROR", "PROVIDER_UNREACHABLE", "PROVIDER_CHANGED", "BAD_ARCHIVE", "SIZE_LIMIT",
@@ -207,6 +211,11 @@ def validate_relay_job(raw: bytes, *, now: datetime | None = None) -> dict[str, 
             reason is not None and (not isinstance(reason, str) or reason not in RELAY_REASONS)):
         raise WebInstallerValidationError("invalid_reason")
     row["reason"] = reason
+    if "servedVia" in body:
+        via = body.pop("servedVia")
+        if via not in SERVED_VIA:
+            raise WebInstallerValidationError("invalid_servedVia")
+        row["served_via"] = via
     if "providerHttpStatus" in body:
         status = body.pop("providerHttpStatus")
         if reason != "PROVIDER_HTTP_ERROR" or not _allowed((100, 599), status):
@@ -338,6 +347,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
             "delivered": len(delivered),
             "failed": sum(job["outcome"] in RELAY_REASON_OUTCOMES for job in jobs),
             "servedBytes": sum(job["served_bytes"] or 0 for job in jobs),
+            "viaFallback": sum(job.get("served_via") in ("proxied", "mixed") for job in delivered),
             "medianReadyS": _median([_seconds(job["requested_at"], job.get("ready_at")) for job in requests]),
             "medianSendS": _median([_seconds(job.get("ready_at"), job["finished_at"]) for job in delivered]),
             "providers": sorted(providers.values(), key=lambda p: (-p["requests"], p["provider"])),
