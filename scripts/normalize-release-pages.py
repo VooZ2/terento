@@ -74,13 +74,14 @@ def release_family(label: str) -> str:
 def release_line(locale: str, label: str, published: date) -> str:
     month = MONTHS[locale][published.month - 1]
     latest = LATEST[release_family(label)][locale]
+    it_on = "l'" if published.day in (8, 11) else "il "  # Italian elides before 8 and 11
     versions = {
         "en": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Released {published.day} {month} {published.year}",
         "de": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Veröffentlicht am {published.day}. {month} {published.year}",
         "fr": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Publiée le {published.day} {month} {published.year}",
         "pl": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Wydana {published.day} {month} {published.year}",
         "cs": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Vydáno {published.day}. {month} {published.year}",
-        "it": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Pubblicata il {published.day} {month} {published.year}",
+        "it": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Pubblicata {it_on}{published.day} {month} {published.year}",
     }
     return f'<p class="download-release">{versions[locale]}</p>'
 
