@@ -26,7 +26,7 @@ compatible `.img` map.
 
 **Public beta · macOS 13+ · Apple Silicon**
 
-On Linux? Try the [web installer beta](#web-installer-beta) in Google Chrome.
+On Linux? Try the [web installer beta](#web-installer-beta) in Google Chrome, Microsoft Edge, Opera or Brave.
 
 <p align="center">
   <img src="site/assets/app/masters/your-garmin.png"
@@ -99,21 +99,22 @@ and detail can differ with the watch model and its map settings.
 
 ## Web installer (beta)
 
-The web installer puts maps on your watch from Google Chrome on a computer,
-without installing the app. It works on a Mac and on Linux. It does not work
-on Windows yet: with Windows' own watch driver, Chrome cannot open the watch.
+The web installer puts maps on your watch from Google Chrome, Microsoft Edge,
+Opera or Brave on a computer, without installing the app. Firefox and Safari
+can't connect to USB devices. It works on a Mac and on Linux. It does not work
+on Windows yet: with Windows' own watch driver, no browser can open the watch.
 
 **[Open the web installer](https://lab.terento.app/install/)**
 
 1. Plug in your watch with a USB data cable and unlock it. Quit Garmin
    Express and the Terento app.
-2. Choose **Connect your watch**. In Chrome's list, first you may see
+2. Choose **Connect your watch**. In the browser's list, first you may see
    "GPS (various models)". Don't choose it. After a minute or two an entry
    with "Garmin" in its name appears. Choose that one.
 3. Choose maps and install them.
 
 So far maps have been installed with the web installer only with a fēnix 8
-47 mm on a Mac. On Linux, Chrome may first need USB access to the watch; the
+47 mm on a Mac in Google Chrome. On Linux, the browser may first need USB access to the watch; the
 page shows a one-time command for that. Other watch models are not confirmed
 yet.
 If you try it, please
@@ -129,7 +130,7 @@ for what it records.
 
 <p align="center">
   <img src="site/assets/app/masters/web-installer-connect.png"
-       alt="Terento web installer asking you to plug in your Garmin, with the Connect your watch button and help for finding the watch in Chrome's list"
+       alt="Terento web installer asking you to plug in your Garmin, with the Connect your watch button and help for finding the watch in the browser's list"
        width="100%">
 </p>
 

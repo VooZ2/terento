@@ -1,12 +1,12 @@
 # Legal notices
 
-Terento is a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. Maps can also be installed from Google Chrome with the web installer. These notices cover the app, the web installer and this website.
+Terento is a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. Maps can also be installed from Google Chrome, Microsoft Edge, Opera or Brave with the web installer. These notices cover the app, the web installer and this website.
 
 ## The project
 
 Terento is an independent project published by a private individual. Meet the maker on the [About page](/about/). Contact: [hello@terento.app](mailto:hello@terento.app).
 
-The app is a Public beta for Apple Silicon Macs. The web installer is also a beta and needs Google Chrome on a computer. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
+The app is a Public beta for Apple Silicon Macs. The web installer is also a beta and needs Google Chrome, Microsoft Edge, Opera or Brave on a Mac or Linux computer. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
 
 ## Software and third-party licences
 
@@ -24,7 +24,7 @@ Terento does not create or relicense these maps, host a map library or mirror pr
 
 ## Names and independence
 
-Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS and Apple Silicon are trademarks of Apple Inc. Google and Chrome are trademarks of Google LLC. They are used descriptively. Terento is not affiliated with, endorsed or certified by any of these companies.
+Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS and Apple Silicon are trademarks of Apple Inc. Google and Chrome are trademarks of Google LLC. Microsoft and Edge are trademarks of Microsoft Corporation. Opera is a trademark of Opera Norway AS. Brave is a trademark of Brave Software, Inc. They are used descriptively. Terento is not affiliated with, endorsed or certified by any of these companies.
 
 ## Beta software and your rights
 
@@ -36,4 +36,4 @@ No notice here excludes or limits liability where the law prohibits that exclusi
 
 For data processing, diagnostics and website statistics, read the [Privacy notice](/privacy/).
 
-Updated: 10 October 2026.
+Updated: 11 October 2026.

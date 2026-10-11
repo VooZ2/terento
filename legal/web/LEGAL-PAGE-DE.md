@@ -1,12 +1,12 @@
 # Rechtliche Hinweise
 
-Terento ist eine kostenlose, quelloffene macOS-App zum Installieren und Verwalten von Karten anderer Anbieter auf Garmin-Smartwatches. Mit dem Web-Installer lassen sich Karten auch aus Google Chrome installieren. Diese Hinweise gelten für die App, den Web-Installer und diese Website.
+Terento ist eine kostenlose, quelloffene macOS-App zum Installieren und Verwalten von Karten anderer Anbieter auf Garmin-Smartwatches. Mit dem Web-Installer lassen sich Karten auch aus Google Chrome, Microsoft Edge, Opera oder Brave installieren. Diese Hinweise gelten für die App, den Web-Installer und diese Website.
 
 ## Das Projekt
 
 Terento ist ein unabhängiges Projekt einer Privatperson. Mehr über den Entwickler erfährst du unter [Über uns](/de/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Die App ist eine Public beta für Macs mit Apple Silicon. Der Web-Installer ist ebenfalls eine Beta und braucht Google Chrome auf einem Computer. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
+Die App ist eine Public beta für Macs mit Apple Silicon. Der Web-Installer ist ebenfalls eine Beta und braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
 
 ## Software und Drittanbieter-Lizenzen
 
@@ -24,7 +24,7 @@ Terento erstellt oder lizenziert diese Karten nicht neu, betreibt keine Kartenbi
 
 ## Namen und Unabhängigkeit
 
-Garmin und seine Produktnamen sind Marken von Garmin Ltd. Apple, Mac, macOS und Apple Silicon sind Marken von Apple Inc. Google und Chrome sind Marken von Google LLC. Die Namen werden beschreibend verwendet. Terento ist mit keinem dieser Unternehmen verbunden und wird von ihnen weder unterstützt noch zertifiziert.
+Garmin und seine Produktnamen sind Marken von Garmin Ltd. Apple, Mac, macOS und Apple Silicon sind Marken von Apple Inc. Google und Chrome sind Marken von Google LLC. Microsoft und Edge sind Marken der Microsoft Corporation. Opera ist eine Marke von Opera Norway AS. Brave ist eine Marke von Brave Software, Inc. Die Namen werden beschreibend verwendet. Terento ist mit keinem dieser Unternehmen verbunden und wird von ihnen weder unterstützt noch zertifiziert.
 
 ## Betasoftware und deine Rechte
 
@@ -36,4 +36,4 @@ Diese Hinweise schließen keine Haftung aus und begrenzen sie nicht, soweit das 
 
 Informationen zu Datenverarbeitung, Diagnose und Website-Statistik findest du im [Datenschutzhinweis](/privacy/).
 
-Aktualisiert: 10. Oktober 2026.
+Aktualisiert: 11. Oktober 2026.

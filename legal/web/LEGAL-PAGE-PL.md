@@ -1,12 +1,12 @@
 # Informacje prawne
 
-Terento to bezpłatna aplikacja macOS o otwartym kodzie do instalowania i zarządzania mapami innych dostawców na zegarkach Garmin. Instalator webowy pozwala też instalować mapy z Google Chrome. Te informacje dotyczą aplikacji, instalatora webowego i tej witryny.
+Terento to bezpłatna aplikacja macOS o otwartym kodzie do instalowania i zarządzania mapami innych dostawców na zegarkach Garmin. Instalator webowy pozwala też instalować mapy z Google Chrome, Microsoft Edge, Opery lub Brave. Te informacje dotyczą aplikacji, instalatora webowego i tej witryny.
 
 ## Projekt
 
 Terento to niezależny projekt publikowany przez osobę prywatną. Poznaj twórcę na stronie [O projekcie](/pl/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikacja jest publiczną wersją beta dla komputerów Mac z Apple Silicon. Instalator webowy też jest wersją beta i wymaga Google Chrome na komputerze. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
+Aplikacja jest publiczną wersją beta dla komputerów Mac z Apple Silicon. Instalator webowy też jest wersją beta i wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
 
 ## Licencje oprogramowania i komponentów
 
@@ -24,7 +24,7 @@ Terento nie tworzy tych map, nie zmienia ich licencji, nie prowadzi biblioteki m
 
 ## Nazwy i niezależność
 
-Garmin i nazwy jego produktów są znakami Garmin Ltd. Apple, Mac, macOS i Apple Silicon są znakami Apple Inc. Google i Chrome są znakami Google LLC. Używamy ich opisowo. Terento nie jest powiązane z tymi firmami ani przez nie zatwierdzone lub certyfikowane.
+Garmin i nazwy jego produktów są znakami Garmin Ltd. Apple, Mac, macOS i Apple Silicon są znakami Apple Inc. Google i Chrome są znakami Google LLC. Microsoft i Edge są znakami Microsoft Corporation. Opera jest znakiem Opera Norway AS. Brave jest znakiem Brave Software, Inc. Używamy ich opisowo. Terento nie jest powiązane z tymi firmami ani przez nie zatwierdzone lub certyfikowane.
 
 ## Wersja beta i Twoje prawa
 
@@ -36,4 +36,4 @@ Wersja beta może zawierać błędy wpływające na mapy, działanie urządzenia
 
 Informacje o przetwarzaniu danych, diagnostyce i statystykach witryny zawiera [polityka prywatności](/privacy/).
 
-Aktualizacja: 10 października 2026 r.
+Aktualizacja: 11 października 2026 r.

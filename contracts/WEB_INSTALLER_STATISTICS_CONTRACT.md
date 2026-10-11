@@ -3,7 +3,7 @@
 Status: active (backend accepts and reads; the web installer server forwards)
 Schema version: 1
 
-This document owns the meaning of web installer statistics: what the Chrome web
+This document owns the meaning of web installer statistics: what the web
 installer page reports about each visit, and what the installer server itself
 did when it relayed a map. Owner decision 2026-10-10 (Gediminas): web installer
 statistics move from the lab admin page into the production Admin, on its own
@@ -63,7 +63,7 @@ count, and shown only as the "Test records" line on the Web installer page.
 | `outcome` | one of the stage's outcomes below |
 | `osFamily` | optional, every stage: `macOS`, `Windows`, `Linux`, `ChromeOS`, `Android`, `iOS`, `Other` |
 | `osMajor` | optional integer 0–99, every stage |
-| `browserFamily` | optional, every stage: `Chrome`, `Edge`, `Opera`, `Firefox`, `Safari`, `Other` |
+| `browserFamily` | optional, every stage: `Chrome`, `Edge`, `Opera`, `Brave`, `Firefox`, `Safari`, `Other` |
 | `browserMajor` | optional integer 1–999, every stage |
 | `model` | optional watch model text as the watch reports it, lower case, `[a-z0-9 .+\-–/()]`, 1–80; not on `GATE` |
 | `firmware` | optional `\d{1,5}(\.\d{1,3})?`; not on `GATE` |
@@ -88,7 +88,12 @@ count, and shown only as the "Test records" line on the Web installer page.
 | `REMOVE` | `SUCCEEDED`, `FAILED` |
 | `RECOVERY` | `FINISHED`, `STILL_BLOCKED` |
 
-`OPEN_ACCESS_DENIED` and `INTERFACE_CLAIM_FAILED`: the system refused Chrome's
+`PASSED_TESTING_PLATFORM`: a desktop Chromium browser with WebUSB passed the
+gate on a system or browser not yet hardware-verified (Windows, Linux, or any
+brand other than Google Chrome, such as Edge, Opera or Brave).
+`BLOCKED_BROWSER`: the browser has no WebUSB (Firefox, Safari).
+
+`OPEN_ACCESS_DENIED` and `INTERFACE_CLAIM_FAILED`: the system refused the browser's
 USB open or interface claim before any MTP session existed (an unsupported
 Windows driver, missing Linux USB permission, possibly another app). `CONNECTION_LOST` is only for a
 connection that was made and then ended or became uncertain.

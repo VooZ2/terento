@@ -55,7 +55,7 @@ _UUID_TEXT = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-
 _SYSTEM = {
     "osFamily": frozenset({"macOS", "Windows", "Linux", "ChromeOS", "Android", "iOS", "Other"}),
     "osMajor": (0, 99),
-    "browserFamily": frozenset({"Chrome", "Edge", "Opera", "Firefox", "Safari", "Other"}),
+    "browserFamily": frozenset({"Chrome", "Edge", "Opera", "Brave", "Firefox", "Safari", "Other"}),
     "browserMajor": (1, 999),
 }
 _DIAGNOSTIC = {"errorName": ERROR_NAMES, "httpStatus": (100, 599), "mtpResponse": (0x2000, 0xA8FF)}
@@ -269,6 +269,15 @@ def _grouped(rows: list[dict[str, Any]], keys: tuple[str, ...]) -> list[dict[str
     return sorted(groups.values(), key=lambda g: (-g["count"], -g["last"].timestamp()))
 
 
+def _support(outcomes: set[str]) -> str:
+    """What the page decided for this system and browser: the best gate result seen."""
+    if "PASSED" in outcomes:
+        return "SUPPORTED"
+    if "PASSED_TESTING_PLATFORM" in outcomes:
+        return "TESTING"
+    return "BLOCKED_BROWSER" if "BLOCKED_BROWSER" in outcomes else "BLOCKED_SYSTEM"
+
+
 def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[str, Any]:
     """Admin Web installer read model for one period (test records already excluded)."""
     final = final_map_results(events)
@@ -298,9 +307,11 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
         if row["stage"] != "GATE":
             continue
         browser = joined(row.get("browser_family"), row.get("browser_major"))
-        item = systems.setdefault((_system(row), browser), {"system": _system(row), "browser": browser, "visits": 0, "blocked": 0})
+        item = systems.setdefault((_system(row), browser), {"system": _system(row), "browser": browser, "visits": 0, "blocked": 0,
+                                                           "outcomes": set()})
         item["visits"] += 1
         item["blocked"] += row["outcome"].startswith("BLOCKED")
+        item["outcomes"].add(row["outcome"])
     recent = sorted(final + [r for r in events if r["stage"] == "REMOVE"], key=lambda row: row["occurred_at"], reverse=True)
     requests = [job for job in jobs if job["outcome"] != "REFUSED"]
     delivered = [job for job in jobs if job["outcome"] == "DELIVERED"]
@@ -332,10 +343,11 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
             "medianVerifyS": _median([row.get("verify_s") for row in successes]),
             "models": sorted(({**m, "sessions": len(m["sessions"])} for m in models.values()),
                              key=lambda m: (-m["sessions"], m["model"] or "~", m["system"] or "")),
-            "systems": sorted(systems.values(), key=lambda s: (-s["visits"], s["system"] or "~", s["browser"] or "")),
+            "systems": sorted(({k: v for k, v in s.items() if k != "outcomes"} | {"support": _support(s["outcomes"])}
+                              for s in systems.values()), key=lambda s: (-s["visits"], s["system"] or "~", s["browser"] or "")),
             "connectProblems": _grouped(
                 [row for row in events if row["stage"] == "CONNECT" and row["outcome"] != "CONNECTED"],
-                ("outcome", "error_name", "os_family"),
+                ("outcome", "error_name", "os_family", "browser_family"),
             ),
             "mapProblems": _grouped(
                 watch_failures, ("stage", "failure_stage", "reason", "error_name", "http_status", "mtp_response"),
