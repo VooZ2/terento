@@ -83,10 +83,15 @@ count, and shown only as the "Test records" line on the Web installer page.
 | Stage | Outcomes |
 | --- | --- |
 | `GATE` | `PASSED`, `PASSED_TESTING_PLATFORM`, `BLOCKED_BROWSER`, `BLOCKED_MOBILE`, `BLOCKED_PLATFORM` |
-| `CONNECT` | `CONNECTED`, `NO_WATCH_CHOSEN`, `CHOOSER_TIMEOUT`, `STARTUP_ENTRY`, `MODEL_NOT_ENABLED`, `POLICY_UNAVAILABLE`, `OTHER_TAB`, `TIMEOUT`, `CONNECTION_LOST`, `FAILED` |
+| `CONNECT` | `CONNECTED`, `NO_WATCH_CHOSEN`, `CHOOSER_TIMEOUT`, `STARTUP_ENTRY`, `MODEL_NOT_ENABLED`, `POLICY_UNAVAILABLE`, `OTHER_TAB`, `TIMEOUT`, `CONNECTION_LOST`, `OPEN_ACCESS_DENIED`, `INTERFACE_CLAIM_FAILED`, `FAILED` |
 | `MAP_RESULT` | `SUCCEEDED`, `FAILED`, `CANCELLED` |
 | `REMOVE` | `SUCCEEDED`, `FAILED` |
 | `RECOVERY` | `FINISHED`, `STILL_BLOCKED` |
+
+`OPEN_ACCESS_DENIED` and `INTERFACE_CLAIM_FAILED`: the system refused Chrome's
+USB open or interface claim before any MTP session existed (an unsupported
+Windows driver, possibly another app). `CONNECTION_LOST` is only for a
+connection that was made and then ended or became uncertain.
 
 Page reason codes: `CANCELLED`, `WATCH_FULL`, `CHECK_MISMATCH`,
 `CONNECTION_LOST`, `CATALOG_CHANGED`, `COMPUTER_FULL`, `EARLIER_CHANGE`,

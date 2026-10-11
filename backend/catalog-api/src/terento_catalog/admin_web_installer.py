@@ -36,6 +36,8 @@ WORDS = {
     "OTHER_TAB": "Another tab was already using the watch",
     "TIMEOUT": "The watch did not answer in time",
     "CONNECTION_LOST": "The connection to the watch ended",
+    "OPEN_ACCESS_DENIED": "Chrome could not open the watch",
+    "INTERFACE_CLAIM_FAILED": "Chrome could not take over the watch's USB connection",
     "FAILED": "Other connection error",
     # Map and removal reasons
     "CANCELLED": "Cancelled by the person",
