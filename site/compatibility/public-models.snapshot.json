@@ -40,8 +40,8 @@
       "family": "forerunner",
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
-      "successfulInstallations": 13,
-      "lastSuccessfulInstallation": "2026-10-10T18:53:41+00:00"
+      "successfulInstallations": 14,
+      "lastSuccessfulInstallation": "2026-10-10T22:58:35+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -310,6 +310,20 @@
       "lastSuccessfulInstallation": "2026-09-24T17:51:20+00:00"
     },
     {
+      "model": "fēnix 7X Pro · Solar (no Wi-Fi)",
+      "variant": "Solar (no Wi-Fi)",
+      "caseSizeMm": null,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
+      "successfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-10-10T23:56:57+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · Solar, 47 mm",
       "variant": "inReach, Solar, 47 mm",
       "caseSizeMm": 47,
@@ -352,5 +366,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-10T20:47:52.112281+00:00"
+  "generatedAt": "2026-10-11T02:32:26.756486+00:00"
 }
