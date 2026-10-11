@@ -23,13 +23,13 @@ Quando scegli una mappa, il server di Terento la scarica dal fornitore originale
 
 La pagina invia a Terento, per ogni passaggio, brevi note che non ti identificano: se questo browser può essere usato, se l’orologio si è collegato e come si è conclusa ogni installazione, aggiornamento o rimozione di mappa. Contengono:
 
-- modello dell’orologio e versione del software
+- modello dell’orologio, versione del software e codice modello USB (uguale per tutti gli orologi di quel modello)
 - sistema operativo e browser, con la loro versione principale
 - fornitore, mappa, fascia di dimensione e se si trattava di una nuova installazione o di un aggiornamento
 - il passaggio non riuscito, un codice di motivo fisso, codici di errore standard del browser, del nostro server o dell’orologio e la durata di scrittura e verifica
 - un codice casuale creato a ogni apertura della pagina, per raggruppare i passaggi di una visita
 
-Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP resta solo brevemente in memoria per limitare quante richieste può fare un computer e non viene salvato. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.
+Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP resta solo brevemente in memoria per limitare quante richieste può fare un computer e non viene salvato. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. Le installazioni e gli aggiornamenti di mappe, riusciti o non riusciti, vengono conteggiati anche nelle statistiche di installazione di Terento, insieme a quelli fatti con l’app; la pagina [Compatibilità](/it/compatibility/) mostra quante installazioni riuscite sono state fatte con l’app e quante con l’installer web. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.
 
 Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’installer web ha installato e su quale orologio, per poterle aggiornare o rimuovere in sicurezza in seguito, una copia temporanea di una mappa fino all’installazione e la lingua scelta. Per riconoscere l’orologio salva un codice a senso unico ricavato dai dati dell’orologio e da un valore casuale, da cui non si può risalire al numero di serie. Cancellare nel browser i dati del sito dell’installer web rimuove tutto questo. L’installer web non carica le statistiche del sito.
 

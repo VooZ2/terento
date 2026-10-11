@@ -143,6 +143,9 @@ def build(root):
     detail,provider_runs,provider_audits=_provider_detail_fixture(providers[0])
     # The list exercises a positive Issues cell next to measured zeros.
     provider_list=[*providers[:2],dict(providers[2],health='DEGRADED',affectedPackageCount=2,problematicSourceCount=2)]
+    # All view (app + web); one web result marked in Activity.
+    web_result={**recent[0],'event_id':'web-preview','event_type':'INSTALL_SUCCEEDED','source':'web','lifecycle':None}
+    overview['all']={**overview['data'],'recentActivity':[web_result,*overview['data']['recentActivity']][:8]}
     pages={'overview':overview_page(overview,user,'fixture'),'installations':dashboard_page(rows,user,'fixture',diagnostic_summary=summary),
        'providers':providers_page(provider_list,user,'fixture'),'provider':provider_detail_page({'provider':detail},provider_runs,provider_audits,user,'fixture'),
        'statistics':map_statistics_page(stats,providers,user,'fixture'),'device':device_detail_page(device,user,'fixture'),'devices':devices_page([],None,user,'fixture')}

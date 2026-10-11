@@ -10,14 +10,37 @@ statistics move from the lab admin page into the production Admin, on its own
 **Web installer** page, starting from empty tables (lab journal data is not
 imported).
 
-## Separate population
+## Shared install statistics
 
-Web installer visits and relay jobs are their own populations. They are never
-mixed into app acquisition, fresh-install, update, download, compatibility,
-first-run funnel, watch (Devices) or Needs attention counts, and they never
-grant or revoke write authority. The Dashboard Downloads and Installations
-charts show them only behind their **Web** switch; the **App** view and every
-other app statistic stay app-only.
+Owner decision 2026-10-11 (Gediminas), replacing the earlier separate
+population and the ADR 0034 thresholds: web installer results count in the
+shared install statistics from the start, like app results.
+
+- **Counted map result**: every `MAP_RESULT` attempt, like app results (not
+  only the last one of a page load). `SUCCEEDED` counts as a success; `FAILED`
+  counts only when `writeStarted` is `true`. `CANCELLED`, preparation and
+  download failures (`writeStarted` not `true`) and connection problems never
+  count. Test records never count. The API's `web_installer_map_result` view
+  is this definition.
+- **Download**: a relay job `DELIVERED` is a successful download; `FAILED`,
+  `REFUSED` and `INTERRUPTED` are failed downloads; other outcomes do not count.
+- **Watch model**: the API resolves the catalog model of each `CONNECT` and
+  `MAP_RESULT` from `model` and the USB model code with the same identity
+  assessment as app reports, at receipt and again on each scheduler cycle
+  while unresolved. Only resolved results count per model.
+- **Where they appear**: Dashboard charts (All, the default, App and Web
+  switch), Dashboard Activity (web rows marked with the Web icon), Maps page
+  and providers (combined numbers), Devices list and model pages (App, Web and
+  All rows), and the public Compatibility JSON and watch cards
+  (`successfulInstallations` = app + web, with `appSuccessfulInstallations` and
+  `webSuccessfulInstallations`).
+- **What stays app-only**: the app read models and Event detail, evidence
+  status (Tested/Verified), reconnect-verified installs, distinct-watch counts,
+  Needs attention, the first-run funnel. Web results never grant or revoke
+  write authority.
+- **Lab and public**: until the public web installer launches at
+  `terento.app/install/`, the lab page's records count. After that launch the
+  lab installer server marks all its records `isTest: true`.
 
 ## Privacy
 
@@ -67,6 +90,7 @@ count, and shown only as the "Test records" line on the Web installer page.
 | `browserMajor` | optional integer 1–999, every stage |
 | `model` | optional watch model text as the watch reports it, lower case, `[a-z0-9 .+\-–/()]`, 1–80; not on `GATE` |
 | `firmware` | optional `\d{1,5}(\.\d{1,3})?`; not on `GATE` |
+| `usbVendorId`, `usbProductId` | optional integers 0–65535, both or neither; the watch's USB model code (the same for every watch of one model); `CONNECT` and `MAP_RESULT` only |
 | `baseModel` | optional, same rule as `model`; `CONNECT` only |
 | `operation` | `install` or `update`; `MAP_RESULT` only (required there) |
 | `provider` | `[a-z0-9-]{1,40}`; `MAP_RESULT` and `REMOVE` |
@@ -161,18 +185,17 @@ Periods are the Admin set (`today`, `24h`, `7d`, `30d`, `all`), filtered by
 `occurredAt` (events) and `requestedAt` (relay jobs). Test records are excluded
 from every number below.
 
-- **Final map result**: one per (`sessionId`, `packageId`, `operation`), the
-  latest `MAP_RESULT` of that page load. A failure that a retry in the same page
-  load replaced is not a final failure. **Maps installed**, **Maps updated**,
-  **Failed**, **Writing** (median `writeS`, then median `verifyS`, of final
-  successes) and **Recent results on watches** use final results only.
+- **Counted map result** (above): **Maps installed**, **Maps updated**,
+  **Failed**, **Writing** (median `writeS`, then median `verifyS`, of counted
+  successes) use counted results; **Recent results on watches** lists every
+  map result and removal.
 - **Watch connected**: distinct sessions with `CONNECT=CONNECTED`.
 - **Watch models**: per model text and system (`osFamily osMajor`): firmware
-  seen, connected sessions, final installs, updates and failures, last seen.
+  seen, connected sessions, counted installs, updates and failures, last seen.
 - **Systems and browsers**: `GATE` events per system and browser, and how many
   were blocked.
 - **Connection problems** and **Install and removal problems**: every failed
-  attempt (not only final results), grouped by codes, with the codes shown next
+  attempt (counted or not), grouped by codes, with the codes shown next
   to their plain words so a failure can be traced to its cause.
 - **On the server**: relay jobs. Requests exclude `REFUSED`; Failed counts
   `FAILED`, `REFUSED` and `INTERRUPTED`; preparation time is `readyAt −
@@ -180,6 +203,6 @@ from every number below.
   sent is the sum of `servedBytes`; sent through Cloudflare counts `DELIVERED`
   jobs with `servedVia` `proxied` or `mixed`.
 - **Dashboard Web switch**: Downloads = relay jobs per bucket of `requestedAt`
-  (delivered, and failed on the server); Installations = final map results per
-  bucket of `occurredAt` (install succeeded, install failed, update succeeded,
-  update failed).
+  (delivered, and failed on the server); Installations = counted map results
+  per bucket of `occurredAt` (install succeeded, install failed, update
+  succeeded, update failed). The All view adds them to the App view per bucket.

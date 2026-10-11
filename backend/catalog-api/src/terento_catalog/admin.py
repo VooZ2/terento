@@ -279,6 +279,9 @@ _FA_ICONS = {
     "sort-down": ("0 0 384 512", "M32 288c-12.9 0-24.6 7.8-29.6 19.8S.2 333.5 9.4 342.6l160 160c12.5 12.5 32.8 12.5 45.3 0l160-160c9.2-9.2 11.9-22.9 6.9-34.9S364.9 288 352 288L32 288z"),  # sort-down
     "ellipsis": ("0 0 448 512", "M0 256a56 56 0 1 1 112 0 56 56 0 1 1 -112 0zm168 0a56 56 0 1 1 112 0 56 56 0 1 1 -112 0zm224-56a56 56 0 1 1 0 112 56 56 0 1 1 0-112z"),  # ellipsis
     "arrows-left-right": ("0 0 512 512", "M502.6 150.6l-96 96c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L402.7 160 32 160c-17.7 0-32-14.3-32-32S14.3 96 32 96l370.7 0-41.4-41.4c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l96 96c12.5 12.5 12.5 32.8 0 45.3zm-397.3 352l-96-96c-12.5-12.5-12.5-32.8 0-45.3l96-96c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3L109.3 352 480 352c17.7 0 32 14.3 32 32s-14.3 32-32 32l-370.7 0 41.4 41.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0z"),  # arrow-right-arrow-left
+    "source-all": ("0 0 512 512", "M232.5 5.2c14.9-6.9 32.1-6.9 47 0l218.6 101c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 149.8C5.4 145.8 0 137.3 0 128s5.4-17.9 13.9-21.8L232.5 5.2zM48.1 218.4l164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 277.8C5.4 273.8 0 265.3 0 256s5.4-17.9 13.9-21.8l34.1-15.8zM13.9 362.2l34.1-15.8 164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 405.8C5.4 401.8 0 393.3 0 384s5.4-17.9 13.9-21.8z"),  # layer-group
+    "source-app": ("0 0 640 512", "M128 32C92.7 32 64 60.7 64 96l0 240 64 0 0-240 384 0 0 240 64 0 0-240c0-35.3-28.7-64-64-64L128 32zM19.2 384C8.6 384 0 392.6 0 403.2 0 445.6 34.4 480 76.8 480l486.4 0c42.4 0 76.8-34.4 76.8-76.8 0-10.6-8.6-19.2-19.2-19.2L19.2 384z"),  # laptop
+    "source-web": ("0 0 512 512", "M351.9 280l-190.9 0c2.9 64.5 17.2 123.9 37.5 167.4 11.4 24.5 23.7 41.8 35.1 52.4 11.2 10.5 18.9 12.2 22.9 12.2s11.7-1.7 22.9-12.2c11.4-10.6 23.7-28 35.1-52.4 20.3-43.5 34.6-102.9 37.5-167.4zM160.9 232l190.9 0C349 167.5 334.7 108.1 314.4 64.6 303 40.2 290.7 22.8 279.3 12.2 268.1 1.7 260.4 0 256.4 0s-11.7 1.7-22.9 12.2c-11.4 10.6-23.7 28-35.1 52.4-20.3 43.5-34.6 102.9-37.5 167.4zm-48 0C116.4 146.4 138.5 66.9 170.8 14.7 78.7 47.3 10.9 131.2 1.5 232l111.4 0zM1.5 280c9.4 100.8 77.2 184.7 169.3 217.3-32.3-52.2-54.4-131.7-57.9-217.3L1.5 280zm398.4 0c-3.5 85.6-25.6 165.1-57.9 217.3 92.1-32.7 159.9-116.5 169.3-217.3l-111.4 0zm111.4-48C501.9 131.2 434.1 47.3 342 14.7 374.3 66.9 396.4 146.4 399.9 232l111.4 0z"),  # globe
 }
 
 
@@ -343,6 +346,31 @@ def _metric_value_text(value: Any, fmt: str) -> str | None:
         return str(value)
     number = _optional_nonnegative_int(value)
     return f"{number:,}" if number is not None else None
+
+
+def _source_count_grid(
+    columns: list[tuple[str, str, bool]], rows: list[tuple[str, dict[str, Any]]], *, label: str,
+) -> str:
+    """App, Web and All counts of one card (owner decision 2026-10-11): one
+    row per source, marked by its icon; ``columns`` are (heading, key,
+    failure). A value that does not apply to a source is None (shown as —)."""
+    head = "<div class='source-count-row source-count-head' role='row'><span role='columnheader'><span class='sr-only'>Source</span></span>" + "".join(
+        f"<span role='columnheader'>{html.escape(heading)}</span>" for heading, _, _ in columns) + "</div>"
+    body = []
+    for source, values in rows:
+        cells = []
+        for heading, key, failure in columns:
+            number = _optional_nonnegative_int(values.get(key))
+            text = "—" if number is None else f"{number:,}"
+            tone = " is-positive" if failure and number else ""
+            cells.append(f"<span role='cell' class='numeric{tone}' data-stat='{html.escape(source + '-' + key, quote=True)}'>{text}</span>")
+        body.append(
+            f"<div class='source-count-row source-count-{source}' role='row'>"
+            f"<span role='rowheader' class='source-count-source'>{_admin_icon('source-' + source)}"
+            f"<span class='sr-only'>{source.title()}</span></span>" + "".join(cells) + "</div>"
+        )
+    return (f"<div class='source-count-grid' role='table' aria-label='{html.escape(label, quote=True)}' "
+            f"style='--source-count-columns:{len(columns)}'>" + head + "".join(body) + "</div>")
 
 
 def _metric_tile(
@@ -1493,19 +1521,34 @@ def _download_history_icon(event_type: str) -> str:
     return icons.get(event_type) or extra_icons[names.get(event_type, "circle-info")]
 
 
-def _overview_map_activity_row(event: dict[str, Any]) -> str:
-    event_type = str(event.get("event_type") or "")
-    label, state, tone = _MAP_ACTIVITY_STATES.get(event_type.upper(), ("Map activity", "unknown", "neutral"))
-    status_markup = _download_history_icon(event_type) + html.escape(label)
-    if event_type == 'MAP_UPDATE_NOT_STARTED' and event.get('diagnostic_report_id'):
-        status_markup += f" <a href='/admin/update-diagnostics?diagnosticId={quote(str(event['diagnostic_report_id']), safe='')}'>View details</a>"
-    if event_type == 'MAP_UPDATE_FAILED' and event.get('event_id'):
-        status_markup += f" <a href='/admin/update-diagnostics?eventId={quote(str(event['event_id']),safe='')}'>View failure</a>"
+def _overview_activity_context(event: dict[str, Any]) -> str:
     component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
     context = html.escape(_overview_map_event_context(event)) + (' · ' + component if component else '')
     device = _overview_activity_device(event)
     if device:
         context += " · " + device
+    return context
+
+
+def _overview_map_activity_row(event: dict[str, Any]) -> str:
+    event_type = str(event.get("event_type") or "")
+    label, state, tone = _MAP_ACTIVITY_STATES.get(event_type.upper(), ("Map activity", "unknown", "neutral"))
+    status_markup = _download_history_icon(event_type) + html.escape(label)
+    if event.get("source") == "web":
+        # Web installer result (owner decision 2026-10-11): marked with the
+        # Web icon; it has no app update diagnostics.
+        return (
+            f"<li class='overview-activity-item overview-activity-{state} map-activity-row map-activity-{tone}'>"
+            f"<span class='map-activity-copy'><span class='overview-activity-label'>{status_markup}"
+            f"<span class='activity-source-web' role='img' aria-label='Web'>{_admin_icon('source-web')}</span></span>"
+            f"<span class='activity-context'>{_overview_activity_context(event)}</span></span>"
+            f"{_timestamp_markup(event.get('occurred_at'))}</li>"
+        )
+    if event_type == 'MAP_UPDATE_NOT_STARTED' and event.get('diagnostic_report_id'):
+        status_markup += f" <a href='/admin/update-diagnostics?diagnosticId={quote(str(event['diagnostic_report_id']), safe='')}'>View details</a>"
+    if event_type == 'MAP_UPDATE_FAILED' and event.get('event_id'):
+        status_markup += f" <a href='/admin/update-diagnostics?eventId={quote(str(event['event_id']),safe='')}'>View failure</a>"
+    context = _overview_activity_context(event)
     if event_type == 'MAP_UPDATE_NOT_STARTED' and event.get('reason_summary'):
         context += ' · ' + html.escape(str(event['reason_summary']))
     lifecycle = event.get("lifecycle") or []
@@ -2166,7 +2209,7 @@ def _overview_period_script() -> str:
 
 
 def _overview_source_switch_script() -> str:
-    """Dashboard App/Web switch: one choice swaps both chart cards and
+    """Dashboard All/App/Web switch: one choice swaps both chart cards and
     survives period reloads."""
     return r"""(() => {
       let chosen = '';
@@ -2671,7 +2714,10 @@ def overview_page(
         f"<option value='{value}'{' selected' if value == period else ''}>{ADMIN_PERIOD_LABELS[value]}</option>"
         for value in ADMIN_PERIODS
     )
-    recent = list(data.get("recentActivity") or [])
+    # Activity shows app and web results together (All), web rows marked.
+    all_overview = overview.get("all") if isinstance(overview.get("all"), dict) else {}
+    recent = list((all_overview if all_overview.get("available") is not False and "recentActivity" in all_overview
+                   else data).get("recentActivity") or [])
     map_statistics_href = "/admin/map-statistics?" + urlencode({"period": period})
 
     # --- Needs attention: fixed category rows, explicit unavailable state ----
@@ -2741,6 +2787,7 @@ def overview_page(
 
     # --- Charts with an explicit all-time line -------------------------------
     web = overview.get("web") if isinstance(overview.get("web"), dict) else {"available": False}
+    all_sources = overview.get("all") if isinstance(overview.get("all"), dict) else {"available": False}
     trend = list(data.get("trend") or [])
     bucket = str(data.get("bucket") or "day")
     if data_available:
@@ -2753,7 +2800,7 @@ def overview_page(
             else:
                 keys = ("completedInstallCount", "failedInstallCount", "installSuccessRate")
                 activity = (source.get(keys[0]) or 0) + (source.get(keys[1]) or 0) + (source.get("mapUpdateCount") or 0)
-            metric = kind if source is data else "web-installs" if kind == "installs" else kind
+            metric = "web-installs" if source is web and kind == "installs" else kind
             body = _overview_trend_chart(
                 list(source.get("trend") or []), str(source.get("bucket") or "day"), time_zone, metric=metric,
                 chart_id=chart_id, counted=frozenset(), has_activity=bool(activity),
@@ -2761,17 +2808,19 @@ def overview_page(
             return body, _period_totals(source, *keys, label=f"{kind.title()} in this period")
 
         def switched_card(title: str, kind: str, card_id: str, chart_id: str) -> str:
-            """App/Web (owner decision 2026-10-10): App is the app-only
+            """All/App/Web (owner decisions 2026-10-10 and 2026-10-11): All
+            adds app and web results and is shown first; App is the app-only
             statistic it always was; Web shows web installer records only.
             One switch next to the period picker swaps both cards."""
-            app_body, app_totals = chart(data, kind, chart_id)
-            web_body, web_totals = chart(web, kind, chart_id + "-web")
+            panels = (("all", all_sources, chart_id + "-all"), ("app", data, chart_id), ("web", web, chart_id + "-web"))
+            rendered = [(name, *chart(source, kind, panel_chart_id)) for name, source, panel_chart_id in panels]
+            hidden = lambda name: "" if name == "all" else " hidden"
             return _section_card(
-                title, f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
+                title, "".join(f"<div data-source-panel='{name}'{hidden(name)}>{body}</div>" for name, body, _ in rendered),
                 card_id=card_id, scope=period,
-                totals=f"<div class='overview-card-totals overview-source-head'>"
-                       f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
-                       f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span></div>",
+                totals="<div class='overview-card-totals overview-source-head'>" + "".join(
+                    f"<span class='overview-source-totals' data-source-panel='{name}'{hidden(name)}>{totals}</span>"
+                    for name, _, totals in rendered) + "</div>",
                 css="overview-panel overview-chart-panel",
             )
 
@@ -2819,10 +2868,16 @@ def overview_page(
         downloads_section = ""
 
     funnel_section = _funnel_summary_card(overview.get("funnel"), period) if "funnel" in overview else ""
+    active_source = {"all": " class='active'"}
     source_switch = (
         "<span class='overview-source-switch' role='group' aria-label='Downloads and Installs source'>"
-        "<button type='button' class='active' data-source-switch='app' aria-pressed='true'>App</button>"
-        "<button type='button' data-source-switch='web' aria-pressed='false'>Web</button></span>"
+        + "".join(
+            f"<button type='button'{active_source.get(name, '')} data-source-switch='{name}' "
+            f"aria-pressed='{str(name == 'all').lower()}' aria-label='{label}'>"
+            f"{_admin_icon('source-' + name)}</button>"
+            for name, label in (("all", "All"), ("app", "App"), ("web", "Web"))
+        )
+        + "</span>"
     ) if data_available else ""
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
@@ -6626,12 +6681,15 @@ def device_detail_page(
     attempts = int(stats.get("attempts") or 0)
     successful = int(stats.get("successful") or 0)
     failed = int(stats.get("failed") or 0)
+    app_stats = stats.get("app") if isinstance(stats.get("app"), dict) else {
+        "attempts": attempts, "successful": successful, "failed": failed}
+    web_stats = stats.get("web") if isinstance(stats.get("web"), dict) else {}
     open_errors = (
         int(open_problem_count) if open_problem_count is not None
         else _open_problem_operation_count(active_events)
     )
     status = calculate_compatibility_status(
-        successful_install_count=successful,
+        successful_install_count=int(app_stats.get("successful") or 0),
         recognized_map_capable_evidence=device.get("observedMapCapability") is True,
     )
     status_value = device.get("evidenceStatus") or (status.value if status else "")
@@ -6778,11 +6836,13 @@ def device_detail_page(
     statistics_section = "" if not history and not attempts and not failed else (
         "<section class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-labelledby='model-installation-kpis-title'>"
         "<header class='admin-card-head'><h2 id='model-installation-kpis-title'>Installs</h2></header>"
+        + _source_count_grid(
+            [("Attempts", "attempts", False), ("Successful", "successful", False), ("Failed", "failed", True)],
+            [("app", app_stats), ("web", web_stats),
+             ("all", {"attempts": attempts, "successful": successful, "failed": failed})],
+            label="Installs by source",
+        )
         + _metric_row([
-            _metric_tile("Attempts", attempts, data_stat="attempts",
-                         hint="Each map result counts once, including custom .img."),
-            _metric_tile("Successful", successful, data_stat="successful"),
-            _metric_tile("Failed", failed, failure=True, data_stat="failed"),
             _metric_tile("Open problems", open_errors, failure=True, data_stat="openProblems",
                          hint="Installs (operations) with an unresolved failure and no linked GitHub issue"),
             _metric_tile("Last report", format_timestamp(last_report) if last_report else None, fmt="text",
@@ -6812,7 +6872,7 @@ def device_detail_page(
         </div>
     """
     from .update_diagnostics import update_history_markup, update_summary_markup
-    update_summary = update_summary_markup(device.get('update_statistics') or {}, device_id)
+    update_summary = update_summary_markup(device.get('update_statistics') or {}, device_id, web=web_stats)
     updates = update_history_markup(update_history or {'device_id': device_id, 'rows': []}, base_url=detail_url, embedded=True)
     active_header = "evidence" if origin == "installations" else "devices"
     content = f"""
@@ -7268,6 +7328,15 @@ def _admin_device_payload(
         attempts = int(row.get("attempted_install_count") or 0)
         successful = int(row.get("successful_install_count") or 0)
         failed = int(row.get("failed_install_count") or 0)
+        # Web installer results count with app results (owner decision
+        # 2026-10-11); evidence and map capability stay app-only.
+        web_attempts = int(row.get("web_attempted_install_count") or 0)
+        web_successful = int(row.get("web_successful_install_count") or 0)
+        web_failed = int(row.get("web_failed_install_count") or 0)
+        last_success = max(
+            (value for value in (row.get("last_success"), row.get("web_last_success")) if isinstance(value, datetime)),
+            default=row.get("last_success"),
+        )
         asset_url = row.get("asset_url")
         if not (
             row.get("asset_status") == "AVAILABLE"
@@ -7356,13 +7425,20 @@ def _admin_device_payload(
             "image": image,
             "usbIdentities": usb_identities,
             "installationStats": {
-                "attempts": attempts,
-                "successful": successful,
-                "failed": failed,
-                "successRate": round(successful * 100 / attempts, 1) if attempts else None,
+                "attempts": attempts + web_attempts,
+                "successful": successful + web_successful,
+                "failed": failed + web_failed,
+                "successRate": (round((successful + web_successful) * 100 / (attempts + web_attempts), 1)
+                                if attempts + web_attempts else None),
                 "firstSuccessfulAt": _timestamp_iso(row.get("first_success")) or None,
-                "lastSuccessfulAt": _timestamp_iso(row.get("last_success")) or None,
+                "lastSuccessfulAt": _timestamp_iso(last_success) or None,
                 "lastEvidenceAt": _timestamp_iso(row.get("last_evidence")) or None,
+                "app": {"attempts": attempts, "successful": successful, "failed": failed},
+                "web": {
+                    "attempts": web_attempts, "successful": web_successful, "failed": web_failed,
+                    "updatesSuccessful": int(row.get("web_successful_update_count") or 0),
+                    "updatesFailed": int(row.get("web_failed_update_count") or 0),
+                },
             },
             "catalog": {
                 "firstSeenAt": _timestamp_iso(row.get("first_seen_at")) or None,
@@ -9691,6 +9767,8 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-activity-error .overview-activity-label{color:var(--danger)}
 .map-activity-warning .overview-activity-label{color:var(--status-tested-text)}
 .map-activity-neutral .overview-activity-label{color:var(--secondary)}
+.activity-source-web{display:inline-flex;margin-left:2px;color:var(--secondary)}.activity-source-web .admin-icon{width:13px;height:13px}
+.source-count-grid{display:grid;margin:4px 0 14px}.source-count-row{display:grid;grid-template-columns:44px repeat(var(--source-count-columns),minmax(0,1fr));align-items:center;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.source-count-head{padding:0 0 8px;border-top:0;color:var(--secondary);font-size:12px;font-weight:650}.source-count-row>span:not(.source-count-source){text-align:right}.source-count-row .numeric{font-size:14px;font-weight:650;color:var(--graphite)}.source-count-row .numeric.is-positive{color:var(--danger)}.source-count-source{display:inline-flex;color:var(--graphite)}.source-count-source .admin-icon{width:18px;height:18px}.source-count-all{border-top-width:2px}.source-count-all .numeric{font-weight:750}
 @media(max-width:480px){.map-activity-row{grid-template-columns:minmax(0,1fr)}.map-activity-row>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row .download-history>summary{grid-template-columns:minmax(0,1fr)}.map-activity-row .download-history>summary>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>.map-activity-copy{grid-row:1}}
 
 /* Map statistics compact summary, popularity views, and table alignment. */
@@ -10377,6 +10455,8 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .overview-source-switch button{min-height:0;height:100%;padding:0 14px;border:0;border-radius:calc(var(--admin-control-radius) - 3px);background:transparent;color:var(--secondary);font:600 var(--admin-control-font-size)/1 var(--font-ui);cursor:pointer}
 .overview-source-switch button.active{background:var(--surface);color:var(--graphite);box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 8%,transparent)}
 .overview-source-switch button:focus-visible{outline:var(--admin-focus-ring);outline-offset:1px}
+.overview-source-switch button{display:inline-flex;align-items:center;justify-content:center;width:42px;padding:0}
+.overview-source-switch .admin-icon{width:16px;height:16px}
 @media(max-width:760px){.overview-period-form:has(.overview-source-switch) label{flex:1 1 auto;min-width:0}}
 /* Chart totals: one badge, successful / failed / rate. */
 .overview-card-result{gap:6px}.overview-card-total-separator{color:var(--secondary);font-size:14px;line-height:22px}

@@ -110,11 +110,14 @@ class DashboardPresentationTests(unittest.TestCase):
                       head)
         self.assertNotIn("<small>", head)
         self.assertNotIn("admin-icon", head)
-        # One App/Web switch beside the period picker swaps both chart cards.
+        # One All/App/Web icon switch beside the period picker swaps both
+        # chart cards; All is shown first (owner decision 2026-10-11).
         self.assertNotIn("data-source-switch", head)
         form = body.split("id='overview-period-form'", 1)[1].split("</form>", 1)[0]
-        self.assertEqual(form.count("data-source-switch="), 2)
-        self.assertIn("<button type='button' class='active' data-source-switch='app' aria-pressed='true'>App</button>", form)
+        self.assertEqual(form.count("data-source-switch="), 3)
+        self.assertIn("<button type='button' class='active' data-source-switch='all' aria-pressed='true' aria-label='All'>"
+                      "<svg class='admin-icon admin-icon-source-all'", form)
+        self.assertIn("<button type='button' data-source-switch='app' aria-pressed='false' aria-label='App'>", form)
         # The header totals cover installs only, so the legend names the
         # series and counts the custom .img split and both update series.
         legend = installs.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]

@@ -9,13 +9,13 @@ from pathlib import Path
 from uuid import uuid4
 
 from pglite_support import PGliteTestCase
-from terento_catalog.admin import hash_password
-from terento_catalog.http_api import CatalogService, make_handler
+from terento_catalog.admin import _admin_device_payload, device_detail_page, hash_password
+from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
 from terento_catalog.migrate import _statements
 from terento_catalog.web_installer import (
     STAGES,
     WebInstallerValidationError,
-    final_map_results,
+    counted_result,
     summarize,
     validate_event,
     validate_relay_job,
@@ -121,10 +121,65 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual((server["requests"], server["failed"]), (0, 1))
         self.assertEqual(server["providers"], [{"provider": "opentopomap", "requests": 0, "delivered": 0, "failed": 1, "servedBytes": 0}])
 
-    def test_final_result_is_the_last_one_of_the_page_load(self):
+    def test_every_attempt_counts_and_a_failure_only_after_writing_started(self):
         rows = [validate_event(encode(body), now=NOW) for body in session_events()]
-        final = final_map_results(rows)
-        self.assertEqual([row["outcome"] for row in final], ["SUCCEEDED"])
+        self.assertEqual([row["outcome"] for row in rows if counted_result(row)], ["FAILED", "SUCCEEDED"])
+        for body, counted in (
+            (event(stage="MAP_RESULT", outcome="CANCELLED", operation="install", reason="CANCELLED", writeStarted=True), False),
+            (event(stage="MAP_RESULT", outcome="FAILED", operation="install", failureStage="DOWNLOAD",
+                   reason="DOWNLOAD_STOPPED", writeStarted=False), False),
+            (event(stage="MAP_RESULT", outcome="FAILED", operation="update", failureStage="VERIFY",
+                   reason="CHECK_MISMATCH", writeStarted=True), True),
+            (event(stage="CONNECT", outcome="CONNECTION_LOST"), False),
+        ):
+            self.assertIs(counted_result(validate_event(encode(body))), counted)
+
+    def test_usb_model_code_needs_both_numbers(self):
+        row = validate_event(encode(event(stage="CONNECT", outcome="CONNECTED", model="fenix 8 - 47mm",
+                                          usbVendorId=0x091E, usbProductId=0x51B8)))
+        self.assertEqual((row["usb_vendor_id"], row["usb_product_id"]), (0x091E, 0x51B8))
+        self.invalid(event(stage="CONNECT", outcome="CONNECTED", usbVendorId=0x091E), "invalid_usbProductId")
+        self.invalid(event(stage="CONNECT", outcome="CONNECTED", usbVendorId=0x091E, usbProductId=70000),
+                     "invalid_usbProductId")
+        self.invalid(event(usbVendorId=0x091E, usbProductId=1), "unknown_fields")  # not on GATE
+
+
+class SharedCountTests(unittest.TestCase):
+    """App and web install counts side by side (owner decision 2026-10-11)."""
+
+    def test_public_counts_add_web_and_keep_each_part(self):
+        last_app, last_web = datetime(2026, 10, 1, tzinfo=timezone.utc), datetime(2026, 10, 11, tzinfo=timezone.utc)
+        row = {"attempted_install_count": 10, "successful_install_count": 9, "failed_install_count": 1,
+               "success_rate": 90.0, "last_success": last_app, "web_attempted_install_count": 2,
+               "web_successful_install_count": 1, "web_failed_install_count": 1, "web_last_success": last_web}
+        self.assertEqual(_public_install_counts(row), {
+            "attemptedInstallations": 12, "successfulInstallations": 10, "appSuccessfulInstallations": 9,
+            "webSuccessfulInstallations": 1, "failedInstallations": 2, "successRate": 83.3,
+            "lastSuccessfulInstallation": last_web.isoformat()})
+        app_only = _public_install_counts({**row, "web_attempted_install_count": 0, "web_successful_install_count": 0,
+                                           "web_failed_install_count": 0, "web_last_success": None})
+        self.assertEqual((app_only["successRate"], app_only["webSuccessfulInstallations"]), (90.0, 0))
+
+    def test_model_page_shows_app_web_and_all_rows_while_evidence_stays_app_only(self):
+        payload = _admin_device_payload([{
+            "device_id": "garmin-fenix-8-47-amoled", "model": "fēnix 8", "attempted_install_count": 0,
+            "successful_install_count": 0, "failed_install_count": 0, "compatibility_successful_install_count": 0,
+            "web_attempted_install_count": 3, "web_successful_install_count": 2, "web_failed_install_count": 1,
+            "web_successful_update_count": 1, "web_failed_update_count": 0,
+        }], None)
+        device = payload["devices"][0]
+        self.assertEqual((device["installationStats"]["attempts"], device["installationStats"]["successful"]), (3, 2))
+        self.assertIsNone(device["evidenceStatus"])  # web results never make a model tested
+        page = device_detail_page(device, {"username": "operator"}, "csrf").decode()
+        installs = page.split("aria-label='Installs by source'", 1)[1].split("</section>", 1)[0]
+        for source, values in (("app", ("0", "0", "0")), ("web", ("3", "2", "1")), ("all", ("3", "2", "1"))):
+            row = installs.split(f"source-count-{source}'", 1)[1].split("</div>", 1)[0]
+            self.assertIn(f"admin-icon-source-{source}", row)
+            for key, value in zip(("attempts", "successful", "failed"), values):
+                self.assertIn(f"data-stat='{source}-{key}'>{value}<", row)
+        updates = page.split("aria-label='Updates by source'", 1)[1].split("</section>", 1)[0]
+        self.assertIn("data-stat='web-successful'>1<", updates)
+        self.assertIn("data-stat='web-blocked'>—<", updates)
 
 
 class SupportTests(unittest.TestCase):
@@ -223,13 +278,14 @@ class WebInstallerEndToEndTests(PGliteTestCase):
 
         data = self.service.web_installer({"period": "24h"})
         watch, server = data["watch"], data["server"]
-        self.assertEqual((watch["connectedSessions"], watch["installed"], watch["updated"], watch["failed"]), (1, 1, 0, 0))
+        # Every attempt counts: the write that lost the connection and the retry that succeeded.
+        self.assertEqual((watch["connectedSessions"], watch["installed"], watch["updated"], watch["failed"]), (1, 1, 0, 1))
         self.assertEqual((watch["medianWriteS"], watch["medianVerifyS"]), (240, 30))
         self.assertEqual([(m["model"], m["system"], m["installed"]) for m in watch["models"]], [("fenix 8 - 47mm", "macOS 15", 1)])
         # Every failed attempt stays visible in Problems, with its codes.
         self.assertEqual([(p["stage"], p["reason"], p["error_name"]) for p in watch["mapProblems"]],
                          [("REMOVE", "OTHER", None), ("MAP_RESULT", "CONNECTION_LOST", "NetworkError")])
-        self.assertEqual([r["outcome"] for r in watch["recent"]], ["FAILED", "SUCCEEDED"])  # remove, final install
+        self.assertEqual([r["outcome"] for r in watch["recent"]], ["FAILED", "SUCCEEDED", "FAILED"])  # remove, retry, first try
         self.assertEqual(sorted((s["browser"].split()[0], s["support"]) for s in watch["systems"]),
                          [("Brave", "TESTING"), ("Chrome", "SUPPORTED"), ("Firefox", "BLOCKED_BROWSER")])
         self.assertEqual([(p["os_family"], p["browser_family"]) for p in watch["connectProblems"]], [("Windows", "Edge")])
@@ -262,37 +318,84 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         _, page = self.request("GET", "/admin/web-installer?period=24h&timeZone=Europe/Vilnius", secret=None, admin=True)
         self.assertIn("data-time-zone='Europe/Vilnius'", page)
 
-    def test_dashboard_web_switch_shows_web_records_only_behind_web(self):
+    def test_dashboard_switch_shows_all_first_then_app_and_web(self):
         for body in session_events():
             self.forward(self.recent(body))
         self.forward(self.recent(relay_job()), "relay-jobs")
         overview = self.service.admin_overview("24h")
-        web = overview["web"]
-        self.assertEqual((web["completedInstallCount"], web["failedInstallCount"], web["failedDownloadCount"]), (1, 0, 1))
+        web, combined = overview["web"], overview["all"]
+        self.assertEqual((web["completedInstallCount"], web["failedInstallCount"], web["failedDownloadCount"]), (1, 1, 1))
         self.assertEqual(sum(row.get("success_count", 0) for row in web["trend"]), 1)
         self.assertEqual(overview["data"].get("completedInstallCount") or 0, 0)  # App view stays app-only
+        self.assertEqual((combined["completedInstallCount"], combined["failedInstallCount"],
+                          combined["failedDownloadCount"], combined["installSuccessRate"]), (1, 1, 1, 50.0))
+        self.assertEqual(sum(row.get("failed_count", 0) for row in combined["trend"]), 1)
+        self.assertEqual([(item["event_type"], item["source"]) for item in combined["recentActivity"]],
+                         [("INSTALL_SUCCEEDED", "web"), ("INSTALL_FAILED", "web")])
         for period in ("7d", "all"):  # day/month buckets counted in SQL, in the admin time zone
             web = self.service.admin_overview(period, "Europe/Vilnius")["web"]
             self.assertEqual((sum(row.get("success_count", 0) for row in web["trend"]),
                               sum(row.get("download_failed_count", 0) for row in web["trend"])), (1, 1))
         response, page = self.request("GET", "/admin?period=24h", secret=None, admin=True)
         self.assertEqual(response.status, 200)
+        switch = page.split("id='overview-period-form'", 1)[1].split("</form>", 1)[0]
+        for source in ("all", "app", "web"):
+            self.assertIn(f"data-source-switch='{source}'", switch)
+            self.assertIn(f"admin-icon-source-{source}", switch)
+        self.assertIn("class='active' data-source-switch='all' aria-pressed='true' aria-label='All'", switch)
         installs = page.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]
-        self.assertIn("data-source-switch='web'", page.split("id='overview-period-form'", 1)[1].split("</form>", 1)[0])
+        self.assertIn("<div data-source-panel='all'>", installs)
+        self.assertIn("<div data-source-panel='app' hidden>", installs)
         web_panel = installs.split("<div data-source-panel='web' hidden>", 1)[1]
         self.assertIn("Install successful", web_panel)
         self.assertNotIn("Custom .img install", web_panel)
+        activity = page.split("id='overview-activity'", 1)[1].split("</section>", 1)[0]
+        self.assertEqual(activity.count("class='activity-source-web' role='img' aria-label='Web'"), 2)
 
     def test_admin_page_requires_a_session(self):
         response, _ = self.request("GET", "/admin/web-installer", secret=None)
         self.assertIn(response.status, {302, 303})
 
-    def test_web_records_never_enter_app_statistics(self):
+    def test_app_read_models_stay_app_only(self):
         for body in session_events():
             self.forward(self.recent(body))
         self.assertEqual(self.db.map_statistics({}), [])
         self.assertEqual(self.db.app_funnel_summary(None)["sessionCount"], 0)
         self.assertEqual(self.db.admin_review_summary()["installationIssues"], 0)
+
+    def test_counted_web_results_join_the_shared_install_statistics(self):
+        # The catalog's fēnix 8 47 mm (migration seed) is the one model the watch's text matches.
+        events = [self.recent(body) for body in session_events()]
+        for body in events:
+            if body["stage"] in ("CONNECT", "MAP_RESULT"):
+                body.update(usbVendorId=0x091E, usbProductId=0x51B8)
+            self.assertEqual(self.forward(body), 201)
+        # A cancelled map and a download failure never count.
+        self.forward(event(stage="MAP_RESULT", outcome="CANCELLED", operation="install", provider="opentopomap",
+                           packageId="otm-lithuania", reason="CANCELLED", writeStarted=False, model="fenix 8 - 47mm"))
+        self.forward(event(stage="MAP_RESULT", outcome="FAILED", operation="install", provider="opentopomap",
+                           packageId="otm-lithuania", failureStage="DOWNLOAD", reason="DOWNLOAD_STOPPED",
+                           writeStarted=False, model="fenix 8 - 47mm"))
+        stored = self.sql("SELECT DISTINCT canonical_device_model_id AS id, identity_resolution AS resolution, "
+                          "usb_product_id FROM web_installer_event WHERE stage = 'MAP_RESULT' AND usb_product_id IS NOT NULL")
+        self.assertEqual(stored, [{"id": "garmin-fenix-8-47-amoled", "resolution": "SINGLE_MATCH", "usb_product_id": 0x51B8}])
+
+        # Maps page: one combined number per map and provider.
+        statistics = self.service.map_statistics({"period": "24h"})
+        self.assertEqual((statistics["summary"]["completedInstalls"], statistics["summary"]["failedInstalls"]), (1, 1))
+        self.assertEqual(statistics["detailRows"], [])  # Event detail stays app reports only
+
+        # Devices and the model page: App, Web and All.
+        rows, _ = self.db.admin_device_snapshot()
+        device = next(row for row in rows if row["device_id"] == "garmin-fenix-8-47-amoled")
+        self.assertEqual((device["web_attempted_install_count"], device["web_successful_install_count"],
+                          device["web_failed_install_count"]), (2, 1, 1))
+
+        # A row received before its model was known resolves on the next cycle.
+        self.sql("UPDATE web_installer_event SET canonical_device_model_id = NULL, identity_resolution = NULL")
+        self.assertEqual(self.db.resolve_web_installer_identities()["resolved"], 5)
+        self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_event "
+                                  "WHERE canonical_device_model_id = 'garmin-fenix-8-47-amoled'")[0]["n"], 5)
 
     def test_retention(self):
         self.forward(event())

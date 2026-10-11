@@ -40,6 +40,13 @@ preserve the same meaning in each locale.
   `VERIFIED` values are not public support badges.
 - Public device copy describes a Garmin smartwatch with map support rather than a
   finite supported-model list.
+- `successfulInstallations` counts app and web-installer successes. Each card
+  shows that total and its split (`appSuccessfulInstallations`,
+  `webSuccessfulInstallations`; a snapshot or payload without them counts every
+  success as app), with the Font Awesome `laptop` and `globe` icons; a part with
+  zero is hidden. Card counts below 100 are exact; from 100 they are rounded down
+  to the hundred with a plus (`1,200+`, plural form). The summary line, filters
+  and sorting keep exact counts.
 - Initial HTML must contain the current published snapshot; JavaScript may refresh
   it live. The generator/source is canonical; do not hand-edit divergent locale
   HTML, and preserve the same semantics in all six locales.

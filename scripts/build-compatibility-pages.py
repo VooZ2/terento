@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT_PATH = ROOT / "site/compatibility/public-models.snapshot.json"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-ASSET_VERSION = "20260918-compatibility-successful-snapshot-v1"
+ASSET_VERSION = "20261011-compatibility-install-sources-v1"
 FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.png?v=20260826-1"
 
 
@@ -119,18 +119,93 @@ def date_text(value: object, locale: str) -> str:
     return f"{day} {month} {year}"
 
 
+# Card counts below 100 are exact; from 100 they round down to the hundred with
+# a plus (owner rule 2026-10-11). Grouping mirrors Intl.NumberFormat per locale:
+# (separator, minimum grouping digits).
+NUMBER_GROUPING = {"en": (",", 1), "de": (".", 1), "fr": ("\u202f", 1), "pl": ("\u00a0", 2), "cs": ("\u00a0", 1), "it": (".", 2)}
+
+
+def format_number(value: int, locale: str) -> str:
+    separator, minimum_grouping = NUMBER_GROUPING[locale]
+    digits = str(value)
+    if len(digits) < 3 + minimum_grouping:
+        return digits
+    groups = []
+    while len(digits) > 3:
+        digits, group = digits[:-3], digits[-3:]
+        groups.insert(0, group)
+    return separator.join([digits, *groups])
+
+
+def card_count(count: int) -> tuple[int, bool]:
+    """Return the displayed card count and whether it is a rounded lower bound."""
+    return (count, False) if count < 100 else (count // 100 * 100, True)
+
+
+def card_count_text(count: int, locale: str) -> str:
+    shown, rounded = card_count(count)
+    return format_number(shown, locale) + ("+" if rounded else "")
+
+
 def install_label(count: int, locale: str) -> str:
+    text, one = card_count_text(count, locale), card_count(count)[0] == 1
     if locale == "en":
-        return f"{count} successful install{'s' if count != 1 else ''}"
+        return f"{text} successful install{'' if one else 's'}"
     if locale == "de":
-        return f"{count} erfolgreiche Installation{'en' if count != 1 else ''}"
+        return f"{text} erfolgreiche Installation{'' if one else 'en'}"
     if locale == "fr":
-        return f"{count} installation{'s' if count != 1 else ''} réussie{'s' if count != 1 else ''}"
+        return f"{text} installation{'' if one else 's'} réussie{'' if one else 's'}"
     if locale == "pl":
-        return f"{count} {'udana instalacja' if count == 1 else 'udanych instalacji'}"
+        return f"{text} {'udana instalacja' if one else 'udanych instalacji'}"
     if locale == "cs":
-        return f"{count} {'úspěšná instalace' if count == 1 else 'úspěšných instalací'}"
-    return f"{count} {'installazione riuscita' if count == 1 else 'installazioni riuscite'}"
+        return f"{text} {'úspěšná instalace' if one else 'úspěšných instalací'}"
+    return f"{text} {'installazione riuscita' if one else 'installazioni riuscite'}"
+
+
+def installation_split(model: dict[str, object]) -> tuple[int, int]:
+    """Return (app, web) successful installations; older snapshots count everything as app."""
+    successful = int(model["successfulInstallations"])
+    app, web = model.get("appSuccessfulInstallations"), model.get("webSuccessfulInstallations")
+    if app is None and web is None:
+        return successful, 0
+    if not isinstance(app, int) or not isinstance(web, int) or app < 0 or web < 0 or app + web != successful:
+        raise ValueError(f"compatibility snapshot has an inconsistent app/web split for {model.get('model')!r}")
+    return app, web
+
+
+# Font Awesome Free 7.3.1 solid `laptop` and `globe`: unchanged viewBox and path
+# data with the attribution comment; only presentation/accessibility attributes
+# are added. Keep in sync with SOURCE_ICONS in site/compatibility/compatibility.js.
+FA_COMMENT = "<!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc. -->"
+SOURCE_ICONS = {
+    "app": f'<svg class="watch-install-source-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">{FA_COMMENT}<path fill="currentColor" d="M128 32C92.7 32 64 60.7 64 96l0 240 64 0 0-240 384 0 0 240 64 0 0-240c0-35.3-28.7-64-64-64L128 32zM19.2 384C8.6 384 0 392.6 0 403.2 0 445.6 34.4 480 76.8 480l486.4 0c42.4 0 76.8-34.4 76.8-76.8 0-10.6-8.6-19.2-19.2-19.2L19.2 384z"/></svg>',
+    "web": f'<svg class="watch-install-source-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">{FA_COMMENT}<path fill="currentColor" d="M351.9 280l-190.9 0c2.9 64.5 17.2 123.9 37.5 167.4 11.4 24.5 23.7 41.8 35.1 52.4 11.2 10.5 18.9 12.2 22.9 12.2s11.7-1.7 22.9-12.2c11.4-10.6 23.7-28 35.1-52.4 20.3-43.5 34.6-102.9 37.5-167.4zM160.9 232l190.9 0C349 167.5 334.7 108.1 314.4 64.6 303 40.2 290.7 22.8 279.3 12.2 268.1 1.7 260.4 0 256.4 0s-11.7 1.7-22.9 12.2c-11.4 10.6-23.7 28-35.1 52.4-20.3 43.5-34.6 102.9-37.5 167.4zm-48 0C116.4 146.4 138.5 66.9 170.8 14.7 78.7 47.3 10.9 131.2 1.5 232l111.4 0zM1.5 280c9.4 100.8 77.2 184.7 169.3 217.3-32.3-52.2-54.4-131.7-57.9-217.3L1.5 280zm398.4 0c-3.5 85.6-25.6 165.1-57.9 217.3 92.1-32.7 159.9-116.5 169.3-217.3l-111.4 0zm111.4-48C501.9 131.2 434.1 47.3 342 14.7 374.3 66.9 396.4 146.4 399.9 232l111.4 0z"/></svg>',
+}
+SOURCE_LABELS = {
+    "en": {"app": "App", "web": "Web", "app_aria": "{} with the app", "web_aria": "{} with the web installer"},
+    "de": {"app": "App", "web": "Web", "app_aria": "{} mit der App", "web_aria": "{} mit dem Web-Installer"},
+    "fr": {"app": "App", "web": "Web", "app_aria": "{} avec l’application", "web_aria": "{} avec l’installateur web"},
+    "pl": {"app": "App", "web": "Web", "app_aria": "{} przez aplikację", "web_aria": "{} przez instalator webowy"},
+    "cs": {"app": "App", "web": "Web", "app_aria": "{} přes aplikaci", "web_aria": "{} přes webový instalátor"},
+    "it": {"app": "App", "web": "Web", "app_aria": "{} con l’app", "web_aria": "{} con l’installer web"},
+}
+
+
+def source_parts(model: dict[str, object], locale: str) -> list[tuple[str, str]]:
+    """Return (source, displayed count) pairs for the non-zero app/web sources."""
+    app, web = installation_split(model)
+    return [(source, card_count_text(count, locale)) for source, count in (("app", app), ("web", web)) if count > 0]
+
+
+def sources_markup(model: dict[str, object], locale: str) -> str:
+    labels = SOURCE_LABELS[locale]
+    parts = " ".join(f'<span class="watch-install-source">{SOURCE_ICONS[source]}{esc(labels[source])} {esc(text)}</span>' for source, text in source_parts(model, locale))
+    return f'<p class="watch-install-sources">{parts}</p>' if parts else ""
+
+
+def sources_accessible(model: dict[str, object], locale: str) -> str:
+    labels = SOURCE_LABELS[locale]
+    return ", ".join(labels[f"{source}_aria"].format(text) for source, text in source_parts(model, locale))
 
 
 def load_snapshot() -> dict:
@@ -148,8 +223,8 @@ def card_markup(model: dict[str, object], locale: str) -> str:
     count, latest = int(model["successfulInstallations"]), date_text(model.get("lastSuccessfulInstallation"), locale)
     latest_markup = f'<p class="watch-card-meta">{esc(copy["card_latest"])} {esc(latest)}</p>' if latest else ""
     image = model.get("imageUrl") or FALLBACK_IMAGE_URL
-    accessible = ", ".join(filter(None, (display_model, variant, install_label(count, locale), f'{copy["card_latest"]} {latest}' if latest else "")))
-    return f'''<article class="watch-card" aria-label="{esc(accessible)}"><div class="watch-card-image"><img data-remote-src="{esc(image)}" src="{esc(image)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">{esc(model.get("familyName") or "Garmin")}</p><div class="watch-card-model-row"><h3>{esc(display_model)}</h3></div><p class="watch-variant">{esc(variant)}</p></div><p class="watch-install-count">{esc(install_label(count, locale))}</p>{latest_markup}</div></article>'''
+    accessible = ", ".join(filter(None, (display_model, variant, install_label(count, locale), sources_accessible(model, locale), f'{copy["card_latest"]} {latest}' if latest else "")))
+    return f'''<article class="watch-card" aria-label="{esc(accessible)}"><div class="watch-card-image"><img data-remote-src="{esc(image)}" src="{esc(image)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">{esc(model.get("familyName") or "Garmin")}</p><div class="watch-card-model-row"><h3>{esc(display_model)}</h3></div><p class="watch-variant">{esc(variant)}</p></div><p class="watch-install-count">{esc(install_label(count, locale))}</p>{sources_markup(model, locale)}{latest_markup}</div></article>'''
 
 
 def summary_markup(snapshot: dict, locale: str) -> str:

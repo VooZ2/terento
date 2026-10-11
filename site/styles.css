@@ -2599,6 +2599,31 @@ details p {
   font-variant-numeric: tabular-nums;
 }
 
+/* App/web split of the successful installs (Font Awesome laptop and globe). */
+.watch-install-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0 0 6px;
+  color: var(--secondary);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.watch-install-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.watch-install-source-icon {
+  flex: none;
+  width: auto;
+  height: 1em;
+}
+
 .watch-card-meta {
   margin: 0;
   color: var(--secondary);

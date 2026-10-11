@@ -25,6 +25,8 @@
     "familyName": "Forerunner",
     "imageUrl": null,
     "successfulInstallations": 1,
+    "appSuccessfulInstallations": 0,
+    "webSuccessfulInstallations": 1,
     "lastSuccessfulInstallation": "2026-09-18T17:25:07+00:00"
   },
   {

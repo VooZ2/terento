@@ -187,7 +187,7 @@ class TodayServiceTests(unittest.TestCase):
 
     def test_map_statistics_today_uses_local_midnight_and_hourly_trend(self):
         class TrendDatabase(FakeProviderDatabase):
-            def map_statistics_trend(self, filters, *, period, time_zone):
+            def map_statistics_trend(self, filters, *, period, time_zone, include_web=False):
                 self.trend_call = (dict(filters), period, time_zone)
                 return [], "hour"
 

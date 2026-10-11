@@ -44,6 +44,24 @@ assert.equal(data.exactVariantLabel({ model: "fēnix 8 · 51 mm, AMOLED", varian
 assert.equal(data.successfulInstallLabel(1), "1 successful install");
 assert.equal(data.successfulInstallLabel(5), "5 successful installs");
 
+// Card counts: exact below 100, then rounded down to the hundred with a plus;
+// a rounded value always takes the plural form.
+const english = locales.getLocale("en");
+assert.equal(english.successfulInstallLabel(99), "99 successful installs");
+assert.equal(english.successfulInstallLabel(100), "100+ successful installs");
+assert.equal(english.successfulInstallLabel(199), "100+ successful installs");
+assert.equal(english.successfulInstallLabel(250), "200+ successful installs");
+assert.equal(english.successfulInstallLabel(1234), "1,200+ successful installs");
+assert.equal(english.cardCount(6), "6");
+assert.equal(english.sources.appLabel(english.cardCount(140)), "100+ with the app");
+assert.equal(english.sources.webLabel(english.cardCount(6)), "6 with the web installer");
+assert.equal(locales.getLocale("de").successfulInstallLabel(1234), "1.200+ erfolgreiche Installationen");
+assert.equal(locales.getLocale("fr").successfulInstallLabel(1), "1 installation réussie");
+assert.equal(locales.getLocale("fr").successfulInstallLabel(100), "100+ installations réussies");
+assert.equal(locales.getLocale("pl").successfulInstallLabel(100), "100+ udanych instalacji");
+assert.equal(locales.getLocale("cs").successfulInstallLabel(1), "1 úspěšná instalace");
+assert.equal(locales.getLocale("it").successfulInstallLabel(300), "300+ installazioni riuscite");
+
 const localeFacts = [];
 for (const language of languages) {
   const copy = locales.getLocale(language);
@@ -52,6 +70,9 @@ for (const language of languages) {
   assert.match(copy.evidenceNote, /Garmin/i, `${language}: evidence disclaimer`);
   assert.equal(copy.statuses, undefined, `${language}: public status badges removed`);
   assert.equal(copy.successfulInstallLabel(2).includes("2"), true, `${language}: install count`);
+  assert.equal(copy.sources.app, "App", `${language}: app source label`);
+  assert.equal(copy.sources.web, "Web", `${language}: web source label`);
+  assert.ok(copy.sources.appLabel("4").startsWith("4 ") && copy.sources.webLabel("2").startsWith("2 "), `${language}: spoken source split`);
 
   const prefix = language === "en" ? "" : `${language}/`;
   const page = read(`site/${prefix}compatibility/index.html`);
@@ -60,6 +81,7 @@ for (const language of languages) {
   assert.ok(snapshot.models.every(model => model.successfulInstallations >= 1), `${language}: no zero-success rows`);
   assert.ok(snapshot.models.some(model => model.model === "fēnix 8 · 47 mm, AMOLED"), `${language}: current model row`);
   assert.match(page, /class="watch-card"/, `${language}: server-rendered cards`);
+  assert.equal((page.match(/<p class="watch-install-sources">/g) || []).length, snapshot.models.length, `${language}: every card shows the app/web split`);
   const facts = assertSnapshotFacts(page, snapshot, language);
   localeFacts.push({ language, ...facts });
   assert.match(page, new RegExp(`data-summary="successes">${facts.successes}<\\/strong>\\s+(?:successful installs|erfolgreiche Installationen|installations réussies|udane instalacje|úspěšných instalací|installazioni riuscite)`), `${language}: localized server-rendered total`);

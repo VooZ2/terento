@@ -369,8 +369,12 @@ The read model (`schemaVersion`, `period`, `timeZone`, `since`, `until`,
 [`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md);
 test records are excluded from `watch` and `server`. A failed read renders the
 page as unavailable (200) and the JSON as `503 web_installer_unavailable`.
-The Dashboard overview adds the section `web` (the same chart row shape as the
-app trend, from web records only) for the charts' Web switch.
+The Dashboard overview adds the sections `web` (the same chart row shape as the
+app trend, from web records only) for the charts' Web switch and `all` (app and
+web per bucket of the app trend, their totals and the newest app and web
+results as `recentActivity`, web rows with `source: "web"`) for the All view.
+The Maps statistics read model adds web rows (`source: "web"`) to `rows`, its
+summaries and trend; `detailRows` stay app reports only.
 
 ## `POST /internal/web-installer/events` and `POST /internal/web-installer/relay-jobs`
 
@@ -557,6 +561,14 @@ default-disabled and the page shows no public evidence when the flag or
 approved aggregate data is absent. Both projections are
 recomputed at most once a minute in each API process (one full result per projection, sliced to `limit`), so a public
 change can take up to a minute to appear.
+
+Both projections count web installer results with app results (owner decision
+2026-10-11; [`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)):
+`attemptedInstallations`, `successfulInstallations`, `failedInstallations`,
+`successRate` and `lastSuccessfulInstallation` are app + web, and the additive
+`appSuccessfulInstallations` and `webSuccessfulInstallations` give each part.
+`evidenceStatus` and `reconnectVerifiedInstallations` stay app-only, and a
+model with web results only is not listed.
 
 The response's `evidenceStatus` is the authoritative public status for the
 exact `compatibilityIdentity`. It is one of `TESTING`, `TESTED`, `SUPPORTED`,

@@ -68,7 +68,10 @@ from .asset_storage import AssetStorage
 from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
 from .config import DEFAULT_TRUSTED_PROXIES
-from .db import Database, IdentityResolutionError, _fill_overview_trend_buckets, _next_overview_bucket, _overview_bucket_floor
+from .db import (
+    Database, IdentityResolutionError, _fill_overview_trend_buckets, _next_overview_bucket, _overview_bucket_floor,
+    combine_trend_rows, web_installer_identity,
+)
 from .device_catalog import (
     CONTROLLED_ASSET_PREFIX,
     _official_source_image_url,
@@ -152,6 +155,35 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 REQUEST_SOCKET_TIMEOUT_SECONDS = 60
 # Idle keys are swept periodically so the in-memory limiter cannot grow without bound.
 RATE_LIMIT_SWEEP_INTERVAL = 1000
+
+
+def _public_install_counts(row: dict[str, Any]) -> dict[str, Any]:
+    """Public install counts: app and web results together, with each part
+    (owner decision 2026-10-11). Evidence status and reconnect-verified
+    installs stay app-only."""
+    app_attempts = int(row.get("attempted_install_count") or 0)
+    app_successful = int(row.get("successful_install_count") or 0)
+    web_attempts = int(row.get("web_attempted_install_count") or 0)
+    web_successful = int(row.get("web_successful_install_count") or 0)
+    successful = app_successful + web_successful
+    failed = int(row.get("failed_install_count") or 0) + int(row.get("web_failed_install_count") or 0)
+    if web_attempts:
+        rate = round(successful * 100 / (successful + failed), 1) if successful + failed else None
+    else:
+        rate = float(row["success_rate"]) if row.get("success_rate") is not None else None
+    last = max(
+        (value for value in (row.get("last_success"), row.get("web_last_success")) if isinstance(value, datetime)),
+        default=row.get("last_success"),
+    )
+    return {
+        "attemptedInstallations": app_attempts + web_attempts,
+        "successfulInstallations": successful,
+        "appSuccessfulInstallations": app_successful,
+        "webSuccessfulInstallations": web_successful,
+        "failedInstallations": failed,
+        "successRate": rate,
+        "lastSuccessfulInstallation": last.isoformat() if isinstance(last, datetime) else last,
+    }
 
 
 def _admin_time_zone(value: Any) -> str:
@@ -539,7 +571,17 @@ class CatalogService:
 
     def receive_web_installer_record(self, kind: str, body: bytes) -> bool:
         if kind == "events":
-            return self.database.insert_web_installer_row("web_installer_event", validate_web_installer_event(body))
+            row = validate_web_installer_event(body)
+            if row["stage"] in ("CONNECT", "MAP_RESULT") and not row["is_test"] and (
+                    row.get("model") or row.get("usb_product_id") is not None):
+                try:
+                    devices, mappings = self.database.identity_catalog()
+                    row["canonical_device_model_id"], row["identity_resolution"] = web_installer_identity(
+                        row, devices, mappings)
+                except Exception:
+                    # The scheduler resolves the model later; the record is kept.
+                    LOGGER.exception("web installer identity resolution failed")
+            return self.database.insert_web_installer_row("web_installer_event", row)
         return self.database.insert_web_installer_row("web_installer_relay_job", validate_relay_job(body))
 
     def web_installer(self, query: dict[str, str]) -> dict[str, Any]:
@@ -552,7 +594,7 @@ class CatalogService:
         return {
             "schemaVersion": 1, "period": period, "timeZone": time_zone,
             "since": since.isoformat() if since else None, "until": until.isoformat(),
-            "population": "web installer page loads and relay jobs; test records excluded; separate from app statistics",
+            "population": "web installer page loads and relay jobs; test records excluded",
             "testRecords": tests,
             **summarize_web_installer(events, jobs),
         }
@@ -569,6 +611,36 @@ class CatalogService:
             summary["trend"], bucket=bucket, since=start, until=until, all_time=period == "all", time_zone=time_zone,
         ) if summary["trend"] else []
         return {**summary, "bucket": bucket}
+
+    def _overview_all(self, data: dict[str, Any], since: datetime, period: str, time_zone: str) -> dict[str, Any]:
+        """Dashboard All view: app and web counts in the app chart grid, and
+        the newest app and web results for Activity."""
+        if data.get("available") is False:
+            return {"available": False}
+        bucket = str(data.get("bucket") or "day")
+        until = datetime.now(timezone.utc)
+        web = web_installer_chart_summary(
+            self.database.web_installer_trend(None if period == "all" else since, until, bucket=bucket, time_zone=time_zone))
+        trend = combine_trend_rows(list(data.get("trend") or []), web["trend"], bucket=bucket, time_zone=time_zone)
+        if trend:
+            trend = _fill_overview_trend_buckets(
+                trend, bucket=bucket, since=since, until=until, all_time=period == "all", time_zone=time_zone)
+        total = lambda key: int(data.get(key) or 0) + int(web.get(key) or 0)
+        rate = lambda ok, bad: ok / (ok + bad) * 100 if ok + bad else None
+        recent = [*(data.get("recentActivity") or []),
+                  *self.database.web_installer_recent_results(None if period == "all" else since, until)]
+        moment = lambda item: (item.get("occurred_at") if isinstance(item.get("occurred_at"), datetime)
+                               else datetime.min.replace(tzinfo=timezone.utc))
+        recent.sort(key=moment, reverse=True)
+        return {
+            "trend": trend, "bucket": bucket,
+            "completedInstallCount": total("completedInstallCount"), "failedInstallCount": total("failedInstallCount"),
+            "installSuccessRate": rate(total("completedInstallCount"), total("failedInstallCount")),
+            "mapUpdateCount": total("mapUpdateCount"),
+            "completedDownloadCount": total("completedDownloadCount"), "failedDownloadCount": total("failedDownloadCount"),
+            "downloadSuccessRate": rate(total("completedDownloadCount"), total("failedDownloadCount")),
+            "recentActivity": recent[:8],
+        }
 
     def receive_app_funnel_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
         event = validate_funnel_event(body)
@@ -728,7 +800,10 @@ class CatalogService:
             raise MapEventValidationError("invalid_detail_pagination") from exc
         if detail_page_size not in {25, 50}:
             raise MapEventValidationError("invalid_detail_page_size")
-        rows = self.database.map_statistics(population_filters)
+        # The population sums app and web results (owner decision 2026-10-11);
+        # Event detail stays app reports only.
+        app_rows = self.database.map_statistics(population_filters)
+        rows = [*app_rows, *self.database.web_installer_map_statistics(population_filters)]
         all_time_filters = {
             key: value for key, value in population_filters.items()
             if key not in {"dateFrom", "dateTo"}
@@ -736,7 +811,8 @@ class CatalogService:
         all_time_rows = (
             rows
             if all_time_filters == population_filters
-            else self.database.map_statistics(all_time_filters)
+            else [*self.database.map_statistics(all_time_filters),
+                  *self.database.web_installer_map_statistics(all_time_filters)]
         )
         rows = [
             {
@@ -761,7 +837,7 @@ class CatalogService:
             for row in rows
         ]
         detail_source_rows = (
-            rows
+            [row for row in rows if row.get("source") != "web"]
             if filters == population_filters
             else self.database.map_statistics(filters)
         )
@@ -805,7 +881,7 @@ class CatalogService:
             if observed_starts:
                 trend_filters["dateFrom"] = min(observed_starts)
         trend, bucket = self.database.map_statistics_trend(
-            trend_filters, period=period, time_zone=time_zone,
+            trend_filters, period=period, time_zone=time_zone, include_web=True,
         )
         payload = {
             "schemaVersion": 1,
@@ -857,26 +933,28 @@ class CatalogService:
                 **snapshot, "providers": providers,
             }
 
+        # Keep map-operation telemetry and compatibility evidence as
+        # distinct stored domains. The read model may reconcile a missing
+        # provider success without changing either public API payload.
+        data = section("map", lambda: self.database.admin_overview_map_snapshot(
+            since, period=period, time_zone=time_zone,
+        ), dict(unavailable))
         return {
             "schemaVersion": 1,
             "period": period,
             "timeZone": time_zone,
             "since": since,
-            # Keep map-operation telemetry and compatibility evidence as
-            # distinct stored domains. The read model may reconcile a missing
-            # provider success without changing either public API payload.
-            "data": section("map", lambda: self.database.admin_overview_map_snapshot(
-                since, period=period, time_zone=time_zone,
-            ), dict(unavailable)),
+            "data": data,
             "downloads": section("downloads", lambda: self.database.github_downloads_snapshot(
                 time_zone=time_zone, period=period,
             ), dict(unavailable)),
             "providers": providers,
             "system": section("system", system_health, dict(unavailable)),
             "funnel": section("funnel", lambda: self.app_funnel({"period": period, "timeZone": time_zone}), dict(unavailable)),
-            # Web installer records stay out of "data" (app only); the charts
-            # show them only behind their Web switch.
+            # "data" stays app only and "web" web only; "all" sums both for the
+            # default All view and the Activity list (owner decision 2026-10-11).
             "web": section("web", lambda: self.web_installer_chart(since, period, time_zone), dict(unavailable)),
+            "all": section("all", lambda: self._overview_all(data, since, period, time_zone), dict(unavailable)),
             "supportReports": section(
                 "supportReports",
                 lambda: {"openCount": self.database.support_report_open_count()},
@@ -2796,13 +2874,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 "caseSizeMm": row.get("case_size_mm"),
                 "displayType": row.get("display_type"),
                 "canonicalDeviceId": row.get("canonical_device_model_id"),
-                "attemptedInstallations": int(row["attempted_install_count"]),
-                "successfulInstallations": int(row["successful_install_count"]),
+                **_public_install_counts(row),
                 "reconnectVerifiedInstallations": int(row.get("reconnect_verified_install_count") or 0),
-                "failedInstallations": int(row["failed_install_count"]),
-                "successRate": float(row["success_rate"]) if row.get("success_rate") is not None else None,
                 "evidenceStatus": row["calculated_status"],
-                "lastSuccessfulInstallation": row["last_success"].isoformat() if isinstance(row.get("last_success"), datetime) else row.get("last_success"),
                 "lastEvidence": row["last_evidence"].isoformat() if isinstance(row.get("last_evidence"), datetime) else row.get("last_evidence"),
                 "mapCapable": row.get("recognized_map_capable_evidence") is True,
             } for row in rows]
@@ -2858,13 +2932,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     "screenTechnology": row.get("screen_technology"),
                     "solar": row.get("solar"), "inReach": row.get("inreach"),
                     "canonicalDeviceId": row.get("canonical_device_model_id"),
-                    "attemptedInstallations": int(row.get("attempted_install_count") or 0),
-                    "successfulInstallations": int(row.get("successful_install_count") or 0),
+                    **_public_install_counts(row),
                     "reconnectVerifiedInstallations": int(row.get("reconnect_verified_install_count") or 0),
-                    "failedInstallations": int(row.get("failed_install_count") or 0),
-                    "successRate": float(row["success_rate"]) if row.get("success_rate") is not None else None,
                     "evidenceStatus": row.get("calculated_status"),
-                    "lastSuccessfulInstallation": row["last_success"].isoformat() if isinstance(row.get("last_success"), datetime) else row.get("last_success"),
                     "lastEvidence": row["last_evidence"].isoformat() if isinstance(row.get("last_evidence"), datetime) else row.get("last_evidence"),
                     "image": image,
                 })

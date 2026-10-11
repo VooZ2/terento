@@ -23,13 +23,13 @@ Gdy wybierzesz mapę, serwer Terento pobiera ją od pierwotnego dostawcy i przek
 
 Strona wysyła do Terento krótkie informacje o każdym kroku, które nie pozwalają Cię zidentyfikować: czy tej przeglądarki można użyć, czy zegarek się połączył i jak zakończyła się każda instalacja, aktualizacja lub usunięcie mapy. Zawierają one:
 
-- model zegarka i wersję oprogramowania
+- model zegarka, wersję jego oprogramowania i kod modelu USB (taki sam dla każdego zegarka tego modelu)
 - system operacyjny i przeglądarkę z ich główną wersją
 - dostawcę, mapę, przedział rozmiaru oraz to, czy była to nowa instalacja, czy aktualizacja
 - krok, który się nie powiódł, stały kod przyczyny, standardowe kody błędów przeglądarki, naszego serwera lub zegarka oraz czas zapisu i sprawdzania
 - losowy kod tworzony przy każdym otwarciu strony, aby połączyć kroki jednej wizyty
 
-Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
+Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Udane i nieudane instalacje oraz aktualizacje map są też liczone w statystykach instalacji Terento, razem z tymi wykonanymi w aplikacji; strona [Kompatybilność](/pl/compatibility/) pokazuje, ile udanych instalacji wykonano aplikacją, a ile instalatorem webowym. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
 
 Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które mapy instalator webowy zainstalował i na którym zegarku, aby później bezpiecznie je aktualizować lub usuwać, tymczasowa kopia mapy do czasu instalacji oraz wybrany język. Aby rozpoznać zegarek, zapisuje jednokierunkowy kod utworzony z danych zegarka i losowej wartości, z którego nie da się odtworzyć numeru seryjnego. Wyczyszczenie w przeglądarce danych witryny instalatora webowego usuwa to wszystko. Instalator webowy nie ładuje statystyk witryny.
 

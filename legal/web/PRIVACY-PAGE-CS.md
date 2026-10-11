@@ -23,13 +23,13 @@ Když zvolíte mapu, server Terento ji stáhne od původního poskytovatele a p�
 
 Stránka posílá Terento o každém kroku krátké zprávy, které vás neidentifikují: zda lze tento prohlížeč použít, zda se hodinky připojily a jak skončila každá instalace, aktualizace nebo odebrání mapy. Obsahují:
 
-- model hodinek a verzi softwaru
+- model hodinek, verzi jejich softwaru a kód modelu USB (stejný pro všechny hodinky daného modelu)
 - operační systém a prohlížeč s jejich hlavní verzí
 - poskytovatele, mapu, rozsah velikosti a zda šlo o novou instalaci, nebo aktualizaci
 - krok, který selhal, pevný kód důvodu, standardní chybové kódy prohlížeče, našeho serveru nebo hodinek a dobu zápisu a kontroly
 - náhodný kód vytvořený při každém otevření stránky, aby bylo možné spojit kroky jedné návštěvy
 
-Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
+Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Úspěšné i neúspěšné instalace a aktualizace map se také započítávají do statistik instalací Terento, spolu s těmi z aplikace; stránka [Kompatibilita](/cs/compatibility/) ukazuje, kolik úspěšných instalací proběhlo přes aplikaci a kolik přes webový instalátor. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
 
 Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: které mapy webový instalátor nainstaloval a do kterých hodinek, aby je později mohl bezpečně aktualizovat nebo odebrat, dočasná kopie mapy do dokončení instalace a zvolený jazyk. K rozpoznání hodinek ukládá jednosměrný kód vytvořený z údajů hodinek a náhodné hodnoty, ze kterého nelze zjistit sériové číslo. Vymazáním dat webu webového instalátoru v prohlížeči se to vše odstraní. Webový instalátor nenačítá statistiky webu.
 

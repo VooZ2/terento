@@ -29,6 +29,8 @@ PUBLIC_FIELDS = (
     "familyName",
     "imageUrl",
     "successfulInstallations",
+    "appSuccessfulInstallations",
+    "webSuccessfulInstallations",
     "lastSuccessfulInstallation",
 )
 
@@ -50,6 +52,25 @@ def number(value: object, field: str, index: int) -> int:
     return result
 
 
+def installation_split(model: dict, successful: int, index: int) -> tuple[int, int]:
+    """Return (app, web) successful installations; older payloads count everything as app."""
+    app_value, web_value = model.get("appSuccessfulInstallations"), model.get("webSuccessfulInstallations")
+    if app_value is None and web_value is None:
+        return successful, 0
+    if app_value is None or web_value is None:
+        raise ValueError(f"models[{index}] must contain both appSuccessfulInstallations and webSuccessfulInstallations")
+    split = []
+    for field, value in (("appSuccessfulInstallations", app_value), ("webSuccessfulInstallations", web_value)):
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"models[{index}].{field} must be an integer")
+        if value < 0:
+            raise ValueError(f"models[{index}].{field} must not be negative")
+        split.append(value)
+    if split[0] + split[1] != successful:
+        raise ValueError(f"models[{index}] app and web successful installations must add up to successfulInstallations")
+    return split[0], split[1]
+
+
 def normalized_model(model: object, index: int) -> dict[str, object]:
     if not isinstance(model, dict):
         raise ValueError(f"models[{index}] must be an object")
@@ -66,6 +87,7 @@ def normalized_model(model: object, index: int) -> dict[str, object]:
     last_success = model.get("lastSuccessfulInstallation", model.get("last_successful_installation"))
     if last_success is not None and not isinstance(last_success, str):
         raise ValueError(f"models[{index}].lastSuccessfulInstallation must be a string or null")
+    app_successful, web_successful = installation_split(model, successful, index)
     image = model.get("image") if isinstance(model.get("image"), dict) else {}
     normalized = {
         "model": display_model,
@@ -79,6 +101,8 @@ def normalized_model(model: object, index: int) -> dict[str, object]:
         "familyName": str(model.get("familyName", model.get("family_name", model.get("family", "Other")))).strip() or "Other",
         "imageUrl": image.get("url") or model.get("imageUrl"),
         "successfulInstallations": successful,
+        "appSuccessfulInstallations": app_successful,
+        "webSuccessfulInstallations": web_successful,
         "lastSuccessfulInstallation": last_success,
     }
     return {field: normalized[field] for field in PUBLIC_FIELDS}

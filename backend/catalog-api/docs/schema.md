@@ -696,3 +696,16 @@ column (`direct`, `proxied` or `mixed`) the previous revision never reads
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
 It records whether a job's map went straight from the server, through the
 Cloudflare-proxied lab host, or both.
+
+### Migration080: web installer shared install statistics
+
+Additive and rollback-compatible: four nullable `web_installer_event` columns
+and one view the previous revision never reads
+([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
+`usb_vendor_id` and `usb_product_id` (0–65535) are the watch's USB model code,
+the same for every watch of one model. `canonical_device_model_id` (references
+`device_model`, `ON DELETE SET NULL`) and `identity_resolution` (`EXACT`,
+`SINGLE_MATCH`, `UNRESOLVED`) hold the catalog model the API resolved with the
+app identity assessment. The view `web_installer_map_result` lists the counted
+web map results (every non-test `MAP_RESULT` that succeeded, or failed after
+writing started) that the shared install statistics add to app results.

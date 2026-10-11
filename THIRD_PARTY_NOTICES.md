@@ -234,3 +234,13 @@ unchanged viewBox and path data live in `_FA_ICONS` in
 `backend/catalog-api/src/terento_catalog/admin.py` under the Font Awesome
 attribution comment; they are rendered as inline SVG or as `data:` CSS masks.
 No Font Awesome font, CSS or runtime and no external icon origin is used.
+
+### Website Compatibility icons
+
+The public Compatibility page marks the successful installs made with the app
+and with the web installer with the original solid `laptop` and `globe` SVGs
+from the same pinned Font Awesome Free 7.3.1 revision, under CC BY 4.0. Their
+unchanged viewBox and path data, with the Font Awesome attribution comment,
+live in `scripts/build-compatibility-pages.py` and
+`site/compatibility/compatibility.js`; only presentation and accessibility
+attributes are added. No Font Awesome font, CSS or runtime is used.
