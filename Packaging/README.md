@@ -35,6 +35,15 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.0.0-rc.3 / build 43**, the third release candidate
+for 1.0.0 (see [versioning](../VERSIONING.md)). It contains only fixes: safer
+recovery after an interrupted Update or installation and sturdier map-archive
+handling. It is published on the existing `beta` update channel and needs no
+API or migration change; the catalog API from the same source is already
+deployed. Public metadata continues to identify rc.2 until signed, notarized
+artifacts exist, and the draft release-note section stays marked as a draft
+until the owner approves it.
+
 The published release is **1.0.0-rc.2 / build 42**, the second release
 candidate for 1.0.0, from signed source
 `1e9b97ad403178f4af4ed7de21d3166136f2a3ec` (tag `v1.0.0-rc.2-build42`). It is

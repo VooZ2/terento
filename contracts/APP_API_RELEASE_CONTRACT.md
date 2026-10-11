@@ -1,5 +1,14 @@
 # App–API compatibility and release contract
 
+## Release candidate 1.0.0-rc.3 build 43 — staged
+
+Staged on the existing `beta` update channel. It changes only on-device
+recovery records, map-archive extraction and helper-process handling; it adds
+no API field, route, telemetry event or migration and keeps every rc.2 payload
+unchanged. The catalog API from its source revision is already deployed, so no
+further server deployment precedes it. The API validates its labels as SemVer:
+`1.0.0-rc.3` is stored as public and `1.0.0-rc.3-local` as local test data.
+
 ## Release candidate 1.0.0-rc.2 build 42 — published
 
 Published on 2026-10-07 from GitHub-verified source
