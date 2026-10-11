@@ -23,13 +23,13 @@ When you choose a map, Terento’s server downloads it from the original provide
 
 The page sends Terento short notes that do not identify you, one for each step: whether this browser can be used, whether the watch connected and how each map installation, update or removal ended. They include:
 
-- the watch model and software version
+- the watch model, its software version and its USB model code (the same for every watch of that model)
 - the operating system and browser, with their main version numbers
 - the map provider, the map, its size range and whether it was a new installation or an update
 - the step that failed, a fixed reason code, standard error codes from the browser, our server or the watch, and how long writing and checking took
 - a random code created each time the page opens, so the steps of one visit can be grouped
 
-They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
+They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. Successful and failed map installations and updates are also counted in Terento’s install statistics, together with those made with the app; the [Compatibility page](/compatibility/) shows how many successful installations were made with each. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
 
 Some data stays in your browser, not on our server: which maps the web installer installed and on which watch, so it can update or remove them safely later; a temporary copy of a map until it is installed; and the language you choose. To recognise the watch, it stores a one-way code made from the watch details and a random value, which cannot be turned back into the serial number. Clearing the web installer’s site data in your browser removes all of this. The web installer does not load website statistics.
 

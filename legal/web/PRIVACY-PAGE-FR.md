@@ -23,13 +23,13 @@ Quand vous choisissez une carte, le serveur de Terento la télécharge depuis le
 
 La page envoie à Terento, à chaque étape, de courtes notes qui ne vous identifient pas : si ce navigateur peut être utilisé, si la montre s’est connectée et comment chaque installation, mise à jour ou suppression de carte s’est terminée. Elles contiennent :
 
-- le modèle de la montre et sa version logicielle
+- le modèle de la montre, sa version logicielle et son code de modèle USB (identique pour toutes les montres de ce modèle)
 - le système d’exploitation et le navigateur, avec leur version principale
 - le fournisseur, la carte, sa tranche de taille et s’il s’agit d’une nouvelle installation ou d’une mise à jour
 - l’étape en échec, un code de motif fixe, des codes d’erreur standard du navigateur, de notre serveur ou de la montre, et la durée d’écriture et de vérification
 - un code aléatoire créé à chaque ouverture de la page, pour regrouper les étapes d’une même visite
 
-Elles ne contiennent jamais le numéro de série ou l’Unit ID de votre montre, votre adresse IP, des noms de fichiers, la liste des cartes de votre montre ni de texte d’erreur. Votre adresse IP n’est gardée que brièvement en mémoire pour limiter le nombre de requêtes d’un même ordinateur, et n’est pas enregistrée. Ces notes nous montrent quelles montres et quels systèmes et navigateurs fonctionnent et nous aident à corriger les échecs. La base est l’intérêt légitime selon l’article 6(1)(f) du RGPD. La page n’a pas d’interrupteur ; contactez-nous pour vous opposer. Les notes individuelles sont privées et conservées 24 mois.
+Elles ne contiennent jamais le numéro de série ou l’Unit ID de votre montre, votre adresse IP, des noms de fichiers, la liste des cartes de votre montre ni de texte d’erreur. Votre adresse IP n’est gardée que brièvement en mémoire pour limiter le nombre de requêtes d’un même ordinateur, et n’est pas enregistrée. Ces notes nous montrent quelles montres et quels systèmes et navigateurs fonctionnent et nous aident à corriger les échecs. Les installations et mises à jour de cartes, réussies ou échouées, sont aussi comptées dans les statistiques d’installation de Terento, avec celles faites depuis l’application ; la page [Compatibilité](/fr/compatibility/) indique combien d’installations réussies ont été faites avec l’application et avec l’installateur web. La base est l’intérêt légitime selon l’article 6(1)(f) du RGPD. La page n’a pas d’interrupteur ; contactez-nous pour vous opposer. Les notes individuelles sont privées et conservées 24 mois.
 
 Certaines données restent dans votre navigateur, pas sur notre serveur : les cartes installées par l’installateur web et sur quelle montre, pour pouvoir les mettre à jour ou les supprimer en toute sécurité, une copie temporaire d’une carte jusqu’à son installation et la langue choisie. Pour reconnaître la montre, il enregistre un code à sens unique tiré des données de la montre et d’une valeur aléatoire, qui ne permet pas de retrouver le numéro de série. Effacer dans votre navigateur les données du site de l’installateur web supprime tout cela. L’installateur web ne charge pas les statistiques du site.
 

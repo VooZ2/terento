@@ -23,13 +23,13 @@ Wenn du eine Karte wählst, lädt der Terento-Server sie vom ursprünglichen Anb
 
 Die Seite sendet Terento zu jedem Schritt kurze Meldungen, die dich nicht identifizieren: ob dieser Browser nutzbar ist, ob die Uhr verbunden wurde und wie jede Installation, Aktualisierung oder Entfernung einer Karte ausging. Sie enthalten:
 
-- Uhrenmodell und Softwareversion
+- Uhrenmodell, seine Softwareversion und seinen USB-Modellcode (bei allen Uhren dieses Modells gleich)
 - Betriebssystem und Browser mit ihrer Hauptversion
 - Kartenanbieter, Karte, Größenbereich und ob es eine neue Installation oder ein Update war
 - den fehlgeschlagenen Schritt, einen festen Grundcode, Standard-Fehlercodes von Browser, Server oder Uhr und die Dauer von Schreiben und Prüfen
 - einen zufälligen Code, der bei jedem Öffnen der Seite neu entsteht, damit die Schritte eines Besuchs zusammengehören
 
-Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird nur kurz im Arbeitsspeicher gehalten, um zu begrenzen, wie viele Anfragen ein Computer stellen kann, und nicht gespeichert. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.
+Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird nur kurz im Arbeitsspeicher gehalten, um zu begrenzen, wie viele Anfragen ein Computer stellen kann, und nicht gespeichert. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Erfolgreiche und fehlgeschlagene Installationen und Updates von Karten zählen außerdem zusammen mit denen aus der App zu Terentos Installationsstatistik; die Seite [Kompatibilität](/de/compatibility/) zeigt, wie viele erfolgreiche Installationen jeweils mit der App und mit dem Web-Installer erfolgten. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.
 
 Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten der Web-Installer auf welcher Uhr installiert hat, damit er sie später sicher aktualisieren oder entfernen kann, eine vorübergehende Kopie einer Karte bis zur Installation und die gewählte Sprache. Um die Uhr wiederzuerkennen, speichert er einen Einwegcode aus Uhrendaten und einem Zufallswert, aus dem sich die Seriennummer nicht zurückgewinnen lässt. Wenn du in deinem Browser die Websitedaten des Web-Installers löschst, wird all das entfernt. Der Web-Installer lädt keine Website-Statistik.
 

@@ -31,6 +31,8 @@ fēnix
 
 46 úspěšných instalací
 
+App 46
+
 Poslední úspěšná instalace 11. října 2026
 
 Forerunner
@@ -40,6 +42,8 @@ Forerunner
 AMOLED
 
 20 úspěšných instalací
+
+App 20
 
 Poslední úspěšná instalace 10. října 2026
 
@@ -51,6 +55,8 @@ fēnix
 
 17 úspěšných instalací
 
+App 17
+
 Poslední úspěšná instalace 11. října 2026
 
 Forerunner
@@ -60,6 +66,8 @@ Forerunner
 Historical
 
 14 úspěšných instalací
+
+App 14
 
 Poslední úspěšná instalace 10. října 2026
 
@@ -71,6 +79,8 @@ fēnix
 
 13 úspěšných instalací
 
+App 13
+
 Poslední úspěšná instalace 4. října 2026
 
 fēnix
@@ -80,6 +90,8 @@ fēnix
 Solar, Historical
 
 7 úspěšných instalací
+
+App 7
 
 Poslední úspěšná instalace 5. října 2026
 
@@ -91,6 +103,8 @@ fēnix
 
 7 úspěšných instalací
 
+App 7
+
 Poslední úspěšná instalace 27. září 2026
 
 fēnix
@@ -100,6 +114,8 @@ fēnix
 47 mm, AMOLED
 
 7 úspěšných instalací
+
+App 7
 
 Poslední úspěšná instalace 9. října 2026
 
@@ -111,6 +127,8 @@ Solar, Standard
 
 6 úspěšných instalací
 
+App 6
+
 Poslední úspěšná instalace 3. října 2026
 
 fēnix
@@ -120,6 +138,8 @@ fēnix
 51 mm, AMOLED, inReach
 
 6 úspěšných instalací
+
+App 6
 
 Poslední úspěšná instalace 16. září 2026
 
@@ -131,6 +151,8 @@ fēnix
 
 6 úspěšných instalací
 
+App 6
+
 Poslední úspěšná instalace 10. října 2026
 
 fēnix
@@ -140,6 +162,8 @@ fēnix
 47 mm, AMOLED, inReach
 
 6 úspěšných instalací
+
+App 6
 
 Poslední úspěšná instalace 29. září 2026
 
@@ -151,6 +175,8 @@ Solar, Historical
 
 5 úspěšných instalací
 
+App 5
+
 Poslední úspěšná instalace 8. října 2026
 
 fēnix
@@ -160,6 +186,8 @@ fēnix
 Solar, (no Wi-Fi)
 
 5 úspěšných instalací
+
+App 5
 
 Poslední úspěšná instalace 8. října 2026
 
@@ -171,6 +199,8 @@ fēnix
 
 5 úspěšných instalací
 
+App 5
+
 Poslední úspěšná instalace 11. října 2026
 
 fēnix
@@ -180,6 +210,8 @@ fēnix
 Solar, Historical
 
 4 úspěšných instalací
+
+App 4
 
 Poslední úspěšná instalace 2. října 2026
 
@@ -191,6 +223,8 @@ fēnix
 
 4 úspěšných instalací
 
+App 4
+
 Poslední úspěšná instalace 11. října 2026
 
 fēnix
@@ -200,6 +234,8 @@ fēnix
 47 mm, AMOLED
 
 4 úspěšných instalací
+
+App 4
 
 Poslední úspěšná instalace 23. září 2026
 
@@ -211,6 +247,8 @@ epix
 
 3 úspěšných instalací
 
+App 3
+
 Poslední úspěšná instalace 24. září 2026
 
 fēnix
@@ -220,6 +258,8 @@ fēnix
 47 mm, AMOLED, inReach
 
 3 úspěšných instalací
+
+App 3
 
 Poslední úspěšná instalace 3. října 2026
 
@@ -231,6 +271,8 @@ fēnix
 
 3 úspěšných instalací
 
+App 3
+
 Poslední úspěšná instalace 7. října 2026
 
 epix
@@ -240,6 +282,8 @@ epix
 47 mm, AMOLED
 
 2 úspěšných instalací
+
+App 2
 
 Poslední úspěšná instalace 24. září 2026
 
@@ -251,6 +295,8 @@ Solar, (no Wi-Fi)
 
 2 úspěšných instalací
 
+App 2
+
 Poslední úspěšná instalace 11. října 2026
 
 fēnix
@@ -260,6 +306,8 @@ fēnix
 47 mm, MIP, Solar, inReach
 
 1 úspěšná instalace
+
+App 1
 
 Poslední úspěšná instalace 27. září 2026
 
@@ -271,6 +319,8 @@ fēnix
 
 1 úspěšná instalace
 
+App 1
+
 Poslední úspěšná instalace 15. září 2026
 
 tactix
@@ -280,6 +330,8 @@ tactix
 Solar, Historical
 
 1 úspěšná instalace
+
+App 1
 
 Poslední úspěšná instalace 7. října 2026
 

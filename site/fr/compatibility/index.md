@@ -31,6 +31,8 @@ fēnix
 
 46 installations réussies
 
+App 46
+
 Dernière installation réussie 11 octobre 2026
 
 Forerunner
@@ -40,6 +42,8 @@ Forerunner
 AMOLED
 
 20 installations réussies
+
+App 20
 
 Dernière installation réussie 10 octobre 2026
 
@@ -51,6 +55,8 @@ fēnix
 
 17 installations réussies
 
+App 17
+
 Dernière installation réussie 11 octobre 2026
 
 Forerunner
@@ -60,6 +66,8 @@ Forerunner
 Historical
 
 14 installations réussies
+
+App 14
 
 Dernière installation réussie 10 octobre 2026
 
@@ -71,6 +79,8 @@ fēnix
 
 13 installations réussies
 
+App 13
+
 Dernière installation réussie 4 octobre 2026
 
 fēnix
@@ -80,6 +90,8 @@ fēnix
 Solar, Historical
 
 7 installations réussies
+
+App 7
 
 Dernière installation réussie 5 octobre 2026
 
@@ -91,6 +103,8 @@ fēnix
 
 7 installations réussies
 
+App 7
+
 Dernière installation réussie 27 septembre 2026
 
 fēnix
@@ -100,6 +114,8 @@ fēnix
 47 mm, AMOLED
 
 7 installations réussies
+
+App 7
 
 Dernière installation réussie 9 octobre 2026
 
@@ -111,6 +127,8 @@ Solar, Standard
 
 6 installations réussies
 
+App 6
+
 Dernière installation réussie 3 octobre 2026
 
 fēnix
@@ -120,6 +138,8 @@ fēnix
 51 mm, AMOLED, inReach
 
 6 installations réussies
+
+App 6
 
 Dernière installation réussie 16 septembre 2026
 
@@ -131,6 +151,8 @@ fēnix
 
 6 installations réussies
 
+App 6
+
 Dernière installation réussie 10 octobre 2026
 
 fēnix
@@ -140,6 +162,8 @@ fēnix
 47 mm, AMOLED, inReach
 
 6 installations réussies
+
+App 6
 
 Dernière installation réussie 29 septembre 2026
 
@@ -151,6 +175,8 @@ Solar, Historical
 
 5 installations réussies
 
+App 5
+
 Dernière installation réussie 8 octobre 2026
 
 fēnix
@@ -160,6 +186,8 @@ fēnix
 Solar, (no Wi-Fi)
 
 5 installations réussies
+
+App 5
 
 Dernière installation réussie 8 octobre 2026
 
@@ -171,6 +199,8 @@ fēnix
 
 5 installations réussies
 
+App 5
+
 Dernière installation réussie 11 octobre 2026
 
 fēnix
@@ -180,6 +210,8 @@ fēnix
 Solar, Historical
 
 4 installations réussies
+
+App 4
 
 Dernière installation réussie 2 octobre 2026
 
@@ -191,6 +223,8 @@ fēnix
 
 4 installations réussies
 
+App 4
+
 Dernière installation réussie 11 octobre 2026
 
 fēnix
@@ -200,6 +234,8 @@ fēnix
 47 mm, AMOLED
 
 4 installations réussies
+
+App 4
 
 Dernière installation réussie 23 septembre 2026
 
@@ -211,6 +247,8 @@ epix
 
 3 installations réussies
 
+App 3
+
 Dernière installation réussie 24 septembre 2026
 
 fēnix
@@ -220,6 +258,8 @@ fēnix
 47 mm, AMOLED, inReach
 
 3 installations réussies
+
+App 3
 
 Dernière installation réussie 3 octobre 2026
 
@@ -231,6 +271,8 @@ fēnix
 
 3 installations réussies
 
+App 3
+
 Dernière installation réussie 7 octobre 2026
 
 epix
@@ -240,6 +282,8 @@ epix
 47 mm, AMOLED
 
 2 installations réussies
+
+App 2
 
 Dernière installation réussie 24 septembre 2026
 
@@ -251,6 +295,8 @@ Solar, (no Wi-Fi)
 
 2 installations réussies
 
+App 2
+
 Dernière installation réussie 11 octobre 2026
 
 fēnix
@@ -260,6 +306,8 @@ fēnix
 47 mm, MIP, Solar, inReach
 
 1 installation réussie
+
+App 1
 
 Dernière installation réussie 27 septembre 2026
 
@@ -271,6 +319,8 @@ fēnix
 
 1 installation réussie
 
+App 1
+
 Dernière installation réussie 15 septembre 2026
 
 tactix
@@ -280,6 +330,8 @@ tactix
 Solar, Historical
 
 1 installation réussie
+
+App 1
 
 Dernière installation réussie 7 octobre 2026
 
