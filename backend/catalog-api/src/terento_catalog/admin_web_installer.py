@@ -36,6 +36,7 @@ WORDS = {
     "OTHER_TAB": "Another tab was already using the watch",
     "TIMEOUT": "The watch did not answer in time",
     "CONNECTION_LOST": "The connection to the watch ended",
+    "WATCH_IN_USE": "Another app or the system held the watch",
     "FAILED": "Other connection error",
     # Map and removal reasons
     "CANCELLED": "Cancelled by the person",

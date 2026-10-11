@@ -188,6 +188,8 @@ class WebInstallerEndToEndTests(PGliteTestCase):
     def test_page_session_reaches_the_admin_page(self):
         for body in session_events():
             self.assertEqual(self.forward(self.recent(body)), 201)
+        # Windows' own driver (or another app) refuses Chrome: not a lost connection.
+        self.assertEqual(self.forward(event(stage="CONNECT", outcome="WATCH_IN_USE", osFamily="Windows", errorName="SecurityError")), 201)
         self.assertEqual(self.forward(self.recent(relay_job()), "relay-jobs"), 201)
         self.assertEqual(self.forward(self.recent(relay_job(id="3f2a9c1b7d4e5a61", outcome="DELIVERED", reason=None,
                          providerHttpStatus=..., readyAt="2026-10-10T20:01:10Z", sizeBytes=200_000_000,
@@ -214,6 +216,7 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         for text in ("<h1>Web installer</h1>", "Watch connected", "Maps installed", "Maps updated", "Writing",
                      "Watch models", "fenix 8 - 47mm", "macOS 15", "Systems and browsers", "Connection problems",
                      "Install and removal problems", "The connection to the watch ended", "CONNECTION_LOST · NetworkError",
+                     "Another app or the system held the watch", "WATCH_IN_USE · SecurityError",
                      "MTP 0x200D", "Recent results on watches", "On the server", "Providers", "Problems",
                      "Provider returned an error", "PROVIDER_HTTP_ERROR · HTTP 503", "Recent requests", "Test records: 1",
                      "Sent through Cloudflare", "100% of sent",
