@@ -162,6 +162,10 @@ def verify_refresh_flow():
         '"gh", "pr", "checks"')
     assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
     assert "HEAD:beta" not in source and "--admin" not in source
+    refresh_call = source[source.index("integrate(BRANCH, MARKER, TITLE"):]
+    assert 'ci_inputs=("-f", "selection_base=beta")' in refresh_call.split("\n\n")[0], (
+        "the compatibility refresh tests only its site changes, not the full native matrix"
+    )
 
 
 def verify_indexnow_state_flow(flow, sha):
