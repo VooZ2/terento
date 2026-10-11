@@ -51,19 +51,26 @@ def check_identity_database(database):
         event = dict(fixture, id=str(uuid4()), operationId=str(uuid4()), model='Identity CI Watch',
                      rawMTPModel='Identity CI Watch 51mm AMOLED inReach',
                      garminModelDescription='Identity CI Watch 51mm AMOLED inReach',
-                     garminModelPartNumber='006-B9999-00', usbProductID=65535, **changes)
+                     garminModelPartNumber='006-B9999-00', usbProductID=65535)
+        event.update(changes)
         # Public-labelled synthetic fixtures are confined to this disposable DB.
         value = validate_event(json.dumps(event).encode())
         assert database.insert_compatibility_event(value)
         assert not database.insert_compatibility_event(value)
         with database.connection() as c:
             return c.execute('SELECT * FROM compatibility_evidence_event WHERE event_id=%s', (event['id'],)).fetchone()
-    pending = send()
+    # Without a reported screen both variants stay possible.
+    pending = send(rawMTPModel='Identity CI Watch 51mm inReach', garminModelDescription='Identity CI Watch 51mm inReach')
     assert pending['canonical_device_model_id'] is None
+    # The reported screen excludes MicroLED, so the name decides before code review.
+    single = send()
+    assert single['canonical_device_model_id'] == 'identity-ci-amoled', single['identity_assessment']
+    assert single['identity_assessment']['resolution'] == 'SINGLE_MATCH'
     for mapping in mappings:
         database.review_identity_mapping(mapping['id'], 'APPROVED', 'Synthetic fixture review', admin)
     exact = send()
     assert exact['canonical_device_model_id'] == 'identity-ci-amoled', exact['identity_assessment']
+    assert exact['identity_assessment']['resolution'] == 'EXACT'
     assert exact['garmin_model_part_number'] == '006-B9999-00'
     assert all(ch['state'] == 'MATCH' for ca in exact['identity_assessment']['candidates'] if ca['deviceId'] == 'identity-ci-amoled' for ch in ca['checks'])
     # A checked assignment never silently rewrites a pre-existing event.
@@ -110,4 +117,4 @@ def check_identity_database(database):
     assert audit['readOnly'] and audit['approvalRequiredBeforeReassignment']
     assert audit['counterImpact']
     database.public_compatibility_models(500)
-    print('PASS: PostgreSQL identity intake, replay, five checks, shared codes, manual conflict, corrections, audit and public-count isolation')
+    print('PASS: PostgreSQL identity intake, replay, five checks, single name match, shared codes, manual conflict, corrections, audit and public-count isolation')
