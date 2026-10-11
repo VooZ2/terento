@@ -1711,8 +1711,12 @@ def _chart_legend(items: list[tuple[str, str, Any]], *, label: str) -> str:
 def _overview_trend_chart(
     trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
     *, metric: str = "installs", has_activity: bool = False,
-    chart_id: str = "", counted: frozenset[str] = _LEGEND_COUNTED_SERIES, _compact: bool = False,
+    chart_id: str = "", counted: frozenset[str] = _LEGEND_COUNTED_SERIES, wide: bool = False,
+    _compact: bool = False, _wide: bool = False,
 ) -> str:
+    """Stacked bars per bucket. ``wide`` adds a variant drawn for a full-width
+    card, shown on wide screens so the chart fills the card instead of sitting
+    narrow in its middle."""
     if not trend:
         if has_activity:
             return _empty_state("unavailable", "Trend data is unavailable for this period.", css="overview-empty-state")
@@ -1722,7 +1726,8 @@ def _overview_trend_chart(
               "sessions": _SESSION_CHART_SERIES}.get(metric, _INSTALL_CHART_SERIES)
     chart_label = {"downloads": "Map download trend", "sessions": "First run sessions trend"}.get(
         metric, "Map installation and update trend")
-    chart_key = re.sub(r"[^a-z0-9-]", "-", (chart_id or metric).lower()) + ("-mobile" if _compact else "-desktop")
+    variant = "mobile" if _compact else "wide" if _wide else "desktop"
+    chart_key = re.sub(r"[^a-z0-9-]", "-", (chart_id or metric).lower()) + "-" + variant
     pattern_id = f"update-failed-{chart_key}"
     values = []
     for item in trend:
@@ -1733,7 +1738,7 @@ def _overview_trend_chart(
     maximum = max((sum(counts) for counts in values), default=1) or 1
     tick_step = max(1, math.ceil(maximum / 4))
     scale_maximum = tick_step * 4
-    chart_width, chart_height = (360, 220) if _compact else (720, 260)
+    chart_width, chart_height = (360, 220) if _compact else (1200, 260) if _wide else (720, 260)
     left, right, top, bottom = 42, 12, 20, 38
     plot_height = chart_height - top - bottom
     plot_width = chart_width - left - right
@@ -1799,10 +1804,10 @@ def _overview_trend_chart(
             f"{html.escape(axis_texts[index])}</text>"
         )
     svg = (
-        f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='group' aria-label='{chart_label}'>"
+        f"<svg class='overview-trend-chart overview-trend-{variant}' viewBox='0 0 {chart_width} {chart_height}' role='group' aria-label='{chart_label}'>"
         f"<defs><pattern id='{pattern_id}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--danger)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
-    if _compact:
+    if _compact or _wide:
         return svg
     # Tiles or card headers carry the period totals; the legend names the
     # series and counts only the ``counted`` series (none on the Dashboard).
@@ -1815,6 +1820,10 @@ def _overview_trend_chart(
     return (
         "<div class='overview-chart-wrap'>"
         + svg
+        + (_overview_trend_chart(
+            trend, bucket, time_zone, metric=metric,
+            has_activity=has_activity, chart_id=chart_id, _wide=True,
+        ) if wide else "")
         + _overview_trend_chart(
             trend, bucket, time_zone, metric=metric,
             has_activity=has_activity, chart_id=chart_id, _compact=True,
@@ -2150,27 +2159,25 @@ def _overview_period_script() -> str:
 
 
 def _overview_source_switch_script() -> str:
-    """Dashboard chart App/Web switch; the choice per card survives period reloads."""
+    """Dashboard App/Web switch: one choice swaps both chart cards and
+    survives period reloads."""
     return r"""(() => {
-      const chosen = {};
-      const show = (card, source) => {
-        card.querySelectorAll('[data-source-switch]').forEach((button) => {
+      let chosen = '';
+      const show = (source) => {
+        document.querySelectorAll('[data-source-switch]').forEach((button) => {
           const on = button.dataset.sourceSwitch === source;
           button.classList.toggle('active', on);
           button.setAttribute('aria-pressed', String(on));
         });
-        card.querySelectorAll('[data-source-panel]').forEach((panel) => { panel.hidden = panel.dataset.sourcePanel !== source; });
+        document.querySelectorAll('[data-source-panel]').forEach((panel) => { panel.hidden = panel.dataset.sourcePanel !== source; });
       };
       document.addEventListener('click', (event) => {
         const button = event.target.closest('[data-source-switch]');
-        const card = button?.closest('section[id]');
-        if (!card) return;
-        chosen[card.id] = button.dataset.sourceSwitch;
-        show(card, chosen[card.id]);
+        if (!button) return;
+        chosen = button.dataset.sourceSwitch;
+        show(chosen);
       });
-      window.addEventListener('terento-admin-content-changed', () => {
-        Object.entries(chosen).forEach(([id, source]) => { const card = document.getElementById(id); if (card) show(card, source); });
-      });
+      window.addEventListener('terento-admin-content-changed', () => { if (chosen) show(chosen); });
     })();"""
 
 
@@ -2450,7 +2457,7 @@ def _funnel_trend_chart(display: dict[str, Any], time_zone: str) -> str:
     ]
     return _overview_trend_chart(
         trend, display.get("bucket") or "hour", time_zone, metric="sessions", chart_id="first-run-sessions",
-        counted=frozenset(), has_activity=bool(display.get("sessions")),
+        counted=frozenset(), has_activity=bool(display.get("sessions")), wide=True,
     ) if trend else ""
 
 
@@ -2624,13 +2631,20 @@ def _card_totals(items: list[tuple[str, str]], *, label: str) -> str:
 
 
 def _period_totals(data: dict[str, Any], completed: str, failed: str, rate: str, *, label: str) -> str:
+    """Chart card period totals as one badge, numbers only (owner 2026-10-11):
+    successful / failed (danger when positive) / success rate. The words stay
+    for screen readers."""
     completed_value = _optional_nonnegative_int(data.get(completed))
-    return _card_totals([
-        (f"<strong data-stat='{completed}'>{f'{completed_value:,}' if completed_value is not None else '—'}</strong>",
-         "Successful"),
-        (_admin_error_counter(data.get(failed), data_stat=failed), "Failed"),
-        (f"<strong data-stat='{rate}'>{html.escape(_format_rate(data.get(rate)))}</strong>", "Success rate"),
-    ], label=label)
+    separator = "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
+    return (
+        f"<div class='overview-card-totals' role='group' aria-label='{html.escape(label, quote=True)}'>"
+        "<span class='overview-card-total overview-card-result'>"
+        f"<strong data-stat='{completed}'>{f'{completed_value:,}' if completed_value is not None else '—'}</strong>"
+        "<span class='sr-only'> successful,</span>" + separator
+        + _admin_error_counter(data.get(failed), data_stat=failed) + "<span class='sr-only'> failed,</span>" + separator
+        + f"<strong data-stat='{rate}'>{html.escape(_format_rate(data.get(rate)))}</strong>"
+        "<span class='sr-only'> success rate</span></span></div>"
+    )
 
 
 def overview_page(
@@ -2740,20 +2754,15 @@ def overview_page(
             return body, _period_totals(source, *keys, label=f"{kind.title()} in this period")
 
         def switched_card(title: str, kind: str, card_id: str, chart_id: str) -> str:
-            """App/Web switch (owner decision 2026-10-10): App is the app-only
-            statistic it always was; Web shows web installer records only."""
+            """App/Web (owner decision 2026-10-10): App is the app-only
+            statistic it always was; Web shows web installer records only.
+            One switch next to the period picker swaps both cards."""
             app_body, app_totals = chart(data, kind, chart_id)
             web_body, web_totals = chart(web, kind, chart_id + "-web")
-            # The switch is the first chip of the header totals, in the same size.
-            switch = (
-                f"<span class='overview-source-switch' role='group' aria-label='{title} source'>"
-                "<button type='button' class='active' data-source-switch='app' aria-pressed='true'>App</button>"
-                "<button type='button' data-source-switch='web' aria-pressed='false'>Web</button></span>"
-            )
             return _section_card(
                 title, f"<div data-source-panel='app'>{app_body}</div><div data-source-panel='web' hidden>{web_body}</div>",
                 card_id=card_id, scope=period,
-                totals=f"<div class='overview-card-totals overview-source-head'>{switch}"
+                totals=f"<div class='overview-card-totals overview-source-head'>"
                        f"<span class='overview-source-totals' data-source-panel='app'>{app_totals}</span>"
                        f"<span class='overview-source-totals' data-source-panel='web' hidden>{web_totals}</span></div>",
                 css="overview-panel overview-chart-panel",
@@ -2803,12 +2812,17 @@ def overview_page(
         downloads_section = ""
 
     funnel_section = _funnel_summary_card(overview.get("funnel"), period) if "funnel" in overview else ""
+    source_switch = (
+        "<span class='overview-source-switch' role='group' aria-label='Downloads and Installs source'>"
+        "<button type='button' class='active' data-source-switch='app' aria-pressed='true'>App</button>"
+        "<button type='button' data-source-switch='web' aria-pressed='false'>Web</button></span>"
+    ) if data_available else ""
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
-        <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin' data-time-zone='{html.escape(time_zone, quote=True)}'><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin' data-time-zone='{html.escape(time_zone, quote=True)}'>{source_switch}<label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
-        <div class='overview-composition-grid'>{attention_section}{funnel_section}{activity_section}{downloads_section}</div>
+        <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_overview_source_switch_script()}</script>
     """
@@ -9315,6 +9329,13 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-download-marker line{stroke-width:2;stroke-dasharray:4 3}.overview-chart-download-marker text{stroke:none;font-size:10px;font-weight:700}.overview-chart-download-release line{stroke:var(--interactive)}.overview-chart-download-release text{fill:var(--interactive)}.overview-chart-download-boundary line{stroke:var(--secondary)}.overview-chart-download-boundary text{fill:var(--secondary)}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
+/* A full-width chart card fills its width with the wide variant (owner 2026-10-11: no narrow chart in a wide card). */
+.overview-trend-wide{display:none}
+@media(min-width:1240px){
+  .overview-chart-wrap:has(>.overview-trend-wide){max-width:none}
+  .overview-chart-wrap>.overview-trend-wide{display:block;max-width:none;height:auto;aspect-ratio:1200/260}
+  .overview-chart-wrap:has(>.overview-trend-wide)>.overview-trend-desktop{display:none}
+}
 @media(min-width:901px) and (max-width:1100px),(max-width:700px){
   .overview-trend-desktop{display:none}
   .overview-trend-mobile{display:block;min-width:0;width:100%;height:auto;aspect-ratio:360/220}
@@ -9807,6 +9828,8 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .map-statistics-provider-table .admin-table td{white-space:normal;overflow-wrap:anywhere}
 .map-statistics-provider-table .admin-table .column-date{width:142px;overflow-wrap:normal;white-space:nowrap}
 /* Rows: Needs attention | Activity, then First run | App downloads. Cards in a row stretch to one height; a lone last card spans the row so no grid cell stays empty. */
+/* First run beside App downloads: its previous-period line closes the card at the bottom, like the App downloads All time line. */
+.overview-composition-grid>#overview-funnel{display:flex;flex-direction:column}.overview-composition-grid>#overview-funnel>.admin-card-note{margin-top:auto;padding-top:10px}
 .overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:16px;margin-top:16px}
 .overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-panel:last-child:nth-child(odd){grid-column:1/-1}
 .overview-heading+.overview-primary-grid{margin-top:0}
@@ -10339,9 +10362,15 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .overview-chart-panel .overview-empty-state{justify-content:center;padding:32px 0;text-align:center}
 .overview-attention-empty{display:flex;flex-direction:column}.overview-attention-empty>.overview-empty-state{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 0}
 .overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
-.overview-source-switch{display:inline-flex;box-sizing:border-box;height:24px;padding:1px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted)}
-.overview-source-switch button{min-height:0;height:20px;padding:0 7px;border:0;border-radius:6px;background:transparent;color:var(--secondary);font:inherit;font-size:var(--admin-type-support-size);line-height:20px;cursor:pointer}
-.overview-source-switch button.active{background:var(--surface);color:var(--graphite);font-weight:650;box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 8%,transparent)}
+/* One App/Web switch beside the period picker, in the picker's height (owner 2026-10-11). */
+.overview-period-form:has(.overview-source-switch){display:flex;align-items:center;gap:8px}
+.overview-source-switch{display:inline-flex;flex:none;box-sizing:border-box;height:var(--admin-control-height);padding:3px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface-muted)}
+.overview-source-switch button{min-height:0;height:100%;padding:0 14px;border:0;border-radius:calc(var(--admin-control-radius) - 3px);background:transparent;color:var(--secondary);font:600 var(--admin-control-font-size)/1 var(--font-ui);cursor:pointer}
+.overview-source-switch button.active{background:var(--surface);color:var(--graphite);box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 8%,transparent)}
+.overview-source-switch button:focus-visible{outline:var(--admin-focus-ring);outline-offset:1px}
+@media(max-width:760px){.overview-period-form:has(.overview-source-switch) label{flex:1 1 auto;min-width:0}}
+/* Chart totals: one badge, successful / failed / rate. */
+.overview-card-result{gap:6px}.overview-card-total-separator{color:var(--secondary);font-size:14px;line-height:22px}
 """
 # Signed-in pages link one cacheable stylesheet; the content hash in the name
 # changes whenever the CSS changes (served by the admin map-assets route).
