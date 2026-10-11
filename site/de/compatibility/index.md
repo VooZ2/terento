@@ -11,7 +11,7 @@ Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Unten 
 
 Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.
 
-**26** Modelle mit erfolgreichen Installationen**185** erfolgreiche InstallationenLetzte erfolgreiche Installation 10. Oktober 2026
+**26** Modelle mit erfolgreichen Installationen**198** erfolgreiche InstallationenLetzte erfolgreiche Installation 11. Oktober 2026
 
 So funktioniert diese Liste
 
@@ -29,9 +29,9 @@ fēnix
 
 47 mm, AMOLED
 
-42 erfolgreiche Installationen
+46 erfolgreiche Installationen
 
-Letzte erfolgreiche Installation 9. Oktober 2026
+Letzte erfolgreiche Installation 11. Oktober 2026
 
 Forerunner
 
@@ -42,6 +42,16 @@ AMOLED
 20 erfolgreiche Installationen
 
 Letzte erfolgreiche Installation 10. Oktober 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, AMOLED
+
+17 erfolgreiche Installationen
+
+Letzte erfolgreiche Installation 11. Oktober 2026
 
 Forerunner
 
@@ -62,16 +72,6 @@ fēnix
 13 erfolgreiche Installationen
 
 Letzte erfolgreiche Installation 4. Oktober 2026
-
-fēnix
-
-### fēnix 9 Pro
-
-51 mm, AMOLED
-
-12 erfolgreiche Installationen
-
-Letzte erfolgreiche Installation 10. Oktober 2026
 
 fēnix
 
@@ -165,6 +165,16 @@ Letzte erfolgreiche Installation 8. Oktober 2026
 
 fēnix
 
+### fēnix 7X
+
+51 mm, Solar
+
+5 erfolgreiche Installationen
+
+Letzte erfolgreiche Installation 11. Oktober 2026
+
+fēnix
+
 ### fēnix 7S Pro
 
 Solar, Historical
@@ -172,6 +182,16 @@ Solar, Historical
 4 erfolgreiche Installationen
 
 Letzte erfolgreiche Installation 2. Oktober 2026
+
+fēnix
+
+### fēnix 8
+
+43 mm, AMOLED
+
+4 erfolgreiche Installationen
+
+Letzte erfolgreiche Installation 11. Oktober 2026
 
 fēnix
 
@@ -195,16 +215,6 @@ Letzte erfolgreiche Installation 24. September 2026
 
 fēnix
 
-### fēnix 7X
-
-51 mm, Solar
-
-3 erfolgreiche Installationen
-
-Letzte erfolgreiche Installation 19. September 2026
-
-fēnix
-
 ### fēnix 8 Pro
 
 47 mm, AMOLED, inReach
@@ -212,16 +222,6 @@ fēnix
 3 erfolgreiche Installationen
 
 Letzte erfolgreiche Installation 3. Oktober 2026
-
-fēnix
-
-### fēnix 8
-
-43 mm, AMOLED
-
-3 erfolgreiche Installationen
-
-Letzte erfolgreiche Installation 17. September 2026
 
 fēnix
 
@@ -249,9 +249,9 @@ fēnix
 
 Solar, (no Wi-Fi)
 
-1 erfolgreiche Installation
+2 erfolgreiche Installationen
 
-Letzte erfolgreiche Installation 10. Oktober 2026
+Letzte erfolgreiche Installation 11. Oktober 2026
 
 fēnix
 

@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**26** modely s úspěšnými instalacemi**185** úspěšných instalacíPoslední úspěšná instalace 10. října 2026
+**26** modely s úspěšnými instalacemi**198** úspěšných instalacíPoslední úspěšná instalace 11. října 2026
 
 Jak tento seznam funguje
 
@@ -29,9 +29,9 @@ fēnix
 
 47 mm, AMOLED
 
-42 úspěšných instalací
+46 úspěšných instalací
 
-Poslední úspěšná instalace 9. října 2026
+Poslední úspěšná instalace 11. října 2026
 
 Forerunner
 
@@ -42,6 +42,16 @@ AMOLED
 20 úspěšných instalací
 
 Poslední úspěšná instalace 10. října 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, AMOLED
+
+17 úspěšných instalací
+
+Poslední úspěšná instalace 11. října 2026
 
 Forerunner
 
@@ -62,16 +72,6 @@ fēnix
 13 úspěšných instalací
 
 Poslední úspěšná instalace 4. října 2026
-
-fēnix
-
-### fēnix 9 Pro
-
-51 mm, AMOLED
-
-12 úspěšných instalací
-
-Poslední úspěšná instalace 10. října 2026
 
 fēnix
 
@@ -165,6 +165,16 @@ Poslední úspěšná instalace 8. října 2026
 
 fēnix
 
+### fēnix 7X
+
+51 mm, Solar
+
+5 úspěšných instalací
+
+Poslední úspěšná instalace 11. října 2026
+
+fēnix
+
 ### fēnix 7S Pro
 
 Solar, Historical
@@ -172,6 +182,16 @@ Solar, Historical
 4 úspěšných instalací
 
 Poslední úspěšná instalace 2. října 2026
+
+fēnix
+
+### fēnix 8
+
+43 mm, AMOLED
+
+4 úspěšných instalací
+
+Poslední úspěšná instalace 11. října 2026
 
 fēnix
 
@@ -195,16 +215,6 @@ Poslední úspěšná instalace 24. září 2026
 
 fēnix
 
-### fēnix 7X
-
-51 mm, Solar
-
-3 úspěšných instalací
-
-Poslední úspěšná instalace 19. září 2026
-
-fēnix
-
 ### fēnix 8 Pro
 
 47 mm, AMOLED, inReach
@@ -212,16 +222,6 @@ fēnix
 3 úspěšných instalací
 
 Poslední úspěšná instalace 3. října 2026
-
-fēnix
-
-### fēnix 8
-
-43 mm, AMOLED
-
-3 úspěšných instalací
-
-Poslední úspěšná instalace 17. září 2026
 
 fēnix
 
@@ -249,9 +249,9 @@ fēnix
 
 Solar, (no Wi-Fi)
 
-1 úspěšná instalace
+2 úspěšných instalací
 
-Poslední úspěšná instalace 10. října 2026
+Poslední úspěšná instalace 11. října 2026
 
 fēnix
 

@@ -11,7 +11,7 @@ Terento is designed for Garmin smartwatches with map support. Below are exact mo
 
 Not seeing your model does not mean it is unsupported — we may simply not have a successful shared installation for that exact model and variant yet.
 
-**26** models with successful installs**185** successful installsLatest successful install October 10, 2026
+**26** models with successful installs**198** successful installsLatest successful install October 11, 2026
 
 How this list works
 
@@ -29,9 +29,9 @@ fēnix
 
 47 mm, AMOLED
 
-42 successful installs
+46 successful installs
 
-Latest successful install October 9, 2026
+Latest successful install October 11, 2026
 
 Forerunner
 
@@ -42,6 +42,16 @@ AMOLED
 20 successful installs
 
 Latest successful install October 10, 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, AMOLED
+
+17 successful installs
+
+Latest successful install October 11, 2026
 
 Forerunner
 
@@ -62,16 +72,6 @@ fēnix
 13 successful installs
 
 Latest successful install October 4, 2026
-
-fēnix
-
-### fēnix 9 Pro
-
-51 mm, AMOLED
-
-12 successful installs
-
-Latest successful install October 10, 2026
 
 fēnix
 
@@ -165,6 +165,16 @@ Latest successful install October 8, 2026
 
 fēnix
 
+### fēnix 7X
+
+51 mm, Solar
+
+5 successful installs
+
+Latest successful install October 11, 2026
+
+fēnix
+
 ### fēnix 7S Pro
 
 Solar, Historical
@@ -172,6 +182,16 @@ Solar, Historical
 4 successful installs
 
 Latest successful install October 2, 2026
+
+fēnix
+
+### fēnix 8
+
+43 mm, AMOLED
+
+4 successful installs
+
+Latest successful install October 11, 2026
 
 fēnix
 
@@ -195,16 +215,6 @@ Latest successful install September 24, 2026
 
 fēnix
 
-### fēnix 7X
-
-51 mm, Solar
-
-3 successful installs
-
-Latest successful install September 19, 2026
-
-fēnix
-
 ### fēnix 8 Pro
 
 47 mm, AMOLED, inReach
@@ -212,16 +222,6 @@ fēnix
 3 successful installs
 
 Latest successful install October 3, 2026
-
-fēnix
-
-### fēnix 8
-
-43 mm, AMOLED
-
-3 successful installs
-
-Latest successful install September 17, 2026
 
 fēnix
 
@@ -249,9 +249,9 @@ fēnix
 
 Solar, (no Wi-Fi)
 
-1 successful install
+2 successful installs
 
-Latest successful install October 10, 2026
+Latest successful install October 11, 2026
 
 fēnix
 
