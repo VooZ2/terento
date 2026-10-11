@@ -14,7 +14,7 @@ Un’app Mac nativa per installare e gestire mappe della comunità sugli smartwa
 - Apple Silicon
 [Scarica DMG Consigliato](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.3-build43/Terento-1.0.0-rc.3-macOS-arm64.dmg) [Scarica ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.3-build43/Terento-1.0.0-rc.3-macOS-arm64.zip) [Note di rilascio](https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.3-build43)
 
-Ultima release candidate: **v1.0.0-rc.3** Pubblicata il 11 ottobre 2026
+Ultima release candidate: **v1.0.0-rc.3** Pubblicata l'11 ottobre 2026
 
 Terento mostra uno smartwatch Garmin collegato su macOS
 
