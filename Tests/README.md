@@ -39,8 +39,8 @@ device telemetry; the audit must pass them through API validation locally.
 The full release matrix runs on tags, manual full checks, weekly CI and release
 packaging. A manual dispatch with `selection_base` (`beta` or `main`, task
 branches only) instead selects suites from the branch's changes since that
-base and skips the live catalog gate; the site deploy uses it for the IndexNow
-state PR. The required `build-and-test` aggregate rejects failed/cancelled jobs;
+base and skips the live catalog gate; the compatibility refresh and the site
+deploy use it for their snapshot and IndexNow state PRs. The required `build-and-test` aggregate rejects failed/cancelled jobs;
 only intentionally unselected suites may be skipped. In CI (`CI=true`) a suite
 runs every runner and lists all failing runners at the end; local runs stop at
 the first failure. A newer PR commit cancels older PR CI. Deployment jobs are serialized, not cancelled mid-mutation.
