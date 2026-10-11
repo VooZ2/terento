@@ -1,0 +1,14 @@
+# Root build context is used only by site-deploy/Dockerfile (COPY site-deploy/Caddyfile, site/).
+# Contributor docs under site/ are not public pages; generated index.md sidecars stay.
+site/AGENTS.md
+site/**/README.md
+.git
+.claude
+.venv
+**/.venv
+**/__pycache__
+**/node_modules
+test-results
+app
+Terento.xcodeproj
+backend

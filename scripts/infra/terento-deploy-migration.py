@@ -3,7 +3,8 @@
 
 This module is not an operator command. The root deployment helper imports it
 after acquiring the shared operations lock, verifies the exact candidate image,
-applies only the candidate image's pending migrations, and verifies the ledger
+snapshots the database when migrations are pending, applies only the candidate
+image's pending migrations, and verifies the ledger
 again before service replacement.
 """
 
@@ -204,6 +205,7 @@ def migrate_candidate(
     *,
     docker: DockerCall,
     compose: ComposeCall,
+    snapshot: Callable[[str], str],
     emit: Callable[[str], None] = print,
 ) -> dict:
     """Apply pending migrations from one immutable image and verify the ledger."""
@@ -231,6 +233,8 @@ def migrate_candidate(
 
     if _running_database_container(compose, docker, image) != database_id:
         raise MigrationError("Catalog database container changed after the ledger precheck; migration refused.")
+    # Fails closed: no SQL runs without a restorable pre-migration dump.
+    emit("MIGRATION_SNAPSHOT_PASS path=" + snapshot(database_id))
     result = _compose(
         compose, "api", image, "--profile", "manual", "run", "--rm", "--no-deps", "-T",
         MIGRATION_SERVICE, "terento-catalog-migrate",

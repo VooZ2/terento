@@ -18,7 +18,7 @@ printf '%s\n' '179.198.204.47 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4/GzEE6xDFxB
 for attempt in 1 2 3; do
   result=0
   ssh -i "$keydir/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
-    -o "UserKnownHostsFile=$keydir/known_hosts" -o ConnectTimeout=15 \
+    -o "UserKnownHostsFile=$keydir/known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 \
     "terento-ci-$role@179.198.204.47" "deploy $VPS_IMAGE_DIGEST $GITHUB_SHA" \
     > "$keydir/response" 2>&1 || result=$?
   cat "$keydir/response"

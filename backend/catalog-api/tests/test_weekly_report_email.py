@@ -22,18 +22,20 @@ class WeeklyReportEmailTests(unittest.TestCase):
                 "sourceRunUrl": "https://github.com/VooZ2/terento/actions/runs/123",
                 "details": {
                     "site": "success", "native": "failure",
-                    "catalog_freizeitkarte_status": "HEALTHY",
-                    "catalog_freizeitkarte_latest_release": "2026-09",
-                    "catalog_freizeitkarte_last_success": "2026-09-02T03:00:00Z",
-                    "catalog_freizeitkarte_release_detected_at": "2026-09-02T03:00:00Z",
-                    "catalog_freizeitkarte_new_release": True,
-                    "catalog_freizeitkarte_reason": "Current.",
-                    "catalog_opentopomap_status": "WARNING",
-                    "catalog_opentopomap_reason": "Collection is stale.",
                 },
             },
             "report@terento.app",
             "report@terento.app",
+            {"schemaVersion": 1, "providers": [
+                {"id": "freizeitkarte", "name": "Freizeitkarte", "status": "HEALTHY",
+                 "latestRelease": "2026-09", "lastCollectionSuccess": "2026-09-02T03:00:00Z",
+                 "latestReleaseDetectedAt": "2026-09-02T03:00:00Z",
+                 "newReleaseDetectedInLast7Days": True, "reason": "Current."},
+                {"id": "opentopomap", "name": "OpenTopoMap", "status": "WARNING",
+                 "reason": "Collection is stale."},
+                {"id": "maprando", "name": "MapRando", "status": "HEALTHY", "reason": "Current."},
+                {"id": "bbbike", "name": "BBBike", "status": "FAILED", "reason": "Source failed."},
+            ]},
         )
         self.assertEqual(message["To"], "report@terento.app")
         self.assertIn("Weekly project health: Failed", message["Subject"])
@@ -43,9 +45,18 @@ class WeeklyReportEmailTests(unittest.TestCase):
         self.assertIn("Freizeitkarte: HEALTHY", body)
         self.assertIn("OpenTopoMap: WARNING", body)
         self.assertIn("Collection is stale.", body)
+        self.assertIn("MapRando: HEALTHY", body)
+        self.assertIn("BBBike: FAILED", body)
         self.assertIn("New release detected in the last 7 days: yes", body)
         self.assertIn("actions/runs/123", body)
         self.assertNotIn("SMTP_PASSWORD", body)
+
+    def test_missing_report_context_is_stated(self) -> None:
+        body = MODULE.build_message(
+            {"status": "HEALTHY", "details": {}}, "report@terento.app", "report@terento.app",
+            {"schemaVersion": 1, "providers": []},
+        ).get_content()
+        self.assertIn("Catalog report context was unavailable.", body)
 
 
 if __name__ == "__main__":

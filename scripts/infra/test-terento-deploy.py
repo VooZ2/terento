@@ -1,7 +1,9 @@
 """Focused contracts for the single immutable deploy path."""
 
 import importlib.util
+import fcntl
 import json
+import os
 from contextlib import contextmanager
 from pathlib import Path
 import tempfile
@@ -159,6 +161,59 @@ class DeployPathTests(unittest.TestCase):
                     with self.assertRaises(deploy.DeploymentError):
                         deploy.deploy("api", "sha256:" + "d" * 64, REVISION)
                 prune.assert_not_called()
+
+    def test_operations_lock_waits_then_refuses_with_a_clear_reason(self):
+        with tempfile.TemporaryDirectory() as root:
+            state = Path(root) / "state"
+            state.mkdir()
+            with (state / deploy.OPERATIONS_LOCK_NAME).open("a") as held, \
+                    patch.object(deploy, "STATE", state), \
+                    patch.object(deploy, "OPERATIONS_LOCK_WAIT_SECONDS", 12), \
+                    patch.object(deploy.time, "sleep") as sleep:
+                fcntl.flock(held, fcntl.LOCK_EX)
+                clock = iter(range(0, 100, 5))
+                with patch.object(deploy.time, "monotonic", side_effect=lambda: next(clock)):
+                    with self.assertRaisesRegex(deploy.DeploymentError, "Another production operation is in progress"):
+                        with deploy.operations_lock():
+                            self.fail("lock must not be acquired while held")
+                self.assertEqual(sleep.call_count, 2)
+                fcntl.flock(held, fcntl.LOCK_UN)
+                sleep.side_effect = None
+                with deploy.operations_lock():
+                    pass
+
+    def test_snapshot_is_root_only_bounded_and_fails_closed(self):
+        with tempfile.TemporaryDirectory() as root:
+            state = Path(root) / "state"
+            snapshots = state / "database-snapshots"
+            snapshots.mkdir(parents=True)
+            for name in ("20260101T000000Z-old1.dump", "20260102T000000Z-old2.dump", "20260103T000000Z-old3.dump"):
+                (snapshots / name).write_bytes(b"old")
+            (snapshots / "20260104T000000Z-cut.partial").write_bytes(b"PG")
+
+            def dump(args, **kwargs):
+                self.assertIn("pg_dump -Fc", args[-1])
+                self.assertEqual(args[2:5], ["exec", "--user", "postgres"])
+                kwargs["stdout"].write(b"PGDMP")
+                return deploy.subprocess.CompletedProcess(args, 0)
+
+            with patch.object(deploy, "STATE", state), patch.object(deploy.subprocess, "run", side_effect=dump):
+                path = Path(deploy.snapshot_database("d" * 64, REVISION))
+            self.assertEqual(path.read_bytes(), b"PGDMP")
+            self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
+            self.assertEqual(len(list(snapshots.glob("*.dump"))), deploy.SNAPSHOTS_KEPT)
+            self.assertFalse((snapshots / "20260101T000000Z-old1.dump").exists())
+            self.assertEqual(list(snapshots.glob("*.partial")), [])
+
+            failure = deploy.subprocess.CalledProcessError(1, "pg_dump")
+            with patch.object(deploy, "STATE", state), \
+                    patch.object(deploy.time, "gmtime", return_value=deploy.time.gmtime(0)), \
+                    patch.object(deploy.subprocess, "run", side_effect=failure):
+                with self.assertRaisesRegex(deploy.DeploymentError, "snapshot failed"):
+                    deploy.snapshot_database("d" * 64, REVISION)
+            # Room for the new dump is made first, so a failed dump leaves one fewer old snapshot.
+            self.assertEqual(len(list(snapshots.glob("*.dump"))), deploy.SNAPSHOTS_KEPT - 1)
+            self.assertEqual(list(snapshots.glob("*.partial")), [])
 
     def test_status_and_ssh_boundary_are_read_only_or_deploy_only(self):
         self.assertNotIn("migration_063", deploy.STATUS_SQL)
