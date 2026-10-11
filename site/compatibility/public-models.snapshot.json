@@ -13,6 +13,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
       "successfulInstallations": 46,
+      "appSuccessfulInstallations": 46,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-11T09:27:25+00:00"
     },
     {
@@ -27,6 +29,8 @@
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
       "successfulInstallations": 20,
+      "appSuccessfulInstallations": 20,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-10T12:04:20+00:00"
     },
     {
@@ -41,6 +45,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
       "successfulInstallations": 17,
+      "appSuccessfulInstallations": 17,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-11T16:50:23+00:00"
     },
     {
@@ -55,6 +61,8 @@
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
       "successfulInstallations": 14,
+      "appSuccessfulInstallations": 14,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-10T22:58:35+00:00"
     },
     {
@@ -69,6 +77,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-00/g/cf-lg.jpg",
       "successfulInstallations": 13,
+      "appSuccessfulInstallations": 13,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-04T22:03:29+00:00"
     },
     {
@@ -83,6 +93,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
       "successfulInstallations": 7,
+      "appSuccessfulInstallations": 7,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-05T11:16:25+00:00"
     },
     {
@@ -97,6 +109,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg",
       "successfulInstallations": 7,
+      "appSuccessfulInstallations": 7,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-27T02:47:41+00:00"
     },
     {
@@ -111,6 +125,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04336-05/g/cf-lg.jpg",
       "successfulInstallations": 7,
+      "appSuccessfulInstallations": 7,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-09T05:43:49+00:00"
     },
     {
@@ -125,6 +141,8 @@
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02638-10/v/cf-lg-d0a186df-582c-4f80-aeef-7eb37b60471b.jpg",
       "successfulInstallations": 6,
+      "appSuccessfulInstallations": 6,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-03T07:25:56+00:00"
     },
     {
@@ -139,6 +157,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg",
       "successfulInstallations": 6,
+      "appSuccessfulInstallations": 6,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-16T08:22:50+00:00"
     },
     {
@@ -153,6 +173,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02906-10/g/cf-lg.jpg",
       "successfulInstallations": 6,
+      "appSuccessfulInstallations": 6,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-10T16:53:34+00:00"
     },
     {
@@ -167,6 +189,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04336-20/g/cf-lg.jpg",
       "successfulInstallations": 6,
+      "appSuccessfulInstallations": 6,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-29T07:48:27+00:00"
     },
     {
@@ -181,6 +205,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02777-10/v/cf-lg.jpg",
       "successfulInstallations": 5,
+      "appSuccessfulInstallations": 5,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-08T16:22:44+00:00"
     },
     {
@@ -195,6 +221,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02777-10/v/cf-lg.jpg",
       "successfulInstallations": 5,
+      "appSuccessfulInstallations": 5,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-08T16:24:29+00:00"
     },
     {
@@ -209,6 +237,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02541-01/v/cf-lg-69399493-9540-4ea5-8033-b4aba04cea8f.jpg",
       "successfulInstallations": 5,
+      "appSuccessfulInstallations": 5,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-11T15:21:40+00:00"
     },
     {
@@ -223,6 +253,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02776-10/v/cf-lg.jpg",
       "successfulInstallations": 4,
+      "appSuccessfulInstallations": 4,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-02T16:10:46+00:00"
     },
     {
@@ -237,6 +269,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02903-10/g/cf-lg.jpg",
       "successfulInstallations": 4,
+      "appSuccessfulInstallations": 4,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-11T14:44:27+00:00"
     },
     {
@@ -251,6 +285,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04762-00/g/cf-lg.jpg",
       "successfulInstallations": 4,
+      "appSuccessfulInstallations": 4,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-23T18:33:25+00:00"
     },
     {
@@ -265,6 +301,8 @@
       "familyName": "epix",
       "imageUrl": "https://res.garmin.com/en/products/010-02804-00/v/cf-lg.jpg",
       "successfulInstallations": 3,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-24T07:32:19+00:00"
     },
     {
@@ -279,6 +317,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg",
       "successfulInstallations": 3,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-03T14:31:10+00:00"
     },
     {
@@ -293,6 +333,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04339-00/g/cf-lg.jpg",
       "successfulInstallations": 3,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-07T19:58:02+00:00"
     },
     {
@@ -307,6 +349,8 @@
       "familyName": "epix",
       "imageUrl": "https://res.garmin.com/en/products/010-02803-10/v/cf-lg.jpg",
       "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-24T17:51:20+00:00"
     },
     {
@@ -321,6 +365,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
       "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-11T02:28:26+00:00"
     },
     {
@@ -335,6 +381,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04338-00/g/cf-lg.jpg",
       "successfulInstallations": 1,
+      "appSuccessfulInstallations": 1,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-27T09:13:24+00:00"
     },
     {
@@ -349,6 +397,8 @@
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04338-05/g/cf-lg.jpg",
       "successfulInstallations": 1,
+      "appSuccessfulInstallations": 1,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
     },
     {
@@ -363,8 +413,10 @@
       "familyName": "tactix",
       "imageUrl": "https://res.garmin.com/en/products/010-02357-00/g/cf-lg-2c2fad14-11ab-4115-90bf-22cd64eae0d4.jpg",
       "successfulInstallations": 1,
+      "appSuccessfulInstallations": 1,
+      "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-11T18:00:38.876967+00:00"
+  "generatedAt": "2026-10-11T21:09:00.365119+00:00"
 }
