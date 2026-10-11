@@ -261,7 +261,10 @@ def main(argv=None):
         return
     if args:
         raise SystemExit("usage: integrate-compatibility-refresh.py [--indexnow-state]")
-    integrate(BRANCH, MARKER, TITLE, BODY, FACT_FILES, OWNED_FILES, prepare_refresh_commits)
+    # Site-only facts: test what the branch changes, not the full native matrix, so an
+    # unrelated app test cannot hold back the data and beta has less time to move on.
+    integrate(BRANCH, MARKER, TITLE, BODY, FACT_FILES, OWNED_FILES, prepare_refresh_commits,
+              ci_inputs=("-f", "selection_base=beta"))
 
 
 if __name__ == "__main__":
