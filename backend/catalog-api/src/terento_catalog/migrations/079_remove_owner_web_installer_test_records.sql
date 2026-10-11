@@ -5,10 +5,11 @@
 -- the production Admin Web installer page and, after reviewing the read-only
 -- per-day, system, browser and model listing (33 events, 3 relay jobs received
 -- up to 2026-10-11T15:39:48.365772Z), answered "Trink viska is statistikos"
--- (delete everything from the statistics). Every web installer record received
--- before this migration runs is therefore removed, including his later
--- hardware tests. A data-only backup of both tables was taken at the check,
--- and the deploy helper writes a full pre-migration snapshot.
+-- (delete everything from the statistics), then set the boundary: records up
+-- to 2026-10-11 18:50 Europe/Vilnius (15:50:00Z) are removed, later ones stay.
+-- His tests between the check and 18:50 go too. A data-only backup of
+-- both tables was taken at the check, and the deploy helper writes a full
+-- pre-migration snapshot.
 --
 -- Fails closed: a non-empty database must still hold exactly the reviewed
 -- counts up to the check cutoff, otherwise the migration (and the deploy)
@@ -33,6 +34,7 @@ SELECT
 
 WITH deleted AS (
     DELETE FROM web_installer_event
+    WHERE received_at < TIMESTAMPTZ '2026-10-11T15:50:00Z'
     RETURNING received_at
 )
 SELECT
@@ -43,6 +45,7 @@ FROM deleted;
 
 WITH deleted AS (
     DELETE FROM web_installer_relay_job
+    WHERE received_at < TIMESTAMPTZ '2026-10-11T15:50:00Z'
     RETURNING received_at
 )
 SELECT
@@ -55,10 +58,11 @@ INSERT INTO admin_audit_log (admin_user_id, action, target, reason, details)
 SELECT
     NULL,
     'web_installer.owner_test_records_purged',
-    'all-web-installer-records',
-    'Owner-authorized removal of all web installer records before public testing',
+    'web-installer-records-before-2026-10-11T15:50:00Z',
+    'Owner-authorized removal of web installer test records before public testing',
     jsonb_build_object(
         'checkCutoff', '2026-10-11T15:39:48.365772Z',
+        'receivedBefore', '2026-10-11T15:50:00Z',
         'eventCount', e.row_count,
         'eventsAfterCheck', e.after_check,
         'relayJobCount', j.row_count,

@@ -271,17 +271,18 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.db.prune_compatibility_events()
         self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_event")[0]["n"], 0)
 
-    def test_owner_cleanup_migration_removes_everything_only_after_the_reviewed_counts(self):
+    def test_owner_cleanup_migration_removes_records_before_the_boundary_only_after_the_reviewed_counts(self):
         cutoff = "2026-10-11T15:39:48.365772Z"
         statements = _statements(OWNER_CLEANUP_MIGRATION.read_text(encoding="utf-8"))
 
         def seed(reviewed_events):
+            later = ["TIMESTAMPTZ '2026-10-11T15:49:59Z'", "TIMESTAMPTZ '2026-10-11T15:50:00Z'"]
             for index in range(reviewed_events + 2):
-                received = f"TIMESTAMPTZ '{cutoff}' - interval '{index} minutes'" if index < reviewed_events else "now()"
+                received = f"TIMESTAMPTZ '{cutoff}' - interval '{index} minutes'" if index < reviewed_events else later[index - reviewed_events]
                 self.sql("INSERT INTO web_installer_event (event_id, session_id, occurred_at, received_at, stage, outcome) "
                          f"VALUES (gen_random_uuid(), gen_random_uuid(), now(), {received}, 'GATE', 'PASSED')")
             for index in range(4):
-                received = f"TIMESTAMPTZ '{cutoff}'" if index < 3 else "now()"
+                received = f"TIMESTAMPTZ '{cutoff}'" if index < 3 else "TIMESTAMPTZ '2026-10-11T15:45:00Z'"
                 self.sql("INSERT INTO web_installer_relay_job (job_id, requested_at, finished_at, provider, package_id, "
                          f"served_bytes, outcome, received_at) VALUES ('{index:016x}', now(), now(), 'freizeitkarte', 'p', 0, "
                          f"'DELIVERED', {received})")
@@ -308,11 +309,14 @@ class WebInstallerEndToEndTests(PGliteTestCase):
 
         seed(33)
         run()
-        self.assertEqual((count("web_installer_event"), count("web_installer_relay_job")), (0, 0))
+        kept = self.sql("SELECT received_at FROM web_installer_event")
+        self.assertEqual([row["received_at"] for row in kept], [datetime(2026, 10, 11, 15, 50, tzinfo=timezone.utc)])
+        self.assertEqual(count("web_installer_relay_job"), 0)
         details = self.sql("SELECT details FROM admin_audit_log WHERE action = 'web_installer.owner_test_records_purged'")
         self.assertEqual(len(details), 1)
         self.assertEqual({key: value for key, value in details[0]["details"].items() if key != "checkCutoff"},
-                         {"eventCount": 35, "eventsAfterCheck": 2, "relayJobCount": 4, "relayJobsAfterCheck": 1})
+                         {"receivedBefore": "2026-10-11T15:50:00Z", "eventCount": 34, "eventsAfterCheck": 1,
+                          "relayJobCount": 4, "relayJobsAfterCheck": 1})
 
 
 if __name__ == "__main__":
