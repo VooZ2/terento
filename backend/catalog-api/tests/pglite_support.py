@@ -223,7 +223,7 @@ class PGliteDatabase(Database):
         self.server = server
 
     @contextmanager
-    def connection(self) -> Iterator[Any]:
+    def connection(self, **_options: Any) -> Iterator[Any]:
         self.server.savepoints += 1
         name = f"terento_test_sp_{self.server.savepoints}"
         self.server.exec(f"SAVEPOINT {name}")
