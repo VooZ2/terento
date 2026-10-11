@@ -295,17 +295,18 @@ def create(root: Path) -> None:
         providers, user, "fixture", selected_filters={"period": "today", "timeZone": "Europe/Vilnius"},
     ))
     today_trend = _today_trend()
+    today_data = {
+        "hasData": True, "trend": today_trend, "bucket": "hour", "recentActivity": [],
+        "completedInstallCount": sum(int(item["success_count"]) + int(item["custom_count"]) for item in today_trend),
+        "failedInstallCount": sum(int(item["failed_count"]) for item in today_trend),
+        "installSuccessRate": 93.3,
+        "completedDownloadCount": sum(int(item["download_success_count"]) for item in today_trend),
+        "failedDownloadCount": sum(int(item["download_failed_count"]) for item in today_trend),
+        "downloadSuccessRate": 95.0,
+    }
     (root / "overview-today.html").write_bytes(overview_page({
         "period": "today", "timeZone": "Europe/Vilnius",
-        "data": {
-            "hasData": True, "trend": today_trend, "bucket": "hour", "recentActivity": [],
-            "completedInstallCount": sum(int(item["success_count"]) + int(item["custom_count"]) for item in today_trend),
-            "failedInstallCount": sum(int(item["failed_count"]) for item in today_trend),
-            "installSuccessRate": 93.3,
-            "completedDownloadCount": sum(int(item["download_success_count"]) for item in today_trend),
-            "failedDownloadCount": sum(int(item["download_failed_count"]) for item in today_trend),
-            "downloadSuccessRate": 95.0,
-        },
+        "data": today_data, "all": today_data,
         "downloads": {
             "hasData": True, "dmgTotal": 330, "zipTotal": 85, "bucket": "hour",
             "lastSuccessfulObservedAt": "2026-10-07T11:00:00Z",
