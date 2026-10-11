@@ -12,6 +12,8 @@ from pglite_support import require_pglite
 
 
 class Result:
+    rowcount = 0
+
     def __init__(self, row=None):
         self.row = row
 
@@ -58,6 +60,15 @@ class LocalTelemetryDatabase(Database):
 
 
 class LocalTelemetryTests(unittest.TestCase):
+    def test_map_event_retention_runs_in_daily_prune_not_on_intake(self):
+        connection = Connection()
+        database = LocalTelemetryDatabase(connection)
+        database.prune_compatibility_events()
+        self.assertTrue(any("DELETE FROM map_download_event" in query for query, _ in connection.queries))
+        connection.queries.clear()
+        database.insert_map_event({"id": "e", "operationId": "o", "providerId": "p", "eventType": "INSTALL", "outcome": "SUCCEEDED", "timestamp": "2026-01-01T00:00:00Z"})
+        self.assertFalse(any(query.lstrip().startswith("DELETE") for query, _ in connection.queries))
+
     def test_summary_is_local_only(self):
         connection = Connection()
         database = LocalTelemetryDatabase(connection)

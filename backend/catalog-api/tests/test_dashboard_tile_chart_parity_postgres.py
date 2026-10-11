@@ -132,6 +132,22 @@ class DashboardActivityTests(PGliteTestCase):
         self.rows.map_event(occurred_at=self.now + timedelta(days=2), received_at=self.now - timedelta(hours=1))
         self.assertEqual(self.activity(), ["INSTALL_SUCCEEDED"])
 
+    def test_activity_reads_whole_lifecycles_and_operations_that_reach_the_period(self):
+        old = self.now - timedelta(days=3)
+        acquisition, operation = self.rows.uuid(), self.rows.uuid()
+        self.rows.map_event(event_type="DOWNLOAD_STARTED", outcome="UNKNOWN", acquisition_id=acquisition,
+                            operation_id=operation, component_kind="main", occurred_at=old, received_at=old)
+        self.rows.map_event(event_type="DOWNLOAD_SUCCEEDED", outcome="SUCCEEDED", acquisition_id=acquisition,
+                            operation_id=operation, component_kind="main",
+                            occurred_at=self.now - timedelta(hours=1))
+        self.rows.map_event(occurred_at=old, received_at=old)
+        self.rows.diagnostic(occurred_at=old, received_at=old)
+        self.rows.diagnostic(occurred_at=self.now - timedelta(hours=2))
+        snapshot = self.db.admin_overview_map_snapshot(self.now - timedelta(hours=24), period="24h")
+        rows = snapshot["recentActivity"]
+        self.assertEqual([row["event_type"] for row in rows], ["DOWNLOAD_SUCCEEDED", "INSTALL_SUCCEEDED"])
+        self.assertEqual([step["type"] for step in rows[0]["lifecycle"]], ["DOWNLOAD_STARTED", "DOWNLOAD_SUCCEEDED"])
+
 
 if __name__ == "__main__":
     unittest.main()

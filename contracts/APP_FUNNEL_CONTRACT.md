@@ -32,7 +32,7 @@ oversized body `413`, a wrong content type `415`, and the per-client limit
 | `schemaVersion` | integer `1` |
 | `id` | canonical UUID; event identity |
 | `sessionId` | canonical UUID; random per app launch |
-| `occurredAt` | RFC 3339 UTC timestamp (`Z` or `+00:00`) |
+| `occurredAt` | RFC 3339 UTC timestamp (`Z` or `+00:00`), not before 2026-08-01T00:00:00Z |
 | `appBuild` | non-blank string, at most 80 characters |
 | `releaseLabel` | strict SemVer; a label ending in `-local` is stored as local test data |
 | `stage` | `DEVICE_CONNECT`, `AUTHORIZATION`, `CATALOG` or `INSTALL_BLOCKED` |

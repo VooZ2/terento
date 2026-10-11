@@ -660,5 +660,30 @@ def _minimal_vp8x_webp(width: int, height: int) -> bytes:
     )
 
 
+class DatabaseConnectionBoundTests(unittest.TestCase):
+    def test_threads_are_bounded_and_nested_connections_never_wait_on_themselves(self):
+        from contextlib import nullcontext
+        database = Database("postgresql://unused", connect_timeout_seconds=0, max_concurrent_threads=1)
+        other_thread_errors: list[str] = []
+
+        def other_thread() -> None:
+            try:
+                with database.connection():
+                    pass
+            except RuntimeError as error:
+                other_thread_errors.append(str(error))
+
+        with patch("psycopg.connect", side_effect=lambda *args, **kwargs: nullcontext(object())):
+            with database.connection(), database.connection():
+                worker = threading.Thread(target=other_thread)
+                worker.start()
+                worker.join()
+            with self.assertRaises(ValueError), database.connection():
+                raise ValueError("released on error")
+            with database.connection():
+                pass
+        self.assertEqual(other_thread_errors, ["database connection limit reached"])
+
+
 if __name__ == "__main__":
     unittest.main()

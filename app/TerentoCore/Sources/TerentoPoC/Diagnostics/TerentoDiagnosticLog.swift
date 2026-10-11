@@ -108,6 +108,15 @@ enum TerentoDiagnosticLog {
         ].joined(separator: "\n"))
     }
 
+    static func recordRecoveryQuarantine(_ quarantinedURL: URL) {
+        append([
+            "FAILED-INSTALL RECOVERY RECORD SET ASIDE",
+            "App version: \(appVersion)",
+            "Failed-install recovery file set aside as \(quarantinedURL.lastPathComponent)",
+            "The file or some of its records could not be read; maps listed only there are no longer recognized as interrupted Terento installs."
+        ].joined(separator: "\n"))
+    }
+
     static func recordInstallationFailure(
         identity: DeviceIdentity?,
         operationID: UUID?,

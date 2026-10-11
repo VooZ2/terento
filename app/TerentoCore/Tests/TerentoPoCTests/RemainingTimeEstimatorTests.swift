@@ -7,14 +7,45 @@ extension Bundle { static var module: Bundle { .main } }
 struct RemainingTimeEstimatorTests {
     static let start = Date(timeIntervalSince1970: 1_800_000_000)
 
-    static func main() {
+    static func main() async {
         testWarmUpAndSteadyRate()
         testSmoothingDampsSpikes()
         testStallHidesTheEstimate()
         testRestartAndUnmeasurableProgress()
         testText()
         testLifecycleUnits()
+        testProgressThrottle()
+        await testRelayDeliversLastValueWithUnknownTotal()
         print("PASS: measured time-remaining estimates, warm-up, smoothing, stall and lifecycle units")
+    }
+
+    static func testProgressThrottle() {
+        var throttle = ProgressThrottle()
+        let t0 = ContinuousClock.now
+        expect(throttle.shouldForward(fraction: 0, isFinal: false, now: t0), "the first value is forwarded")
+        expect(!throttle.shouldForward(fraction: 0.005, isFinal: false, now: t0 + .milliseconds(10)),
+               "a small step within 100 ms is dropped")
+        expect(throttle.shouldForward(fraction: 0.02, isFinal: false, now: t0 + .milliseconds(20)),
+               "a 1 % step is forwarded at once")
+        expect(throttle.shouldForward(fraction: 0.021, isFinal: false, now: t0 + .milliseconds(130)),
+               "a small step after 100 ms is forwarded")
+        expect(throttle.shouldForward(fraction: 0.022, isFinal: true, now: t0 + .milliseconds(131)),
+               "the final value is always forwarded")
+        expect(throttle.shouldForward(fraction: 0.022, key: "verifying", isFinal: false, now: t0 + .milliseconds(132)),
+               "a phase or detail change is always forwarded")
+        expect(!throttle.shouldForward(fraction: 0.023, key: "verifying", isFinal: false, now: t0 + .milliseconds(133)),
+               "the same phase is throttled again")
+    }
+
+    @MainActor
+    static func testRelayDeliversLastValueWithUnknownTotal() async {
+        var delivered: [UInt64] = []
+        let relay = MainActorProgressRelay<UInt64> { delivered.append($0) }
+        // Unknown total: the fraction never moves and no value is final.
+        for bytes: UInt64 in 1...50 { relay.send(bytes, fraction: 0, isFinal: false) }
+        try? await Task.sleep(for: .milliseconds(400))
+        expect(delivered.first == 1 && delivered.last == 50 && delivered.count < 50,
+               "held-back progress is throttled, kept in order, and its last value still arrives")
     }
 
     static func testWarmUpAndSteadyRate() {

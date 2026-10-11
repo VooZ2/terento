@@ -38,7 +38,8 @@ final class DeviceEngine: ObservableObject {
     private var activeTask: Task<Void, Never>?
     private var presenceTask: Task<Void, Never>?
     private var activeNativeReadTask: Task<DeviceSnapshot, Error>?
-    private var activeNativePresenceTask: Task<Void, Never>?
+    /// One handle per running presence read, so overlapping reads never clear each other.
+    private var activeNativePresenceTasks: [UUID: Task<Void, Never>] = [:]
     private var readingStatusTask: Task<Void, Never>?
     private var compatibilityStatusTask: Task<Void, Never>?
     private var postEjectPresenceTask: Task<Void, Never>?
@@ -77,7 +78,7 @@ final class DeviceEngine: ObservableObject {
     var canEject: Bool {
         hasConnectedDevice
             && activeNativeReadTask == nil
-            && activeNativePresenceTask == nil
+            && activeNativePresenceTasks.isEmpty
             && operationGate.canEject
     }
 
@@ -98,7 +99,7 @@ final class DeviceEngine: ObservableObject {
             // MTP read. Cancelling only the loop leaves the shared operation
             // gate occupied until that native read returns, which can make a
             // legitimate map installation appear blocked indefinitely.
-            activeNativePresenceTask?.cancel()
+            activeNativePresenceTasks.values.forEach { $0.cancel() }
             publishOperationAvailability()
             return
         }
@@ -480,7 +481,7 @@ final class DeviceEngine: ObservableObject {
             while let self,
                   self.state == .ejecting,
                   self.activeNativeReadTask != nil
-                    || self.activeNativePresenceTask != nil
+                    || !self.activeNativePresenceTasks.isEmpty
                     || self.operationGate.isNativeOperationActive {
                 try? await Task.sleep(for: .milliseconds(50))
             }
@@ -661,7 +662,7 @@ final class DeviceEngine: ObservableObject {
         postEjectPresenceTask?.cancel()
         postEjectPresenceTask = nil
         activeNativeReadTask?.cancel()
-        activeNativePresenceTask?.cancel()
+        activeNativePresenceTasks.values.forEach { $0.cancel() }
         readingStatusTask?.cancel()
         readingStatusTask = nil
         replugWatchTask?.cancel()
@@ -678,17 +679,16 @@ final class DeviceEngine: ObservableObject {
             try transport.readSnapshot()
         }
 
+        let presenceID = UUID()
         if presence {
-            activeNativePresenceTask = Task {
-                _ = try? await task.value
-            }
+            activeNativePresenceTasks[presenceID] = Task { _ = try? await task.value }
         } else {
             activeNativeReadTask = task
         }
 
         defer {
             if presence {
-                activeNativePresenceTask = nil
+                activeNativePresenceTasks[presenceID] = nil
             } else {
                 activeNativeReadTask = nil
                 publishOperationAvailability()
@@ -709,60 +709,36 @@ final class DeviceEngine: ObservableObject {
     private func readNativePresence(
         transport: any DevicePresenceReader
     ) async throws -> DevicePresence {
-        let task = Task.detached(priority: .utility) {
-            try transport.readPresence()
-        }
-
-        activeNativePresenceTask = Task {
-            _ = try? await task.value
-        }
-
-        defer {
-            activeNativePresenceTask = nil
-        }
-
-        return try await withTaskCancellationHandler {
-            try await task.value
-        } onCancel: {
-            task.cancel()
-        }
+        try await readNativePresenceValue { try transport.readPresence() }
     }
 
     private func readNativeGarminUSBPresence(
         transport: any GarminUSBPresenceReader
     ) async throws -> Bool {
-        let task = Task.detached(priority: .utility) {
-            try transport.hasGarminUSBDevice()
-        }
-
-        activeNativePresenceTask = Task {
-            _ = try? await task.value
-        }
-
-        defer {
-            activeNativePresenceTask = nil
-        }
-
-        return try await withTaskCancellationHandler {
-            try await task.value
-        } onCancel: {
-            task.cancel()
-        }
+        try await readNativePresenceValue { try transport.hasGarminUSBDevice() }
     }
 
     private func readNativeGarminUSBDeviceCount(
         transport: any GarminUSBDeviceCounter
     ) async throws -> Int {
+        try await readNativePresenceValue { try transport.countGarminUSBDevices() }
+    }
+
+    /// Each presence read owns its own handle until it finishes.
+    private func readNativePresenceValue<Value: Sendable>(
+        _ read: @escaping @Sendable () throws -> Value
+    ) async throws -> Value {
         let task = Task.detached(priority: .utility) {
-            try transport.countGarminUSBDevices()
+            try read()
         }
 
-        activeNativePresenceTask = Task {
+        let presenceID = UUID()
+        activeNativePresenceTasks[presenceID] = Task {
             _ = try? await task.value
         }
 
         defer {
-            activeNativePresenceTask = nil
+            activeNativePresenceTasks[presenceID] = nil
         }
 
         return try await withTaskCancellationHandler {

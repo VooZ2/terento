@@ -328,7 +328,6 @@ protocol MapInstallationTransport: Sendable {
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject
 
-    func deleteExact(targetFilename: String, expectedItemID: UInt32) throws
     func deleteExact(
         targetFilename: String,
         expectedItemID: UInt32,
@@ -339,13 +338,6 @@ protocol MapInstallationTransport: Sendable {
 extension MapInstallationTransport {
     // Injected transports may have no native binding. Production overrides this.
     func validateWriteTarget(identity: DeviceIdentity, files: [DeviceFile]) throws {}
-    func deleteExact(
-        targetFilename: String,
-        expectedItemID: UInt32,
-        expectedSizeBytes: UInt64?
-    ) throws {
-        try deleteExact(targetFilename: targetFilename, expectedItemID: expectedItemID)
-    }
 }
 
 protocol InstallationInventoryReader: Sendable {

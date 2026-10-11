@@ -206,6 +206,9 @@ struct MapLifecycleContext: Sendable {
     /// manifest identity is carried separately for safe lifecycle operations.
     let mapIdentity: MapIdentity?
     let failedInstallRecovery: TerentoFailedInstallRecoveryRecord?
+    /// Every recovery record that matches one of the item's objects (a main
+    /// map and its contours can each carry one).
+    let recoveryRecords: [TerentoFailedInstallRecoveryRecord]
 
     init(
         item: MapLifecycleItem,
@@ -218,6 +221,7 @@ struct MapLifecycleContext: Sendable {
         expectedSHA256ByItemID: [UInt32: String],
         mapIdentity: MapIdentity? = nil,
         failedInstallRecovery: TerentoFailedInstallRecoveryRecord? = nil,
+        recoveryRecords: [TerentoFailedInstallRecoveryRecord]? = nil,
         expectedStorageID: UInt32 = 0,
         removalProofByItemID: [UInt32: ManagedRemovalProof] = [:]
     ) {
@@ -236,6 +240,21 @@ struct MapLifecycleContext: Sendable {
             return MapIdentity(provider: $0.providerId, region: $0.regionId)
         }
         self.failedInstallRecovery = failedInstallRecovery
+        self.recoveryRecords = recoveryRecords ?? failedInstallRecovery.map { [$0] } ?? []
+    }
+
+    /// The objects Remove may delete. An incomplete installation removes only
+    /// objects a recovery record covers exactly; a managed sibling in the same
+    /// item (for example the old map of an unconfirmed update) is kept.
+    var removalComponents: [InstalledMap] {
+        guard failedInstallRecovery != nil else { return item.installedMaps }
+        return item.installedMaps.filter { map in
+            recoveryRecords.contains { record in
+                record.devicePath == map.sourceFile.path
+                    && record.filename == map.sourceFile.filename
+                    && record.sizeBytes == map.sourceFile.sizeBytes
+            }
+        }
     }
 
     var hasIntegrityRecord: Bool {

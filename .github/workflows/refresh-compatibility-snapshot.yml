@@ -42,29 +42,8 @@ jobs:
           python3 scripts/build-markdown-pages.py --check
           git diff --check
 
-      - name: Detect factual changes
-        id: diff
-        run: |
-          if git diff --quiet -- site/compatibility/public-models.snapshot.json \
-            site/compatibility/index.html \
-            site/de/compatibility/index.html \
-            site/fr/compatibility/index.html \
-            site/pl/compatibility/index.html \
-            site/cs/compatibility/index.html \
-            site/it/compatibility/index.html \
-            site/compatibility/index.md \
-            site/de/compatibility/index.md \
-            site/fr/compatibility/index.md \
-            site/pl/compatibility/index.md \
-            site/cs/compatibility/index.md \
-            site/it/compatibility/index.md; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
+      # The integrator exits cleanly with "No factual changes" when nothing changed.
       - name: Integrate factual refresh through protected PR and deploy once
-        if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/integrate-compatibility-refresh.py

@@ -32,8 +32,6 @@ class MapIntakeDatabase(FakeProviderDatabase):
         yield self
 
     def execute(self, query, params=()):
-        if query.startswith('DELETE FROM map_download_event'):
-            return self.sql.execute('SELECT 1 WHERE 0')
         return self.sql.execute(query.replace('%s', '?'), tuple(value.isoformat() if hasattr(value, 'isoformat') else value for value in params))
 
 

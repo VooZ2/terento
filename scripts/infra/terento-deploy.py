@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import traceback
 
 PROJECTS = {
@@ -24,6 +25,8 @@ BASE = Path('/etc/terento/deployment')
 STATE = Path('/var/lib/terento/deployment')
 REGISTRY = Path('/etc/terento/ops-containers.json')
 OPERATIONS_LOCK_NAME = 'operations.lock'
+OPERATIONS_LOCK_WAIT_SECONDS = 600
+SNAPSHOTS_KEPT = 3
 
 class DeploymentError(Exception):
     pass
@@ -100,11 +103,56 @@ def register(records, remove=()):
 
 @contextmanager
 def operations_lock():
-    """Acquire the shared, non-blocking host operations lock for mutating operations."""
+    """Wait a bounded time for the shared host operations lock, then refuse."""
     STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
     with (STATE/OPERATIONS_LOCK_NAME).open('a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        deadline = time.monotonic() + OPERATIONS_LOCK_WAIT_SECONDS
+        waiting = False
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise DeploymentError('Another production operation is in progress.') from None
+                if not waiting:
+                    print('Waiting for another production operation to finish.', flush=True)
+                    waiting = True
+                time.sleep(5)
         yield
+
+def snapshot_database(database_id, revision):
+    """Write a root-only custom-format dump of the live database before pending migrations."""
+    snapshots = STATE/'database-snapshots'
+    snapshots.mkdir(mode=0o700, parents=True, exist_ok=True)
+    # Interrupted dumps never become restore points; room for the new dump is made before writing.
+    for stale in snapshots.glob('*.partial'):
+        stale.unlink(missing_ok=True)
+    for old in sorted(snapshots.glob('*.dump'))[:-(SNAPSHOTS_KEPT-1)]:
+        old.unlink(missing_ok=True)
+    final = snapshots/(time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())+'-'+revision[:12]+'.dump')
+    path = final.with_suffix('.partial')
+    created = False
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        created = True
+        with os.fdopen(fd, 'wb') as stream:
+            # Same exec pattern as the ledger reads; credentials stay inside the container.
+            subprocess.run(['/usr/bin/docker', '--host=unix:///var/run/docker.sock', 'exec', '--user', 'postgres',
+                            database_id, 'sh', '-c', 'exec pg_dump -Fc --lock-wait-timeout=30s -U "$POSTGRES_USER" -d "$POSTGRES_DB"'],
+                           cwd='/', env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'HOME': '/root'},
+                           stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.PIPE,
+                           timeout=600, check=True)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if path.stat().st_size == 0:
+            raise OSError('Empty database snapshot.')
+        os.replace(path, final)
+    except (OSError, subprocess.SubprocessError) as error:
+        if created:
+            path.unlink(missing_ok=True)
+        raise DeploymentError('Pre-migration database snapshot failed; migration refused.') from error
+    return str(final)
 
 STATUS_SQL = """
 BEGIN TRANSACTION READ ONLY;
@@ -126,6 +174,7 @@ def migrate_candidate(image, digest, revision):
     try:
         return tool.migrate_candidate(
             image, digest, revision, docker=docker, compose=compose,
+            snapshot=lambda database_id: snapshot_database(database_id, revision),
         )
     except tool.MigrationError as error:
         raise DeploymentError(str(error)) from None
@@ -421,8 +470,10 @@ if __name__ == '__main__':
             fd = os.open('/var/log/terento-deploy.log', os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)
             with os.fdopen(fd, 'a') as log:
                 log.write(traceback.format_exc())
-                if isinstance(error, subprocess.CalledProcessError):
-                    log.write((error.stderr or '')[-65536:])
+                failed = error if isinstance(error, subprocess.CalledProcessError) else error.__cause__
+                if isinstance(failed, subprocess.CalledProcessError):
+                    detail = failed.stderr or ''
+                    log.write((detail.decode(errors='replace') if isinstance(detail, bytes) else detail)[-65536:])
         except OSError:
             pass
         print(operator_failure_message(error), file=sys.stderr)

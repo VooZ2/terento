@@ -25,17 +25,17 @@ needed, is an owner/root operation outside the GitHub protocol.
 2. The publisher builds and pushes one immutable image and records its digest.
 3. The owner confirms the generic `confirm_production_deploy` workflow gate.
 4. CI sends only the digest and full revision through the deploy-only principal.
-5. The root helper acquires the single operations lock for the whole operation.
+5. The root helper acquires the single operations lock for the whole operation. If another production operation holds it, the helper waits up to ten minutes and then refuses with `Another production operation is in progress.`
 6. It validates the candidate repository, digest, source label, revision label, enabled target, and previous state.
-7. For the API, it inventories migrations from the same immutable image, reads the existing ledger, validates the exact prefix, and runs the candidate image's one-shot migrator with no target-specific argument when needed.
+7. For the API, it inventories migrations from the same immutable image, reads the existing ledger, validates the exact prefix, and, only when migrations are pending, writes a root-only (`0600`) `pg_dump -Fc` snapshot to `/var/lib/terento/deployment/database-snapshots/` (the newest three are kept, and room is made before writing, so a failed dump leaves the newest two; a failed dump refuses the deploy before any SQL; the lock wait and snapshot apply once the owner has installed this helper pair with `install-terento-production-ops.py`) before running the candidate image's one-shot migrator with no target-specific argument.
 8. It rereads the ledger and requires exact equality with the candidate inventory before replacing services.
 9. It replaces API/scheduler only, verifies service identity, image digest, health, and release, and records state.
 10. On failure it leaves the old services and volumes intact or restores the previous service image; it never downgrades the schema.
 11. After a recorded success it removes other local images of the same repository without force, keeping the current and previous images. A cleanup problem never fails or rolls back the deployment.
 
 The database container is not replaced. The root helper's operations lock spans
-candidate validation, migration precheck, migration execution, postcheck, and
-service replacement. The same immutable image reference is used for the
+candidate validation, migration precheck, pre-migration snapshot, migration
+execution, postcheck, and service replacement. The same immutable image reference is used for the
 inventory audit, one-shot migration, and service rollout.
 
 ## Forward migration safety
@@ -79,7 +79,10 @@ protocol.
 ## Recovery and rollback
 
 Forward schema recovery uses the validated database backup/recovery procedure
-in [production-db-recovery.md](production-db-recovery.md). A service failure
+in [production-db-recovery.md](production-db-recovery.md). The newest
+pre-migration snapshot in `/var/lib/terento/deployment/database-snapshots/`
+(named `<UTC time>-<revision prefix>.dump`) is the closest restore point for a
+failed or regretted migration. It is not restore-validated automatically; restoring it is an owner/root operation. A service failure
 may restore the previous immutable image, but it must not delete volumes or
 attempt an automatic schema downgrade. If the remote result is uncertain,
 inspect the bounded root-owned state and ledger before considering any retry.

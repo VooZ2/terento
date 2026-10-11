@@ -335,12 +335,8 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
 
     /// Upload sessions have ended by this point. Neither a historical handle nor
     /// filename/size proves creation provenance, so automatic cleanup cannot delete.
-    func deleteExact(targetFilename: String, expectedItemID: UInt32) throws {
-        throw CleanupIdentityUnproven()
-    }
-
     func deleteExact(targetFilename: String, expectedItemID: UInt32, expectedSizeBytes: UInt64?) throws {
-        try deleteExact(targetFilename: targetFilename, expectedItemID: expectedItemID)
+        throw CleanupIdentityUnproven()
     }
 
     func deleteAuthorized(targetFilename: String, expectedItemID: UInt32,
@@ -524,10 +520,10 @@ extension MapInstallationCoordinator {
 /// in-process read already returned, and scan prefixes carry the same 4 KiB
 /// map headers; both exist so a stalled read can be ended without wedging the
 /// operation gate. Physical binding remains private local IPC. No worker can
-/// upload maps; legacy cleanup requests fail closed.
+/// upload or delete maps.
 enum MTPFinishingWorker {
     enum Operation: String, Codable {
-        case samples, cleanup, inventory, snapshot
+        case samples, inventory, snapshot
         /// Full read-only detection snapshot, including identity fields.
         case deviceSnapshot
         /// Read-only map-scan inventory (initial-inventory boundary).
@@ -569,7 +565,6 @@ enum MTPFinishingWorker {
         let contextOperation: InstallationFailureContext.Operation
         switch operation {
         case .samples: boundary = .readback; contextOperation = .readback
-        case .cleanup: boundary = .cleanup; contextOperation = .cleanup
         case .inventory: boundary = .prewriteInventory; contextOperation = .inventory
         case .snapshot: boundary = .postwriteSnapshot; contextOperation = .snapshot
         case .deviceSnapshot: boundary = .initialSnapshot; contextOperation = .snapshot
@@ -602,7 +597,7 @@ enum MTPFinishingWorker {
                                  fileCount: request.files?.count ?? 1)
         case .deviceSnapshot:
             return deviceSnapshotTimeout
-        case .cleanup, .snapshot:
+        case .snapshot:
             return 45
         }
     }
@@ -651,7 +646,6 @@ enum MTPFinishingWorker {
             case .snapshot, .deviceSnapshot: valid = response.snapshot != nil
             case .prefixes: valid = response.prefixes != nil
             case .samples: valid = response.object != nil
-            case .cleanup: valid = true
             }
             guard valid else { throw failure(for: operation, kind: .invalidResponse) }
         }
@@ -700,10 +694,7 @@ enum MTPFinishingWorker {
                     verifiedBytes = values[0]
                     lastProgress = values
                     progress?(TransferProgress(bytesTransferred: values[0], totalBytes: values[1]))
-                },
-                // Cleanup is a separate bounded safety operation even if the
-                // enclosing install was cancelled. Never cancel it immediately.
-                cancelled: { request.operation != .cleanup && Task<Never, Never>.isCancelled })
+                })
         } catch {
             FinishingTrace.event("operation_worker_failed", "operation=\(request.operation.rawValue) elapsed=\(ProcessInfo.processInfo.systemUptime - operationStarted) trace=\(directory.lastPathComponent)")
             let kind: InstallationFailureContext.ResultKind
@@ -754,11 +745,6 @@ enum MTPFinishingWorker {
                     sampleOffsets: offsets, sampleLength: length,
                     progress: SampleProgressWriter(url: output.deletingLastPathComponent()
                         .appendingPathComponent("progress.json")).report)
-            case .cleanup:
-                guard let filename = request.filename, let itemID = request.itemID else {
-                    throw NativeProcessFailure.failed
-                }
-                try transport.deleteExact(targetFilename: filename, expectedItemID: itemID, expectedSizeBytes: request.size)
             case .inventory:
                 if request.mapScope == true {
                     let read = try MTPTransport(operationProfile: request.profile).readMapScopeInventory()

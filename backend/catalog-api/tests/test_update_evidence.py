@@ -7,7 +7,7 @@ import unittest
 
 from jsonschema import Draft202012Validator
 from terento_catalog.compatibility_evidence import EvidenceValidationError, validate_event
-from terento_catalog.db import Database
+from terento_catalog.db import IDENTITY_DEVICE_QUERY, IDENTITY_MAPPING_QUERY, Database
 
 CONTRACTS = Path(__file__).resolve().parents[3] / 'contracts'
 SCHEMA = Draft202012Validator(json.loads((CONTRACTS / 'compatibility-event.schema.json').read_text()))
@@ -33,9 +33,9 @@ class CaptureUpdateDatabase(Database):
 
         class Connection:
             def execute(self, query, parameters=None):
-                if query == 'SELECT * FROM device_model':
+                if query == IDENTITY_DEVICE_QUERY:
                     return type('Rows', (), {'fetchall':lambda _:database.devices})()
-                if query == 'SELECT * FROM device_identity_mapping':
+                if query == IDENTITY_MAPPING_QUERY:
                     return type('Rows', (), {'fetchall':lambda _:database.mappings})()
                 database.queries.append((query, parameters))
                 event_id = parameters[0]

@@ -5772,15 +5772,6 @@ def _identity_candidate(results: list[dict[str, Any]], device_id: str | None = N
     return _identity_recommendation(results)
 
 
-def _identity_check(candidate: dict[str, Any] | None, name: str) -> dict[str, Any]:
-    return next((check for check in (candidate or {}).get("checks", []) if check.get("name") == name), {})
-
-
-def _identity_feature(candidate: dict[str, Any] | None, name: str) -> dict[str, Any]:
-    return next((feature for check in (candidate or {}).get("checks", [])
-                 for feature in check.get("features", []) if feature.get("name") == name), {})
-
-
 def _identity_conflict_lines(
     results: list[dict[str, Any]], selected_id: str | None,
     identity_devices: list[dict[str, Any]] | None = None,
@@ -5852,131 +5843,6 @@ def _identity_conflict_lines(
                         if evidence.get("value") != feature.get("expected"):
                             add(str(feature.get("name") or "feature"), evidence.get("value"), evidence.get("source"))
     return lines
-
-
-def _identity_source_label(evidence: list[dict[str, Any]] | None) -> str:
-    sources = [str(item.get("source") or "") for item in evidence or []]
-    has_catalog = any(source.startswith("catalog specification:") for source in sources)
-    has_mapping = any(":" in source and source.split(":", 1)[0] in {"USB", "XML_PART_NUMBER", "RETAIL_SKU"} for source in sources)
-    if has_catalog and has_mapping:
-        return "From catalog / mapping"
-    if has_catalog:
-        return "From catalog"
-    if has_mapping:
-        return "From mapping"
-    return "Reported" if evidence else "Not confirmed"
-
-
-def _identity_evidence_values(check: dict[str, Any]) -> list[Any]:
-    return list(dict.fromkeys(item.get("value") for item in check.get("evidence", [])
-                             if item.get("value") is not None))
-
-
-def _identity_value(value: Any, *, suffix: str = "") -> str:
-    if value is None or value == "":
-        return "Not reported"
-    if isinstance(value, bool):
-        return "Yes" if value else "No"
-    return f"{value}{suffix}"
-
-
-def _identity_fact_markup(label: str, value: str, state: str, source: str) -> str:
-    icon = _admin_icon({"match": "circle-check", "conflict": "circle-exclamation"}.get(state, "question"))
-    return (f"<article class='identity-fact identity-fact-{state}'>"
-            f"<div class='identity-fact-heading'><span class='identity-fact-icon' aria-hidden='true'>{icon}</span><span>{html.escape(label)}</span></div>"
-            f"<strong>{html.escape(value)}</strong><small>{html.escape(source)}</small></article>")
-
-
-def _identity_observations_markup(
-    results: list[dict[str, Any]], identity_devices: list[dict[str, Any]] | None = None,
-) -> str:
-    selected_id = _identity_selected_id(results)
-    candidate = _identity_candidate(results, selected_id)
-    assessments = _identity_assessments(results)
-    def fact_records(name: str) -> list[dict[str, Any]]:
-        records: list[dict[str, Any]] = []
-        for assessment in assessments:
-            records.extend(assessment.get("facts", {}).get(name, []) or [])
-        return records
-
-    def fact_values(name: str) -> list[Any]:
-        values: list[Any] = []
-        for record in fact_records(name):
-            value = record.get("value")
-            if value is not None and value not in values:
-                values.append(value)
-        return values
-
-    reported_values = list(dict.fromkeys(
-        str(result.get(field)).strip() for result in results
-        for field in ("raw_mtp_model", "garmin_model_description", "model")
-        if str(result.get(field) or "").strip()
-    ))
-    if not reported_values:
-        reported_values = [str(value).strip() for value in fact_values("model") if str(value).strip()]
-    reported = reported_values[0] if reported_values else "Not reported"
-    reported_markup = "<p class='identity-reported-device'><strong>Reported device:</strong> " + html.escape(reported) + "</p>"
-    if len(reported_values) > 1:
-        reported_markup += "<p class='identity-reported-also'>Also reported: " + html.escape(" / ".join(reported_values[1:])) + "</p>"
-
-    model_check = _identity_check(candidate, "model")
-    model_values = [str(value) for value in _identity_evidence_values(model_check)] if candidate else [str(value) for value in fact_values("model")]
-    model_observed_state = model_check.get("observedState", model_check.get("state"))
-    model_state = ("conflict" if model_observed_state == "CONFLICT" else "match" if model_observed_state == "MATCH" else "missing") if candidate else ("match" if model_values else "missing")
-    model_source = _identity_source_label(model_check.get("evidence")) if candidate else ("Reported" if model_values else "Not confirmed")
-    facts = [_identity_fact_markup("Model", " / ".join(model_values) if model_values else "Not reported", model_state, model_source)]
-    size_check = _identity_check(candidate, "size")
-    size_values = _identity_evidence_values(size_check) if candidate else fact_values("caseSizeMm")
-    size_from_catalog = bool(candidate and not size_values and size_check.get("expected") is not None and size_check.get("state") != "CONFLICT")
-    facts.append(_identity_fact_markup("Case size", _identity_value(size_values[0] if size_values else size_check.get("expected") if size_from_catalog else None, suffix=" mm"),
-                                       ("conflict" if size_check.get("state") == "CONFLICT" else "match" if size_check.get("state") == "MATCH" or size_from_catalog else "missing") if candidate else ("match" if size_values else "missing"),
-                                       "From catalog" if size_from_catalog else _identity_source_label(size_check.get("evidence")) if candidate else ("Reported" if size_values else "Not confirmed")))
-    screen_check = _identity_check(candidate, "screen")
-    screen_values = _identity_evidence_values(screen_check) if candidate else fact_values("screenTechnology")
-    screen_from_catalog = bool(candidate and not screen_values and screen_check.get("expected") and screen_check.get("state") != "CONFLICT")
-    facts.append(_identity_fact_markup("Display", _identity_value(screen_values[0] if screen_values else screen_check.get("expected") if screen_from_catalog else None),
-                                       ("conflict" if screen_check.get("state") == "CONFLICT" else "match" if screen_check.get("state") == "MATCH" or screen_from_catalog else "missing") if candidate else ("match" if screen_values else "missing"),
-                                       "From catalog" if screen_from_catalog else _identity_source_label(screen_check.get("evidence")) if candidate else ("Reported" if screen_values else "Not confirmed")))
-    for label, feature_name in (("Solar", "solar"), ("inReach", "inreach")):
-        feature = _identity_feature(candidate, feature_name)
-        fact_name = "inReach" if feature_name == "inreach" else feature_name
-        values = _identity_evidence_values(feature) if candidate else fact_values(fact_name)
-        from_catalog = bool(candidate and not values and feature.get("expected") is not None and feature.get("state") != "CONFLICT")
-        feature_value = values[0] if values else feature.get("expected") if from_catalog else None
-        facts.append(_identity_fact_markup(label, _identity_value(feature_value),
-                                           "conflict" if feature.get("state") == "CONFLICT" else "match" if from_catalog or feature.get("state") == "MATCH" else "missing" if candidate else ("match" if values else "missing"),
-                                           "From catalog" if from_catalog else _identity_source_label(feature.get("evidence")) if candidate else ("Reported" if values else "Not confirmed")))
-    code_checks = [_identity_check(candidate, "xmlPartNumber"), _identity_check(candidate, "usb")]
-    code_lines = []
-    code_states = []
-    for label, check in (("Product", code_checks[0]), ("USB", code_checks[1])):
-        kind = "RETAIL_SKU" if label == "Product" and check.get("codeKind") == "RETAIL_SKU" else "XML_PART_NUMBER" if label == "Product" else "USB"
-        value = check.get("value") if candidate else next((record.get("value") for record in fact_records("codes") if record.get("kind") == kind), None)
-        if value is None:
-            code_lines.append(f"{label}: Not reported")
-        else:
-            status = ("mapped" if check.get("state") == "MATCH" else "mapping not confirmed" if check.get("state") != "CONFLICT" else "conflict") if candidate else "received"
-            code_lines.append(f"{label}: {value} · {status}")
-        code_states.append(check.get("state"))
-    code_state = "conflict" if "CONFLICT" in code_states else "match" if "MATCH" in code_states else "missing" if candidate else ("match" if any("Not reported" not in line for line in code_lines) else "missing")
-    code_source = "From mapping" if candidate and code_state == "match" else "Reported" if any(check.get("value") is not None for check in code_checks) or fact_values("codes") else "Not confirmed"
-    facts.append(_identity_fact_markup("Device codes", " · ".join(code_lines), code_state, code_source))
-    selected_device = next((device for device in identity_devices or []
-                            if str(device.get("id") or device.get("device_id") or "") == str(selected_id or "")), None)
-    selection_label = _identity_device_label(selected_device) if selected_device else (
-        _identity_device_label(candidate) if candidate else "No catalog model selected"
-    )
-    recommendation_label = "Suggested model" if not selected_id else "Selected catalog model"
-    status = "Confirmed by administrator" if any(
-        isinstance((result.get("identity_decision") or {}).get("decision"), dict)
-        for result in results
-    ) else "Assigned catalog model" if selected_id else "Suggested model" if candidate else "Select catalog variant"
-    if any(assessment.get("candidates") and not _identity_candidate([result]) for result, assessment in zip(results, assessments)):
-        status = "Select variant"
-    return ("<div class='identity-review-facts'>" + reported_markup
-            + "<div class='identity-facts' aria-label='Identity facts'>" + "".join(facts) + "</div>"
-            + f"<div class='identity-selected-model'><strong>{html.escape(selection_label)}</strong><small>{html.escape(status)}</small></div>"
-            + "</div>")
 
 
 def _identity_device_label(device: dict[str, Any] | None) -> str:
@@ -9928,22 +9794,6 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .identity-review-form{grid-column:auto}
 .identity-picker-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .identity-picker-heading h4{margin:0}
-.identity-reported-device{margin:0 0 4px;font-size:14px}
-.identity-reported-also{margin:0 0 12px;color:var(--secondary);font-size:12px;overflow-wrap:anywhere}
-.identity-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
-.identity-fact{min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface)}
-.identity-fact-heading{display:flex;align-items:center;gap:6px;color:var(--secondary);font-size:11px;font-weight:700}
-.identity-fact-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px}
-.identity-fact strong{display:block;margin-top:5px;overflow-wrap:anywhere;font-size:13px;line-height:1.35}
-.identity-fact small{display:block;margin-top:5px;color:var(--secondary);font-size:10px}
-.identity-fact-match{border-color:var(--status-success-border);background:var(--status-success-surface)}
-.identity-fact-match .identity-fact-icon{color:var(--status-success-text)}
-.identity-fact-conflict{border-color:var(--status-error-border);background:var(--status-error-surface)}
-.identity-fact-conflict .identity-fact-icon{color:var(--status-error-text)}
-.identity-fact-missing{border-color:var(--border);background:var(--surface-muted)}
-.identity-fact-missing .identity-fact-icon{color:var(--secondary)}
-.identity-selected-model{display:grid;gap:3px;margin-top:12px;padding:12px 14px;border-left:3px solid var(--interactive);background:var(--surface-muted)}
-.identity-selected-model strong{overflow-wrap:anywhere}.identity-selected-model small{color:var(--secondary);font-size:11px}
 .identity-picker{margin-top:10px}.identity-picker[hidden]{display:none}
 .identity-search-results{display:grid;gap:4px;max-height:260px;margin-top:6px;overflow:auto;padding:4px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface)}
 .identity-picker-option{display:block;width:100%;min-height:38px;margin:0;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--graphite);font:inherit;font-size:12px;text-align:left;white-space:normal;overflow-wrap:anywhere}
@@ -9951,8 +9801,7 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .identity-picker-empty{margin:8px;color:var(--secondary);font-size:12px}
 .identity-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.identity-review-actions button[disabled]{opacity:.55;cursor:not-allowed}
 .identity-conflict-warning{margin:10px 0;padding:9px 11px;border:1px solid var(--status-error-border);border-radius:var(--radius-control);background:var(--status-error-surface);color:var(--status-error-text);font-size:12px;overflow-wrap:anywhere}
-@media(max-width:700px){.identity-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.identity-review-actions{display:grid;grid-template-columns:1fr}.identity-review-actions button{width:100%;min-height:44px}}
-@media(max-width:480px){.identity-facts{grid-template-columns:1fr}}
+@media(max-width:700px){.identity-review-actions{display:grid;grid-template-columns:1fr}.identity-review-actions button{width:100%;min-height:44px}}
 """
 
 

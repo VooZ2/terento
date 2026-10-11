@@ -6,6 +6,9 @@ import SwiftUI
 struct TerentoEntryPoint {
     static func main() {
         if MTPFinishingWorker.runIfRequested() { return }
+        LocalTerentoFailedInstallRecoveryStore.onSetAside = { url in
+            Task { @MainActor in TerentoDiagnosticLog.recordRecoveryQuarantine(url) }
+        }
         Task.detached(priority: .utility) {
             MapAcquisitionWorkspace.scavengeStale()
             MapAcquisitionWorkspace.scavengeStaleTemporaryDownloads()

@@ -214,7 +214,7 @@ struct ManagedMapRecoveryCoordinator: Sendable {
             throw ManagedMapRecoveryError.readFailed
         }
 
-        guard try Self.sha256(of: temporaryURL).caseInsensitiveCompare(match.0.sha256) == .orderedSame else {
+        guard try localFileSHA256(of: temporaryURL).caseInsensitiveCompare(match.0.sha256) == .orderedSame else {
             throw ManagedMapRecoveryError.liveMapChanged
         }
 
@@ -232,17 +232,5 @@ struct ManagedMapRecoveryCoordinator: Sendable {
         )
         try manifestStore.record(recovered)
         return ManagedMapRecoveryResult(recoveredEntry: recovered)
-    }
-
-    private static func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if data.isEmpty { break }
-            hasher.update(data: data)
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 }

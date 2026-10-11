@@ -39,6 +39,14 @@ class FakeHost:
         self.ledger_after_migration = None
         self.compose_calls = []
         self.docker_calls = []
+        self.snapshots = []
+        self.snapshot_error = None
+
+    def snapshot(self, database_id):
+        if self.snapshot_error is not None:
+            raise self.snapshot_error
+        self.snapshots.append((database_id, list(self.ledger)))
+        return "/var/lib/terento/deployment/database-snapshots/test.dump"
 
     def docker(self, *args, timeout=240):
         self.docker_calls.append((args, timeout))
@@ -81,7 +89,8 @@ class FakeHost:
 def run(host, output=None):
     output = [] if output is None else output
     result = migration.migrate_candidate(
-        IMAGE, DIGEST, REVISION, docker=host.docker, compose=host.compose, emit=output.append,
+        IMAGE, DIGEST, REVISION, docker=host.docker, compose=host.compose,
+        snapshot=host.snapshot, emit=output.append,
     )
     return result, output
 
@@ -99,6 +108,15 @@ class GenericMigrationTests(unittest.TestCase):
         self.assertNotIn("--target", migration_calls[0])
         self.assertTrue(any("pending=063" in line for line in output))
         self.assertTrue(all(image == IMAGE for _, image, _ in host.compose_calls))
+        self.assertEqual(host.snapshots, [(DB_ID, ledger_through(62))], "snapshot must precede migration SQL")
+        self.assertTrue(any(line.startswith("MIGRATION_SNAPSHOT_PASS ") for line in output))
+
+    def test_snapshot_failure_refuses_migration(self):
+        host = FakeHost()
+        host.snapshot_error = migration.MigrationError("snapshot failed")
+        with self.assertRaisesRegex(migration.MigrationError, "snapshot failed"):
+            run(host)
+        self.assertFalse(any(migration.MIGRATION_SERVICE in args for _, _, args in host.compose_calls))
 
     def test_063_to_065_applies_multiple_pending_migrations_in_order(self):
         host = FakeHost(inventory=inventory_through(65), ledger=ledger_through(63))
@@ -112,6 +130,7 @@ class GenericMigrationTests(unittest.TestCase):
         result, _ = run(host)
         self.assertEqual(result["status"], "already_applied")
         self.assertFalse(any(migration.MIGRATION_SERVICE in args for _, _, args in host.compose_calls))
+        self.assertEqual(host.snapshots, [])
 
     def test_db_gap_and_ahead_are_rejected_before_runner(self):
         for ledger in (ledger_through(60) + ["062"], ledger_through(63) + ["064"]):

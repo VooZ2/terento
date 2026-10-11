@@ -211,15 +211,31 @@ def process_one(database):
 
 
 def run_worker(database, stop):
+    # A transient database outage, or another scheduler still holding the
+    # lock during a deploy, must not end this thread: retry until stopped.
+    while not stop.is_set():
+        try:
+            _run_locked_worker(database, stop)
+        except Exception:
+            logging.getLogger(__name__).exception('Provider recheck worker lock failed; retrying')
+        stop.wait(30)
+
+
+def _run_locked_worker(database, stop):
     # Only the worker holding this session lock may recover abandoned jobs.
     # A second scheduler cannot mark a live worker's jobs interrupted.
     with database.connection() as owner:
+        # The lock session only holds the advisory lock; never idle in a transaction.
+        owner.autocommit = True
         if not owner.execute("SELECT pg_try_advisory_lock(hashtext('provider-recheck-worker')) AS acquired").fetchone()['acquired']:
             return
         try:
             with database.connection() as c:
                 c.execute("UPDATE provider_recheck SET state='INTERRUPTED',finished_at=now() WHERE state='RUNNING'")
             while not stop.is_set():
+                # A lost lock session (database restart) ends this loop so the
+                # lock is re-acquired before any further job is processed.
+                owner.execute("SELECT 1")
                 try:
                     process_one(database)
                 except Exception:

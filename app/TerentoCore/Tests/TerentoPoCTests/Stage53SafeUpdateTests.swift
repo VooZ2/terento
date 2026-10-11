@@ -1114,6 +1114,58 @@ private func testProtectedFinalReadFailure() async throws {
         && !h.transport.events.contains("cleanupTransactionObject"), "final read failure never mutates again")
 }
 
+private func testUnplugAfterDeleteKeepsRecoveryRecord() async throws {
+    func runWithStore(_ h: Harness) async throws -> (SafeUpdateResult, [TerentoFailedInstallRecoveryRecord]) {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-update-recovery-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalTerentoFailedInstallRecoveryStore(rootDirectory: root)
+        let result = await SafeUpdateTransaction(gate: h.gate, sourceValidator: h.validator,
+            manifestReconciler: h.reconciler, recoveryStore: store).run(
+            request: withFixtureAuthorization(h.request), provider: h.provider, transport: h.transport)
+        return (result, try store.read(deviceKey: h.request.deviceKey))
+    }
+
+    let unplugged = makeHarness(withWorkspace: true)
+    unplugged.transport.rawSnapshotTransform = { files, final in
+        if final { throw SafeUpdateTransportError.deviceDisconnected("unplugged") }
+        return files
+    }
+    let (failed, kept) = try await runWithStore(unplugged)
+    try require(failed.status == .failedPostVerify && unplugged.transport.events.contains("deleteExactObject"),
+        "the old map was deleted before the final read failed")
+    try require(kept.count == 1 && kept[0].devicePath == unplugged.transport.newObject.file.path
+        && kept[0].filename == unplugged.transport.newObject.file.filename
+        && kept[0].sha256 == unplugged.artifact.sha256
+        && kept[0].sizeBytes == unplugged.artifact.installSizeBytes,
+        "the verified new map keeps a recovery record after the old map was deleted")
+
+    let (succeeded, afterSuccess) = try await runWithStore(makeHarness(withWorkspace: true))
+    try require(succeeded.status == .success && afterSuccess.isEmpty, "a reconciled update removes its recovery record")
+
+    let cleaned = makeHarness(withWorkspace: true)
+    cleaned.transport.mode = .verifyHashMismatch
+    let (_, afterCleanup) = try await runWithStore(cleaned)
+    try require(cleaned.transport.events.contains("cleanupTransactionObject") && afterCleanup.isEmpty,
+        "a cleaned-up new object removes its recovery record")
+}
+
+private struct FailingRecoveryStore: TerentoFailedInstallRecoveryStore {
+    func read(deviceKey: String) throws -> [TerentoFailedInstallRecoveryRecord] { [] }
+    func record(_ record: TerentoFailedInstallRecoveryRecord) throws { throw TerentoManifestStoreError.recoveryWriteFailed }
+    func remove(deviceKey: String, devicePath: String, filename: String) throws -> Bool { false }
+}
+
+private func testRecoveryRecordFailureStopsBeforeWrite() async throws {
+    let h = makeHarness(withWorkspace: true)
+    let result = await SafeUpdateTransaction(gate: h.gate, sourceValidator: h.validator,
+        manifestReconciler: h.reconciler, recoveryStore: FailingRecoveryStore()).run(
+        request: withFixtureAuthorization(h.request), provider: h.provider, transport: h.transport)
+    try require(result.status == .failedManifestReconciliation && !result.writeStarted && result.oldMapPreserved
+        && !h.transport.events.contains("writeTransactionObject"),
+        "a recovery bookkeeping failure is a manifest-stage failure before any write")
+}
+
 private func testAmbiguousDeleteOutcomeIsNotPreserved() async throws {
     for mode: FakeSafeUpdateTransport.Mode in [.deleteFailure, .deleteDisconnected, .oldMissingBeforeDelete] {
         let h = makeHarness(withWorkspace: true)
@@ -1683,6 +1735,8 @@ struct Stage53SafeUpdateTests {
             ("map-scope protected update inventories", testMapScopeProtectedUpdate),
             ("truthful delete postverify failure", testDeletePostVerifyFailureReportsDeletion),
             ("protected final read failure", testProtectedFinalReadFailure),
+            ("unplug after delete keeps recovery record", testUnplugAfterDeleteKeepsRecoveryRecord),
+            ("recovery record failure stops before write", testRecoveryRecordFailureStopsBeforeWrite),
             ("ambiguous delete outcome", testAmbiguousDeleteOutcomeIsNotPreserved),
             ("post-commit handle renumber retains success", testPostCommitHandleRenumberPreservesSuccessfulUpdate),
             ("post-commit renumber and old-handle reuse", testPostCommitHandleRenumberAndReuse),

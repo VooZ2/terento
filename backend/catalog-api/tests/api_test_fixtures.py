@@ -29,10 +29,13 @@ class FakeProviderDatabase:
     def operational_health_snapshot(self):
         return {}
 
+    def identity_catalog(self):
+        return [], []
+
     def map_statistics_trend(self, filters, *, period, time_zone="UTC"):
         return [], PERIOD_BUCKETS[period]
 
-    def installation_problem_counts(self):
+    def installation_problem_counts(self, identity_key=None):
         return {"total": 0, "byIdentity": {}}
 
     def support_reports(self, *, status="OPEN", limit=50, offset=0, local=False):

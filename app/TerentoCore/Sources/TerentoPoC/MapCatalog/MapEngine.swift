@@ -41,17 +41,15 @@ private final class MapEngineAcquisitionRelay: @unchecked Sendable {
 }
 
 private final class MapEngineProgressRelay: @unchecked Sendable {
-    weak var engine: MapEngine?
+    private let relay: MainActorProgressRelay<TransferProgress>
 
     init(engine: MapEngine) {
-        self.engine = engine
+        relay = MainActorProgressRelay { [weak engine] in engine?.receiveInstallationProgress($0) }
     }
 
     func send(_ progress: TransferProgress) {
-        let engine = self.engine
-        Task { @MainActor in
-            engine?.receiveInstallationProgress(progress)
-        }
+        relay.send(progress, fraction: progress.fractionCompleted,
+                   isFinal: progress.totalBytes > 0 && progress.bytesTransferred >= progress.totalBytes)
     }
 }
 
@@ -71,32 +69,29 @@ private final class MapEnginePhaseRelay: @unchecked Sendable {
 }
 
 private final class MapEnginePhaseProgressRelay: @unchecked Sendable {
-    weak var engine: MapEngine?
+    private let relay: MainActorProgressRelay<(InstallationProcessPhase, Double)>
 
     init(engine: MapEngine) {
-        self.engine = engine
+        relay = MainActorProgressRelay { [weak engine] in
+            engine?.receiveInstallationPhaseProgress($0.0, progress: $0.1)
+        }
     }
 
     func send(_ phase: InstallationProcessPhase, _ progress: Double) {
-        let engine = self.engine
-        Task { @MainActor in
-            engine?.receiveInstallationPhaseProgress(phase, progress: progress)
-        }
+        relay.send((phase, progress), fraction: progress, key: phase.rawValue, isFinal: progress >= 1)
     }
 }
 
 private final class MapEngineDownloadProgressRelay: @unchecked Sendable {
-    weak var engine: MapEngine?
+    private let relay: MainActorProgressRelay<MapDownloadProgress>
 
     init(engine: MapEngine) {
-        self.engine = engine
+        relay = MainActorProgressRelay { [weak engine] in engine?.receiveDownloadProgress($0) }
     }
 
     func send(_ progress: MapDownloadProgress) {
-        let engine = self.engine
-        Task { @MainActor in
-            engine?.receiveDownloadProgress(progress)
-        }
+        relay.send(progress, fraction: progress.fractionCompleted,
+                   isFinal: progress.totalBytes > 0 && progress.bytesDownloaded >= progress.totalBytes)
     }
 }
 
@@ -1159,6 +1154,19 @@ final class MapEngine: ObservableObject {
             expectedSHA256ByItemID: hashes,
             mapIdentity: itemMapIdentity ?? manifestMapIdentity,
             failedInstallRecovery: item.failedInstallRecovery,
+            recoveryRecords: recoveryRecords.filter { record in
+                item.installedMaps.contains { installedMap in
+                    record.matches(
+                        deviceKey: record.deviceKey,
+                        path: installedMap.sourceFile.path,
+                        filename: installedMap.sourceFile.filename,
+                        sizeBytes: installedMap.sourceFile.sizeBytes,
+                        providerId: installedMap.provider,
+                        regionId: installedMap.region,
+                        version: installedMap.version
+                    )
+                }
+            },
             expectedStorageID: resolved.target.root.storageID,
             removalProofByItemID: removalProofs
         )
@@ -1443,6 +1451,7 @@ final class MapEngine: ObservableObject {
     }
 
     fileprivate func receiveDownloadProgress(_ progress: MapDownloadProgress) {
+        guard installationPhase != .completed, installationPhase != .failed else { return }
         downloadTimeRemaining = installationPhase == .downloading
             ? downloadTimeEstimator.update(completed: Double(progress.bytesDownloaded),
                                            total: Double(progress.totalBytes))
@@ -1460,6 +1469,8 @@ final class MapEngine: ObservableObject {
     }
 
     fileprivate func receiveInstallationProgress(_ progress: TransferProgress) {
+        // A throttled value flushed after the end must not replace the final totals.
+        guard installationPhase != .completed, installationPhase != .failed else { return }
         let updatedProgress = TransferProgress(
             bytesTransferred: progress.bytesTransferred,
             totalBytes: progress.totalBytes,
@@ -1621,6 +1632,9 @@ final class MapEngine: ObservableObject {
     /// fresh one. Ownership of earlier maps then falls back to the external
     /// (unowned) lifecycle, which never widens removal or update authority.
     private func manifestIsUsableBeforeInstall(identity: DeviceIdentity) -> Bool {
+        // An unreadable failed-install record only loses recovery candidates
+        // (never widens authority), so it is set aside (and logged), not fatal.
+        _ = try? LocalTerentoFailedInstallRecoveryStore().quarantineUnreadableRecovery()
         let store = LocalTerentoManifestStore()
         let message: String
         do {

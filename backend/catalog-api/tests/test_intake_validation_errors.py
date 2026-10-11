@@ -35,6 +35,24 @@ class ValidationMatrixTests(unittest.TestCase):
         if code:
             self.assertEqual(str(raised.exception), code)
 
+    def test_every_app_stream_rejects_naive_and_pre_terento_times(self):
+        from terento_catalog.app_funnel import FunnelValidationError, validate_funnel_event
+        from terento_catalog.support_reports import SupportReportValidationError, validate_support_report
+        streams = (
+            ("compatibility-event.valid", "timestamp", validate_event, EvidenceValidationError, "invalid_timestamp"),
+            ("map-event.valid", "timestamp", validate_map_event, MapEventValidationError, None),
+            ("app-funnel-event.valid", "occurredAt", validate_funnel_event, FunnelValidationError, "invalid_occurredAt"),
+            ("support-report.valid", "createdAt", validate_support_report, SupportReportValidationError, "invalid_createdAt"),
+        )
+        for name, key, validate, error, code in streams:
+            body = fixture(name)
+            validate(json.dumps(body).encode())
+            for value in ("2026-09-01T12:00:00", "1970-01-01T00:00:00Z", "2026-07-31T23:59:59Z"):
+                with self.subTest(stream=name, value=value), self.assertRaises(error) as raised:
+                    validate(json.dumps(dict(body, **{key: value})).encode())
+                if code:
+                    self.assertEqual(str(raised.exception), code)
+
     def test_non_uuid_identifiers_matching_the_old_regex_are_rejected(self):
         current = fixture("compatibility-event.valid")
         for bad in ("-" * 36, "123e4567e89b12d3a456426614174000----", "g" * 8 + "-1111-1111-1111-111111111111"):

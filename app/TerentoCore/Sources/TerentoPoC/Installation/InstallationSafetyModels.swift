@@ -1,6 +1,24 @@
 import CryptoKit
 import Foundation
 
+/// Streams a local file through SHA-256 in 1 MiB reads and returns lowercase hex.
+func localFileSHA256(of url: URL, onProgress: (@Sendable (Double) -> Void)? = nil) throws -> String {
+    let handle = try FileHandle(forReadingFrom: url)
+    defer { try? handle.close() }
+
+    let size = onProgress == nil ? 0 : (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+    var completed = 0
+    var hasher = SHA256()
+    while true {
+        let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
+        if data.isEmpty { break }
+        hasher.update(data: data)
+        completed += data.count
+        if size > 0 { onProgress?(min(1, Double(completed) / Double(size))) }
+    }
+    return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+}
+
 enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
     case existingMapConflict = "INSTALL_BLOCKED_EXISTING_MAP_CONFLICT"
     case sourceArtifactInvalid = "INSTALL_BLOCKED_SOURCE_ARTIFACT_INVALID"
@@ -565,6 +583,94 @@ enum TransferRateCalculator {
         let components = duration.components
         return Double(components.seconds)
             + (Double(components.attoseconds) / 1_000_000_000_000_000_000)
+    }
+}
+
+/// Decides which progress values reach the UI: at most one per 100 ms unless
+/// progress moved by 1 % or more, plus every final value and every key change.
+struct ProgressThrottle: Sendable {
+    static let interval: Duration = .milliseconds(100)
+    static let step = 0.01
+    private var lastForwardedAt: ContinuousClock.Instant?
+    private var lastFraction = 0.0
+    private var lastKey = ""
+
+    mutating func shouldForward(fraction: Double, key: String = "", isFinal: Bool,
+                                now: ContinuousClock.Instant = .now) -> Bool {
+        if !isFinal, key == lastKey, let lastForwardedAt,
+           lastForwardedAt.duration(to: now) < Self.interval,
+           abs(fraction - lastFraction) < Self.step {
+            return false
+        }
+        lastForwardedAt = now
+        lastFraction = fraction
+        lastKey = key
+        return true
+    }
+}
+
+/// Hands throttled progress to the main actor. Each forwarded value gets a
+/// sequence number, so a late task never overwrites a newer delivered value.
+/// A held-back value is flushed one interval later, so the last value always
+/// arrives even when no final value is known (an unknown total size).
+final class MainActorProgressRelay<Value: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var throttle = ProgressThrottle()
+    private var sentSequence: UInt64 = 0
+    private var deliveredSequence: UInt64 = 0
+    private var heldBack: (value: Value, fraction: Double, key: String)?
+    private var flushScheduled = false
+    private let deliver: @MainActor @Sendable (Value) -> Void
+
+    init(deliver: @escaping @MainActor @Sendable (Value) -> Void) {
+        self.deliver = deliver
+    }
+
+    func send(_ value: Value, fraction: Double, key: String = "", isFinal: Bool) {
+        let (sequence, scheduleFlush): (UInt64?, Bool) = lock.withLock {
+            guard throttle.shouldForward(fraction: fraction, key: key, isFinal: isFinal) else {
+                heldBack = (value, fraction, key)
+                defer { flushScheduled = true }
+                return (nil, !flushScheduled)
+            }
+            heldBack = nil
+            sentSequence += 1
+            return (sentSequence, false)
+        }
+        if let sequence { dispatch(value, sequence) }
+        if scheduleFlush {
+            Task {
+                try? await Task.sleep(for: ProgressThrottle.interval)
+                self.flush()
+            }
+        }
+    }
+
+    private func flush() {
+        let pending: (Value, UInt64)? = lock.withLock {
+            flushScheduled = false
+            guard let heldBack else { return nil }
+            self.heldBack = nil
+            _ = throttle.shouldForward(fraction: heldBack.fraction, key: heldBack.key, isFinal: true)
+            sentSequence += 1
+            return (heldBack.value, sentSequence)
+        }
+        if let pending { dispatch(pending.0, pending.1) }
+    }
+
+    private func dispatch(_ value: Value, _ sequence: UInt64) {
+        Task { @MainActor in
+            guard self.claim(sequence) else { return }
+            self.deliver(value)
+        }
+    }
+
+    private func claim(_ sequence: UInt64) -> Bool {
+        lock.withLock {
+            guard sequence > deliveredSequence else { return false }
+            deliveredSequence = sequence
+            return true
+        }
     }
 }
 

@@ -543,6 +543,38 @@ private func testIncompleteCustomRecovery() throws {
     try require(!blocked.allows(.remove), "filename without manifest or recovery proof never enables Remove")
 }
 
+/// Safe Update verified the new map but could not confirm the old map's
+/// removal: the kept recovery record covers only the new object.
+private func testUnconfirmedUpdateRemoveKeepsOldMap() throws {
+    let old = installedMap(itemID: 42)
+    let newFile = InstalledMapFile(path: "/GARMIN/terento_freizeitkarte_deu_2026_06.img",
+        filename: "terento_freizeitkarte_deu_2026_06.img", sizeBytes: 120, itemID: 43)
+    let new = InstalledMap(name: old.name, provider: old.provider, region: old.region,
+        family: old.family, rawVersion: "Release 26.06", version: catalogVersion, identifier: nil,
+        productId: nil, familyId: nil, sizeBytes: newFile.sizeBytes, sourceFile: newFile,
+        metadataStatus: .parsed, managementState: .managedByTerento)
+    let record = TerentoFailedInstallRecoveryRecord(
+        deviceKey: "test-watch", packageID: "freizeitkarte-deu", providerId: "freizeitkarte",
+        regionId: "DEU", version: catalogVersion, devicePath: newFile.path, filename: newFile.filename,
+        sizeBytes: newFile.sizeBytes, sha256: String(repeating: "b", count: 64), createdAt: Date())
+    let inventory = UnifiedMapInventory(providerGroups: [], otherMaps: [MapInventoryEntry(
+        key: "fzk-deu", title: old.name, catalogPackage: nil, comparison: nil,
+        installedMaps: [old, new], isSelectedCatalogMap: false)])
+    let item = MapLifecycleInventoryBuilder().build(from: inventory, recoveryRecords: [record]).otherMaps[0]
+    try require(item.installedMaps.count == 2 && item.failedInstallRecovery == record,
+        "an unconfirmed update shows the old and new objects as one incomplete item")
+    let context = MapLifecycleContext(item: item, comparison: nil, selectedMap: nil,
+        identity: identity(), availableStorage: 15000, profile: nil, deviceKey: record.deviceKey,
+        expectedSHA256ByItemID: [42: String(repeating: "a", count: 64), 43: record.sha256],
+        failedInstallRecovery: item.failedInstallRecovery, recoveryRecords: [record])
+    try require(context.removalComponents.map(\.sourceFile) == [newFile],
+        "Remove of an incomplete installation deletes only the recovery-recorded object, never the managed old map")
+    let plain = MapLifecycleContext(item: lifecycleItem(), comparison: nil, selectedMap: nil,
+        identity: identity(), availableStorage: 15000, profile: nil, deviceKey: "test-watch",
+        expectedSHA256ByItemID: [42: String(repeating: "a", count: 64)])
+    try require(plain.removalComponents == plain.item.installedMaps, "a managed Remove keeps every component")
+}
+
 private func testManageInventorySearch() throws {
     func item(_ id: String, title: String = "Germany", provider: String? = nil,
               source: MapSourceKind = .provider, classification: MapLifecycleClassification = .terentoManaged) -> MapLifecycleItem {
@@ -593,6 +625,7 @@ private struct MapLifecyclePresentationTestRunner {
         do {
             try runMapLifecyclePresentationTests()
             try testIncompleteCustomRecovery()
+            try testUnconfirmedUpdateRemoveKeepsOldMap()
             try testManageInventorySearch()
             try testBBBikeManageTypeFilters()
             try testDisconnectInterruptionNotices()

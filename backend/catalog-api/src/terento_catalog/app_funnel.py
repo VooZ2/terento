@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from .telemetry import is_local_release_label, validate_release_label
+from .telemetry import EARLIEST_EVENT_TIME, is_local_release_label, validate_release_label
 
 MAX_FUNNEL_EVENT_BYTES = 4 * 1024
 FUNNEL_SCHEMA_VERSION = 1
@@ -82,7 +82,7 @@ def validate_funnel_event(raw: bytes) -> dict[str, Any]:
         timestamp = datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
     except ValueError as exc:
         raise FunnelValidationError("invalid_occurredAt") from exc
-    if timestamp.tzinfo is None or timestamp.utcoffset() != timezone.utc.utcoffset(None):
+    if timestamp.tzinfo is None or timestamp.utcoffset() != timezone.utc.utcoffset(None) or timestamp < EARLIEST_EVENT_TIME:
         raise FunnelValidationError("invalid_occurredAt")
     normalized["occurredAt"] = timestamp.astimezone(timezone.utc)
     app_build = event["appBuild"]

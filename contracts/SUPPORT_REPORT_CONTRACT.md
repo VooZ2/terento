@@ -38,7 +38,7 @@ JSON (`Content-Type: application/json`), at most 64 KiB, schema
 | --- | --- |
 | `schemaVersion` | integer `1` |
 | `id` | canonical UUID; report identity and idempotency key |
-| `createdAt` | RFC 3339 UTC timestamp (`Z` or `+00:00`) |
+| `createdAt` | RFC 3339 UTC timestamp (`Z` or `+00:00`), not before 2026-08-01T00:00:00Z |
 | `appBuild` | non-blank string, at most 80 characters |
 | `releaseLabel` | strict SemVer; a label ending in `-local` marks a local test report |
 | `category` | `INSTALL_FAILED`, `UPDATE_FAILED`, `REMOVE_FAILED`, `CONNECTION` or `OTHER` |
@@ -88,7 +88,7 @@ not sent.
 | `409` | `{"error":"reference_conflict"}` | another report already owns this reference; create a new `id` and send again |
 | `413` | `{"error":"invalid_size"}` | body empty or larger than 64 KiB |
 | `415` | `{"error":"invalid_content_type"}` | not `application/json` |
-| `429` | `{"error":"rate_limited"}` | more than 10 reports per client per minute (client derived behind the trusted proxy) |
+| `429` | `{"error":"rate_limited"}` | more than 10 reports per client per minute or 30 per 24 hours (client derived behind the trusted proxy) |
 | `503` | `{"error":"support_reports_unavailable"}` | storage unavailable; keep the report locally and offer Try again |
 
 The reference is deterministic: `TR-` followed by the first six characters of

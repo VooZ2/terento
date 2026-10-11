@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""Workflow-owned snapshot PR. Never push beta or bypass required checks."""
+"""Workflow-owned snapshot PR. Never push beta or bypass required checks.
+
+``--indexnow-state`` reuses the same owned-branch, exact-head CI and merge
+gates for the IndexNow publication state written by deploy-site.yml.
+"""
 import json
 import os
 import subprocess
+import sys
 import time
 
 REPO = "VooZ2/terento"
@@ -16,6 +21,11 @@ FACT_FILES = ["site/compatibility/public-models.snapshot.json", "site/compatibil
 FACT_FILES += [path.replace("index.html", "index.md") for path in FACT_FILES if path.endswith("index.html")]
 GENERATED_METADATA_FILES = ["site/sitemap.xml"]
 OWNED_FILES = FACT_FILES + GENERATED_METADATA_FILES
+BODY = MARKER + "\nGenerated public compatibility facts only. Required exact-head CI gates merge."
+INDEXNOW_BRANCH = "terento/indexnow-state"
+INDEXNOW_MARKER = "<!-- terento-indexnow-state -->"
+INDEXNOW_TITLE = "chore: retain IndexNow publication state"
+INDEXNOW_FILES = [".github/indexnow/site-state.json"]
 
 
 def run(*args, timeout=120):
@@ -41,17 +51,17 @@ def exact_runs(values, sha):
     return [r for r in values if r["headSha"] == sha]
 
 
-def delete_merged_branch(sha):
-    remote = run("git", "ls-remote", "origin", f"refs/heads/{BRANCH}")
+def delete_merged_branch(sha, branch=BRANCH):
+    remote = run("git", "ls-remote", "origin", f"refs/heads/{branch}")
     if not remote:
         return  # Repository auto-delete-on-merge may already have removed it.
     if remote.split()[0] != sha:
         raise RuntimeError("Automation branch changed after merge; preserve it")
-    run("git", "push", f"--force-with-lease=refs/heads/{BRANCH}:{sha}",
-        "origin", f":refs/heads/{BRANCH}")
+    run("git", "push", f"--force-with-lease=refs/heads/{branch}:{sha}",
+        "origin", f":refs/heads/{branch}")
 
 
-def dispatch_and_wait(workflow, branch, sha, reuse=False):
+def dispatch_and_wait(workflow, branch, sha, reuse=False, inputs=()):
     before = runs(workflow, branch)
     matching = exact_runs(before, sha)
     if reuse and not matching:
@@ -72,7 +82,7 @@ def dispatch_and_wait(workflow, branch, sha, reuse=False):
         selected = active[0]
     else:
         old_ids = {r["databaseId"] for r in before}
-        run("gh", "workflow", "run", workflow, "--repo", REPO, "--ref", branch)
+        run("gh", "workflow", "run", workflow, "--repo", REPO, "--ref", branch, *inputs)
         selected = None
         for _ in range(60):
             fresh = [r for r in exact_runs(runs(workflow, branch), sha)
@@ -136,11 +146,11 @@ def ensure_pull_request_checks(branch, sha):
         raise RuntimeError("build-and-test did not pass for exact pull_request SHA")
 
 
-def commit_files(files, title):
+def commit_files(files, title, marker=MARKER):
     run("git", "add", "--", *files)
     allowed(run("git", "diff", "--cached", "--name-only").splitlines(), files)
     run("git", "diff", "--cached", "--check")
-    run("git", "commit", "-m", title, "-m", MARKER)
+    run("git", "commit", "-m", title, "-m", marker)
 
 
 def prepare_refresh_commits():
@@ -156,45 +166,49 @@ def prepare_refresh_commits():
     return run("git", "rev-parse", "HEAD")
 
 
-def main():
-    if os.environ.get("GITHUB_REPOSITORY") != REPO:
-        raise RuntimeError("Unexpected repository")
+def prepare_indexnow_commit():
+    commit_files(INDEXNOW_FILES, INDEXNOW_TITLE, INDEXNOW_MARKER)
+    return run("git", "rev-parse", "HEAD")
+
+
+def integrate(branch, marker, title, body, changed_files, owned_files, prepare,
+              ci_inputs=(), deploy=True):
     paths = run("git", "diff", "--name-only", "HEAD").splitlines()
-    allowed(paths, FACT_FILES)
+    allowed(paths, changed_files)
     if run("git", "ls-files", "--others", "--exclude-standard"):
         raise RuntimeError("Unexpected untracked content")
     if not paths:
         print("No factual changes: success; no commit, PR or deploy")
         return
-    prs = gh("pr", "list", "--repo", REPO, "--head", BRANCH, "--base", "beta",
+    prs = gh("pr", "list", "--repo", REPO, "--head", branch, "--base", "beta",
              "--state", "open", "--json", "number,body,author,headRefOid")
     if len(prs) > 1:
         raise RuntimeError("Duplicate refresh PRs; refusing ambiguous ownership")
-    if prs and (MARKER not in prs[0]["body"] or prs[0]["author"]["login"] != "app/github-actions"):
+    if prs and (marker not in prs[0]["body"] or prs[0]["author"]["login"] != "app/github-actions"):
         raise RuntimeError("Existing PR is not workflow-owned")
-    remote = run("git", "ls-remote", "origin", f"refs/heads/{BRANCH}")
+    remote = run("git", "ls-remote", "origin", f"refs/heads/{branch}")
     old = remote.split()[0] if remote else ""
     if old:
-        run("git", "fetch", "origin", f"refs/heads/{BRANCH}")
-        if MARKER not in run("git", "show", "-s", "--format=%B", old):
+        run("git", "fetch", "origin", f"refs/heads/{branch}")
+        if marker not in run("git", "show", "-s", "--format=%B", old):
             raise RuntimeError("Existing branch is not workflow-owned")
         if run("git", "show", "-s", "--format=%ae", old) != "41898282+github-actions[bot]@users.noreply.github.com":
             raise RuntimeError("Unexpected automation branch author")
-        allowed(run("git", "diff", "--name-only", f"HEAD...{old}").splitlines())
+        allowed(run("git", "diff", "--name-only", f"HEAD...{old}").splitlines(), owned_files)
     run("git", "config", "user.name", "github-actions[bot]")
     run("git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
-    sha = prepare_refresh_commits()
+    sha = prepare()
     # Explicit lease also protects first creation against a racing human branch.
-    run("git", "push", f"--force-with-lease=refs/heads/{BRANCH}:{old}",
-        "origin", f"HEAD:refs/heads/{BRANCH}")
+    run("git", "push", f"--force-with-lease=refs/heads/{branch}:{old}",
+        "origin", f"HEAD:refs/heads/{branch}")
     if not prs:
-        run("gh", "pr", "create", "--repo", REPO, "--head", BRANCH, "--base", "beta",
-            "--title", TITLE, "--body", MARKER + "\nGenerated public compatibility facts only. Required exact-head CI gates merge.")
-    pr = wait_for_pr_head(BRANCH, sha)
+        run("gh", "pr", "create", "--repo", REPO, "--head", branch, "--base", "beta",
+            "--title", title, "--body", body)
+    pr = wait_for_pr_head(branch, sha)
     number = str(pr["number"])
     # GITHUB_TOKEN suppresses pull_request events: explicitly test this exact head.
-    dispatch_and_wait("swift-ci.yml", BRANCH, sha)
-    ensure_pull_request_checks(BRANCH, sha)
+    dispatch_and_wait("swift-ci.yml", branch, sha, inputs=ci_inputs)
+    ensure_pull_request_checks(branch, sha)
     run("gh", "pr", "checks", number, "--repo", REPO, "--required", "--watch",
         "--fail-fast", timeout=7200)
     pr = gh("pr", "view", number, "--repo", REPO,
@@ -211,17 +225,43 @@ def main():
     merged = gh("pr", "view", number, "--repo", REPO, "--json", "state,mergeCommit")
     if merged["state"] != "MERGED":
         raise RuntimeError("PR not merged")
-    beta = run("git", "ls-remote", "origin", "refs/heads/beta").split()[0]
-    if beta != merged["mergeCommit"]["oid"]:
-        raise RuntimeError("Beta advanced concurrently; do not deploy unrelated source")
-    # Reuse an automatic exact-SHA deployment if present; never double deploy.
-    dispatch_and_wait("deploy-site.yml", "beta", beta, reuse=True)
-    remaining = gh("pr", "list", "--repo", REPO, "--head", BRANCH,
+    beta = None
+    if deploy:
+        beta = run("git", "ls-remote", "origin", "refs/heads/beta").split()[0]
+        if beta != merged["mergeCommit"]["oid"]:
+            raise RuntimeError("Beta advanced concurrently; do not deploy unrelated source")
+        # Reuse an automatic exact-SHA deployment if present; never double deploy.
+        dispatch_and_wait("deploy-site.yml", "beta", beta, reuse=True)
+    remaining = gh("pr", "list", "--repo", REPO, "--head", branch,
                    "--base", "beta", "--state", "open", "--json", "number")
     if remaining:
         raise RuntimeError("Unexpected open refresh PR remains")
-    delete_merged_branch(sha)
-    print(f"Merged refresh PR {number}; exact beta {beta} deployment passed")
+    delete_merged_branch(sha, branch)
+    if deploy:
+        print(f"Merged refresh PR {number}; exact beta {beta} deployment passed")
+    else:
+        print(f"Merged PR {number} for {', '.join(changed_files)}")
+
+
+def main(argv=None):
+    args = sys.argv[1:] if argv is None else argv
+    if os.environ.get("GITHUB_REPOSITORY") != REPO:
+        raise RuntimeError("Unexpected repository")
+    if args == ["--indexnow-state"]:
+        run_url = "{}/{}/actions/runs/{}".format(
+            os.environ.get("GITHUB_SERVER_URL", "https://github.com"), REPO,
+            os.environ.get("GITHUB_RUN_ID", "unknown"))
+        body = (f"{INDEXNOW_MARKER}\nAutomated publication-state update from {run_url}.\n\n"
+                "Only .github/indexnow/site-state.json is changed. The site deployment has already "
+                "completed and no IndexNow request is made by this state update.")
+        # The state file is outside the deploy-site path filter: merge only, no deploy.
+        integrate(INDEXNOW_BRANCH, INDEXNOW_MARKER, INDEXNOW_TITLE, body, INDEXNOW_FILES,
+                  INDEXNOW_FILES, prepare_indexnow_commit,
+                  ci_inputs=("-f", "selection_base=beta"), deploy=False)
+        return
+    if args:
+        raise SystemExit("usage: integrate-compatibility-refresh.py [--indexnow-state]")
+    integrate(BRANCH, MARKER, TITLE, BODY, FACT_FILES, OWNED_FILES, prepare_refresh_commits)
 
 
 if __name__ == "__main__":

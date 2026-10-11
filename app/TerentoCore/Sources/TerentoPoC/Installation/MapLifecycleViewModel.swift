@@ -11,10 +11,7 @@ struct MapLifecycleConfirmation: Identifiable, Equatable, Sendable {
 }
 
 private final class MapLifecycleProgressRelay: @unchecked Sendable {
-    weak var viewModel: MapLifecycleViewModel?
-    let itemID: String
-    let action: MapLifecycleAction
-    let epoch: UInt64
+    private let relay: MainActorProgressRelay<SafeUpdateProgress>
 
     init(
         viewModel: MapLifecycleViewModel,
@@ -22,15 +19,7 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
         action: MapLifecycleAction,
         epoch: UInt64
     ) {
-        self.viewModel = viewModel
-        self.itemID = itemID
-        self.action = action
-        self.epoch = epoch
-    }
-
-    func send(_ progress: SafeUpdateProgress) {
-        let viewModel = viewModel
-        Task { @MainActor in
+        relay = MainActorProgressRelay { [weak viewModel] progress in
             viewModel?.receive(
                 itemID: itemID,
                 action: action,
@@ -38,6 +27,13 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
                 progress: progress
             )
         }
+    }
+
+    func send(_ progress: SafeUpdateProgress) {
+        // A state or detail change always reaches the UI.
+        relay.send(progress, fraction: progress.fractionCompleted,
+                   key: "\(progress.state.rawValue)|\(progress.detail ?? "")",
+                   isFinal: progress.fractionCompleted >= 1 || progress.state == .completed || progress.state == .failed)
     }
 
     func sendRemoval(_ progress: SafeDeleteProgress) {
@@ -599,7 +595,11 @@ final class MapLifecycleViewModel: ObservableObject {
             return
         }
 
-        let installedMaps = context.item.installedMaps
+        let installedMaps = context.removalComponents
+        guard !installedMaps.isEmpty else {
+            fail(itemID: itemID, action: .remove, message: "This map could not be verified for safe removal. Nothing was changed.")
+            return
+        }
         let isExternalRemoval = context.item.classification == .externalRecognized
             && context.failedInstallRecovery == nil
         let capturedSelection = externalSelection
@@ -673,9 +673,11 @@ final class MapLifecycleViewModel: ObservableObject {
                         throw CancellationError()
                     }
 
-                    if let recoveryRecord = context.failedInstallRecovery {
+                    if context.failedInstallRecovery != nil {
                         do {
-                            try recoveryStore.record(recoveryRecord)
+                            for recoveryRecord in context.recoveryRecords {
+                                try recoveryStore.record(recoveryRecord)
+                            }
                         } catch {
                             return SafeDeleteResult(
                                 mapIdentity: mapIdentity,
@@ -860,6 +862,7 @@ final class MapLifecycleViewModel: ObservableObject {
         let operationController = self.operationController
         let authorizationDeviceEngine = self.deviceEngine
         let reportingMapEngine = self.mapEngine
+        let recoveryStore = self.recoveryStore
         guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
         let mapStatisticsOperationID = UUID()
@@ -910,7 +913,7 @@ final class MapLifecycleViewModel: ObservableObject {
                             await authorizationDeviceEngine.currentInstallationIdentity
                         }
                     )
-                    return await SafeUpdateTransaction().run(
+                    return await SafeUpdateTransaction(recoveryStore: recoveryStore).run(
                         request: liveRequest,
                         provider: MapPackageAcquisitionProvider(onAcquisition: acquisitionObserver),
                         transport: MTPSafeUpdateTransport(

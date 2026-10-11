@@ -17,68 +17,6 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 PINNED_ACTION = re.compile(r"^\s*uses:\s*[^\s@]+@[0-9a-f]{40}\s*$")
 
 
-def required_check_visibility_decision(observations, expected_head, max_attempts=18):
-    """Model the bounded workflow gate without sleeps, GitHub or network access."""
-    for observation in observations[:max_attempts]:
-        if observation["head"] != expected_head:
-            return "head-changed"
-        checks = observation["checks"]
-        if any(
-            check.get("bucket") in {"fail", "cancel"}
-            or check.get("state") in {"FAILURE", "ERROR", "CANCELLED", "TIMED_OUT"}
-            for check in checks
-        ):
-            return "failed"
-        if checks:
-            return "visible"
-    return "timeout"
-
-
-def verify_indexnow_visibility_race_contract(deploy_site):
-    expected_head = "a" * 40
-    passed = [{"name": "build-and-test", "state": "SUCCESS", "bucket": "pass"}]
-    failed = [{"name": "build-and-test", "state": "FAILURE", "bucket": "fail"}]
-    empty = {"head": expected_head, "checks": []}
-
-    assert required_check_visibility_decision(
-        [empty, empty, {"head": expected_head, "checks": passed}], expected_head
-    ) == "visible", "checks must become visible after bounded retries"
-    assert required_check_visibility_decision(
-        [{"head": expected_head, "checks": failed}], expected_head
-    ) == "failed", "visible required failures must stop immediately"
-    assert required_check_visibility_decision([empty] * 18, expected_head) == "timeout"
-    assert required_check_visibility_decision(
-        [empty, {"head": "b" * 40, "checks": passed}], expected_head
-    ) == "head-changed", "a changed PR head must never proceed to merge"
-    assert required_check_visibility_decision(
-        [{"head": expected_head, "checks": passed}], expected_head
-    ) == "visible"
-
-    for contract in (
-        "visibility_attempts=18",
-        "visibility_interval=5",
-        'required_checks_file="$RUNNER_TEMP/indexnow-required-checks.json"',
-        'visible_head="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY"',
-        'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required \\\n              --json name,state,bucket',
-        "type == \"array\" and length > 0",
-        '.bucket == "fail" or .bucket == "cancel"',
-        'sleep "$visibility_interval"',
-        'test "$checks_visible" = true',
-        'exit 1',
-        '--match-head-commit "$state_sha"',
-        "--delete-branch",
-    ):
-        assert contract in deploy_site, f"deploy-site.yml is missing visibility contract {contract!r}"
-    visibility_gate = deploy_site.index("visibility_attempts=18")
-    required_watch = deploy_site.index(
-        'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch'
-    )
-    merge = deploy_site.index('gh pr merge "$pr_number"')
-    assert visibility_gate < required_watch < merge
-    assert deploy_site.index("IndexNow state PR has an explicit failed required check") < merge
-    assert deploy_site.index("Timed out waiting for required IndexNow state PR checks") < merge
-
-
 def verify_refresh_flow():
     import importlib.util
     from unittest.mock import patch
@@ -207,22 +145,71 @@ def verify_refresh_flow():
                 pass
             else:
                 raise AssertionError("wrong SHA or failed required job accepted")
+    verify_indexnow_state_flow(flow, sha)
     source = (REPO_ROOT / "scripts/integrate-compatibility-refresh.py").read_text()
-    for guard in ('len(prs) > 1', 'MARKER not in', 'if not prs', 'wait_for_pr_head',
+    for guard in ('len(prs) > 1', 'marker not in', 'if not prs', 'wait_for_pr_head',
                   'ensure_pull_request_checks', '"event"] == "pull_request"',
                   'FACT_FILES', 'GENERATED_METADATA_FILES', 'SITEMAP_TITLE',
-                  '--force-with-lease=refs/heads/{BRANCH}:{old}',
+                  '--force-with-lease=refs/heads/{branch}:{old}',
                   '"--required", "--watch"', '"CLEAN"', '"--match-head-commit", sha',
                   'merged["state"] != "MERGED"', 'merged["mergeCommit"]["oid"]', 'reuse=True'):
         assert guard in source, guard
     assert source.index('commit_files(FACT_FILES, TITLE)') < source.index(
         'scripts/generate-sitemap.py", "--write"')
     assert source.index('scripts/generate-sitemap.py", "--check"') < source.index(
-        'sha = prepare_refresh_commits()')
-    assert source.index('ensure_pull_request_checks(BRANCH, sha)') < source.index(
+        'sha = prepare()')
+    assert source.index('ensure_pull_request_checks(branch, sha)') < source.index(
         '"gh", "pr", "checks"')
     assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
     assert "HEAD:beta" not in source and "--admin" not in source
+
+
+def verify_indexnow_state_flow(flow, sha):
+    """The IndexNow state mode reuses the owned-PR gates, CI-selects beta, and never deploys."""
+    from unittest.mock import patch
+    calls = []
+
+    def fake_run(*args, **kwargs):
+        calls.append(args)
+        if args == ("git", "diff", "--name-only", "HEAD"):
+            return ".github/indexnow/site-state.json"
+        if args == ("git", "diff", "--cached", "--name-only"):
+            return ".github/indexnow/site-state.json"
+        if args == ("git", "rev-parse", "HEAD"):
+            return sha
+        return ""
+
+    responses = iter([
+        [],  # no open PR
+        {"number": 413, "headRefOid": sha},
+        {"headRefOid": sha, "mergeStateStatus": "CLEAN"},
+        {"state": "MERGED", "mergeCommit": {"oid": "e" * 40}},
+        [],  # no remaining PR
+    ])
+    with patch.dict(os.environ, GITHUB_REPOSITORY=flow.REPO, GITHUB_RUN_ID="42"), \
+         patch.object(flow, "run", side_effect=fake_run), \
+         patch.object(flow, "gh", side_effect=lambda *a: next(responses)), \
+         patch.object(flow, "dispatch_and_wait") as dispatch, \
+         patch.object(flow, "ensure_pull_request_checks") as checks:
+        flow.main(["--indexnow-state"])
+    dispatch.assert_called_once_with("swift-ci.yml", flow.INDEXNOW_BRANCH, sha,
+                                     inputs=("-f", "selection_base=beta"))
+    checks.assert_called_once_with(flow.INDEXNOW_BRANCH, sha)
+    create = next(c for c in calls if c[:3] == ("gh", "pr", "create"))
+    body = create[create.index("--body") + 1]
+    assert flow.INDEXNOW_MARKER in body and "\\n" not in body and "\n\n" in body, "PR body needs real line breaks"
+    assert ("git", "commit", "-m", flow.INDEXNOW_TITLE, "-m", flow.INDEXNOW_MARKER) in calls
+    assert any(c[:3] == ("gh", "pr", "merge") and "--match-head-commit" in c for c in calls)
+    assert calls.count(("git", "ls-remote", "origin", f"refs/heads/{flow.INDEXNOW_BRANCH}")) == 2, (
+        "the merged state branch must go through the guarded delete"
+    )
+    assert not any(c[:4] == ("gh", "workflow", "run", "deploy-site.yml") for c in calls)
+    try:
+        flow.allowed(["site/index.html"], flow.INDEXNOW_FILES)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("IndexNow mode accepted unrelated content")
 
 
 def verify_released_fixture_adapter():
@@ -615,10 +602,13 @@ def main() -> int:
         "SMTP2GO_PASSWORD",
         "https://api.terento.app/internal/operations/observations",
         "https://api.terento.app/internal/operations/report-context",
-        "catalog_freizeitkarte_new_release",
-        "catalog_opentopomap_new_release",
+        'catalog_\\(.id)_status',
+        '"$RUNNER_TEMP/terento-operational-report.json" "$RUNNER_TEMP/terento-catalog-report-context.json"',
     ):
         assert contract in swift, f"swift-ci.yml is missing {contract!r}"
+    assert '"freizeitkarte"' not in swift and '"opentopomap"' not in swift, (
+        "the weekly report must pass every report-context provider through, not a hardcoded subset"
+    )
 
     reusable = (WORKFLOWS / "reusable-catalog-api-quality.yml").read_text(encoding="utf-8")
     for contract in (
@@ -745,6 +735,15 @@ def main() -> int:
     assert "f7e394d" not in rejection
     assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in swift
     assert "tags:" not in deploy_site, "a tag must not duplicate the beta site deployment"
+    for dockerfile in ("site-deploy/Dockerfile", "backend/catalog-api/Dockerfile"):
+        for line in (REPO_ROOT / dockerfile).read_text(encoding="utf-8").splitlines():
+            if line.startswith("FROM "):
+                assert re.match(r"FROM \S+:\S+@sha256:[0-9a-f]{64}(\s|$)", line), f"{dockerfile} base image must be tag@digest: {line}"
+    dockerignore = (REPO_ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    for private in ("site/AGENTS.md", "site/**/README.md"):
+        assert private in dockerignore, f"the public site image must not serve {private}"
+    for needed in ("site", "site-deploy", "site-deploy/Caddyfile"):
+        assert needed not in dockerignore, f"the site image needs {needed}"
     assert "scripts/check-live-release-manifest.py" in deploy_site
     for contract in (
         "scripts/generate-sitemap.py", "scripts/submit-indexnow.py",
@@ -757,19 +756,14 @@ def main() -> int:
         "continue-on-error: true", "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
     ):
         assert contract in deploy_site, f"deploy-site.yml is missing {contract!r}"
-    verify_indexnow_visibility_race_contract(deploy_site)
     assert "keyLocation" not in deploy_site, "the IndexNow key location must not be printed by the workflow"
     assert "actions: write" in deploy_site
     assert "pull-requests: write" in deploy_site
-    assert 'state_branch="terento/indexnow-state"' in deploy_site
-    assert 'gh pr list --repo "$GITHUB_REPOSITORY" --base beta' in deploy_site
-    assert 'gh workflow run swift-ci.yml --repo "$GITHUB_REPOSITORY" --ref "$state_branch"' in deploy_site
-    assert '--ref "$state_branch" \\\n            -f selection_base=beta' in deploy_site
-    assert 'select(.name == "build-and-test")' in deploy_site
-    assert 'gh pr create --repo "$GITHUB_REPOSITORY" --base beta --head "$state_branch"' in deploy_site
-    assert 'gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --required --watch' in deploy_site
-    assert '--match-head-commit "$state_sha"' in deploy_site
-    assert 'state_branch="terento/indexnow-state-${GITHUB_RUN_ID}' not in deploy_site
+    assert "python3 scripts/integrate-compatibility-refresh.py --indexnow-state" in deploy_site
+    assert 'test "$latest" = "$GITHUB_SHA"' in deploy_site
+    assert "gh pr merge" not in deploy_site and "gh pr create" not in deploy_site, (
+        "IndexNow state PR gates belong to the shared integrator"
+    )
     assert "git push origin HEAD:beta" not in deploy_site
     assert "GitHub contents API" not in deploy_site
     assert "site-state.json" not in (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
@@ -793,14 +787,15 @@ def main() -> int:
     assert "cron: \"0 */6 * * *\"" in refresh
     assert "workflow_dispatch:" in refresh
     assert "scripts/update-compatibility-snapshot.py" in refresh
-    assert "git diff --quiet" in refresh
+    assert "Detect factual changes" not in refresh and "steps.diff.outputs.changed" not in refresh, (
+        "the integrator owns the factual-file list and the no-change exit"
+    )
     assert not re.search(r"git\s+push[^\n]*:beta", refresh)
     assert "actions: write" in refresh
     assert "pull-requests: write" in refresh
     assert "scripts/ci_http.py compatibility-snapshot --fail" in refresh
     assert '--input "$RUNNER_TEMP/compatibility-live.json"' in refresh
     assert "Tests/compatibility-snapshot-growth-tests.cjs" in refresh
-    assert "if: steps.diff.outputs.changed == 'true'" in refresh
     assert "scripts/integrate-compatibility-refresh.py" in refresh
     verify_refresh_flow()
     verify_released_fixture_adapter()

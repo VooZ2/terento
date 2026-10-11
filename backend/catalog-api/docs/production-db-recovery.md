@@ -8,7 +8,9 @@ check, and the separate nightly encrypted off-host backup described in
 Mac is not a backup or restore target. A nightly copy is not a pre-operation
 recovery point: a fresh Hostinger VPS recovery point and a fresh validated
 dump are still required before the next separately approved forward schema
-operation.
+operation. The deploy helper's automatic pre-migration `pg_dump -Fc` snapshots
+in `/var/lib/terento/deployment/database-snapshots/` are a closer restore point
+but are never restore-validated, so they do not replace this procedure.
 
 Read-only observations available for this candidate:
 

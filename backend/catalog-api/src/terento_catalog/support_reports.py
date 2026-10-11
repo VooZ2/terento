@@ -18,7 +18,7 @@ from typing import Any
 from uuid import UUID
 
 from .failure_context import validate_context
-from .telemetry import is_local_release_label, validate_release_label
+from .telemetry import EARLIEST_EVENT_TIME, is_local_release_label, validate_release_label
 
 MAX_SUPPORT_REPORT_BYTES = 64 * 1024
 SUPPORT_REPORT_SCHEMA_VERSION = 1
@@ -263,7 +263,11 @@ def validate_support_report(raw: bytes) -> dict[str, Any]:
         timestamp = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
     except ValueError as exc:
         raise SupportReportValidationError("invalid_createdAt") from exc
-    if timestamp.tzinfo is None or timestamp.utcoffset() != timezone.utc.utcoffset(None):
+    if (
+        timestamp.tzinfo is None
+        or timestamp.utcoffset() != timezone.utc.utcoffset(None)
+        or timestamp < EARLIEST_EVENT_TIME
+    ):
         raise SupportReportValidationError("invalid_createdAt")
     normalized["createdAt"] = timestamp.astimezone(timezone.utc)
     normalized["appBuild"] = _text(body["appBuild"], 80, "invalid_appBuild")

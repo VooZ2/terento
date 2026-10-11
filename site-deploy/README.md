@@ -72,12 +72,16 @@ plan and retried. A no-change run does not change either submission timestamp.
 The workflow updates only this file after successful live verification through
 a state-only pull request to the protected `beta` branch; the path is outside
 the site deployment filters, so state retention does not trigger a second site
-deployment. The current workflow uses the default `GITHUB_TOKEN`; a PR created
-with it does not trigger new `pull_request` workflows on GitHub. Automatic
-state-PR merging therefore still requires a follow-up workflow wiring change
-plus an approved non-`GITHUB_TOKEN` automation identity. Until both are
-provisioned, the deploy retains the state as a fallback artifact and an
-operator must merge the state-only PR after the normal checks pass. State
+deployment. The workflow runs `scripts/integrate-compatibility-refresh.py
+--indexnow-state`, the same owned-branch integrator as the Compatibility
+refresh: it commits only this file to `terento/indexnow-state` as
+`github-actions[bot]` with a workflow marker, dispatches `swift-ci.yml` for
+the exact head with `selection_base=beta`, reruns the `GITHUB_TOKEN` PR's
+`action_required` `pull_request` run, waits for the required checks, merges
+with `--match-head-commit`, and deletes the branch. It never deploys. An
+existing state branch or open PR without the marker is refused rather than
+overwritten. On any failure the deploy retains the state as a fallback
+artifact. State
 retention is the last deploy step and has its own timeout below the job
 timeout, so a slow state-PR check never prevents the website deployment
 health or IndexNow observations from being reported. If the file is

@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 from api_test_fixtures import FakeProviderDatabase
 from terento_catalog.admin import (
     _ATTENTION_ROWS,
+    _diagnostic_summary_by_identity,
     _identity_review_anchor,
     _statistics_row,
     dashboard_page,
@@ -187,7 +188,13 @@ class QueueDatabase(FakeProviderDatabase):
             raise RuntimeError("population unavailable")
         return [{**event, "operation_key": event["operation_key"]} for event in _operations()]
 
-    def compatibility_identity_details(self, status, *, device_id="", identity=""):
+    def identity_pending_counts(self):
+        # Python twin of Database.identity_pending_counts over this fixture population.
+        active = [row for row in self.compatibility_diagnostic_population() if row["diagnostic_status"] == "ACTIVE"]
+        return {key: values["identity_pending"] for key, values in _diagnostic_summary_by_identity(active).items()
+                if key.startswith("identity:")}
+
+    def compatibility_identity_details(self, status, *, device_id="", identity="", catalog=None):
         self.identity_calls.append((status, identity))
         identities = identity if isinstance(identity, list) else [identity]
         return [event for event in _operations()

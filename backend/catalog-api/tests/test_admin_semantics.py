@@ -71,6 +71,8 @@ from terento_catalog.compatibility_status import (
     calculate_compatibility_status,
 )
 from terento_catalog.db import (
+    IDENTITY_DEVICE_QUERY,
+    IDENTITY_MAPPING_QUERY,
     Database,
     IdentityResolutionError,
     _fill_overview_trend_buckets,
@@ -132,9 +134,9 @@ class RecordingDatabase(Database):
                 database.calls.append((query, parameters))
                 if "SELECT event_id, diagnostic_status" in query:
                     return RecordingResult(rows=database.diagnostic_rows)
-                if "SELECT * FROM device_model" in query:
+                if "SELECT * FROM device_model" in query or query == IDENTITY_DEVICE_QUERY:
                     return RecordingResult(rows=database.catalog_devices)
-                if "SELECT * FROM device_identity_mapping" in query:
+                if "SELECT * FROM device_identity_mapping" in query or query == IDENTITY_MAPPING_QUERY:
                     return RecordingResult(rows=database.identity_mappings)
                 if "SELECT id, model, variant" in query:
                     return RecordingResult(row=database.canonical_row)
@@ -2018,6 +2020,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertEqual(audit_call[1][6], "Exact model confirmed")
         self.assertFalse(any("phase_outcome" in query for query, _ in database.calls if "UPDATE compatibility_evidence_event" in query))
 
+    def test_diagnostic_scope_uses_typed_uuid_comparisons(self):
+        operation_id = "123e4567-e89b-12d3-a456-426614174000"
+        self.assertEqual(Database._diagnostic_scope(operation_id), ("operation_id = %s::uuid", (operation_id,)))
+        self.assertEqual(Database._diagnostic_scope(f"legacy:{operation_id}"),
+                         ("operation_id IS NULL AND event_id = %s::uuid", (operation_id,)))
+        # Keys the former text comparison could never match select nothing.
+        for key in (operation_id.upper(), "legacy:not-a-uuid", f"legacy:{operation_id.upper()}", "other"):
+            self.assertEqual(Database._diagnostic_scope(key), ("FALSE", ()))
+
     def test_identity_result_scope_matches_uuid_and_zero_index_without_operation_fallback(self):
         operation_id = "123e4567-e89b-12d3-a456-426614174000"
         database = RecordingDatabase(
@@ -2035,7 +2046,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             1,
         )
         select_query, select_parameters = database.calls[0]
-        self.assertIn("operation_id::text = %s AND map_result_index = %s", select_query)
+        self.assertIn("operation_id = %s::uuid AND map_result_index = %s", select_query)
         self.assertNotIn("OR (operation_id IS NOT NULL", select_query)
         self.assertEqual(select_parameters, (operation_id, 0))
 
@@ -2062,8 +2073,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             2,
         )
         query, parameters = database.calls[0]
-        self.assertIn("OR (operation_id IS NOT NULL", query)
-        self.assertEqual(parameters, ("123e4567-e89b-12d3-a456-426614174000",) * 2)
+        self.assertIn("WHERE operation_id = %s::uuid\n", query)
+        self.assertEqual(parameters, ("123e4567-e89b-12d3-a456-426614174000",))
 
     def test_missing_identity_reason_is_generated_and_conflict_requires_manual_action(self):
         selected = {"id": "garmin-fenix-8-47", "model": "fēnix 8", "variant": "47 mm",

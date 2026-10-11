@@ -44,7 +44,7 @@
     },
     "timestamp": {
       "type": "string",
-      "description": "ISO timestamp accepted by datetime.fromisoformat; legacy evidence permits a missing timezone."
+      "description": "ISO timestamp accepted by datetime.fromisoformat; timezone required and not before 2026-08-01T00:00:00Z."
     },
     "phaseOutcome": {
       "enum": [

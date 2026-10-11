@@ -241,24 +241,7 @@ struct LocalTerentoManifestStore: TerentoManifestStore, TerentoManifestCleanupSt
                 _ = try readUnlocked(manifestURL)
                 return nil
             } catch TerentoManifestStoreError.unreadableManifest {
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "en_US_POSIX")
-                formatter.timeZone = TimeZone(secondsFromGMT: 0)
-                formatter.dateFormat = "yyyyMMdd-HHmmss"
-                var destination = manifestURL.deletingLastPathComponent()
-                    .appendingPathComponent("manifest.corrupt-\(formatter.string(from: now)).json")
-                var suffix = 1
-                while FileManager.default.fileExists(atPath: destination.path) {
-                    destination = manifestURL.deletingLastPathComponent()
-                        .appendingPathComponent("manifest.corrupt-\(formatter.string(from: now))-\(suffix).json")
-                    suffix += 1
-                }
-                do {
-                    try FileManager.default.moveItem(at: manifestURL, to: destination)
-                } catch {
-                    throw TerentoManifestStoreError.writeFailed
-                }
-                return destination
+                return try setAside(manifestURL, now: now, failure: .writeFailed)
             }
         }
     }
@@ -340,10 +323,66 @@ struct LocalTerentoManifestStore: TerentoManifestStore, TerentoManifestCleanupSt
     }
 }
 
+/// Renames (or, with `copy`, copies) a local record to
+/// `<name>.corrupt-<UTC date>[-n].json` next to it, never overwriting an
+/// earlier one. The caller holds the lock.
+private func setAside(_ url: URL, now: Date, copy: Bool = false,
+                      failure: TerentoManifestStoreError) throws -> URL {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.dateFormat = "yyyyMMdd-HHmmss"
+    let stem = "\(url.deletingPathExtension().lastPathComponent).corrupt-\(formatter.string(from: now))"
+    var destination = url.deletingLastPathComponent().appendingPathComponent("\(stem).json")
+    var suffix = 1
+    while FileManager.default.fileExists(atPath: destination.path) {
+        destination = url.deletingLastPathComponent().appendingPathComponent("\(stem)-\(suffix).json")
+        suffix += 1
+    }
+    do {
+        if copy {
+            try FileManager.default.copyItem(at: url, to: destination)
+        } else {
+            try FileManager.default.moveItem(at: url, to: destination)
+        }
+    } catch {
+        throw failure
+    }
+    return destination
+}
+
+/// Decodes records one at a time so a record this build cannot read (for
+/// example a newer artifact kind after a downgrade) does not hide the rest.
+private struct LossyFailedInstallRecoveryFile: Decodable {
+    private struct Skipped: Decodable {
+        init(from decoder: Decoder) throws {}
+    }
+    private enum CodingKeys: String, CodingKey { case records }
+
+    var records: [TerentoFailedInstallRecoveryRecord] = []
+    var skippedRecords = false
+
+    init(from decoder: Decoder) throws {
+        var list = try decoder.container(keyedBy: CodingKeys.self).nestedUnkeyedContainer(forKey: .records)
+        while !list.isAtEnd {
+            if let record = try? list.decode(TerentoFailedInstallRecoveryRecord.self) {
+                records.append(record)
+            } else {
+                _ = try list.decode(Skipped.self)
+                skippedRecords = true
+            }
+        }
+    }
+}
+
 /// Stores only incomplete-install candidates. A candidate is never enough by
 /// itself to delete a device object: the recovery delete path still verifies
 /// the live object, size, full hash, and post-delete absence.
 struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore, Sendable {
+    /// Receives every set-aside copy so each path leaves a diagnostic trace.
+    /// Set once at app launch, before any store use; tests leave it nil.
+    nonisolated(unsafe) static var onSetAside: (@Sendable (URL) -> Void)?
+
     private let rootDirectory: URL?
 
     init(rootDirectory: URL? = nil) {
@@ -353,20 +392,7 @@ struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore
     func read(deviceKey: String) throws -> [TerentoFailedInstallRecoveryRecord] {
         let recoveryURL = try recoveryURL()
         return try withRecoveryLock(at: recoveryURL, exclusive: false) {
-            guard FileManager.default.fileExists(atPath: recoveryURL.path) else {
-                return []
-            }
-
-            do {
-                let data = try Data(contentsOf: recoveryURL)
-                let file = try JSONDecoder().decode(
-                    TerentoFailedInstallRecoveryFile.self,
-                    from: data
-                )
-                return file.records.filter { $0.deviceKey == deviceKey }
-            } catch {
-                throw TerentoManifestStoreError.unreadableRecovery
-            }
+            try readUnlocked(recoveryURL).records.filter { $0.deviceKey == deviceKey }
         }
     }
 
@@ -376,7 +402,17 @@ struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore
 
         do {
             try withRecoveryLock(at: recoveryURL, exclusive: true) {
-                var records = try readUnlocked(recoveryURL)
+                var records: [TerentoFailedInstallRecoveryRecord]
+                do {
+                    records = try recordsForRewrite(recoveryURL)
+                } catch TerentoManifestStoreError.unreadableRecovery {
+                    // An unreadable file must not block every install. Keep its
+                    // bytes for diagnostics and start a fresh record set.
+                    // Set aside first: an optional call skips its arguments when no hook is set.
+                    let setAsideURL = try setAside(recoveryURL, now: Date(), failure: .recoveryWriteFailed)
+                    Self.onSetAside?(setAsideURL)
+                    records = []
+                }
                 records.removeAll {
                     $0.deviceKey == record.deviceKey
                         && $0.devicePath == record.devicePath
@@ -402,6 +438,23 @@ struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore
         }
     }
 
+    /// Sets an unreadable recovery file aside (renamed with the date, never
+    /// deleted). Returns the quarantine URL, or nil when absent or readable.
+    @discardableResult
+    func quarantineUnreadableRecovery(now: Date = Date()) throws -> URL? {
+        let recoveryURL = try recoveryURL()
+        return try withRecoveryLock(at: recoveryURL, exclusive: true) {
+            do {
+                _ = try readUnlocked(recoveryURL)
+                return nil
+            } catch TerentoManifestStoreError.unreadableRecovery {
+                let destination = try setAside(recoveryURL, now: now, failure: .recoveryWriteFailed)
+                Self.onSetAside?(destination)
+                return destination
+            }
+        }
+    }
+
     func remove(
         deviceKey: String,
         devicePath: String,
@@ -416,7 +469,8 @@ struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore
                     return false
                 }
 
-                var records = try readUnlocked(recoveryURL)
+                let file = try readUnlocked(recoveryURL)
+                var records = file.records
                 let originalCount = records.count
                 records.removeAll {
                     $0.deviceKey == deviceKey
@@ -426,6 +480,7 @@ struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore
                 guard records.count != originalCount else {
                     return false
                 }
+                try preserveSkippedRecords(recoveryURL, file.skippedRecords)
 
                 if records.isEmpty {
                     try fileManager.removeItem(at: recoveryURL)
@@ -467,22 +522,35 @@ struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore
             .appendingPathComponent("failed-install-recovery.json")
     }
 
+    /// Throws `unreadableRecovery` only when the file itself cannot be parsed.
     private func readUnlocked(
         _ recoveryURL: URL
-    ) throws -> [TerentoFailedInstallRecoveryRecord] {
+    ) throws -> (records: [TerentoFailedInstallRecoveryRecord], skippedRecords: Bool) {
         guard FileManager.default.fileExists(atPath: recoveryURL.path) else {
-            return []
+            return ([], false)
         }
 
         do {
             let data = try Data(contentsOf: recoveryURL)
-            return try JSONDecoder().decode(
-                TerentoFailedInstallRecoveryFile.self,
-                from: data
-            ).records
+            let file = try JSONDecoder().decode(LossyFailedInstallRecoveryFile.self, from: data)
+            return (file.records, file.skippedRecords)
         } catch {
             throw TerentoManifestStoreError.unreadableRecovery
         }
+    }
+
+    private func recordsForRewrite(_ recoveryURL: URL) throws -> [TerentoFailedInstallRecoveryRecord] {
+        let file = try readUnlocked(recoveryURL)
+        try preserveSkippedRecords(recoveryURL, file.skippedRecords)
+        return file.records
+    }
+
+    /// A rewrite would drop records this build could not decode, so a dated
+    /// copy of the original keeps them first.
+    private func preserveSkippedRecords(_ recoveryURL: URL, _ skipped: Bool) throws {
+        guard skipped else { return }
+        let copyURL = try setAside(recoveryURL, now: Date(), copy: true, failure: .recoveryWriteFailed)
+        Self.onSetAside?(copyURL)
     }
 
     private func withRecoveryLock<Result>(

@@ -72,7 +72,8 @@ jobs:
     needs: publish
     if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta' && github.event_name == 'workflow_dispatch' && inputs.confirm_production_deploy == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Remote ceiling: lock 10 + pull 10 + snapshot 10 + migrate/start/verify ~10 minutes.
+    timeout-minutes: 60
     environment: rukas-api
     env:
       OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}

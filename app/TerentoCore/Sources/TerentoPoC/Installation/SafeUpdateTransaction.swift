@@ -669,15 +669,21 @@ struct SafeUpdateTransaction: Sendable {
     private let gate: InstallationTransactionGate
     private let sourceValidator: any SafeUpdateSourceValidator
     private let manifestReconciler: any SafeUpdateManifestReconciler
+    /// Records the new device object before the write and keeps the record
+    /// until the manifest is reconciled, like a fresh install. Nil (tests
+    /// that inject no store) skips this local bookkeeping.
+    private let recoveryStore: (any TerentoFailedInstallRecoveryStore)?
 
     init(
         gate: InstallationTransactionGate = .shared,
         sourceValidator: any SafeUpdateSourceValidator = DefaultSafeUpdateSourceValidator(),
-        manifestReconciler: any SafeUpdateManifestReconciler = LocalSafeUpdateManifestReconciler()
+        manifestReconciler: any SafeUpdateManifestReconciler = LocalSafeUpdateManifestReconciler(),
+        recoveryStore: (any TerentoFailedInstallRecoveryStore)? = nil
     ) {
         self.gate = gate
         self.sourceValidator = sourceValidator
         self.manifestReconciler = manifestReconciler
+        self.recoveryStore = recoveryStore
     }
 
     func run(
@@ -690,10 +696,17 @@ struct SafeUpdateTransaction: Sendable {
         var cleanupAttempted = false
         var cleanupSucceeded = false
         var inventoryMetrics: InstallationInventoryMetrics?
+        var recoveryRecord: TerentoFailedInstallRecoveryRecord?
+        func removeRecoveryRecord() {
+            guard let recoveryRecord else { return }
+            _ = try? recoveryStore?.remove(deviceKey: recoveryRecord.deviceKey,
+                devicePath: recoveryRecord.devicePath, filename: recoveryRecord.filename)
+        }
         func cleanup(_ object: SafeUpdateRemoteObject, transport: any SafeUpdateTransport) -> SafeUpdateStatus {
             cleanupAttempted = true
             let status = self.cleanup(object, transport: transport)
             cleanupSucceeded = status != .failedCleanup
+            if cleanupSucceeded { removeRecoveryRecord() }
             return status
         }
         func failure(_ status: SafeUpdateStatus, _ message: String,
@@ -963,6 +976,29 @@ struct SafeUpdateTransaction: Sendable {
         } else {
             transferProgress = nil
         }
+        let newRecoveryRecord = TerentoFailedInstallRecoveryRecord(
+            deviceKey: request.deviceKey,
+            packageID: request.selectedMap.id,
+            providerId: request.selectedMap.providerId,
+            regionId: request.selectedMap.identity?.region ?? request.selectedMap.regionId,
+            version: artifact.version,
+            devicePath: targetPath,
+            filename: targetFilename,
+            sizeBytes: artifact.installSizeBytes,
+            sha256: artifact.sha256,
+            createdAt: Date(),
+            artifactID: request.selectedMap.mainArtifact?.id,
+            artifactKind: .main,
+            bbbikeMetadata: BBBikeMapMetadata(package: request.selectedMap)
+        )
+        do {
+            try recoveryStore?.record(newRecoveryRecord)
+            recoveryRecord = newRecoveryRecord
+        } catch {
+            // Local bookkeeping failed before any device call: nothing was changed.
+            // Same classification as a fresh install's recovery-record failure (manifest stage).
+            return failure(.failedManifestReconciliation, "Terento could not record the update safely. Nothing was changed.", storagePlan: storagePlan)
+        }
         do {
             writeStarted = true
             written = try transport.writeTransactionObject(
@@ -971,6 +1007,7 @@ struct SafeUpdateTransaction: Sendable {
                 onProgress: transferProgress
             )
         } catch let error as SafeUpdateTransportError {
+            // A failed write may still have created a partial object, so the record stays.
             return failure(status(for: error), error.localizedDescription, storagePlan: storagePlan)
         } catch {
             return failure(.failedWrite, "The new map could not be written. The old map remains installed.", storagePlan: storagePlan)
@@ -1139,6 +1176,7 @@ struct SafeUpdateTransaction: Sendable {
         } catch {
             return failure(.failedManifestReconciliation, "The device update finished, but local ownership could not be reconciled safely.", storagePlan: storagePlan, newObject: verified, oldMapPreserved: false, finalObjects: finalObjects)
         }
+        removeRecoveryRecord()
 
         emit(.completed, onProgress)
         return SafeUpdateResult(

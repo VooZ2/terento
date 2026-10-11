@@ -8,7 +8,7 @@ import re
 from typing import Any
 from uuid import UUID
 
-from .telemetry import validate_release_label
+from .telemetry import EARLIEST_EVENT_TIME, validate_release_label
 
 
 MAX_EVENT_BYTES = 8 * 1024
@@ -153,6 +153,8 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         raise MapEventValidationError("invalid_timestamp") from exc
     if timestamp.tzinfo is None:
         raise MapEventValidationError("timestamp_requires_timezone")
+    if timestamp < EARLIEST_EVENT_TIME:
+        raise MapEventValidationError("invalid_timestamp")
     event = dict(event)
     event["providerId"] = event["providerId"].lower()
     if event["providerId"] == "custom":
