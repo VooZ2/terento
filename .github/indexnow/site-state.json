@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "9bd60975483278bb232f6a612b8e879bc0681d27",
+    "commit": "4f1826965ed193a4cdeda55aaba9d0d33d08c988",
     "pages": [
       {
         "path": "/",
@@ -280,7 +280,7 @@
         "file": "site/it/download/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "d773b68d8abbf470a020dc7d7ac19b4167502b694b13c7abb24629df0457170a",
+        "fingerprint": "c52dc78fff36b2ce4f109baded399fd7d705afa8776a9841ecd0250984d34b1f",
         "lastmod": "2026-10-11"
       },
       {
@@ -2257,21 +2257,27 @@
         "fingerprint": "a100242d12a3e287dbf21589fd4413513eb752cdc2c01bf5331b9b2be199636f",
         "status": 200,
         "acceptedAt": "2026-10-11T16:31:00Z"
+      },
+      {
+        "url": "https://terento.app/it/download/",
+        "fingerprint": "c52dc78fff36b2ce4f109baded399fd7d705afa8776a9841ecd0250984d34b1f",
+        "status": 200,
+        "acceptedAt": "2026-10-11T17:49:20Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-10-11T16:30:59Z",
-    "lastSuccessfulSubmissionAt": "2026-10-11T16:30:59Z",
+    "lastSubmissionAt": "2026-10-11T17:49:19Z",
+    "lastSuccessfulSubmissionAt": "2026-10-11T17:49:19Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-10-11T16:31:00Z",
+    "at": "2026-10-11T17:49:20Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 18,
-    "accepted": 18,
+    "planned": 1,
+    "accepted": 1,
     "pending": 0,
-    "previousAccepted": 291
+    "previousAccepted": 309
   }
 }
