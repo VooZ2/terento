@@ -753,7 +753,7 @@ def main() -> int:
         "Persist IndexNow publication state", ".github/indexnow/site-state.json",
         "Prepare IndexNow report when notification was not run", "Report IndexNow submission result",
         "INDEXNOW", "component:\"indexnow\"", "indexnow-observation",
-        "continue-on-error: true", "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+        "continue-on-error: true", "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
     ):
         assert contract in deploy_site, f"deploy-site.yml is missing {contract!r}"
     assert "keyLocation" not in deploy_site, "the IndexNow key location must not be printed by the workflow"
