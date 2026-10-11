@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "c0272876d62b248ac36f4659fce34ce40ffae059",
+    "commit": "e00daeec0fc103137e668b97c160458a04a10883",
     "pages": [
       {
         "path": "/",
@@ -316,8 +316,8 @@
         "file": "site/legal/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "2f436b1fd8a095b5c3f42ac8840c33c10902964cbc01c01d1d96605706acde7d",
-        "lastmod": "2026-10-10"
+        "fingerprint": "39f976119cb8a759f7ef7119f20cdd38e574a69566ca36bc8fc7d9f9ca5200b1",
+        "lastmod": "2026-10-11"
       },
       {
         "path": "/map-styles/",
@@ -397,8 +397,8 @@
         "file": "site/privacy/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "18326b324906f8e7ade44e2fe12fd05e8a88336facb6fc9bb8e4b10326063af1",
-        "lastmod": "2026-10-10"
+        "fingerprint": "51b6bcbb2ed80c2bb43a1a49245e8f2c1401dc99287cb9a7a93929873eafee92",
+        "lastmod": "2026-10-11"
       }
     ]
   },
@@ -2299,21 +2299,33 @@
         "fingerprint": "c512b5b1226731c4ca8de639aa283c9c6e2cbb8f287f2ce440d12d9ea0fc60bb",
         "status": 200,
         "acceptedAt": "2026-10-11T18:05:11Z"
+      },
+      {
+        "url": "https://terento.app/legal/",
+        "fingerprint": "39f976119cb8a759f7ef7119f20cdd38e574a69566ca36bc8fc7d9f9ca5200b1",
+        "status": 200,
+        "acceptedAt": "2026-10-11T18:57:15Z"
+      },
+      {
+        "url": "https://terento.app/privacy/",
+        "fingerprint": "51b6bcbb2ed80c2bb43a1a49245e8f2c1401dc99287cb9a7a93929873eafee92",
+        "status": 200,
+        "acceptedAt": "2026-10-11T18:57:15Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-10-11T18:05:11Z",
-    "lastSuccessfulSubmissionAt": "2026-10-11T18:05:11Z",
+    "lastSubmissionAt": "2026-10-11T18:57:15Z",
+    "lastSuccessfulSubmissionAt": "2026-10-11T18:57:15Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-10-11T18:05:11Z",
+    "at": "2026-10-11T18:57:15Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 6,
-    "accepted": 6,
+    "planned": 2,
+    "accepted": 2,
     "pending": 0,
-    "previousAccepted": 310
+    "previousAccepted": 316
   }
 }
