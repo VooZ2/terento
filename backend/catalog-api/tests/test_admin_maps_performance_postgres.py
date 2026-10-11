@@ -111,9 +111,10 @@ class MapsQueryCostTests(PGliteTestCase):
         # The date-scoped linkage lookup needs a nested loop even on this tiny
         # history (a JIT trigger in production); the guard must be exercised.
         self.assertGreaterEqual(expensive, 1)
-        # population, all-time, linkage and trend: a fixed number of reads,
-        # each evaluated with JIT disabled.
-        self.assertEqual(len(statements), 4, [" ".join(s[1].split())[:60] for s in statements])
+        # population, all-time, linkage and trend, plus the web installer rows
+        # of population, all-time and trend: a fixed number of reads, each
+        # evaluated with JIT disabled.
+        self.assertEqual(len(statements), 7, [" ".join(s[1].split())[:60] for s in statements])
         self.assertTrue(all("SET LOCAL jit = off" in settings for settings, _, _ in statements))
 
     def test_provider_filtered_maps_reads_run_without_jit(self):
@@ -121,12 +122,14 @@ class MapsQueryCostTests(PGliteTestCase):
             {"period": "30d", "timeZone": "UTC", "provider": "freizeitkarte", "outcome": "FAILED"}
         )
         self.assertGreaterEqual(expensive, 1)
-        # population, all-time, detail (outcome filter), linkage and trend.
-        self.assertEqual(len(statements), 5)
+        # population, all-time, detail (outcome filter), linkage and trend,
+        # plus the web rows of population, all-time and trend.
+        self.assertEqual(len(statements), 8)
 
     def test_all_time_maps_reuses_population_rows(self):
         statements, _ = self.assert_expensive_reads_skip_jit({"period": "all", "timeZone": "UTC"})
-        self.assertEqual(len(statements), 3)
+        # app population, linkage and trend, plus the web rows of population and trend.
+        self.assertEqual(len(statements), 5)
 
 
 if __name__ == "__main__":

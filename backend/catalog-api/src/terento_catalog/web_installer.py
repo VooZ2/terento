@@ -2,7 +2,9 @@
 
 Page events and relay jobs arrive from the web installer server only (bearer
 secret), are checked against a closed allowlist and summarized for the Admin
-Web installer page. A separate population: nothing here feeds app statistics.
+Web installer page. Counted map results (every attempt; a failure only after
+writing started) also join the shared install statistics next to app results
+(owner decision 2026-10-11); everything else stays on the Web installer page.
 """
 
 from __future__ import annotations
@@ -60,11 +62,13 @@ _SYSTEM = {
 }
 _DIAGNOSTIC = {"errorName": ERROR_NAMES, "httpStatus": (100, 599), "mtpResponse": (0x2000, 0xA8FF)}
 _WATCH = {"model": _MODEL, "firmware": re.compile(r"\d{1,5}(\.\d{1,3})?")}
+# The watch's USB model code: the same for every watch of one model.
+_USB = {"usbVendorId": (0, 0xFFFF), "usbProductId": (0, 0xFFFF)}
 _FIELDS: dict[str, dict[str, Any]] = {
     "GATE": {},
-    "CONNECT": {**_WATCH, "baseModel": _MODEL},
+    "CONNECT": {**_WATCH, **_USB, "baseModel": _MODEL},
     "MAP_RESULT": {
-        **_WATCH, "operation": frozenset({"install", "update"}), "provider": _PROVIDER, "packageId": _PACKAGE,
+        **_WATCH, **_USB, "operation": frozenset({"install", "update"}), "provider": _PROVIDER, "packageId": _PACKAGE,
         "sizeBucket": frozenset({"<100MB", "100-500MB", "500MB-1GB", "1-2GB", "2-4GB", ">4GB"}),
         "failureStage": frozenset({"PREPARE", "DOWNLOAD", "WRITE", "VERIFY"}), "reason": REASONS,
         "writeStarted": bool, "writeS": (0, 86400), "verifyS": (0, 86400),
@@ -78,6 +82,7 @@ EVENT_COLUMNS = {
     "provider": "provider", "packageId": "package_id", "sizeBucket": "size_bucket", "failureStage": "failure_stage",
     "reason": "reason", "writeStarted": "write_started", "writeS": "write_s", "verifyS": "verify_s",
     "errorName": "error_name", "httpStatus": "http_status", "mtpResponse": "mtp_response",
+    "usbVendorId": "usb_vendor_id", "usbProductId": "usb_product_id",
 }
 # Outcomes that carry no failure diagnostics.
 _SUCCESS_OUTCOMES = frozenset({"PASSED", "PASSED_TESTING_PLATFORM", "CONNECTED", "SUCCEEDED", "FINISHED"})
@@ -163,7 +168,26 @@ def validate_event(raw: bytes, *, now: datetime | None = None) -> dict[str, Any]
         raise WebInstallerValidationError("missing_operation")
     if outcome == "SUCCEEDED" and ("failure_stage" in row or "reason" in row):
         raise WebInstallerValidationError("unexpected_reason")
+    if ("usb_vendor_id" in row) != ("usb_product_id" in row):
+        raise WebInstallerValidationError("invalid_usbProductId")
     return row
+
+
+def identity_event(row: dict[str, Any]) -> dict[str, Any]:
+    """The facts the shared identity assessment reads for one web event: the
+    model text the watch reports and its USB model code."""
+    event: dict[str, Any] = {"rawMTPModel": row.get("model")}
+    if row.get("usb_vendor_id") is not None and row.get("usb_product_id") is not None:
+        event["usbVendorID"], event["usbProductID"] = row["usb_vendor_id"], row["usb_product_id"]
+    return event
+
+
+def counted_result(row: dict[str, Any]) -> bool:
+    """A web map result that counts: every attempt that succeeded, and every
+    failure after writing to the watch started (same rule as app results).
+    Mirrors the ``web_installer_map_result`` view."""
+    return row["stage"] == "MAP_RESULT" and (
+        row["outcome"] == "SUCCEEDED" or (row["outcome"] == "FAILED" and row.get("write_started") is True))
 
 
 def validate_relay_job(raw: bytes, *, now: datetime | None = None) -> dict[str, Any]:
@@ -243,19 +267,6 @@ def _system(row: dict[str, Any]) -> str | None:
     return joined(row.get("os_family"), row.get("os_major"))
 
 
-def final_map_results(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """One result per (session, package, operation): the latest MAP_RESULT of
-    that page load, so a failure replaced by a retry is not a final failure."""
-    latest: dict[tuple[Any, ...], dict[str, Any]] = {}
-    for row in events:
-        if row["stage"] != "MAP_RESULT":
-            continue
-        key = (row["session_id"], row.get("package_id"), row.get("operation"))
-        if key not in latest or row["occurred_at"] >= latest[key]["occurred_at"]:
-            latest[key] = row
-    return sorted(latest.values(), key=lambda row: row["occurred_at"], reverse=True)
-
-
 def _grouped(rows: list[dict[str, Any]], keys: tuple[str, ...]) -> list[dict[str, Any]]:
     groups: dict[tuple[Any, ...], dict[str, Any]] = {}
     for row in rows:
@@ -280,8 +291,8 @@ def _support(outcomes: set[str]) -> str:
 
 def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[str, Any]:
     """Admin Web installer read model for one period (test records already excluded)."""
-    final = final_map_results(events)
-    successes = [row for row in final if row["outcome"] == "SUCCEEDED"]
+    counted = sorted((row for row in events if counted_result(row)), key=lambda row: row["occurred_at"], reverse=True)
+    successes = [row for row in counted if row["outcome"] == "SUCCEEDED"]
     connected = {row["session_id"] for row in events if row["stage"] == "CONNECT" and row["outcome"] == "CONNECTED"}
     models: dict[tuple[Any, ...], dict[str, Any]] = {}
     for row in events:
@@ -294,7 +305,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
         model["last"] = max(model["last"], row["occurred_at"])
         if row.get("firmware") and row["firmware"] not in model["firmware"] and len(model["firmware"]) < 6:
             model["firmware"].append(row["firmware"])
-    for row in final:
+    for row in counted:
         model = models.get((row.get("model"), _system(row)))
         if model is None:
             continue
@@ -312,7 +323,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
         item["visits"] += 1
         item["blocked"] += row["outcome"].startswith("BLOCKED")
         item["outcomes"].add(row["outcome"])
-    recent = sorted(final + [r for r in events if r["stage"] == "REMOVE"], key=lambda row: row["occurred_at"], reverse=True)
+    recent = sorted([r for r in events if r["stage"] in ("MAP_RESULT", "REMOVE")], key=lambda row: row["occurred_at"], reverse=True)
     requests = [job for job in jobs if job["outcome"] != "REFUSED"]
     delivered = [job for job in jobs if job["outcome"] == "DELIVERED"]
     providers: dict[str, dict[str, Any]] = {}
@@ -338,7 +349,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
             "connectedSessions": len(connected),
             "installed": sum(row.get("operation") != "update" for row in successes),
             "updated": sum(row.get("operation") == "update" for row in successes),
-            "failed": sum(row["outcome"] == "FAILED" for row in final),
+            "failed": sum(row["outcome"] == "FAILED" for row in counted),
             "medianWriteS": _median([row.get("write_s") for row in successes]),
             "medianVerifyS": _median([row.get("verify_s") for row in successes]),
             "models": sorted(({**m, "sessions": len(m["sessions"])} for m in models.values()),
@@ -372,7 +383,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
 def chart_summary(counts: list[dict[str, Any]]) -> dict[str, Any]:
     """Dashboard Web view from per-bucket counts (bucket, field, count): the
     same row shape as the app trend. Downloads are relay jobs; installs are
-    final map results."""
+    counted map results (``counted_result``)."""
     buckets: dict[Any, dict[str, Any]] = {}
     totals: dict[str, int] = {}
     for row in counts:

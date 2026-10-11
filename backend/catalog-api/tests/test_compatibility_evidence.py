@@ -1111,6 +1111,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
                 "model", "canonicalModel", "compatibilityIdentity", "variant",
                 "caseSizeMm", "displayType", "canonicalDeviceId",
                 "attemptedInstallations", "successfulInstallations",
+                "appSuccessfulInstallations", "webSuccessfulInstallations",
                 "reconnectVerifiedInstallations", "failedInstallations",
                 "successRate", "evidenceStatus", "lastSuccessfulInstallation",
                 "lastEvidence", "mapCapable",

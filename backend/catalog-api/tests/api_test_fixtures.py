@@ -32,7 +32,7 @@ class FakeProviderDatabase:
     def identity_catalog(self):
         return [], []
 
-    def map_statistics_trend(self, filters, *, period, time_zone="UTC"):
+    def map_statistics_trend(self, filters, *, period, time_zone="UTC", include_web=False):
         return [], PERIOD_BUCKETS[period]
 
     def installation_problem_counts(self, identity_key=None):
@@ -162,6 +162,9 @@ class FakeProviderDatabase:
             "first_occurred_at": datetime(2026, 8, 31, tzinfo=UTC),
             "last_occurred_at": datetime(2026, 8, 31, tzinfo=UTC),
         }]
+
+    def web_installer_map_statistics(self, filters, *, trend_bucket=None, time_zone="UTC"):
+        return []
 
     def map_statistics_linkage(self, filters):
         return {

@@ -26,6 +26,7 @@ from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
 from .telemetry import is_local_release_label
+from .web_installer import identity_event as web_installer_identity_event
 from .statistics_exclusions import classify_compatibility_event
 from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, all_time_bucket, period_start
 
@@ -174,6 +175,15 @@ def _overview_time_zone(value: str) -> ZoneInfo:
         return ZoneInfo(value)
     except (ZoneInfoNotFoundError, ValueError):
         return ZoneInfo("UTC")
+
+
+def web_installer_identity(
+    row: dict[str, Any], devices: list[dict[str, Any]], mappings: list[dict[str, Any]],
+) -> tuple[str | None, str]:
+    """Catalog model and resolution of one web event (model text and USB code)."""
+    assessment = assess_identity(web_installer_identity_event(row), devices, mappings)
+    device_id = assessment["canonicalDeviceId"]
+    return device_id, (assessment["resolution"] if device_id else "UNRESOLVED")
 
 
 def _web_installer_period(column: str, since: datetime | None, until: datetime | None) -> tuple[str, list[Any]]:
@@ -338,6 +348,29 @@ def _fill_overview_trend_buckets(
         })
         current = _next_overview_bucket(current, bucket, time_zone=time_zone)
     return result
+
+
+TREND_COUNT_FIELDS = (
+    "success_count", "failed_count", "custom_count", "download_success_count", "download_failed_count",
+    "map_update_count", "map_update_success_count", "map_update_failed_count",
+)
+
+
+def combine_trend_rows(
+    *sources: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
+) -> list[dict[str, Any]]:
+    """Sum the per-bucket counts of several trends (app and web) into one."""
+    combined: dict[datetime, dict[str, Any]] = {}
+    for rows in sources:
+        for row in rows:
+            value = row.get("bucket")
+            if not isinstance(value, datetime):
+                continue
+            key = _overview_bucket_floor(value, bucket, time_zone=time_zone)
+            target = combined.setdefault(key, {"bucket": key, **{field: 0 for field in TREND_COUNT_FIELDS}})
+            for field in TREND_COUNT_FIELDS:
+                target[field] += int(row.get(field) or 0)
+    return [combined[key] for key in sorted(combined)]
 
 
 def _canonical_map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -521,6 +554,30 @@ IDENTITY_MAPPING_QUERY = (
     "SELECT kind, value, status, device_model_id, source_url, source_version "
     "FROM device_identity_mapping"
 )
+# Web installer results per catalog model (contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md):
+# counted results only, joined by the resolved catalog model like app evidence.
+WEB_MODEL_COUNTS_CTE = """
+    web_model_counts AS MATERIALIZED (
+        SELECT canonical_device_model_id,
+               count(*) FILTER (WHERE operation = 'install') AS web_attempted_install_count,
+               count(*) FILTER (WHERE operation = 'install' AND result = 'SUCCEEDED') AS web_successful_install_count,
+               count(*) FILTER (WHERE operation = 'install' AND result = 'FAILED') AS web_failed_install_count,
+               count(*) FILTER (WHERE operation = 'update' AND result = 'SUCCEEDED') AS web_successful_update_count,
+               count(*) FILTER (WHERE operation = 'update' AND result = 'FAILED') AS web_failed_update_count,
+               max(occurred_at) FILTER (WHERE operation = 'install' AND result = 'SUCCEEDED') AS web_last_success
+        FROM web_installer_map_result
+        WHERE canonical_device_model_id IS NOT NULL
+        GROUP BY canonical_device_model_id
+    )
+"""
+_WEB_MODEL_COLUMNS = """
+    COALESCE(w.web_attempted_install_count, 0) AS web_attempted_install_count,
+    COALESCE(w.web_successful_install_count, 0) AS web_successful_install_count,
+    COALESCE(w.web_failed_install_count, 0) AS web_failed_install_count,
+    COALESCE(w.web_successful_update_count, 0) AS web_successful_update_count,
+    COALESCE(w.web_failed_update_count, 0) AS web_failed_update_count,
+    w.web_last_success
+"""
 
 
 class Database:
@@ -1349,7 +1406,7 @@ class Database:
             return rows
 
     def public_compatibility_statistics(self, limit: int) -> list[dict[str, Any]]:
-        query = """
+        query = "WITH " + WEB_MODEL_COUNTS_CTE + """
             SELECT public_display_name AS model,
                    model AS canonical_model,
                    compatibility_identity,
@@ -1365,15 +1422,18 @@ class Database:
                    calculated_status,
                    last_success,
                    last_evidence,
-                   recognized_map_capable_evidence
-            FROM compatibility_model_statistics
+                   recognized_map_capable_evidence,
+                   """ + _WEB_MODEL_COLUMNS + """
+            FROM compatibility_model_statistics AS s
+            LEFT JOIN web_model_counts AS w USING (canonical_device_model_id)
             WHERE public_statistics_enabled = true
               AND review_status = 'APPROVED'
               AND (
                   calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
                   OR successful_install_count > 0
               )
-            ORDER BY successful_install_count DESC, attempted_install_count DESC, public_display_name
+            ORDER BY successful_install_count + COALESCE(w.web_successful_install_count, 0) DESC,
+                     attempted_install_count + COALESCE(w.web_attempted_install_count, 0) DESC, public_display_name
             LIMIT %s
         """
         with self.connection() as connection:
@@ -1385,7 +1445,7 @@ class Database:
         This deliberately does not replace ``public_compatibility_statistics``
         because the latter is consumed by existing native/web clients.
         """
-        query = """
+        query = "WITH " + WEB_MODEL_COUNTS_CTE + """
             SELECT
                 s.public_display_name AS model,
                 s.model AS evidence_model,
@@ -1422,8 +1482,11 @@ class Database:
                 asset.source_type AS asset_source_type,
                 asset.source_brand AS asset_source_brand,
                 asset.attribution_required AS asset_attribution_required,
-                asset.storage_key AS asset_storage_key
+                asset.storage_key AS asset_storage_key,
+                """ + _WEB_MODEL_COLUMNS + """
             FROM compatibility_model_statistics AS s
+            LEFT JOIN web_model_counts AS w
+                ON w.canonical_device_model_id = s.canonical_device_model_id
             LEFT JOIN device_model AS dm
                 ON dm.id = s.canonical_device_model_id
             LEFT JOIN device_family AS f
@@ -1451,8 +1514,8 @@ class Database:
                   s.calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
                   OR s.successful_install_count > 0
               )
-            ORDER BY s.successful_install_count DESC,
-                     s.attempted_install_count DESC,
+            ORDER BY s.successful_install_count + COALESCE(w.web_successful_install_count, 0) DESC,
+                     s.attempted_install_count + COALESCE(w.web_attempted_install_count, 0) DESC,
                      s.public_display_name
             LIMIT %s
         """
@@ -4543,7 +4606,7 @@ class Database:
         self, since: datetime | None, until: datetime | None, *, bucket: str, time_zone: str = "UTC",
     ) -> list[dict[str, Any]]:
         """Dashboard Web view counts per bucket, in the app trend field names:
-        final map results by occurredAt and finished relay jobs by requestedAt."""
+        counted map results by occurredAt and finished relay jobs by requestedAt."""
         local = {"hour": "hour", "day": "day", "week": "week", "month": "month"}.get(bucket)
         if local is None:
             raise ValueError("invalid web installer trend bucket")
@@ -4554,18 +4617,14 @@ class Database:
         with self.connection() as connection:
             rows = connection.execute(
                 f"""
-                WITH final AS (
-                    SELECT DISTINCT ON (session_id, package_id, operation) occurred_at, outcome, operation
-                    FROM web_installer_event
-                    WHERE stage = 'MAP_RESULT' AND {event_where}
-                    ORDER BY session_id, package_id, operation, occurred_at DESC
-                ), counted AS (
+                WITH counted AS (
                     SELECT occurred_at AS at, CASE
-                        WHEN outcome = 'SUCCEEDED' AND operation = 'update' THEN 'map_update_success_count'
-                        WHEN outcome = 'SUCCEEDED' THEN 'success_count'
-                        WHEN outcome = 'FAILED' AND operation = 'update' THEN 'map_update_failed_count'
-                        WHEN outcome = 'FAILED' THEN 'failed_count' END AS field
-                    FROM final
+                        WHEN result = 'SUCCEEDED' AND operation = 'update' THEN 'map_update_success_count'
+                        WHEN result = 'SUCCEEDED' THEN 'success_count'
+                        WHEN operation = 'update' THEN 'map_update_failed_count'
+                        ELSE 'failed_count' END AS field
+                    FROM web_installer_map_result
+                    WHERE {event_where}
                     UNION ALL
                     SELECT requested_at, CASE WHEN outcome = 'DELIVERED' THEN 'download_success_count'
                         ELSE 'download_failed_count' END
@@ -4578,6 +4637,144 @@ class Database:
                 FROM localized GROUP BY 1, 2
                 """,
                 [*event_values, *job_values, time_zone, *([] if bucket == "hour" else [time_zone])],
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def resolve_web_installer_identities(self, *, limit: int = 5000) -> dict[str, int]:
+        """Resolve the catalog model of web connections and map results that
+        have none yet, with the same identity assessment as app reports. The
+        scheduler runs it at start and after each cycle, so rows received
+        before a catalog or USB mapping change resolve later."""
+        with self.connection() as connection:
+            rows = list(connection.execute(
+                """
+                SELECT event_id, model, usb_vendor_id, usb_product_id FROM web_installer_event
+                WHERE canonical_device_model_id IS NULL AND is_test IS NOT TRUE
+                  AND stage IN ('CONNECT', 'MAP_RESULT')
+                  AND (model IS NOT NULL OR usb_product_id IS NOT NULL)
+                ORDER BY received_at LIMIT %s FOR UPDATE SKIP LOCKED
+                """, (limit,),
+            ).fetchall())
+            summary = {"pending": len(rows), "resolved": 0}
+            if not rows:
+                return summary
+            devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
+            mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
+            for row in rows:
+                device_id, resolution = web_installer_identity(row, devices, mappings)
+                connection.execute(
+                    "UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = %s "
+                    "WHERE event_id = %s", (device_id, resolution, row["event_id"]),
+                )
+                summary["resolved"] += device_id is not None
+        return summary
+
+    @staticmethod
+    def _web_installer_map_filter(filters: dict[str, Any], alias: str, time_column: str) -> tuple[str, list[Any]]:
+        """Map statistics population filters applied to web records."""
+        clauses, values = [f"{alias}.is_test IS NOT TRUE"], []
+        for key, clause in (("provider", f"{alias}.provider = %s"), ("map", f"{alias}.package_id = %s"),
+                            ("region", "upper(mp.region) = %s"),
+                            ("dateFrom", f"{alias}.{time_column} >= %s"), ("dateTo", f"{alias}.{time_column} <= %s")):
+            if filters.get(key):
+                clauses.append(clause)
+                values.append(filters[key])
+        return " AND ".join(clauses), values
+
+    def web_installer_map_statistics(
+        self, filters: dict[str, Any], *, trend_bucket: str | None = None, time_zone: str = "UTC",
+    ) -> list[dict[str, Any]]:
+        """Web records in the map statistics row shape, so the Maps page and
+        the Dashboard sum them with app rows: counted map results as main-map
+        installs and updates, finished relay jobs as downloads (the Dashboard
+        Web rule). With ``trend_bucket``: per-bucket counts in the trend field
+        names instead."""
+        result_where, result_values = self._web_installer_map_filter(filters, "w", "occurred_at")
+        job_where, job_values = self._web_installer_map_filter(filters, "j", "requested_at")
+        package = """mp.name AS map_package_name, mp.map_type, mp.region,
+                   COALESCE(mp.geographic_region_id, mp.canonical_region_id) AS canonical_region_id,
+                   mp.country AS region_country, 'main'::text AS component_kind, NULL::text AS acquisition_purpose"""
+        source = f"""
+            SELECT w.occurred_at, w.provider AS provider_id, p.name AS provider_name,
+                   w.package_id AS map_package_id, {package},
+                   CASE WHEN w.operation = 'update' THEN
+                            CASE WHEN w.result = 'SUCCEEDED' THEN 'MAP_UPDATE_SUCCEEDED' ELSE 'MAP_UPDATE_FAILED' END
+                        ELSE CASE WHEN w.result = 'SUCCEEDED' THEN 'INSTALL_SUCCEEDED' ELSE 'INSTALL_FAILED' END
+                   END AS event_type, w.result AS outcome
+            FROM web_installer_map_result AS w
+            LEFT JOIN map_package AS mp ON mp.id = w.package_id
+            LEFT JOIN map_provider AS p ON p.id = w.provider
+            WHERE {result_where}
+            UNION ALL
+            SELECT j.requested_at, j.provider, p.name, j.package_id, {package},
+                   CASE WHEN j.outcome = 'DELIVERED' THEN 'DOWNLOAD_SUCCEEDED' ELSE 'DOWNLOAD_FAILED' END,
+                   CASE WHEN j.outcome = 'DELIVERED' THEN 'SUCCEEDED' ELSE 'FAILED' END
+            FROM web_installer_relay_job AS j
+            LEFT JOIN map_package AS mp ON mp.id = j.package_id
+            LEFT JOIN map_provider AS p ON p.id = j.provider
+            WHERE j.outcome IN ('DELIVERED', 'FAILED', 'REFUSED', 'INTERRUPTED') AND {job_where}
+        """
+        values: list[Any] = [*result_values, *job_values]
+        if trend_bucket is not None:
+            local = {"hour": "hour", "day": "day", "week": "week", "month": "month"}[trend_bucket]
+            bucket_sql = ("occurred_at - (local_at - date_trunc('hour', local_at))" if trend_bucket == "hour"
+                          else f"(date_trunc('{local}', local_at) AT TIME ZONE %s)")
+            query = f"""
+                WITH web_rows AS ({source}),
+                localized AS (SELECT web_rows.*, timezone(%s, occurred_at) AS local_at FROM web_rows)
+                SELECT {bucket_sql} AS bucket,
+                       count(*) FILTER (WHERE event_type = 'INSTALL_SUCCEEDED') AS success_count,
+                       count(*) FILTER (WHERE event_type = 'INSTALL_FAILED') AS failed_count,
+                       count(*) FILTER (WHERE event_type = 'DOWNLOAD_SUCCEEDED') AS download_success_count,
+                       count(*) FILTER (WHERE event_type = 'DOWNLOAD_FAILED') AS download_failed_count,
+                       count(*) FILTER (WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')) AS map_update_count,
+                       count(*) FILTER (WHERE event_type = 'MAP_UPDATE_SUCCEEDED') AS map_update_success_count,
+                       count(*) FILTER (WHERE event_type = 'MAP_UPDATE_FAILED') AS map_update_failed_count
+                FROM localized GROUP BY 1 ORDER BY 1
+            """
+            values += [time_zone, *([] if trend_bucket == "hour" else [time_zone])]
+        else:
+            query = f"""
+                SELECT provider_id, provider_name, map_package_id, map_package_name, map_type, region,
+                       canonical_region_id, region_country, component_kind, acquisition_purpose, event_type, outcome,
+                       count(*) AS event_count, count(*) AS operation_count,
+                       min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at,
+                       min(occurred_at) AS first_event_at, max(occurred_at) AS last_event_at,
+                       'web'::text AS source
+                FROM ({source}) AS web_rows
+                GROUP BY provider_id, provider_name, map_package_id, map_package_name, map_type, region,
+                         canonical_region_id, region_country, component_kind, acquisition_purpose, event_type, outcome
+                ORDER BY last_occurred_at DESC
+            """
+        with self.connection() as connection:
+            _skip_jit_compilation(connection)
+            return [dict(row) for row in connection.execute(query, values).fetchall()]
+
+    def web_installer_recent_results(
+        self, since: datetime | None, until: datetime | None = None, *, limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Newest counted web results in the Dashboard Activity row shape."""
+        where, values = _web_installer_period("w.occurred_at", since, until)
+        where = where.replace("is_test", "w.is_test")
+        with self.connection() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT w.event_id, w.occurred_at, w.provider AS provider_id, p.name AS provider_name,
+                       w.package_id AS map_package_id, COALESCE(mp.name, w.package_id) AS map_package_name,
+                       COALESCE(mp.name, mp.region, w.package_id) AS display_name, mp.region,
+                       mp.country AS region_country, 'main'::text AS component_kind,
+                       w.canonical_device_model_id, dm.model, dm.variant, w.model AS reported_model,
+                       CASE WHEN w.operation = 'update' THEN
+                                CASE WHEN w.result = 'SUCCEEDED' THEN 'MAP_UPDATE_SUCCEEDED' ELSE 'MAP_UPDATE_FAILED' END
+                            ELSE CASE WHEN w.result = 'SUCCEEDED' THEN 'INSTALL_SUCCEEDED' ELSE 'INSTALL_FAILED' END
+                       END AS event_type, w.result AS outcome, 'web'::text AS source
+                FROM web_installer_map_result AS w
+                LEFT JOIN map_package AS mp ON mp.id = w.package_id
+                LEFT JOIN map_provider AS p ON p.id = w.provider
+                LEFT JOIN device_model AS dm ON dm.id = w.canonical_device_model_id
+                WHERE {where}
+                ORDER BY w.occurred_at DESC LIMIT %s
+                """, [*values, limit],
             ).fetchall()
         return [dict(row) for row in rows]
 
@@ -5349,6 +5546,7 @@ class Database:
         *,
         period: str,
         time_zone: str = "UTC",
+        include_web: bool = False,
     ) -> tuple[list[dict[str, Any]], str]:
         now = datetime.now(timezone.utc)
         until = filters.get("dateTo") or now
@@ -5359,9 +5557,14 @@ class Database:
             bucket = all_time_bucket(until - since.astimezone(timezone.utc))
         else:
             bucket = PERIOD_BUCKETS.get(period, "hour")
-        rows = self.map_statistics(
-            filters, trend_bucket=bucket, time_zone=time_zone,
-        )
+        rows = [dict(row) for row in self.map_statistics(filters, trend_bucket=bucket, time_zone=time_zone)]
+        if include_web:
+            # The Maps page shows app and web results in one trend (owner
+            # decision 2026-10-11); the Dashboard App view stays app-only.
+            rows = combine_trend_rows(
+                rows, self.web_installer_map_statistics(filters, trend_bucket=bucket, time_zone=time_zone),
+                bucket=bucket, time_zone=time_zone,
+            )
         if not rows:
             return [], bucket
         if not isinstance(since, datetime):
@@ -5936,7 +6139,7 @@ class Database:
         query = """
             WITH model_statistics AS MATERIALIZED (
                 SELECT * FROM compatibility_model_statistics AS s
-            )
+            ), """ + WEB_MODEL_COUNTS_CTE + """
             SELECT
                 f.id AS family_id,
                 f.name AS family_name,
@@ -5987,6 +6190,7 @@ class Database:
                 public_review.review_status AS public_review_status,
                 COALESCE(public_review.public_statistics_enabled, false) AS public_statistics_enabled,
                 public_review.public_display_name,
+                """ + _WEB_MODEL_COLUMNS + """,
                 latest.id AS latest_successful_sync_id,
                 latest.started_at AS latest_successful_sync_started_at,
                 latest.finished_at AS latest_successful_sync_finished_at,
@@ -5997,6 +6201,7 @@ class Database:
                 latest.records_updated AS latest_records_updated
             FROM device_model AS dm
             JOIN device_family AS f ON f.id = dm.family_id
+            LEFT JOIN web_model_counts AS w ON w.canonical_device_model_id = dm.id
             LEFT JOIN LATERAL (
                 SELECT da.asset_type, da.status, da.url, da.sha256,
                        da.width, da.height, da.mime_type, da.asset_version

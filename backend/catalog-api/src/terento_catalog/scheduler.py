@@ -71,14 +71,17 @@ def _run_compatibility_retention(database: Database) -> None:
 
 
 def _run_identity_auto_resolution(database: Database) -> None:
-    """Assign waiting identities that now resolve to one catalog model."""
+    """Assign waiting identities (app reports and web installer records) that
+    now resolve to one catalog model."""
 
     try:
-        summary = database.auto_resolve_pending_identities()
+        LOGGER.info("identity auto-resolution %s", database.auto_resolve_pending_identities())
     except Exception:
         LOGGER.exception("identity auto-resolution failed; next cycle will retry")
-        return
-    LOGGER.info("identity auto-resolution %s", summary)
+    try:
+        LOGGER.info("web installer identity resolution %s", database.resolve_web_installer_identities())
+    except Exception:
+        LOGGER.exception("web installer identity resolution failed; next cycle will retry")
 
 
 def run_collection_cycle(

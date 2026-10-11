@@ -19,6 +19,12 @@ def metric_value(body: str, label: str) -> str | None:
     return re.sub(r"<[^>]+>", "", match.group(1)).replace("Unknown", "").replace("Unavailable", "").strip()
 
 
+def source_count(body: str, source: str, key: str) -> str | None:
+    """Return one App, Web or All count of a model page Installs or Updates card."""
+    match = re.search(r"data-stat='" + re.escape(f"{source}-{key}") + r"'>([^<]*)<", body)
+    return match.group(1) if match else None
+
+
 def metric_tone(body: str, label: str) -> str | None:
     match = re.search(
         r"<(?:div|a) class='admin-metric[^']*'[^>]*data-tone='(\w+)'[^>]*>"

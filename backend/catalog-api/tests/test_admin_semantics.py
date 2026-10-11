@@ -79,7 +79,7 @@ from terento_catalog.db import (
     _overview_bucket_floor,
 )
 from terento_catalog.failure_reasons import normalize_failure_reason
-from admin_test_utils import metric_tone, metric_value, visible_text
+from admin_test_utils import metric_tone, metric_value, visible_text, source_count
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -420,8 +420,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             1,
         )[1].split("<section class='diagnostics-detail-section'", 1)[0]
         self.assertIn(">Installs</h2>", detail_panel)
-        for label in ("Attempts", "Failed", "Open problems", "Last report"):
+        for label in ("Open problems", "Last report"):
             self.assertIn(f"<span class='admin-metric-label'>{label}", detail_panel)
+        # App, Web and All rows (owner decision 2026-10-11).
+        for heading in ("Attempts", "Successful", "Failed"):
+            self.assertIn(f"<span role='columnheader'>{heading}</span>", detail_panel)
+        self.assertEqual(source_count(detail_panel, "web", "attempts"), "0")
         self.assertIn("data-stat='lastReport'>—<span class='sr-only'>Unknown</span>", detail_panel)
         self.assertIn("class='model-evidence-grid'", detail)
         self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", ADMIN_STYLES)
@@ -3343,8 +3347,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             operations=active, resolved_operations=resolved,
         ).decode()
         statistics = body.split("class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
-        for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open problems", "0")):
-            self.assertEqual(metric_value(statistics, label), value)
+        for key, value in (('attempts', '1'), ('successful', '1'), ('failed', '0')):
+            self.assertEqual(source_count(statistics, "all", key), value)
+            self.assertEqual(source_count(statistics, "app", key), value)
+        self.assertEqual(metric_value(statistics, "Open problems"), '0')
         self.assertIn("<span class='admin-metric-label'>Last report</span><strong class='admin-metric-value' data-stat='lastReport'>—<span class='sr-only'>Unknown</span></strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
         self.assertIn("data-status='RESOLVED'", body)
@@ -3404,8 +3410,10 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             operations=successful + open_failed, resolved_operations=resolved_failed,
         ).decode()
         statistics = body.split("class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
-        for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open problems", "1")):
-            self.assertEqual(metric_value(statistics, label), value)
+        for key, value in (('attempts', '8'), ('successful', '7'), ('failed', '1')):
+            self.assertEqual(source_count(statistics, "all", key), value)
+            self.assertEqual(source_count(statistics, "app", key), value)
+        self.assertEqual(metric_value(statistics, "Open problems"), '1')
         self.assertIn("<span class='admin-metric-label'>Last report</span><strong class='admin-metric-value' data-stat='lastReport'>—<span class='sr-only'>Unknown</span></strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
 

@@ -250,7 +250,7 @@ class CatalogAPITests(unittest.TestCase):
                     "event_count": count,
                 }]
 
-            def map_statistics_trend(self, filters, *, period, time_zone):
+            def map_statistics_trend(self, filters, *, period, time_zone, include_web=False):
                 count = {"24h": 1, "7d": 7, "30d": 30, "all": 90}[period]
                 if filters.get("provider") == "b":
                     count *= 2
@@ -313,7 +313,7 @@ class CatalogAPITests(unittest.TestCase):
                 super().__init__()
                 self.trend_call = None
 
-            def map_statistics_trend(self, filters, *, period, time_zone):
+            def map_statistics_trend(self, filters, *, period, time_zone, include_web=False):
                 self.trend_call = (dict(filters), period, time_zone)
                 return ([{"bucket": "2026-09-18T00:00:00Z", "success_count": 2}], "day")
 
@@ -337,7 +337,7 @@ class CatalogAPITests(unittest.TestCase):
                 super().__init__()
                 self.trend_filters = None
 
-            def map_statistics_trend(self, filters, *, period, time_zone):
+            def map_statistics_trend(self, filters, *, period, time_zone, include_web=False):
                 self.trend_filters = dict(filters)
                 return ([], "week")
 

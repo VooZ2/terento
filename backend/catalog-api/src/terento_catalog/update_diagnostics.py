@@ -273,20 +273,37 @@ def _update_review_controls(row: dict[str, Any], csrf_token: str, return_to: str
     return f"{issue_form}<div class='diagnostic-disclosure-stack'>{administration}{technical_form}</div>"
 
 
-def update_summary_markup(summary: dict[str, Any], device_id: str) -> str:
+def update_summary_markup(summary: dict[str, Any], device_id: str, *, web: dict[str, Any] | None = None) -> str:
     """Update reports for one model: diagnostic stream, all time. Styled like
     the Installs card beside it, with plain (unlinked) counts (owner decision
-    2026-10-06); the update history below filters by outcome."""
-    from .admin import _metric_row, _metric_tile
+    2026-10-06); the update history below filters by outcome. App, Web and All
+    rows (owner decision 2026-10-11); the web installer has no blocked-before-
+    writing result."""
+    from .admin import _metric_row, _metric_tile, _source_count_grid
 
-    def count(field: str, label: str, *, failure: bool = False) -> str:
-        return _metric_tile(label, int(summary.get(field) or 0), failure=failure, data_stat=field)
-
-    values = _metric_row([
-        count('successfulUpdateCount', 'Successful'),
-        count('failedUpdateCount', 'Failed', failure=True),
-        count('notStartedCount', 'Blocked before writing'),
-    ], label='Update reports for this model')
+    app = {
+        'successful': int(summary.get('successfulUpdateCount') or 0),
+        'failed': int(summary.get('failedUpdateCount') or 0),
+        'blocked': int(summary.get('notStartedCount') or 0),
+    }
+    if web is None:
+        # The Update diagnostics page is the app report stream only.
+        values = _metric_row([
+            _metric_tile('Successful', app['successful'], data_stat='successfulUpdateCount'),
+            _metric_tile('Failed', app['failed'], failure=True, data_stat='failedUpdateCount'),
+            _metric_tile('Blocked before writing', app['blocked'], data_stat='notStartedCount'),
+        ], label='Update reports for this model')
+    else:
+        web_counts = {'successful': int(web.get('updatesSuccessful') or 0),
+                      'failed': int(web.get('updatesFailed') or 0), 'blocked': None}
+        values = _source_count_grid(
+            [('Successful', 'successful', False), ('Failed', 'failed', True),
+             ('Blocked before writing', 'blocked', False)],
+            [('app', app), ('web', web_counts),
+             ('all', {'successful': app['successful'] + web_counts['successful'],
+                      'failed': app['failed'] + web_counts['failed'], 'blocked': app['blocked']})],
+            label='Updates by source',
+        )
     conflicts = int(summary.get('ambiguousUpdateCount') or 0)
     note = f"<p class='table-help'>{conflicts} conflicting reported results excluded from attempt totals. Inspect update history.</p>" if conflicts else ''
     return (

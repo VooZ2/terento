@@ -299,15 +299,19 @@ header with the period scope chip and, top right, the period totals as one
 numbers-only badge `successful / failed / success rate` (owner decision
 2026-10-11; failed in the danger tone only when positive, the words only for
 screen readers; Installs counts fresh installs only); the chart; and a legend
-naming each series by colour without counts. One `App`/`Web` switch beside the
+naming each series by colour without counts. One `All`/`App`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
-decisions 2026-10-10 and 2026-10-11; App is the default and the choice
-survives a period change): the chart and its header totals. App is the app-only
-statistic below, unchanged; Web shows only web installer records
+decisions 2026-10-10 and 2026-10-11; All is the default and the choice
+survives a period change): the chart and its header totals. The switch shows
+Font Awesome icons only (layer-group All, laptop App, globe Web; the names are
+for screen readers). App is the app-only statistic below, unchanged; Web shows
+only web installer records
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)):
-Downloads are relay jobs (sent, failed on the server) and Installs are final
+Downloads are relay jobs (sent, failed on the server) and Installs are counted
 web map results (install and update, succeeded and failed; no Custom .img
-series). Web records never enter the App view or any other app number. No All time line, purpose breakdown or other
+series); All adds App and Web per bucket. Activity lists app and web results
+together, newest first; a web row carries the globe icon after its label and
+no update-diagnostics link. No All time line, purpose breakdown or other
 explanatory text is shown in these cards; all-time totals live on Maps. Header totals and charts use the same period
 population, so they agree. A legend elsewhere shows a count only where it adds
 information no total shows (the Maps Custom .img install split and the App
@@ -359,7 +363,7 @@ web installer population. It has no explanatory lead text. `On the watch`: the
 tiles Watch connected, Maps installed, Maps updated, Failed and Writing (median
 writing time, then median checking time); `Watch models` (model as the watch
 reports it, the system it was connected from, firmware seen, connected
-sessions, final installs, updates and failures, last seen); `Systems and
+sessions, counted installs, updates and failures, last seen); `Systems and
 browsers` (each browser with what the page let it do, as icon and text:
 `Supported` for Google Chrome on a verified system, `Testing` for other
 Chromium browsers or systems still being tested, `Browser not supported` for

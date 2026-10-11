@@ -130,7 +130,9 @@ class DiagnosticParityTests(unittest.TestCase):
         # Update report counts are plain numbers styled like Installs (owner decision 2026-10-06).
         reports = body.split("id='model-update-kpis-title'", 1)[1].split('</section>', 1)[0]
         self.assertNotIn('<a ', reports)
-        self.assertIn("data-stat='successfulUpdateCount'>7</strong>", reports)
+        # App, Web and All rows (owner decision 2026-10-11).
+        self.assertIn("data-stat='app-successful'>7<", reports)
+        self.assertIn("data-stat='all-successful'>7<", reports)
         self.assertIn('updateOffset=100', body); self.assertIn('updateOffset=0', body)
         self.assertIn('diagnosticId=' + EVENT, body)
         # Update history mirrors Installation history (owner decision 2026-10-06):
