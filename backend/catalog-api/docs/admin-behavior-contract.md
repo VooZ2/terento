@@ -364,7 +364,10 @@ tiles Watch connected, Maps installed, Maps updated, Failed and Writing (median
 writing time, then median checking time); `Watch models` (model as the watch
 reports it, the system it was connected from, firmware seen, connected
 sessions, counted installs, updates and failures, last seen); `Systems and
-browsers` (each browser with what the page let it do, as icon and text:
+browsers` (each browser with what the installer page's current rule lets that system
+and browser do, also for visits recorded under an older rule; an unknown
+browser keeps its latest gate result. Shown as an icon only; its text is the
+tooltip and screen-reader label, owner decision 2026-10-11:
 `Supported` for Google Chrome on a verified system, `Testing` for other
 Chromium browsers or systems still being tested, `Browser not supported` for
 browsers without WebUSB such as Firefox and Safari, `System not supported` for
@@ -372,8 +375,8 @@ phones and other systems); `Connection problems` (with the system and browser)
 and `Install and removal problems`, where every
 failed attempt is grouped and shown in plain words with its stored codes next to
 them (step, reason, browser error name, HTTP status, MTP response code) so the
-cause can be traced; and `Recent results on watches` (newest 30 final results:
-one per page load, map and operation, plus removals). `On the server`: the
+cause can be traced; and `Recent results on watches` (newest 30 map results
+and removals, every attempt). `On the server`: the
 tiles Requests, Sent (with data sent), Sent through Cloudflare (sent jobs whose
 map went wholly or partly through the Cloudflare-proxied lab host because the
 direct download port was blocked, with its share of Sent), Failed, Preparing

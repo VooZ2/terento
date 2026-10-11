@@ -10440,6 +10440,7 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
 .web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
 @media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
+.web-installer-browser-row{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}.web-installer-support .admin-pill{padding:3px 5px}
 .web-installer-browser{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.web-installer-browser .admin-icon{color:var(--graphite)}
 .web-installer-table td{white-space:normal;overflow-wrap:anywhere}
 .web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}

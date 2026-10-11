@@ -280,13 +280,24 @@ def _grouped(rows: list[dict[str, Any]], keys: tuple[str, ...]) -> list[dict[str
     return sorted(groups.values(), key=lambda g: (-g["count"], -g["last"].timestamp()))
 
 
-def _support(outcomes: set[str]) -> str:
-    """What the page decided for this system and browser: the best gate result seen."""
-    if "PASSED" in outcomes:
-        return "SUPPORTED"
-    if "PASSED_TESTING_PLATFORM" in outcomes:
-        return "TESTING"
-    return "BLOCKED_BROWSER" if "BLOCKED_BROWSER" in outcomes else "BLOCKED_SYSTEM"
+# The installer page's current rule (lab browser.mjs), so rows recorded under an
+# older rule show what a visit would get today.
+_CHROMIUM = frozenset({"Chrome", "Edge", "Opera", "Brave"})
+_SUPPORT_OUTCOME = {"PASSED": "SUPPORTED", "PASSED_TESTING_PLATFORM": "TESTING", "BLOCKED_BROWSER": "BLOCKED_BROWSER"}
+
+
+def _support(os_family: str | None, browser_family: str | None, latest_outcome: str) -> str:
+    """What the page lets this system and browser do now: phones first, then
+    browsers without WebUSB, then systems; an unknown browser keeps its latest result."""
+    if os_family in ("Android", "iOS"):
+        return "BLOCKED_SYSTEM"
+    if browser_family in ("Firefox", "Safari"):
+        return "BLOCKED_BROWSER"
+    if browser_family in _CHROMIUM:
+        if os_family not in ("macOS", "Linux"):
+            return "BLOCKED_SYSTEM"
+        return "SUPPORTED" if browser_family == "Chrome" and os_family == "macOS" else "TESTING"
+    return _SUPPORT_OUTCOME.get(latest_outcome, "BLOCKED_SYSTEM")
 
 
 def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -319,10 +330,12 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
             continue
         browser = joined(row.get("browser_family"), row.get("browser_major"))
         item = systems.setdefault((_system(row), browser), {"system": _system(row), "browser": browser, "visits": 0, "blocked": 0,
-                                                           "outcomes": set()})
+                                                           "os_family": row.get("os_family"),
+                                                           "browser_family": row.get("browser_family"),
+                                                           "latest": (row["occurred_at"], row["outcome"])})
         item["visits"] += 1
         item["blocked"] += row["outcome"].startswith("BLOCKED")
-        item["outcomes"].add(row["outcome"])
+        item["latest"] = max(item["latest"], (row["occurred_at"], row["outcome"]))
     recent = sorted([r for r in events if r["stage"] in ("MAP_RESULT", "REMOVE")], key=lambda row: row["occurred_at"], reverse=True)
     requests = [job for job in jobs if job["outcome"] != "REFUSED"]
     delivered = [job for job in jobs if job["outcome"] == "DELIVERED"]
@@ -354,7 +367,8 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
             "medianVerifyS": _median([row.get("verify_s") for row in successes]),
             "models": sorted(({**m, "sessions": len(m["sessions"])} for m in models.values()),
                              key=lambda m: (-m["sessions"], m["model"] or "~", m["system"] or "")),
-            "systems": sorted(({k: v for k, v in s.items() if k != "outcomes"} | {"support": _support(s["outcomes"])}
+            "systems": sorted(({k: v for k, v in s.items() if k not in ("latest", "os_family", "browser_family")}
+                               | {"support": _support(s["os_family"], s["browser_family"], s["latest"][1])}
                               for s in systems.values()), key=lambda s: (-s["visits"], s["system"] or "~", s["browser"] or "")),
             "connectProblems": _grouped(
                 [row for row in events if row["stage"] == "CONNECT" and row["outcome"] != "CONNECTED"],
