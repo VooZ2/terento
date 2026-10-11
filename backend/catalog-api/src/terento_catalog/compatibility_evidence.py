@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from .telemetry import validate_release_label
+from .telemetry import EARLIEST_EVENT_TIME, validate_release_label
 from .failure_context import validate_event_contexts
 
 MAX_EVENT_BYTES = 16_384
@@ -171,9 +171,12 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         if not isinstance(event[key], int) or isinstance(event[key], bool) or not 0 <= event[key] <= 65535:
             raise EvidenceValidationError(f"invalid_{key}")
     try:
-        datetime.fromisoformat(str(event["timestamp"]).replace("Z", "+00:00"))
+        timestamp = datetime.fromisoformat(str(event["timestamp"]).replace("Z", "+00:00"))
     except ValueError as exc:
         raise EvidenceValidationError("invalid_timestamp") from exc
+    # Every shipped app encodes this Date with an explicit UTC offset.
+    if timestamp.tzinfo is None or timestamp < EARLIEST_EVENT_TIME:
+        raise EvidenceValidationError("invalid_timestamp")
     for key in ("compatibilityIdentity", "variant", "displayType", "family", "firmwareVersion"):
         value = event.get(key)
         if value is not None and (not isinstance(value, str) or len(value) > 160 or "/Users/" in value or "file://" in value):

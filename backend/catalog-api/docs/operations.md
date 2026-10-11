@@ -20,8 +20,10 @@ is a deploy-only reference for reviewed installations. It does not expose
 remote status or migration commands. The GitHub principal is not a general
 operator account and does not choose a migration number.
 
-The root helper performs this sequence while holding one non-blocking
-operations lock:
+The root helper performs this sequence while holding one operations lock. When
+another production operation (for example a site deploy) holds it, the helper
+waits up to ten minutes and then refuses with `Another production operation is
+in progress.`:
 
 1. validate the digest, revision, enabled target, previous state, and Compose configuration;
 2. pull and inspect the exact repository@digest image;
@@ -29,11 +31,12 @@ operations lock:
 4. read the migration inventory from that same image in a network-disabled, read-only audit container;
 5. read the existing database ledger without creating or modifying it;
 6. require the ledger to be an exact canonical prefix of the image inventory;
-7. run `terento-catalog-migrate` from the same image with no target-specific argument when entries are pending;
-8. reread the ledger and require exact equality with the candidate inventory;
-9. replace only the API/scheduler services with the same immutable image and verify health;
-10. verify the release, record state, and retain the previous image for rollback;
-11. after the recorded success, remove other local images of that repository without force, keeping only the current and previous images. Images still used by a container are left alone, and a cleanup problem never fails or rolls back the deployment.
+7. when entries are pending, write a root-only (`0600`) `pg_dump -Fc` snapshot to `/var/lib/terento/deployment/database-snapshots/`, keeping the newest three (a failed dump leaves the newest two); a failed or empty dump refuses the deploy before any SQL. The lock wait and snapshot apply once the owner has installed this helper pair;
+8. run `terento-catalog-migrate` from the same image with no target-specific argument;
+9. reread the ledger and require exact equality with the candidate inventory;
+10. replace only the API/scheduler services with the same immutable image and verify health;
+11. verify the release, record state, and retain the previous image for rollback;
+12. after the recorded success, remove other local images of that repository without force, keeping only the current and previous images. Images still used by a container are left alone, and a cleanup problem never fails or rolls back the deployment.
 
 The database container is never replaced by this path. A migration failure,
 ledger mismatch, invalid inventory, or health failure leaves the previous
@@ -92,9 +95,25 @@ address per minute. One install of up to 100 maps with optional contours emits
 about seven map events and one diagnostic per map, uploaded sequentially by the
 app with short retries, so the earlier 60/30 limits rejected a single large
 batch. The higher limits still bound abuse; `429` responses remain retryable for
-clients. Idle limiter keys are swept so memory stays bounded. Each request
+clients. A request counts toward a limit only once its size and
+`Content-Type: application/json` are valid, and the check-and-count is atomic,
+so concurrent requests cannot exceed a limit. Support reports are also capped
+at 30 per client address per 24 hours. Idle limiter keys are swept after their
+own window so memory stays bounded. Each request
 socket has a 60-second timeout per blocking read or write, so a stalled client
 releases its server thread while large requests and responses still progress.
+
+Each process (API or scheduler) lets at most 20 threads hold PostgreSQL
+connections at once; a thread's nested connections reuse its slot, so a holder
+never waits on itself. A thread that cannot get a slot within the connect
+timeout fails like an unavailable database (`503` on API routes), so a request
+burst cannot exhaust PostgreSQL `max_connections`. The public compatibility
+projections (`top-models.json`, `models.json`) are recomputed at most once a
+minute in each API process; during a database outage the last result is served,
+or the request fails fast, for 10 seconds before the next attempt. `/health`
+does not wait for a connection slot. The provider recheck worker retries its
+advisory-lock session every 30 seconds after a database outage, or while another
+scheduler still holds the lock during a deploy.
 
 ## Authorization and exceptional migrations
 

@@ -32,7 +32,31 @@ class DiagnosticPopulationTests(PGliteTestCase):
         )
         summary = self.service.compatibility_diagnostic_summary()["identity:Unknown watch"]
         self.assertEqual(summary["identity_pending"], 0)
-        self.assertEqual(summary["attempts"], 0)
+        self.assertEqual(self.twin()["identity:Unknown watch"]["attempts"], 0)
+
+    def twin(self):
+        rows = self.db.compatibility_diagnostic_population()
+        return _diagnostic_summary_by_identity(
+            [r for r in rows if r["diagnostic_status"] == "ACTIVE"],
+            [r for r in rows if r["diagnostic_status"] == "RESOLVED"],
+        )
+
+    def test_sql_identity_pending_matches_the_python_twin(self):
+        unresolved = dict(canonical_device_model_id=None, compatibility_identity="Venu X1", model="Venu X1")
+        operation = self.rows.uuid()
+        for index in range(2):  # one batch, two pending map results
+            self.rows.diagnostic(operation_id=operation, map_result_index=index,
+                                 identity_resolution_state="UNRESOLVED", **unresolved)
+        self.rows.diagnostic(identity_resolution_state="NOT_IDENTIFIABLE", **unresolved)
+        self.rows.diagnostic(identity_resolution_state="UNRESOLVED", phase_outcome="FAILED", write_started=False,
+                             failure_stage="download", **unresolved)
+        self.rows.diagnostic(identity_resolution_state="UNRESOLVED", diagnostic_status="RESOLVED", **unresolved)
+        self.rows.diagnostic(identity_resolution_state="UNRESOLVED", canonical_device_model_id=None,
+                             compatibility_identity="", model="")
+        self.rows.diagnostic()
+        twin = {key: values["identity_pending"] for key, values in self.twin().items() if key.startswith("identity:")}
+        self.assertEqual(self.db.identity_pending_counts(), twin)
+        self.assertEqual(twin, {"identity:Venu X1": 2, "identity:Unknown": 1})
 
     def test_resolving_a_batch_keeps_sibling_success_like_view_067(self):
         operation = self.rows.uuid()
@@ -40,9 +64,9 @@ class DiagnosticPopulationTests(PGliteTestCase):
             self.rows.diagnostic(operation_id=operation, map_result_index=index, selected_map_count=3)
         self.rows.diagnostic(operation_id=operation, map_result_index=2, selected_map_count=3,
                              phase_outcome="FAILED", failure_stage="write", failure_code="INSTALL_FAILED_WRITE")
-        before = self.service.compatibility_diagnostic_summary()[f"canonical:{FENIX_8}"]
+        before = {**self.twin()[f"canonical:{FENIX_8}"], **self.service.compatibility_diagnostic_summary()[f"canonical:{FENIX_8}"]}
         self.server.query("UPDATE compatibility_evidence_event SET diagnostic_status='RESOLVED'")
-        after = self.service.compatibility_diagnostic_summary()[f"canonical:{FENIX_8}"]
+        after = {**self.twin()[f"canonical:{FENIX_8}"], **self.service.compatibility_diagnostic_summary().get(f"canonical:{FENIX_8}", {"open_errors": 0})}
         view = self.sql("SELECT attempted_install_count, successful_install_count, failed_install_count"
                         " FROM compatibility_model_statistics WHERE canonical_device_model_id=%s", (FENIX_8,))[0]
         for summary in (before, after):

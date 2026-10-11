@@ -24,7 +24,7 @@ from terento_catalog.admin import (
     _admin_device_payload, _diagnostic_summary_by_identity, diagnostics_page, device_detail_page,
     hash_password, overview_page, token_hash,
 )
-from terento_catalog.db import Database
+from terento_catalog.db import IDENTITY_DEVICE_QUERY, IDENTITY_MAPPING_QUERY, Database
 from terento_catalog.http_api import CatalogService, make_handler
 from test_compatibility_evidence import FakeEvidenceDatabase
 
@@ -109,8 +109,8 @@ class IntakeDatabase(FakeEvidenceDatabase, Database):
         database = self
         class Connection:
             def execute(self, sql, parameters=None):
-                if sql == 'SELECT * FROM device_model': return Result([deepcopy(DEVICE)])
-                if sql == 'SELECT * FROM device_identity_mapping': return Result(database.mappings)
+                if sql == IDENTITY_DEVICE_QUERY: return Result([deepcopy(DEVICE)])
+                if sql == IDENTITY_MAPPING_QUERY: return Result(database.mappings)
                 sql = re.sub(r'%\((\w+)\)s', r':\1', sql).replace('::jsonb', '')
                 values = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in parameters.items()}
                 return Result([dict(r) for r in database.sqlite.execute(sql, values).fetchall()])

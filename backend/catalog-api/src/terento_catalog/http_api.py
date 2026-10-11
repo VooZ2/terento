@@ -6,6 +6,7 @@ import logging
 import hmac
 import re
 import secrets
+import threading
 import time
 import unicodedata
 from collections import defaultdict, deque
@@ -51,7 +52,6 @@ from .admin import (
     _admin_region_display_name,
     _admin_region_identity,
     _map_statistics_summary,
-    _diagnostic_summary_by_identity,
     _normalise_github_issue_reference,
     hash_password,
     login_page,
@@ -142,6 +142,9 @@ APP_FUNNEL_EVENT_RATE_LIMIT = 120
 WEB_INSTALLER_RATE_LIMIT = 1200
 # A user sends a support report only by explicit choice; retries reuse the id.
 SUPPORT_REPORT_RATE_LIMIT = 10
+SUPPORT_REPORT_DAILY_LIMIT = 30
+PUBLIC_ROWS_MAX_LIMIT = 500
+SUPPORT_REPORT_DAILY_WINDOW_SECONDS = 86_400
 RATE_LIMIT_WINDOW_SECONDS = 60
 # Socket timeout for one blocking read or write. A stalled or slow-loris client
 # cannot pin a server thread indefinitely; large bodies and responses still
@@ -149,7 +152,6 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 REQUEST_SOCKET_TIMEOUT_SECONDS = 60
 # Idle keys are swept periodically so the in-memory limiter cannot grow without bound.
 RATE_LIMIT_SWEEP_INTERVAL = 1000
-RATE_LIMIT_MAX_WINDOW_SECONDS = 900
 
 
 def _admin_time_zone(value: Any) -> str:
@@ -228,6 +230,9 @@ class CatalogService:
         self.public_base_url = public_base_url
         self._preview_manifest_cache: tuple[float, bytes, int] | None = None
         self._preview_manifest_generation = 0
+        # projection -> (monotonic time the entry stays valid until, canonical rows or None after a failure).
+        self._public_rows_cache: dict[str, tuple[float, list[dict[str, Any]] | None]] = {}
+        self._public_rows_lock = threading.Lock()
         self.admin_bootstrap_secret = admin_bootstrap_secret
         self.admin_session_ttl_seconds = admin_session_ttl_seconds
         self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
@@ -948,28 +953,36 @@ class CatalogService:
         return self._canonicalize_statistics(self.database.compatibility_statistics())
 
     def compatibility_diagnostic_summary(self) -> dict[str, dict[str, int]]:
-        rows = self.database.compatibility_diagnostic_population()
-        summary = _diagnostic_summary_by_identity(
-            [r for r in rows if r["diagnostic_status"] == "ACTIVE"],
-            [r for r in rows if r["diagnostic_status"] == "RESOLVED"],
-        )
-        # Open problems use the canonical Needs attention predicate and unit
-        # (operations), never the per-result twin above.
+        """Open problems and pending identities per identity, counted in SQL.
+
+        Attempt, success and failure counts come from the statistics view rows;
+        open problems use the canonical Needs attention predicate and unit
+        (operations).
+        """
+        pending = self.database.identity_pending_counts()
         by_identity = self.database.installation_problem_counts()["byIdentity"]
-        for identity, values in summary.items():
-            values["open_errors"] = values["errors"] = int(by_identity.get(identity, 0))
-        for identity, count in by_identity.items():
-            summary.setdefault(identity, {
-                "errors": count, "open_errors": count, "failed": 0,
-                "attempts": 0, "successful": 0, "identity_pending": 0,
-            })
-        return summary
+        return {
+            identity: {
+                "errors": int(by_identity.get(identity, 0)),
+                "open_errors": int(by_identity.get(identity, 0)),
+                "identity_pending": int(pending.get(identity, 0)),
+            }
+            for identity in {*pending, *by_identity}
+        }
 
     def installation_problem_count(self, identity_key: str) -> int:
-        return int(self.database.installation_problem_counts()["byIdentity"].get(identity_key, 0))
+        return int(self.database.installation_problem_counts(identity_key)["byIdentity"].get(identity_key, 0))
 
-    def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str | list[str] = "") -> list[dict[str, Any]]:
-        return self.database.compatibility_identity_details(status, device_id=device_id, identity=identity)
+    def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str | list[str] = "", catalog: Any = None) -> list[dict[str, Any]]:
+        return self.database.compatibility_identity_details(status, device_id=device_id, identity=identity, catalog=catalog)
+
+    def compatibility_identity_history(self, *, device_id: str = "", identity: str = "") -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Active and resolved results of one identity, sharing one catalog load."""
+        catalog = self.database.identity_catalog()
+        return tuple(  # type: ignore[return-value]
+            self.compatibility_identity_details(status, device_id=device_id, identity=identity, catalog=catalog)
+            for status in ("ACTIVE", "RESOLVED")
+        )
 
     def compatibility_issue_queue_operations(self) -> list[dict[str, Any]]:
         return self.database.compatibility_issue_queue_operations()
@@ -1177,14 +1190,32 @@ class CatalogService:
         )
 
     def public_statistics(self, limit: int) -> list[dict[str, Any]]:
-        if not self.public_compatibility_stats_enabled:
-            raise LookupError("disabled")
-        return self._canonicalize_statistics(self.database.public_compatibility_statistics(limit))
+        return self._public_rows("statistics", limit, self.database.public_compatibility_statistics)
 
     def public_models(self, limit: int) -> list[dict[str, Any]]:
+        return self._public_rows("models", limit, self.database.public_compatibility_models)
+
+    def _public_rows(self, projection: str, limit: int, load: Any) -> list[dict[str, Any]]:
+        """Public statistics projections, recomputed at most once a minute whatever the limit."""
         if not self.public_compatibility_stats_enabled:
             raise LookupError("disabled")
-        return self._canonicalize_statistics(self.database.public_compatibility_models(limit))
+        # One full-size result per projection, so varying ?limit= cannot bypass it; the lock
+        # lets one request recompute while the others wait for its result.
+        with self._public_rows_lock:
+            valid_until, rows = self._public_rows_cache.get(projection, (0.0, None))
+            if time.monotonic() >= valid_until:
+                try:
+                    rows = self._canonicalize_statistics(load(PUBLIC_ROWS_MAX_LIMIT))
+                    self._public_rows_cache[projection] = (time.monotonic() + 60, rows)
+                except Exception:
+                    # During an outage, waiters get the last result (or a fast failure)
+                    # instead of queueing behind one database timeout after another.
+                    self._public_rows_cache[projection] = (time.monotonic() + 10, rows)
+                    if rows is None:
+                        raise
+            elif rows is None:
+                raise RuntimeError("public statistics unavailable")
+        return rows[:limit]
 
     @staticmethod
     def _canonicalize_statistics(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1210,6 +1241,8 @@ class CatalogService:
 
 def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
     request_times: dict[str, deque[float]] = defaultdict(deque)
+    request_windows: dict[str, int] = {}
+    rate_lock = threading.Lock()
     sweep_counter = [0]
 
     class Handler(BaseHTTPRequestHandler):
@@ -1262,8 +1295,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 
         def _handle_operational_observation(self) -> None:
-            client = f"operational-observation:{self._client_ip()}"
-            if self._rate_limited(client, limit=30, window=60):
+            client = (f"operational-observation:{self._client_ip()}", 30, 60)
+            if self._rate_limited(client):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store", noindex=True)
                 return
             if not self._operations_authorized():
@@ -1272,7 +1305,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             document = self._read_json()
             if document is None:
                 return
-            request_times[client].append(time.monotonic())
+            if self._rate_limited(client, record=True):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store", noindex=True)
+                return
             try:
                 inserted = service.receive_operational_observation(document)
             except OperationalObservationError as exc:
@@ -1291,23 +1326,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             )
 
         def _handle_web_installer_record(self, kind: str) -> None:
-            client = f"web-installer:{self._client_ip()}"
             reply = lambda status, body: self._send_json(status, body, send_body=True, cache_control="no-store", noindex=True)
-            if self._rate_limited(client, limit=WEB_INSTALLER_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
-                return reply(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"})
-            if not self._bearer_matches(service.web_installer_ingest_secret):
-                return reply(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+            raw = self._intake_body(
+                (f"web-installer:{self._client_ip()}", WEB_INSTALLER_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS),
+                max_bytes=MAX_WEB_INSTALLER_BYTES, noindex=True,
+                authorized=lambda: self._bearer_matches(service.web_installer_ingest_secret),
+            )
+            if raw is None:
+                return
             try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                length = 0
-            if length <= 0 or length > MAX_WEB_INSTALLER_BYTES:
-                return reply(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"})
-            if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
-                return reply(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"})
-            request_times[client].append(time.monotonic())
-            try:
-                inserted = service.receive_web_installer_record(kind, self.rfile.read(length))
+                inserted = service.receive_web_installer_record(kind, raw)
             except WebInstallerValidationError as exc:
                 return reply(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             except Exception:
@@ -1328,40 +1356,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             )
 
         def _handle_map_event(self) -> None:
-            client = f"map-event:{self._client_ip()}"
-            if self._rate_limited(client, limit=MAP_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
-                self._send_json(
-                    HTTPStatus.TOO_MANY_REQUESTS,
-                    {"error": "rate_limited"},
-                    send_body=True,
-                    cache_control="no-store",
-                )
+            raw = self._intake_body(
+                (f"map-event:{self._client_ip()}", MAP_EVENT_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS),
+                max_bytes=8 * 1024,
+            )
+            if raw is None:
                 return
             try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                length = 0
-            if length <= 0 or length > 8 * 1024:
-                self._send_json(
-                    HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
-                    {"error": "invalid_size"},
-                    send_body=True,
-                    cache_control="no-store",
-                )
-                return
-            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
-            if content_type != "application/json":
-                self._send_json(
-                    HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
-                    {"error": "invalid_content_type"},
-                    send_body=True,
-                    cache_control="no-store",
-                )
-                return
-            recent = request_times[client]
-            recent.append(time.monotonic())
-            try:
-                event, inserted = service.receive_map_event(self.rfile.read(length))
+                event, inserted = service.receive_map_event(raw)
             except MapEventValidationError as exc:
                 self._send_json(
                     HTTPStatus.BAD_REQUEST,
@@ -1473,24 +1475,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _handle_support_report(self) -> None:
             # The trusted-proxy client address is used only for this in-memory
             # limiter; it is never stored with the report.
-            client = f"support-report:{self._client_ip()}"
-            if self._rate_limited(client, limit=SUPPORT_REPORT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
-                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+            client = self._client_ip()
+            raw = self._intake_body(
+                (f"support-report:{client}", SUPPORT_REPORT_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS),
+                (f"support-report-day:{client}", SUPPORT_REPORT_DAILY_LIMIT, SUPPORT_REPORT_DAILY_WINDOW_SECONDS),
+                max_bytes=MAX_SUPPORT_REPORT_BYTES,
+            )
+            if raw is None:
                 return
             try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                length = 0
-            if length <= 0 or length > MAX_SUPPORT_REPORT_BYTES:
-                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
-                return
-            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
-            if content_type != "application/json":
-                self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"}, send_body=True, cache_control="no-store")
-                return
-            request_times[client].append(time.monotonic())
-            try:
-                report, result = service.receive_support_report(self.rfile.read(length))
+                report, result = service.receive_support_report(raw)
             except SupportReportValidationError as exc:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
                 return
@@ -1509,24 +1503,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             )
 
         def _handle_app_funnel_event(self) -> None:
-            client = f"app-funnel:{self._client_ip()}"
-            if self._rate_limited(client, limit=APP_FUNNEL_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
-                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+            raw = self._intake_body(
+                (f"app-funnel:{self._client_ip()}", APP_FUNNEL_EVENT_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS),
+                max_bytes=MAX_FUNNEL_EVENT_BYTES,
+            )
+            if raw is None:
                 return
             try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                length = 0
-            if length <= 0 or length > MAX_FUNNEL_EVENT_BYTES:
-                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
-                return
-            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
-            if content_type != "application/json":
-                self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"}, send_body=True, cache_control="no-store")
-                return
-            request_times[client].append(time.monotonic())
-            try:
-                _, inserted = service.receive_app_funnel_event(self.rfile.read(length))
+                _, inserted = service.receive_app_funnel_event(raw)
             except FunnelValidationError as exc:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
                 return
@@ -1542,19 +1526,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             )
 
         def _handle_compatibility_event(self) -> None:
-            client = self._client_ip()
-            if self._rate_limited(client, limit=COMPATIBILITY_EVENT_RATE_LIMIT, window=RATE_LIMIT_WINDOW_SECONDS):
-                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+            raw_event = self._intake_body(
+                (self._client_ip(), COMPATIBILITY_EVENT_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS),
+                max_bytes=16_384,
+            )
+            if raw_event is None:
                 return
-            request_times[client].append(time.monotonic())
-            try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                length = 0
-            if length <= 0 or length > 16_384:
-                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
-                return
-            raw_event = self.rfile.read(length)
             # Correlate delivery without retaining device fields or raw payloads.
             event_id, operation_id = _evidence_delivery_ids(raw_event)
             try:
@@ -1594,13 +1571,20 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 self._send_admin_html(login_page(), send_body=send_body)
                 return
             session_token = self._session_cookie()
-            session = service.admin_session(session_token)
+            try:
+                session = service.admin_session(session_token)
+                csrf_token = self._csrf_cookie()
+                csrf_ok = bool(session and csrf_token and service.csrf_valid(session, csrf_token))
+                if session and not csrf_ok:
+                    service.logout_admin(session_token)
+            except Exception:
+                LOGGER.exception("admin session check failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_unavailable"}, send_body=send_body, cache_control="no-store")
+                return
             if not session:
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=bool(session_token))
                 return
-            csrf_token = self._csrf_cookie()
-            if not csrf_token or not service.csrf_valid(session, csrf_token):
-                service.logout_admin(session_token)
+            if not csrf_ok:
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=True)
                 return
             map_assets = {"leaflet-1.9.4.js": "text/javascript", "leaflet-1.9.4.css": "text/css", "coverage-map-v1.js": "text/javascript", "coverage-map-v1.css": "text/css"}
@@ -2037,14 +2021,15 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                             target += f"&state={state}"
                         self._redirect(target + "#installations", send_body=send_body)
                         return
+                    operations, resolved_operations = service.compatibility_identity_history(identity=identity)
                     body = diagnostics_page(
                         statistics,
                         session,
                         csrf_token,
                         identity=identity,
                         open_problem_count=service.installation_problem_count(f"identity:{identity}"),
-                        operations=service.compatibility_identity_details("ACTIVE", identity=identity),
-                        resolved_operations=service.compatibility_identity_details("RESOLVED", identity=identity),
+                        operations=operations,
+                        resolved_operations=resolved_operations,
                         identity_devices=identity_devices,
                         canonical_device_model_id=canonical_device_id,
                         unresolved_only=unresolved_only,
@@ -2182,12 +2167,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         self._send_admin_error(HTTPStatus.BAD_REQUEST, "This update report link is not valid.", session, csrf_token, send_body=send_body)
                         return
                     device['update_statistics'] = update_history['summary']
+                    operations, resolved_operations = service.compatibility_identity_history(device_id=device_id)
                     body = device_detail_page(
                         device, session, csrf_token,
                         update_history=update_history,
                         open_problem_count=service.installation_problem_count(f"canonical:{device_id}"),
-                        operations=service.compatibility_identity_details("ACTIVE", device_id=device_id),
-                        resolved_operations=service.compatibility_identity_details("RESOLVED", device_id=device_id),
+                        operations=operations,
+                        resolved_operations=resolved_operations,
                         identity_devices=payload.get("devices", []),
                         origin="installations" if origin == "installations" else "devices",
                         requested_state=query.get("state", [""])[0].strip() or None,
@@ -2273,7 +2259,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             rate_key = f"admin-provider:{action}:{provider_id}:{self._client_ip()}"
             if action in {"check", "collect"} and self._rate_limited(
-                rate_key, limit=5, window=60
+                (rate_key, 5, 60), record=True
             ):
                 self._send_json(
                     HTTPStatus.TOO_MANY_REQUESTS,
@@ -2284,8 +2270,6 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 )
                 return
             request_id = self._request_id()
-            if action in {"check", "collect"}:
-                request_times[rate_key].append(time.monotonic())
             try:
                 if action == "state":
                     if not set(body).issubset({"status", "reason"}) or "status" not in body or not isinstance(body.get("status"), str):
@@ -2757,13 +2741,15 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _admin_setup(self, form: dict[str, str]) -> None:
             client = f"admin-setup:{self._client_ip()}"
-            if self._rate_limited(client, limit=10, window=900):
+            if self._rate_limited((client, 10, 900)):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
             if form.get("password") != form.get("password_confirmation"):
                 self._send_admin_html(setup_page(error="Passwords do not match."), send_body=True, status=HTTPStatus.BAD_REQUEST)
                 return
-            request_times[client].append(time.monotonic())
+            if self._rate_limited((client, 10, 900), record=True):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+                return
             try:
                 service.setup_admin(form.get("username", ""), form.get("password", ""), form.get("bootstrap_secret", ""))
             except AdminValidationError as exc:
@@ -2774,11 +2760,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _admin_login(self, form: dict[str, str]) -> None:
             client = f"admin-login:{self._client_ip()}"
-            if self._rate_limited(client, limit=10, window=900):
+            # Counted before the slow password check so parallel attempts cannot all pass the limit.
+            if self._rate_limited((client, 10, 900), record=True):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
-            # Counted before the slow password check so parallel attempts cannot all pass the limit.
-            request_times[client].append(time.monotonic())
             try:
                 session_token, csrf_token = service.login_admin(form.get("username", ""), form.get("password", ""))
             except AdminValidationError as exc:
@@ -2794,7 +2779,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _handle_public_statistics(self, *, send_body: bool) -> None:
             try:
                 query = parse_qs(urlsplit(self.path).query)
-                limit = max(1, min(500, int(query.get("limit", ["5"])[0])))
+                limit = max(1, min(PUBLIC_ROWS_MAX_LIMIT, int(query.get("limit", ["5"])[0])))
                 rows = service.public_statistics(limit)
             except (ValueError, LookupError):
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
@@ -2826,7 +2811,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _handle_public_models(self, *, send_body: bool) -> None:
             try:
                 query = parse_qs(urlsplit(self.path).query)
-                limit = max(1, min(500, int(query.get("limit", ["500"])[0])))
+                limit = max(1, min(PUBLIC_ROWS_MAX_LIMIT, int(query.get("limit", ["500"])[0])))
                 rows = service.public_models(limit)
             except (ValueError, LookupError):
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
@@ -3037,17 +3022,58 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self._admin_headers(content_length=0)
             self.end_headers()
 
-        def _rate_limited(self, key: str, *, limit: int, window: int) -> bool:
-            now = time.monotonic()
-            sweep_counter[0] += 1
-            if sweep_counter[0] % RATE_LIMIT_SWEEP_INTERVAL == 0:
-                for stale_key, stale in list(request_times.items()):
-                    if not stale or stale[-1] < now - RATE_LIMIT_MAX_WINDOW_SECONDS:
-                        request_times.pop(stale_key, None)
-            recent = request_times[key]
-            while recent and recent[0] < now - window:
-                recent.popleft()
-            return len(recent) >= limit
+        def _rate_limited(self, *limits: tuple[str, int, int], record: bool = False) -> bool:
+            """True when any (key, limit, window) is full; otherwise optionally count this hit in all."""
+            with rate_lock:
+                now = time.monotonic()
+                sweep_counter[0] += 1
+                if sweep_counter[0] % RATE_LIMIT_SWEEP_INTERVAL == 0:
+                    for stale_key, stale in list(request_times.items()):
+                        if not stale or stale[-1] < now - request_windows.get(stale_key, 0):
+                            request_times.pop(stale_key, None)
+                            request_windows.pop(stale_key, None)
+                for key, limit, window in limits:
+                    request_windows[key] = window
+                    recent = request_times[key]
+                    while recent and recent[0] < now - window:
+                        recent.popleft()
+                    if len(recent) >= limit:
+                        return True
+                if record:
+                    for key, _, _ in limits:
+                        request_times[key].append(now)
+                return False
+
+        def _intake_body(self, *limits: tuple[str, int, int], max_bytes: int, noindex: bool = False,
+                         authorized: Any = None) -> bytes | None:
+            """Shared anonymous-intake gate; sends the error reply and returns None on rejection.
+
+            Only well-formed requests count toward the limits, and the final
+            check-and-count is atomic so concurrent requests cannot overshoot.
+            """
+            reply = lambda status, error: self._send_json(
+                status, {"error": error}, send_body=True, cache_control="no-store", noindex=noindex,
+            )
+            if self._rate_limited(*limits):
+                reply(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited")
+                return None
+            if authorized is not None and not authorized():
+                reply(HTTPStatus.UNAUTHORIZED, "unauthorized")
+                return None
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > max_bytes:
+                reply(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "invalid_size")
+                return None
+            if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
+                reply(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "invalid_content_type")
+                return None
+            if self._rate_limited(*limits, record=True):
+                reply(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited")
+                return None
+            return self.rfile.read(length)
 
         def _handle_asset(self, request_path: str, *, send_body: bool) -> None:
             try:

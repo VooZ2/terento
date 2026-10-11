@@ -101,15 +101,20 @@ authenticated admin routes. No route serves map binaries.
 Accepts at most 16 KiB of allowlisted schema-version-1 through schema-version-4 JSON under the client’s
 default-on privacy-minimised diagnostics policy. Event UUIDs are idempotent. Unknown fields, local paths, malformed
 payloads, providers/sources outside the current compatibility-evidence allowlist, and
-privacy-prohibited data are rejected. The compatibility evidence source
+privacy-prohibited data are rejected. A `timestamp` without a timezone, or
+earlier than 2026-08-01T00:00:00Z (before any Terento client existed), is
+rejected with `400`; every released client sends UTC. A future client time is
+stored as reported (see `contracts/STATISTICS_CONTRACT.md`). The compatibility evidence source
 allowlist is explicit and remains separate from the provider-neutral map
 catalog; a new reviewed provider must be added to that allowlist and pass the
 normal review before its compatibility events are accepted. `custom` is a
 fixed local-IMG source label, not a provider, and only accepts literal
 `custom` region and release values. New schema-version-4 clients do not send
 deletion credentials; schema versions 1–3 remain readable for backward
-compatibility. The endpoint is rate limited to 300 reports per client address
-per minute (derived behind the trusted reverse proxy) and stores allowlisted columns in
+compatibility. The body must be `Content-Type: application/json` (`415`
+otherwise; every released client sends it). The endpoint is rate limited to 300
+well-formed reports per client address per minute (derived behind the trusted
+reverse proxy; `413`/`415` requests are not counted) and stores allowlisted columns in
 the separate compatibility table. The original JSON body is not retained.
 New clients do not send a post-install
 confirmation signal; legacy `userConfirmed` fields are tolerated only for
@@ -434,7 +439,10 @@ native, public, or existing device API contract.
 
 Returns the authenticated, no-store/noindex Identity review queue, the
 Dashboard Needs attention Identity review destination. It reads only existing
-service methods: `compatibility_diagnostic_summary()` names the reported
+service methods: `compatibility_diagnostic_summary()` (open problems and
+`identity_pending` per identity, counted in SQL by
+`Database.identity_pending_counts()`, the SQL twin of `_identity_is_pending`;
+`/admin/installations` uses the same summary) names the reported
 identities with `identity_pending > 0`, one `compatibility_identity_details("ACTIVE",
 identity=[…])` read supplies the active operations of all of them (local-test and
 statistics-excluded rows are already excluded), and `admin_devices()` supplies
@@ -546,7 +554,9 @@ four canonical statuses may be public after review. The native macOS client
 continues to use this existing route. The public website uses the additive
 `/compatibility/public/models.json` projection below. The endpoint remains
 default-disabled and the page shows no public evidence when the flag or
-approved aggregate data is absent.
+approved aggregate data is absent. Both projections are
+recomputed at most once a minute in each API process (one full result per projection, sliced to `limit`), so a public
+change can take up to a minute to appear.
 
 The response's `evidenceStatus` is the authoritative public status for the
 exact `compatibilityIdentity`. It is one of `TESTING`, `TESTED`, `SUPPORTED`,
@@ -914,7 +924,9 @@ Intake accepts at most 64 KiB of schema-version-1 JSON, rejects unknown fields a
 every level (`400`), is idempotent by report `id` (`201` stored, `200` replay,
 both with `{"reference":"TR-XXXXXX","status":...}`), returns `409
 reference_conflict` if another report owns the deterministic reference, and
-allows 10 reports per client address per minute (`429`). The client address is
+allows 10 reports per client address per minute and 30 per 24 hours (`429`;
+each send counts, including a retry of the same report id; the in-memory
+counters reset when the API restarts). The client address is
 used only by the in-memory limiter and is never stored. A `-local` release label
 stores the report as local test data. Reports are kept 12 months after receipt.
 
@@ -943,7 +955,9 @@ shape (`schemaVersion`, `id`, `operationId`, `timestamp`, `providerId`, string
 `mapId`, optional `region`, a download/install event type, `outcome` and string
 `appBuild`, with no acquisition or result-index fields) is accepted and stored
 with an unknown (NULL) release label, never as local test data. Any other body
-without `releaseLabel` is rejected with `400`.
+without `releaseLabel` is rejected with `400`. A `timestamp` without a
+timezone or earlier than 2026-08-01T00:00:00Z is rejected with `400`; the same
+floor applies to app-funnel `occurredAt` and support-report `createdAt`.
 Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
 `DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, `INSTALL_FAILED`,
 `MAP_UPDATE_SUCCEEDED`, and `MAP_UPDATE_FAILED`; event IDs are

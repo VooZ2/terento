@@ -9,7 +9,7 @@ from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
-from terento_catalog.admin import dashboard_page, format_timestamp, hash_password, login_page, setup_page, verify_password
+from terento_catalog.admin import _diagnostic_summary_by_identity, dashboard_page, format_timestamp, hash_password, login_page, setup_page, verify_password
 from terento_catalog.compatibility_evidence import EvidenceValidationError, validate_event
 from terento_catalog.db import Database
 from terento_catalog.http_api import CatalogService, make_handler
@@ -145,10 +145,19 @@ class FakeEvidenceDatabase:
     def compatibility_diagnostic_population(self):
         return [dict(row, diagnostic_status="ACTIVE") for row in self.compatibility_operations]
 
-    def compatibility_identity_details(self, status, *, device_id="", identity=""):
+    def identity_pending_counts(self):
+        # Python twin of Database.identity_pending_counts over this fixture population.
+        active = [row for row in self.compatibility_diagnostic_population() if row["diagnostic_status"] == "ACTIVE"]
+        return {key: values["identity_pending"] for key, values in _diagnostic_summary_by_identity(active).items()
+                if key.startswith("identity:")}
+
+    def compatibility_identity_details(self, status, *, device_id="", identity="", catalog=None):
         return self.compatibility_operations if status == "ACTIVE" else []
 
-    def installation_problem_counts(self):
+    def identity_catalog(self):
+        return [], []
+
+    def installation_problem_counts(self, identity_key=None):
         return {"total": 0, "byIdentity": {}}
 
     def resolve_compatibility_identity(
@@ -347,6 +356,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             admin_bootstrap_secret="one-time-bootstrap-secret",
             public_compatibility_stats_enabled=True,
         )
+        self.service = service
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(service))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -386,11 +396,12 @@ class CompatibilityEvidenceTests(unittest.TestCase):
     def test_intake_logs_correlation_and_safe_rejection_reason(self):
         payload = event(phaseOutcome="FAILED", automaticFinishingResult="FAILED")
         with self.assertLogs("terento_catalog.http_api", level="INFO") as logs:
-            first, _ = self.request("POST", "/compatibility/events", json.dumps(payload))
-            second, _ = self.request("POST", "/compatibility/events", json.dumps(payload))
+            json_type = {"Content-Type": "application/json"}
+            first, _ = self.request("POST", "/compatibility/events", json.dumps(payload), json_type)
+            second, _ = self.request("POST", "/compatibility/events", json.dumps(payload), json_type)
             rejected, _ = self.request("POST", "/compatibility/events", json.dumps({
                 **payload, "id": "private-secret\nforged-log", "serialNumber": "never-log-this",
-            }))
+            }), json_type)
         self.assertEqual((first.status, second.status, rejected.status), (201, 200, 400))
         output = "\n".join(logs.output)
         self.assertIn("intake stored event=" + payload["id"], output)
@@ -1105,6 +1116,38 @@ class CompatibilityEvidenceTests(unittest.TestCase):
                 "lastEvidence", "mapCapable",
             },
         )
+
+    def test_public_statistics_reuse_one_computation_per_minute_for_any_limit(self):
+        calls = []
+        original = self.database.public_compatibility_statistics
+        self.database.public_compatibility_statistics = lambda limit: calls.append(limit) or original(limit)
+        bodies = {}
+        for limit in (5, 5, 6, 1):
+            response, body = self.request("GET", f"/compatibility/public/top-models.json?limit={limit}")
+            self.assertEqual(response.status, 200)
+            bodies[limit] = json.loads(body)
+        self.assertEqual(calls, [500])
+        self.assertLessEqual(len(bodies[1]["models"]), 1)
+        cache = self.service._public_rows_cache
+        cache["statistics"] = (0.0, cache["statistics"][1])
+        self.request("GET", "/compatibility/public/top-models.json?limit=5")
+        self.assertEqual(calls, [500, 500])
+
+        # An outage serves the last result, then fails fast for 10 s, without queueing queries.
+        def unavailable(limit):
+            calls.append(limit)
+            raise RuntimeError("database unavailable")
+        self.database.public_compatibility_statistics = unavailable
+        cache["statistics"] = (0.0, cache["statistics"][1])
+        for _ in range(2):
+            response, _ = self.request("GET", "/compatibility/public/top-models.json?limit=5")
+            self.assertEqual(response.status, 200)
+        self.assertEqual(calls, [500, 500, 500])
+        cache.clear()
+        for _ in range(2):
+            response, _ = self.request("GET", "/compatibility/public/top-models.json?limit=5")
+            self.assertEqual(response.status, 503)
+        self.assertEqual(calls, [500, 500, 500, 500])
 
     def test_public_models_is_additive_and_evidence_only(self):
         response, body = self.request("GET", "/compatibility/public/models.json?limit=5")

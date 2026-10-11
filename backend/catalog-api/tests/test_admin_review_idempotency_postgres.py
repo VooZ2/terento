@@ -17,6 +17,14 @@ class AdminReviewIdempotencyTests(PGliteTestCase):
             "INSERT INTO admin_user (username, password_hash) VALUES ('pack-b', 'x') RETURNING id"
         )[0]["id"]
 
+    def test_issue_queue_reads_only_linked_active_results(self):
+        linked = self.rows.diagnostic(phase_outcome="FAILED", linked_github_issue="#12")
+        self.rows.diagnostic(phase_outcome="FAILED")
+        rows = self.db.compatibility_issue_queue_operations()
+        self.assertEqual([str(row["event_id"]) for row in rows], [str(linked)])
+        self.assertEqual(rows[0]["identity_source_corrections"], [])
+        self.assertIn("current_identity_assessment", rows[0])
+
     def identity_audits(self, event_id):
         return self.sql(
             "SELECT action, new_canonical_device_model_id, assessment"

@@ -181,9 +181,27 @@ class RecheckWorkerTests(unittest.TestCase):
     def test_second_worker_cannot_interrupt_active_jobs(self):
         db=self.database(busy=True)
         stop=Mock()
+        stop.is_set.side_effect=[False,True]
         checks.run_worker(db,stop)
         self.assertFalse(any('INTERRUPTED' in sql for sql,args in db.commands))
-        stop.wait.assert_not_called()
+        self.assertTrue(db.autocommit)
+        stop.wait.assert_called_once_with(30)
+
+    def test_worker_survives_database_outage_at_start(self):
+        db=self.database(busy=True)
+        real=db.connection
+        attempts=[]
+        def flaky():
+            attempts.append(1)
+            if len(attempts)==1:
+                raise OSError('database unavailable')
+            return real()
+        db.connection=flaky
+        stop=Mock()
+        stop.is_set.side_effect=[False,False,True]
+        checks.run_worker(db,stop)
+        self.assertEqual(len(attempts),2)
+        self.assertTrue(any(sql.startswith('SELECT pg_try_advisory_lock') for sql,args in db.commands))
 
 
 class RecheckEnqueueTests(unittest.TestCase):

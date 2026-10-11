@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 from typing import Any
+
+
+# No Terento client existed before this instant, so an earlier event time is a
+# broken client clock. A fixed floor (not "now minus retention") keeps contract
+# fixtures valid; the scheduled retention prune removes aged rows.
+EARLIEST_EVENT_TIME = datetime(2026, 8, 1, tzinfo=timezone.utc)
 
 
 # SemVer 2.0-compatible release identity.  Labels are deliberately bounded by

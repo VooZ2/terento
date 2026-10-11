@@ -9,7 +9,7 @@ class ReadinessDatabase(Database):
         self.nullable, self.missing, self.queries = nullable, missing, []
 
     @contextmanager
-    def connection(self):
+    def connection(self, **_options):
         owner = self
         class Result:
             def fetchall(self):

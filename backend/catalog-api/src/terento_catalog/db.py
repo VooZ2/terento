@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import hashlib
 import json
 import re
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
@@ -511,13 +512,30 @@ def _enrich_activity_models(connection, rows):
     return rows
 
 
+# Only the catalog facts identity assessment and statistics exclusion read.
+IDENTITY_DEVICE_QUERY = (
+    "SELECT id, model, case_size_mm, screen_technology, solar, inreach, "
+    "specification_evidence, active, map_capable FROM device_model"
+)
+IDENTITY_MAPPING_QUERY = (
+    "SELECT kind, value, status, device_model_id, source_url, source_version "
+    "FROM device_identity_mapping"
+)
+
+
 class Database:
-    def __init__(self, dsn: str, connect_timeout_seconds: int = 5) -> None:
+    def __init__(
+        self, dsn: str, connect_timeout_seconds: int = 5, max_concurrent_threads: int = 20,
+    ) -> None:
         self.dsn = dsn
         self.connect_timeout_seconds = connect_timeout_seconds
+        # Bounds the threads holding connections so a request burst cannot
+        # exhaust PostgreSQL max_connections for the API and scheduler.
+        self._connection_slots = threading.BoundedSemaphore(max_concurrent_threads)
+        self._slot_depth = threading.local()
 
     @contextmanager
-    def connection(self) -> Iterator[Any]:
+    def connection(self, *, bounded: bool = True) -> Iterator[Any]:
         try:
             import psycopg
             from psycopg.rows import dict_row
@@ -526,15 +544,35 @@ class Database:
                 "psycopg is required for database operations; install project dependencies"
             ) from exc
 
-        with psycopg.connect(
-            self.dsn,
-            connect_timeout=self.connect_timeout_seconds,
-            row_factory=dict_row,
-        ) as connection:
-            yield connection
+        # A thread that already holds a slot opens nested connections without
+        # waiting on itself; a full pool fails like a connect timeout.
+        depth = getattr(self._slot_depth, "value", 0)
+        if not bounded:
+            # Readiness checks bypass the slots so a slow-query burst cannot fail health.
+            with psycopg.connect(
+                self.dsn,
+                connect_timeout=self.connect_timeout_seconds,
+                row_factory=dict_row,
+            ) as connection:
+                yield connection
+            return
+        if not depth and not self._connection_slots.acquire(timeout=self.connect_timeout_seconds):
+            raise RuntimeError("database connection limit reached")
+        self._slot_depth.value = depth + 1
+        try:
+            with psycopg.connect(
+                self.dsn,
+                connect_timeout=self.connect_timeout_seconds,
+                row_factory=dict_row,
+            ) as connection:
+                yield connection
+        finally:
+            self._slot_depth.value = depth
+            if not depth:
+                self._connection_slots.release()
 
     def health(self) -> bool:
-        with self.connection() as connection:
+        with self.connection(bounded=False) as connection:
             # Read-only readiness: never insert synthetic compatibility evidence.
             connection.execute("SET LOCAL statement_timeout = '3000ms'")
             applied = {row["version"] for row in connection.execute(
@@ -1025,8 +1063,8 @@ class Database:
         if event.get("operationKind") == "update":
             # Intentionally separate: update evidence cannot enter any install aggregate.
             with self.connection() as connection:
-                devices = list(connection.execute("SELECT * FROM device_model").fetchall())
-                mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+                devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
+                mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
                 assessment = assess_identity(event, devices, mappings)
                 return connection.execute("""INSERT INTO map_update_diagnostic
                     (event_id,operation_id,occurred_at,provider,region,outcome,payload,is_local_test,
@@ -1134,8 +1172,8 @@ class Database:
             "schemaVersion": event.get("schemaVersion"),
         }
         with self.connection() as connection:
-            devices = list(connection.execute("SELECT * FROM device_model").fetchall())
-            mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+            devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
+            mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
             assessment = assess_identity(event, devices, mappings)
             values["canonicalDeviceId"] = assessment["canonicalDeviceId"]
             values["identityResolutionState"] = assessment["state"]
@@ -1170,6 +1208,8 @@ class Database:
             connection.execute("DELETE FROM map_update_diagnostic WHERE received_at < now() - interval '24 months'")
             # App funnel events follow the same 24-month receipt-time retention.
             connection.execute("DELETE FROM app_funnel_event WHERE received_at < now() - interval '24 months'")
+            # Map download events keep 24 months of occurrence history.
+            connection.execute("DELETE FROM map_download_event WHERE occurred_at < now() - interval '24 months'")
             # Web installer events and relay jobs: the same 24-month retention.
             connection.execute("DELETE FROM web_installer_event WHERE received_at < now() - interval '24 months'")
             connection.execute("DELETE FROM web_installer_relay_job WHERE received_at < now() - interval '24 months'")
@@ -1218,21 +1258,27 @@ class Database:
         return self._compatibility_operation_details("ACTIVE", limit)
 
     def compatibility_issue_queue_operations(self) -> list[dict[str, Any]]:
-        """Return the complete active operation population for the review queue."""
-        return self._compatibility_operation_details("ACTIVE", None, exclude_statistics=True)
+        """Return the active results that carry a GitHub issue link for the review queue."""
+        return self._compatibility_operation_details("ACTIVE", None, exclude_statistics=True, issue_only=True)
 
     def compatibility_resolved_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("RESOLVED", limit)
 
-    def compatibility_identity_details(self, diagnostic_status: str, *, device_id: str = "", identity: str | list[str] = "") -> list[dict[str, Any]]:
+    def identity_catalog(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Catalog devices and identity mappings for assessing several result sets in one request."""
+        with self.connection() as connection:
+            return (list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall()),
+                    list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall()))
+
+    def compatibility_identity_details(self, diagnostic_status: str, *, device_id: str = "", identity: str | list[str] = "", catalog: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
         if not device_id and not identity:
             raise ValueError("Diagnostic identity is required")
         return self._compatibility_operation_details(
             diagnostic_status, None, device_id=device_id, identity=identity,
-            exclude_statistics=True,
+            exclude_statistics=True, catalog=catalog,
         )
 
-    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str | list[str] = "", exclude_statistics: bool = False) -> list[dict[str, Any]]:
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str | list[str] = "", exclude_statistics: bool = False, issue_only: bool = False, catalog: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
         limit_clause = "LIMIT %s" if limit is not None else ""
         identity_clause = ""
         scope_values = []
@@ -1245,6 +1291,8 @@ class Database:
                                + ("= ANY(%s)" if isinstance(identity, list) else "= %s"))
             scope_values = [identity]
         statistics_clause = " AND statistics_exclusion_code IS NULL" if exclude_statistics else ""
+        if issue_only:
+            statistics_clause += " AND linked_github_issue IS NOT NULL"
         query = """
             SELECT
                 CASE
@@ -1287,11 +1335,15 @@ class Database:
             parameters = tuple([diagnostic_status] + scope_values + ([limit] if limit is not None else []))
             rows = list(connection.execute(query, parameters).fetchall())
             if rows:
-                devices = list(connection.execute("SELECT * FROM device_model").fetchall())
-                mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
-                corrections = list(connection.execute("SELECT * FROM device_identity_source_correction WHERE event_id = ANY(%s) ORDER BY id", ([row["event_id"] for row in rows],)).fetchall())
+                devices, mappings = catalog or (
+                    list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall()),
+                    list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall()),
+                )
+                corrections_by_event: dict[Any, list[dict[str, Any]]] = {}
+                for correction in connection.execute("SELECT * FROM device_identity_source_correction WHERE event_id = ANY(%s) ORDER BY id", ([row["event_id"] for row in rows],)).fetchall():
+                    corrections_by_event.setdefault(correction["event_id"], []).append(correction)
                 for row in rows:
-                    row["identity_source_corrections"] = [c for c in corrections if c["event_id"] == row["event_id"]]
+                    row["identity_source_corrections"] = corrections_by_event.get(row["event_id"], [])
                     event = apply_corrections(self._identity_event(row), row["identity_source_corrections"])
                     row["current_identity_assessment"] = assess_identity(event, devices, mappings)
             return rows
@@ -1476,22 +1528,58 @@ class Database:
         summary["total"] = summary["pendingReviewTasks"]
         return summary
 
-    def installation_problem_counts(self) -> dict[str, Any]:
+    def identity_pending_counts(self) -> dict[str, int]:
+        """Active results per reported identity, and how many await identity review.
+
+        SQL twin of ``admin._identity_is_pending`` over the
+        ``compatibility_diagnostic_population`` population, grouped like
+        ``admin._diagnostic_summary_by_identity`` (identity, then map result).
+        """
+        query = """
+            WITH results AS (
+                SELECT
+                    'identity:' || btrim(COALESCE(NULLIF(compatibility_identity, ''), NULLIF(model, ''), 'Unknown')) AS identity_key,
+                    bool_and(write_started IS FALSE AND (
+                        lower(btrim(COALESCE(failure_stage, ''))) = 'download'
+                        OR upper(btrim(COALESCE(failure_code, ''))) = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                    )) AS preinstall_download,
+                    bool_and(COALESCE(canonical_device_model_id, '') = ''
+                             AND upper(btrim(COALESCE(identity_resolution_state, ''))) IN ('', 'UNRESOLVED', 'PENDING')) AS pending
+                FROM compatibility_evidence_event
+                WHERE diagnostic_status = 'ACTIVE'
+                  AND is_local_test IS NOT TRUE
+                  AND statistics_exclusion_code IS NULL
+                  AND NULLIF(btrim(canonical_device_model_id), '') IS NULL
+                GROUP BY 1, CASE WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
+                                 THEN 'result:' || operation_id::text || ':' || map_result_index::text
+                                 ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text) END
+            )
+            SELECT identity_key, count(*) FILTER (WHERE pending AND NOT preinstall_download) AS identity_pending
+            FROM results
+            GROUP BY identity_key
+        """
+        with self.connection() as connection:
+            return {str(row["identity_key"]): int(row["identity_pending"] or 0)
+                    for row in connection.execute(query).fetchall()}
+
+    def installation_problem_counts(self, identity_key: str | None = None) -> dict[str, Any]:
         """Return open installation problems (operations) in total and per identity.
 
         Uses the exact predicate and unit of the Needs attention installation
         task, so ``total`` equals ``admin_review_summary()['installationIssues']``
-        and the per-identity values sum to it.
+        and the per-identity values sum to it. ``identity_key`` limits the
+        result to that one identity.
         """
         query = """
             WITH """ + INSTALLATION_PROBLEM_OPERATIONS_CTE + """
             SELECT problem_identity_key AS identity_key, count(*) AS problem_count
             FROM operation_reviews
             WHERE has_failure AND NOT has_github_issue
+        """ + ("  AND problem_identity_key = %s" if identity_key is not None else "") + """
             GROUP BY problem_identity_key
         """
         with self.connection() as connection:
-            rows = list(connection.execute(query).fetchall())
+            rows = list(connection.execute(query, (identity_key,) if identity_key is not None else ()).fetchall())
         by_identity = {
             str(row["identity_key"]): int(row["problem_count"] or 0)
             for row in rows if row.get("identity_key")
@@ -1759,6 +1847,16 @@ class Database:
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.statistics_exclusion_code IS NULL
+                  -- Only operations with a row that can reach the period
+                  -- (effective time is occurred_at or received_at); whole
+                  -- operations are kept so results and siblings are unchanged.
+                  AND (
+                      e.operation_id IN (
+                          SELECT recent.operation_id FROM compatibility_evidence_event AS recent
+                          WHERE recent.occurred_at >= %s OR recent.received_at >= %s
+                      )
+                      OR (e.operation_id IS NULL AND (e.occurred_at >= %s OR e.received_at >= %s))
+                  )
             ), result_flags AS (
                 SELECT
                     result_key,
@@ -1864,6 +1962,11 @@ class Database:
                     FROM map_download_event AS e
                     WHERE e.is_local_test IS NOT TRUE
                       AND e.statistics_exclusion_code IS NULL
+                ), recent_lifecycles AS (
+                    -- Lifecycles with an event that can reach the period; the
+                    -- window below then sorts only those whole lifecycles.
+                    SELECT DISTINCT lifecycle_key FROM acquisition_events
+                    WHERE occurred_at >= %s OR received_at >= %s
                 ), acquisition_activity AS (
                     SELECT DISTINCT ON (e.lifecycle_key)
                         e.*,
@@ -1873,6 +1976,7 @@ class Database:
                             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
                         ) AS lifecycle
                     FROM acquisition_events AS e
+                    WHERE e.lifecycle_key IN (SELECT lifecycle_key FROM recent_lifecycles)
                     ORDER BY e.lifecycle_key,
                         CASE WHEN e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED') THEN 0 ELSE 1 END,
                         e.occurred_at DESC, e.event_id DESC
@@ -1927,7 +2031,7 @@ class Database:
                 ORDER BY occurred_at DESC
                 LIMIT %s
                 """,
-                (since, since, recent_limit),
+                (since, since, since, since, since, since, since, since, recent_limit),
             ).fetchall())
             recent = _enrich_activity_models(connection, recent)
             recent.extend(self._update_not_started_activity(connection, since, recent_limit))
@@ -2647,20 +2751,25 @@ class Database:
             except ValueError as exc:
                 raise IdentityResolutionError("invalid_diagnostic_record", "The diagnostic result identifier is invalid.") from exc
             return (
-                "operation_id::text = %s AND map_result_index = %s",
+                "operation_id = %s::uuid AND map_result_index = %s",
                 (operation_id, int(match.group(2))),
             )
-        return (
-            """(
-                CASE
-                    WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
-                        THEN 'result:' || operation_id::text || ':' || map_result_index::text
-                    ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
-                END = %s
-                OR (operation_id IS NOT NULL AND operation_id::text = %s)
-            )""",
-            (key, key),
-        )
+
+        # Typed comparisons keep the operation/event indexes usable. Only the
+        # canonical UUID text matched the former ``::text`` comparison.
+        def canonical_uuid(value: str) -> str | None:
+            try:
+                return value if str(UUID(value)) == value else None
+            except ValueError:
+                return None
+
+        if key.startswith("legacy:"):
+            event_id = canonical_uuid(key.removeprefix("legacy:"))
+            if event_id:
+                return "operation_id IS NULL AND event_id = %s::uuid", (event_id,)
+        elif canonical_uuid(key):
+            return "operation_id = %s::uuid", (key,)
+        return "FALSE", ()
 
     def resolve_compatibility_identity(
         self,
@@ -3959,10 +4068,6 @@ class Database:
 
     def insert_map_event(self, event: dict[str, Any]) -> bool:
         with self.connection() as connection:
-            connection.execute(
-                "DELETE FROM map_download_event "
-                "WHERE occurred_at < now() - interval '24 months'"
-            )
             map_package_id = None
             if event.get("mapId"):
                 package = connection.execute(

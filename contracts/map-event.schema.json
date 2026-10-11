@@ -28,7 +28,7 @@
     },
     "timestamp": {
       "type": "string",
-      "description": "ISO timestamp parsed by datetime.fromisoformat; timezone required."
+      "description": "ISO timestamp parsed by datetime.fromisoformat; timezone required and not before 2026-08-01T00:00:00Z."
     },
     "providerId": {
       "$ref": "#/$defs/safeId",

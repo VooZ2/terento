@@ -62,6 +62,14 @@ class InstallationProblemParityTests(PGliteTestCase):
         self.assertEqual(sum(rows.values()), kpi)
         self.assertEqual(rows[f"canonical:{FENIX_8}"], 2)
         self.assertEqual(self.db.admin_review_summary()["githubIssuesInProgress"], 1)
+        self.assertEqual(self.db.installation_problem_counts(f"canonical:{FENIX_8}"),
+                         {"total": 2, "byIdentity": {f"canonical:{FENIX_8}": 2}})
+        self.assertEqual(self.db.installation_problem_counts("identity:absent")["total"], 0)
+        self.assertEqual(
+            self.service.compatibility_identity_history(device_id=FENIX_8),
+            (self.service.compatibility_identity_details("ACTIVE", device_id=FENIX_8),
+             self.service.compatibility_identity_details("RESOLVED", device_id=FENIX_8)),
+        )
 
         device = {"id": FENIX_8, "model": "fēnix 8", "variant": "47 mm, AMOLED", "installationStats": {}}
         detail = device_detail_page(

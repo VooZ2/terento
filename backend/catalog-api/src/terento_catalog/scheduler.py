@@ -114,12 +114,6 @@ def run_collection_cycle(
     }
 
 
-def run_daily(database: Database, schedule_utc: str) -> None:
-    """Backward-compatible alias for callers using the old scheduler name."""
-
-    run_schedule(database, schedule_utc)
-
-
 def _next_hour_boundary(value: datetime) -> datetime:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)

@@ -201,7 +201,8 @@ runtime dependencies.
 - `POST /map-events` accepts a separate rate-limited, idempotent,
   privacy-minimised map-operation event contract. `GET
   /admin/map-statistics.json` exposes its private aggregates and never returns
-  raw events or device identifiers. Raw map events are pruned after 24 months.
+  raw events or device identifiers. Raw map events are pruned after 24 months
+  by the scheduler retention task, not on intake.
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
   privacy-minimised install events under the default-on diagnostics
   policy. It stores only allowlisted columns and never stores the submitted JSON

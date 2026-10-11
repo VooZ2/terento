@@ -93,6 +93,43 @@ class IntakeBurstTests(unittest.TestCase):
         self.assertEqual(first[-1], 429)
         self.assertTrue(all(status < 300 for status in first[:3] + second), (first, second))
 
+    def send(self, path, body, content_type="application/json"):
+        self.connection.request("POST", path, body=body, headers={"Content-Type": content_type})
+        response = self.connection.getresponse()
+        response.read()
+        return response.status
+
+    def test_support_reports_have_a_daily_cap_beyond_the_minute_limit(self):
+        with patch.object(http_api, "SUPPORT_REPORT_RATE_LIMIT", 100), \
+                patch.object(http_api, "SUPPORT_REPORT_DAILY_LIMIT", 3):
+            statuses = [self.send("/support/reports", b"{}") for _ in range(4)]
+        self.assertEqual(statuses, [400, 400, 400, 429])
+
+    def test_compatibility_intake_checks_media_type_and_counts_only_well_formed_requests(self):
+        self.assertEqual(self.send("/compatibility/events", b"{}", "text/plain"), 415)
+        with patch.object(http_api, "COMPATIBILITY_EVENT_RATE_LIMIT", 2):
+            self.assertEqual(self.send("/compatibility/events", b"x" * 20_000), 413)
+            statuses = [self.send("/compatibility/events", b"{}") for _ in range(3)]
+        self.assertNotIn(429, statuses[:2])
+        self.assertEqual(statuses[2], 429)
+
+    def test_concurrent_requests_cannot_overshoot_the_limit(self):
+        statuses = []
+
+        def post():
+            connection = HTTPConnection(*self.server.server_address)
+            connection.request("POST", "/app-funnel/events", body=b"{}", headers={"Content-Type": "application/json"})
+            statuses.append(connection.getresponse().status)
+            connection.close()
+
+        with patch.object(http_api, "APP_FUNNEL_EVENT_RATE_LIMIT", 3):
+            threads = [threading.Thread(target=post) for _ in range(5)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+        self.assertEqual(sorted(statuses), [400, 400, 400, 429, 429])
+
 
 if __name__ == "__main__":
     unittest.main()
