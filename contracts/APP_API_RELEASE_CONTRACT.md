@@ -1,13 +1,30 @@
 # App–API compatibility and release contract
 
-## Release candidate 1.0.0-rc.3 build 43 — staged
+## Release candidate 1.0.0-rc.3 build 43 — published
 
-Staged on the existing `beta` update channel. It changes only on-device
-recovery records, map-archive extraction and helper-process handling; it adds
-no API field, route, telemetry event or migration and keeps every rc.2 payload
-unchanged. The catalog API from its source revision is already deployed, so no
-further server deployment precedes it. The API validates its labels as SemVer:
-`1.0.0-rc.3` is stored as public and `1.0.0-rc.3-local` as local test data.
+Published on 2026-10-11 from GitHub-verified source
+`5989cc32a13f8adc8408fcc5b01d9bb4a8e5a4c9` (merge of PR #427), tag
+`v1.0.0-rc.3-build43`, on the existing `beta` update channel. It changes only
+on-device recovery records, map-archive extraction and helper-process handling;
+it adds no API field, route, telemetry event or migration and keeps every rc.2
+payload unchanged. The catalog API from its source revision was already
+deployed, so no further server deployment preceded it. The API validates its
+labels as SemVer: `1.0.0-rc.3` is stored as public and `1.0.0-rc.3-local` as
+local test data.
+
+The full 94-runner packaging suite and PR CI passed. Apple submission
+`97d7728f-6721-4233-b038-74a0ac5f31b1` was Accepted with no issues. Signing,
+stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner approved the
+release notes before publication. Real-watch evidence: the owner used a local
+build of the same app source; an interrupted Update was not reproduced on a
+real watch, which the release notes list in KNOWN ISSUES.
+
+DMG: 7,483,755 bytes, SHA-256
+`95232983e5dd10f471e943420de1bfd0c1b3d396be410bcc7f44faa67c7756bb`.
+ZIP: 6,732,868 bytes, SHA-256
+`7f37418caa20cfa09abd203bd5b6101c870b7ef43ae7a7feda29ef5359f8cab4`.
+GitHub asset digests and independently downloaded draft and public bytes match
+these values.
 
 ## Release candidate 1.0.0-rc.2 build 42 — published
 
