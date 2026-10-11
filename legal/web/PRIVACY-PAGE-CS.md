@@ -17,7 +17,7 @@ Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místn
 
 ## Webový instalátor
 
-Webový instalátor umožňuje instalovat mapy do hodinek z Google Chrome, bez aplikace. Chrome na vašem počítači přečte z hodinek, co potřebuje, například model, volné místo a mapy.
+Webový instalátor umožňuje instalovat mapy do hodinek z Google Chrome, Microsoft Edge, Opery nebo Brave na počítači, bez aplikace. Prohlížeč na vašem počítači přečte z hodinek, co potřebuje, například model, volné místo a mapy.
 
 Když zvolíte mapu, server Terento ji stáhne od původního poskytovatele a předá ji vašemu prohlížeči. Kopie vzniká jen pro váš požadavek, nesdílí se a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Poskytovatel vidí server Terento, ne vás. Ke každé kopii server ukládá záznam o mapě (poskytovatel, mapa, oblast a vydání), její velikosti, kolik z ní dorazilo do prohlížeče, časech a výsledku, bez údajů o vás, vašem prohlížeči nebo hodinkách. Tyto záznamy se uchovávají 24 měsíců.
 
@@ -31,7 +31,7 @@ Stránka posílá Terento o každém kroku krátké zprávy, které vás neident
 
 Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
 
-Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: které mapy webový instalátor nainstaloval a do kterých hodinek, aby je později mohl bezpečně aktualizovat nebo odebrat, dočasná kopie mapy do dokončení instalace a zvolený jazyk. K rozpoznání hodinek ukládá jednosměrný kód vytvořený z údajů hodinek a náhodné hodnoty, ze kterého nelze zjistit sériové číslo. Vymazáním dat webu webového instalátoru v Chromu se to vše odstraní. Webový instalátor nenačítá statistiky webu.
+Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: které mapy webový instalátor nainstaloval a do kterých hodinek, aby je později mohl bezpečně aktualizovat nebo odebrat, dočasná kopie mapy do dokončení instalace a zvolený jazyk. K rozpoznání hodinek ukládá jednosměrný kód vytvořený z údajů hodinek a náhodné hodnoty, ze kterého nelze zjistit sériové číslo. Vymazáním dat webu webového instalátoru v prohlížeči se to vše odstraní. Webový instalátor nenačítá statistiky webu.
 
 ## Připojení webu a aplikace
 
@@ -75,4 +75,4 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 10. října 2026.
+Aktualizováno: 11. října 2026.

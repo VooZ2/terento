@@ -17,7 +17,7 @@ Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, compte
 
 ## Installateur web
 
-L’installateur web permet d’installer des cartes sur votre montre depuis Google Chrome, sans l’application. Chrome lit sur votre ordinateur ce dont il a besoin, comme le modèle de la montre, l’espace libre et les cartes.
+L’installateur web permet d’installer des cartes sur votre montre depuis Google Chrome, Microsoft Edge, Opera ou Brave sur un ordinateur, sans l’application. Le navigateur lit sur votre ordinateur ce dont il a besoin, comme le modèle de la montre, l’espace libre et les cartes.
 
 Quand vous choisissez une carte, le serveur de Terento la télécharge depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie est faite pour votre seule demande, n’est pas partagée et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Le fournisseur voit le serveur de Terento, pas vous. Pour chaque copie, le serveur conserve un enregistrement de la carte (fournisseur, carte, région et version), de sa taille, de la part reçue par votre navigateur, des horaires et du résultat, sans rien sur vous, votre navigateur ou votre montre. Ces enregistrements sont conservés 24 mois.
 
@@ -31,7 +31,7 @@ La page envoie à Terento, à chaque étape, de courtes notes qui ne vous identi
 
 Elles ne contiennent jamais le numéro de série ou l’Unit ID de votre montre, votre adresse IP, des noms de fichiers, la liste des cartes de votre montre ni de texte d’erreur. Votre adresse IP n’est gardée que brièvement en mémoire pour limiter le nombre de requêtes d’un même ordinateur, et n’est pas enregistrée. Ces notes nous montrent quelles montres et quels systèmes et navigateurs fonctionnent et nous aident à corriger les échecs. La base est l’intérêt légitime selon l’article 6(1)(f) du RGPD. La page n’a pas d’interrupteur ; contactez-nous pour vous opposer. Les notes individuelles sont privées et conservées 24 mois.
 
-Certaines données restent dans votre navigateur, pas sur notre serveur : les cartes installées par l’installateur web et sur quelle montre, pour pouvoir les mettre à jour ou les supprimer en toute sécurité, une copie temporaire d’une carte jusqu’à son installation et la langue choisie. Pour reconnaître la montre, il enregistre un code à sens unique tiré des données de la montre et d’une valeur aléatoire, qui ne permet pas de retrouver le numéro de série. Effacer dans Chrome les données du site de l’installateur web supprime tout cela. L’installateur web ne charge pas les statistiques du site.
+Certaines données restent dans votre navigateur, pas sur notre serveur : les cartes installées par l’installateur web et sur quelle montre, pour pouvoir les mettre à jour ou les supprimer en toute sécurité, une copie temporaire d’une carte jusqu’à son installation et la langue choisie. Pour reconnaître la montre, il enregistre un code à sens unique tiré des données de la montre et d’une valeur aléatoire, qui ne permet pas de retrouver le numéro de série. Effacer dans votre navigateur les données du site de l’installateur web supprime tout cela. L’installateur web ne charge pas les statistiques du site.
 
 ## Connexions du site et de l’application
 
@@ -75,4 +75,4 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 10 octobre 2026.
+Mise à jour : 11 octobre 2026.

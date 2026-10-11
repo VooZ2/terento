@@ -22,7 +22,7 @@ Reports exclude Garmin Unit IDs, serial-number values, account details, local pa
 
 ## Web installer
 
-The web installer lets you install maps on your watch from Google Chrome, without the app. Chrome reads what it needs from the watch, such as its model, free space and maps, on your computer.
+The web installer lets you install maps on your watch from Google Chrome, Microsoft Edge, Opera or Brave on a computer, without the app. The browser reads what it needs from the watch, such as its model, free space and maps, on your computer.
 
 When you choose a map, Terento’s server downloads it from the original provider and passes it to your browser. The copy is made for your request only, is not shared and is deleted once your browser has it, or after two hours if it is not collected. The provider sees Terento’s server, not you. For each copy, the server keeps a record of the map (provider, map, region and release), its size, how much of it reached your browser, the times and the result, with nothing about you, your browser or your watch. These records are kept for 24 months.
 
@@ -36,7 +36,7 @@ The page sends Terento short notes that do not identify you, one for each step: 
 
 They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
 
-Some data stays in your browser, not on our server: which maps the web installer installed and on which watch, so it can update or remove them safely later; a temporary copy of a map until it is installed; and the language you choose. To recognise the watch, it stores a one-way code made from the watch details and a random value, which cannot be turned back into the serial number. Clearing the web installer’s site data in Chrome removes all of this. The web installer does not load website statistics.
+Some data stays in your browser, not on our server: which maps the web installer installed and on which watch, so it can update or remove them safely later; a temporary copy of a map until it is installed; and the language you choose. To recognise the watch, it stores a one-way code made from the watch details and a random value, which cannot be turned back into the serial number. Clearing the web installer’s site data in your browser removes all of this. The web installer does not load website statistics.
 
 ## Website and app connections
 
@@ -80,7 +80,7 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 10 October 2026.
+Updated: 11 October 2026.
 
 # Datenschutz
 
@@ -101,7 +101,7 @@ Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokale
 
 ## Web-Installer
 
-Mit dem Web-Installer installierst du Karten aus Google Chrome auf deine Uhr, ohne die App. Chrome liest auf deinem Computer, was es von der Uhr braucht, etwa Modell, freien Speicher und Karten.
+Mit dem Web-Installer installierst du Karten aus Google Chrome, Microsoft Edge, Opera oder Brave auf einem Computer auf deine Uhr, ohne die App. Der Browser liest auf deinem Computer, was er von der Uhr braucht, etwa Modell, freien Speicher und Karten.
 
 Wenn du eine Karte wählst, lädt der Terento-Server sie vom ursprünglichen Anbieter und gibt sie an deinen Browser weiter. Die Kopie entsteht nur für deine Anfrage, wird nicht geteilt und gelöscht, sobald dein Browser sie hat, oder nach zwei Stunden, wenn sie nicht abgeholt wird. Der Anbieter sieht den Terento-Server, nicht dich. Zu jeder Kopie speichert der Server einen Eintrag über die Karte (Anbieter, Karte, Region und Version), ihre Größe, wie viel davon deinen Browser erreicht hat, die Zeiten und das Ergebnis, ohne Angaben zu dir, deinem Browser oder deiner Uhr. Diese Einträge werden 24 Monate aufbewahrt.
 
@@ -115,7 +115,7 @@ Die Seite sendet Terento zu jedem Schritt kurze Meldungen, die dich nicht identi
 
 Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird nur kurz im Arbeitsspeicher gehalten, um zu begrenzen, wie viele Anfragen ein Computer stellen kann, und nicht gespeichert. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.
 
-Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten der Web-Installer auf welcher Uhr installiert hat, damit er sie später sicher aktualisieren oder entfernen kann, eine vorübergehende Kopie einer Karte bis zur Installation und die gewählte Sprache. Um die Uhr wiederzuerkennen, speichert er einen Einwegcode aus Uhrendaten und einem Zufallswert, aus dem sich die Seriennummer nicht zurückgewinnen lässt. Wenn du in Chrome die Websitedaten des Web-Installers löschst, wird all das entfernt. Der Web-Installer lädt keine Website-Statistik.
+Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten der Web-Installer auf welcher Uhr installiert hat, damit er sie später sicher aktualisieren oder entfernen kann, eine vorübergehende Kopie einer Karte bis zur Installation und die gewählte Sprache. Um die Uhr wiederzuerkennen, speichert er einen Einwegcode aus Uhrendaten und einem Zufallswert, aus dem sich die Seriennummer nicht zurückgewinnen lässt. Wenn du in deinem Browser die Websitedaten des Web-Installers löschst, wird all das entfernt. Der Web-Installer lädt keine Website-Statistik.
 
 ## Verbindungen von Website und App
 
@@ -159,7 +159,7 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 10. Oktober 2026.
+Aktualisiert: 11. Oktober 2026.
 
 # Confidentialité
 
@@ -180,7 +180,7 @@ Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, compte
 
 ## Installateur web
 
-L’installateur web permet d’installer des cartes sur votre montre depuis Google Chrome, sans l’application. Chrome lit sur votre ordinateur ce dont il a besoin, comme le modèle de la montre, l’espace libre et les cartes.
+L’installateur web permet d’installer des cartes sur votre montre depuis Google Chrome, Microsoft Edge, Opera ou Brave sur un ordinateur, sans l’application. Le navigateur lit sur votre ordinateur ce dont il a besoin, comme le modèle de la montre, l’espace libre et les cartes.
 
 Quand vous choisissez une carte, le serveur de Terento la télécharge depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie est faite pour votre seule demande, n’est pas partagée et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Le fournisseur voit le serveur de Terento, pas vous. Pour chaque copie, le serveur conserve un enregistrement de la carte (fournisseur, carte, région et version), de sa taille, de la part reçue par votre navigateur, des horaires et du résultat, sans rien sur vous, votre navigateur ou votre montre. Ces enregistrements sont conservés 24 mois.
 
@@ -194,7 +194,7 @@ La page envoie à Terento, à chaque étape, de courtes notes qui ne vous identi
 
 Elles ne contiennent jamais le numéro de série ou l’Unit ID de votre montre, votre adresse IP, des noms de fichiers, la liste des cartes de votre montre ni de texte d’erreur. Votre adresse IP n’est gardée que brièvement en mémoire pour limiter le nombre de requêtes d’un même ordinateur, et n’est pas enregistrée. Ces notes nous montrent quelles montres et quels systèmes et navigateurs fonctionnent et nous aident à corriger les échecs. La base est l’intérêt légitime selon l’article 6(1)(f) du RGPD. La page n’a pas d’interrupteur ; contactez-nous pour vous opposer. Les notes individuelles sont privées et conservées 24 mois.
 
-Certaines données restent dans votre navigateur, pas sur notre serveur : les cartes installées par l’installateur web et sur quelle montre, pour pouvoir les mettre à jour ou les supprimer en toute sécurité, une copie temporaire d’une carte jusqu’à son installation et la langue choisie. Pour reconnaître la montre, il enregistre un code à sens unique tiré des données de la montre et d’une valeur aléatoire, qui ne permet pas de retrouver le numéro de série. Effacer dans Chrome les données du site de l’installateur web supprime tout cela. L’installateur web ne charge pas les statistiques du site.
+Certaines données restent dans votre navigateur, pas sur notre serveur : les cartes installées par l’installateur web et sur quelle montre, pour pouvoir les mettre à jour ou les supprimer en toute sécurité, une copie temporaire d’une carte jusqu’à son installation et la langue choisie. Pour reconnaître la montre, il enregistre un code à sens unique tiré des données de la montre et d’une valeur aléatoire, qui ne permet pas de retrouver le numéro de série. Effacer dans votre navigateur les données du site de l’installateur web supprime tout cela. L’installateur web ne charge pas les statistiques du site.
 
 ## Connexions du site et de l’application
 
@@ -238,7 +238,7 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 10 octobre 2026.
+Mise à jour : 11 octobre 2026.
 
 # Prywatność
 
@@ -259,7 +259,7 @@ Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, loka
 
 ## Instalator webowy
 
-Instalator webowy pozwala instalować mapy na zegarku z Google Chrome, bez aplikacji. Chrome odczytuje z zegarka na Twoim komputerze to, czego potrzebuje, np. model, wolne miejsce i mapy.
+Instalator webowy pozwala instalować mapy na zegarku z Google Chrome, Microsoft Edge, Opery lub Brave na komputerze, bez aplikacji. Przeglądarka odczytuje z zegarka na Twoim komputerze to, czego potrzebuje, np. model, wolne miejsce i mapy.
 
 Gdy wybierzesz mapę, serwer Terento pobiera ją od pierwotnego dostawcy i przekazuje do Twojej przeglądarki. Kopia powstaje tylko dla Twojego żądania, nie jest udostępniana innym i jest usuwana, gdy przeglądarka ją otrzyma, albo po dwóch godzinach, jeśli nie zostanie odebrana. Dostawca widzi serwer Terento, nie Ciebie. Dla każdej kopii serwer zapisuje informację o mapie (dostawca, mapa, region i wydanie), jej rozmiarze, tym, ile dotarło do przeglądarki, czasach i wyniku, bez danych o Tobie, Twojej przeglądarce czy zegarku. Te zapisy są przechowywane przez 24 miesiące.
 
@@ -273,7 +273,7 @@ Strona wysyła do Terento krótkie informacje o każdym kroku, które nie pozwal
 
 Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
 
-Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które mapy instalator webowy zainstalował i na którym zegarku, aby później bezpiecznie je aktualizować lub usuwać, tymczasowa kopia mapy do czasu instalacji oraz wybrany język. Aby rozpoznać zegarek, zapisuje jednokierunkowy kod utworzony z danych zegarka i losowej wartości, z którego nie da się odtworzyć numeru seryjnego. Wyczyszczenie w Chrome danych witryny instalatora webowego usuwa to wszystko. Instalator webowy nie ładuje statystyk witryny.
+Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które mapy instalator webowy zainstalował i na którym zegarku, aby później bezpiecznie je aktualizować lub usuwać, tymczasowa kopia mapy do czasu instalacji oraz wybrany język. Aby rozpoznać zegarek, zapisuje jednokierunkowy kod utworzony z danych zegarka i losowej wartości, z którego nie da się odtworzyć numeru seryjnego. Wyczyszczenie w przeglądarce danych witryny instalatora webowego usuwa to wszystko. Instalator webowy nie ładuje statystyk witryny.
 
 ## Połączenia witryny i aplikacji
 
@@ -317,7 +317,7 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 10 października 2026 r.
+Aktualizacja: 11 października 2026 r.
 
 # Soukromí
 
@@ -338,7 +338,7 @@ Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místn
 
 ## Webový instalátor
 
-Webový instalátor umožňuje instalovat mapy do hodinek z Google Chrome, bez aplikace. Chrome na vašem počítači přečte z hodinek, co potřebuje, například model, volné místo a mapy.
+Webový instalátor umožňuje instalovat mapy do hodinek z Google Chrome, Microsoft Edge, Opery nebo Brave na počítači, bez aplikace. Prohlížeč na vašem počítači přečte z hodinek, co potřebuje, například model, volné místo a mapy.
 
 Když zvolíte mapu, server Terento ji stáhne od původního poskytovatele a předá ji vašemu prohlížeči. Kopie vzniká jen pro váš požadavek, nesdílí se a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Poskytovatel vidí server Terento, ne vás. Ke každé kopii server ukládá záznam o mapě (poskytovatel, mapa, oblast a vydání), její velikosti, kolik z ní dorazilo do prohlížeče, časech a výsledku, bez údajů o vás, vašem prohlížeči nebo hodinkách. Tyto záznamy se uchovávají 24 měsíců.
 
@@ -352,7 +352,7 @@ Stránka posílá Terento o každém kroku krátké zprávy, které vás neident
 
 Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
 
-Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: které mapy webový instalátor nainstaloval a do kterých hodinek, aby je později mohl bezpečně aktualizovat nebo odebrat, dočasná kopie mapy do dokončení instalace a zvolený jazyk. K rozpoznání hodinek ukládá jednosměrný kód vytvořený z údajů hodinek a náhodné hodnoty, ze kterého nelze zjistit sériové číslo. Vymazáním dat webu webového instalátoru v Chromu se to vše odstraní. Webový instalátor nenačítá statistiky webu.
+Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: které mapy webový instalátor nainstaloval a do kterých hodinek, aby je později mohl bezpečně aktualizovat nebo odebrat, dočasná kopie mapy do dokončení instalace a zvolený jazyk. K rozpoznání hodinek ukládá jednosměrný kód vytvořený z údajů hodinek a náhodné hodnoty, ze kterého nelze zjistit sériové číslo. Vymazáním dat webu webového instalátoru v prohlížeči se to vše odstraní. Webový instalátor nenačítá statistiky webu.
 
 ## Připojení webu a aplikace
 
@@ -396,7 +396,7 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 10. října 2026.
+Aktualizováno: 11. října 2026.
 
 # Privacy
 
@@ -417,7 +417,7 @@ I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, perco
 
 ## Installer web
 
-L’installer web ti permette di installare mappe sull’orologio da Google Chrome, senza l’app. Chrome legge dall’orologio, sul tuo computer, ciò che gli serve, come modello, spazio libero e mappe.
+L’installer web ti permette di installare mappe sull’orologio da Google Chrome, Microsoft Edge, Opera o Brave su un computer, senza l’app. Il browser legge dall’orologio, sul tuo computer, ciò che gli serve, come modello, spazio libero e mappe.
 
 Quando scegli una mappa, il server di Terento la scarica dal fornitore originale e la passa al tuo browser. La copia è creata solo per la tua richiesta, non viene condivisa ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Il fornitore vede il server di Terento, non te. Per ogni copia il server conserva un registro della mappa (fornitore, mappa, regione e versione), della sua dimensione, di quanto è arrivato al browser, degli orari e dell’esito, senza nulla su di te, sul browser o sull’orologio. Questi registri sono conservati per 24 mesi.
 
@@ -431,7 +431,7 @@ La pagina invia a Terento, per ogni passaggio, brevi note che non ti identifican
 
 Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP resta solo brevemente in memoria per limitare quante richieste può fare un computer e non viene salvato. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.
 
-Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’installer web ha installato e su quale orologio, per poterle aggiornare o rimuovere in sicurezza in seguito, una copia temporanea di una mappa fino all’installazione e la lingua scelta. Per riconoscere l’orologio salva un codice a senso unico ricavato dai dati dell’orologio e da un valore casuale, da cui non si può risalire al numero di serie. Cancellare in Chrome i dati del sito dell’installer web rimuove tutto questo. L’installer web non carica le statistiche del sito.
+Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’installer web ha installato e su quale orologio, per poterle aggiornare o rimuovere in sicurezza in seguito, una copia temporanea di una mappa fino all’installazione e la lingua scelta. Per riconoscere l’orologio salva un codice a senso unico ricavato dai dati dell’orologio e da un valore casuale, da cui non si può risalire al numero di serie. Cancellare nel browser i dati del sito dell’installer web rimuove tutto questo. L’installer web non carica le statistiche del sito.
 
 ## Connessioni del sito e dell’app
 
@@ -475,4 +475,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 10 ottobre 2026.
+Aggiornamento: 11 ottobre 2026.

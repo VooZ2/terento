@@ -17,7 +17,7 @@ I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, perco
 
 ## Installer web
 
-L’installer web ti permette di installare mappe sull’orologio da Google Chrome, senza l’app. Chrome legge dall’orologio, sul tuo computer, ciò che gli serve, come modello, spazio libero e mappe.
+L’installer web ti permette di installare mappe sull’orologio da Google Chrome, Microsoft Edge, Opera o Brave su un computer, senza l’app. Il browser legge dall’orologio, sul tuo computer, ciò che gli serve, come modello, spazio libero e mappe.
 
 Quando scegli una mappa, il server di Terento la scarica dal fornitore originale e la passa al tuo browser. La copia è creata solo per la tua richiesta, non viene condivisa ed è eliminata appena il browser l’ha ricevuta, o dopo due ore se non viene ritirata. Il fornitore vede il server di Terento, non te. Per ogni copia il server conserva un registro della mappa (fornitore, mappa, regione e versione), della sua dimensione, di quanto è arrivato al browser, degli orari e dell’esito, senza nulla su di te, sul browser o sull’orologio. Questi registri sono conservati per 24 mesi.
 
@@ -31,7 +31,7 @@ La pagina invia a Terento, per ogni passaggio, brevi note che non ti identifican
 
 Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP resta solo brevemente in memoria per limitare quante richieste può fare un computer e non viene salvato. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.
 
-Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’installer web ha installato e su quale orologio, per poterle aggiornare o rimuovere in sicurezza in seguito, una copia temporanea di una mappa fino all’installazione e la lingua scelta. Per riconoscere l’orologio salva un codice a senso unico ricavato dai dati dell’orologio e da un valore casuale, da cui non si può risalire al numero di serie. Cancellare in Chrome i dati del sito dell’installer web rimuove tutto questo. L’installer web non carica le statistiche del sito.
+Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’installer web ha installato e su quale orologio, per poterle aggiornare o rimuovere in sicurezza in seguito, una copia temporanea di una mappa fino all’installazione e la lingua scelta. Per riconoscere l’orologio salva un codice a senso unico ricavato dai dati dell’orologio e da un valore casuale, da cui non si può risalire al numero di serie. Cancellare nel browser i dati del sito dell’installer web rimuove tutto questo. L’installer web non carica le statistiche del sito.
 
 ## Connessioni del sito e dell’app
 
@@ -75,4 +75,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 10 ottobre 2026.
+Aggiornamento: 11 ottobre 2026.

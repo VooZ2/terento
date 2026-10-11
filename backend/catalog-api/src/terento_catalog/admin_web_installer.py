@@ -13,6 +13,7 @@ from .admin import (
     _ADMIN_NONCE_PLACEHOLDER,
     _PROVIDER_LABELS,
     _admin_header,
+    _admin_icon,
     _empty_state,
     _layout,
     _metric_row,
@@ -28,16 +29,16 @@ from .web_installer import joined
 
 WORDS = {
     # Connection outcomes
-    "NO_WATCH_CHOSEN": "No watch was chosen in Chrome",
-    "CHOOSER_TIMEOUT": "Chrome did not show the watch in time",
+    "NO_WATCH_CHOSEN": "No watch was chosen in the browser",
+    "CHOOSER_TIMEOUT": "The browser did not show the watch in time",
     "STARTUP_ENTRY": "The watch's startup entry was chosen instead of the watch",
     "MODEL_NOT_ENABLED": "This watch model is not enabled for installs",
     "POLICY_UNAVAILABLE": "The list of supported watches could not be loaded",
     "OTHER_TAB": "Another tab was already using the watch",
     "TIMEOUT": "The watch did not answer in time",
     "CONNECTION_LOST": "The connection to the watch ended",
-    "OPEN_ACCESS_DENIED": "Chrome could not open the watch",
-    "INTERFACE_CLAIM_FAILED": "Chrome could not take over the watch's USB connection",
+    "OPEN_ACCESS_DENIED": "The browser could not open the watch",
+    "INTERFACE_CLAIM_FAILED": "The browser could not take over the watch's USB connection",
     "FAILED": "Other connection error",
     # Map and removal reasons
     "CANCELLED": "Cancelled by the person",
@@ -72,6 +73,11 @@ OUTCOMES = {
     "SUCCEEDED": ("success", "Succeeded"), "FAILED": ("danger", "Failed"), "CANCELLED": ("neutral", "Cancelled"),
     "DELIVERED": ("success", "Sent"), "NOT_DOWNLOADED": ("warning", "Not downloaded"),
     "EXPIRED": ("neutral", "Not collected"), "REFUSED": ("warning", "Refused"), "INTERRUPTED": ("warning", "Interrupted"),
+}
+# What the installer page let this system and browser do (GATE outcome).
+SUPPORT = {
+    "SUPPORTED": ("success", "Supported"), "TESTING": ("progress", "Testing"),
+    "BLOCKED_BROWSER": ("danger", "Browser not supported"), "BLOCKED_SYSTEM": ("danger", "System not supported"),
 }
 
 
@@ -129,6 +135,15 @@ def _table(caption: str, headers: list[str], rows: list[list[str]], empty: str) 
     )
 
 
+def _browser(value: Any) -> str:
+    """Browser name with its Font Awesome logo; the name stays as text."""
+    if not value:
+        return _text(value)
+    family = str(value).split()[0].lower()
+    known = family in ("chrome", "edge", "opera", "brave", "firefox", "safari")
+    return f"<span class='web-installer-browser'>{_admin_icon('browser-' + (family if known else 'other'))}{_text(value)}</span>"
+
+
 def _td(content: str) -> str:
     return f"<td>{content}</td>"
 
@@ -152,10 +167,12 @@ def _watch_sections(watch: dict[str, Any], period: str) -> str:
         _num(m["sessions"]), _num(m["installed"]), _num(m["updated"]), _num(m["failed"]), _td(_timestamp_markup(m["last"])),
     ] for m in watch["models"]], "No watch was connected in this period.")
     systems = _table("Systems and browsers", ["System", "Browser", "#Visits", "#Could not use"], [[
-        _td(_text(s["system"])), _td(_text(s["browser"])), _num(s["visits"]), _num(s["blocked"]),
+        _td(_text(s["system"])), _td(_browser(s["browser"]) + " " + _status_pill(*SUPPORT[s["support"]], value=s["support"])),
+        _num(s["visits"]), _num(s["blocked"]),
     ] for s in watch["systems"]], "No visits in this period.")
-    connect = _table("Connection problems", ["Problem", "System", "#Count", "Last"], [[
+    connect = _table("Connection problems", ["Problem", "System", "Browser", "#Count", "Last"], [[
         _td(_words(p["outcome"]) + _code(p["outcome"], p["error_name"])), _td(_text(p["os_family"])),
+        _td(_browser(p["browser_family"])),
         _num(p["count"]), _td(_timestamp_markup(p["last"])),
     ] for p in watch["connectProblems"]], "No connection problems in this period.")
     detail = lambda p: [f"HTTP {p['http_status']}" if p["http_status"] else None,

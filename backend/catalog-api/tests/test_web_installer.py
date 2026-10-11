@@ -192,7 +192,11 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         for body in session_events():
             self.assertEqual(self.forward(self.recent(body)), 201)
         # The system refused open (Windows driver, maybe another app): not a lost connection.
-        self.assertEqual(self.forward(event(stage="CONNECT", outcome="OPEN_ACCESS_DENIED", osFamily="Windows", errorName="SecurityError")), 201)
+        self.assertEqual(self.forward(event(stage="CONNECT", outcome="OPEN_ACCESS_DENIED", osFamily="Windows", browserFamily="Edge",
+                                            errorName="SecurityError")), 201)
+        # Any Chromium browser with WebUSB passes as testing; Firefox has no WebUSB.
+        self.assertEqual(self.forward(event(stage="GATE", outcome="PASSED_TESTING_PLATFORM", osFamily="macOS", browserFamily="Brave")), 201)
+        self.assertEqual(self.forward(event(stage="GATE", outcome="BLOCKED_BROWSER", osFamily="macOS", browserFamily="Firefox")), 201)
         self.assertEqual(self.forward(self.recent(relay_job()), "relay-jobs"), 201)
         self.assertEqual(self.forward(self.recent(relay_job(id="3f2a9c1b7d4e5a61", outcome="DELIVERED", reason=None,
                          providerHttpStatus=..., readyAt="2026-10-10T20:01:10Z", sizeBytes=200_000_000,
@@ -209,6 +213,9 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual([(p["stage"], p["reason"], p["error_name"]) for p in watch["mapProblems"]],
                          [("REMOVE", "OTHER", None), ("MAP_RESULT", "CONNECTION_LOST", "NetworkError")])
         self.assertEqual([r["outcome"] for r in watch["recent"]], ["FAILED", "SUCCEEDED"])  # remove, final install
+        self.assertEqual(sorted((s["browser"].split()[0], s["support"]) for s in watch["systems"]),
+                         [("Brave", "TESTING"), ("Chrome", "SUPPORTED"), ("Firefox", "BLOCKED_BROWSER")])
+        self.assertEqual([(p["os_family"], p["browser_family"]) for p in watch["connectProblems"]], [("Windows", "Edge")])
         self.assertEqual((server["requests"], server["delivered"], server["failed"], server["medianSendS"]), (2, 1, 1, 60))
         self.assertEqual(server["problems"][0]["providerHttpStatus"], 503)
         self.assertEqual(server["viaFallback"], 1)  # the dl port was blocked; sent through Cloudflare
@@ -219,7 +226,9 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         for text in ("<h1>Web installer</h1>", "Watch connected", "Maps installed", "Maps updated", "Writing",
                      "Watch models", "fenix 8 - 47mm", "macOS 15", "Systems and browsers", "Connection problems",
                      "Install and removal problems", "The connection to the watch ended", "CONNECTION_LOST · NetworkError",
-                     "Chrome could not open the watch", "OPEN_ACCESS_DENIED · SecurityError",
+                     "The browser could not open the watch", "OPEN_ACCESS_DENIED · SecurityError",
+                     "Supported", "Testing", "Browser not supported", "<th scope='col'>Browser</th>",
+                     "admin-icon-browser-brave", "admin-icon-browser-firefox", "admin-icon-browser-edge",
                      "MTP 0x200D", "Recent results on watches", "On the server", "Providers", "Problems",
                      "Provider returned an error", "PROVIDER_HTTP_ERROR · HTTP 503", "Recent requests", "Test records: 1",
                      "Sent through Cloudflare", "100% of sent",
