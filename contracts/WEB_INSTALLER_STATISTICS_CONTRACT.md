@@ -27,7 +27,11 @@ shared install statistics from the start, like app results.
 - **Watch model**: the API resolves the catalog model of each `CONNECT` and
   `MAP_RESULT` from `model` and the USB model code with the same identity
   assessment as app reports, at receipt and again on each scheduler cycle
-  while unresolved. Only resolved results count per model.
+  while unresolved. A record without the USB model code that the assessment
+  leaves unresolved resolves by model and case size (`fenix 8 - 47mm`: exact
+  base model, generation-label aliases, exact size) when exactly one active
+  catalog model fits (`MODEL_AND_SIZE`); a size-less or ambiguous name stays
+  unresolved. Only resolved results count per model.
 - **Where they appear**: Dashboard charts (All, the default, App and Web
   switch), Dashboard Activity (web rows marked with the Web icon), Maps page
   and providers (combined numbers), Devices list and model pages (App, Web and

@@ -12,6 +12,7 @@ from pglite_support import PGliteTestCase
 from terento_catalog.admin import _admin_device_payload, device_detail_page, hash_password
 from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
 from terento_catalog.migrate import _statements
+from terento_catalog.web_installer import model_size_match
 from terento_catalog.web_installer import (
     STAGES,
     WebInstallerValidationError,
@@ -180,6 +181,33 @@ class SharedCountTests(unittest.TestCase):
         updates = page.split("aria-label='Updates by source'", 1)[1].split("</section>", 1)[0]
         self.assertIn("data-stat='web-successful'>1<", updates)
         self.assertIn("data-stat='web-blocked'>—<", updates)
+
+
+class ModelSizeMatchTests(unittest.TestCase):
+    """Web records without a USB model code: model and case size, one model only."""
+
+    DEVICES = [
+        {"id": "garmin-epix-pro-gen-2", "model": "epix Pro (Gen 2)", "case_size_mm": None, "active": True},
+        {"id": "garmin-epix-pro-gen-2-47", "model": "epix Pro (Gen 2)", "case_size_mm": 47, "active": True},
+        {"id": "garmin-epix-pro-gen-2-51", "model": "epix Pro (Gen 2)", "case_size_mm": 51, "active": True},
+        {"id": "garmin-fenix-8-47-amoled", "model": "fēnix 8", "case_size_mm": 47, "active": True},
+        {"id": "garmin-fenix-8-47-solar", "model": "fēnix 8", "case_size_mm": 47, "active": True},
+        {"id": "garmin-fenix-8-51-amoled", "model": "fēnix 8", "case_size_mm": 51, "active": True},
+        {"id": "garmin-fenix-8-pro-47", "model": "fēnix 8 Pro", "case_size_mm": 47, "active": True},
+        {"id": "garmin-forerunner-965", "model": "Forerunner 965", "case_size_mm": 47, "active": False},
+    ]
+
+    def test_one_model_of_that_size_resolves(self):
+        self.assertEqual(model_size_match("epix pro - 47mm", self.DEVICES), "garmin-epix-pro-gen-2-47")
+        self.assertEqual(model_size_match("epix pro (gen 2) – 51mm", self.DEVICES), "garmin-epix-pro-gen-2-51")
+        self.assertEqual(model_size_match("fenix 8 - 51mm", self.DEVICES), "garmin-fenix-8-51-amoled")
+        self.assertEqual(model_size_match("fenix 8 pro - 47mm", self.DEVICES), "garmin-fenix-8-pro-47")
+
+    def test_ambiguous_sizeless_unknown_or_inactive_stays_unresolved(self):
+        for model in ("fenix 8 - 47mm", "epix pro", "epix pro - 42mm", "fenix - 47mm",
+                      "forerunner 965 - 47mm", None, ""):
+            with self.subTest(model=model):
+                self.assertIsNone(model_size_match(model, self.DEVICES))
 
 
 class SupportTests(unittest.TestCase):
@@ -396,6 +424,17 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual(self.db.resolve_web_installer_identities()["resolved"], 5)
         self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_event "
                                   "WHERE canonical_device_model_id = 'garmin-fenix-8-47-amoled'")[0]["n"], 5)
+
+        # Without a USB model code a name the assessment cannot place resolves by
+        # model and case size when exactly one catalog model fits.
+        self.forward(event(stage="CONNECT", outcome="CONNECTED", model="epix pro - 47mm"))
+        self.forward(event(stage="CONNECT", outcome="CONNECTED", model="epix pro - 47mm", usbVendorId=0x091E,
+                           usbProductId=0xFFFE))
+        self.assertEqual(self.sql("SELECT canonical_device_model_id AS id, identity_resolution AS resolution "
+                                  "FROM web_installer_event WHERE model = 'epix pro - 47mm' "
+                                  "ORDER BY usb_product_id NULLS FIRST"),
+                         [{"id": "garmin-epix-pro-gen-2-47", "resolution": "MODEL_AND_SIZE"},
+                          {"id": None, "resolution": "UNRESOLVED"}])
 
     def test_retention(self):
         self.forward(event())

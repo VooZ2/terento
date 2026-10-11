@@ -27,6 +27,7 @@ from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
 from .telemetry import is_local_release_label
 from .web_installer import identity_event as web_installer_identity_event
+from .web_installer import model_size_match as web_installer_model_size_match
 from .statistics_exclusions import classify_compatibility_event
 from .statistics_periods import ADMIN_PERIODS, PERIOD_BUCKETS, all_time_bucket, period_start
 
@@ -180,10 +181,18 @@ def _overview_time_zone(value: str) -> ZoneInfo:
 def web_installer_identity(
     row: dict[str, Any], devices: list[dict[str, Any]], mappings: list[dict[str, Any]],
 ) -> tuple[str | None, str]:
-    """Catalog model and resolution of one web event (model text and USB code)."""
+    """Catalog model and resolution of one web event (model text and USB code).
+    A record without a USB model code that the assessment leaves unresolved
+    falls back to its model and case size (``model_size_match``)."""
     assessment = assess_identity(web_installer_identity_event(row), devices, mappings)
     device_id = assessment["canonicalDeviceId"]
-    return device_id, (assessment["resolution"] if device_id else "UNRESOLVED")
+    if device_id:
+        return device_id, assessment["resolution"]
+    if row.get("usb_product_id") is None:
+        device_id = web_installer_model_size_match(row.get("model"), devices)
+        if device_id:
+            return device_id, "MODEL_AND_SIZE"
+    return None, "UNRESOLVED"
 
 
 def _web_installer_period(column: str, since: datetime | None, until: datetime | None) -> tuple[str, list[Any]]:

@@ -709,3 +709,11 @@ the same for every watch of one model. `canonical_device_model_id` (references
 app identity assessment. The view `web_installer_map_result` lists the counted
 web map results (every non-test `MAP_RESULT` that succeeded, or failed after
 writing started) that the shared install statistics add to app results.
+
+### Migration081: web installer model and size resolution
+
+Additive and rollback-compatible: `web_installer_event.identity_resolution` also
+accepts `MODEL_AND_SIZE`, written for a record without a USB model code that
+the identity assessment leaves unresolved but whose model and case size fit
+exactly one active catalog model
+([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).

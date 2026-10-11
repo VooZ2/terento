@@ -12,9 +12,13 @@ from __future__ import annotations
 import json
 import re
 import statistics
+import unicodedata
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Any
 from uuid import UUID
+
+from .installation_policy import GENERATION_LABEL_BASE_MODEL_ALIASES, installation_base_model
 
 MAX_WEB_INSTALLER_BYTES = 4 * 1024
 SCHEMA_VERSION = 1
@@ -180,6 +184,39 @@ def identity_event(row: dict[str, Any]) -> dict[str, Any]:
     if row.get("usb_vendor_id") is not None and row.get("usb_product_id") is not None:
         event["usbVendorID"], event["usbProductID"] = row["usb_vendor_id"], row["usb_product_id"]
     return event
+
+
+# The model text the installer page records ends with the case size the watch
+# reports ("fenix 8 - 47mm"), the suffix the page's own watch check reads.
+_MODEL_SIZE = re.compile(r"(.*?)\s+[-\u2013]\s*(\d{2,3})\s*mm")
+
+
+@lru_cache(maxsize=1024)
+def _base_model(text: str) -> str | None:
+    try:
+        return installation_base_model(text)
+    except ValueError:
+        return None
+
+
+def model_size_match(model: Any, devices: list[dict[str, Any]]) -> str | None:
+    """The catalog model a web record without a USB model code names by its
+    model and case size, as the installer page recognized the watch (exact base
+    model, generation-label aliases, exact size). Only when exactly one active
+    catalog model fits; a size-less or ambiguous name stays unresolved (owner
+    decision 2026-10-11)."""
+    text = unicodedata.normalize("NFKD", str(model or "")).casefold()
+    match = _MODEL_SIZE.fullmatch("".join(ch for ch in text if not unicodedata.combining(ch)).strip())
+    if not match:
+        return None
+    base, size = _base_model(match.group(1)), int(match.group(2))
+    bases = {device["id"]: _base_model(str(device.get("model") or "")) for device in devices}
+    if base not in set(bases.values()):
+        base = GENERATION_LABEL_BASE_MODEL_ALIASES.get(base, base)
+    found = {device["id"] for device in devices
+             if device.get("active") is True and base and bases[device["id"]] == base
+             and device.get("case_size_mm") is not None and int(device["case_size_mm"]) == size}
+    return next(iter(found)) if len(found) == 1 else None
 
 
 def counted_result(row: dict[str, Any]) -> bool:
