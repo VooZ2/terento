@@ -11,6 +11,7 @@ from uuid import uuid4
 from pglite_support import PGliteTestCase
 from terento_catalog.admin import hash_password
 from terento_catalog.http_api import CatalogService, make_handler
+from terento_catalog.migrate import _statements
 from terento_catalog.web_installer import (
     STAGES,
     WebInstallerValidationError,
@@ -21,6 +22,8 @@ from terento_catalog.web_installer import (
 )
 
 FIXTURES = Path(__file__).resolve().parents[3] / "contracts" / "fixtures"
+OWNER_CLEANUP_MIGRATION = (Path(__file__).resolve().parents[1] / "src" / "terento_catalog" / "migrations"
+                           / "079_remove_owner_web_installer_test_records.sql")
 SECRET = "w" * 48
 NOW = datetime(2026, 10, 10, 21, tzinfo=timezone.utc)
 
@@ -267,6 +270,49 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.sql("UPDATE web_installer_event SET received_at = now() - interval '25 months'")
         self.db.prune_compatibility_events()
         self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_event")[0]["n"], 0)
+
+    def test_owner_cleanup_migration_removes_everything_only_after_the_reviewed_counts(self):
+        cutoff = "2026-10-11T15:39:48.365772Z"
+        statements = _statements(OWNER_CLEANUP_MIGRATION.read_text(encoding="utf-8"))
+
+        def seed(reviewed_events):
+            for index in range(reviewed_events + 2):
+                received = f"TIMESTAMPTZ '{cutoff}' - interval '{index} minutes'" if index < reviewed_events else "now()"
+                self.sql("INSERT INTO web_installer_event (event_id, session_id, occurred_at, received_at, stage, outcome) "
+                         f"VALUES (gen_random_uuid(), gen_random_uuid(), now(), {received}, 'GATE', 'PASSED')")
+            for index in range(4):
+                received = f"TIMESTAMPTZ '{cutoff}'" if index < 3 else "now()"
+                self.sql("INSERT INTO web_installer_relay_job (job_id, requested_at, finished_at, provider, package_id, "
+                         f"served_bytes, outcome, received_at) VALUES ('{index:016x}', now(), now(), 'freizeitkarte', 'p', 0, "
+                         f"'DELIVERED', {received})")
+
+        def run():
+            for statement in statements:
+                self.sql(statement)
+            self.sql("DROP TABLE _web_installer_cleanup_guard")  # ON COMMIT DROP, and the test never commits
+
+        def count(table):
+            return self.sql(f"SELECT count(*) AS n FROM {table}")[0]["n"]
+
+        run()  # an empty database is a no-op
+        self.assertEqual(count("web_installer_event"), 0)
+
+        seed(32)
+        self.sql("SAVEPOINT wrong_counts")
+        with self.assertRaises(Exception):
+            run()
+        self.sql("ROLLBACK TO SAVEPOINT wrong_counts")
+        self.assertEqual(count("web_installer_event"), 34)
+        self.sql("DELETE FROM web_installer_event")
+        self.sql("DELETE FROM web_installer_relay_job")
+
+        seed(33)
+        run()
+        self.assertEqual((count("web_installer_event"), count("web_installer_relay_job")), (0, 0))
+        details = self.sql("SELECT details FROM admin_audit_log WHERE action = 'web_installer.owner_test_records_purged'")
+        self.assertEqual(len(details), 1)
+        self.assertEqual({key: value for key, value in details[0]["details"].items() if key != "checkCutoff"},
+                         {"eventCount": 35, "eventsAfterCheck": 2, "relayJobCount": 4, "relayJobsAfterCheck": 1})
 
 
 if __name__ == "__main__":
