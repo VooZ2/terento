@@ -688,3 +688,11 @@ key, `received_at`, `is_test`, requested/ready/finished times, `provider`,
 `reason` required exactly for FAILED/REFUSED/INTERRUPTED, and
 `provider_http_status` only with `PROVIDER_HTTP_ERROR`). Both are a separate
 population, never read by app statistics, and deleted 24 months after receipt.
+
+### Migration078: web installer served via
+
+Additive and rollback-compatible: one nullable `web_installer_relay_job.served_via`
+column (`direct`, `proxied` or `mixed`) the previous revision never reads
+([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
+It records whether a job's map went straight from the server, through the
+Cloudflare-proxied lab host, or both.
