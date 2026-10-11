@@ -151,7 +151,9 @@ private final class LocalInstallIO: LocalLedgerIO, MapInstallationTransport, @un
         return .init(itemID: device.handles[targetPath]!, targetPath: targetPath, reportedSizeBytes: expectedSizeBytes,
             sampledBytes: count, sampleCount: sampleOffsets.count, matchedSampleCount: sampleOffsets.count)
     }
-    func deleteExact(targetFilename: String, expectedItemID: UInt32) throws { throw CleanupIdentityUnproven() }
+    func deleteExact(targetFilename: String, expectedItemID: UInt32, expectedSizeBytes: UInt64?) throws {
+        throw CleanupIdentityUnproven()
+    }
 }
 private final class LocalUpdateIO: LocalLedgerIO, SafeUpdateTransport, @unchecked Sendable {
     var corruptVerification = false, protectedDelta = false

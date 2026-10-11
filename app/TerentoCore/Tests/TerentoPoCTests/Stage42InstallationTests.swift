@@ -284,14 +284,6 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
         )
     }
 
-    func deleteExact(targetFilename: String, expectedItemID: UInt32) throws {
-        try deleteExact(
-            targetFilename: targetFilename,
-            expectedItemID: expectedItemID,
-            expectedSizeBytes: nil
-        )
-    }
-
     func deleteExact(
         targetFilename: String,
         expectedItemID: UInt32,
@@ -714,7 +706,7 @@ struct Stage42InstallationTests {
         for historicalHandle: UInt32 in [77, 1077] {
             do {
                 try MTPMapInstallationTransport().deleteExact(targetFilename: "terento_freizeitkarte_fra.img",
-                    expectedItemID: historicalHandle)
+                    expectedItemID: historicalHandle, expectedSizeBytes: nil)
                 throw NSError(domain: "Production cleanup unexpectedly accepted", code: 1)
             } catch is CleanupIdentityUnproven { }
         }

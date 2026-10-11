@@ -20,6 +20,7 @@ struct Stage41AcquisitionTests {
         testFormatDetection()
         testArchivePathSafety()
         await testExtractedSymlinkSafety()
+        testSystemZIPExtractorHostileAndLargeArchives()
         await testDownloaderUsesCatalogURL()
         testReviewedProviderURLPolicy()
         await testFailedHTTPIsTyped()
@@ -57,7 +58,7 @@ struct Stage41AcquisitionTests {
         await testChunkedDownloadStreamsToFile()
         await testChunkedDownloadEnforcesReviewedSize()
 
-        print("PASS: 38 Stage 4.1 acquisition tests")
+        print("PASS: 39 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -210,6 +211,69 @@ struct Stage41AcquisitionTests {
             }
         } catch {
             expect(false, "extracted symbolic links are rejected")
+        }
+    }
+
+    /// Real `unzip`/`ditto`: symlink entries (also hidden ones) are refused before
+    /// anything is extracted, and a listing larger than a pipe buffer completes.
+    private static func testSystemZIPExtractorHostileAndLargeArchives() {
+        let fileManager = FileManager.default
+        let root = fileManager.temporaryDirectory
+            .appendingPathComponent("terento-zip-safety-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fileManager.removeItem(at: root) }
+        func zip(_ name: String, _ build: (URL) throws -> Void) throws -> URL {
+            let source = root.appendingPathComponent("\(name)-src", isDirectory: true)
+            try fileManager.createDirectory(at: source, withIntermediateDirectories: true)
+            try build(source)
+            let archive = root.appendingPathComponent("\(name).zip")
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+            process.currentDirectoryURL = source
+            process.arguments = ["-q", "-r", "-y", archive.path, "."]
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { throw MapAcquisitionError.invalidPackage("zip") }
+            return archive
+        }
+        func refusesBeforeExtraction(_ archive: URL) -> Bool {
+            let destination = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
+            do {
+                try SystemZIPArchiveExtractor().extract(archiveURL: archive, to: destination)
+                return false
+            } catch MapAcquisitionError.unsafeArchivePath {
+                return (try? fileManager.contentsOfDirectory(atPath: destination.path).isEmpty) == true
+            } catch {
+                return false
+            }
+        }
+        do {
+            let visible = try zip("visible") { source in
+                try Data("img".utf8).write(to: source.appendingPathComponent("gmapsupp.img"))
+                try fileManager.createSymbolicLink(atPath: source.appendingPathComponent("link").path,
+                                                   withDestinationPath: "/etc/hosts")
+            }
+            let hidden = try zip("hidden") { source in
+                try Data("img".utf8).write(to: source.appendingPathComponent("gmapsupp.img"))
+                try fileManager.createDirectory(at: source.appendingPathComponent(".meta"),
+                                                withIntermediateDirectories: true)
+                try fileManager.createSymbolicLink(atPath: source.appendingPathComponent(".meta/.link").path,
+                                                   withDestinationPath: "../../outside")
+            }
+            expect(refusesBeforeExtraction(visible) && refusesBeforeExtraction(hidden),
+                   "ZIP symlink entries, including hidden ones, are refused before extraction")
+
+            let large = try zip("large") { source in
+                let longName = String(repeating: "n", count: 150)
+                for index in 0..<600 {
+                    try Data().write(to: source.appendingPathComponent("\(longName)-\(index).txt"))
+                }
+            }
+            let destination = root.appendingPathComponent("large-out", isDirectory: true)
+            try SystemZIPArchiveExtractor().extract(archiveURL: large, to: destination)
+            expect(try fileManager.contentsOfDirectory(atPath: destination.path).count == 600,
+                   "a ZIP whose listing exceeds the pipe buffer is inspected and extracted")
+        } catch {
+            expect(false, "ZIP extractor safety fixtures: \(error)")
         }
     }
 

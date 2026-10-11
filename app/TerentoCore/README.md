@@ -187,7 +187,13 @@ version. Insufficient space stops the update. Interrupted transfers must not
 remove a known-good version. The update does not create a persistent local
 backup; the existing device object is the recovery boundary until the new
 object is verified. Recovery records retain exact created-object
-identity; cleanup never expands into heuristic deletion. The write profile is
+identity; cleanup never expands into heuristic deletion. Update records the new
+object before sending it and removes that record only after the manifest is
+reconciled or the new object is cleaned up, so an unplug after the old map is
+removed leaves the verified new map recoverable. Remove of such an incomplete
+installation deletes only objects a recovery record matches exactly (path,
+filename, size); a managed map in the same row, such as the old map of an
+unconfirmed update, is kept. The write profile is
 bound from the live Garmin USB identity and read-only `/GARMIN` inventory; it
 does not contain a model allowlist.
 
@@ -672,6 +678,13 @@ deleting it), writes a local diagnostic and stops before downloading or writing;
 the next install starts a fresh manifest. Maps listed only in the set-aside
 record are then treated like any other unowned map (external Remove, no managed
 Update), so no authority is widened. Recording after a write still fails closed.
+An unreadable failed-install recovery file is set aside the same way
+(`failed-install-recovery.corrupt-<UTC date>.json`, logged, never deleted) and
+installs continue with a fresh file; objects listed only there lose their
+interrupted-install status, which widens no authority. A single record this
+version cannot read (for example after a downgrade) is skipped instead; before
+the file is next rewritten, a dated copy keeps the original bytes. Every
+set-aside file is logged.
 
 After an authorized deletion, a fresh inventory proves removal by the old exact
 path's absence. Historical MTP handles may identify unrelated objects in that

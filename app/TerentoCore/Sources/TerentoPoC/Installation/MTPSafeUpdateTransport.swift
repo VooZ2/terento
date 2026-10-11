@@ -208,7 +208,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             to: temporaryURL,
             onProgress: { onProgress?($0.fractionCompleted * 0.86) }
         )
-        let hash = try sha256(of: temporaryURL, onProgress: { onProgress?(0.86 + 0.14 * $0) })
+        let hash = try localFileSHA256(of: temporaryURL, onProgress: { onProgress?(0.86 + 0.14 * $0) })
         // Parse the bytes that were hashed. A second device session would
         // repeat the full inventory without adding identity proof.
         let metadata = try localMetadata(of: temporaryURL, filename: file.filename)
@@ -263,7 +263,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         do {
             try mapTransport.deleteExact(
                 targetFilename: object.file.filename,
-                expectedItemID: itemID
+                expectedItemID: itemID,
+                expectedSizeBytes: nil
             )
         } catch let error as InstallationTransportError {
             throw mapError(error)
@@ -438,24 +439,6 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         case .deviceDisconnected(let message): return .deviceDisconnected(message)
         case .readFailed(let message): return .operationFailed(message)
         }
-    }
-
-    private func sha256(of url: URL, onProgress: (@Sendable (Double) -> Void)? = nil) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        let size = (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        var completed = 0
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if data.isEmpty { break }
-            hasher.update(data: data)
-            completed += data.count
-            if size > 0 { onProgress?(min(1, Double(completed) / Double(size))) }
-        }
-
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 }
 

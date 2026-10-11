@@ -32,6 +32,8 @@ enum BoundedNativeProcess {
                 process.waitUntilExit()
             }
         }
+        // A worker that died early must surface as EPIPE, not a SIGPIPE that kills the app.
+        _ = fcntl(stdin.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
         do {
             try stdin.fileHandleForWriting.write(contentsOf: input)
             try stdin.fileHandleForWriting.close()

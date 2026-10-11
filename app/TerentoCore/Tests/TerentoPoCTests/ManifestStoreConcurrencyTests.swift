@@ -9,7 +9,10 @@ struct ManifestStoreConcurrencyTests {
         try testPhysicalWatchKeysAreStableAndDistinct()
         try testCatalogIdentityPreservesLegacyKeys()
         try testUnreadableManifestIsQuarantinedNotDeleted()
-        print("PASS: 6 manifest store tests")
+        try testUnreadableRecoveryIsQuarantinedAndDoesNotBlockRecord()
+        try testUnknownRecoveryRecordsAreKeptAside()
+        try testManifestQuarantineMoveFailureIsTyped()
+        print("PASS: 9 manifest store tests")
     }
 
     private static func testConcurrentReadModifyWritePreservesAllEntries() throws {
@@ -102,6 +105,126 @@ struct ManifestStoreConcurrencyTests {
             throw TestFailure(message: "a fresh record works after quarantine")
         }
         print("PASS: an unreadable manifest is quarantined with its date, never deleted, and a fresh record works")
+    }
+
+    private static func testUnreadableRecoveryIsQuarantinedAndDoesNotBlockRecord() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-recovery-quarantine-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalTerentoFailedInstallRecoveryStore(rootDirectory: root)
+        let recoveryURL = root.appendingPathComponent("Terento/failed-install-recovery.json")
+        let record = TerentoFailedInstallRecoveryRecord(
+            deviceKey: "fenix8-test-device", packageID: "freizeitkarte-deu",
+            providerId: "freizeitkarte", regionId: "DEU", version: try requireVersion(),
+            devicePath: "/GARMIN/terento_freizeitkarte_deu.img", filename: "terento_freizeitkarte_deu.img",
+            sizeBytes: 100, sha256: String(repeating: "a", count: 64), createdAt: Date(timeIntervalSince1970: 0))
+        let corrupt = Data("{ not json".utf8)
+        try FileManager.default.createDirectory(at: recoveryURL.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        // Without a logging hook the corrupt file must still be set aside, not overwritten.
+        LocalTerentoFailedInstallRecoveryStore.onSetAside = nil
+        try corrupt.write(to: recoveryURL)
+        try store.record(record)
+        let unhooked = try FileManager.default.contentsOfDirectory(
+            at: recoveryURL.deletingLastPathComponent(), includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix("failed-install-recovery.corrupt-") }
+        guard unhooked.count == 1, try Data(contentsOf: unhooked[0]) == corrupt else {
+            throw TestFailure(message: "a corrupt recovery file is set aside even when no logging hook is set")
+        }
+        try FileManager.default.removeItem(at: unhooked[0])
+
+        let logged = LoggedURLs()
+        LocalTerentoFailedInstallRecoveryStore.onSetAside = { logged.append($0) }
+        defer { LocalTerentoFailedInstallRecoveryStore.onSetAside = nil }
+
+        try corrupt.write(to: recoveryURL)
+        try store.record(record)
+        guard logged.values.count == 1 else {
+            throw TestFailure(message: "a quarantine inside record() leaves a diagnostic trace")
+        }
+        let quarantined = try FileManager.default.contentsOfDirectory(
+            at: recoveryURL.deletingLastPathComponent(), includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix("failed-install-recovery.corrupt-") }
+        guard quarantined.count == 1, try Data(contentsOf: quarantined[0]) == corrupt,
+              try store.read(deviceKey: record.deviceKey) == [record] else {
+            throw TestFailure(message: "an unreadable recovery file is set aside and the new record is kept")
+        }
+
+        try corrupt.write(to: recoveryURL)
+        let now = Date(timeIntervalSince1970: 1_790_000_000)
+        guard let second = try store.quarantineUnreadableRecovery(now: now),
+              second.lastPathComponent.hasPrefix("failed-install-recovery.corrupt-2026"),
+              try Data(contentsOf: second) == corrupt,
+              FileManager.default.fileExists(atPath: quarantined[0].path),
+              try store.quarantineUnreadableRecovery(now: now) == nil else {
+            throw TestFailure(message: "explicit recovery quarantine keeps every corrupt copy")
+        }
+        print("PASS: an unreadable recovery file is quarantined, never deleted, and does not block a new record")
+    }
+
+    /// A record this build cannot decode (e.g. a newer artifact kind after a
+    /// downgrade) neither hides the others nor is silently dropped on rewrite.
+    private static func testUnknownRecoveryRecordsAreKeptAside() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-recovery-lossy-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalTerentoFailedInstallRecoveryStore(rootDirectory: root)
+        let recoveryURL = root.appendingPathComponent("Terento/failed-install-recovery.json")
+        func record(_ region: String) throws -> TerentoFailedInstallRecoveryRecord {
+            TerentoFailedInstallRecoveryRecord(
+                deviceKey: "fenix8-test-device", packageID: "freizeitkarte-\(region.lowercased())",
+                providerId: "freizeitkarte", regionId: region, version: try requireVersion(),
+                devicePath: "/GARMIN/terento_freizeitkarte_\(region.lowercased()).img",
+                filename: "terento_freizeitkarte_\(region.lowercased()).img",
+                sizeBytes: 100, sha256: String(repeating: "a", count: 64), createdAt: Date(timeIntervalSince1970: 0))
+        }
+        let known = try record("DEU")
+        let encoded = try JSONEncoder().encode(TerentoFailedInstallRecoveryFile(records: [known, try record("FRA")]))
+        var json = String(decoding: encoded, as: UTF8.self)
+        // Turn the second record into one with an artifact kind from a newer build.
+        json = json.replacingOccurrences(of: "\"regionId\":\"FRA\"", with: "\"regionId\":\"FRA\",\"artifactKind\":\"hillshade\"")
+        let original = Data(json.utf8)
+        try FileManager.default.createDirectory(at: recoveryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try original.write(to: recoveryURL)
+        let logged = LoggedURLs()
+        LocalTerentoFailedInstallRecoveryStore.onSetAside = { logged.append($0) }
+        defer { LocalTerentoFailedInstallRecoveryStore.onSetAside = nil }
+
+        guard try store.read(deviceKey: known.deviceKey) == [known],
+              try store.quarantineUnreadableRecovery() == nil, logged.values.isEmpty else {
+            throw TestFailure(message: "one undecodable record keeps the readable records and the file in place")
+        }
+        let added = try record("LTU")
+        try store.record(added)
+        guard logged.values.count == 1, try Data(contentsOf: logged.values[0]) == original,
+              try store.read(deviceKey: known.deviceKey) == [known, added] else {
+            throw TestFailure(message: "a rewrite first keeps a dated copy holding the undecodable record")
+        }
+        try store.record(try record("LVA"))
+        guard logged.values.count == 1 else {
+            throw TestFailure(message: "the copy is made once, not on every later rewrite")
+        }
+        print("PASS: undecodable recovery records are skipped on read and preserved in a dated copy before a rewrite")
+    }
+
+    private static func testManifestQuarantineMoveFailureIsTyped() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-manifest-move-\(UUID().uuidString)", isDirectory: true)
+        let store = LocalTerentoManifestStore(rootDirectory: root)
+        let entry = makeEntry(version: try requireVersion(), installedAt: 100, suffix: "x")
+        try store.record(entry)
+        let directory = root.appendingPathComponent("Terento/devices/\(entry.deviceKey)")
+        try Data("{ not json".utf8).write(to: directory.appendingPathComponent("manifest.json"))
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+            try? FileManager.default.removeItem(at: root)
+        }
+        do {
+            _ = try store.quarantineUnreadableManifest(deviceKey: entry.deviceKey)
+            throw TestFailure(message: "a quarantine that cannot rename must fail")
+        } catch TerentoManifestStoreError.writeFailed {}
+        print("PASS: a failed manifest quarantine rename reports writeFailed")
     }
 
     private static func testOlderEntryCannotReplaceNewerEntry() throws {
@@ -220,4 +343,11 @@ private struct TestFailure: LocalizedError {
     let message: String
 
     var errorDescription: String? { message }
+}
+
+private final class LoggedURLs: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [URL] = []
+    var values: [URL] { lock.withLock { stored } }
+    func append(_ url: URL) { lock.withLock { stored.append(url) } }
 }

@@ -43,7 +43,7 @@ fi
 
 device_engine="$project_root/Sources/TerentoPoC/DeviceEngine/DeviceEngine.swift"
 if ! grep -Fq 'activeNativeReadTask == nil' "$device_engine" \
-    || ! grep -Fq 'activeNativePresenceTask == nil' "$device_engine" \
+    || ! grep -Fq 'activeNativePresenceTasks.isEmpty' "$device_engine" \
     || ! grep -Fq 'publishOperationAvailability()' "$device_engine"; then
     print -u2 "FAIL: native presence/read availability does not refresh Eject state"
     exit 1

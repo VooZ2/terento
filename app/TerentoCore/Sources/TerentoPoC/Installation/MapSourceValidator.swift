@@ -45,8 +45,9 @@ struct MapSourceValidator: Sendable {
         expectedPackage: MapPackage,
         onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> ValidatedMapSource {
-        let inspected = try inspect(fileURL: fileURL, onProgress: onProgress)
-        if MapIdentity.normalizeProvider(expectedPackage.providerId) == "bbbike" {
+        let isBBBike = MapIdentity.normalizeProvider(expectedPackage.providerId) == "bbbike"
+        let inspected = try inspect(fileURL: fileURL, computeMD5: isBBBike, onProgress: onProgress)
+        if isBBBike {
             return try validateBBBike(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
         }
 
@@ -86,7 +87,7 @@ struct MapSourceValidator: Sendable {
     }
 
     private func validateBBBike(fileURL: URL, expectedPackage package: MapPackage,
-        inspected: (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String)) throws -> ValidatedMapSource {
+        inspected: (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String?)) throws -> ValidatedMapSource {
         guard BBBikeProviderAdapter().expectedIMGIdentity(for: package) != nil,
               let proof = package.mainArtifact?.sourceProof,
               let context = BBBikeMapMetadata(package: package),
@@ -141,7 +142,9 @@ struct MapSourceValidator: Sendable {
         return nil
     }
 
-    private func inspect(fileURL: URL, onProgress: (@Sendable (Double) -> Void)? = nil) throws -> (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String) {
+    /// MD5 is only the BBBike payload proof; other providers skip it.
+    private func inspect(fileURL: URL, computeMD5: Bool = false,
+                         onProgress: (@Sendable (Double) -> Void)? = nil) throws -> (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String?) {
         guard FileManager.default.isReadableFile(atPath: fileURL.path) else {
             throw MapSourceValidationError.fileMissing
         }
@@ -161,7 +164,7 @@ struct MapSourceValidator: Sendable {
         var prefix: [UInt8] = []
         prefix.reserveCapacity(GarminIMGMetadataParser.prefixLength)
         var hasher = SHA256()
-        var md5 = Insecure.MD5()
+        var md5: Insecure.MD5? = computeMD5 ? Insecure.MD5() : nil
         var sizeBytes: UInt64 = 0
 
         do {
@@ -173,7 +176,7 @@ struct MapSourceValidator: Sendable {
                 }
 
                 hasher.update(data: chunk)
-                md5.update(data: chunk)
+                md5?.update(data: chunk)
                 let (newSize, overflow) = sizeBytes.addingReportingOverflow(UInt64(chunk.count))
                 guard !overflow else {
                     throw MapSourceValidationError.readFailed
@@ -195,7 +198,7 @@ struct MapSourceValidator: Sendable {
             prefix: prefix,
             sizeBytes: sizeBytes,
             sha256: digestString(hasher.finalize()),
-            md5: md5.finalize().map { String(format: "%02x", $0) }.joined()
+            md5: md5?.finalize().map { String(format: "%02x", $0) }.joined()
         )
     }
 

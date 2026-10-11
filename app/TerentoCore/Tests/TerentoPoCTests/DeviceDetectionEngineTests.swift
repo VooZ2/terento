@@ -253,7 +253,7 @@ struct DeviceDetectionEngineTests {
         check(MTPFinishingWorker.prefixTimeout(expectedObjectCount: 1_000, fileCount: 4) == 110, "prefix bound covers the walk plus each header")
         check(MTPFinishingWorker.timeout(for: .init(operation: .deviceSnapshot), sampleTimeout: 600) == 90, "detection snapshot has a finite bound")
         check(MTPFinishingWorker.timeout(for: .init(operation: .scanInventory, expectedObjectCount: 2_000), sampleTimeout: 600) == 120, "scan inventory uses the scaled bound")
-        check(MTPFinishingWorker.timeout(for: .init(operation: .cleanup), sampleTimeout: 600) == 45, "existing cleanup bound is unchanged")
+        check(MTPFinishingWorker.timeout(for: .init(operation: .snapshot), sampleTimeout: 600) == 45, "post-write snapshot bound is unchanged")
         check(MTPFinishingWorker.timeout(for: .init(operation: .inventory), sampleTimeout: 600) == 60, "pre-write inventory without a baseline keeps 60 s")
         check(MTPFinishingWorker.timeout(for: .init(operation: .samples), sampleTimeout: 900) == 600, "existing sample bound is unchanged")
         for operation in ["deviceSnapshot", "scanInventory", "prefixes"] {

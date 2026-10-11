@@ -16,6 +16,13 @@ struct BoundedNativeProcessTests {
             fatalError("unsuccessful worker exit unexpectedly succeeded")
         } catch NativeProcessFailure.processExit { }
         print("PASS: actual process launch and unsuccessful exit have distinct failure categories")
+        // A worker that exits without reading its request must not SIGPIPE this process.
+        do {
+            try BoundedNativeProcess.run(executable: URL(fileURLWithPath: "/usr/bin/true"),
+                arguments: [], input: Data(count: 4 * 1024 * 1024), timeout: 5)
+            fatalError("a request to an exited worker unexpectedly succeeded")
+        } catch NativeProcessFailure.requestIOFailed { }
+        print("PASS: a request to a worker that already exited fails as request I/O, not SIGPIPE")
         // Deterministic model of the real >120s verification, without USB writes.
         var progressing = NativeProcessDeadline(start: 0, timeout: 600, inactivityTimeout: 120)
         for second in 1...180 {

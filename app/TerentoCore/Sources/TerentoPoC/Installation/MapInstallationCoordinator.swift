@@ -214,7 +214,7 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
             let source = try MapSourceValidator().validate(fileURL: artifact.localIMGURL, expectedPackage: package)
             guard source.sha256 == artifact.sha256 else { throw Stage42ArtifactValidationError.sourceHashMismatch }
         }
-        let actualHash = try Self.sha256(of: artifact.localIMGURL)
+        let actualHash = try localFileSHA256(of: artifact.localIMGURL)
         guard actualHash.caseInsensitiveCompare(artifact.sha256) == .orderedSame else {
             throw Stage42ArtifactValidationError.sourceHashMismatch
         }
@@ -284,27 +284,10 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
             throw Stage42ArtifactValidationError.sourceSizeMismatch
         }
 
-        let actualHash = try Self.sha256(of: artifact.localIMGURL)
+        let actualHash = try localFileSHA256(of: artifact.localIMGURL)
         guard actualHash.caseInsensitiveCompare(artifact.sha256) == .orderedSame else {
             throw Stage42ArtifactValidationError.sourceHashMismatch
         }
-    }
-
-    private static func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if data.isEmpty {
-                break
-            }
-            hasher.update(data: data)
-        }
-        return hasher.finalize()
-            .map { String(format: "%02x", $0) }
-            .joined()
     }
 }
 
@@ -627,6 +610,8 @@ struct MapInstallationCoordinator: Sendable {
 
         let startedAt = ContinuousClock.now
         var activeBoundary = InstallationFailureContext.Boundary.preflightPolicyPassed
+        // Once the device object exists, a later error must keep its recovery record.
+        var writeCompleted = false
         do {
             try transaction.begin()
             try transaction.transition(to: .preparing)
@@ -697,6 +682,7 @@ struct MapInstallationCoordinator: Sendable {
                 )
             }
 
+            writeCompleted = true
             // A successful native write has completed the write even when the
             // native library omitted its last callback. Read-back is a separate
             // phase and must never replace transfer diagnostics.
@@ -996,7 +982,8 @@ struct MapInstallationCoordinator: Sendable {
         } catch {
             let failure = Self.failure(for: error, during: .write)
             let createdItemID = Self.createdItemID(from: error)
-            if createdItemID == nil {
+            let keepRecoveryRecord = createdItemID != nil || writeCompleted
+            if !keepRecoveryRecord {
                 _ = try? recoveryStore.remove(
                     deviceKey: recoveryRecord.deviceKey,
                     devicePath: recoveryRecord.devicePath,
@@ -1016,7 +1003,7 @@ struct MapInstallationCoordinator: Sendable {
                 ).withFailureContexts(Self.failureContext(for: error, boundary: activeBoundary, operation: nil)),
                 remoteObjectID: createdItemID,
                 shouldCleanup: createdItemID != nil,
-                recoveryRecord: createdItemID == nil ? nil : recoveryRecord
+                recoveryRecord: keepRecoveryRecord ? recoveryRecord : nil
             )
         }
     }
@@ -1341,23 +1328,6 @@ struct MapInstallationCoordinator: Sendable {
 
     private static func createdItemID(from error: Error) -> UInt32? {
         (error as? InstallationTransportError)?.createdItemID
-    }
-
-    private static func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if data.isEmpty {
-                break
-            }
-            hasher.update(data: data)
-        }
-        return hasher.finalize()
-            .map { String(format: "%02x", $0) }
-            .joined()
     }
 
     private static let verificationSampleLength = SampledReadBackPlan.sampleLength

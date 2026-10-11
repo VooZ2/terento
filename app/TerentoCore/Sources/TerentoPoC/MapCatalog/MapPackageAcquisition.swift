@@ -1129,6 +1129,7 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
         for entry in entries {
             try pathValidator.validate(entry)
         }
+        try rejectSymbolicLinkEntries(archiveURL: archiveURL)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
@@ -1142,10 +1143,12 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
             throw MapAcquisitionError.extractionFailed("The ZIP extractor could not be started.")
         }
 
+        // Drain the pipe before waiting: a full pipe buffer would block the tool forever.
+        let errorOutput = errorPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         guard process.terminationStatus == 0 else {
             let message = String(
-                data: errorPipe.fileHandleForReading.readDataToEndOfFile(),
+                data: errorOutput,
                 encoding: .utf8
             )?.trimmingCharacters(in: .whitespacesAndNewlines)
             if message?.localizedCaseInsensitiveContains("No space left on device") == true {
@@ -1159,13 +1162,25 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
     }
 
     private func archiveEntries(archiveURL: URL) throws -> [String] {
+        try zipInfo(["-Z1", archiveURL.path])
+    }
+
+    /// `unzip -Z` lists one `ls -l` style line per entry; a symbolic link's
+    /// mode starts with `l`. Map packages never need links, so any is refused.
+    private func rejectSymbolicLinkEntries(archiveURL: URL) throws {
+        if let link = try zipInfo(["-Z", archiveURL.path]).first(where: { $0.hasPrefix("l") }) {
+            throw MapAcquisitionError.unsafeArchivePath(link)
+        }
+    }
+
+    private func zipInfo(_ arguments: [String]) throws -> [String] {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        process.arguments = ["-Z1", archiveURL.path]
+        process.arguments = arguments
         let outputPipe = Pipe()
-        let errorPipe = Pipe()
         process.standardOutput = outputPipe
-        process.standardError = errorPipe
+        // Unread stderr must not fill a pipe and block the inspector.
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
@@ -1173,12 +1188,13 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
             throw MapAcquisitionError.extractionFailed("The ZIP inspector could not be started.")
         }
 
+        // Drain the pipe before waiting: listings can exceed the pipe buffer.
+        let output = outputPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         guard process.terminationStatus == 0 else {
             throw MapAcquisitionError.extractionFailed("The ZIP archive could not be inspected.")
         }
 
-        let output = outputPipe.fileHandleForReading.readDataToEndOfFile()
         return String(decoding: output, as: UTF8.self)
             .split(whereSeparator: \.isNewline)
             .map(String.init)
@@ -2053,8 +2069,7 @@ struct MapPackageAcquirer: Sendable {
         let fileManager = FileManager.default
         guard let enumerator = fileManager.enumerator(
             at: extractionDirectory,
-            includingPropertiesForKeys: [.isSymbolicLinkKey],
-            options: [.skipsHiddenFiles]
+            includingPropertiesForKeys: [.isSymbolicLinkKey]
         ) else {
             throw MapAcquisitionError.noIMGFound
         }
