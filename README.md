@@ -22,8 +22,11 @@ compatible `.img` map.
 **[Download for Mac](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_download)**
 · [Check compatibility](https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_compatibility)
 · [Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_guide)
+· [Compare map styles](https://terento.app/map-styles/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_map_styles)
 
 **Public beta · macOS 13+ · Apple Silicon**
+
+Not on a Mac? Try the [web installer beta](#web-installer-beta) in Google Chrome.
 
 <p align="center">
   <img src="site/assets/app/masters/your-garmin.png"
@@ -76,6 +79,57 @@ separate confirmation.
 </p>
 
 </details>
+
+## Compare map styles
+
+Not sure which map to choose? The
+[map style comparison](https://terento.app/map-styles/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_map_styles)
+shows how the five map styles draw the same place. Pick a mountain area,
+trail or city, then compare contour lines, trails, streets and labels side by
+side or with a swipe.
+
+Previews are close, not exact: your watch draws the map itself, so colours
+and detail can differ with the watch model and its map settings.
+
+<p align="center">
+  <img src="site/assets/app/masters/map-styles-compare.png"
+       alt="Map style comparison showing Freizeitkarte and BBBike side by side on the South West Coast Path near Sennen, United Kingdom"
+       width="100%">
+</p>
+
+## Web installer (beta)
+
+The web installer puts maps on your watch from Google Chrome on a computer,
+without installing the app. It is meant for people who cannot use the Mac
+app, such as Windows and Linux users.
+
+**[Open the web installer](https://lab.terento.app/install/)**
+
+1. Plug in your watch with a USB data cable and unlock it. Quit Garmin
+   Express and the Terento app.
+2. Choose **Connect your watch**. In Chrome's list, first you may see
+   "GPS (various models)". Don't choose it. After a minute or two an entry
+   with "Garmin" in its name appears. Choose that one.
+3. Choose maps and install them.
+
+So far the web installer has been tested only with a fēnix 8 47 mm on a Mac.
+It has not been tested on Windows or Linux or with other watch models yet.
+If you try it, please
+[tell us how it went](https://github.com/VooZ2/terento/issues), whether it
+worked or not.
+
+In the web installer, Terento's server downloads each map from its provider
+and passes it to your browser; the copy is deleted once your browser has it.
+The web installer is a separate beta: its code is not part of this
+repository. See the
+[Privacy Policy](https://terento.app/privacy/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_web_installer_privacy)
+for what it records.
+
+<p align="center">
+  <img src="site/assets/app/masters/web-installer-connect.png"
+       alt="Terento web installer asking you to plug in your Garmin, with the Connect your watch button and help for finding the watch in Chrome's list"
+       width="100%">
+</p>
 
 ## Requirements and compatibility
 
@@ -131,7 +185,8 @@ The current catalog includes main-map packages from
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
 [BBBike](https://garmin.bbbike.org), based on OpenStreetMap data.
 BBBike offers two map choices: BBBike and the smaller BBBike (Ontrail)
-packages for hiking and cycling. Maps download directly from their providers.
+packages for hiking and cycling. In the Mac app, maps download directly from
+their providers.
 
 - Install several regions together by choosing maps from the same provider.
 - Some MapRando map labels are in French.
