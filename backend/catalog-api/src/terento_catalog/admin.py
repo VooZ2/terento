@@ -41,6 +41,7 @@ from .failure_reasons import failure_reason_label, normalize_failure_reason
 from .failure_context import validate_context
 from .map_capability import classify_map_capable
 from .installation_policy import installation_authorization_for_row
+from .identity_assessment import preferred_candidates as _identity_presentation_candidates
 from .device_labels import model_label, variant_label
 from .admin_world_map import WORLD_MAP_COUNTRY_ALIASES, WORLD_MAP_SVG
 from .maprando_geography import (
@@ -5731,25 +5732,6 @@ def _identification_review_script() -> str:
         });
       });
     })();"""
-
-
-def _identity_presentation_candidates(assessment: dict) -> list[dict]:
-    """Prefer explicitly observed features over less-specific catalog rows.
-
-    This narrows operator suggestions only. The authoritative assessment retains
-    every candidate and never treats an unknown feature as a negative fact.
-    """
-    candidates = [c for c in assessment.get("candidates", [])
-                  if not c.get("conflict") and c.get("checks")
-                  and not any(k.get("state") == "CONFLICT" for k in c["checks"])]
-    for feature_name in ("inreach", "solar"):
-        explicit = [c for c in candidates if any(
-            f.get("name") == feature_name and f.get("expected") is True
-            and any(e.get("source") == "model text" and e.get("value") is True for e in f.get("evidence", []))
-            for k in c["checks"] for f in k.get("features", []))]
-        if explicit:
-            candidates = explicit
-    return candidates
 
 
 def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:

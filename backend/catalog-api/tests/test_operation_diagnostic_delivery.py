@@ -68,6 +68,7 @@ class IntakeDatabase(FakeEvidenceDatabase, Database):
             security_issue_code TEXT, schema_version INTEGER'''
         self.sqlite.execute('CREATE TABLE compatibility_evidence_event (' + columns + ')')
         self.mappings = deepcopy(MAPPINGS)
+        self.devices = [deepcopy(DEVICE)]
         self.identity_scope_calls = []
 
     def insert_compatibility_event(self, event):
@@ -109,7 +110,7 @@ class IntakeDatabase(FakeEvidenceDatabase, Database):
         database = self
         class Connection:
             def execute(self, sql, parameters=None):
-                if sql == IDENTITY_DEVICE_QUERY: return Result([deepcopy(DEVICE)])
+                if sql == IDENTITY_DEVICE_QUERY: return Result(deepcopy(database.devices))
                 if sql == IDENTITY_MAPPING_QUERY: return Result(database.mappings)
                 sql = re.sub(r'%\((\w+)\)s', r':\1', sql).replace('::jsonb', '')
                 values = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in parameters.items()}
@@ -431,10 +432,22 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         self.assertFalse(row['write_started'])
         self.assertTrue(row['is_local_test'])
 
-    def test_missing_identity_proof_keeps_report_unassigned(self):
+    def test_single_matching_model_is_assigned_at_intake(self):
         self.db.mappings = []
         self.assertEqual(self.send(self.fixture())[0], 201)
         row = self.db.rows()[0]
+        self.assertEqual(row['canonical_device_model_id'], DEVICE['id'])
+        self.assertEqual(row['identity_resolution_state'], 'RESOLVED')
+        self.assertEqual(row['identity_assessment']['resolution'], 'SINGLE_MATCH')
+
+    def test_ambiguous_identity_keeps_report_unassigned(self):
+        self.db.mappings = []
+        # The report names neither screen nor Solar, so the Solar MIP sibling
+        # stays possible and the identity waits for review.
+        self.db.devices.append(dict(DEVICE, id='test-fenix8-47-solar', screen_technology='MIP', solar=True))
+        self.assertEqual(self.send(self.fixture())[0], 201)
+        row = self.db.rows()[0]
         self.assertIsNone(row['canonical_device_model_id'])
+        self.assertEqual(row['identity_resolution_state'], 'UNRESOLVED')
         self.assertEqual(row['phase_outcome'], 'FAILED')
         self.assertEqual(row['model'], self.fixture()['model'])

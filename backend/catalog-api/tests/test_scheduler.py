@@ -4,6 +4,7 @@ import unittest
 from datetime import datetime, timezone
 from threading import Event
 from types import SimpleNamespace
+import unittest.mock
 from unittest.mock import patch
 
 from terento_catalog.collect import collect_all_providers, snapshot_release_evidence
@@ -11,6 +12,7 @@ from terento_catalog.config import Settings
 from terento_catalog.scheduler import (
     _next_hour_boundary,
     _parse_schedule,
+    _run_scheduled_cycle,
     run_collection_cycle,
     run_github_download_schedule,
 )
@@ -38,6 +40,18 @@ class SchedulerTests(unittest.TestCase):
 
     def test_legacy_time_only_schedule_remains_daily(self) -> None:
         self.assertEqual(_parse_schedule("03:00"), (None, 3, 0))
+
+    def test_cycle_auto_resolves_identities_and_survives_its_failure(self) -> None:
+        database = SimpleNamespace(
+            prune_compatibility_events=lambda: 0,
+            auto_resolve_pending_identities=unittest.mock.Mock(side_effect=[{"resolvedResults": 1}, RuntimeError]),
+        )
+        with patch("terento_catalog.scheduler.run_collection_cycle") as collection:
+            _run_scheduled_cycle(database, collect_device_catalog=False)
+            with self.assertLogs("terento_catalog.scheduler", level="ERROR"):
+                _run_scheduled_cycle(database, collect_device_catalog=False)
+        self.assertEqual(collection.call_count, 2)
+        self.assertEqual(database.auto_resolve_pending_identities.call_count, 2)
 
     def test_github_download_schedule_aligns_to_the_next_utc_hour(self) -> None:
         self.assertEqual(

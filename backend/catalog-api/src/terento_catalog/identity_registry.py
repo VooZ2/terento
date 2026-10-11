@@ -69,9 +69,14 @@ def main() -> None:
     enrich.add_argument('snapshot_directory', type=Path)
     enrich.add_argument('--apply', action='store_true', help='Enrich exact existing product URLs; never reassigns events')
     sub.add_parser('audit')
+    auto = sub.add_parser('auto-resolve')
+    auto.add_argument('--apply', action='store_true', help='Assign; without it only counts')
     args = parser.parse_args()
     settings = Settings.from_env()
     database = Database(settings.database_url, connect_timeout_seconds=settings.database_connect_timeout_seconds)
+    if args.command == 'auto-resolve':
+        print(json.dumps({'readOnly': not args.apply, **database.auto_resolve_pending_identities(apply=args.apply)}))
+        return
     if args.command == 'review':
         if not database.review_identity_mapping(args.mapping_id, args.status, args.reason, args.admin_id):
             parser.error('mapping not found')

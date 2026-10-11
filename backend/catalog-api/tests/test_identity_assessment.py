@@ -42,8 +42,46 @@ class IdentityAssessmentTests(unittest.TestCase):
     def test_five_checks_required(self):
         result = assess_identity(self.event, [self.device], self.mappings)
         self.assertEqual(result['canonicalDeviceId'], self.device['id'])
+        self.assertEqual(result['resolution'], 'EXACT')
         self.assertEqual(len(result['candidates'][0]['checks']), 5)
-        self.assertIsNone(assess_identity(self.event, [self.device], self.mappings[:1])['canonicalDeviceId'])
+        single = assess_identity(self.event, [self.device], self.mappings[:1])
+        self.assertEqual(single['candidates'][0]['checks'][3]['state'], 'MISSING')
+        self.assertEqual((single['canonicalDeviceId'], single['resolution']), (self.device['id'], 'SINGLE_MATCH'))
+
+    def test_single_matching_model_resolves_without_codes(self):
+        sibling = dict(self.device, id='fenix8pro-47-amoled', case_size_mm=47)
+        result = assess_identity(self.event, [self.device, sibling], [])
+        self.assertEqual(result['state'], 'RESOLVED')
+        self.assertEqual((result['canonicalDeviceId'], result['resolution']), (self.device['id'], 'SINGLE_MATCH'))
+
+    def test_two_possible_models_stay_unresolved(self):
+        sibling = dict(self.device, id='fenix8pro-51-microled', screen_technology='MicroLED')
+        event = dict(self.event, rawMTPModel='fenix 8 Pro 51mm inReach')
+        result = assess_identity(event, [self.device, sibling], [])
+        self.assertEqual((result['state'], result['canonicalDeviceId'], result['resolution']),
+                         ('UNRESOLVED', None, None))
+
+    def test_reported_solar_prefers_the_solar_row_over_an_unknown_one(self):
+        solar = dict(self.device, id='fenix8pro-51-solar', solar=True)
+        unknown = dict(self.device, id='fenix8pro-51-unknown', solar=None)
+        event = dict(self.event, rawMTPModel='fenix 8 Pro Solar 51mm AMOLED inReach')
+        result = assess_identity(event, [solar, unknown], [])
+        self.assertEqual((result['canonicalDeviceId'], result['resolution']), (solar['id'], 'SINGLE_MATCH'))
+        both = assess_identity(event, [solar, dict(unknown, solar=True)], [])
+        self.assertIsNone(both['canonicalDeviceId'])
+
+    def test_code_without_reported_model_name_stays_unresolved(self):
+        event = dict(self.event, model=None, rawMTPModel=None)
+        result = assess_identity(event, [self.device], self.mappings)
+        self.assertFalse(result['candidates'][0]['conflict'])
+        self.assertIsNone(result['canonicalDeviceId'])
+
+    def test_unreviewed_code_for_another_model_stays_unresolved(self):
+        other = dict(self.device, id='forerunner-965', model='Forerunner 965', case_size_mm=47)
+        pending = dict(self.mappings[0], device_model_id=other['id'], status='PENDING')
+        result = assess_identity(self.event, [self.device, other], [pending])
+        self.assertEqual([c['deviceId'] for c in result['candidates']], [self.device['id']])
+        self.assertIsNone(result['canonicalDeviceId'])
 
     def test_legacy_review_status_is_missing_model_evidence(self):
         for label in ('Identity pending', 'Identity unresolved',
@@ -77,7 +115,9 @@ class IdentityAssessmentTests(unittest.TestCase):
         result = assess_identity(event, [self.device], [self.mappings[0], sku])
         self.assertEqual(result['canonicalDeviceId'], self.device['id'])
         self.assertEqual(result['candidates'][0]['checks'][3]['codeKind'], 'RETAIL_SKU')
-        self.assertIsNone(assess_identity(event, [self.device], [self.mappings[0], dict(sku, kind='XML_PART_NUMBER')])['canonicalDeviceId'])
+        wrong_kind = assess_identity(event, [self.device], [self.mappings[0], dict(sku, kind='XML_PART_NUMBER')])
+        self.assertEqual(wrong_kind['candidates'][0]['checks'][3]['state'], 'MISSING')
+        self.assertEqual(wrong_kind['resolution'], 'SINGLE_MATCH')
 
     def test_shared_codes_do_not_choose_screen(self):
         other = dict(self.device, id='fenix8pro-51-microled', screen_technology='MicroLED')
@@ -95,14 +135,17 @@ class IdentityAssessmentTests(unittest.TestCase):
 
     def test_pending_mapping_not_evidence(self):
         mappings = [dict(m, status='PENDING') for m in self.mappings]
-        self.assertIsNone(assess_identity(self.event, [self.device], mappings)['canonicalDeviceId'])
+        result = assess_identity(self.event, [self.device], mappings)
+        self.assertEqual([c['state'] for c in result['candidates'][0]['checks'][-2:]], ['MISSING', 'MISSING'])
+        self.assertNotEqual(result['resolution'], 'EXACT')
 
     def test_partially_reviewed_shared_code_cannot_appear_unique(self):
         other = dict(self.device, id='fenix8pro-51-microled', screen_technology='MicroLED')
         mappings = self.mappings + [dict(m, device_model_id=other['id'], status='PENDING') for m in self.mappings]
         result = assess_identity(self.event, [self.device, other], mappings)
-        self.assertIsNone(result['canonicalDeviceId'])
         self.assertEqual([c['state'] for c in result['candidates'][0]['checks'][-2:]], ['MISSING', 'MISSING'])
+        # The reported AMOLED screen excludes the other target; the name decides.
+        self.assertEqual(result['resolution'], 'SINGLE_MATCH')
 
     def test_explicit_solar_conflicts_with_non_solar(self):
         event = dict(self.event, rawMTPModel='fenix 8 Pro Solar 51mm')
@@ -115,7 +158,7 @@ class IdentityAssessmentTests(unittest.TestCase):
     def test_unknown_features_are_not_negative_checks(self):
         device = dict(self.device, solar=None, inreach=None)
         result = assess_identity(self.event, [device], self.mappings)
-        self.assertIsNone(result['canonicalDeviceId'])
+        self.assertNotEqual(result['resolution'], 'EXACT')
         self.assertEqual(result['candidates'][0]['checks'][0]['state'], 'MISSING')
 
     def test_matching_fenix_normalization_and_unknown_mapping_are_not_conflicts(self):

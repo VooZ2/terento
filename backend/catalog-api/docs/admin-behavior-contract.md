@@ -581,7 +581,10 @@ leading aligned; numbers and dates are trailing aligned where practical.
 ### Identity review
 
 `/admin/review/identity` is the one Identity review queue (owner decision
-2026-10-06) and the Dashboard Identity review destination. It lists every
+2026-10-06) and the Dashboard Identity review destination. A result whose
+assessment leaves exactly one catalog model matching the reported name is
+assigned automatically and leaves the queue (owner decision 2026-10-11). It
+lists every
 active install operation with at least one identity-pending result, across all
 reported identities, newest first, grouped by reported identity (one card per
 identity with its reported model and variant, its count and an `All
