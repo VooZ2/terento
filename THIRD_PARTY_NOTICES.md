@@ -86,8 +86,8 @@ libraries in `Terento.app/Contents/Frameworks`.
 
 ## Caddy static web server
 
-- Image: `caddy:2.10-alpine`
-- Image digest used for the Hostinger deployment: `sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d`
+- Image: `caddy:2.11-alpine`
+- Image digest used for the Hostinger deployment: `sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f`
 - Upstream: <https://github.com/caddyserver/caddy>
 - License: Apache License 2.0
 - Use: serve the static landing page inside the private Docker network behind the existing Traefik reverse proxy
