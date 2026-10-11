@@ -43,3 +43,11 @@ and SHA-256 hashes for all 52 referenced screenshot files.
 
 This asset task does not change native behavior, release metadata, provider
 support claims, or hardware evidence.
+
+## October 11, 2026 README additions
+
+`map-styles-compare.png` (map style comparison) and
+`web-installer-connect.png` (web installer start screen) are owner-supplied
+screenshots used only by the repository README. They are resized to 1600px
+wide and reduced to a 256-colour palette. They are not website screenshots,
+so `scripts/optimize-app-images.mjs` does not list them.
