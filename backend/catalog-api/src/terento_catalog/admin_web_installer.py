@@ -48,6 +48,7 @@ WORDS = {
     "PREPARE_FAILED": "The server could not prepare the map",
     "BAD_FILE": "The downloaded file was wrong",
     "DOWNLOAD_STOPPED": "The download stopped",
+    "DOWNLOAD_BLOCKED": "The network blocked the download",
     "OTHER": "Other",
     # Steps
     "PREPARE": "Preparing", "DOWNLOAD": "Downloading", "WRITE": "Writing to the watch", "VERIFY": "Checking on the watch",
@@ -190,6 +191,8 @@ def _server_sections(server: dict[str, Any], period: str) -> str:
     tiles = _metric_row([
         _metric_tile("Requests", server["requests"], scope=period),
         _metric_tile("Sent", server["delivered"], scope=period, secondary=html.escape(_bytes(server["servedBytes"]))),
+        _metric_tile("Sent through Cloudflare", server["viaFallback"], scope=period,
+                     secondary=f"{round(100 * server['viaFallback'] / server['delivered'])}% of sent" if server["delivered"] else ""),
         _metric_tile("Failed", server["failed"], scope=period, failure=True),
         _metric_tile("Preparing", _duration(server["medianReadyS"]), fmt="text", scope=period,
                      state=None if server["medianReadyS"] is not None else "unknown", secondary="median"),

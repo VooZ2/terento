@@ -363,7 +363,10 @@ failed attempt is grouped and shown in plain words with its stored codes next to
 them (step, reason, browser error name, HTTP status, MTP response code) so the
 cause can be traced; and `Recent results on watches` (newest 30 final results:
 one per page load, map and operation, plus removals). `On the server`: the
-tiles Requests, Sent (with data sent), Failed, Preparing and Sending (medians);
+tiles Requests, Sent (with data sent), Sent through Cloudflare (sent jobs whose
+map went wholly or partly through the Cloudflare-proxied lab host because the
+direct download port was blocked, with its share of Sent), Failed, Preparing
+and Sending (medians);
 `Providers`; `Problems` (server reason in words with its code and provider HTTP
 status); and `Recent requests` (newest 50). There is no live "now on the server"
 view and no most-requested list. A last line counts test records (stored, kept

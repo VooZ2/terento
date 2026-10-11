@@ -73,6 +73,9 @@ class ValidationTests(unittest.TestCase):
         self.invalid(event(stage="CONNECT", outcome="CONNECTED", model="Fenix <8>"), "invalid_model")
         self.invalid(event(stage="MAP_RESULT", outcome="FAILED"), "missing_operation")
         self.invalid(event(stage="MAP_RESULT", outcome="SUCCEEDED", operation="install", reason="OTHER"), "unexpected_reason")
+        blocked = event(stage="MAP_RESULT", outcome="FAILED", operation="install", reason="DOWNLOAD_BLOCKED",
+                        failureStage="DOWNLOAD", errorName="TypeError")
+        self.assertEqual(validate_event(encode(blocked))["reason"], "DOWNLOAD_BLOCKED")
         self.invalid(event(stage="MAP_RESULT", outcome="SUCCEEDED", operation="install", errorName="NetworkError"), "unknown_fields")
         self.invalid(event(stage="CONNECT", outcome="FAILED", errorName="Boom"), "invalid_errorName")
         self.invalid(event(stage="REMOVE", outcome="FAILED", mtpResponse=0x1000), "invalid_mtpResponse")
@@ -101,6 +104,9 @@ class ValidationTests(unittest.TestCase):
         self.invalid(relay_job(region="Lat\nvia"), "invalid_region", validate_relay_job)
         self.invalid(relay_job(outcome=["FAILED"]), "invalid_outcome", validate_relay_job)
         self.invalid(relay_job(reason={}), "invalid_reason", validate_relay_job)
+        for via in ("direct", "proxied", "mixed"):
+            self.assertEqual(validate_relay_job(encode(relay_job(servedVia=via)))["served_via"], via)
+        self.invalid(relay_job(servedVia="cloudflare"), "invalid_servedVia", validate_relay_job)
         self.invalid(relay_job(readyAt="2026-10-10T20:00:00Z"), "invalid_readyAt", validate_relay_job)
         self.invalid(relay_job(readyAt="2026-10-10T20:02:00Z"), "invalid_readyAt", validate_relay_job)
         self.invalid(relay_job(requestedAt="2099-01-01T00:00:00Z", finishedAt="2099-01-01T00:01:00Z"),
@@ -185,7 +191,7 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual(self.forward(self.recent(relay_job()), "relay-jobs"), 201)
         self.assertEqual(self.forward(self.recent(relay_job(id="3f2a9c1b7d4e5a61", outcome="DELIVERED", reason=None,
                          providerHttpStatus=..., readyAt="2026-10-10T20:01:10Z", sizeBytes=200_000_000,
-                         servedBytes=200_000_000, finishedAt="2026-10-10T20:02:10Z")), "relay-jobs"), 201)
+                         servedBytes=200_000_000, servedVia="proxied", finishedAt="2026-10-10T20:02:10Z")), "relay-jobs"), 201)
         # A check record is stored but stays out of every number.
         self.assertEqual(self.forward(event(isTest=True, stage="CONNECT", outcome="CONNECTED", model="test watch")), 201)
 
@@ -200,6 +206,7 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual([r["outcome"] for r in watch["recent"]], ["FAILED", "SUCCEEDED"])  # remove, final install
         self.assertEqual((server["requests"], server["delivered"], server["failed"], server["medianSendS"]), (2, 1, 1, 60))
         self.assertEqual(server["problems"][0]["providerHttpStatus"], 503)
+        self.assertEqual(server["viaFallback"], 1)  # the dl port was blocked; sent through Cloudflare
         self.assertEqual(data["testRecords"]["count"], 1)
 
         response, page = self.request("GET", "/admin/web-installer?period=24h", secret=None, admin=True)
@@ -209,6 +216,7 @@ class WebInstallerEndToEndTests(PGliteTestCase):
                      "Install and removal problems", "The connection to the watch ended", "CONNECTION_LOST · NetworkError",
                      "MTP 0x200D", "Recent results on watches", "On the server", "Providers", "Problems",
                      "Provider returned an error", "PROVIDER_HTTP_ERROR · HTTP 503", "Recent requests", "Test records: 1",
+                     "Sent through Cloudflare", "100% of sent",
                      'href="/admin/web-installer">Web installer</a>'):
             self.assertIn(text, page)
         for gone in ("Now on the server", "Page visits", "Private lab", "test watch"):

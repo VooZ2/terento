@@ -90,7 +90,9 @@ count, and shown only as the "Test records" line on the Web installer page.
 
 Page reason codes: `CANCELLED`, `WATCH_FULL`, `CHECK_MISMATCH`,
 `CONNECTION_LOST`, `CATALOG_CHANGED`, `COMPUTER_FULL`, `EARLIER_CHANGE`,
-`SERVER_BUSY`, `PREPARE_FAILED`, `BAD_FILE`, `DOWNLOAD_STOPPED`, `OTHER`.
+`SERVER_BUSY`, `PREPARE_FAILED`, `BAD_FILE`, `DOWNLOAD_STOPPED`,
+`DOWNLOAD_BLOCKED` (neither the direct download host nor the Cloudflare-proxied
+lab host could be reached from the visitor's network), `OTHER`.
 
 The page sends one `GATE` per load, one `CONNECT` per connection attempt, one
 `MAP_RESULT` per map when it ends, one `REMOVE` per removal and one `RECOVERY`
@@ -117,6 +119,7 @@ Sent once, when the job ends (a job that a restart cut short is sent as
 | `outcome` | `DELIVERED`, `NOT_DOWNLOADED`, `FAILED`, `CANCELLED`, `EXPIRED`, `REFUSED`, `INTERRUPTED` |
 | `reason` | server reason code below; required for `FAILED`, `REFUSED`, `INTERRUPTED`, not allowed otherwise |
 | `providerHttpStatus` | optional integer 100–599, only with `PROVIDER_HTTP_ERROR` |
+| `servedVia` | optional: `direct` (from `dl.terento.app:8443`), `proxied` (through the Cloudflare-proxied lab host, used when the visitor's network blocks the direct port) or `mixed` (both, e.g. a resumed download) |
 
 `DELIVERED`: the browser downloaded every byte. `NOT_DOWNLOADED`: the copy was
 ready but the browser let it go before it had every byte. `EXPIRED`: the copy
@@ -164,7 +167,8 @@ from every number below.
 - **On the server**: relay jobs. Requests exclude `REFUSED`; Failed counts
   `FAILED`, `REFUSED` and `INTERRUPTED`; preparation time is `readyAt −
   requestedAt`, sending time `finishedAt − readyAt` of `DELIVERED` jobs; data
-  sent is the sum of `servedBytes`.
+  sent is the sum of `servedBytes`; sent through Cloudflare counts `DELIVERED`
+  jobs with `servedVia` `proxied` or `mixed`.
 - **Dashboard Web switch**: Downloads = relay jobs per bucket of `requestedAt`
   (delivered, and failed on the server); Installations = final map results per
   bucket of `occurredAt` (install succeeded, install failed, update succeeded,
