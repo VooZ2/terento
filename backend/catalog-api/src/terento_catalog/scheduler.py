@@ -53,6 +53,8 @@ def _run_scheduled_cycle(database: Database, *, collect_device_catalog: bool) ->
 
     _run_compatibility_retention(database)
     run_collection_cycle(database, collect_device_catalog=collect_device_catalog)
+    # A catalog or mapping change can make waiting identities resolvable.
+    _run_identity_auto_resolution(database)
 
 
 def _run_compatibility_retention(database: Database) -> None:
@@ -66,6 +68,17 @@ def _run_compatibility_retention(database: Database) -> None:
         LOGGER.exception("scheduled compatibility retention failed; next cycle will retry")
         return
     LOGGER.info("scheduled compatibility retention removed=%s", deleted)
+
+
+def _run_identity_auto_resolution(database: Database) -> None:
+    """Assign waiting identities that now resolve to one catalog model."""
+
+    try:
+        summary = database.auto_resolve_pending_identities()
+    except Exception:
+        LOGGER.exception("identity auto-resolution failed; next cycle will retry")
+        return
+    LOGGER.info("identity auto-resolution %s", summary)
 
 
 def run_collection_cycle(
@@ -202,6 +215,8 @@ def main() -> None:
         name="map-preview-renderer",
     )
     preview_worker.start()
+    # Clears the waiting backlog right after a deploy restarts the scheduler.
+    _run_identity_auto_resolution(database)
     try:
         run_schedule(database, settings.collector_schedule_utc)
     finally:

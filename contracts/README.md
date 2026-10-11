@@ -344,7 +344,8 @@ Device catalog v2 adds nullable `screenTechnology` (`AMOLED`, `MicroLED`,
 `partNumber`, IDs and status criteria remain compatible. Null is unknown,
 never false. The identity mapping registry is server-side and is not sent to
 clients. A reported `canonicalDeviceId` is a candidate, never assignment
-permission: the server evaluates all five identity checks before resolving it.
+permission: the server resolves only one non-conflicting candidate whose name
+every reported model label matches, or whose five identity checks all match.
 
 An actually observed `010-…` XML value uses the separate retail SKU registry;
 `006-B…` uses the XML/Connect IQ registry. Source-derived properties share their

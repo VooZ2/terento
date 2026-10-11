@@ -6,7 +6,7 @@ import unicodedata
 from functools import lru_cache
 from typing import Any
 
-VERSION = 3
+VERSION = 4
 
 # Historical review statuses are not observations of a device model. Match
 # only the legacy model field; original MTP/XML values remain evidence.
@@ -190,6 +190,25 @@ def selected_identity_conflicts(
     return conflicts
 
 
+def preferred_candidates(assessment: dict) -> list[dict]:
+    """Prefer explicitly observed features over less-specific catalog rows.
+
+    The assessment retains every candidate and never treats an unknown
+    feature as a negative fact; this only narrows the choice among them.
+    """
+    candidates = [c for c in assessment.get('candidates', [])
+                  if not c.get('conflict') and c.get('checks')
+                  and not any(k.get('state') == 'CONFLICT' for k in c['checks'])]
+    for feature_name in ('inreach', 'solar'):
+        explicit = [c for c in candidates if any(
+            f.get('name') == feature_name and f.get('expected') is True
+            and any(e.get('source') == 'model text' and e.get('value') is True for e in f.get('evidence', []))
+            for k in c['checks'] for f in k.get('features', []))]
+        if explicit:
+            candidates = explicit
+    return candidates
+
+
 def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> dict:
     """Five checks per candidate, retaining ambiguity and shared provenance."""
     observations = _identity_observations(event)
@@ -295,7 +314,21 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
                            'checks': checks, 'conflict': any(c['state'] == 'CONFLICT' for c in checks)})
     possible = [c for c in candidates if not c['conflict']]
     exact = [c for c in possible if all(k['state'] == 'MATCH' for k in c['checks'])]
-    resolved = exact[0]['deviceId'] if len(possible) == 1 and len(exact) == 1 else None
+    preferred = preferred_candidates({'candidates': candidates})
+    resolved, resolution = None, None
+    if len(possible) == 1 and len(exact) == 1:
+        resolved, resolution = exact[0]['deviceId'], 'EXACT'
+    elif len(preferred) == 1 and preferred[0]['checks'][0]['observedState'] == 'MATCH':
+        # Owner decision 2026-10-11: the one suggested catalog model whose name
+        # every reported label matches is the exact model even when size,
+        # screen or code checks lack evidence. Every other same-name row is
+        # excluded by a reported contradiction or a reported Solar/inReach
+        # feature. An unreviewed code mapping to a model outside the candidate
+        # set still leaves the choice to review.
+        candidate_ids = {c['deviceId'] for c in candidates}
+        if all(m['device_model_id'] in candidate_ids
+               for group in observed_mappings.values() for m in group if m['status'] == 'PENDING'):
+            resolved, resolution = preferred[0]['deviceId'], 'SINGLE_MATCH'
     facts = {
         'model': [{'source': source, 'value': value} for source, value in labels],
         'caseSizeMm': [{'source': source, 'value': value} for source, value in sizes],
@@ -305,4 +338,5 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
         'codes': [{'kind': kind, 'value': value} for kind, value in codes.items() if value is not None],
     }
     return {'version': VERSION, 'reportedCanonicalDeviceId': event.get('canonicalDeviceId'), 'canonicalDeviceId': resolved,
-            'state': 'RESOLVED' if resolved else 'UNRESOLVED', 'facts': facts, 'candidates': candidates}
+            'state': 'RESOLVED' if resolved else 'UNRESOLVED', 'resolution': resolution,
+            'facts': facts, 'candidates': candidates}

@@ -24,8 +24,9 @@ class IdentityVariantTests(unittest.TestCase):
         self.assertEqual(possible[0]['checks'][2]['state'], 'MATCH')
         self.assertEqual(possible[0]['checks'][0]['features'][0]['state'], 'MATCH')
         self.assertIn('catalog specification', str(possible))
-        # Suggestions and catalog-derived facts do not approve an identity.
-        self.assertEqual(result['state'], 'UNRESOLVED')
+        # The reported size leaves one catalog model with the reported name.
+        self.assertEqual((result['state'], result['resolution']), ('RESOLVED', 'SINGLE_MATCH'))
+        self.assertEqual(result['canonicalDeviceId'], 'fenix9-47')
 
     def test_unknown_and_ambiguous_specs_stay_unknown(self):
         for devices in ([self.device(specification_evidence={})],

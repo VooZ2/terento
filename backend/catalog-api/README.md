@@ -617,16 +617,33 @@ assignments remain intact. Retail SKUs (`010-…`) and XML/Connect IQ codes
 variants. Unknown feature values are not negative evidence.
 
 Five checks evaluate model/variant, case size, screen, XML code and USB.
-Automatic assignment requires all five to match and exactly one non-conflicting
-candidate. Only approved mappings are positive evidence. Pending alternative
-targets prevent a partially reviewed shared code from appearing unique. Shared mappings only
-prove a property when all targets agree. Missing observations require a reasoned
-admin decision; a conflict cannot be overridden by the assignment form. Source
-corrections are separate append-only overlays, retaining the original field and
+Automatic assignment takes one of two paths. `resolution: EXACT`: exactly one
+non-conflicting candidate and all five checks match. `resolution:
+SINGLE_MATCH` (assessment version 4, owner decision 2026-10-11): the Admin
+suggestion rule leaves one candidate (no conflict; a reported Solar/inReach
+word prefers rows whose stored value is true), every reported model label
+matches its name, and no pending mapping of a reported code points outside the
+candidate set. A reported code alone, or a client `canonicalDeviceId` alone,
+never assigns. Only approved mappings are positive evidence. Pending
+alternative targets prevent a partially reviewed shared code from appearing
+unique. Shared mappings only prove a property when all targets agree. Two or
+more possible models, no name match or a conflict require a reasoned admin
+decision; a conflict cannot be overridden by the assignment form.
+
+The scheduler applies the same rule to the waiting Identity review population
+once at start and after each collection cycle
+(`Database.auto_resolve_pending_identities`): a result that now resolves gets
+its catalog model and an `ASSIGN` audit record with no administrator and the
+full assessment (`decision.method: AUTOMATIC`). The intake assessment stays
+unchanged, and a result with any earlier identity decision keeps it.
+`python -m terento_catalog.identity_registry auto-resolve` prints the counts
+read-only; `--apply` assigns.
+
+Source corrections are separate append-only overlays, retaining the original field and
 administrator/reason/history. Each assignment review stores its complete
 assessment in the append-only decision audit; the original ingestion assessment
-is never overwritten. Neither correction nor mapping approval silently
-reassigns events. Public compatibility approval remains a separate action.
+is never overwritten. Neither correction nor mapping approval reassigns an
+assigned event; a waiting one is assigned only by the audited scheduler pass. Public compatibility approval remains a separate action.
 
 Authenticated model/installation details show checks and provenance. The
 read-only `/admin/devices/identity-audit.json` report, including classification

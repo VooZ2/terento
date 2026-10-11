@@ -2947,6 +2947,106 @@ class Database:
                 )
             return len(rows)
 
+    def auto_resolve_pending_identities(self, *, apply: bool = True) -> dict[str, int]:
+        """Assign pending identities that the current assessment resolves.
+
+        Covers the Identity review population (active, nonlocal, not excluded,
+        no catalog model, unresolved, not a provider download failure).
+        Results with any earlier identity decision keep that decision. Each assignment writes the same audit
+        record as an administrator assignment, with no administrator and the
+        full assessment; the intake assessment is never overwritten.
+        """
+        with self.connection() as connection:
+            rows = list(connection.execute(
+                """
+                SELECT *, COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
+                       EXISTS (
+                           SELECT 1 FROM compatibility_identity_resolution_audit a
+                           WHERE a.event_id = e.event_id
+                       ) AS has_identity_decision
+                FROM compatibility_evidence_event e
+                WHERE diagnostic_status = 'ACTIVE'
+                  AND is_local_test IS NOT TRUE
+                  AND statistics_exclusion_code IS NULL
+                  AND canonical_device_model_id IS NULL
+                  AND upper(btrim(COALESCE(identity_resolution_state, ''))) IN ('', 'UNRESOLVED', 'PENDING')
+                  AND NOT (
+                      write_started IS FALSE
+                      AND (failure_stage = 'download' OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED')
+                  )
+                ORDER BY event_id
+                """ + (" FOR UPDATE SKIP LOCKED" if apply else ""),
+            ).fetchall())
+            summary = {"pendingResults": len(rows), "resolvedResults": 0, "exact": 0, "singleMatch": 0,
+                       "pendingOperations": len({row["operation_key"] for row in rows}), "clearedOperations": 0}
+            if not rows:
+                return summary
+            devices = list(connection.execute("SELECT * FROM device_model").fetchall())
+            mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+            by_id = {device["id"]: device for device in devices}
+            corrections: dict[Any, list[dict[str, Any]]] = {}
+            for correction in connection.execute(
+                "SELECT * FROM device_identity_source_correction WHERE event_id = ANY(%s) ORDER BY id",
+                ([row["event_id"] for row in rows],),
+            ).fetchall():
+                corrections.setdefault(correction["event_id"], []).append(correction)
+            unresolved_operations = set()
+            for row in rows:
+                if row["has_identity_decision"]:
+                    unresolved_operations.add(row["operation_key"])
+                    continue
+                event = apply_corrections(self._identity_event(row), corrections.get(row["event_id"], []))
+                assessment = assess_identity(event, devices, mappings)
+                device_id = assessment["canonicalDeviceId"]
+                device = by_id.get(device_id)
+                if device is None:
+                    unresolved_operations.add(row["operation_key"])
+                    continue
+                summary["resolvedResults"] += 1
+                summary["exact" if assessment["resolution"] == "EXACT" else "singleMatch"] += 1
+                if not apply:
+                    continue
+                reason = ("Automatically assigned: every identity check matches."
+                          if assessment["resolution"] == "EXACT" else
+                          "Automatically assigned: one catalog model matches the reported name.")
+                assessment["decision"] = {
+                    "method": "AUTOMATIC",
+                    "deviceId": device_id,
+                    "decisionType": "AUTOMATIC_ASSIGNMENT",
+                    "reason": reason,
+                    "adminId": None,
+                    "scope": row["operation_key"],
+                    "missing": sorted({
+                        str(check.get("name"))
+                        for candidate in assessment["candidates"] if candidate["deviceId"] == device_id
+                        for check in candidate["checks"] if check.get("state") == "MISSING"
+                    }),
+                    "conflicts": [],
+                }
+                new_identity = f"{device['model']} · {device['variant']}" if device.get("variant") else str(device["model"])
+                connection.execute(
+                    """
+                    UPDATE compatibility_evidence_event
+                    SET canonical_device_model_id = %s, identity_resolution_state = 'RESOLVED'
+                    WHERE event_id = %s AND canonical_device_model_id IS NULL
+                    """,
+                    (device_id, row["event_id"]),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO compatibility_identity_resolution_audit (
+                        event_id, previous_identity,
+                        previous_canonical_device_model_id,
+                        new_identity, new_canonical_device_model_id,
+                        action, reason, note, corrected_by, assessment
+                    ) VALUES (%s, %s, NULL, %s, %s, 'ASSIGN', %s, NULL, NULL, %s::jsonb)
+                    """,
+                    (row["event_id"], str(row.get("compatibility_identity") or "Identity unresolved"),
+                     new_identity, device_id, reason, json.dumps(assessment)),
+                )
+            summary["clearedOperations"] = summary["pendingOperations"] - len(unresolved_operations)
+            return summary
+
     @staticmethod
     def _identity_conflict_details(
         row: dict[str, Any], device: dict[str, Any], conflicts: list[dict[str, Any]],
