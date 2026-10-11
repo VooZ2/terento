@@ -147,7 +147,8 @@ def _browser(value: Any) -> str:
 def _support_icon(support: str) -> str:
     """Icon only (owner 2026-10-11); the text stays for screen readers and as a tooltip."""
     kind, label = SUPPORT[support]
-    return f"<span class='web-installer-support'>{_status_pill(kind, label, title=label, value=support)}</span>"
+    pill = _status_pill(kind, label, title=label, value=support)
+    return "<span class='web-installer-support'>" + pill.replace(f"<span>{html.escape(label)}</span>", f"<span class='sr-only'>{html.escape(label)}</span>") + "</span>"
 
 
 def _td(content: str) -> str:
