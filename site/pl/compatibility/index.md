@@ -11,7 +11,7 @@ Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej po
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
-**26** modele z udanymi instalacjami**185** udane instalacjeOstatnia udana instalacja 10 października 2026
+**26** modele z udanymi instalacjami**198** udane instalacjeOstatnia udana instalacja 11 października 2026
 
 Jak działa ta lista
 
@@ -29,9 +29,9 @@ fēnix
 
 47 mm, AMOLED
 
-42 udanych instalacji
+46 udanych instalacji
 
-Ostatnia udana instalacja 9 października 2026
+Ostatnia udana instalacja 11 października 2026
 
 Forerunner
 
@@ -42,6 +42,16 @@ AMOLED
 20 udanych instalacji
 
 Ostatnia udana instalacja 10 października 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, AMOLED
+
+17 udanych instalacji
+
+Ostatnia udana instalacja 11 października 2026
 
 Forerunner
 
@@ -62,16 +72,6 @@ fēnix
 13 udanych instalacji
 
 Ostatnia udana instalacja 4 października 2026
-
-fēnix
-
-### fēnix 9 Pro
-
-51 mm, AMOLED
-
-12 udanych instalacji
-
-Ostatnia udana instalacja 10 października 2026
 
 fēnix
 
@@ -165,6 +165,16 @@ Ostatnia udana instalacja 8 października 2026
 
 fēnix
 
+### fēnix 7X
+
+51 mm, Solar
+
+5 udanych instalacji
+
+Ostatnia udana instalacja 11 października 2026
+
+fēnix
+
 ### fēnix 7S Pro
 
 Solar, Historical
@@ -172,6 +182,16 @@ Solar, Historical
 4 udanych instalacji
 
 Ostatnia udana instalacja 2 października 2026
+
+fēnix
+
+### fēnix 8
+
+43 mm, AMOLED
+
+4 udanych instalacji
+
+Ostatnia udana instalacja 11 października 2026
 
 fēnix
 
@@ -195,16 +215,6 @@ Ostatnia udana instalacja 24 września 2026
 
 fēnix
 
-### fēnix 7X
-
-51 mm, Solar
-
-3 udanych instalacji
-
-Ostatnia udana instalacja 19 września 2026
-
-fēnix
-
 ### fēnix 8 Pro
 
 47 mm, AMOLED, inReach
@@ -212,16 +222,6 @@ fēnix
 3 udanych instalacji
 
 Ostatnia udana instalacja 3 października 2026
-
-fēnix
-
-### fēnix 8
-
-43 mm, AMOLED
-
-3 udanych instalacji
-
-Ostatnia udana instalacja 17 września 2026
 
 fēnix
 
@@ -249,9 +249,9 @@ fēnix
 
 Solar, (no Wi-Fi)
 
-1 udana instalacja
+2 udanych instalacji
 
-Ostatnia udana instalacja 10 października 2026
+Ostatnia udana instalacja 11 października 2026
 
 fēnix
 
