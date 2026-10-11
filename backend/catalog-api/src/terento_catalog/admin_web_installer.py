@@ -144,6 +144,12 @@ def _browser(value: Any) -> str:
     return f"<span class='web-installer-browser'>{_admin_icon('browser-' + (family if known else 'other'))}{_text(value)}</span>"
 
 
+def _support_icon(support: str) -> str:
+    """Icon only (owner 2026-10-11); the text stays for screen readers and as a tooltip."""
+    kind, label = SUPPORT[support]
+    return f"<span class='web-installer-support'>{_status_pill(kind, label, title=label, value=support)}</span>"
+
+
 def _td(content: str) -> str:
     return f"<td>{content}</td>"
 
@@ -167,7 +173,7 @@ def _watch_sections(watch: dict[str, Any], period: str) -> str:
         _num(m["sessions"]), _num(m["installed"]), _num(m["updated"]), _num(m["failed"]), _td(_timestamp_markup(m["last"])),
     ] for m in watch["models"]], "No watch was connected in this period.")
     systems = _table("Systems and browsers", ["System", "Browser", "#Visits", "#Could not use"], [[
-        _td(_text(s["system"])), _td(_browser(s["browser"]) + " " + _status_pill(*SUPPORT[s["support"]], value=s["support"])),
+        _td(_text(s["system"])), _td("<span class='web-installer-browser-row'>" + _browser(s["browser"]) + _support_icon(s["support"]) + "</span>"),
         _num(s["visits"]), _num(s["blocked"]),
     ] for s in watch["systems"]], "No visits in this period.")
     connect = _table("Connection problems", ["Problem", "System", "Browser", "#Count", "Last"], [[
