@@ -12,9 +12,9 @@ Natywna aplikacja na Maca do instalowania i zarządzania mapami społecznościow
 - Bezpłatna
 - Notaryzowana
 - Apple Silicon
-[Pobierz DMG Zalecane](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.2-build42/Terento-1.0.0-rc.2-macOS-arm64.dmg) [Pobierz ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.2-build42/Terento-1.0.0-rc.2-macOS-arm64.zip) [Informacje o wydaniu](https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.2-build42)
+[Pobierz DMG Zalecane](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.3-build43/Terento-1.0.0-rc.3-macOS-arm64.dmg) [Pobierz ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.3-build43/Terento-1.0.0-rc.3-macOS-arm64.zip) [Informacje o wydaniu](https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.3-build43)
 
-Najnowsza wersja kandydująca: **v1.0.0-rc.2** Wydana 7 października 2026
+Najnowsza wersja kandydująca: **v1.0.0-rc.3** Wydana 11 października 2026
 
 Terento pokazuje podłączony zegarek Garmin w macOS
 
