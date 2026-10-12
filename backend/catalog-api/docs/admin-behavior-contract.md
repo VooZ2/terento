@@ -360,7 +360,9 @@ The Web installer page (`/admin/web-installer`, primary navigation after First
 run; owner decision 2026-10-10, replacing the lab admin page from an empty
 start) has the Dashboard period picker (default Last 7 days) with a `Web` mark
 (globe icon; hidden at ≤760 px, no All/App/Web switch) and shows only the web
-installer population. It has no explanatory lead text, hints or tooltips. Its
+installer population. It has no explanatory lead text, hints or tooltips: its
+`main` carries `data-admin-no-titles`, so the shared time script gives its dates
+and the time zone picker no hover title (other pages keep it). Its
 order answers, in turn, whether maps install, where people get stuck, which
 watches, systems and browsers are used, and how the server does (owner layout
 A, 2026-10-12):

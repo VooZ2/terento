@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from pglite_support import PGliteTestCase
 from test_compatibility_evidence import event as compatibility_event
-from terento_catalog.admin import _admin_device_payload, device_detail_page, hash_password
+from terento_catalog.admin import _admin_device_payload, _admin_timezone_script, device_detail_page, hash_password
 from terento_catalog.admin_web_installer import _grouped_card_script, web_installer_page
 from terento_catalog.compatibility_evidence import validate_event as validate_compatibility_event
 from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
@@ -312,6 +312,39 @@ console.log(JSON.stringify(result));
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), ["problem,OTHER", "system,OTHER", "connect,system"])
+
+
+    def test_dates_and_time_zone_carry_no_tooltip_here_but_keep_them_elsewhere(self):
+        # The shared time script after start, a period reload (main replaced) and a time zone change.
+        harness = r"""
+const element = (attrs = {}) => ({attrs, dataset: {}, textContent: '', listeners: {},
+  setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; },
+  set title(v) { this.attrs.title = v; }, get title() { return this.attrs.title || ''; },
+  closest: () => null, replaceChildren() {}, addEventListener(type, fn) { this.listeners[type] = fn; }});
+const run = (noTitles) => {
+  const select = element({title: 'Time zone'});
+  let main = {noTitles, times: [1, 2].map(() => Object.assign(element(), {dataset: {adminTimestamp: '2026-10-12T13:35:00Z'}}))};
+  global.window = {addEventListener() {}, dispatchEvent() {}};
+  global.Event = class {};
+  global.localStorage = {getItem: () => null, setItem() {}};
+  global.document = {documentElement: {style: {setProperty() {}}}, createElement: () => element(),
+    querySelector: (s) => s === '#admin-timezone' ? select : s === '[data-admin-no-titles]' ? (main.noTitles ? {} : null) : null,
+    querySelectorAll: (s) => s === '[data-admin-timestamp]' ? main.times : []};
+  eval(process.argv[1]);
+  const titles = () => main.times.filter((t) => 'title' in t.attrs).length + ('title' in select.attrs ? 1 : 0);
+  const seen = [titles()];
+  main = {noTitles, times: [Object.assign(element(), {dataset: {adminTimestamp: '2026-10-12T14:00:00Z'}})]};
+  window.TerentoAdminTime.render(); seen.push(titles());
+  select.value = 'UTC'; select.listeners.change(); seen.push(titles(), main.times[0].textContent);
+  return seen;
+};
+console.log(JSON.stringify([run(true), run(false)]));
+"""
+        result = subprocess.run([os.environ.get("TERENTO_NODE_BIN", "node"), "-e", harness, _admin_timezone_script()],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), [[0, 0, 0, "2026-10-12 14:00"], [3, 2, 2, "2026-10-12 14:00"]])
+        self.assertIn("id='main-content' data-admin-no-titles>", self.page([]))
 
 
 class WebInstallerEndToEndTests(PGliteTestCase):

@@ -498,7 +498,7 @@ def web_installer_page(data: dict[str, Any] | None, user: dict[str, Any], csrf_t
         )
     content = f"""
       {_admin_header(user, csrf_token, active='web-installer')}
-      <main class='dashboard overview-page web-installer-page' id='main-content'>
+      <main class='dashboard overview-page web-installer-page' id='main-content' data-admin-no-titles>
         <div class='heading-row overview-heading'><div><h1>Web installer</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/web-installer' data-time-zone='{html.escape(time_zone, quote=True)}'><span class='web-installer-source'>{_admin_icon('source-web')}Web</span><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{options}</select></label></form></div>
         {body}
         {tests}

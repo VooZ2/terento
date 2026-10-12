@@ -9077,17 +9077,21 @@ def _admin_timezone_script() -> str:
       };
       const render = () => {
         const zone = activeTimeZone();
+        // A page whose main carries data-admin-no-titles shows no hover tooltips (Web installer, owner 2026-10-12).
+        const titled = !document.querySelector('[data-admin-no-titles]');
+        const label = (element) => `${format(element.dataset.adminTimestamp)} · ${zone}`;
         document.querySelectorAll('[data-admin-timestamp]').forEach((element) => {
           element.textContent = format(element.dataset.adminTimestamp);
-          element.title = `${element.textContent} · ${zone}`;
-          if (element.closest('.download-timeline')) element.setAttribute('aria-label', element.title);
+          if (titled) element.title = label(element);
+          if (element.closest('.download-timeline')) element.setAttribute('aria-label', label(element));
         });
         document.querySelectorAll('.download-timeline').forEach((timeline) => {
           const times = [...timeline.querySelectorAll('[data-admin-timestamp]')];
           const dates = new Set(times.map(el => format(el.dataset.adminTimestamp).slice(0, 10)));
-          if (dates.size === 1) times.forEach(el => { el.setAttribute('aria-label', el.title); el.textContent = format(el.dataset.adminTimestamp).slice(11); });
+          if (dates.size === 1) times.forEach(el => { el.setAttribute('aria-label', label(el)); el.textContent = format(el.dataset.adminTimestamp).slice(11); });
         });
-        select.title = select.value === 'browser' ? `Automatic browser time zone: ${browserTimeZone}` : zone;
+        if (titled) select.title = select.value === 'browser' ? `Automatic browser time zone: ${browserTimeZone}` : zone;
+        else select.removeAttribute('title');
         select.setAttribute('aria-label', `Time zone: ${select.value === 'browser' ? `Automatic (${browserTimeZone})` : select.value}`);
       };
       select.replaceChildren(...timeZones.map((value) => {
