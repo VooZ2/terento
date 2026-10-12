@@ -286,6 +286,8 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual([(p["stage"], p["reason"], p["error_name"]) for p in watch["mapProblems"]],
                          [("REMOVE", "OTHER", None), ("MAP_RESULT", "CONNECTION_LOST", "NetworkError")])
         self.assertEqual([r["outcome"] for r in watch["recent"]], ["FAILED", "SUCCEEDED", "FAILED"])  # remove, retry, first try
+        self.assertEqual({(s["os_family"], s["browser_family"]) for s in watch["systems"]},
+                         {(s["system"].split()[0], s["browser"].split()[0]) for s in watch["systems"]})  # grouping keys
         self.assertEqual(sorted((s["browser"].split()[0], s["support"]) for s in watch["systems"]),
                          [("Brave", "TESTING"), ("Chrome", "SUPPORTED"), ("Firefox", "BLOCKED_BROWSER")])
         self.assertEqual([(p["os_family"], p["browser_family"]) for p in watch["connectProblems"]], [("Windows", "Edge")])
@@ -301,6 +303,8 @@ class WebInstallerEndToEndTests(PGliteTestCase):
                      "Install and removal problems", "The connection to the watch ended", "CONNECTION_LOST · NetworkError",
                      "The browser could not open the watch", "OPEN_ACCESS_DENIED · SecurityError",
                      "Supported", "Testing", "title='Browser not supported'", "web-installer-support", "<th scope='col'>Browser</th>",
+                     "data-systems-switch='system'", "data-systems-switch='browser'", "<tr data-systems-group='macOS'>",
+                     "<tr data-systems-group='Brave'>", "class='web-installer-versions' id='web-installer-system-0' hidden>",
                      "admin-icon-browser-brave", "admin-icon-browser-firefox", "admin-icon-browser-edge",
                      "MTP 0x200D", "Recent results on watches", "On the server", "Providers", "Problems",
                      "Provider returned an error", "PROVIDER_HTTP_ERROR · HTTP 503", "Recent requests", "Test records: 1",

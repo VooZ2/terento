@@ -159,6 +159,93 @@ def _num(value: Any) -> str:
     return f"<td class='column-number'>{_text(value)}</td>"
 
 
+# Systems and browsers, grouped by system family or by browser family.
+_GROUPINGS = (("system", "System", "os_family"), ("browser", "Browser", "browser_family"))
+
+
+def _systems_table(systems: list[dict[str, Any]], grouping: str, label: str, key: str) -> str:
+    """One row per family with its totals; its versions open below it. A
+    version row is one spanning cell, so the shared column sort keeps it with
+    its family row."""
+    groups: dict[Any, list[dict[str, Any]]] = {}
+    for item in systems:
+        groups.setdefault(item.get(key), []).append(item)
+    cols = "<colgroup><col><col class='web-installer-col-visits'><col class='web-installer-col-blocked'></colgroup>"
+    rows = []
+    for index, (family, items) in enumerate(sorted(groups.items(), key=lambda g: (-sum(i["visits"] for i in g[1]), g[0] or "~"))):
+        row_id = f"web-installer-{grouping}-{index}"
+        name = _browser(family) if grouping == "browser" else _text(family)
+        toggle = (f"<button type='button' class='web-installer-group-toggle' data-systems-toggle aria-expanded='false' "
+                  f"aria-controls='{row_id}'>{_admin_icon('chevron-down')}{name}</button>")
+        versions = "".join(
+            "<tr>" + _td("<span class='web-installer-version'>" + (
+                f"<span>{_text(i['system'])}</span>" + _browser(i["browser"]) + _support_icon(i["support"]) if grouping == "system"
+                else _browser(i["browser"]) + _support_icon(i["support"]) + f"<span>{_text(i['system'])}</span>"
+            ) + "</span>") + _num(i["visits"]) + _num(i["blocked"]) + "</tr>"
+            for i in items)
+        rows.append(
+            f"<tr data-systems-group='{html.escape(str(family), quote=True)}'><td>{toggle}</td>"
+            + _num(sum(i["visits"] for i in items)) + _num(sum(i["blocked"] for i in items)) + "</tr>"
+            f"<tr class='web-installer-versions' id='{row_id}' hidden><td colspan='3'>"
+            f"<table class='admin-table web-installer-table web-installer-systems-table'>{cols}<tbody>{versions}</tbody></table></td></tr>"
+        )
+    return (
+        f"<div class='table-wrap' data-systems-panel='{grouping}'{'' if grouping == 'system' else ' hidden'}>"
+        f"<table class='admin-table web-installer-table web-installer-systems-table' data-own-mobile-layout>"
+        f"<caption class='sr-only'>Systems and browsers by {label.lower()}</caption>{cols}"
+        f"<thead><tr><th scope='col'>{label}</th><th scope='col' class='column-number'>Visits</th>"
+        f"<th scope='col' class='column-number'>Could not use</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>"
+    )
+
+
+def _systems(systems: list[dict[str, Any]]) -> str:
+    if not systems:
+        return _empty_state("empty", "No visits in this period.")
+    switch = "".join(
+        f"<button type='button' class='quick-filter{' active' if name == 'system' else ''}' data-systems-switch='{name}' "
+        f"aria-pressed='{str(name == 'system').lower()}'>{label}</button>"
+        for name, label, _ in _GROUPINGS)
+    return (
+        f"<div class='filter-bar web-installer-card-filter'><div class='quick-filter-group' role='group' aria-label='Group by'>{switch}</div></div>"
+        + "".join(_systems_table(systems, name, label, key) for name, label, key in _GROUPINGS)
+    )
+
+
+def _systems_script() -> str:
+    """System/Browser switch and the family rows; both survive live refreshes."""
+    return r"""(() => {
+      let chosen = 'system';
+      const open = new Set();
+      const apply = () => {
+        document.querySelectorAll('[data-systems-switch]').forEach((button) => {
+          const on = button.dataset.systemsSwitch === chosen;
+          button.classList.toggle('active', on);
+          button.setAttribute('aria-pressed', String(on));
+        });
+        document.querySelectorAll('[data-systems-panel]').forEach((panel) => { panel.hidden = panel.dataset.systemsPanel !== chosen; });
+        document.querySelectorAll('[data-systems-toggle]').forEach((button) => {
+          const row = button.closest('tr');
+          const key = row.closest('[data-systems-panel]').dataset.systemsPanel + ':' + row.dataset.systemsGroup;
+          const expanded = open.has(key);
+          button.setAttribute('aria-expanded', String(expanded));
+          const versions = document.getElementById(button.getAttribute('aria-controls'));
+          if (versions) versions.hidden = !expanded;
+        });
+      };
+      document.addEventListener('click', (event) => {
+        const pick = event.target.closest('[data-systems-switch]');
+        if (pick) { chosen = pick.dataset.systemsSwitch; apply(); return; }
+        const toggle = event.target.closest('[data-systems-toggle]');
+        if (!toggle) return;
+        const row = toggle.closest('tr');
+        const key = row.closest('[data-systems-panel]').dataset.systemsPanel + ':' + row.dataset.systemsGroup;
+        if (!open.delete(key)) open.add(key);
+        apply();
+      });
+      window.addEventListener('terento-admin-content-changed', apply);
+    })();"""
+
+
 def _watch_sections(watch: dict[str, Any], period: str) -> str:
     tiles = _metric_row([
         _metric_tile("Watch connected", watch["connectedSessions"], scope=period),
@@ -173,10 +260,7 @@ def _watch_sections(watch: dict[str, Any], period: str) -> str:
         _td(_text(m["model"] or "Not read")), _td(_text(m["system"])), _td(_text(", ".join(m["firmware"]))),
         _num(m["sessions"]), _num(m["installed"]), _num(m["updated"]), _num(m["failed"]), _td(_timestamp_markup(m["last"])),
     ] for m in watch["models"]], "No watch was connected in this period.")
-    systems = _table("Systems and browsers", ["System", "Browser", "#Visits", "#Could not use"], [[
-        _td(_text(s["system"])), _td("<span class='web-installer-browser-row'>" + _browser(s["browser"]) + _support_icon(s["support"]) + "</span>"),
-        _num(s["visits"]), _num(s["blocked"]),
-    ] for s in watch["systems"]], "No visits in this period.")
+    systems = _systems(watch["systems"])
     detail = lambda p: [f"HTTP {p['http_status']}" if p.get("http_status") else None,
                         f"MTP 0x{p['mtp_response']:04X}" if p.get("mtp_response") else None]
     connect = _table("Connection problems", ["Problem", "System", "Browser", "Watch models", "#Visits", "#Count", "Last"], [[
@@ -278,7 +362,7 @@ def web_installer_page(data: dict[str, Any] | None, user: dict[str, Any], csrf_t
         {body}
         {tests}
       </main>
-      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_systems_script()}</script>
     """
     revision = None if not isinstance(data, dict) else {key: data.get(key) for key in ("watch", "server", "testRecords")}
     return _layout("Web installer", content, sections={"webInstaller": revision})
