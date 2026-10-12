@@ -193,7 +193,9 @@ from every number below.
 - **Watch models**: per model text and system (`osFamily osMajor`): firmware
   seen, connected sessions, counted installs, updates and failures, last seen.
 - **Systems and browsers**: `GATE` events per system and browser, and how many
-  were blocked.
+  were blocked, grouped by system family (`osFamily`) or by browser family
+  (`browserFamily`); each family row shows its totals and opens its
+  system and browser versions.
 - **Connection problems** and **Install and removal problems**: every failed
   attempt (counted or not), grouped by codes, with the codes shown next
   to their plain words so a failure can be traced to its cause.
