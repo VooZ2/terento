@@ -36,7 +36,8 @@ shared install statistics from the start, like app results.
 - **Where they appear**: Dashboard charts (All, the default, App and Web
   switch), Dashboard Activity (web rows marked with the Web icon), Maps page
   and providers (combined numbers), Devices list and model pages (App, Web and
-  All rows), and the public Compatibility JSON and watch cards
+  All rows; the model page Installation history lists each counted web
+  install with the Web icon), and the public Compatibility JSON and watch cards
   (`successfulInstallations` = app + web, with `appSuccessfulInstallations` and
   `webSuccessfulInstallations`).
 - **What stays app-only**: the app read models and Event detail, evidence

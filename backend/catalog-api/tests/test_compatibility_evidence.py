@@ -211,6 +211,9 @@ class FakeEvidenceDatabase:
             })
         return rows
 
+    def web_installer_device_results(self, device_id):
+        return []
+
     def admin_device_snapshot(self):
         return [{
             "device_id": "garmin-fenix-8-47-amoled",

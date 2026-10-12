@@ -2255,6 +2255,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         identity_devices=payload.get("devices", []),
                         origin="installations" if origin == "installations" else "devices",
                         requested_state=query.get("state", [""])[0].strip() or None,
+                        web_results=service.database.web_installer_device_results(device_id),
                     )
                 except Exception:
                     LOGGER.exception("admin device detail failed")

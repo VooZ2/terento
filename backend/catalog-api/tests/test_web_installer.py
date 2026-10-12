@@ -450,6 +450,34 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.db.resolve_web_installer_identities()
         self.assertEqual(stats()[0], after)
 
+    def test_model_page_installation_history_lists_counted_web_installs_with_the_web_icon(self):
+        device_id = "garmin-epix-pro-gen-2-47"
+        self.sql("""INSERT INTO map_package (id, provider_id, provider_region_id, canonical_region_id, name, region,
+                        release, country, source_updated_at, map_type, geographic_region_id)
+                    VALUES ('bbbike-north-america-us-washington-bbbike-latin1', 'bbbike', 'washington', 'US-WA',
+                            'Washington', 'US-WA', '2026-10', 'US', '2026-10-01T00:00:00Z', 'bbbike-latin1', 'US-WA')""")
+        hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        base = dict(stage="MAP_RESULT", operation="install", provider="bbbike", model="epix pro - 47mm",
+                    packageId="bbbike-north-america-us-washington-bbbike-latin1", osFamily="Linux", occurredAt=hour_ago)
+        for body in (dict(base, outcome="SUCCEEDED", writeStarted=True),
+                     dict(base, outcome="FAILED", writeStarted=True, failureStage="WRITE", reason="WATCH_FULL"),
+                     # Not counted: a failure before writing, a test record, an update.
+                     dict(base, outcome="FAILED", writeStarted=False, failureStage="DOWNLOAD", reason="DOWNLOAD_STOPPED"),
+                     dict(base, outcome="SUCCEEDED", writeStarted=True, isTest=True),
+                     dict(base, outcome="SUCCEEDED", writeStarted=True, operation="update")):
+            self.assertEqual(self.forward(event(**body)), 201)
+        _, page = self.request("GET", f"/admin/devices/{device_id}", secret=None, admin=True)
+        rows = page.split("<tbody id='diagnostic-rows'>", 1)[1].split("</tbody>", 1)[0].split("<tr ")[1:]
+        self.assertEqual([row.split("data-diagnostic-result='", 1)[1].split("'", 1)[0] for row in rows],
+                         ["succeeded", "failed"])
+        for row in rows:
+            self.assertIn("data-source='web'", row)
+            self.assertIn("<span class='history-source-web'>", row)
+            self.assertIn("admin-icon-source-web", row)
+            self.assertIn("Washington – United States · BBBike", row)
+        self.assertIn("Not enough space on the watch · Writing to the watch", rows[1])
+        self.assertNotIn("Download stopped", page)
+
     def test_connection_problems_count_visits_and_name_the_model_from_the_usb_code(self):
         # One page load retried twice, another tried once; the open was refused
         # before the watch reported its model text, so a reviewed USB mapping names it.
