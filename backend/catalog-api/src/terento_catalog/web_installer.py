@@ -371,7 +371,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
             "medianVerifyS": _median([row.get("verify_s") for row in successes]),
             "models": sorted(({**m, "sessions": len(m["sessions"])} for m in models.values()),
                              key=lambda m: (-m["sessions"], m["model"] or "~", m["system"] or "")),
-            "systems": sorted(({k: v for k, v in s.items() if k not in ("latest", "os_family", "browser_family")}
+            "systems": sorted(({k: v for k, v in s.items() if k != "latest"}
                                | {"support": _support(s["os_family"], s["browser_family"], s["latest"][1])}
                               for s in systems.values()), key=lambda s: (-s["visits"], s["system"] or "~", s["browser"] or "")),
             "connectProblems": _grouped(

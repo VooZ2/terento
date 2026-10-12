@@ -10440,7 +10440,20 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
 .web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
 @media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
-.web-installer-browser-row{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}.web-installer-support .admin-pill{padding:3px 5px}
+.web-installer-card-filter{margin-bottom:12px}
+.admin-table.web-installer-systems-table{table-layout:fixed;width:100%;min-width:0}.web-installer-col-visits{width:6rem}.web-installer-col-blocked{width:9.5rem}
+.web-installer-group-toggle{display:inline-flex;align-items:center;gap:8px;padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:650;cursor:pointer;text-align:left}
+.web-installer-group-toggle:focus-visible{outline:var(--admin-focus-ring);outline-offset:2px}
+.web-installer-group-toggle>.admin-icon{flex:0 0 auto;width:10px;height:10px;transform:rotate(-90deg);transition:transform .15s ease}
+.web-installer-group-toggle[aria-expanded="true"]>.admin-icon{transform:none}
+.admin-table tr.web-installer-versions>td{padding:0!important}
+.web-installer-versions .web-installer-systems-table{margin:0;border:0;background:none}
+.web-installer-versions .web-installer-systems-table td:first-child{padding-left:36px}
+.web-installer-versions .web-installer-systems-table tr:last-child{border-bottom:0}
+.web-installer-version{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.web-installer-versions .web-installer-systems-table td{font-weight:400}
+@media(max-width:760px){.web-installer-col-visits{width:3.75rem}.web-installer-col-blocked{width:5.5rem}.web-installer-versions .web-installer-systems-table td:first-child{padding-left:18px}}
+.web-installer-support .admin-pill{padding:3px 5px}
 .web-installer-browser{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.web-installer-browser .admin-icon{color:var(--graphite)}
 .web-installer-table td{white-space:normal;overflow-wrap:anywhere}
 .web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
