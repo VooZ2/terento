@@ -1,5 +1,7 @@
 """Web installer statistics: validation, ingest, storage, Admin page (end to end)."""
 import json
+import os
+import subprocess
 import threading
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -11,6 +13,7 @@ from uuid import uuid4
 from pglite_support import PGliteTestCase
 from test_compatibility_evidence import event as compatibility_event
 from terento_catalog.admin import _admin_device_payload, device_detail_page, hash_password
+from terento_catalog.admin_web_installer import _grouped_card_script, web_installer_page
 from terento_catalog.compatibility_evidence import validate_event as validate_compatibility_event
 from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
 from terento_catalog.migrate import _statements
@@ -201,6 +204,116 @@ class SupportTests(unittest.TestCase):
             ("Android", "Chrome"): "BLOCKED_SYSTEM", ("macOS", "Other"): "TESTING"})
 
 
+class PageTests(unittest.TestCase):
+    """Admin Web installer page layout (owner layout A, 2026-10-12)."""
+
+    def page(self, events, jobs=()):
+        return web_installer_page({**summarize(events, list(jobs)), "testRecords": {"count": 2, "last": NOW}},
+                                  {"username": "operator"}, "csrf", period="24h").decode()
+
+    def row(self, stage, outcome, **fields):
+        return {"session_id": fields.pop("session", "s1"), "occurred_at": NOW, "stage": stage, "outcome": outcome,
+                "os_family": "macOS", "os_major": 15, "browser_family": "Chrome", "browser_major": 141, **fields}
+
+    def test_sections_answer_results_problems_watches_server_then_history(self):
+        main = self.page([self.row("CONNECT", "CONNECTED", model="fenix 8")]).split("<main", 1)[1]
+        order = ["web-installer-kpis", "id='web-installer-problems'", "id='web-installer-watches'",
+                 "id='web-installer-server'", "id='web-installer-recent'", "Test records: 2"]
+        self.assertEqual([main.index(part) for part in order], sorted(main.index(part) for part in order))
+        kpis = main.split("web-installer-kpis", 1)[1].split("</section>", 1)[0]
+        labels = ["Maps installed", "Maps updated", "Failed after write start", "Connected visits", "Writing · median", "Checking · median"]
+        self.assertEqual([kpis.index(f">{label}<") for label in labels], sorted(kpis.index(f">{label}<") for label in labels))
+        # No failure: no danger tone; no success yet: the medians stay unknown, not zero.
+        self.assertNotIn("data-tone='danger'", kpis)
+        self.assertEqual(kpis.count("—<span class='sr-only'>Unknown</span>"), 2)
+        self.assertNotIn("% ", kpis)
+        self.assertIn("<details><summary><h2 id='web-installer-recent-title'>Recent results on watches", main)
+
+    def test_each_problem_record_has_one_step_and_none_is_lost(self):
+        events = [self.row("CONNECT", "NO_WATCH_CHOSEN", session=f"s{n % 2}") for n in range(3)] + [
+            self.row("MAP_RESULT", "FAILED", failure_stage="WRITE", reason="CONNECTION_LOST", write_started=True, model="fenix 8"),
+            self.row("MAP_RESULT", "FAILED", failure_stage="WRITE", reason="CONNECTION_LOST", write_started=True, model="fenix 8"),
+            self.row("MAP_RESULT", "FAILED", reason="OTHER", model="fenix 8"),  # no step reported
+            self.row("REMOVE", "FAILED", failure_stage="VERIFY", reason="CONNECTION_LOST", model="fenix 8"),
+            self.row("MAP_RESULT", "CANCELLED", failure_stage="DOWNLOAD", reason="CANCELLED"),
+        ]
+        page = self.page(events)
+        problems = page.split("id='web-installer-problems'", 1)[1].split("</section>", 1)[0]
+        tabs = {step: problems.split(f"data-group-switch='{step}'", 1)[1].split("</button>", 1)[0] for step in
+                ("connect", "PREPARE", "DOWNLOAD", "WRITE", "VERIFY", "REMOVE", "OTHER")}
+        counts = {step: tab.rsplit("web-installer-count'>", 1)[1].split("<", 1)[0] for step, tab in tabs.items()}
+        # Connection counts attempts (3), not visits (2); the removal is Removal although it failed while checking;
+        # the cancelled install is no problem; the record without a step is Other.
+        self.assertEqual(counts, {"connect": "3", "PREPARE": "0", "DOWNLOAD": "0", "WRITE": "2", "VERIFY": "0", "REMOVE": "1", "OTHER": "1"})
+        self.assertIn("data-group-default='connect'", problems)
+        panel = lambda step: problems.split(f"<div data-group-panel='{step}'", 1)[1].split("<div data-group-panel=", 1)[0]
+        self.assertEqual(sum(panel(step).count("<details class='web-installer-record'>") for step in tabs if step != "connect"), 3)
+        self.assertIn("VERIFY · CONNECTION_LOST", panel("REMOVE"))
+        self.assertIn("<small>After writing started</small><strong>2</strong>", panel("WRITE"))
+
+    def test_phone_records_show_results_at_once_and_support_is_text(self):
+        events = [self.row("GATE", "PASSED"), self.row("CONNECT", "CONNECTED", model="fenix 8", firmware="23.39"),
+                  self.row("MAP_RESULT", "FAILED", failure_stage="WRITE", reason="CONNECTION_LOST", write_started=True,
+                           model="fenix 8", operation="install")]
+        page = self.page(events)
+        watches = page.split("id='web-installer-watches'", 1)[1].split("</section>", 1)[0]
+        record = watches.split("<div class='web-installer-narrow'>", 1)[1].split("</details>", 1)[0]
+        summary = record.split("</summary>", 1)[0]
+        for label in ("Installed", "Updated", "Failed"):
+            self.assertIn(f"<small>{label}</small>", summary)
+        self.assertIn("<strong class='web-installer-failed'>1</strong>", summary)
+        for label in ("Firmware", "Connected", "Last seen"):
+            self.assertIn(f"<dt>{label}</dt>", record)
+        self.assertIn("<span class='web-installer-support'><span class='admin-pill admin-pill-success' data-status='SUPPORTED'>", page)
+        self.assertNotIn("title='", page)
+        history = page.split("id='web-installer-recent'", 1)[1].split("</section>", 1)[0]
+        self.assertIn("Recent results on watches <span class='web-installer-count'>1</span>", history)
+        self.assertIn("<small>Result</small><span class='admin-pill admin-pill-danger' data-status='FAILED'>",
+                      history.split("<div class='web-installer-narrow'>", 1)[1])
+
+
+    def test_nested_switches_stay_apart_and_a_missing_choice_falls_back(self):
+        # A tiny DOM: the Problems step switch holds the Connection group-by switch.
+        harness = r"""
+const make = (attrs = {}, children = []) => {
+  const node = {attrs, children, parent: null, hidden: 'hidden' in attrs, classList: {toggle() {}},
+    get dataset() { return Object.fromEntries(Object.entries(attrs).filter(([k]) => k.startsWith('data-'))
+      .map(([k, v]) => [k.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase()), v])); },
+    setAttribute(k, v) { attrs[k] = v; }, getAttribute(k) { return attrs[k]; },
+    matches(selector) { return selector.slice(1, -1) in attrs; },
+    closest(selector) { for (let x = this; x; x = x.parent) if (x.matches(selector)) return x; return null; },
+    querySelectorAll(selector) { const out = []; const walk = (m) => m.children.forEach((c) => { if (c.matches(selector)) out.push(c); walk(c); }); walk(this); return out; }};
+  children.forEach((child) => { child.parent = node; });
+  return node;
+};
+const page = (other) => {
+  const inner = make({'data-group-card': 'groups', 'data-group-default': 'problem'}, [
+    make({'data-group-switch': 'problem'}), make({'data-group-switch': 'system'}),
+    make({'data-group-panel': 'problem'}), make({'data-group-panel': 'system', hidden: ''})]);
+  return make({}, [make({'data-group-card': 'steps', 'data-group-default': 'connect'}, [
+    make({'data-group-switch': 'connect'}), ...(other ? [make({'data-group-switch': 'OTHER'})] : []),
+    make({'data-group-panel': 'connect'}, [inner]), ...(other ? [make({'data-group-panel': 'OTHER', hidden: ''})] : [])])]);
+};
+const listeners = {};
+let root = page(true);
+global.document = {querySelectorAll: (s) => root.querySelectorAll(s), getElementById: () => null,
+                   addEventListener: (type, fn) => { listeners[type] = fn; }};
+global.window = {addEventListener: (type, fn) => { listeners[type] = fn; }};
+eval(process.argv[1]);
+const click = (name) => listeners.click({target: root.querySelectorAll('[data-group-switch]').find((b) => b.attrs['data-group-switch'] === name)});
+const shown = () => root.querySelectorAll('[data-group-panel]').filter((p) => !p.hidden).map((p) => p.attrs['data-group-panel']).join(',');
+const result = [];
+click('OTHER'); result.push(shown());
+click('system'); result.push(shown());
+root = page(false); listeners['terento-admin-content-changed'](); result.push(shown());
+console.log(JSON.stringify(result));
+"""
+        result = subprocess.run([os.environ.get("TERENTO_NODE_BIN", "node"), "-e", harness, _grouped_card_script()],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), ["problem,OTHER", "system,OTHER", "connect,system"])
+
+
 class WebInstallerEndToEndTests(PGliteTestCase):
     """Page event payload → installer server forward → ingest → storage → Admin page."""
 
@@ -303,21 +416,23 @@ class WebInstallerEndToEndTests(PGliteTestCase):
 
         response, page = self.request("GET", "/admin/web-installer?period=24h", secret=None, admin=True)
         self.assertEqual(response.status, 200)
-        for text in ("<h1>Web installer</h1>", "Watch connected", "Maps installed", "Maps updated", "Writing",
-                     "Watch models", "fenix 8 - 47mm", "macOS 15", "Systems and browsers", "Connection problems",
-                     "Install and removal problems", "The connection to the watch ended", "CONNECTION_LOST · NetworkError",
-                     "The browser could not open the watch", "OPEN_ACCESS_DENIED · SecurityError",
-                     "Supported", "Testing", "title='Browser not supported'", "web-installer-support", "<th scope='col'>Browser</th>",
+        for text in ("<h1>Web installer</h1>", "Connected visits", "Maps installed", "Maps updated", "Failed after write start",
+                     "Writing · median", "Checking · median", "Watch models", "fenix 8 - 47mm", "macOS 15", "Systems and browsers",
+                     "id='web-installer-problems'", "The connection to the watch ended", "CONNECTION_LOST · NetworkError",
+                     "USB access denied", "OPEN_ACCESS_DENIED · SecurityError",
+                     "<span>Supported</span>", "<span>Testing</span>", "<span>Browser not supported</span>", "web-installer-support",
+                     "<th scope='col'>Browser</th>",
                      "data-group-card='web-installer-systems-groups'", "data-group-switch='browser'", "<tr data-group-key='macOS'>",
                      "<tr data-group-key='Brave'>", "class='web-installer-group-rows' id='web-installer-systems-groups-system-0' hidden>",
                      "data-group-card='web-installer-connect-groups' data-group-default='problem'", "<tr data-group-key='OPEN_ACCESS_DENIED'>",
-                     "admin-icon-browser-brave", "admin-icon-browser-firefox", "admin-icon-browser-edge",
-                     "MTP 0x200D", "Recent results on watches", "On the server", "Providers", "Problems",
+                     "admin-icon-browser-brave", "admin-icon-browser-firefox", "admin-icon-browser-edge", "admin-icon-source-web",
+                     "MTP 0x200D", "Recent results on watches", "id='web-installer-server'", "Providers",
                      "Provider returned an error", "PROVIDER_HTTP_ERROR · HTTP 503", "Recent requests", "Test records: 1",
-                     "Sent through Cloudflare", "100% of sent",
+                     "Through Cloudflare", "100% of sent",
                      'href="/admin/web-installer">Web installer</a>'):
             self.assertIn(text, page)
-        for gone in ("Now on the server", "Page visits", "Private lab", "test watch"):
+        for gone in ("Now on the server", "Page visits", "Private lab", "test watch", "On the watch", "On the server",
+                     "title='", "admin-scope-chip"):
             self.assertNotIn(gone, page)
 
         response, payload = self.request("GET", "/admin/web-installer.json?period=24h", secret=None, admin=True)
@@ -503,7 +618,7 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual([(p["browser_family"], p["sessions"], p["count"], p["models"]) for p in problems],
                          [("Chromium", 4, 5, [name])])
         _, page = self.request("GET", "/admin/web-installer?period=24h", secret=None, admin=True)
-        connect = page.split("id='web-installer-connect'", 1)[1].split("</section>", 1)[0]
+        connect = page.split("data-group-card='web-installer-connect-groups'", 1)[1].split("data-group-panel='PREPARE'", 1)[0]
         for text in ("<th scope='col' class='column-number web-installer-col-visits-cell'>Visits</th>",
                      "<th scope='col' class='web-installer-col-models-cell'>Watch models</th>",
                      f"<td class='web-installer-col-models-cell'>{name}</td>", "admin-icon-browser-other"):

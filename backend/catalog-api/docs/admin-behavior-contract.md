@@ -358,34 +358,61 @@ The card shows no chart, tiles or tables.
 
 The Web installer page (`/admin/web-installer`, primary navigation after First
 run; owner decision 2026-10-10, replacing the lab admin page from an empty
-start) has the Dashboard period picker (default Last 7 days) and shows only the
-web installer population. It has no explanatory lead text. `On the watch`: the
-tiles Watch connected, Maps installed, Maps updated, Failed and Writing (median
-writing time, then median checking time); `Watch models` (model as the watch
-reports it, the system it was connected from, firmware seen, connected
-sessions, counted installs, updates and failures, last seen); `Systems and
-browsers` (each browser with what the installer page's current rule lets that system
-and browser do, also for visits recorded under an older rule; an unknown
-browser keeps its latest gate result. Shown as an icon only; its text is the
-tooltip and screen-reader label, owner decision 2026-10-11:
-`Supported` for Google Chrome on a verified system, `Testing` for other
-Chromium browsers or systems still being tested, `Browser not supported` for
-browsers without WebUSB such as Firefox and Safari, `System not supported` for
-phones and other systems); `Connection problems` (with the system, browser,
-watch models and Visits, the distinct page loads behind the attempts)
-and `Install and removal problems`, where every
-failed attempt is grouped and shown in plain words with its stored codes next to
-them (step, reason, browser error name, HTTP status, MTP response code) so the
-cause can be traced; and `Recent results on watches` (newest 30 map results
-and removals, every attempt). `On the server`: the
-tiles Requests, Sent (with data sent), Sent through Cloudflare (sent jobs whose
-map went wholly or partly through the Cloudflare-proxied lab host because the
-direct download port was blocked, with its share of Sent), Failed, Preparing
-and Sending (medians);
-`Providers`; `Problems` (server reason in words with its code and provider HTTP
-status); and `Recent requests` (newest 50). There is no live "now on the server"
-view and no most-requested list. A last line counts test records (stored, kept
-out of every number) with the last receipt time, for delivery checks.
+start) has the Dashboard period picker (default Last 7 days) with a `Web` mark
+(globe icon; hidden at ≤760 px, no All/App/Web switch) and shows only the web
+installer population. It has no explanatory lead text, hints or tooltips. Its
+order answers, in turn, whether maps install, where people get stuck, which
+watches, systems and browsers are used, and how the server does (owner layout
+A, 2026-10-12):
+
+1. One `admin-kpi-panel` card without per-tile period chips: Maps installed,
+   Maps updated, Failed after write start (the counted-result failures; danger
+   tone only above zero), Connected visits (distinct connected sessions, not
+   people or watches), Writing · median and Checking · median (unknown stays
+   `—`, never 0). No success rate.
+2. `Problems`: step buttons with each step's problem-record count — Connection
+   (connection-problem attempts, not visits), Preparing, Downloading, Writing,
+   Checking, Removal, and Other only when a record has no known step. A removal
+   is always Removal whatever step it failed at; every record is in exactly
+   one step; cancelled actions are not problems. These are groups, not a
+   funnel. The first step with records opens. Connection keeps the
+   Problem/System/Browser grouping with Watch models, Visits (each group's own
+   distinct sessions, not the sum of its rows), Count, Last, the stored codes
+   (browser error name, HTTP status, MTP response code) and expandable groups.
+   Other steps list one record per grouped failure (problem in plain words,
+   watch models, Count, After writing started) that opens to Action, Step,
+   Last and every stored code.
+3. `Watches and systems`: a Watch models / Systems and browsers switch.
+   Watch models is a table (model as the watch reports it, system, firmware
+   seen, connected sessions, counted installs, updates and failures, last
+   seen); at ≤760 px each model and system row is a record showing Installed,
+   Updated and Failed at once, with firmware, connected and last seen when
+   opened. Systems and browsers groups by system or browser family and opens
+   versions with Visits, Could not use and what the installer page's current
+   rule lets that system and browser do, also for visits recorded under an
+   older rule (an unknown browser keeps its latest gate result), as a status
+   pill with icon and visible text (owner decision 2026-10-12, replacing the
+   icon-only 2026-10-11 form): `Supported` for Google Chrome on a verified
+   system, `Testing` for other Chromium browsers or systems still being
+   tested, `Browser not supported` for browsers without WebUSB such as Firefox
+   and Safari, `System not supported` for phones and other systems.
+4. `Server`: Requests, Sent (with data sent), Through Cloudflare (sent jobs
+   whose map went wholly or partly through the Cloudflare-proxied lab host
+   because the direct download port was blocked, with its share of Sent),
+   Failed, Preparing · median and Sending · median; then a Problems (default;
+   server reason in words with its code and provider HTTP status) /
+   Providers / Recent requests (newest 50) switch. These are period results,
+   not a live state: there is no Healthy/Online mark, no live "now on the
+   server" view and no most-requested list.
+5. `Recent results on watches`, collapsed: the newest 30 map results and
+   removals, every attempt, including those that stopped before writing; its
+   count is the number of listed rows.
+6. A last line counts test records (stored, kept out of every number) with
+   the last receipt time, for delivery checks.
+
+Tables that would scroll sideways on a phone (Watch models, Providers, Recent
+requests, Recent results on watches) become records at ≤760 px whose result
+shows at once and whose other fields open below; no field is dropped.
 
 The First run page (`/admin/first-run`, primary navigation after
 Installations) has the Dashboard period picker (default Last 24 hours; an

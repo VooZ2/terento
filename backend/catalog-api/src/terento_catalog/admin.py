@@ -10471,7 +10471,24 @@ ADMIN_STYLES += """
 main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run-page>.web-installer-grid>*{margin:0}
 @media(min-width:701px){main.first-run-page>:not(.heading-row)+*{margin-top:var(--admin-card-gap)}}
 .first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}
-.web-installer-part{margin:28px 0 12px;font:600 var(--admin-type-subsection-size)/var(--admin-type-subsection-line) var(--font-ui);color:var(--graphite)}
+@media(min-width:701px){main.web-installer-page>.heading-row{margin-bottom:0}main.web-installer-page.overview-page>*+*{margin-top:var(--admin-card-gap)}}
+.web-installer-source{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.web-installer-source>.admin-icon{width:14px;height:14px}
+.web-installer-kpis>.admin-metric-row,.web-installer-server>.admin-metric-row{grid-template-columns:repeat(6,minmax(0,1fr))}.web-installer-server>.admin-metric-row{margin-bottom:16px}
+@media(max-width:900px){.web-installer-kpis>.admin-metric-row,.web-installer-server>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.web-installer-count{margin-left:4px;color:var(--secondary);font-variant-numeric:tabular-nums}
+.web-installer-narrow{display:none}@media(max-width:760px){.web-installer-wide{display:none}.web-installer-narrow{display:block}#web-installer-problems>[data-group-card]>.filter-bar .quick-filter-group{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}#web-installer-problems>[data-group-card]>.filter-bar .quick-filter{padding:8px 4px;font-size:12px;white-space:nowrap}}
+.web-installer-records{border:1px solid var(--border);border-radius:var(--radius-card)}.web-installer-record+.web-installer-record{border-top:1px solid var(--border)}
+.web-installer-record>summary,.web-installer-history summary{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;list-style:none}.web-installer-record>summary{padding:10px 12px}
+.web-installer-record>summary::-webkit-details-marker,.web-installer-history summary::-webkit-details-marker{display:none}
+.web-installer-record>summary:focus-visible,.web-installer-history summary:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}
+.web-installer-record>summary>.admin-icon,.web-installer-history summary>.admin-icon{flex:0 0 auto;width:10px;height:10px;transform:rotate(-90deg);transition:transform .15s ease}
+.web-installer-record[open]>summary>.admin-icon,.web-installer-history details[open]>summary>.admin-icon{transform:none}
+.web-installer-record-title{display:grid;gap:3px;flex:1;min-width:0}.web-installer-record-title>span{color:var(--secondary);font-size:12px;overflow-wrap:anywhere}
+.web-installer-record-stats{display:flex;gap:24px;text-align:right;font-variant-numeric:tabular-nums}.web-installer-record-stats>span{display:grid;gap:2px;justify-items:end;min-width:40px}.web-installer-record-stats small{color:var(--secondary);font-size:11px}
+.web-installer-failed{color:var(--danger)}
+.web-installer-record-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px 16px;margin:0;padding:0 12px 14px 34px;font-size:13px}.web-installer-record-details dt{margin-bottom:3px;color:var(--secondary);font-size:11px}.web-installer-record-details dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.web-installer-history summary{justify-content:space-between}.web-installer-history summary h2{margin:0}.web-installer-history details[open]>summary{margin-bottom:16px}
+@media(max-width:760px){.web-installer-source{display:none}.web-installer-record>summary{flex-wrap:wrap;gap:8px}.web-installer-record-stats{width:100%;padding-left:22px;justify-content:space-between}.web-installer-record-stats>span{display:flex;align-items:baseline;gap:6px}.web-installer-record-details{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:34px}.web-installer-grouped-table th{white-space:normal}}
 .web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
 @media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
 .web-installer-card-filter{margin-bottom:12px}
@@ -10494,7 +10511,6 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .web-installer-phone-line{display:block;margin-top:3px;color:var(--secondary);font-size:12px;font-weight:400}
 .web-installer-group-toggle+.web-installer-code,.web-installer-group-toggle~.web-installer-phone-line{margin-left:18px}
 .web-installer-group-rows .web-installer-grouped-table td:first-child{padding-left:18px}}
-.web-installer-support .admin-pill{padding:3px 5px}
 .web-installer-browser{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.web-installer-browser .admin-icon{color:var(--graphite)}
 .web-installer-table td{white-space:normal;overflow-wrap:anywhere}
 .web-installer-code{display:block;margin-top:3px;color:var(--secondary);font:500 11px var(--font-mono);overflow-wrap:anywhere}
