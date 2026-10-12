@@ -12,10 +12,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 46,
-      "appSuccessfulInstallations": 46,
+      "successfulInstallations": 48,
+      "appSuccessfulInstallations": 48,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-11T09:27:25+00:00"
+      "lastSuccessfulInstallation": "2026-10-12T08:39:53+00:00"
     },
     {
       "model": "Forerunner 970",
@@ -60,10 +60,10 @@
       "family": "forerunner",
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
-      "successfulInstallations": 14,
+      "successfulInstallations": 15,
       "appSuccessfulInstallations": 14,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-10T22:58:35+00:00"
+      "webSuccessfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-10-12T13:40:48+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -242,6 +242,22 @@
       "lastSuccessfulInstallation": "2026-10-11T15:21:40+00:00"
     },
     {
+      "model": "fēnix 7 · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02540-01/v/cf-lg-f8d67916-945d-46c2-b5a7-768e40f3acd4.jpg",
+      "successfulInstallations": 4,
+      "appSuccessfulInstallations": 4,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-12T00:30:55+00:00"
+    },
+    {
       "model": "fēnix 7S Pro · Historical",
       "variant": "Historical",
       "caseSizeMm": null,
@@ -418,5 +434,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-11T21:09:00.365119+00:00"
+  "generatedAt": "2026-10-12T13:42:05.630220+00:00"
 }
