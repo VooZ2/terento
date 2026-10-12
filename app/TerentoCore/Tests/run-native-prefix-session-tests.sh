@@ -17,9 +17,11 @@ clang -c -DTERENTO_PREFIX_SWIFT_DRIVER -Wno-deprecated-declarations \
 printf 'module LibMTPBridge { header "%s/Sources/LibMTPBridge/include/MTPBridge.h" export * }\n' "$PWD" > "$build_dir/module.modulemap"
 sources=()
 while IFS= read -r source; do sources+=("$source"); done < <(
-  rg --files Sources/TerentoPoC -g '*.swift' | \
+  find Sources/TerentoPoC -type f -name '*.swift' | \
   grep -Ev '/Views/|/TerentoPoCApp\.swift$' | sort
 )
+# macOS bash 3.2 can exit 0 on an empty array under set -u; never pass without sources.
+(( ${#sources[@]} )) || { echo "FAIL: no TerentoPoC Swift sources found" >&2; exit 1; }
 swiftc -module-cache-path "$build_dir/module-cache" -parse-as-library -module-name TerentoPrefixSessionTests -I "$build_dir" \
   -L "$mtp_prefix/lib" -lmtp -L "$usb_prefix/lib" -lusb-1.0 -framework CoreFoundation \
   "$build_dir/prefix-fixture.o" "${sources[@]}" Tests/TerentoPoCTests/PrefixSessionWiringTests.swift \

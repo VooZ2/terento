@@ -36,8 +36,11 @@ final class ResumableServerProtocol: URLProtocol {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var scenario = Scenario(body: Data())
     nonisolated(unsafe) private static var seen: [Seen] = []
+    nonisolated(unsafe) private static var delivered: UInt64 = 0
 
     static func configure(_ value: Scenario) { lock.withLock { scenario = value; seen = [] } }
+    /// Body bytes the download delegate has written, from its progress reports.
+    static func noteDelivered(_ bytes: UInt64) { lock.withLock { delivered = max(delivered, bytes) } }
     static func update(_ change: (inout Scenario) -> Void) { lock.withLock { change(&scenario) } }
     static var requests: [Seen] { lock.withLock { seen } }
 
@@ -49,6 +52,7 @@ final class ResumableServerProtocol: URLProtocol {
         let ifRange = request.value(forHTTPHeaderField: "If-Range")
         let (scenario, failAfter): (Scenario, Int?) = Self.lock.withLock {
             Self.seen.append(Seen(url: request.url!, range: range, ifRange: ifRange))
+            Self.delivered = 0
             let next = Self.scenario.failAfter.first
             if !Self.scenario.failAfter.isEmpty { Self.scenario.failAfter.removeFirst() }
             return (Self.scenario, next)
@@ -98,7 +102,18 @@ final class ResumableServerProtocol: URLProtocol {
             let end = min(payload.count, offset + chunk)
             if let failAfter, end > failAfter {
                 if failAfter > offset { client?.urlProtocol(self, didLoad: payload.subdata(in: offset..<failAfter)) }
-                client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+                // A dropped connection fails after the received bytes reached
+                // the app. Failing at once lets URLSession complete the task
+                // before it hands the queued body to the delegate, so wait
+                // until the delegate has written them (bounded).
+                let client = self.client
+                DispatchQueue.global().async {
+                    let deadline = Date().addingTimeInterval(10)
+                    while Self.lock.withLock({ Self.delivered }) < UInt64(failAfter), Date() < deadline {
+                        usleep(1_000)
+                    }
+                    client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+                }
                 return
             }
             client?.urlProtocol(self, didLoad: payload.subdata(in: offset..<end))
@@ -155,7 +170,10 @@ struct DownloadResumeTests {
     @discardableResult
     static func attempt(_ store: MapDownloadResumeStore, progress: ProgressLog? = nil) async -> Result<Data, Error> {
         do {
-            let response = try await client(store).download(package: package(), onProgress: { progress?.append($0) })
+            let response = try await client(store).download(package: package(), onProgress: {
+                ResumableServerProtocol.noteDelivered($0.bytesDownloaded)
+                progress?.append($0)
+            })
             defer { try? FileManager.default.removeItem(at: response.temporaryFileURL) }
             return .success(try Data(contentsOf: response.temporaryFileURL))
         } catch {
