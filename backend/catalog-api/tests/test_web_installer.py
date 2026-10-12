@@ -397,6 +397,26 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_event "
                                   "WHERE canonical_device_model_id = 'garmin-fenix-8-47-amoled'")[0]["n"], 5)
 
+    def test_connection_problems_count_visits_and_name_the_model_from_the_usb_code(self):
+        # One page load retried twice, another tried once; the open was refused
+        # before the watch reported its model text, so the USB model code names it.
+        session = str(uuid4())
+        for body in (event(sessionId=session), event(sessionId=session), event()):
+            body.update(stage="CONNECT", outcome="OPEN_ACCESS_DENIED", osFamily="Linux", browserFamily="Chromium",
+                        errorName="SecurityError", usbVendorId=0x091E, usbProductId=0x51B8)
+            self.assertEqual(self.forward(self.recent(body)), 201)
+        # As the identity review resolves the code (assess_identity is tested on its own).
+        self.sql("UPDATE web_installer_event SET canonical_device_model_id = 'garmin-fenix-8-47-amoled'")
+        name = self.sql("SELECT canonical_model AS name FROM device_model WHERE id = 'garmin-fenix-8-47-amoled'")[0]["name"]
+        problems = self.service.web_installer({"period": "24h"})["watch"]["connectProblems"]
+        self.assertEqual([(p["browser_family"], p["sessions"], p["count"], p["models"]) for p in problems],
+                         [("Chromium", 2, 3, [name])])
+        _, page = self.request("GET", "/admin/web-installer?period=24h", secret=None, admin=True)
+        connect = page.split("id='web-installer-connect'", 1)[1].split("</section>", 1)[0]
+        for text in ("<th scope='col' class='column-number'>Visits</th>", "<th scope='col'>Watch models</th>",
+                     f"<td>{name}</td>", "admin-icon-browser-other"):
+            self.assertIn(text, connect)
+
     def test_retention(self):
         self.forward(event())
         self.sql("UPDATE web_installer_event SET received_at = now() - interval '25 months'")

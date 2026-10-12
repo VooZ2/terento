@@ -57,7 +57,7 @@ _UUID_TEXT = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-
 _SYSTEM = {
     "osFamily": frozenset({"macOS", "Windows", "Linux", "ChromeOS", "Android", "iOS", "Other"}),
     "osMajor": (0, 99),
-    "browserFamily": frozenset({"Chrome", "Edge", "Opera", "Brave", "Firefox", "Safari", "Other"}),
+    "browserFamily": frozenset({"Chrome", "Edge", "Opera", "Brave", "Chromium", "Firefox", "Safari", "Other"}),
     "browserMajor": (1, 999),
 }
 _DIAGNOSTIC = {"errorName": ERROR_NAMES, "httpStatus": (100, 599), "mtpResponse": (0x2000, 0xA8FF)}
@@ -271,18 +271,22 @@ def _grouped(rows: list[dict[str, Any]], keys: tuple[str, ...]) -> list[dict[str
     groups: dict[tuple[Any, ...], dict[str, Any]] = {}
     for row in rows:
         group = groups.setdefault(tuple(row.get(k) for k in keys), {**{k: row.get(k) for k in keys}, "count": 0,
-                                  "writeStarted": 0, "models": [], "last": row["occurred_at"]})
+                                  "sessions": set(), "writeStarted": 0, "models": [], "last": row["occurred_at"]})
         group["count"] += 1
+        group["sessions"].add(row["session_id"])
         group["writeStarted"] += bool(row.get("write_started"))
         group["last"] = max(group["last"], row["occurred_at"])
-        if row.get("model") and row["model"] not in group["models"] and len(group["models"]) < 5:
-            group["models"].append(row["model"])
-    return sorted(groups.values(), key=lambda g: (-g["count"], -g["last"].timestamp()))
+        model = row.get("model") or row.get("device_name")
+        if model and model not in group["models"] and len(group["models"]) < 5:
+            group["models"].append(model)
+    # sessions: distinct page loads, so one person's retries read as one visit.
+    return sorted(({**g, "sessions": len(g["sessions"])} for g in groups.values()),
+                  key=lambda g: (-g["count"], -g["last"].timestamp()))
 
 
 # The installer page's current rule (lab browser.mjs), so rows recorded under an
 # older rule show what a visit would get today.
-_CHROMIUM = frozenset({"Chrome", "Edge", "Opera", "Brave"})
+_CHROMIUM = frozenset({"Chrome", "Edge", "Opera", "Brave", "Chromium"})
 _SUPPORT_OUTCOME = {"PASSED": "SUPPORTED", "PASSED_TESTING_PLATFORM": "TESTING", "BLOCKED_BROWSER": "BLOCKED_BROWSER"}
 
 
@@ -372,7 +376,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
                               for s in systems.values()), key=lambda s: (-s["visits"], s["system"] or "~", s["browser"] or "")),
             "connectProblems": _grouped(
                 [row for row in events if row["stage"] == "CONNECT" and row["outcome"] != "CONNECTED"],
-                ("outcome", "error_name", "os_family", "browser_family"),
+                ("outcome", "error_name", "mtp_response", "os_family", "browser_family"),
             ),
             "mapProblems": _grouped(
                 watch_failures, ("stage", "failure_stage", "reason", "error_name", "http_status", "mtp_response"),

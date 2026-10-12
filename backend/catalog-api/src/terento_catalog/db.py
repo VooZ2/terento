@@ -4571,7 +4571,11 @@ class Database:
         job_where, job_values = _web_installer_period("requested_at", since, until)
         with self.connection() as connection:
             events = list(connection.execute(
-                f"SELECT * FROM web_installer_event WHERE {event_where} ORDER BY occurred_at DESC", event_values,
+                # device_name: the catalog model resolved from the USB model code,
+                # for failures before the watch reported its model text.
+                f"SELECT e.*, d.canonical_model AS device_name FROM web_installer_event e"
+                f" LEFT JOIN device_model d ON d.id = e.canonical_device_model_id"
+                f" WHERE {event_where} ORDER BY occurred_at DESC", event_values,
             ).fetchall())
             jobs = list(connection.execute(
                 f"SELECT * FROM web_installer_relay_job WHERE {job_where} ORDER BY requested_at DESC", job_values,
