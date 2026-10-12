@@ -4789,6 +4789,27 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def web_installer_device_results(self, device_id: str) -> list[dict[str, Any]]:
+        """Counted web install results of one catalog model, newest first: the
+        web rows of the model page Installation history (same population as
+        its Web install counts)."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT w.event_id, w.occurred_at, w.result, w.provider AS provider_id, p.name AS provider_name,
+                       w.package_id AS map_package_id, mp.name AS map_package_name, mp.region,
+                       COALESCE(mp.geographic_region_id, mp.canonical_region_id) AS canonical_region_id,
+                       mp.country AS region_country, e.failure_stage, e.reason
+                FROM web_installer_map_result AS w
+                JOIN web_installer_event AS e USING (event_id)
+                LEFT JOIN map_package AS mp ON mp.id = w.package_id
+                LEFT JOIN map_provider AS p ON p.id = w.provider
+                WHERE w.canonical_device_model_id = %s AND w.operation = 'install'
+                ORDER BY w.occurred_at DESC
+                """, (device_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def app_funnel_summary(
         self, since: datetime | None, until: datetime | None = None, *, model_limit: int = 10,
         trend_bucket: str | None = None, time_zone: str = "UTC",

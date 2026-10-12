@@ -6,7 +6,9 @@ import unicodedata
 from functools import lru_cache
 from typing import Any
 
-VERSION = 4
+from .installation_policy import GENERATION_LABEL_BASE_MODEL_ALIASES
+
+VERSION = 5
 
 # Historical review statuses are not observations of a device model. Match
 # only the legacy model field; original MTP/XML values remain evidence.
@@ -206,6 +208,13 @@ def preferred_candidates(assessment: dict) -> list[dict]:
             for k in c['checks'] for f in k.get('features', []))]
         if explicit:
             candidates = explicit
+    # A reported case size prefers the rows that state that size over a
+    # same-name row whose size the catalog does not know (the unsized legacy
+    # epix Pro (Gen 2) row next to its 42, 47 and 51 mm rows). A row with a
+    # different size is already a conflict.
+    sized = [c for c in candidates if any(k.get('name') == 'size' and k.get('state') == 'MATCH' for k in c['checks'])]
+    if sized:
+        candidates = sized
     return candidates
 
 
@@ -228,14 +237,26 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     incomplete = {kind: bool({m['device_model_id'] for m in observed_mappings[kind] if m['status'] == 'PENDING'}
                              - {m['device_model_id'] for m in group}) for kind, group in matched.items()}
     by_id = {d['id']: d for d in devices}
+    # A reviewed generation-label alias (contracts/INSTALLATION_AUTHORIZATION.md)
+    # names the catalog model of a watch that reports its name without the
+    # generation label: reported "epix Pro" is the catalog "epix Pro (Gen 2)".
+    # Same exact whole-name table as write authorization, and likewise not
+    # applied when a real catalog row carries the alias name.
+    catalog_labels = {model_label(d.get('model')) for d in devices}
+    aliases = {alias: target for alias, target in GENERATION_LABEL_BASE_MODEL_ALIASES.items()
+               if alias not in catalog_labels}
+
+    def reported_label(value: Any) -> str:
+        return aliases.get(model_label(value), model_label(value))
+
     # XML provides the primary model. Specifications may fill an unobserved
     # property only when every variant compatible with the observations agrees
     # and each fact has reviewed provenance. Shared USB codes cannot widen it.
-    observed_model_labels = {model_label(value) for _, value in labels if model_label(value)}
+    observed_model_labels = {reported_label(value) for _, value in labels if reported_label(value)}
     specification_model = next(iter(observed_model_labels), '') if len(observed_model_labels) == 1 else ''
     specification_targets = [d for d in devices if specification_model
         and model_label(d.get('model')) == specification_model
-        and all(model_label(value) == specification_model for _, value in labels)
+        and all(reported_label(value) == specification_model for _, value in labels)
         and all(d.get('case_size_mm') is None or _case_size(d.get('case_size_mm')) == value for _, value in sizes)
         and all(d.get('screen_technology') is None or d['screen_technology'] == value for _, value in screens)
         and (not solar or d.get('solar') is not False)
@@ -253,7 +274,7 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     for device in devices:
         device_id = device['id']
         expected = model_label(device.get('model'))
-        label_matches = [(key, value) for key, value in labels if model_label(value) == expected]
+        label_matches = [(key, value) for key, value in labels if reported_label(value) == expected]
         linked = any(any(m['device_model_id'] == device_id for m in group) for group in matched.values())
         if not label_matches and not linked and event.get('canonicalDeviceId') != device_id:
             continue
@@ -266,7 +287,8 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
             checks.append({'name': name, 'state': state, 'expected': target,
                            'evidence': [{'source': key, 'value': value} for key, value in evidence]})
 
-        check('model', [(key, model_label(value)) for key, value in labels], expected)
+        check('model', [(key if reported_label(value) == model_label(value) else f'{key} (reviewed alias)',
+                        reported_label(value)) for key, value in labels], expected)
         model_check = checks[-1]
         model_check['observedState'] = model_check['state']
         derived_size, derived_screen = list(sizes), list(screens)
@@ -322,8 +344,9 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
         # Owner decision 2026-10-11: the one suggested catalog model whose name
         # every reported label matches is the exact model even when size,
         # screen or code checks lack evidence. Every other same-name row is
-        # excluded by a reported contradiction or a reported Solar/inReach
-        # feature. An unreviewed code mapping to a model outside the candidate
+        # excluded by a reported contradiction, a reported Solar/inReach
+        # feature or a reported case size that only the sized rows state.
+        # An unreviewed code mapping to a model outside the candidate
         # set still leaves the choice to review.
         candidate_ids = {c['deviceId'] for c in candidates}
         if all(m['device_model_id'] in candidate_ids

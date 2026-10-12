@@ -56,7 +56,10 @@ base model stays `PENDING`. Released clients (beta.14 build 35 to rc.2 build 42)
 reject duplicate policy ids. They use the id only for that check: they do not
 match on it, persist it, log it, upload it or report it. For this reason alias
 rows need their own ids, and these ids cannot reach evidence, reports or
-statistics. Alias rows
+statistics. The identity assessment that assigns reports and web installer
+results to a catalog model reads the same table, with the same exception, so a
+reported `epix Pro - 47mm` is compared with the `epix Pro (Gen 2)` rows; it
+grants no write authority. Alias rows
 add no fields to schema 3 and do not change `policyVersion`. Clients fetch the
 policy fresh for each decision (`no-store`), so the next check sees them. Add an
 alias only when repository evidence shows that the watch reports that name and

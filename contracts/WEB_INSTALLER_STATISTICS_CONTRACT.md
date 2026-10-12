@@ -27,11 +27,17 @@ shared install statistics from the start, like app results.
 - **Watch model**: the API resolves the catalog model of each `CONNECT` and
   `MAP_RESULT` from `model` and the USB model code with the same identity
   assessment as app reports, at receipt and again on each scheduler cycle
-  while unresolved. Only resolved results count per model.
+  while unresolved. Only resolved results count per model. The assessment
+  reads the reviewed generation-label aliases of
+  `contracts/INSTALLATION_AUTHORIZATION.md` (a watch text `epix pro - 47mm`
+  names `epix Pro (Gen 2)`), and a reported case size prefers the catalog
+  rows that state that size over a same-name row with no size. Text without
+  a size that several sizes share stays unresolved.
 - **Where they appear**: Dashboard charts (All, the default, App and Web
   switch), Dashboard Activity (web rows marked with the Web icon), Maps page
   and providers (combined numbers), Devices list and model pages (App, Web and
-  All rows), and the public Compatibility JSON and watch cards
+  All rows; the model page Installation history lists each counted web
+  install with the Web icon), and the public Compatibility JSON and watch cards
   (`successfulInstallations` = app + web, with `appSuccessfulInstallations` and
   `webSuccessfulInstallations`).
 - **What stays app-only**: the app read models and Event detail, evidence
@@ -205,6 +211,9 @@ from every number below.
   several models or with an unreviewed model names none, and this display never
   resolves or counts the event for a model), the MTP response code, and Visits: distinct
   sessions (page loads), so one person's retries are not read as many people.
+  They are grouped by problem, system family or browser family; each group row
+  shows its own distinct Visits (not the sum of its rows), count, watch models
+  and last time, and opens its rows.
 - **On the server**: relay jobs. Requests exclude `REFUSED`; Failed counts
   `FAILED`, `REFUSED` and `INTERRUPTED`; preparation time is `readyAt −
   requestedAt`, sending time `finishedAt − readyAt` of `DELIVERED` jobs; data

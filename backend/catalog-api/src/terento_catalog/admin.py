@@ -6644,6 +6644,34 @@ def _device_information_markup(device: dict[str, Any]) -> str:
             f"<div class='device-information-more'>{more}{source_link}</div>")
 
 
+def _web_history_row(item: dict[str, Any]) -> str:
+    """One counted web installer result in the model page Installation history,
+    marked with the Web icon; it has no app version, issue or Inspect dialog."""
+    from .admin_web_installer import WORDS
+
+    result = str(item.get("result") or "").upper()
+    map_copy = html.escape(_overview_map_event_context(item))
+    if result == "FAILED":
+        reason = str(item.get("reason") or "")
+        stage = WORDS.get(str(item.get("failure_stage") or ""), "")
+        error_markup = (f"<small>{html.escape(WORDS.get(reason, reason) or 'Other')}"
+                        f"{(' · ' + html.escape(stage)) if stage else ''}</small>")
+    else:
+        error_markup = "<span class='muted-value'>No error</span>"
+    return (
+        "<tr data-diagnostic-state='history' data-review-open='false' data-review-resolved='false' "
+        f"data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='false' data-source='web'>"
+        f"<td class='column-date' data-label='Date'>{_timestamp_markup(item.get('occurred_at'))}</td>"
+        f"<td class='history-map' data-label='Map'>{map_copy}</td>"
+        f"<td class='column-status' data-label='Result'>{_diagnostic_result(result)}</td>"
+        f"<td class='history-error' data-label='Error'>{error_markup}</td>"
+        f"<td data-label='GitHub issue'>{_github_issue_link(None)}</td>"
+        f"<td data-label='App version'><span class='history-source-web'>{_admin_icon('source-web')}Web</span></td>"
+        "<td class='column-status' data-label='Action'><span class='muted-value'>—</span></td>"
+        "</tr>"
+    )
+
+
 def device_detail_page(
     device: dict[str, Any], user: dict[str, Any], csrf_token: str, *,
     operations: list[dict[str, Any]] | None = None,
@@ -6653,6 +6681,7 @@ def device_detail_page(
     requested_state: str | None = None,
     update_history: dict[str, Any] | None = None,
     open_problem_count: int | None = None,
+    web_results: list[dict[str, Any]] | None = None,
 ) -> bytes:
     device_id = str(device.get("id") or "").strip()
     model, variant, _ = _identity_parts(device)
@@ -6726,7 +6755,7 @@ def device_detail_page(
         if open_errors else ""
     )
 
-    rows_markup: list[str] = []
+    rows_markup: list[tuple[str, str]] = []
     dialogs: list[str] = []
     for index, (operation_key, results, resolved) in enumerate(history):
         first = results[0]
@@ -6760,7 +6789,7 @@ def device_detail_page(
         )
         release_markup = html.escape(release) if release != "—" else "<span class='muted-value'>—</span>"
         dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
-        rows_markup.append(
+        rows_markup.append((_timestamp_iso(first.get("occurred_at")),
             f"<tr data-diagnostic-state='{'resolved-error' if is_resolved_error else 'open' if is_open_error else 'history'}' data-review-open='{'true' if is_open_error else 'false'}' data-review-resolved='{'true' if is_resolved_error else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
             f"<td class='column-date' data-label='Date'>{_timestamp_markup(first.get('occurred_at'))}</td>"
             f"<td class='history-map' data-label='Map'>{map_copy}</td>"
@@ -6770,16 +6799,20 @@ def device_detail_page(
             f"<td data-label='App version'>{release_markup}</td>"
             f"<td class='column-status' data-label='Action'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Inspect installation {index + 1}'>Inspect</button></td>"
             "</tr>"
-        )
+        ))
         dialogs.append(_diagnostic_detail_dialog(
             identity, operation_key, results, resolved=resolved,
             csrf_token=csrf_token, identity_devices=identity_devices,
             canonical_device_model_id=device_id, return_to=detail_url + "#installations",
             catalog_template=True,
         ))
-    history_rows = "".join(rows_markup) or "<tr><td colspan='7' class='empty'>No installation history for this device.</td></tr>"
-    history_pagination = "" if len(history) <= 25 else f"""
-          <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' data-admin-dropdown aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing 1–25 of {len(history)} · page 1 of {(len(history) + 24) // 25}</span><button type='button' data-history-page='next'>Next</button></div>
+    rows_markup.extend(
+        (_timestamp_iso(item.get("occurred_at")), _web_history_row(item)) for item in web_results or ()
+    )
+    rows_markup.sort(key=lambda item: item[0], reverse=True)
+    history_rows = "".join(row for _, row in rows_markup) or "<tr><td colspan='7' class='empty'>No installation history for this device.</td></tr>"
+    history_pagination = "" if len(rows_markup) <= 25 else f"""
+          <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' data-admin-dropdown aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing 1–25 of {len(rows_markup)} · page 1 of {(len(rows_markup) + 24) // 25}</span><button type='button' data-history-page='next'>Next</button></div>
     """
 
     public_copy = (
@@ -6833,7 +6866,7 @@ def device_detail_page(
         technical_rows = "<p class='diagnostic-technical-empty'>Detailed technical data is not available for this record.</p>"
 
     last_report = stats.get("lastEvidenceAt")
-    statistics_section = "" if not history and not attempts and not failed else (
+    statistics_section = "" if not rows_markup and not attempts and not failed else (
         "<section class='admin-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-labelledby='model-installation-kpis-title'>"
         "<header class='admin-card-head'><h2 id='model-installation-kpis-title'>Installs</h2></header>"
         + _source_count_grid(
@@ -6851,7 +6884,7 @@ def device_detail_page(
         ], label="Model installation statistics")
         + "</section>"
     )
-    history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not history else f"""
+    history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not rows_markup else f"""
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false' title='Blocked before writing'>Blocked</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter' data-admin-dropdown><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters' hidden>Clear</button></form>
@@ -9768,6 +9801,7 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-activity-warning .overview-activity-label{color:var(--status-tested-text)}
 .map-activity-neutral .overview-activity-label{color:var(--secondary)}
 .activity-source-web{display:inline-flex;margin-left:2px;color:var(--secondary)}.activity-source-web .admin-icon{width:13px;height:13px}
+.history-source-web{display:inline-flex;align-items:center;gap:4px;color:var(--secondary)}.history-source-web .admin-icon{width:13px;height:13px}
 .source-count-grid{display:grid;margin:4px 0 14px}.source-count-row{display:grid;grid-template-columns:44px repeat(var(--source-count-columns),minmax(0,1fr));align-items:center;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.source-count-head{padding:0 0 8px;border-top:0;color:var(--secondary);font-size:12px;font-weight:650}.source-count-row>span:not(.source-count-source){text-align:right}.source-count-row .numeric{font-size:14px;font-weight:650;color:var(--graphite)}.source-count-row .numeric.is-positive{color:var(--danger)}.source-count-source{display:inline-flex;color:var(--graphite)}.source-count-source .admin-icon{width:18px;height:18px}.source-count-all{border-top-width:2px}.source-count-all .numeric{font-weight:750}
 @media(max-width:480px){.map-activity-row{grid-template-columns:minmax(0,1fr)}.map-activity-row>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row .download-history>summary{grid-template-columns:minmax(0,1fr)}.map-activity-row .download-history>summary>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>.map-activity-copy{grid-row:1}}
 
@@ -10441,18 +10475,25 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .web-installer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.web-installer-grid>.admin-card{min-width:0}
 @media(max-width:900px){.web-installer-grid{grid-template-columns:1fr}}
 .web-installer-card-filter{margin-bottom:12px}
-.admin-table.web-installer-systems-table{table-layout:fixed;width:100%;min-width:0}.web-installer-col-visits{width:6rem}.web-installer-col-blocked{width:9.5rem}
+.admin-table.web-installer-grouped-table{table-layout:fixed;width:100%;min-width:0}
+.web-installer-col-visits,.web-installer-col-count{width:5.5rem}.web-installer-col-blocked{width:9.5rem}.web-installer-col-models{width:24%}.web-installer-col-last{width:9rem}
 .web-installer-group-toggle{display:inline-flex;align-items:center;gap:8px;padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:650;cursor:pointer;text-align:left}
 .web-installer-group-toggle:focus-visible{outline:var(--admin-focus-ring);outline-offset:2px}
 .web-installer-group-toggle>.admin-icon{flex:0 0 auto;width:10px;height:10px;transform:rotate(-90deg);transition:transform .15s ease}
 .web-installer-group-toggle[aria-expanded="true"]>.admin-icon{transform:none}
-.admin-table tr.web-installer-versions>td{padding:0!important}
-.web-installer-versions .web-installer-systems-table{margin:0;border:0;background:none}
-.web-installer-versions .web-installer-systems-table td:first-child{padding-left:36px}
-.web-installer-versions .web-installer-systems-table tr:last-child{border-bottom:0}
-.web-installer-version{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
-.web-installer-versions .web-installer-systems-table td{font-weight:400}
-@media(max-width:760px){.web-installer-col-visits{width:3.75rem}.web-installer-col-blocked{width:5.5rem}.web-installer-versions .web-installer-systems-table td:first-child{padding-left:18px}}
+.web-installer-group-toggle+.web-installer-code{margin-left:18px}
+.admin-table tr.web-installer-group-rows>td{padding:0!important}
+.web-installer-group-rows .web-installer-grouped-table{margin:0;border:0;background:none}
+.web-installer-group-rows .web-installer-grouped-table td:first-child{padding-left:36px}
+.web-installer-group-rows .web-installer-grouped-table tr:last-child{border-bottom:0}
+.web-installer-group-rows .web-installer-grouped-table td{font-weight:400}
+.web-installer-version{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.web-installer-phone-line{display:none}
+@media(max-width:760px){.web-installer-col-visits,.web-installer-col-count{width:3.75rem}.web-installer-col-blocked{width:5.5rem}.web-installer-col-models,.web-installer-col-last{width:0}
+.web-installer-grouped-table .web-installer-col-models-cell,.web-installer-grouped-table .web-installer-col-last-cell{padding:0!important;border:0;visibility:hidden;font-size:0;line-height:0;white-space:nowrap}.web-installer-grouped-table .web-installer-col-models-cell>*,.web-installer-grouped-table .web-installer-col-last-cell>*{display:none}
+.web-installer-phone-line{display:block;margin-top:3px;color:var(--secondary);font-size:12px;font-weight:400}
+.web-installer-group-toggle+.web-installer-code,.web-installer-group-toggle~.web-installer-phone-line{margin-left:18px}
+.web-installer-group-rows .web-installer-grouped-table td:first-child{padding-left:18px}}
 .web-installer-support .admin-pill{padding:3px 5px}
 .web-installer-browser{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.web-installer-browser .admin-icon{color:var(--graphite)}
 .web-installer-table td{white-space:normal;overflow-wrap:anywhere}

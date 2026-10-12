@@ -279,7 +279,9 @@ unknown family without reviewed additional-map evidence.
 
 Identity review presents the original XML model first. When explicitly
 reported Solar/inReach features have matching catalog rows, operator suggestions
-prefer those specific rows over rows whose corresponding feature is unknown.
+prefer those specific rows over rows whose corresponding feature is unknown;
+likewise a reported case size prefers the rows that state that size over a
+same-name row whose size is unknown (the legacy unsized epix Pro (Gen 2) row).
 The complete authoritative assessment remains available and still controls
 assignment. Remaining same-model choices display screen/Solar properties rather
 than repeating model/SKU names. An unknown catalog feature is never treated as
