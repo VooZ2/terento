@@ -11,8 +11,10 @@ clang -c -Wno-deprecated-declarations -I Sources/LibMTPBridge/include \
 printf 'module LibMTPBridge { header "%s/Sources/LibMTPBridge/include/MTPBridge.h" export * }\n' "$PWD" > "$build_dir/module.modulemap"
 sources=()
 while IFS= read -r source; do sources+=("$source"); done < <(
-  rg --files Sources/TerentoPoC -g '*.swift' | grep -Ev '/Views/|/TerentoPoCApp\.swift$' | sort
+  find Sources/TerentoPoC -type f -name '*.swift' | grep -Ev '/Views/|/TerentoPoCApp\.swift$' | sort
 )
+# macOS bash 3.2 can exit 0 on an empty array under set -u; never pass without sources.
+(( ${#sources[@]} )) || { echo "FAIL: no TerentoPoC Swift sources found" >&2; exit 1; }
 swiftc -module-cache-path "$build_dir/module-cache" -parse-as-library -module-name LocalManagedUpdateSimulationTests \
   -I "$build_dir" -L "$mtp_prefix/lib" -lmtp -L "$usb_prefix/lib" -lusb-1.0 -framework CoreFoundation \
   "$build_dir/bridge.o" "${sources[@]}" Tests/TerentoPoCTests/LocalManagedUpdateSimulationTests.swift \
