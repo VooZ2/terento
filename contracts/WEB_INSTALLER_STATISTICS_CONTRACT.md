@@ -210,6 +210,9 @@ from every number below.
   several models or with an unreviewed model names none, and this display never
   resolves or counts the event for a model), the MTP response code, and Visits: distinct
   sessions (page loads), so one person's retries are not read as many people.
+  They are grouped by problem, system family or browser family; each group row
+  shows its own distinct Visits (not the sum of its rows), count, watch models
+  and last time, and opens its rows.
 - **On the server**: relay jobs. Requests exclude `REFUSED`; Failed counts
   `FAILED`, `REFUSED` and `INTERRUPTED`; preparation time is `readyAt −
   requestedAt`, sending time `finishedAt − readyAt` of `DELIVERED` jobs; data

@@ -293,6 +293,9 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual(sorted((s["browser"].split()[0], s["support"]) for s in watch["systems"]),
                          [("Brave", "TESTING"), ("Chrome", "SUPPORTED"), ("Firefox", "BLOCKED_BROWSER")])
         self.assertEqual([(p["os_family"], p["browser_family"]) for p in watch["connectProblems"]], [("Windows", "Edge")])
+        self.assertEqual({name: [(g["outcome" if name == "problem" else name.replace("system", "os") + "_family"], g["sessions"], g["count"])
+                                 for g in groups] for name, groups in watch["connectGroups"].items()},
+                         {"problem": [("OPEN_ACCESS_DENIED", 1, 1)], "system": [("Windows", 1, 1)], "browser": [("Edge", 1, 1)]})
         self.assertEqual((server["requests"], server["delivered"], server["failed"], server["medianSendS"]), (2, 1, 1, 60))
         self.assertEqual(server["problems"][0]["providerHttpStatus"], 503)
         self.assertEqual(server["viaFallback"], 1)  # the dl port was blocked; sent through Cloudflare
@@ -305,8 +308,9 @@ class WebInstallerEndToEndTests(PGliteTestCase):
                      "Install and removal problems", "The connection to the watch ended", "CONNECTION_LOST · NetworkError",
                      "The browser could not open the watch", "OPEN_ACCESS_DENIED · SecurityError",
                      "Supported", "Testing", "title='Browser not supported'", "web-installer-support", "<th scope='col'>Browser</th>",
-                     "data-systems-switch='system'", "data-systems-switch='browser'", "<tr data-systems-group='macOS'>",
-                     "<tr data-systems-group='Brave'>", "class='web-installer-versions' id='web-installer-system-0' hidden>",
+                     "data-group-card='web-installer-systems-groups'", "data-group-switch='browser'", "<tr data-group-key='macOS'>",
+                     "<tr data-group-key='Brave'>", "class='web-installer-group-rows' id='web-installer-systems-groups-system-0' hidden>",
+                     "data-group-card='web-installer-connect-groups' data-group-default='problem'", "<tr data-group-key='OPEN_ACCESS_DENIED'>",
                      "admin-icon-browser-brave", "admin-icon-browser-firefox", "admin-icon-browser-edge",
                      "MTP 0x200D", "Recent results on watches", "On the server", "Providers", "Problems",
                      "Provider returned an error", "PROVIDER_HTTP_ERROR · HTTP 503", "Recent requests", "Test records: 1",
@@ -472,8 +476,9 @@ class WebInstallerEndToEndTests(PGliteTestCase):
                          [("Chromium", 4, 5, [name])])
         _, page = self.request("GET", "/admin/web-installer?period=24h", secret=None, admin=True)
         connect = page.split("id='web-installer-connect'", 1)[1].split("</section>", 1)[0]
-        for text in ("<th scope='col' class='column-number'>Visits</th>", "<th scope='col'>Watch models</th>",
-                     f"<td>{name}</td>", "admin-icon-browser-other"):
+        for text in ("<th scope='col' class='column-number web-installer-col-visits-cell'>Visits</th>",
+                     "<th scope='col' class='web-installer-col-models-cell'>Watch models</th>",
+                     f"<td class='web-installer-col-models-cell'>{name}</td>", "admin-icon-browser-other"):
             self.assertIn(text, connect)
 
     def test_retention(self):
