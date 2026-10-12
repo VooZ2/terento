@@ -11,7 +11,7 @@ Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Qui sot
 
 Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.
 
-**27** modelli con installazioni riuscite**205** installazioni riusciteUltima installazione riuscita 12 ottobre 2026
+**28** modelli con installazioni riuscite**210** installazioni riusciteUltima installazione riuscita 12 ottobre 2026
 
 Come funziona questo elenco
 
@@ -21,7 +21,7 @@ I risultati delle installazioni sono condivisi con Terento dagli utenti; non cos
 
 La beta attuale include quattro provider di mappe. Questa informazione sul prodotto è distinta dai risultati dei dispositivi mostrati qui.
 
-27 modelli
+28 modelli
 
 fēnix
 
@@ -65,9 +65,9 @@ Forerunner
 
 Historical
 
-15 installazioni riuscite
+16 installazioni riuscite
 
-App 14 Web 1
+App 14 Web 2
 
 Ultima installazione riuscita 12 ottobre 2026
 
@@ -133,6 +133,18 @@ Ultima installazione riuscita 3 ottobre 2026
 
 fēnix
 
+### fēnix 7 Pro
+
+Solar, (no Wi-Fi)
+
+6 installazioni riuscite
+
+App 6
+
+Ultima installazione riuscita 12 ottobre 2026
+
+fēnix
+
 ### fēnix 8 Pro
 
 51 mm, AMOLED, inReach
@@ -181,18 +193,6 @@ Ultima installazione riuscita 8 ottobre 2026
 
 fēnix
 
-### fēnix 7 Pro
-
-Solar, (no Wi-Fi)
-
-5 installazioni riuscite
-
-App 5
-
-Ultima installazione riuscita 8 ottobre 2026
-
-fēnix
-
 ### fēnix 7X
 
 51 mm, Solar
@@ -202,6 +202,18 @@ fēnix
 App 5
 
 Ultima installazione riuscita 11 ottobre 2026
+
+epix
+
+### epix Pro (Gen 2)
+
+47 mm, AMOLED
+
+4 installazioni riuscite
+
+App 2 Web 2
+
+Ultima installazione riuscita 12 ottobre 2026
 
 fēnix
 
@@ -287,18 +299,6 @@ App 3
 
 Ultima installazione riuscita 7 ottobre 2026
 
-epix
-
-### epix Pro (Gen 2)
-
-47 mm, AMOLED
-
-2 installazioni riuscite
-
-App 2
-
-Ultima installazione riuscita 24 settembre 2026
-
 fēnix
 
 ### fēnix 7X Pro
@@ -310,6 +310,18 @@ Solar, (no Wi-Fi)
 App 2
 
 Ultima installazione riuscita 11 ottobre 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+43 mm, AMOLED
+
+1 installazione riuscita
+
+App 1
+
+Ultima installazione riuscita 12 ottobre 2026
 
 fēnix
 

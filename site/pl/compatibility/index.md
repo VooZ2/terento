@@ -11,7 +11,7 @@ Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej po
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
-**27** modele z udanymi instalacjami**205** udane instalacjeOstatnia udana instalacja 12 października 2026
+**28** modele z udanymi instalacjami**210** udane instalacjeOstatnia udana instalacja 12 października 2026
 
 Jak działa ta lista
 
@@ -21,7 +21,7 @@ Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyf
 
 Aktualna beta obejmuje czterech dostawców map. Ta informacja o produkcie jest oddzielona od pokazanych tutaj wyników dla urządzeń.
 
-27 modeli
+28 modeli
 
 fēnix
 
@@ -65,9 +65,9 @@ Forerunner
 
 Historical
 
-15 udanych instalacji
+16 udanych instalacji
 
-App 14 Web 1
+App 14 Web 2
 
 Ostatnia udana instalacja 12 października 2026
 
@@ -133,6 +133,18 @@ Ostatnia udana instalacja 3 października 2026
 
 fēnix
 
+### fēnix 7 Pro
+
+Solar, (no Wi-Fi)
+
+6 udanych instalacji
+
+App 6
+
+Ostatnia udana instalacja 12 października 2026
+
+fēnix
+
 ### fēnix 8 Pro
 
 51 mm, AMOLED, inReach
@@ -181,18 +193,6 @@ Ostatnia udana instalacja 8 października 2026
 
 fēnix
 
-### fēnix 7 Pro
-
-Solar, (no Wi-Fi)
-
-5 udanych instalacji
-
-App 5
-
-Ostatnia udana instalacja 8 października 2026
-
-fēnix
-
 ### fēnix 7X
 
 51 mm, Solar
@@ -202,6 +202,18 @@ fēnix
 App 5
 
 Ostatnia udana instalacja 11 października 2026
+
+epix
+
+### epix Pro (Gen 2)
+
+47 mm, AMOLED
+
+4 udanych instalacji
+
+App 2 Web 2
+
+Ostatnia udana instalacja 12 października 2026
 
 fēnix
 
@@ -287,18 +299,6 @@ App 3
 
 Ostatnia udana instalacja 7 października 2026
 
-epix
-
-### epix Pro (Gen 2)
-
-47 mm, AMOLED
-
-2 udanych instalacji
-
-App 2
-
-Ostatnia udana instalacja 24 września 2026
-
 fēnix
 
 ### fēnix 7X Pro
@@ -310,6 +310,18 @@ Solar, (no Wi-Fi)
 App 2
 
 Ostatnia udana instalacja 11 października 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+43 mm, AMOLED
+
+1 udana instalacja
+
+App 1
+
+Ostatnia udana instalacja 12 października 2026
 
 fēnix
 
