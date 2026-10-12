@@ -675,7 +675,7 @@ def main() -> int:
     assert "--retry 1" not in deploy_api
     assert "verify-release-client-contract:" in deploy_api
     assert "Packaging/validate-released-map-catalog.sh" in deploy_api
-    assert "TERENTO_ADMIN_ACCESS_REQUIRED: 'true'" in deploy_api
+    assert "TERENTO_ADMIN_ACCESS_REQUIRED" not in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
     persist_step = deploy_site.index("- name: Persist IndexNow publication state")
