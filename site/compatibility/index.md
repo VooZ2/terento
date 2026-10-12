@@ -11,7 +11,7 @@ Terento is designed for Garmin smartwatches with map support. Below are exact mo
 
 Not seeing your model does not mean it is unsupported — we may simply not have a successful shared installation for that exact model and variant yet.
 
-**27** models with successful installs**205** successful installsLatest successful install October 12, 2026
+**28** models with successful installs**210** successful installsLatest successful install October 12, 2026
 
 How this list works
 
@@ -21,7 +21,7 @@ Installation results are shared with Terento by users. They are not Garmin certi
 
 The current beta includes four map providers. This product information is separate from the device results shown here.
 
-27 models
+28 models
 
 fēnix
 
@@ -65,9 +65,9 @@ Forerunner
 
 Historical
 
-15 successful installs
+16 successful installs
 
-App 14 Web 1
+App 14 Web 2
 
 Latest successful install October 12, 2026
 
@@ -133,6 +133,18 @@ Latest successful install October 3, 2026
 
 fēnix
 
+### fēnix 7 Pro
+
+Solar, (no Wi-Fi)
+
+6 successful installs
+
+App 6
+
+Latest successful install October 12, 2026
+
+fēnix
+
 ### fēnix 8 Pro
 
 51 mm, AMOLED, inReach
@@ -181,18 +193,6 @@ Latest successful install October 8, 2026
 
 fēnix
 
-### fēnix 7 Pro
-
-Solar, (no Wi-Fi)
-
-5 successful installs
-
-App 5
-
-Latest successful install October 8, 2026
-
-fēnix
-
 ### fēnix 7X
 
 51 mm, Solar
@@ -202,6 +202,18 @@ fēnix
 App 5
 
 Latest successful install October 11, 2026
+
+epix
+
+### epix Pro (Gen 2)
+
+47 mm, AMOLED
+
+4 successful installs
+
+App 2 Web 2
+
+Latest successful install October 12, 2026
 
 fēnix
 
@@ -287,18 +299,6 @@ App 3
 
 Latest successful install October 7, 2026
 
-epix
-
-### epix Pro (Gen 2)
-
-47 mm, AMOLED
-
-2 successful installs
-
-App 2
-
-Latest successful install September 24, 2026
-
 fēnix
 
 ### fēnix 7X Pro
@@ -310,6 +310,18 @@ Solar, (no Wi-Fi)
 App 2
 
 Latest successful install October 11, 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+43 mm, AMOLED
+
+1 successful install
+
+App 1
+
+Latest successful install October 12, 2026
 
 fēnix
 

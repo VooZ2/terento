@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**27** modely s úspěšnými instalacemi**205** úspěšných instalacíPoslední úspěšná instalace 12. října 2026
+**28** modely s úspěšnými instalacemi**210** úspěšných instalacíPoslední úspěšná instalace 12. října 2026
 
 Jak tento seznam funguje
 
@@ -21,7 +21,7 @@ Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin
 
 Aktuální beta zahrnuje čtyři poskytovatele map. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
-27 modelů
+28 modelů
 
 fēnix
 
@@ -65,9 +65,9 @@ Forerunner
 
 Historical
 
-15 úspěšných instalací
+16 úspěšných instalací
 
-App 14 Web 1
+App 14 Web 2
 
 Poslední úspěšná instalace 12. října 2026
 
@@ -133,6 +133,18 @@ Poslední úspěšná instalace 3. října 2026
 
 fēnix
 
+### fēnix 7 Pro
+
+Solar, (no Wi-Fi)
+
+6 úspěšných instalací
+
+App 6
+
+Poslední úspěšná instalace 12. října 2026
+
+fēnix
+
 ### fēnix 8 Pro
 
 51 mm, AMOLED, inReach
@@ -181,18 +193,6 @@ Poslední úspěšná instalace 8. října 2026
 
 fēnix
 
-### fēnix 7 Pro
-
-Solar, (no Wi-Fi)
-
-5 úspěšných instalací
-
-App 5
-
-Poslední úspěšná instalace 8. října 2026
-
-fēnix
-
 ### fēnix 7X
 
 51 mm, Solar
@@ -202,6 +202,18 @@ fēnix
 App 5
 
 Poslední úspěšná instalace 11. října 2026
+
+epix
+
+### epix Pro (Gen 2)
+
+47 mm, AMOLED
+
+4 úspěšných instalací
+
+App 2 Web 2
+
+Poslední úspěšná instalace 12. října 2026
 
 fēnix
 
@@ -287,18 +299,6 @@ App 3
 
 Poslední úspěšná instalace 7. října 2026
 
-epix
-
-### epix Pro (Gen 2)
-
-47 mm, AMOLED
-
-2 úspěšných instalací
-
-App 2
-
-Poslední úspěšná instalace 24. září 2026
-
 fēnix
 
 ### fēnix 7X Pro
@@ -310,6 +310,18 @@ Solar, (no Wi-Fi)
 App 2
 
 Poslední úspěšná instalace 11. října 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+43 mm, AMOLED
+
+1 úspěšná instalace
+
+App 1
+
+Poslední úspěšná instalace 12. října 2026
 
 fēnix
 
