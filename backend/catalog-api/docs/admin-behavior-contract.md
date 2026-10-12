@@ -924,6 +924,11 @@ compact table rows there: Date, Map, Result pill, Error, App version and the
 Inspect action, plus the GitHub issue column whenever a listed row has a linked
 issue. Below 1024 px it keeps the record-card layout. Filters, pagination and
 Inspect dialogs are unchanged.
+Counted web installer installs of the exact model (the population of the Web
+install counts) are listed in the same history by date: the App version cell
+shows the Web icon and `Web`, the Error cell names the reason and stage of a
+failure after writing started, and the row has no GitHub issue or Inspect
+action.
 The broad Devices listing keeps its existing compact columns.
 
 ### Model sources
