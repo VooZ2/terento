@@ -361,6 +361,7 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
         item["count"] += 1
         item["last"] = max(item["last"], job["requested_at"])
     watch_failures = [row for row in events if row["stage"] in ("MAP_RESULT", "REMOVE") and row["outcome"] == "FAILED"]
+    connect_failures = [row for row in events if row["stage"] == "CONNECT" and row["outcome"] != "CONNECTED"]
     return {
         "watch": {
             "connectedSessions": len(connected),
@@ -374,10 +375,10 @@ def summarize(events: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[
             "systems": sorted(({k: v for k, v in s.items() if k != "latest"}
                                | {"support": _support(s["os_family"], s["browser_family"], s["latest"][1])}
                               for s in systems.values()), key=lambda s: (-s["visits"], s["system"] or "~", s["browser"] or "")),
-            "connectProblems": _grouped(
-                [row for row in events if row["stage"] == "CONNECT" and row["outcome"] != "CONNECTED"],
-                ("outcome", "error_name", "mtp_response", "os_family", "browser_family"),
-            ),
+            "connectProblems": _grouped(connect_failures, ("outcome", "error_name", "mtp_response", "os_family", "browser_family")),
+            # The same failures per problem, system or browser, with each group's own distinct visits.
+            "connectGroups": {name: _grouped(connect_failures, (key,)) for name, key in
+                              (("problem", "outcome"), ("system", "os_family"), ("browser", "browser_family"))},
             "mapProblems": _grouped(
                 watch_failures, ("stage", "failure_stage", "reason", "error_name", "http_status", "mtp_response"),
             ),

@@ -159,86 +159,138 @@ def _num(value: Any) -> str:
     return f"<td class='column-number'>{_text(value)}</td>"
 
 
-# Systems and browsers, grouped by system family or by browser family.
-_GROUPINGS = (("system", "System", "os_family"), ("browser", "Browser", "browser_family"))
+def _grouped_card(card: str, caption: str, columns: list[tuple[str, str]], panels: list[tuple[str, str, list[tuple[Any, ...]]]]) -> str:
+    """A Group by switch over tables with one row per group and its totals;
+    the group's own rows open below it. They sit in one spanning cell, so the
+    shared column sort keeps them with their group row.
 
-
-def _systems_table(systems: list[dict[str, Any]], grouping: str, label: str, key: str) -> str:
-    """One row per family with its totals; its versions open below it. A
-    version row is one spanning cell, so the shared column sort keeps it with
-    its family row."""
-    groups: dict[Any, list[dict[str, Any]]] = {}
-    for item in systems:
-        groups.setdefault(item.get(key), []).append(item)
-    cols = "<colgroup><col><col class='web-installer-col-visits'><col class='web-installer-col-blocked'></colgroup>"
-    rows = []
-    for index, (family, items) in enumerate(sorted(groups.items(), key=lambda g: (-sum(i["visits"] for i in g[1]), g[0] or "~"))):
-        row_id = f"web-installer-{grouping}-{index}"
-        name = _browser(family) if grouping == "browser" else _text(family)
-        toggle = (f"<button type='button' class='web-installer-group-toggle' data-systems-toggle aria-expanded='false' "
-                  f"aria-controls='{row_id}'>{_admin_icon('chevron-down')}{name}</button>")
-        versions = "".join(
-            "<tr>" + _td("<span class='web-installer-version'>" + (
-                f"<span>{_text(i['system'])}</span>" + _browser(i["browser"]) + _support_icon(i["support"]) if grouping == "system"
-                else _browser(i["browser"]) + _support_icon(i["support"]) + f"<span>{_text(i['system'])}</span>"
-            ) + "</span>") + _num(i["visits"]) + _num(i["blocked"]) + "</tr>"
-            for i in items)
-        rows.append(
-            f"<tr data-systems-group='{html.escape(str(family), quote=True)}'><td>{toggle}</td>"
-            + _num(sum(i["visits"] for i in items)) + _num(sum(i["blocked"] for i in items)) + "</tr>"
-            f"<tr class='web-installer-versions' id='{row_id}' hidden><td colspan='3'>"
-            f"<table class='admin-table web-installer-table web-installer-systems-table'>{cols}<tbody>{versions}</tbody></table></td></tr>"
-        )
+    ``columns`` follow the label column: (header, col class). Each panel is
+    (name, label, groups); a group is (key, label, label extra, total cells,
+    rows of cells including their first cell)."""
+    cols = "<colgroup><col>" + "".join(f"<col class='{c}'>" for _, c in columns) + "</colgroup>"
+    switch = "".join(
+        f"<button type='button' class='quick-filter{' active' if i == 0 else ''}' data-group-switch='{name}' "
+        f"aria-pressed='{str(i == 0).lower()}'>{label}</button>" for i, (name, label, _) in enumerate(panels))
+    tables = []
+    for i, (name, label, groups) in enumerate(panels):
+        head = f"<th scope='col'>{label}</th>" + "".join(
+            f"<th scope='col' class='{'column-number ' if h.startswith('#') else ''}{c}-cell'>{html.escape(h.lstrip('#'))}</th>" for h, c in columns)
+        rows = []
+        for index, (key, title, extra, totals, children) in enumerate(groups):
+            row_id = f"{card}-{name}-{index}"
+            inner = "".join("<tr>" + "".join(child) + "</tr>" for child in children)
+            rows.append(
+                f"<tr data-group-key='{html.escape(str(key), quote=True)}'><td><button type='button' class='web-installer-group-toggle' "
+                f"data-group-toggle aria-expanded='false' aria-controls='{row_id}'>{_admin_icon('chevron-down')}{title}</button>{extra}</td>"
+                + "".join(totals) + "</tr>"
+                f"<tr class='web-installer-group-rows' id='{row_id}' hidden><td colspan='{len(columns) + 1}'>"
+                f"<table class='admin-table web-installer-table web-installer-grouped-table'>{cols}<tbody>{inner}</tbody></table></td></tr>")
+        tables.append(
+            f"<div class='table-wrap' data-group-panel='{name}'{' hidden' if i else ''}>"
+            f"<table class='admin-table web-installer-table web-installer-grouped-table' data-own-mobile-layout>"
+            f"<caption class='sr-only'>{html.escape(caption)} by {label.lower()}</caption>{cols}"
+            f"<thead><tr>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>")
     return (
-        f"<div class='table-wrap' data-systems-panel='{grouping}'{'' if grouping == 'system' else ' hidden'}>"
-        f"<table class='admin-table web-installer-table web-installer-systems-table' data-own-mobile-layout>"
-        f"<caption class='sr-only'>Systems and browsers by {label.lower()}</caption>{cols}"
-        f"<thead><tr><th scope='col'>{label}</th><th scope='col' class='column-number'>Visits</th>"
-        f"<th scope='col' class='column-number'>Could not use</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>"
+        f"<div data-group-card='{card}' data-group-default='{panels[0][0]}'><div class='filter-bar web-installer-card-filter'>"
+        f"<div class='quick-filter-group' role='group' aria-label='Group by'>{switch}</div></div>{''.join(tables)}</div>"
     )
+
+
+def _cell(content: str, column: str) -> str:
+    return f"<td class='{column}-cell'>{content}</td>"
+
+
+def _count(value: Any, column: str) -> str:
+    return f"<td class='column-number {column}-cell'>{_text(value)}</td>"
 
 
 def _systems(systems: list[dict[str, Any]]) -> str:
+    """Systems and browsers by system family or by browser family."""
     if not systems:
         return _empty_state("empty", "No visits in this period.")
-    switch = "".join(
-        f"<button type='button' class='quick-filter{' active' if name == 'system' else ''}' data-systems-switch='{name}' "
-        f"aria-pressed='{str(name == 'system').lower()}'>{label}</button>"
-        for name, label, _ in _GROUPINGS)
-    return (
-        f"<div class='filter-bar web-installer-card-filter'><div class='quick-filter-group' role='group' aria-label='Group by'>{switch}</div></div>"
-        + "".join(_systems_table(systems, name, label, key) for name, label, key in _GROUPINGS)
-    )
+    columns = [("#Visits", "web-installer-col-visits"), ("#Could not use", "web-installer-col-blocked")]
+    panels = []
+    for name, label, key in (("system", "System", "os_family"), ("browser", "Browser", "browser_family")):
+        families: dict[Any, list[dict[str, Any]]] = {}
+        for item in systems:
+            families.setdefault(item.get(key), []).append(item)
+        groups = []
+        for family, items in sorted(families.items(), key=lambda g: (-sum(i["visits"] for i in g[1]), g[0] or "~")):
+            browser = lambda i: _browser(i["browser"]) + _support_icon(i["support"])
+            version = lambda i: "<span class='web-installer-version'>" + (
+                f"<span>{_text(i['system'])}</span>" + browser(i) if name == "system" else browser(i) + f"<span>{_text(i['system'])}</span>") + "</span>"
+            groups.append((family, _browser(family) if name == "browser" else _text(family), "",
+                           [_count(sum(i["visits"] for i in items), columns[0][1]), _count(sum(i["blocked"] for i in items), columns[1][1])],
+                           [[_td(version(i)), _count(i["visits"], columns[0][1]), _count(i["blocked"], columns[1][1])] for i in items]))
+        panels.append((name, label, groups))
+    return _grouped_card("web-installer-systems-groups", "Systems and browsers", columns, panels)
 
 
-def _systems_script() -> str:
-    """System/Browser switch and the family rows; both survive live refreshes."""
+def _connect(problems: list[dict[str, Any]], groups: dict[str, list[dict[str, Any]]]) -> str:
+    """Connection problems by problem, system or browser. A group's Visits are
+    its own distinct sessions, not the sum of its rows."""
+    if not problems:
+        return _empty_state("empty", "No connection problems in this period.")
+    columns = [("Watch models", "web-installer-col-models"), ("#Visits", "web-installer-col-visits"),
+               ("#Count", "web-installer-col-count"), ("Last", "web-installer-col-last")]
+    detail = lambda p: [f"HTTP {p['http_status']}" if p.get("http_status") else None,
+                        f"MTP 0x{p['mtp_response']:04X}" if p.get("mtp_response") else None]
+    # Watch models and Last move under the label on phones.
+    phone = lambda p: "<span class='web-installer-phone-line'>" + " · ".join(
+        [html.escape(", ".join(p["models"]))] * bool(p["models"]) + [_timestamp_markup(p["last"])]) + "</span>"
+    cells = lambda p: [_cell(_text(", ".join(p["models"])), columns[0][1]), _count(p["sessions"], columns[1][1]),
+                       _count(p["count"], columns[2][1]), _cell(_timestamp_markup(p["last"]), columns[3][1])]
+    dims = lambda *parts: "<span class='web-installer-version'>" + "".join(parts) + "</span>"
+    panels = []
+    for name, label, key in (("problem", "Problem", "outcome"), ("system", "System", "os_family"), ("browser", "Browser", "browser_family")):
+        rows = []
+        for group in groups[name]:
+            members = [p for p in problems if p.get(key) == group.get(key)]
+            if name == "problem":
+                title, extra = _words(group[key]), _code(group[key])
+                first = lambda p: dims(f"<span>{_text(p['os_family'])}</span>", _browser(p["browser_family"])) + _code(p["error_name"], *detail(p))
+            else:
+                title, extra = (_browser(group[key]) if name == "browser" else _text(group[key])), ""
+                other = (lambda p: _browser(p["browser_family"])) if name == "system" else (lambda p: f"<span>{_text(p['os_family'])}</span>")
+                first = lambda p, other=other: _words(p["outcome"]) + dims(other(p)) + _code(p["outcome"], p["error_name"], *detail(p))
+            rows.append((group.get(key), title, extra + phone(group), cells(group),
+                         [[_td(first(p) + phone(p))] + cells(p) for p in members]))
+        panels.append((name, label, rows))
+    return _grouped_card("web-installer-connect-groups", "Connection problems", columns, panels)
+
+
+def _grouped_card_script() -> str:
+    """Group by switches and group rows; both survive live refreshes."""
     return r"""(() => {
-      let chosen = 'system';
+      const chosen = new Map();
       const open = new Set();
+      const keyOf = (button) => {
+        const row = button.closest('tr');
+        return row.closest('[data-group-card]').dataset.groupCard + ':' + row.closest('[data-group-panel]').dataset.groupPanel + ':' + row.dataset.groupKey;
+      };
       const apply = () => {
-        document.querySelectorAll('[data-systems-switch]').forEach((button) => {
-          const on = button.dataset.systemsSwitch === chosen;
-          button.classList.toggle('active', on);
-          button.setAttribute('aria-pressed', String(on));
+        document.querySelectorAll('[data-group-card]').forEach((card) => {
+          const name = chosen.get(card.dataset.groupCard) || card.dataset.groupDefault;
+          card.querySelectorAll('[data-group-switch]').forEach((button) => {
+            const on = button.dataset.groupSwitch === name;
+            button.classList.toggle('active', on);
+            button.setAttribute('aria-pressed', String(on));
+          });
+          card.querySelectorAll('[data-group-panel]').forEach((panel) => { panel.hidden = panel.dataset.groupPanel !== name; });
         });
-        document.querySelectorAll('[data-systems-panel]').forEach((panel) => { panel.hidden = panel.dataset.systemsPanel !== chosen; });
-        document.querySelectorAll('[data-systems-toggle]').forEach((button) => {
-          const row = button.closest('tr');
-          const key = row.closest('[data-systems-panel]').dataset.systemsPanel + ':' + row.dataset.systemsGroup;
-          const expanded = open.has(key);
+        document.querySelectorAll('[data-group-toggle]').forEach((button) => {
+          const expanded = open.has(keyOf(button));
           button.setAttribute('aria-expanded', String(expanded));
-          const versions = document.getElementById(button.getAttribute('aria-controls'));
-          if (versions) versions.hidden = !expanded;
+          const rows = document.getElementById(button.getAttribute('aria-controls'));
+          if (rows) rows.hidden = !expanded;
         });
       };
       document.addEventListener('click', (event) => {
-        const pick = event.target.closest('[data-systems-switch]');
-        if (pick) { chosen = pick.dataset.systemsSwitch; apply(); return; }
-        const toggle = event.target.closest('[data-systems-toggle]');
+        const pick = event.target.closest('[data-group-switch]');
+        if (pick) { chosen.set(pick.closest('[data-group-card]').dataset.groupCard, pick.dataset.groupSwitch); apply(); return; }
+        const toggle = event.target.closest('[data-group-toggle]');
         if (!toggle) return;
-        const row = toggle.closest('tr');
-        const key = row.closest('[data-systems-panel]').dataset.systemsPanel + ':' + row.dataset.systemsGroup;
+        const key = keyOf(toggle);
         if (!open.delete(key)) open.add(key);
         apply();
       });
@@ -263,11 +315,7 @@ def _watch_sections(watch: dict[str, Any], period: str) -> str:
     systems = _systems(watch["systems"])
     detail = lambda p: [f"HTTP {p['http_status']}" if p.get("http_status") else None,
                         f"MTP 0x{p['mtp_response']:04X}" if p.get("mtp_response") else None]
-    connect = _table("Connection problems", ["Problem", "System", "Browser", "Watch models", "#Visits", "#Count", "Last"], [[
-        _td(_words(p["outcome"]) + _code(p["outcome"], p["error_name"], *detail(p))), _td(_text(p["os_family"])),
-        _td(_browser(p["browser_family"])), _td(_text(", ".join(p["models"]))),
-        _num(p["sessions"]), _num(p["count"]), _td(_timestamp_markup(p["last"])),
-    ] for p in watch["connectProblems"]], "No connection problems in this period.")
+    connect = _connect(watch["connectProblems"], watch["connectGroups"])
     problems = _table("Install and removal problems", ["Action", "Step", "Problem", "Watch models", "#Count", "#After writing started", "Last"], [[
         _td("Remove" if p["stage"] == "REMOVE" else "Install or update"), _td(_words(p["failure_stage"])),
         _td(_words(p["reason"]) + _code(p["failure_stage"], p["reason"], p["error_name"], *detail(p))),
@@ -362,7 +410,7 @@ def web_installer_page(data: dict[str, Any] | None, user: dict[str, Any], csrf_t
         {body}
         {tests}
       </main>
-      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_systems_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_grouped_card_script()}</script>
     """
     revision = None if not isinstance(data, dict) else {key: data.get(key) for key in ("watch", "server", "testRecords")}
     return _layout("Web installer", content, sections={"webInstaller": revision})
