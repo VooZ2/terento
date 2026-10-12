@@ -77,7 +77,7 @@ jobs:
     environment: rukas-api
     env:
       OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}
-      TERENTO_ADMIN_ACCESS_REQUIRED: 'true'
+      TERENTO_ADMIN_ACCESS_REQUIRED: 'false'
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803

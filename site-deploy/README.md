@@ -151,11 +151,12 @@ fails explicitly for obsolete layouts.
 The root-owned VPS verifier checks native application login and private-page
 protection through loopback. Public CI checks use
 `scripts/infra/check-admin-boundary.py` without administrator credentials or an
-Access bypass token. `deploy-catalog-api.yml` explicitly sets the checker
-environment `TERENTO_ADMIN_ACCESS_REQUIRED: 'true'`, so public native login,
-unrelated redirects and errors fail. The former repository variable of that name
-is no longer read by the workflow. For a manual strict check, set the environment
-variable explicitly; the standalone script retains its transition-mode default.
+Access bypass token. The owner removed Cloudflare Access from `/admin*` on
+2026-10-12, so `deploy-catalog-api.yml` sets the checker environment
+`TERENTO_ADMIN_ACCESS_REQUIRED: 'false'`: the public `/admin/login` must be the
+native sign-in page and other admin pages must redirect to it (303) with
+`script-src 'none'`; an exact Access redirect is still accepted. Set the variable
+to `'true'` again if Access returns.
 Test the boundary rules with `python3 Tests/admin-access-boundary-tests.py`.
 
 ### Production release and migration boundaries
