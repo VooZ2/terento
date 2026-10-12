@@ -1,6 +1,7 @@
 """Build read-only Admin pages with deterministic presentation evidence."""
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import shutil
 import sys
@@ -23,6 +24,8 @@ from terento_catalog.admin import (
 from terento_catalog.support_report_admin import support_report_detail_page, support_reports_page
 from terento_catalog.support_reports import validate_support_report
 from terento_catalog.update_diagnostics import update_diagnostics_page
+from terento_catalog.admin_web_installer import web_installer_page
+from terento_catalog.web_installer import summarize
 
 
 def _daily_trend() -> list[dict[str, object]]:
@@ -207,6 +210,64 @@ def _today_trend() -> list[dict[str, object]]:
         }
         for hour in range(15)
     ]
+
+
+def _web_installer() -> dict[str, object]:
+    """Synthetic 24-hour Web installer read model: every problem step, an
+    unknown step, MTP and HTTP codes, every support state and server outcome."""
+    now = datetime(2026, 10, 12, 20, 30, tzinfo=timezone.utc)
+    events: list[dict[str, object]] = []
+
+    def event(session, stage, outcome, **fields):
+        events.append({"session_id": f"s{session}", "occurred_at": now - timedelta(hours=14, minutes=-7 * len(events)),
+                       "stage": stage, "outcome": outcome, "os_family": "macOS", "os_major": 27,
+                       "browser_family": "Chrome", "browser_major": 141, **fields})
+
+    for index, (system, major, browser, gate) in enumerate(
+            [("macOS", 27, "Chrome", "PASSED")] * 6 + [("Linux", None, "Chrome", "PASSED_TESTING_PLATFORM")] * 4
+            + [("Windows", 11, "Edge", "BLOCKED_SYSTEM")] * 3 + [("macOS", 27, "Firefox", "BLOCKED_BROWSER")] * 2
+            + [("iOS", 26, "Safari", "BLOCKED_SYSTEM")]):
+        event(index, "GATE", gate, os_family=system, os_major=major, browser_family=browser)
+    watches = [("fēnix 8 – 47 mm", "macOS", 27, "23.39"), ("fēnix 8 – 47 mm", "macOS", 27, "23.39"),
+               ("epix Pro – 47 mm", "Linux", None, "22.06"), ("Forerunner 965", "Linux", None, "27.09"),
+               ("Enduro 3", "macOS", 27, "12.35")]
+    for session, (model, system, major, firmware) in enumerate(watches):
+        watch = {"model": model, "os_family": system, "os_major": major, "firmware": firmware}
+        event(session, "CONNECT", "CONNECTED", **watch)
+        event(session, "MAP_RESULT", "SUCCEEDED", **watch, provider="bbbike", package_id="bbbike-ile-de-france",
+              operation="update" if session == 1 else "install", write_started=True, write_s=480 + 90 * session,
+              verify_s=42 + 6 * session)
+    for stage, reason, started in (("WRITE", "CONNECTION_LOST", True), ("VERIFY", "CHECK_MISMATCH", True),
+                                   ("PREPARE", "PREPARE_FAILED", False), ("DOWNLOAD", "COMPUTER_FULL", False),
+                                   (None, "OTHER", False)):
+        event(3, "MAP_RESULT", "FAILED", **dict(zip(("model", "os_family", "os_major", "firmware"), watches[3])),
+              provider="opentopomap", package_id="opentopomap-alps", operation="install", write_started=started,
+              failure_stage=stage, reason=reason, error_name="NetworkError" if stage == "WRITE" else "Error",
+              write_s=73 if started else None)
+    event(2, "REMOVE", "FAILED", model="epix Pro – 47 mm", os_family="Linux", os_major=None, failure_stage="VERIFY",
+          reason="CONNECTION_LOST", error_name="NetworkError", provider="bbbike", package_id="bbbike-albania")
+    for session, outcome, fields in [(6, "NO_WATCH_CHOSEN", {"error_name": "NotFoundError"})] * 4 + [
+            (7, "OPEN_ACCESS_DENIED", {"os_family": "Linux", "os_major": None, "error_name": "SecurityError",
+                                       "device_name": "epix Pro (Gen 2)"})] * 2 + [
+            (4, "FAILED", {"model": "Enduro 3", "error_name": "Error", "mtp_response": 0x201E})] + [
+            (8, "INTERFACE_CLAIM_FAILED", {"os_family": "Linux", "os_major": None, "error_name": "NetworkError",
+                                           "http_status": 503})]:
+        event(session, "CONNECT", outcome, **fields)
+    jobs = []
+    for index in range(8):
+        provider, region, package, size = [("bbbike", "Île-de-France", "bbbike-ile-de-france", 143_000_000),
+                                           ("maprando", "France", "maprando-france", 2_980_000_000)][index % 2]
+        outcome = {1: "FAILED", 3: "REFUSED", 5: "NOT_DOWNLOADED"}.get(index, "DELIVERED")
+        reason = {1: "PROVIDER_HTTP_ERROR", 3: "COMPUTER_LIMIT"}.get(index)
+        requested = now - timedelta(minutes=28 * index + 10)
+        ready = requested + timedelta(seconds=90 + 12 * index)
+        jobs.append({"provider": provider, "region": region, "package_id": package, "size_bytes": size,
+                     "served_bytes": size if outcome == "DELIVERED" else 0, "release": "2026-10-07",
+                     "outcome": outcome, "reason": reason, "provider_http_status": 503 if index == 1 else None,
+                     "requested_at": requested, "ready_at": None if reason else ready,
+                     "finished_at": ready + timedelta(seconds=30 + 8 * index),
+                     "served_via": "proxied" if index == 0 else "direct"})
+    return {**summarize(events, jobs), "testRecords": {"count": 3, "last": now - timedelta(minutes=22)}}
 
 
 def create(root: Path) -> None:
@@ -599,6 +660,7 @@ def create(root: Path) -> None:
                                      "last_occurred_at": "2026-10-06T09:40:00Z"}],
         "updateDiagnostics": [],
     }, user, "fixture"))
+    (root / "web-installer.html").write_bytes(web_installer_page(_web_installer(), user, "fixture", period="24h"))
     site_assets = Path(__file__).parents[3] / "site"
     shutil.copytree(site_assets / "assets" / "fonts", root / "fonts", dirs_exist_ok=True)
     shutil.copy2(site_assets / "favicon.ico", root / "favicon.ico")

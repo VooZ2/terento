@@ -192,17 +192,18 @@ Periods are the Admin set (`today`, `24h`, `7d`, `30d`, `all`), filtered by
 from every number below.
 
 - **Counted map result** (above): **Maps installed**, **Maps updated**,
-  **Failed**, **Writing** (median `writeS`, then median `verifyS`, of counted
-  successes) use counted results; **Recent results on watches** lists every
+  **Failed after write start**, **Writing · median** and **Checking · median**
+  (median `writeS` and median `verifyS` of counted successes) use counted
+  results; **Recent results on watches** lists every
   map result and removal.
-- **Watch connected**: distinct sessions with `CONNECT=CONNECTED`.
+- **Connected visits**: distinct sessions with `CONNECT=CONNECTED`.
 - **Watch models**: per model text and system (`osFamily osMajor`): firmware
   seen, connected sessions, counted installs, updates and failures, last seen.
 - **Systems and browsers**: `GATE` events per system and browser, and how many
   were blocked, grouped by system family (`osFamily`) or by browser family
   (`browserFamily`); each family row shows its totals and opens its
   system and browser versions.
-- **Connection problems** and **Install and removal problems**: every failed
+- **Problems** (connection, install and removal): every failed
   attempt (counted or not), grouped by codes, with the codes shown next
   to their plain words so a failure can be traced to its cause.
   Connection problems also show the watch models (the model text, or, when
@@ -214,7 +215,7 @@ from every number below.
   They are grouped by problem, system family or browser family; each group row
   shows its own distinct Visits (not the sum of its rows), count, watch models
   and last time, and opens its rows.
-- **On the server**: relay jobs. Requests exclude `REFUSED`; Failed counts
+- **Server**: relay jobs. Requests exclude `REFUSED`; Failed counts
   `FAILED`, `REFUSED` and `INTERRUPTED`; preparation time is `readyAt −
   requestedAt`, sending time `finishedAt − readyAt` of `DELIVERED` jobs; data
   sent is the sum of `servedBytes`; sent through Cloudflare counts `DELIVERED`
