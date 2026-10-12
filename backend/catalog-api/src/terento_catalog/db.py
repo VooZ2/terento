@@ -4571,10 +4571,17 @@ class Database:
         job_where, job_values = _web_installer_period("requested_at", since, until)
         with self.connection() as connection:
             events = list(connection.execute(
-                # device_name: the catalog model resolved from the USB model code,
-                # for failures before the watch reported its model text.
-                f"SELECT e.*, d.canonical_model AS device_name FROM web_installer_event e"
+                # device_name, for failures before the watch reported its model
+                # text: the resolved catalog model, else the one model a reviewed
+                # USB mapping names (display only; identity rules still need the
+                # model text, so nothing is counted for that model).
+                f"SELECT e.*, COALESCE(d.canonical_model, u.name) AS device_name FROM web_installer_event e"
                 f" LEFT JOIN device_model d ON d.id = e.canonical_device_model_id"
+                f" LEFT JOIN LATERAL (SELECT min(dm.canonical_model) AS name FROM device_identity_mapping m"
+                f" JOIN device_model dm ON dm.id = m.device_model_id"
+                f" WHERE m.kind = 'USB' AND m.status <> 'REJECTED' AND e.usb_product_id IS NOT NULL"
+                f" AND m.value = lpad(to_hex(e.usb_vendor_id), 4, '0') || ':' || lpad(to_hex(e.usb_product_id), 4, '0')"
+                f" HAVING count(DISTINCT m.device_model_id) = 1 AND bool_and(m.status = 'APPROVED')) u ON true"
                 f" WHERE {event_where} ORDER BY occurred_at DESC", event_values,
             ).fetchall())
             jobs = list(connection.execute(

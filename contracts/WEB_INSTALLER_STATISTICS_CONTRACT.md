@@ -197,9 +197,11 @@ from every number below.
 - **Connection problems** and **Install and removal problems**: every failed
   attempt (counted or not), grouped by codes, with the codes shown next
   to their plain words so a failure can be traced to its cause.
-  Connection problems also show the watch models (the model text, or the
-  catalog model resolved from the USB model code when the failure came before
-  the watch reported its text), the MTP response code, and Visits: distinct
+  Connection problems also show the watch models (the model text, or, when
+  the failure came before the watch reported its text, the one catalog model
+  that reviewed USB mappings name for its USB model code; a code shared by
+  several models or with an unreviewed model names none, and this display never
+  resolves or counts the event for a model), the MTP response code, and Visits: distinct
   sessions (page loads), so one person's retries are not read as many people.
 - **On the server**: relay jobs. Requests exclude `REFUSED`; Failed counts
   `FAILED`, `REFUSED` and `INTERRUPTED`; preparation time is `readyAt −

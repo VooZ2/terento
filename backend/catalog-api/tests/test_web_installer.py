@@ -399,18 +399,28 @@ class WebInstallerEndToEndTests(PGliteTestCase):
 
     def test_connection_problems_count_visits_and_name_the_model_from_the_usb_code(self):
         # One page load retried twice, another tried once; the open was refused
-        # before the watch reported its model text, so the USB model code names it.
+        # before the watch reported its model text, so a reviewed USB mapping names it.
+        ids = [r["id"] for r in self.sql("SELECT id FROM device_model ORDER BY id LIMIT 3")]
+        self.sql("DELETE FROM device_identity_mapping WHERE kind = 'USB' AND value IN ('091e:aaa1', '091e:aaa2', '091e:aaa3')")
+        for value, device_id, status in (("091e:aaa1", ids[0], "APPROVED"),
+                                         ("091e:aaa2", ids[1], "APPROVED"), ("091e:aaa2", ids[2], "APPROVED"),
+                                         ("091e:aaa3", ids[0], "APPROVED"), ("091e:aaa3", ids[1], "PENDING")):
+            self.sql("INSERT INTO device_identity_mapping (kind, value, device_model_id, source_url, source_version, status) "
+                     "VALUES ('USB', %s, %s, 'https://example.test', 'test', %s)", (value, device_id, status))
         session = str(uuid4())
-        for body in (event(sessionId=session), event(sessionId=session), event()):
+        for product, session_id in ((0xAAA1, session), (0xAAA1, session), (0xAAA1, None), (0xAAA2, None), (0xAAA3, None)):
+            body = event(sessionId=session_id or str(uuid4()))
             body.update(stage="CONNECT", outcome="OPEN_ACCESS_DENIED", osFamily="Linux", browserFamily="Chromium",
-                        errorName="SecurityError", usbVendorId=0x091E, usbProductId=0x51B8)
+                        errorName="SecurityError", usbVendorId=0x091E, usbProductId=product)
             self.assertEqual(self.forward(self.recent(body)), 201)
-        # As the identity review resolves the code (assess_identity is tested on its own).
-        self.sql("UPDATE web_installer_event SET canonical_device_model_id = 'garmin-fenix-8-47-amoled'")
-        name = self.sql("SELECT canonical_model AS name FROM device_model WHERE id = 'garmin-fenix-8-47-amoled'")[0]["name"]
+        # Identity rules need the model text: nothing is resolved or counted for a model.
+        self.db.resolve_web_installer_identities()
+        self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_event WHERE canonical_device_model_id IS NOT NULL")[0]["n"], 0)
+        name = self.sql("SELECT canonical_model AS name FROM device_model WHERE id = %s", (ids[0],))[0]["name"]
         problems = self.service.web_installer({"period": "24h"})["watch"]["connectProblems"]
+        # A shared code (two models) and a code with an unreviewed second model name no watch.
         self.assertEqual([(p["browser_family"], p["sessions"], p["count"], p["models"]) for p in problems],
-                         [("Chromium", 2, 3, [name])])
+                         [("Chromium", 4, 5, [name])])
         _, page = self.request("GET", "/admin/web-installer?period=24h", secret=None, admin=True)
         connect = page.split("id='web-installer-connect'", 1)[1].split("</section>", 1)[0]
         for text in ("<th scope='col' class='column-number'>Visits</th>", "<th scope='col'>Watch models</th>",
