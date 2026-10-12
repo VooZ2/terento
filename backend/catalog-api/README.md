@@ -621,8 +621,11 @@ Automatic assignment takes one of two paths. `resolution: EXACT`: exactly one
 non-conflicting candidate and all five checks match. `resolution:
 SINGLE_MATCH` (assessment version 4, owner decision 2026-10-11): the Admin
 suggestion rule leaves one candidate (no conflict; a reported Solar/inReach
-word prefers rows whose stored value is true), every reported model label
-matches its name, and no pending mapping of a reported code points outside the
+word prefers rows whose stored value is true; since version 5 a reported case
+size prefers rows that state that size over a same-name row with no size),
+every reported model label matches its name (since version 5 also through a
+reviewed generation-label alias, `GENERATION_LABEL_BASE_MODEL_ALIASES`, unless a
+real catalog row carries the alias name), and no pending mapping of a reported code points outside the
 candidate set. A reported code alone, or a client `canonicalDeviceId` alone,
 never assigns. Only approved mappings are positive evidence. Pending
 alternative targets prevent a partially reviewed shared code from appearing

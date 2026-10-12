@@ -27,7 +27,12 @@ shared install statistics from the start, like app results.
 - **Watch model**: the API resolves the catalog model of each `CONNECT` and
   `MAP_RESULT` from `model` and the USB model code with the same identity
   assessment as app reports, at receipt and again on each scheduler cycle
-  while unresolved. Only resolved results count per model.
+  while unresolved. Only resolved results count per model. The assessment
+  reads the reviewed generation-label aliases of
+  `contracts/INSTALLATION_AUTHORIZATION.md` (a watch text `epix pro - 47mm`
+  names `epix Pro (Gen 2)`), and a reported case size prefers the catalog
+  rows that state that size over a same-name row with no size. Text without
+  a size that several sizes share stays unresolved.
 - **Where they appear**: Dashboard charts (All, the default, App and Web
   switch), Dashboard Activity (web rows marked with the Web icon), Maps page
   and providers (combined numbers), Devices list and model pages (App, Web and

@@ -9,7 +9,9 @@ from pathlib import Path
 from uuid import uuid4
 
 from pglite_support import PGliteTestCase
+from test_compatibility_evidence import event as compatibility_event
 from terento_catalog.admin import _admin_device_payload, device_detail_page, hash_password
+from terento_catalog.compatibility_evidence import validate_event as validate_compatibility_event
 from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
 from terento_catalog.migrate import _statements
 from terento_catalog.web_installer import (
@@ -400,6 +402,49 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual(self.db.resolve_web_installer_identities()["resolved"], 5)
         self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_event "
                                   "WHERE canonical_device_model_id = 'garmin-fenix-8-47-amoled'")[0]["n"], 5)
+
+    def test_epix_pro_web_success_joins_the_47_mm_row_next_to_its_app_successes(self):
+        # Production 2026-10-11: a Linux install on a watch reporting "epix pro - 47mm"
+        # (no USB code yet) stayed off Devices; two earlier app successes were there.
+        device_id = "garmin-epix-pro-gen-2-47"
+        for index, day in enumerate((23, 24)):
+            app = validate_compatibility_event(encode(compatibility_event(
+                id=str(uuid4()), timestamp=f"2026-09-{day}T18:51:00Z", model="epix Pro (Gen 2)", family="epix",
+                usbProductID=0x50D8, compatibilityIdentity="epix Pro (Gen 2) · 47 mm", variant="47 mm", caseSizeMm=47)))
+            self.assertTrue(self.db.insert_compatibility_event(app))
+            self.sql("UPDATE compatibility_evidence_event SET canonical_device_model_id = %s, "
+                     "identity_resolution_state = 'RESOLVED' WHERE event_id = %s", (device_id, app["id"]))
+
+        def stats():
+            rows, _ = self.db.admin_device_snapshot()
+            device = next(d for d in _admin_device_payload(rows, None)["devices"] if d["id"] == device_id)
+            return device["installationStats"], device["evidenceStatus"]
+
+        before, evidence = stats()
+        self.assertEqual((before["attempts"], before["successful"]), (2, 2))
+        succeeded = event(stage="MAP_RESULT", outcome="SUCCEEDED", operation="install", provider="bbbike",
+                          packageId="bbbike-north-america-us-washington-bbbike-latin1", model="epix pro - 47mm",
+                          firmware="2718", osFamily="Linux", writeStarted=True, writeS=16, verifyS=21,
+                          occurredAt=(datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        self.assertEqual(self.forward(succeeded), 201)
+        # The same event again, a test record and a watch with no size never add to the 47 mm row.
+        self.forward(succeeded)
+        self.forward(dict(succeeded, id=str(uuid4()), isTest=True))
+        self.forward(dict(succeeded, id=str(uuid4()), model="epix pro"))
+        stored = self.sql("SELECT model, canonical_device_model_id AS id, identity_resolution AS resolution "
+                          "FROM web_installer_event WHERE is_test IS NOT TRUE ORDER BY model")
+        self.assertEqual(stored, [{"model": "epix pro", "id": None, "resolution": "UNRESOLVED"},
+                                  {"model": "epix pro - 47mm", "id": device_id, "resolution": "SINGLE_MATCH"}])
+        after, evidence_after = stats()
+        self.assertEqual((after["attempts"], after["successful"]), (3, 3))
+        self.assertEqual(datetime.fromisoformat(after["lastSuccessfulAt"]), datetime.fromisoformat(succeeded["occurredAt"].replace("Z", "+00:00")))
+        self.assertEqual(evidence_after, evidence)  # a web success never changes Tested status
+
+        # A row stored before the fix resolves on the scheduler's next pass, once.
+        self.sql("UPDATE web_installer_event SET canonical_device_model_id = NULL, identity_resolution = NULL")
+        self.assertEqual(self.db.resolve_web_installer_identities(), {"pending": 2, "resolved": 1})
+        self.db.resolve_web_installer_identities()
+        self.assertEqual(stats()[0], after)
 
     def test_connection_problems_count_visits_and_name_the_model_from_the_usb_code(self):
         # One page load retried twice, another tried once; the open was refused

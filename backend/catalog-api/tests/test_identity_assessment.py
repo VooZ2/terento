@@ -70,6 +70,25 @@ class IdentityAssessmentTests(unittest.TestCase):
         both = assess_identity(event, [solar, dict(unknown, solar=True)], [])
         self.assertIsNone(both['canonicalDeviceId'])
 
+    def test_reviewed_alias_and_reported_size_resolve_the_epix_pro_size_row(self):
+        # Garmin's epix Pro reports "epix Pro - 47mm" without "(Gen 2)"; the catalog
+        # keeps an unsized legacy row next to the 42, 47 and 51 mm rows.
+        rows = [dict(id='epix-pro', model='epix Pro (Gen 2)', case_size_mm=None, screen_technology=None)] + [
+            dict(id=f'epix-pro-{size}', model='epix Pro (Gen 2)', case_size_mm=size, screen_technology='AMOLED')
+            for size in (42, 47, 51)]
+        for text, expected in (('epix pro - 47mm', 'epix-pro-47'), ('EPIX PRO - 51mm', 'epix-pro-51')):
+            result = assess_identity(dict(rawMTPModel=text), rows, [])
+            self.assertEqual((result['canonicalDeviceId'], result['resolution']), (expected, 'SINGLE_MATCH'))
+            self.assertEqual(result['facts']['model'], [{'source': 'rawMTPModel', 'value': text}])
+        # No reported size: the 42, 47 and 51 mm rows and the unsized row stay possible.
+        self.assertIsNone(assess_identity(dict(rawMTPModel='epix pro'), rows, [])['canonicalDeviceId'])
+        # A real catalog "epix Pro" row takes the name itself; the alias is not applied.
+        real = dict(id='epix-pro-original', model='epix Pro', case_size_mm=None, screen_technology=None)
+        result = assess_identity(dict(rawMTPModel='epix pro - 47mm'), rows + [real], [])
+        self.assertEqual([c['deviceId'] for c in result['candidates']], ['epix-pro-original'])
+        # The alias is exact: another model name never reaches the epix Pro rows.
+        self.assertEqual(assess_identity(dict(rawMTPModel='epix - 47mm'), rows, [])['candidates'], [])
+
     def test_code_without_reported_model_name_stays_unresolved(self):
         event = dict(self.event, model=None, rawMTPModel=None)
         result = assess_identity(event, [self.device], self.mappings)
