@@ -371,7 +371,8 @@ tooltip and screen-reader label, owner decision 2026-10-11:
 `Supported` for Google Chrome on a verified system, `Testing` for other
 Chromium browsers or systems still being tested, `Browser not supported` for
 browsers without WebUSB such as Firefox and Safari, `System not supported` for
-phones and other systems); `Connection problems` (with the system and browser)
+phones and other systems); `Connection problems` (with the system, browser,
+watch models and Visits, the distinct page loads behind the attempts)
 and `Install and removal problems`, where every
 failed attempt is grouped and shown in plain words with its stored codes next to
 them (step, reason, browser error name, HTTP status, MTP response code) so the

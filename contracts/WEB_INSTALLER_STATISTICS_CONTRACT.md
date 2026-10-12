@@ -86,7 +86,7 @@ count, and shown only as the "Test records" line on the Web installer page.
 | `outcome` | one of the stage's outcomes below |
 | `osFamily` | optional, every stage: `macOS`, `Windows`, `Linux`, `ChromeOS`, `Android`, `iOS`, `Other` |
 | `osMajor` | optional integer 0–99, every stage |
-| `browserFamily` | optional, every stage: `Chrome`, `Edge`, `Opera`, `Brave`, `Firefox`, `Safari`, `Other` |
+| `browserFamily` | optional, every stage: `Chrome`, `Edge`, `Opera`, `Brave`, `Chromium` (a Chromium browser with no other brand), `Firefox`, `Safari`, `Other` |
 | `browserMajor` | optional integer 1–999, every stage |
 | `model` | optional watch model text as the watch reports it, lower case, `[a-z0-9 .+\-–/()]`, 1–80; not on `GATE` |
 | `firmware` | optional `\d{1,5}(\.\d{1,3})?`; not on `GATE` |
@@ -197,6 +197,10 @@ from every number below.
 - **Connection problems** and **Install and removal problems**: every failed
   attempt (counted or not), grouped by codes, with the codes shown next
   to their plain words so a failure can be traced to its cause.
+  Connection problems also show the watch models (the model text, or the
+  catalog model resolved from the USB model code when the failure came before
+  the watch reported its text), the MTP response code, and Visits: distinct
+  sessions (page loads), so one person's retries are not read as many people.
 - **On the server**: relay jobs. Requests exclude `REFUSED`; Failed counts
   `FAILED`, `REFUSED` and `INTERRUPTED`; preparation time is `readyAt −
   requestedAt`, sending time `finishedAt − readyAt` of `DELIVERED` jobs; data

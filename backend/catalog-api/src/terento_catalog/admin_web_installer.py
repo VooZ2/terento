@@ -177,13 +177,13 @@ def _watch_sections(watch: dict[str, Any], period: str) -> str:
         _td(_text(s["system"])), _td("<span class='web-installer-browser-row'>" + _browser(s["browser"]) + _support_icon(s["support"]) + "</span>"),
         _num(s["visits"]), _num(s["blocked"]),
     ] for s in watch["systems"]], "No visits in this period.")
-    connect = _table("Connection problems", ["Problem", "System", "Browser", "#Count", "Last"], [[
-        _td(_words(p["outcome"]) + _code(p["outcome"], p["error_name"])), _td(_text(p["os_family"])),
-        _td(_browser(p["browser_family"])),
-        _num(p["count"]), _td(_timestamp_markup(p["last"])),
+    detail = lambda p: [f"HTTP {p['http_status']}" if p.get("http_status") else None,
+                        f"MTP 0x{p['mtp_response']:04X}" if p.get("mtp_response") else None]
+    connect = _table("Connection problems", ["Problem", "System", "Browser", "Watch models", "#Visits", "#Count", "Last"], [[
+        _td(_words(p["outcome"]) + _code(p["outcome"], p["error_name"], *detail(p))), _td(_text(p["os_family"])),
+        _td(_browser(p["browser_family"])), _td(_text(", ".join(p["models"]))),
+        _num(p["sessions"]), _num(p["count"]), _td(_timestamp_markup(p["last"])),
     ] for p in watch["connectProblems"]], "No connection problems in this period.")
-    detail = lambda p: [f"HTTP {p['http_status']}" if p["http_status"] else None,
-                        f"MTP 0x{p['mtp_response']:04X}" if p["mtp_response"] else None]
     problems = _table("Install and removal problems", ["Action", "Step", "Problem", "Watch models", "#Count", "#After writing started", "Last"], [[
         _td("Remove" if p["stage"] == "REMOVE" else "Install or update"), _td(_words(p["failure_stage"])),
         _td(_words(p["reason"]) + _code(p["failure_stage"], p["reason"], p["error_name"], *detail(p))),
