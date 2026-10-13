@@ -220,6 +220,16 @@ from every number below.
   requestedAt`, sending time `finishedAt − readyAt` of `DELIVERED` jobs; data
   sent is the sum of `servedBytes`; sent through Cloudflare counts `DELIVERED`
   jobs with `servedVia` `proxied` or `mixed`.
+- **Export** (`/admin/web-installer.csv?period=…&timeZone=…`, Admin session
+  only): one CSV row per page event and relay job of the period, newest first,
+  test records excluded, no row limit. Columns: Time (Admin time zone), Record
+  (Page/Server), Step, Action, Result (stored outcome), Problem (plain words),
+  Failed step, Reason, Error, HTTP (`httpStatus`, or `providerHttpStatus` for a
+  job), MTP, Write started, Watch (model text), Catalog model, Firmware, USB,
+  System, Browser, Provider, Package, Region, Release, Size (bucket), Size
+  bytes, Sent bytes, Sent via, Writing s, Checking s, Preparing s, Sending s,
+  Visit (session ID), ID. An unknown value is empty, never 0; text starting
+  with `=`, `+`, `-` or `@` is prefixed with `'` so a spreadsheet does not run it.
 - **Dashboard Web switch**: Downloads = relay jobs per bucket of `requestedAt`
   (delivered, and failed on the server); Installations = counted map results
   per bucket of `occurredAt` (install succeeded, install failed, update
