@@ -3813,6 +3813,29 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
     return _layout("Health", content, sections={"health": health, "states": [(card["title"], card["status"], card["reason"]) for card in cards]})
 
 
+_ACTIVE_CLASS = " class='active'"
+
+
+def _source_switch(active: str, *, label: str) -> str:
+    """The All/App/Web switch (Font Awesome layer-group, laptop, globe) of a
+    GET form: Installations and Maps reload with ``source``; the Dashboard
+    variant swaps pre-rendered panels instead."""
+    buttons = "".join(
+        f"<button type='submit' name='source' value='{name}'{_ACTIVE_CLASS if name == active else ''} "
+        f"aria-pressed='{str(name == active).lower()}' aria-label='{name_label}'>{_admin_icon('source-' + name)}</button>"
+        for name, name_label in (("all", "All"), ("app", "App"), ("web", "Web"))
+    )
+    return f"<span class='overview-source-switch' role='group' aria-label='{html.escape(label, quote=True)}'>{buttons}</span>"
+
+
+def _installation_row_key(row: dict[str, Any]) -> str:
+    """Installations row identity: a catalog model joins its app and web
+    results; a web watch with no single model never joins an app identity."""
+    if row.get("web_reported") and not row.get("canonical_device_model_id"):
+        return "web:" + str(row["web_reported"])
+    return _identity_group_key(row)
+
+
 def dashboard_page(
     rows: list[dict[str, Any]], user: dict[str, Any], csrf_token: str,
     *, operations: list[dict[str, Any]] | None = None,
@@ -3820,6 +3843,8 @@ def dashboard_page(
     public_stats_enabled: bool = False,
     identity_devices: list[dict[str, Any]] | None = None,
     diagnostic_summary: dict[str, dict[str, int]] | None = None,
+    web_rows: list[dict[str, Any]] | None = None,
+    source: str = "all",
 ) -> bytes:
     # The statistics view may retain a zero-attempt identity row so raw
     # pre-install evidence remains queryable, but it is not an installation
@@ -3828,17 +3853,29 @@ def dashboard_page(
         operations or [], resolved_operations or [],
     )
     summary_source = diagnostic_summary
+    # Web installs join the model rows (owner decision 2026-10-13): All adds
+    # App and Web, a watch that matches no single model is its own Web row.
+    # Evidence stays app-only, so the app successes are kept apart.
+    source = source if web_rows is not None and source in {"all", "app", "web"} else "app"
+    app_rows = [{**row, "app_successful_install_count": int(row.get("successful_install_count") or 0)}
+                for row in rows] if source != "web" else []
+    web_source_rows = [
+        {**row, "web_only": True, "app_successful_install_count": 0, "web_reported": row.get("reported_model"),
+         "model": row.get("reported_model") or row.get("canonical_device_model_id")}
+        for row in (web_rows or [])
+    ] if source != "app" else []
     # The view keeps a legacy row and an unresolved row for one reported
     # identity; both carry that identity's open problems, so render one row.
     merged: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        key = _identity_group_key(row)
+    for row in [*app_rows, *web_source_rows]:
+        key = _installation_row_key(row)
         if key not in merged:
             merged[key] = dict(row)
             continue
         first = merged[key]
+        first["web_only"] = bool(first.get("web_only")) and bool(row.get("web_only"))
         for count in ("attempted_install_count", "successful_install_count", "failed_install_count",
-                      "prewrite_failure_count"):
+                      "prewrite_failure_count", "app_successful_install_count"):
             if count in row or count in first:
                 first[count] = int(first.get(count) or 0) + int(row.get(count) or 0)
         for latest in ("last_success", "last_failure", "last_evidence"):
@@ -3858,11 +3895,19 @@ def dashboard_page(
         )
     ]
     latest_copy = "All time · Model evidence"
+    source_form = (
+        "<form class='overview-period-form installation-source-form' method='get' action='/admin/installations'>"
+        f"{_source_switch(source, label='Installations source')}</form>"
+    ) if web_rows is not None else ""
+    heading = (
+        f'<div class="heading-row installation-heading"><div><h1>Installations</h1></div>'
+        f'<div class="installation-heading-tools"><p class="page-meta">{latest_copy}</p>{source_form}</div></div>'
+    )
     if not rows:
         content = f"""
           {_admin_header(user, csrf_token, active='installations')}
           <main class="dashboard" id="main-content">
-            <div class="heading-row installation-heading"><div><h1>Installations</h1></div><p class="page-meta">{latest_copy}</p></div>
+            {heading}
             <p class='empty'>No installation evidence yet.</p>
           </main>
         """
@@ -3875,8 +3920,13 @@ def dashboard_page(
         f"<option value='{status.lower()}'>{status.title()}</option>"
         for status in status_values
     )
+    def summary_for(row: dict[str, Any]) -> dict[str, int]:
+        # Web results have no review work: a Web row never takes the open
+        # problems or identity reviews of an app identity.
+        return {} if row.get("web_only") else diagnostic_summary.get(_identity_group_key(row), {})
+
     def metric(row: dict[str, Any], summary_key: str, row_key: str) -> int:
-        summary = diagnostic_summary.get(_identity_group_key(row), {})
+        summary = summary_for(row)
         if row_key in row:
             return int(row[row_key] or 0)
         return int(summary[summary_key]) if summary_key in summary else int(row.get(row_key) or 0)
@@ -3886,14 +3936,15 @@ def dashboard_page(
     failures = sum(metric(row, "failed", "failed_install_count") for row in rows)
     # Sum only rendered identities (each identity once) so the KPI equals the
     # column total; with SQL counts it also equals Dashboard Installation problems.
+    app_identities = dict.fromkeys(_identity_group_key(row) for row in rows if not row.get("web_only"))
     open_errors = sum(
         int((diagnostic_summary.get(identity) or {}).get("open_errors") or 0)
-        for identity in dict.fromkeys(_identity_group_key(row) for row in rows)
+        for identity in app_identities
     )
     success_rate = (successes / attempts * 100) if attempts else None
     identity_pending = sum(
         int((diagnostic_summary.get(identity) or {}).get("identity_pending") or 0)
-        for identity in dict.fromkeys(_identity_group_key(row) for row in rows)
+        for identity in app_identities
     )
     review_identities = (
         f"<a class='secondary-button identity-review-link' href='{IDENTITY_REVIEW_PATH}'>"
@@ -3903,7 +3954,7 @@ def dashboard_page(
     table_rows = "".join(
         _statistics_row(
             row,
-            diagnostic_summary.get(_identity_group_key(row), {}),
+            summary_for(row),
             catalog_device=catalog_by_id.get(str(row.get("canonical_device_model_id") or "")),
         )
         for row in rows
@@ -3919,7 +3970,7 @@ def dashboard_page(
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
-        <div class="heading-row installation-heading"><div><h1>Installations</h1></div><p class="page-meta">{latest_copy}</p></div>
+        {heading}
         <section class="admin-card installation-kpis" aria-label="Installation summary">
           {_metric_row([
               # No scope chips under these numbers (owner decision 2026-10-06).
@@ -4881,6 +4932,8 @@ def map_statistics_page(
     )
     statistics = dict(statistics)
     selected = selected_filters or {}
+    source = str(statistics.get("source") or "all")
+    source = source if source in {"all", "app", "web"} else "all"
     event_detail_open = " open" if selected.get("eventId") else ""
     has_event_data = bool(rows)
     has_all_time_data = bool(all_time_summary.get("hasEventData", has_event_data)) or has_event_data
@@ -5029,6 +5082,9 @@ def map_statistics_page(
         f"<summary id='map-statistics-event-summary'>Events <span class='disclosure-meta'>· {event_status}</span></summary>"
         f"<div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>"
     )
+    if source == "web":
+        # Event detail lists app reports only.
+        events = event_status = ""
     empty_notice = "" if has_event_data else _section_card(
         "No activity", _empty_state("empty", "No map activity for this scope."),
         card_id="map-statistics-empty", css="map-statistics-empty",
@@ -5037,7 +5093,7 @@ def map_statistics_page(
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
         <div class='heading-row'><div><h1>Maps</h1></div></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'>{statistics_period_filter}<label><span class='sr-only'>Provider</span><select id='map-statistics-provider' data-admin-dropdown name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' data-admin-dropdown name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' data-admin-dropdown name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'><input type='hidden' name='source' value='{source}'>{_source_switch(source, label='Maps source')}{statistics_period_filter}<label><span class='sr-only'>Provider</span><select id='map-statistics-provider' data-admin-dropdown name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' data-admin-dropdown name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' data-admin-dropdown name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
         {metrics_section if has_all_time_data else ""}
         {empty_notice}
         {"" if not has_event_data else coverage + provider_table + ranking + events}
@@ -7984,21 +8040,39 @@ def _statistics_row(
     successful = int(row.get("successful_install_count", summary.get("successful", 0)) or 0)
     failed = int(row.get("failed_install_count", summary.get("failed", 0)) or 0)
     open_errors = int(summary.get("open_errors") or 0)
-    status_value = _row_compatibility_status(row)
-    status = status_value.value if status_value else ""
+    # Evidence stays app-only: web successes never make a model Tested, and a
+    # Web-only row shows the model's catalog Evidence (as on Devices).
+    unmatched_web = bool(row.get("web_only") and not row.get("canonical_device_model_id"))
+    if unmatched_web:
+        model = str(row.get("web_reported") or model)
+        status = ""
+    elif row.get("web_only"):
+        status = str((catalog_device or {}).get("evidenceStatus") or "")
+    else:
+        status_value = _row_compatibility_status(
+            {**row, "successful_install_count": row.get("app_successful_install_count", successful)})
+        status = status_value.value if status_value else ""
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure", "last_evidence")), default="")
-    diagnostics_url = _model_detail_url(row)
+    diagnostics_url = "" if unmatched_web else _model_detail_url(row)
     pending_count = int(summary.get("identity_pending") or 0)
     model_cell = html.escape(model)
     if _is_historical_catalog(catalog_device if catalog_device is not None else row):
         model_cell += " " + _historical_catalog_indicator()
-    if variant == "Historical":
+    if variant == "Historical" or unmatched_web:
         variant = "—"
-    model_cell = (
-        f"<a class='device-model-button' href='{html.escape(diagnostics_url, quote=True)}'>"
-        f"{model_cell}</a>"
-    )
+    if unmatched_web:
+        # A web watch that matches no single catalog model: the name it
+        # reported, as plain text with the Web icon (no model page).
+        model_cell = (
+            f"<span class='installation-reported-web'>{model_cell}"
+            f"<span class='activity-source-web' role='img' aria-label='Web'>{_admin_icon('source-web')}</span></span>"
+        )
+    else:
+        model_cell = (
+            f"<a class='device-model-button' href='{html.escape(diagnostics_url, quote=True)}'>"
+            f"{model_cell}</a>"
+        )
     if pending_count:
         # The badge opens the Identity review queue at this reported identity;
         # the model link keeps its own destination.
@@ -8015,7 +8089,7 @@ def _statistics_row(
     cells = (
         ("", model_cell),
         ("", html.escape(variant)),
-        ("column-status", _status_badge(status)),
+        ("column-status", "<span class='muted-value'>—</span>" if unmatched_web else _status_badge(status)),
         ("column-number numeric", html.escape(str(attempted))),
         ("column-number numeric", html.escape(str(successful))),
         ("column-number numeric", _admin_error_counter(failed)),
@@ -8597,6 +8671,7 @@ def _dashboard_script() -> str:
         const state = {search: search.value, status: status.value, sort: sort.value};
         try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) { /* optional */ }
         const stateQuery = new URLSearchParams();
+        if (['app', 'web'].includes(parameters.get('source'))) stateQuery.set('source', parameters.get('source'));
         if (search.value) stateQuery.set('search', search.value);
         if (selectedQuickFilter !== 'all') stateQuery.set('state', selectedQuickFilter);
         if (status.value !== 'all') stateQuery.set('status', status.value);
@@ -10606,6 +10681,7 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
 /* One App/Web switch beside the period picker, in the picker's height (owner 2026-10-11). */
 .overview-period-form:has(.overview-source-switch){display:flex;align-items:center;gap:8px}
+.installation-heading-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.installation-heading-tools .page-meta{margin:0}.installation-source-form{display:flex;margin:0}.installation-reported-web{display:inline-flex;align-items:center;gap:4px}.installation-reported-web .activity-source-web{margin-left:0}@media(max-width:760px){.installation-heading-tools{justify-content:flex-start}}
 .overview-source-switch{display:inline-flex;flex:none;box-sizing:border-box;height:var(--admin-control-height);padding:3px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface-muted)}
 .overview-source-switch button{min-height:0;height:100%;padding:0 14px;border:0;border-radius:calc(var(--admin-control-radius) - 3px);background:transparent;color:var(--secondary);font:600 var(--admin-control-font-size)/1 var(--font-ui);cursor:pointer}
 .overview-source-switch button.active{background:var(--surface);color:var(--graphite);box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 8%,transparent)}

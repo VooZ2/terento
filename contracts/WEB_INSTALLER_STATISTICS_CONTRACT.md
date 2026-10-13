@@ -49,18 +49,26 @@ shared install statistics from the start, like app results.
   assignment) and can remove it again (`Unassign` on the model page). Every
   decision is audited, and a record with a decision is never resolved
   automatically again. A manual assignment never teaches a USB code.
-- **Where they appear**: Dashboard charts (All, the default, App and Web
-  switch), Dashboard Activity (web rows marked with the Web icon), Maps page
-  and providers (combined numbers), Devices list and model pages (App, Web and
-  All rows; the model page Installation history lists each counted web
-  install with the Web icon), and the public Compatibility JSON and watch cards
+- **Where they appear**: Dashboard charts, Installations and Maps (each with
+  the All, the default, App and Web switch; owner decision 2026-10-13, which
+  replaces the combined-only Maps page), Dashboard Activity (web rows marked
+  with the Web icon), Devices list and model pages (App, Web and All rows; the
+  model page Installation history lists each counted web install with the Web
+  icon), and the public Compatibility JSON and watch cards
   (`successfulInstallations` = app + web, with `appSuccessfulInstallations` and
   `webSuccessfulInstallations`).
+- **Same number everywhere**: every web install count is the
+  `web_installer_map_result` population (operation `install`, all time or the
+  selected period), so the Web part of the Dashboard, Installations and Maps
+  agree. A web install whose watch matches no single catalog model counts in
+  those totals (on Installations as its own row named by the reported text,
+  with the Web icon) but never for a model (Devices, model pages, public
+  Compatibility).
 - **What stays app-only**: the app read models and Event detail, evidence
   status (Tested/Verified), reconnect-verified installs, distinct-watch counts,
   Needs attention (except its Identity review count, which adds the counted
-  web installs with no model), the first-run funnel. Web results never grant
-  or revoke write authority.
+  web installs with no model) and Open problems, the first-run funnel. Web
+  results never grant or revoke write authority.
 - **Lab and public**: until the public web installer launches at
   `terento.app/install/`, the lab page's records count. After that launch the
   lab installer server marks all its records `isTest: true`.

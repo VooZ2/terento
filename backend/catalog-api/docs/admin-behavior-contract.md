@@ -594,7 +594,17 @@ another report or nearby timestamp.
 ### Installations
 
 Installations is all-time model evidence and is visibly labelled `All time ·
-Model evidence`. Its summary tiles, in order, are Attempts, Successful, Failed,
+Model evidence`. Beside that label the Dashboard `All`/`App`/`Web` switch
+(same icons) reloads the page with `source` (owner decision 2026-10-13; All is
+the default): App is the app evidence below, Web the counted web installs
+([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)),
+and All adds both, so a model's row sums its app and web installs and the Web
+part of the tiles equals the Dashboard and Maps web installs for all time. A
+web watch that matches no single catalog model is its own row: the reported
+text with the Web icon, no model link, Evidence `—`. Evidence stays app-only
+(a Web-only model row shows the model's catalog Evidence, as on Devices), and
+web rows carry no Open problems or Identity review.
+Its summary tiles, in order, are Attempts, Successful, Failed,
 Success rate (all time) and Open problems (now), shown without scope chips under
 the numbers (owner decision 2026-10-06; the page is the all-time evidence view). A positive
 Failed value uses the danger color; a measured zero stays neutral. The status
@@ -610,9 +620,10 @@ Model history rows marked open are the per-map results of those operations.
 Maps applies the same fresh main-map write-boundary contract. A current
 map-side failure with no reliable write evidence, a pre-write failure, and an
 optional-component result stay in raw Event detail but do not enter the Maps
-install denominator. Maps and Installations can still differ because their
-independently delivered telemetry populations are attributed differently;
-neither view invents the missing stream or a model identity.
+install denominator. The App parts of Maps and Installations can still differ
+because their independently delivered telemetry populations are attributed
+differently (map-usage events carry no watch model); neither view invents the
+missing stream or a model identity. Their Web parts are the same population.
 
 All, Failed, Open problems, Identity review and Successful quick filters retain
 their separate meanings; Identity review shows identities with a pending
@@ -763,6 +774,14 @@ multiply attempts. Provider, map, region, and date filters define the summary
 population; event type, outcome, exact event, and detail pagination scope only
 the collapsed Events disclosure. Initial HTML and asynchronous JSON use the same
 server summary.
+
+The Maps filter bar starts with the Dashboard `All`/`App`/`Web` switch (owner
+decision 2026-10-13, replacing the combined-only Maps page; All is the
+default). It reloads the page with `source`, kept by the period, provider and
+detail page links: All sums app and web results, App shows app results only,
+Web the web installer results only (counted map results as installs and
+updates, finished relay jobs as downloads), in every tile, card and trend.
+Event detail lists app reports only, so the Web view omits it.
 
 Maps reads top to bottom: the filter bar; Downloads, Installs and Updates tiles
 for the selected period (each with failed count and rate); then Countries (world

@@ -403,6 +403,13 @@ identity, the KPI is the sum of the rendered rows, and an identity with an open
 problem stays listed even with zero attempts. Positive Failed values use the
 shared danger styling.
 
+`source` (`all`, the default, `app` or `web`; any other value is All) selects
+the population: app evidence (`compatibility_model_statistics`), counted web
+installs (`Database.web_installer_installation_rows()`: the
+`web_installer_map_result` install results per catalog model, and per reported
+watch text while the watch matches no single model), or both summed per row.
+Evidence, Open problems and Identity review stay app-only.
+
 The page supports All, Failed, Open problems, Identity review and Successful
 quick filters (also as `?state=identity-pending`) plus sorting and search. When
 an identity is pending, `Review identities` and each row's Identity review badge
@@ -1009,7 +1016,10 @@ existing canonical region/country metadata. The technical IDs remain available.
 Supported query filters are `provider`, `map`, `region`,
 `dateFrom`, `dateTo`, `eventType`, and `outcome`, plus `period` (`today`, `24h`,
 `7d`, `30d` or `all`, default `all`; any other value is `400
-invalid_period_filter`) and `timeZone`. A non-`all` period replaces `dateFrom`
+invalid_period_filter`), `timeZone` and `source` (`all`, the default: app and
+web installer rows summed; `app`; or `web`; any other value is `400
+invalid_source_filter`; the response echoes it as `source`). Event detail rows
+are app reports only, so `source=web` returns none. A non-`all` period replaces `dateFrom`
 with its start; `today` starts at midnight in `timeZone` (absent or unknown is
 UTC). `provider`, `map`, `region`,
 and dates define the KPI, coverage, and popularity population. `eventType` and
@@ -1093,7 +1103,7 @@ event ID. Neither administrative action scope merges per-map statistics.
 
 Returns the authenticated, no-store/noindex Maps page for the aggregate read
 model. It supports Today, Last 24 hours, Last 7 days, Last 30 days, and All time
-(default All time), plus
+(default All time), the All/App/Web `source` switch (default All), plus
 provider, map, region, event-type, outcome, and exact `eventId` detail filters.
 
 The visible order is the period tiles (Downloads, Installs, Updates from
