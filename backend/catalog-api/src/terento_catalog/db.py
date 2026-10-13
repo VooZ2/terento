@@ -4862,6 +4862,29 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def web_installer_installation_rows(self) -> list[dict[str, Any]]:
+        """All-time counted web installs in the Installations row shape: one
+        row per catalog model, and one per reported watch text while the watch
+        matches no single model (counted in totals, never for a model)."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT canonical_device_model_id,
+                       CASE WHEN canonical_device_model_id IS NULL THEN COALESCE(NULLIF(trim(model), ''), 'Unknown') END
+                           AS reported_model,
+                       count(*) AS attempted_install_count,
+                       count(*) FILTER (WHERE result = 'SUCCEEDED') AS successful_install_count,
+                       count(*) FILTER (WHERE result = 'FAILED') AS failed_install_count,
+                       max(occurred_at) FILTER (WHERE result = 'SUCCEEDED') AS last_success,
+                       max(occurred_at) FILTER (WHERE result = 'FAILED') AS last_failure,
+                       max(occurred_at) AS last_evidence
+                FROM web_installer_map_result
+                WHERE operation = 'install'
+                GROUP BY 1, 2
+                """
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def web_installer_device_results(self, device_id: str) -> list[dict[str, Any]]:
         """Counted web install results of one catalog model, newest first: the
         web rows of the model page Installation history (same population as
@@ -5652,6 +5675,7 @@ class Database:
         period: str,
         time_zone: str = "UTC",
         include_web: bool = False,
+        web_only: bool = False,
     ) -> tuple[list[dict[str, Any]], str]:
         now = datetime.now(timezone.utc)
         until = filters.get("dateTo") or now
@@ -5662,10 +5686,11 @@ class Database:
             bucket = all_time_bucket(until - since.astimezone(timezone.utc))
         else:
             bucket = PERIOD_BUCKETS.get(period, "hour")
-        rows = [dict(row) for row in self.map_statistics(filters, trend_bucket=bucket, time_zone=time_zone)]
-        if include_web:
-            # The Maps page shows app and web results in one trend (owner
-            # decision 2026-10-11); the Dashboard App view stays app-only.
+        rows = [] if web_only else [
+            dict(row) for row in self.map_statistics(filters, trend_bucket=bucket, time_zone=time_zone)]
+        if include_web or web_only:
+            # Maps All sums app and web results, Maps Web shows web only
+            # (owner decisions 2026-10-11 and 2026-10-13); App stays app-only.
             rows = combine_trend_rows(
                 rows, self.web_installer_map_statistics(filters, trend_bucket=bucket, time_zone=time_zone),
                 bucket=bucket, time_zone=time_zone,

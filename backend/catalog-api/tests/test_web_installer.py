@@ -3,6 +3,7 @@ import csv
 import io
 import json
 import os
+import re
 import subprocess
 import threading
 import unittest
@@ -15,8 +16,10 @@ from uuid import uuid4
 from pglite_support import PGliteTestCase
 from test_compatibility_evidence import event as compatibility_event
 from terento_catalog.admin import (
-    _admin_device_payload, _admin_timezone_script, _overview_activity_device, device_detail_page, hash_password,
+    _admin_device_payload, _admin_timezone_script, _overview_activity_device, dashboard_page, device_detail_page,
+    hash_password, map_statistics_page,
 )
+from terento_catalog.map_events import MapEventValidationError
 from terento_catalog.admin_web_installer import WORDS, _grouped_card_script, web_installer_csv, web_installer_page
 from terento_catalog.compatibility_evidence import validate_event as validate_compatibility_event
 from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
@@ -613,6 +616,76 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual(self.db.resolve_web_installer_identities()["resolved"], 5)
         self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_event "
                                   "WHERE canonical_device_model_id = 'garmin-fenix-8-47-amoled'")[0]["n"], 5)
+
+    def test_installations_and_maps_show_all_app_and_web_with_equal_web_totals(self):
+        # Owner 2026-10-13: Installations, Maps and the Dashboard count web
+        # installs the same way, with an All/App/Web switch.
+        device_id = "garmin-epix-pro-gen-2-47"
+        app = validate_compatibility_event(encode(compatibility_event(
+            id=str(uuid4()), timestamp=(datetime.now(timezone.utc) - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            model="epix Pro (Gen 2)", family="epix", usbProductID=0x50D8,
+            compatibilityIdentity="epix Pro (Gen 2) · 47 mm", variant="47 mm", caseSizeMm=47)))
+        self.assertTrue(self.db.insert_compatibility_event(app))
+        self.sql("UPDATE compatibility_evidence_event SET canonical_device_model_id = %s, "
+                 "identity_resolution_state = 'RESOLVED' WHERE event_id = %s", (device_id, app["id"]))
+        at = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        result = dict(stage="MAP_RESULT", operation="install", provider="bbbike",
+                      packageId="bbbike-north-america-us-washington-bbbike-latin1", occurredAt=at)
+        self.forward(event(**result, outcome="SUCCEEDED", model="epix pro - 47mm", writeStarted=True))
+        self.forward(event(**result, outcome="FAILED", model="epix pro - 47mm", writeStarted=True, reason="CONNECTION_LOST",
+                           failureStage="WRITE"))
+        # A watch with no single catalog model counts in totals as its own Web row.
+        self.forward(event(**result, outcome="SUCCEEDED", model="fenix 7x pro", writeStarted=True))
+        # Never counted: a download failure and a test record.
+        self.forward(event(**result, outcome="FAILED", model="fenix 7x pro", writeStarted=False,
+                           failureStage="DOWNLOAD", reason="DOWNLOAD_STOPPED"))
+        self.forward(event(**result, outcome="SUCCEEDED", model="epix pro - 47mm", writeStarted=True, isTest=True))
+
+        web_rows = self.db.web_installer_installation_rows()
+        counts = {(row["canonical_device_model_id"], row["reported_model"]): (
+            row["attempted_install_count"], row["successful_install_count"], row["failed_install_count"]) for row in web_rows}
+        self.assertEqual(counts, {(device_id, None): (2, 1, 1), (None, "fenix 7x pro"): (1, 1, 0)})
+
+        def installations(source):
+            body = dashboard_page(
+                self.service.compatibility_statistics(), {"username": "test"}, "csrf",
+                diagnostic_summary=self.service.compatibility_diagnostic_summary(),
+                identity_devices=self.service.admin_devices()["devices"], web_rows=web_rows, source=source,
+            ).decode()
+            tiles = {key: int(value) for key, value in re.findall(
+                r"data-stat='(attempts|successful|failed)'[^>]*>(\d+)<", body)}
+            return tiles, body
+
+        app_tiles, app_body = installations("app")
+        web_tiles, web_body = installations("web")
+        all_tiles, all_body = installations("all")
+        self.assertEqual(web_tiles, {"attempts": 3, "successful": 2, "failed": 1})
+        self.assertEqual(all_tiles, {key: app_tiles[key] + web_tiles[key] for key in all_tiles})
+        self.assertIn("fenix 7x pro<span class='activity-source-web'", all_body)
+        self.assertNotIn("fenix 7x pro", app_body)
+        self.assertIn("name='source' value='web' class='active' aria-pressed='true'", web_body)
+        # The epix row joins its app and web results; Evidence stays app-only.
+        epix = re.search(r"<tr class='evidence-model-row'[^>]*data-identity='canonical:garmin-epix-pro-gen-2-47'[^>]*>", all_body).group(0)
+        self.assertIn("data-attempts='3'", epix)
+
+        # Maps: All sums both sources, App and Web show one; Web equals the Installations Web install totals.
+        def maps(source):
+            summary = self.service.map_statistics({"period": "24h", "source": source})["summary"]
+            return summary["completedInstalls"], summary["failedInstalls"]
+
+        self.assertEqual(maps("web"), (web_tiles["successful"], web_tiles["failed"]))
+        self.assertEqual(maps("all"), tuple(a + w for a, w in zip(maps("app"), maps("web"))))
+        self.assertEqual(self.service.map_statistics({"period": "24h", "source": "web"})["detailRows"], [])
+        with self.assertRaises(MapEventValidationError):
+            self.service.map_statistics({"source": "phone"})
+        page = map_statistics_page(self.service.map_statistics({"period": "24h", "source": "web"}), [],
+                                   {"username": "test"}, "csrf").decode()
+        self.assertIn("<input type='hidden' name='source' value='web'>", page)
+        self.assertIn("name='source' value='web' class='active' aria-pressed='true'", page)
+        self.assertNotIn("id='map-statistics-event-detail'", page)
+        # Dashboard Web shows the same web installs.
+        web = self.service.admin_overview("24h")["web"]
+        self.assertEqual((web["completedInstallCount"], web["failedInstallCount"]), maps("web"))
 
     def test_epix_pro_web_success_joins_the_47_mm_row_next_to_its_app_successes(self):
         # Production 2026-10-11: a Linux install on a watch reporting "epix pro - 47mm"
