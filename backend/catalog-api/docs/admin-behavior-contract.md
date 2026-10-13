@@ -549,7 +549,8 @@ never counted twice.
 
 A failed installation diagnostic and GitHub handling linked to one operation are alternative
 states of one task; linking an issue moves the task between categories and does
-not increase the total. Identity review is a separate task and publication review
+not increase the total. Identity review is a separate task (app operations plus
+counted web installs with no catalog model) and publication review
 is counted per exact model. The GitHub queue and its badge also include each active,
 nonlocal linked update diagnostic by exact report UUID. Unlinked update failures
 remain in update diagnostics and do not enter installation issues. Resolved work
@@ -665,7 +666,7 @@ not identifiable, not a provider download failure) and the same operation
 unit, so they agree except when one operation reports results under two
 different reported identities, which then appears under each identity.
 
-Counted web installs with no catalog model (at most 200, newest first) join
+Counted web installs with no catalog model (all of them, newest first) join
 the same queue: one group per reported watch text, marked `Web installer` with
 the Web icon, one item per install (Date, Map, Result, reason, `USB` code when
 reported) and the same inline identity form keyed `web:<event id>`; the Needs attention

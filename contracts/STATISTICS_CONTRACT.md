@@ -51,8 +51,9 @@ they are aggregated separately and added next to app results, as App, Web and
 All on the Dashboard charts and model pages, combined on the Maps page and on
 public watch cards (with each part shown). The app read models defined below
 stay app-only, and web records never change evidence status (Tested/Verified),
-reconnect-verified installs, distinct-watch counts, Needs attention or write
-authority. User-sent support
+reconnect-verified installs, distinct-watch counts, Needs attention (except
+the Identity review count, which adds counted web installs with no model) or
+write authority. User-sent support
 reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
 statistical population at all: they are review work only and never change any
 count, rate or chart. Optional installation-report `inventoryMetrics`

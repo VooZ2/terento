@@ -4694,10 +4694,11 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def web_installer_identity_review(self, *, limit: int = 200) -> list[dict[str, Any]]:
+    def web_installer_identity_review(self) -> list[dict[str, Any]]:
         """Counted web installs with no catalog model, newest first, each with
         the current identity assessment of its model text and USB code (the
-        rows of the Identity review web items)."""
+        rows of the Identity review web items). Every row, like the app queue,
+        so the page agrees with the Needs attention count."""
         with self.connection() as connection:
             rows = list(connection.execute(
                 f"""
@@ -4711,8 +4712,8 @@ class Database:
                 LEFT JOIN map_package AS mp ON mp.id = e.package_id
                 LEFT JOIN map_provider AS p ON p.id = e.provider
                 WHERE w.canonical_device_model_id IS NULL AND w.operation = 'install'
-                ORDER BY e.occurred_at DESC LIMIT %s
-                """, (limit,),
+                ORDER BY e.occurred_at DESC
+                """
             ).fetchall())
             if not rows:
                 return []

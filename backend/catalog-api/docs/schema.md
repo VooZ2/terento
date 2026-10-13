@@ -726,6 +726,8 @@ administrator assigned the model in Identity review) and adds
 `MANUAL_ASSIGN`, `LEAVE_UNRESOLVED`) with the previous and new model, the
 previous resolution, reason, optional note, administrator and time. A record
 with any decision is never resolved by the scheduler again.
-Rollback-compatible: the previous revision never writes `MANUAL`, never reads
-the audit table and only re-resolves records with no model or a learned USB
-code.
+Rollback: the previous revision never writes `MANUAL` and only re-resolves
+records with no model or a learned USB code, so manual assignments stay. It
+does not read the audit table: a record an administrator unassigned is
+resolved again by the automatic rules, which assign a model only where they
+name exactly one.

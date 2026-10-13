@@ -58,8 +58,9 @@ shared install statistics from the start, like app results.
   `webSuccessfulInstallations`).
 - **What stays app-only**: the app read models and Event detail, evidence
   status (Tested/Verified), reconnect-verified installs, distinct-watch counts,
-  Needs attention, the first-run funnel. Web results never grant or revoke
-  write authority.
+  Needs attention (except its Identity review count, which adds the counted
+  web installs with no model), the first-run funnel. Web results never grant
+  or revoke write authority.
 - **Lab and public**: until the public web installer launches at
   `terento.app/install/`, the lab page's records count. After that launch the
   lab installer server marks all its records `isTest: true`.

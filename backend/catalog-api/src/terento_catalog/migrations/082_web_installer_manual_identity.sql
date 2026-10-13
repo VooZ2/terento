@@ -2,10 +2,12 @@
 -- in Identity review, like an app result (owner request 2026-10-13;
 -- contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md).
 --
--- Additive and rollback-compatible: one CHECK widened with MANUAL and one new
--- audit table. The previous API revision never writes MANUAL and only
--- re-resolves rows with no model or a learned USB code, so it keeps every
--- manual assignment.
+-- Additive: one CHECK widened with MANUAL and one new audit table. The
+-- previous API revision never writes MANUAL and only re-resolves rows with no
+-- model or a learned USB code, so it keeps every manual assignment. Rollback
+-- limit: it does not read the audit table, so a record an administrator
+-- unassigned (no model) is resolved again by the automatic rules, which can
+-- assign a model only where they now name exactly one.
 ALTER TABLE web_installer_event
     DROP CONSTRAINT IF EXISTS web_installer_event_identity_resolution_check,
     ADD CONSTRAINT web_installer_event_identity_resolution_check
