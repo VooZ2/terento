@@ -20,7 +20,7 @@ from terento_catalog.admin import (
     hash_password, map_statistics_page,
 )
 from terento_catalog.map_events import MapEventValidationError
-from terento_catalog.admin_web_installer import _grouped_card_script, web_installer_csv, web_installer_page
+from terento_catalog.admin_web_installer import WORDS, _grouped_card_script, web_installer_csv, web_installer_page
 from terento_catalog.compatibility_evidence import validate_event as validate_compatibility_event
 from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
 from terento_catalog.migrate import _statements
@@ -81,6 +81,9 @@ class ValidationTests(unittest.TestCase):
                 extra = {"operation": "install"} if stage == "MAP_RESULT" else {}
                 self.assertEqual(validate_event(encode(event(stage=stage, outcome=outcome, **extra)))["outcome"], outcome)
         self.invalid(event(outcome="CONNECTED"), "invalid_outcome")
+        # Every connection outcome has its plain words in the Admin, so none
+        # reads as "Other connection error" by accident.
+        self.assertEqual(sorted(outcome for outcome in STAGES["CONNECT"] - {"CONNECTED"} if outcome not in WORDS), [])
         self.invalid(event(stage="INSTALL"), "invalid_stage")
         # Anything the contract does not list is refused, never dropped.
         self.invalid(event(serial="123"), "unknown_fields")
