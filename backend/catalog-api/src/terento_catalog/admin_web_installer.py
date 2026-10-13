@@ -6,8 +6,13 @@ traced to its cause. Read-only; a separate population from app statistics.
 
 from __future__ import annotations
 
+import csv
 import html
+import io
+from datetime import datetime
 from typing import Any
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 from .admin import (
     _ADMIN_NONCE_PLACEHOLDER,
@@ -478,6 +483,82 @@ def _history(recent: list[dict[str, Any]]) -> str:
     )
 
 
+# The export (Download CSV): one row per stored record of the period, page
+# events and server requests together, newest first, with every stored field
+# so problems can be searched in a spreadsheet. Test records are not included.
+CSV_STEPS = {"GATE": "Page open", "CONNECT": "Connection", "MAP_RESULT": "Map", "REMOVE": "Removal",
+             "RECOVERY": "Recovery"}
+CSV_COLUMNS = ("Record", "Step", "Action", "Result", "Problem", "Failed step", "Reason", "Error", "HTTP", "MTP",
+               "Write started", "Watch", "Catalog model", "Firmware", "USB", "System", "Browser", "Provider", "Package",
+               "Region", "Release", "Size", "Size bytes", "Sent bytes", "Sent via", "Writing s", "Checking s",
+               "Preparing s", "Sending s", "Visit", "ID")
+
+
+def _csv_cell(value: Any) -> Any:
+    """Plain values; text that a spreadsheet would read as a formula is quoted."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, float):
+        return round(value, 1)
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
+def _csv_event(row: dict[str, Any]) -> dict[str, Any]:
+    failed = row["outcome"] not in ("SUCCEEDED", "CONNECTED", "PASSED", "PASSED_TESTING_PLATFORM", "FINISHED")
+    problem = row["outcome"] if row["stage"] in ("CONNECT", "GATE", "RECOVERY") else row.get("reason")
+    action = ("Remove" if row["stage"] == "REMOVE" else
+              ("Update" if row.get("operation") == "update" else "Install") if row["stage"] == "MAP_RESULT" else None)
+    usb = (f"{row['usb_vendor_id']:04x}:{row['usb_product_id']:04x}"
+           if row.get("usb_vendor_id") is not None and row.get("usb_product_id") is not None else None)
+    return {
+        "Record": "Page", "Step": CSV_STEPS.get(row["stage"], row["stage"]), "Action": action, "Result": row["outcome"],
+        "Problem": WORDS.get(problem, problem) if failed and problem else None,
+        "Failed step": row.get("failure_stage"), "Reason": row.get("reason"), "Error": row.get("error_name"),
+        "HTTP": row.get("http_status"),
+        "MTP": f"0x{row['mtp_response']:04X}" if row.get("mtp_response") is not None else None,
+        "Write started": row.get("write_started"), "Watch": row.get("model"), "Catalog model": row.get("device_name"),
+        "Firmware": row.get("firmware"), "USB": usb, "System": joined(row.get("os_family"), row.get("os_major")),
+        "Browser": joined(row.get("browser_family"), row.get("browser_major")), "Provider": row.get("provider"),
+        "Package": row.get("package_id"), "Size": row.get("size_bucket"), "Writing s": row.get("write_s"),
+        "Checking s": row.get("verify_s"), "Visit": row.get("session_id"), "ID": row.get("event_id"),
+    }
+
+
+def _csv_job(job: dict[str, Any]) -> dict[str, Any]:
+    ready = job.get("ready_at")
+    return {
+        "Record": "Server", "Step": "Map request", "Result": job["outcome"],
+        "Problem": WORDS.get(job["reason"], job["reason"]) if job.get("reason") else None, "Reason": job.get("reason"),
+        "HTTP": job.get("provider_http_status"), "Provider": job["provider"], "Package": job["package_id"],
+        "Region": job.get("region"), "Release": job.get("release"), "Size bytes": job.get("size_bytes"),
+        "Sent bytes": job.get("served_bytes"), "Sent via": job.get("served_via"),
+        "Preparing s": (ready - job["requested_at"]).total_seconds() if ready else None,
+        "Sending s": (job["finished_at"] - ready).total_seconds() if ready and job["outcome"] == "DELIVERED" else None,
+        "ID": job["job_id"],
+    }
+
+
+def web_installer_csv(events: list[dict[str, Any]], jobs: list[dict[str, Any]], time_zone: str) -> bytes:
+    zone = ZoneInfo(time_zone)
+    rows: list[tuple[datetime, dict[str, Any]]] = [
+        *((row["occurred_at"], _csv_event(row)) for row in events),
+        *((job["requested_at"], _csv_job(job)) for job in jobs),
+    ]
+    rows.sort(key=lambda item: item[0], reverse=True)
+    output = io.StringIO()
+    writer = csv.writer(output, lineterminator="\r\n")
+    writer.writerow((f"Time ({time_zone})", *CSV_COLUMNS))
+    for moment, row in rows:
+        writer.writerow((moment.astimezone(zone).strftime("%Y-%m-%d %H:%M:%S"),
+                         *(_csv_cell(row.get(column)) for column in CSV_COLUMNS)))
+    # The byte order mark makes Excel read the file as UTF-8.
+    return ("\ufeff" + output.getvalue()).encode("utf-8")
+
+
 def web_installer_page(data: dict[str, Any] | None, user: dict[str, Any], csrf_token: str, *, period: str, time_zone: str = "UTC") -> bytes:
     if period not in ADMIN_PERIODS:
         period = "7d"
@@ -496,10 +577,11 @@ def web_installer_page(data: dict[str, Any] | None, user: dict[str, Any], csrf_t
             f"<p class='web-installer-tests muted-value'>Test records: {int(test.get('count') or 0):,}"
             + (f" · last {_timestamp_markup(test['last'])}" if test.get("last") else "") + "</p>"
         )
+    export_href = "/admin/web-installer.csv?" + urlencode({"period": period, "timeZone": time_zone})
     content = f"""
       {_admin_header(user, csrf_token, active='web-installer')}
       <main class='dashboard overview-page web-installer-page' id='main-content' data-admin-no-titles>
-        <div class='heading-row overview-heading'><div><h1>Web installer</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/web-installer' data-time-zone='{html.escape(time_zone, quote=True)}'><span class='web-installer-source'>{_admin_icon('source-web')}Web</span><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><h1>Web installer</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/web-installer' data-time-zone='{html.escape(time_zone, quote=True)}'><span class='web-installer-source'>{_admin_icon('source-web')}Web</span><a class='secondary-button web-installer-export' href='{html.escape(export_href, quote=True)}' download>{_admin_icon('download')}Download CSV</a><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{options}</select></label></form></div>
         {body}
         {tests}
       </main>

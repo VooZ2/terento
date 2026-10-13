@@ -1,4 +1,6 @@
 """Web installer statistics: validation, ingest, storage, Admin page (end to end)."""
+import csv
+import io
 import json
 import os
 import subprocess
@@ -12,8 +14,10 @@ from uuid import uuid4
 
 from pglite_support import PGliteTestCase
 from test_compatibility_evidence import event as compatibility_event
-from terento_catalog.admin import _admin_device_payload, _admin_timezone_script, device_detail_page, hash_password
-from terento_catalog.admin_web_installer import _grouped_card_script, web_installer_page
+from terento_catalog.admin import (
+    _admin_device_payload, _admin_timezone_script, _overview_activity_device, device_detail_page, hash_password,
+)
+from terento_catalog.admin_web_installer import _grouped_card_script, web_installer_csv, web_installer_page
 from terento_catalog.compatibility_evidence import validate_event as validate_compatibility_event
 from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
 from terento_catalog.migrate import _statements
@@ -347,6 +351,23 @@ console.log(JSON.stringify([run(true), run(false)]));
         self.assertIn("id='main-content' data-admin-no-titles>", self.page([]))
 
 
+class ExportAndActivityTests(unittest.TestCase):
+    def test_csv_quotes_text_a_spreadsheet_would_run_and_keeps_unknown_values_empty(self):
+        job = {"job_id": "a" * 16, "requested_at": NOW, "finished_at": NOW, "ready_at": None, "provider": "bbbike",
+               "package_id": "x", "region": "=HYPERLINK(1)", "outcome": "FAILED", "reason": "OTHER", "served_bytes": 0}
+        rows = list(csv.reader(io.StringIO(web_installer_csv([], [job], "UTC").decode().removeprefix("\ufeff"))))
+        header, row = rows
+        self.assertEqual(row[header.index("Region")], "'=HYPERLINK(1)")
+        self.assertEqual((row[header.index("Preparing s")], row[header.index("Sending s")]), ("", ""))
+
+    def test_web_activity_without_one_catalog_model_shows_the_reported_name_unlinked(self):
+        web = {"source": "web", "canonical_device_model_id": None, "model": None, "reported_model": "fenix 7x pro"}
+        self.assertEqual(_overview_activity_device(web), "<span class='overview-activity-reported'>fenix 7x pro</span>")
+        self.assertEqual(_overview_activity_device({**web, "source": "app"}), "")
+        self.assertIn("href=", _overview_activity_device({**web, "canonical_device_model_id": "garmin-fenix-7x-pro",
+                                                          "model": "fēnix 7X Pro"}))
+
+
 class WebInstallerEndToEndTests(PGliteTestCase):
     """Page event payload → installer server forward → ingest → storage → Admin page."""
 
@@ -513,6 +534,41 @@ class WebInstallerEndToEndTests(PGliteTestCase):
     def test_admin_page_requires_a_session(self):
         response, _ = self.request("GET", "/admin/web-installer", secret=None)
         self.assertIn(response.status, {302, 303})
+        response, _ = self.request("GET", "/admin/web-installer.csv", secret=None)
+        self.assertIn(response.status, {302, 303})
+
+    def test_csv_export_has_every_record_of_the_period_without_test_records(self):
+        bodies = [self.recent(body) for body in session_events()]
+        for body in bodies:
+            self.assertEqual(self.forward(body), 201)
+        self.assertEqual(self.forward(self.recent(relay_job()), "relay-jobs"), 201)
+        self.assertEqual(self.forward(event(isTest=True, stage="CONNECT", outcome="CONNECTED", model="test watch")), 201)
+        old = event(stage="CONNECT", outcome="FAILED", occurredAt="2026-01-01T00:00:00Z")
+        self.assertEqual(self.forward(old), 201)
+
+        _, page = self.request("GET", "/admin/web-installer?period=24h&timeZone=Europe/Vilnius", secret=None, admin=True)
+        self.assertIn("href='/admin/web-installer.csv?period=24h&amp;timeZone=Europe%2FVilnius' download>", page)
+        response, payload = self.request("GET", "/admin/web-installer.csv?period=24h&timeZone=Europe/Vilnius", secret=None, admin=True)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.getheader("Content-Type"), "text/csv; charset=utf-8")
+        self.assertRegex(response.getheader("Content-Disposition"),
+                         r'^attachment; filename="terento-web-installer-24h-\d{4}-\d{2}-\d{2}\.csv"$')
+        self.assertEqual(response.getheader("Cache-Control"), "no-store")
+        rows = list(csv.DictReader(io.StringIO(payload.removeprefix("\ufeff"))))
+        self.assertEqual(len(rows), len(bodies) + 1)  # every page event and the server request; no test, no older record
+        self.assertEqual({row["ID"] for row in rows if row["Record"] == "Page"}, {body["id"] for body in bodies})
+        self.assertNotIn("test watch", payload)
+        self.assertNotIn(old["id"], payload)
+        times = [row["Time (Europe/Vilnius)"] for row in rows]
+        self.assertEqual(times, sorted(times, reverse=True))
+        lost = next(row for row in rows if row["Reason"] == "CONNECTION_LOST")
+        self.assertEqual((lost["Step"], lost["Action"], lost["Result"], lost["Problem"], lost["Error"], lost["Write started"],
+                          lost["Watch"], lost["System"]),
+                         ("Map", "Install", "FAILED", "The connection to the watch ended", "NetworkError", "yes",
+                          "fenix 8 - 47mm", "macOS 15"))
+        self.assertIn("0x200D", {row["MTP"] for row in rows})
+        server = next(row for row in rows if row["Record"] == "Server")
+        self.assertEqual((server["Step"], server["Reason"], server["HTTP"]), ("Map request", "PROVIDER_HTTP_ERROR", "503"))
 
     def test_app_read_models_stay_app_only(self):
         for body in session_events():
