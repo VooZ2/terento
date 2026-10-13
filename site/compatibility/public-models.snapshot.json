@@ -258,6 +258,22 @@
       "lastSuccessfulInstallation": "2026-10-12T19:12:08+00:00"
     },
     {
+      "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
+      "variant": "51 mm, AMOLED",
+      "caseSizeMm": 51,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "epix",
+      "familyName": "epix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02804-00/v/cf-lg.jpg",
+      "successfulInstallations": 4,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-10-13T00:41:48+00:00"
+    },
+    {
       "model": "fēnix 7 · 47 mm",
       "variant": "47 mm",
       "caseSizeMm": 47,
@@ -320,22 +336,6 @@
       "appSuccessfulInstallations": 4,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-23T18:33:25+00:00"
-    },
-    {
-      "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
-      "variant": "51 mm, AMOLED",
-      "caseSizeMm": 51,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "epix",
-      "familyName": "epix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02804-00/v/cf-lg.jpg",
-      "successfulInstallations": 3,
-      "appSuccessfulInstallations": 3,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-09-24T07:32:19+00:00"
     },
     {
       "model": "fēnix 8 Pro · 47 mm, AMOLED",
@@ -450,5 +450,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-12T23:53:20.377088+00:00"
+  "generatedAt": "2026-10-13T04:12:06.259171+00:00"
 }

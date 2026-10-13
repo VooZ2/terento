@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**28** modely s úspěšnými instalacemi**210** úspěšných instalacíPoslední úspěšná instalace 12. října 2026
+**28** modely s úspěšnými instalacemi**211** úspěšných instalacíPoslední úspěšná instalace 13. října 2026
 
 Jak tento seznam funguje
 
@@ -215,6 +215,18 @@ App 2 Web 2
 
 Poslední úspěšná instalace 12. října 2026
 
+epix
+
+### epix Pro (Gen 2)
+
+51 mm, AMOLED
+
+4 úspěšných instalací
+
+App 3 Web 1
+
+Poslední úspěšná instalace 13. října 2026
+
 fēnix
 
 ### fēnix 7
@@ -262,18 +274,6 @@ fēnix
 App 4
 
 Poslední úspěšná instalace 23. září 2026
-
-epix
-
-### epix Pro (Gen 2)
-
-51 mm, AMOLED
-
-3 úspěšných instalací
-
-App 3
-
-Poslední úspěšná instalace 24. září 2026
 
 fēnix
 
