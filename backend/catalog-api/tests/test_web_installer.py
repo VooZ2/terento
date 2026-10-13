@@ -20,7 +20,7 @@ from terento_catalog.admin import (
     _admin_device_payload, _admin_timezone_script, _overview_activity_device, dashboard_page, device_detail_page,
     hash_password, map_statistics_page,
 )
-from terento_catalog.map_events import MapEventValidationError
+from terento_catalog.map_events import MapEventValidationError, validate_map_event
 from terento_catalog.admin_web_installer import WORDS, _grouped_card_script, web_installer_csv, web_installer_page
 from terento_catalog.compatibility_evidence import validate_event as validate_compatibility_event
 from terento_catalog.http_api import CatalogService, _public_install_counts, make_handler
@@ -687,6 +687,50 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         # Dashboard Web shows the same web installs.
         web = self.service.admin_overview("24h")["web"]
         self.assertEqual((web["completedInstallCount"], web["failedInstallCount"]), maps("web"))
+
+    def test_installations_app_total_equals_maps_app_installs_with_unreported_watches(self):
+        # Production 2026-10-13: Installations 220, Maps 223. Three app map
+        # installs had no watch report; Installations now shows them as one row.
+        hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        backed, unreported = str(uuid4()), str(uuid4())
+        app = validate_compatibility_event(encode(compatibility_event(
+            id=str(uuid4()), timestamp=hour_ago, operationId=backed, mapResultIndex=0)))
+        self.assertTrue(self.db.insert_compatibility_event(app))
+
+        def install(operation, index, **changes):
+            body = {"schemaVersion": 1, "id": str(uuid4()), "operationId": operation, "timestamp": hour_ago,
+                    "providerId": "freizeitkarte", "releaseLabel": "1.0.0-beta.18", "mapId": "freizeitkarte-deu", "region": "DEU",
+                    "eventType": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "mapResultIndex": index, "appBuild": "40",
+                    **changes}
+            self.assertTrue(self.db.insert_map_event(validate_map_event(json.dumps(body).encode())))
+
+        install(backed, 0)  # backed by the watch report: counted once, under its model
+        install(backed, 1)  # same operation, no report for this map
+        install(unreported, 0)  # no report at all
+        install(unreported, 1, eventType="INSTALL_FAILED", outcome="FAILED")  # Maps needs a report to count a failure
+        self.assertEqual(self.db.app_installs_without_model_report()["successful_install_count"], 2)
+
+        body = dashboard_page(
+            self.service.compatibility_statistics(), {"username": "test"}, "csrf",
+            diagnostic_summary=self.service.compatibility_diagnostic_summary(),
+            identity_devices=self.service.admin_devices()["devices"], web_rows=[],
+            unreported_app=self.db.app_installs_without_model_report(), source="app",
+        ).decode()
+        tiles = {key: int(value) for key, value in re.findall(
+            r"data-stat='(attempts|successful|failed)'[^>]*>(\d+)<", body)}
+        summary = self.service.map_statistics({"period": "24h", "source": "app"})["summary"]
+        self.assertEqual((tiles["successful"], tiles["failed"]), (summary["completedInstalls"], summary["failedInstalls"]))
+        self.assertEqual(tiles["successful"], 3)
+        self.assertIn("Watch not reported<span class='activity-source-app'", body)
+        row = re.search(r"<tr class='evidence-model-row'[^>]*data-model='Watch not reported'[^>]*>", body).group(0)
+        self.assertIn("data-attempts='2'", row)
+        self.assertIn("data-diagnostics-url=''", row)
+        # The Web view never shows it.
+        web = dashboard_page(
+            self.service.compatibility_statistics(), {"username": "test"}, "csrf",
+            diagnostic_summary=self.service.compatibility_diagnostic_summary(), web_rows=[],
+            unreported_app=self.db.app_installs_without_model_report(), source="web").decode()
+        self.assertNotIn("Watch not reported", web)
 
     def test_epix_pro_web_success_joins_the_47_mm_row_next_to_its_app_successes(self):
         # Production 2026-10-11: a Linux install on a watch reporting "epix pro - 47mm"

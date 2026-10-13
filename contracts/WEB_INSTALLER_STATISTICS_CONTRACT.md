@@ -63,7 +63,9 @@ shared install statistics from the start, like app results.
   agree. A web install whose watch matches no single catalog model counts in
   those totals (on Installations as its own row named by the reported text,
   with the Web icon) but never for a model (Devices, model pages, public
-  Compatibility).
+  Compatibility). The App part matches too: an app map install with no watch
+  report is one Installations row (`Watch not reported`), so Installations All
+  equals the all-time Maps installs.
 - **What stays app-only**: the app read models and Event detail, evidence
   status (Tested/Verified), reconnect-verified installs, distinct-watch counts,
   Needs attention (except its Identity review count, which adds the counted

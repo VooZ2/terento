@@ -4963,6 +4963,64 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def app_installs_without_model_report(self) -> dict[str, Any]:
+        """All-time app map installs that Maps counts but no watch report
+        backs: a counted INSTALL_SUCCEEDED map event (the Maps rule) with no
+        compatibility report for its operation, provider, map result and
+        region. Installations shows them as one row, so its App total equals
+        the Maps App installs."""
+        effective = _effective_occurred_at_sql("e")
+        with self.connection() as connection:
+            _prefer_hash_joins(connection)
+            row = connection.execute(
+                f"""
+                WITH identified AS (
+                    SELECT e.*, {effective} AS effective_occurred_at,
+                           CASE WHEN e.map_result_index IS NOT NULL
+                                THEN 'install:' || e.operation_id::text || ':' || e.map_result_index::text
+                                ELSE 'event:' || e.event_id::text END AS logical_key
+                    FROM map_download_event AS e
+                    WHERE e.is_local_test IS NOT TRUE AND e.statistics_exclusion_code IS NULL
+                      AND e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                ), flags AS (
+                    SELECT logical_key,
+                           count(DISTINCT (provider_id, COALESCE(map_package_id, reported_map_id), region, component_kind,
+                                           acquisition_purpose, event_type, outcome)) > 1 AS conflict
+                    FROM identified GROUP BY logical_key
+                ), ranked AS (
+                    SELECT i.*, f.conflict,
+                           row_number() OVER (PARTITION BY i.logical_key ORDER BY i.effective_occurred_at, i.event_id) AS rank
+                    FROM identified AS i JOIN flags AS f USING (logical_key)
+                )
+                SELECT count(*) AS successful_install_count, max(installed.effective_occurred_at) AS last_success
+                FROM ranked AS installed
+                LEFT JOIN map_package AS installed_package
+                  ON installed_package.id = COALESCE(installed.map_package_id, installed.reported_map_id)
+                WHERE installed.rank = 1 AND NOT installed.conflict
+                  AND installed.event_type = 'INSTALL_SUCCEEDED' AND installed.outcome = 'SUCCEEDED'
+                  AND installed.component_kind IS DISTINCT FROM 'contours'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM compatibility_evidence_event AS evidence
+                      WHERE evidence.is_local_test IS NOT TRUE AND evidence.statistics_exclusion_code IS NULL
+                        AND evidence.operation_id = installed.operation_id
+                        AND evidence.provider = installed.provider_id
+                        AND (installed.map_result_index IS NULL OR evidence.map_result_index = installed.map_result_index)
+                        AND (
+                            installed.region IS NOT DISTINCT FROM evidence.region
+                            OR (
+                                installed_package.provider_id = installed.provider_id
+                                AND evidence.region IN (installed_package.provider_region_id,
+                                                        installed_package.canonical_region_id, installed_package.region)
+                                AND installed.region IN (installed_package.provider_region_id,
+                                                         installed_package.canonical_region_id, installed_package.region)
+                            )
+                        )
+                  )
+                """
+            ).fetchone() or {}
+        return {"successful_install_count": int(row.get("successful_install_count") or 0),
+                "last_success": row.get("last_success")}
+
     def web_installer_installation_rows(self) -> list[dict[str, Any]]:
         """All-time counted web installs in the Installations row shape: one
         row per catalog model, and one per reported watch text while the watch

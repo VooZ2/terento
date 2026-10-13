@@ -3831,6 +3831,8 @@ def _source_switch(active: str, *, label: str) -> str:
 def _installation_row_key(row: dict[str, Any]) -> str:
     """Installations row identity: a catalog model joins its app and web
     results; a web watch with no single model never joins an app identity."""
+    if row.get("unreported_app"):
+        return "app:unreported"
     if row.get("web_reported") and not row.get("canonical_device_model_id"):
         return "web:" + str(row["web_reported"])
     return _identity_group_key(row)
@@ -3844,6 +3846,7 @@ def dashboard_page(
     identity_devices: list[dict[str, Any]] | None = None,
     diagnostic_summary: dict[str, dict[str, int]] | None = None,
     web_rows: list[dict[str, Any]] | None = None,
+    unreported_app: dict[str, Any] | None = None,
     source: str = "all",
 ) -> bytes:
     # The statistics view may retain a zero-attempt identity row so raw
@@ -3864,6 +3867,16 @@ def dashboard_page(
          "model": row.get("reported_model") or row.get("canonical_device_model_id")}
         for row in (web_rows or [])
     ] if source != "app" else []
+    # App installs that Maps counts but no watch report backs: one row, so
+    # the App total equals the Maps App installs (owner 2026-10-13).
+    unreported_count = int((unreported_app or {}).get("successful_install_count") or 0)
+    if unreported_count and source != "web":
+        app_rows.append({
+            "unreported_app": True, "model": "Watch not reported", "compatibility_identity": "Watch not reported",
+            "attempted_install_count": unreported_count, "successful_install_count": unreported_count,
+            "failed_install_count": 0, "app_successful_install_count": 0,
+            "last_success": unreported_app.get("last_success"), "last_evidence": unreported_app.get("last_success"),
+        })
     # The view keeps a legacy row and an unresolved row for one reported
     # identity; both carry that identity's open problems, so render one row.
     merged: dict[str, dict[str, Any]] = {}
@@ -3923,7 +3936,7 @@ def dashboard_page(
     def summary_for(row: dict[str, Any]) -> dict[str, int]:
         # Web results have no review work: a Web row never takes the open
         # problems or identity reviews of an app identity.
-        return {} if row.get("web_only") else diagnostic_summary.get(_identity_group_key(row), {})
+        return {} if row.get("web_only") or row.get("unreported_app") else diagnostic_summary.get(_identity_group_key(row), {})
 
     def metric(row: dict[str, Any], summary_key: str, row_key: str) -> int:
         summary = summary_for(row)
@@ -3936,7 +3949,8 @@ def dashboard_page(
     failures = sum(metric(row, "failed", "failed_install_count") for row in rows)
     # Sum only rendered identities (each identity once) so the KPI equals the
     # column total; with SQL counts it also equals Dashboard Installation problems.
-    app_identities = dict.fromkeys(_identity_group_key(row) for row in rows if not row.get("web_only"))
+    app_identities = dict.fromkeys(_identity_group_key(row) for row in rows
+                                   if not row.get("web_only") and not row.get("unreported_app"))
     open_errors = sum(
         int((diagnostic_summary.get(identity) or {}).get("open_errors") or 0)
         for identity in app_identities
@@ -8043,9 +8057,12 @@ def _statistics_row(
     # Evidence stays app-only: web successes never make a model Tested, and a
     # Web-only row shows the model's catalog Evidence (as on Devices).
     unmatched_web = bool(row.get("web_only") and not row.get("canonical_device_model_id"))
+    unmatched = unmatched_web or bool(row.get("unreported_app"))
     if unmatched_web:
         model = str(row.get("web_reported") or model)
         status = ""
+    elif unmatched:
+        model, status = "Watch not reported", ""
     elif row.get("web_only"):
         status = str((catalog_device or {}).get("evidenceStatus") or "")
     else:
@@ -8054,19 +8071,21 @@ def _statistics_row(
         status = status_value.value if status_value else ""
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure", "last_evidence")), default="")
-    diagnostics_url = "" if unmatched_web else _model_detail_url(row)
+    diagnostics_url = "" if unmatched else _model_detail_url(row)
     pending_count = int(summary.get("identity_pending") or 0)
     model_cell = html.escape(model)
     if _is_historical_catalog(catalog_device if catalog_device is not None else row):
         model_cell += " " + _historical_catalog_indicator()
-    if variant == "Historical" or unmatched_web:
+    if variant == "Historical" or unmatched:
         variant = "—"
-    if unmatched_web:
-        # A web watch that matches no single catalog model: the name it
-        # reported, as plain text with the Web icon (no model page).
+    if unmatched:
+        # A web watch that matches no single catalog model (the name it
+        # reported), or app installs with no watch report: plain text with
+        # the source icon (no model page).
+        name, label = ("web", "Web") if unmatched_web else ("app", "App")
         model_cell = (
             f"<span class='installation-reported-web'>{model_cell}"
-            f"<span class='activity-source-web' role='img' aria-label='Web'>{_admin_icon('source-web')}</span></span>"
+            f"<span class='activity-source-{name}' role='img' aria-label='{label}'>{_admin_icon('source-' + name)}</span></span>"
         )
     else:
         model_cell = (
@@ -8089,7 +8108,7 @@ def _statistics_row(
     cells = (
         ("", model_cell),
         ("", html.escape(variant)),
-        ("column-status", "<span class='muted-value'>—</span>" if unmatched_web else _status_badge(status)),
+        ("column-status", "<span class='muted-value'>—</span>" if unmatched else _status_badge(status)),
         ("column-number numeric", html.escape(str(attempted))),
         ("column-number numeric", html.escape(str(successful))),
         ("column-number numeric", _admin_error_counter(failed)),
@@ -10681,7 +10700,7 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
 /* One App/Web switch beside the period picker, in the picker's height (owner 2026-10-11). */
 .overview-period-form:has(.overview-source-switch){display:flex;align-items:center;gap:8px}
-.installation-heading-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.installation-heading-tools .page-meta{margin:0}.installation-source-form{display:flex;margin:0}.installation-reported-web{display:inline-flex;align-items:center;gap:4px}.installation-reported-web .activity-source-web{margin-left:0}@media(max-width:760px){.installation-heading-tools{justify-content:flex-start}}
+.installation-heading-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.installation-heading-tools .page-meta{margin:0}.installation-source-form{display:flex;margin:0}.installation-reported-web{display:inline-flex;align-items:center;gap:4px}.installation-reported-web .activity-source-web{margin-left:0}.installation-reported-web .activity-source-app{display:inline-flex;color:var(--secondary)}.installation-reported-web .activity-source-app .admin-icon{width:13px;height:13px}@media(max-width:760px){.installation-heading-tools{justify-content:flex-start}}
 .overview-source-switch{display:inline-flex;flex:none;box-sizing:border-box;height:var(--admin-control-height);padding:3px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface-muted)}
 .overview-source-switch button{min-height:0;height:100%;padding:0 14px;border:0;border-radius:calc(var(--admin-control-radius) - 3px);background:transparent;color:var(--secondary);font:600 var(--admin-control-font-size)/1 var(--font-ui);cursor:pointer}
 .overview-source-switch button.active{background:var(--surface);color:var(--graphite);box-shadow:0 1px 1px color-mix(in srgb,var(--graphite) 8%,transparent)}
