@@ -177,13 +177,35 @@ def _overview_time_zone(value: str) -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
+def usb_code_models(mappings: list[dict[str, Any]], learned: list[dict[str, Any]]) -> dict[str, set[str]]:
+    """Every catalog model each USB model code may name: each catalog mapping
+    that is not rejected, and each model a confirmed watch reported the code with."""
+    models: dict[str, set[str]] = {}
+    for item in [*(m for m in mappings if m["kind"] == "USB" and m["status"] != "REJECTED"), *learned]:
+        models.setdefault(item["value"], set()).add(item["device_model_id"])
+    return models
+
+
 def web_installer_identity(
     row: dict[str, Any], devices: list[dict[str, Any]], mappings: list[dict[str, Any]],
+    usb_models: dict[str, set[str]] | None = None,
 ) -> tuple[str | None, str]:
-    """Catalog model and resolution of one web event (model text and USB code)."""
+    """Catalog model and resolution of one web event (model text and USB code).
+
+    When the assessment leaves the model open, a USB code that names exactly
+    one catalog model (``usb_code_models``) resolves it as ``USB_LEARNED``,
+    provided the reported model text names that model too; a code alone never
+    resolves a model. A code that names several models resolves nothing."""
     assessment = assess_identity(web_installer_identity_event(row), devices, mappings)
     device_id = assessment["canonicalDeviceId"]
-    return device_id, (assessment["resolution"] if device_id else "UNRESOLVED")
+    if device_id:
+        return device_id, assessment["resolution"]
+    if row.get("usb_vendor_id") is not None and row.get("usb_product_id") is not None:
+        models = (usb_models or {}).get(f"{row['usb_vendor_id']:04x}:{row['usb_product_id']:04x}", set())
+        possible = {c["deviceId"] for c in assessment["candidates"] if not c["conflict"]}
+        if len(models) == 1 and row.get("model") and models <= possible:
+            return next(iter(models)), "USB_LEARNED"
+    return None, "UNRESOLVED"
 
 
 def _web_installer_period(column: str, since: datetime | None, until: datetime | None) -> tuple[str, list[Any]]:
@@ -554,6 +576,16 @@ IDENTITY_MAPPING_QUERY = (
     "SELECT kind, value, status, device_model_id, source_url, source_version "
     "FROM device_identity_mapping"
 )
+# USB model codes learned from confirmed watches: an app report whose catalog
+# model was resolved (exact match or Identity review) names the model of the
+# USB code it reported. Local test reports never teach a code.
+LEARNED_USB_QUERY = """
+    SELECT DISTINCT lpad(to_hex(usb_vendor_id), 4, '0') || ':' || lpad(to_hex(usb_product_id), 4, '0') AS value,
+           canonical_device_model_id AS device_model_id
+    FROM compatibility_evidence_event
+    WHERE identity_resolution_state = 'RESOLVED' AND canonical_device_model_id IS NOT NULL
+      AND is_local_test IS NOT TRUE
+"""
 # Web installer results per catalog model (contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md):
 # counted results only, joined by the resolved catalog model like app evidence.
 WEB_MODEL_COUNTS_CTE = """
@@ -1320,6 +1352,12 @@ class Database:
 
     def compatibility_resolved_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("RESOLVED", limit)
+
+    def web_installer_usb_models(self) -> dict[str, set[str]]:
+        """``usb_code_models`` of the current catalog mappings and learned codes."""
+        with self.connection() as connection:
+            return usb_code_models(list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall()),
+                                   list(connection.execute(LEARNED_USB_QUERY).fetchall()))
 
     def identity_catalog(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Catalog devices and identity mappings for assessing several result sets in one request."""
@@ -4651,16 +4689,50 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def web_installer_unresolved_watches(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        """Counted web installs with no catalog model, one row per reported
+        model text and USB code, with every catalog model they may name."""
+        with self.connection() as connection:
+            rows = list(connection.execute(
+                """
+                SELECT e.model, e.usb_vendor_id, e.usb_product_id, count(*) AS installs, max(w.occurred_at) AS last_seen
+                FROM web_installer_map_result AS w
+                JOIN web_installer_event AS e USING (event_id)
+                WHERE w.canonical_device_model_id IS NULL AND w.operation = 'install'
+                GROUP BY e.model, e.usb_vendor_id, e.usb_product_id
+                ORDER BY last_seen DESC LIMIT %s
+                """, (limit,),
+            ).fetchall())
+            if not rows:
+                return []
+            devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
+            mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
+            usb_models = usb_code_models(mappings, list(connection.execute(LEARNED_USB_QUERY).fetchall()))
+        result = []
+        for row in rows:
+            code = (f"{row['usb_vendor_id']:04x}:{row['usb_product_id']:04x}"
+                    if row["usb_vendor_id"] is not None and row["usb_product_id"] is not None else None)
+            assessment = assess_identity(web_installer_identity_event(row), devices, mappings)
+            text_models = {c["deviceId"] for c in assessment["candidates"] if not c["conflict"]}
+            code_models = usb_models.get(code, set()) if code else set()
+            result.append({**dict(row), "usb_code": code,
+                           "possible": sorted(text_models & code_models if text_models and code_models
+                                              else text_models | code_models)})
+        return result
+
     def resolve_web_installer_identities(self, *, limit: int = 5000) -> dict[str, int]:
         """Resolve the catalog model of web connections and map results that
         have none yet, with the same identity assessment as app reports. The
         scheduler runs it at start and after each cycle, so rows received
-        before a catalog or USB mapping change resolve later."""
+        before a catalog or USB mapping change resolve later. Rows resolved
+        from a learned USB code are checked again: once the code names
+        several models they lose the model."""
         with self.connection() as connection:
             rows = list(connection.execute(
                 """
                 SELECT event_id, model, usb_vendor_id, usb_product_id FROM web_installer_event
-                WHERE canonical_device_model_id IS NULL AND is_test IS NOT TRUE
+                WHERE (canonical_device_model_id IS NULL OR identity_resolution = 'USB_LEARNED')
+                  AND is_test IS NOT TRUE
                   AND stage IN ('CONNECT', 'MAP_RESULT')
                   AND (model IS NOT NULL OR usb_product_id IS NOT NULL)
                 ORDER BY received_at LIMIT %s FOR UPDATE SKIP LOCKED
@@ -4671,8 +4743,9 @@ class Database:
                 return summary
             devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
             mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
+            usb_models = usb_code_models(mappings, list(connection.execute(LEARNED_USB_QUERY).fetchall()))
             for row in rows:
-                device_id, resolution = web_installer_identity(row, devices, mappings)
+                device_id, resolution = web_installer_identity(row, devices, mappings, usb_models)
                 connection.execute(
                     "UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = %s "
                     "WHERE event_id = %s", (device_id, resolution, row["event_id"]),

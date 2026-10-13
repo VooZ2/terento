@@ -7257,11 +7257,53 @@ def _identity_review_item(
     )
 
 
+def _web_unresolved_watches_card(watches: list[dict[str, Any]], identity_devices: list[dict[str, Any]] | None) -> str:
+    """Counted web installs with no catalog model, with the models their text
+    and USB code may name (data only; they resolve when the code names one)."""
+    if not watches:
+        return ""
+    by_id = {str(d.get("id")): d for d in identity_devices or []}
+
+    def model_link(device_id: str) -> str:
+        model, variant, _ = _identity_parts(by_id.get(device_id) or {"model": device_id})
+        label = model if variant in {"", "—", "Historical"} else f"{model} · {variant}"
+        return f"<a href='{html.escape(_device_detail_url(device_id, origin='devices'), quote=True)}'>{html.escape(label)}</a>"
+
+    empty = "<span class='muted-value'>—</span>"
+
+    def code_cell(code: str | None) -> str:
+        return f"<code>{html.escape(code)}</code>" if code else empty
+
+    rows = "".join(
+        "<tr>"
+        f"<td data-label='Watch'>{html.escape(str(w.get('model') or '—'))}</td>"
+        f"<td data-label='USB code'>{code_cell(w.get('usb_code'))}</td>"
+        f"<td data-label='Possible models'>{'<br>'.join(model_link(i) for i in w.get('possible') or []) or empty}</td>"
+        f"<td class='column-number' data-label='Installs'>{int(w.get('installs') or 0)}</td>"
+        f"<td class='column-date' data-label='Last install'>{_timestamp_markup(w.get('last_seen'))}</td>"
+        "</tr>"
+        for w in watches
+    )
+    return (
+        "<section class='admin-card identity-review-web' id='identity-review-web' aria-labelledby='identity-review-web-title'>"
+        "<header class='admin-card-head'>"
+        f"<h2 id='identity-review-web-title'><span class='history-source-web'>{_admin_icon('source-web')}Web installer</span></h2>"
+        f"<span class='table-help'>{_count_label(sum(int(w.get('installs') or 0) for w in watches), 'installation')}</span>"
+        "</header>"
+        "<div class='table-wrap'><table class='mobile-record-table'><caption class='sr-only'>Web installs with no catalog model</caption>"
+        "<thead><tr><th scope='col'>Watch</th><th scope='col'>USB code</th><th scope='col'>Possible models</th>"
+        "<th scope='col' class='column-number'>Installs</th><th scope='col' class='column-date'>Last install</th></tr></thead>"
+        f"<tbody>{rows}</tbody></table></div>"
+        "</section>"
+    )
+
+
 def identity_review_page(
     operations: list[dict[str, Any]] | None,
     user: dict[str, Any],
     csrf_token: str,
     *, identity_devices: list[dict[str, Any]] | None = None,
+    web_watches: list[dict[str, Any]] | None = None,
 ) -> bytes:
     """Every installation operation whose identity is pending, confirmable in place."""
     total = 0
@@ -7317,6 +7359,7 @@ def identity_review_page(
         <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
         <div class='heading-row'><div><h1>Identity review</h1></div>{summary}</div>
         {body}
+        {_web_unresolved_watches_card(web_watches or [], identity_devices)}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
     """

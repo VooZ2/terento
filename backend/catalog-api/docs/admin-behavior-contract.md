@@ -658,6 +658,13 @@ not identifiable, not a provider download failure) and the same operation
 unit, so they agree except when one operation reports results under two
 different reported identities, which then appears under each identity.
 
+Below the queue, a `Web installer` card (Web icon) lists the counted web
+installs that have no catalog model, one row per reported watch text and USB
+code (at most 50, newest first): Watch, USB code, Possible models (links to
+each model the text and code may name), Installs and Last install. It is data
+only, with no controls; a row leaves the card when its code names one model
+([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
+
 ### Devices and device detail
 
 `Maps`, `Install policy`, and `Evidence` are separate concepts. Maps reports the

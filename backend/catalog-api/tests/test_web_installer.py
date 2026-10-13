@@ -626,6 +626,63 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertIn("Not enough space on the watch · Writing to the watch", rows[1])
         self.assertNotIn("Download stopped", page)
 
+    def test_a_usb_code_learned_from_a_confirmed_watch_resolves_web_installs_only_while_it_names_one_model(self):
+        # Production 2026-10-13: "fenix 7x pro" names two catalog rows (Wi-Fi and
+        # Solar no Wi-Fi), so the text alone never resolves it.
+        wifi, no_wifi = "garmin-fenix-7x-pro", "garmin-fenix-7x-pro-solar-no-wifi"
+
+        def confirmed_app_report(product, device_id, *, local_test=False):
+            app = validate_compatibility_event(encode(compatibility_event(
+                id=str(uuid4()), timestamp="2026-10-01T10:00:00Z", model="fēnix 7X Pro", family="fēnix",
+                usbProductID=product)))
+            self.assertTrue(self.db.insert_compatibility_event(app))
+            self.sql("UPDATE compatibility_evidence_event SET canonical_device_model_id = %s, "
+                     "identity_resolution_state = 'RESOLVED', is_local_test = %s WHERE event_id = %s",
+                     (device_id, local_test, app["id"]))
+
+        confirmed_app_report(0xAAB1, wifi)
+        confirmed_app_report(0xAAB2, wifi, local_test=True)
+        # libmtp's 091e:5117 is a catalog mapping of both fēnix 7 Pro editions.
+        confirmed_app_report(0x5117, "garmin-fenix-7-pro")
+        hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        base = dict(stage="MAP_RESULT", operation="install", outcome="SUCCEEDED", writeStarted=True, provider="maprando",
+                    packageId="maprando-hebei", model="fenix 7x pro", firmware="2718", osFamily="macOS",
+                    usbVendorId=0x091E, usbProductId=0xAAB1, occurredAt=hour_ago)
+        learned = event(**base)
+        for body in (learned,
+                     event(**{**base, "usbProductId": 0xAAB2}),             # taught only by a local test report
+                     event(**{k: v for k, v in base.items() if not k.startswith("usb")}),  # no code
+                     event(**{**base, "model": "epix pro"}),               # the text names other models
+                     event(**{**base, "model": "fenix 7 pro", "usbProductId": 0x5117})):
+            self.assertEqual(self.forward(body), 201)
+
+        def resolved():
+            return {(r["model"], r["usb_product_id"]): (r["id"], r["resolution"]) for r in self.sql(
+                "SELECT model, usb_product_id, canonical_device_model_id AS id, identity_resolution AS resolution "
+                "FROM web_installer_event")}
+
+        self.assertEqual(resolved(), {("fenix 7x pro", 0xAAB1): (wifi, "USB_LEARNED"),
+                                      ("fenix 7x pro", 0xAAB2): (None, "UNRESOLVED"),
+                                      ("fenix 7x pro", None): (None, "UNRESOLVED"),
+                                      ("epix pro", 0xAAB1): (None, "UNRESOLVED"),
+                                      ("fenix 7 pro", 0x5117): (None, "UNRESOLVED")})
+        self.db.resolve_web_installer_identities()
+        self.assertEqual(resolved()[("fenix 7x pro", 0xAAB1)], (wifi, "USB_LEARNED"))
+
+        # A confirmed watch of the other edition reports the same code: it now
+        # names two models, so the learned install loses its model.
+        confirmed_app_report(0xAAB1, no_wifi)
+        self.db.resolve_web_installer_identities()
+        self.assertEqual(resolved()[("fenix 7x pro", 0xAAB1)], (None, "UNRESOLVED"))
+
+        _, page = self.request("GET", "/admin/review/identity", secret=None, admin=True)
+        card = page.split("id='identity-review-web'", 1)[1].split("</section>", 1)[0]
+        rows = card.split("<tbody>", 1)[1].split("<tr>")[1:]
+        learned_row = next(row for row in rows if "<code>091e:aab1</code>" in row and "fenix 7x pro" in row)
+        self.assertIn(f"/admin/devices/{wifi}", learned_row)
+        self.assertIn(f"/admin/devices/{no_wifi}", learned_row)
+        self.assertIn("admin-icon-source-web", card)
+
     def test_connection_problems_count_visits_and_name_the_model_from_the_usb_code(self):
         # One page load retried twice, another tried once; the open was refused
         # before the watch reported its model text, so a reviewed USB mapping names it.

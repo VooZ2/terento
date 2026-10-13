@@ -577,7 +577,7 @@ class CatalogService:
                 try:
                     devices, mappings = self.database.identity_catalog()
                     row["canonical_device_model_id"], row["identity_resolution"] = web_installer_identity(
-                        row, devices, mappings)
+                        row, devices, mappings, self.database.web_installer_usb_models())
                 except Exception:
                     # The scheduler resolves the model later; the record is kept.
                     LOGGER.exception("web installer identity resolution failed")
@@ -1913,8 +1913,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except Exception:
                     LOGGER.exception("identity review queue failed")
                     pending_operations = None
+                try:
+                    web_watches: list[dict[str, Any]] = service.database.web_installer_unresolved_watches()
+                except Exception:
+                    LOGGER.exception("identity review web installs failed")
+                    web_watches = []
                 self._send_admin_html(identity_review_page(
                     pending_operations, session, csrf_token, identity_devices=identity_devices,
+                    web_watches=web_watches,
                 ), send_body=send_body)
                 return
             if request_path in {"/admin/support-reports", "/admin/support-reports/"}:
