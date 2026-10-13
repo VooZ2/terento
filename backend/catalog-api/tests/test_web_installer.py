@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from pglite_support import PGliteTestCase
@@ -808,12 +809,92 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual(resolved()[("fenix 7x pro", 0xAAB1)], (None, "UNRESOLVED"))
 
         _, page = self.request("GET", "/admin/review/identity", secret=None, admin=True)
-        card = page.split("id='identity-review-web'", 1)[1].split("</section>", 1)[0]
-        rows = card.split("<tbody>", 1)[1].split("<tr>")[1:]
-        learned_row = next(row for row in rows if "<code>091e:aab1</code>" in row and "fenix 7x pro" in row)
-        self.assertIn(f"/admin/devices/{wifi}", learned_row)
-        self.assertIn(f"/admin/devices/{no_wifi}", learned_row)
-        self.assertIn("admin-icon-source-web", card)
+        card = page.split("<h2 id='identity-web-", 1)[0].rsplit("<section ", 1)[1] + page.split("<h2 id='identity-web-", 1)[1]
+        self.assertIn("data-source='web'", card)
+        learned_item = next(item for item in card.split("data-identity-review-item")[1:] if "USB 091e:aab1" in item)
+        self.assertIn("2 possible models", learned_item)
+        self.assertIn(f"data-identity-device-id='{wifi}'", learned_item)
+        self.assertIn(f"data-identity-device-id='{no_wifi}'", learned_item)
+
+    def post_identity(self, key, action, device_id="", return_to="/admin/review/identity"):
+        body = urlencode({"csrf_token": self.csrf, "operation_key": key, "identity_action": action,
+                          "canonical_device_model_id": device_id, "return_to": return_to})
+        return self.request("POST", "/admin/diagnostics/identity", body.encode(), secret=None, admin=True,
+                            content_type="application/x-www-form-urlencoded")
+
+    def test_identity_review_assigns_a_web_install_like_an_app_result_and_unassign_reverses_it(self):
+        wifi = "garmin-fenix-7x-pro"
+        hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        base = dict(stage="MAP_RESULT", operation="install", outcome="SUCCEEDED", writeStarted=True, provider="maprando",
+                    packageId="maprando-hebei", model="fenix 7x pro", osFamily="macOS", occurredAt=hour_ago)
+        counted, test, before_write = event(**base), event(**base, isTest=True), event(
+            **{**base, "outcome": "FAILED", "writeStarted": False, "failureStage": "DOWNLOAD", "reason": "DOWNLOAD_STOPPED"})
+        for body in (counted, test, before_write):
+            self.assertEqual(self.forward(body), 201)
+        key = f"web:{counted['id']}"
+
+        def stored():
+            return self.sql("SELECT canonical_device_model_id AS id, identity_resolution AS resolution "
+                            "FROM web_installer_event WHERE event_id = %s", (counted["id"],))[0]
+
+        def audit():
+            return [(r["action"], r["new_canonical_device_model_id"]) for r in self.sql(
+                "SELECT action, new_canonical_device_model_id FROM web_installer_identity_audit ORDER BY id")]
+
+        self.assertEqual(self.db.admin_review_summary()["identityPending"], 1)
+        # The queue item: the same inline form as an app result, for the counted install only.
+        _, page = self.request("GET", "/admin/review/identity", secret=None, admin=True)
+        self.assertIn("<span data-identity-review-count>1 installation</span>", page)
+        forms = re.findall(r"<form method='post' action='/admin/diagnostics/identity'.*?</form>", page, re.S)
+        self.assertEqual(len(forms), 1)
+        self.assertIn(f"name='operation_key' value='{key}'", forms[0])
+        self.assertIn("name='identity_action' value='ASSIGN'", forms[0])
+        self.assertIn("name='identity_action' value='MANUAL_ASSIGN'", forms[0])
+        self.assertIn("Pick model", forms[0])
+
+        # Records outside the counted population cannot be assigned.
+        for other in (test, before_write):
+            self.assertEqual(self.post_identity(f"web:{other['id']}", "ASSIGN", wifi)[0].status, 404)
+        # A model the reported text contradicts needs the explicit manual action.
+        response, payload = self.post_identity(key, "ASSIGN", "garmin-epix-pro-gen-2-47")
+        self.assertEqual(response.status, 409)
+        self.assertEqual(json.loads(payload)["error"], "identity_conflict_manual_required")
+        self.assertEqual(stored(), {"id": None, "resolution": "UNRESOLVED"})
+        self.assertEqual(audit(), [])
+
+        response, _ = self.post_identity(key, "ASSIGN", wifi)
+        self.assertEqual(response.status, 303)
+        self.assertEqual(response.getheader("Location"), f"/admin/devices/{wifi}?from=installations#installations")
+        self.assertEqual(stored(), {"id": wifi, "resolution": "MANUAL"})
+        self.assertEqual(self.post_identity(key, "ASSIGN", wifi)[0].status, 303)  # a repeat writes nothing
+        self.assertEqual(audit(), [("ASSIGN", wifi)])
+        self.db.resolve_web_installer_identities()
+        self.assertEqual(stored(), {"id": wifi, "resolution": "MANUAL"})
+        self.assertEqual(self.sql("SELECT count(*) AS n FROM web_installer_map_result WHERE canonical_device_model_id = %s",
+                                  (wifi,))[0]["n"], 1)
+        _, page = self.request("GET", "/admin/review/identity", secret=None, admin=True)
+        self.assertIn("No installations wait for identity review.", page)
+        self.assertEqual(self.db.admin_review_summary()["identityPending"], 0)
+
+        # The model page lists it with Unassign, which puts it back in the queue.
+        _, page = self.request("GET", f"/admin/devices/{wifi}", secret=None, admin=True)
+        row = page.split("data-source='web'", 1)[1].split("</tr>", 1)[0]
+        self.assertIn(f"name='operation_key' value='{key}'", row)
+        self.assertIn("value='LEAVE_UNRESOLVED'>Unassign</button>", row)
+        model_page = f"/admin/devices/{wifi}?from=installations#installations"
+        response, _ = self.post_identity(key, "LEAVE_UNRESOLVED", return_to=model_page)
+        self.assertEqual((response.status, response.getheader("Location")), (303, model_page))
+        self.assertEqual(stored(), {"id": None, "resolution": "UNRESOLVED"})
+        self.assertEqual(audit(), [("ASSIGN", wifi), ("LEAVE_UNRESOLVED", None)])
+        self.db.resolve_web_installer_identities()
+        self.assertEqual(stored(), {"id": None, "resolution": "UNRESOLVED"})
+        _, page = self.request("GET", "/admin/review/identity", secret=None, admin=True)
+        self.assertIn(f"name='operation_key' value='{key}'", page)
+
+        response, _ = self.post_identity(key, "MANUAL_ASSIGN", "garmin-epix-pro-gen-2-47")
+        self.assertEqual(response.status, 303)
+        self.assertEqual(stored(), {"id": "garmin-epix-pro-gen-2-47", "resolution": "MANUAL"})
+        self.assertEqual(audit()[-1], ("MANUAL_ASSIGN", "garmin-epix-pro-gen-2-47"))
 
     def test_connection_problems_count_visits_and_name_the_model_from_the_usb_code(self):
         # One page load retried twice, another tried once; the open was refused

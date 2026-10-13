@@ -41,8 +41,14 @@ shared install statistics from the start, like app results.
   report (resolved by exact match or Identity review, not a local test) gave
   with that code. A code alone, or a code that names several models, resolves
   nothing; a `USB_LEARNED` record loses its model on the next scheduler cycle
-  once its code names several models. Counted web installs with no model are
-  listed on Identity review.
+  once its code names several models.
+- **Identity review** (owner request 2026-10-13): counted web installs with no
+  model wait in Identity review like app results. An administrator assigns
+  the model with the app identity form (`identity_resolution = MANUAL`; a
+  model the reported text or USB code contradicts needs the explicit manual
+  assignment) and can remove it again (`Unassign` on the model page). Every
+  decision is audited, and a record with a decision is never resolved
+  automatically again. A manual assignment never teaches a USB code.
 - **Where they appear**: Dashboard charts, Installations and Maps (each with
   the All, the default, App and Web switch; owner decision 2026-10-13, which
   replaces the combined-only Maps page), Dashboard Activity (web rows marked
@@ -60,8 +66,9 @@ shared install statistics from the start, like app results.
   Compatibility).
 - **What stays app-only**: the app read models and Event detail, evidence
   status (Tested/Verified), reconnect-verified installs, distinct-watch counts,
-  Needs attention and Open problems, the first-run funnel. Web results never grant or revoke
-  write authority.
+  Needs attention (except its Identity review count, which adds the counted
+  web installs with no model) and Open problems, the first-run funnel. Web
+  results never grant or revoke write authority.
 - **Lab and public**: until the public web installer launches at
   `terento.app/install/`, the lab page's records count. After that launch the
   lab installer server marks all its records `isTest: true`.

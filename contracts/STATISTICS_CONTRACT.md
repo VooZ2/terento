@@ -52,8 +52,9 @@ All on the Dashboard charts, Installations, Maps and model pages (owner
 decisions 2026-10-11 and 2026-10-13), and combined on public watch cards (with
 each part shown). The app read models defined below
 stay app-only, and web records never change evidence status (Tested/Verified),
-reconnect-verified installs, distinct-watch counts, Needs attention or write
-authority. User-sent support
+reconnect-verified installs, distinct-watch counts, Needs attention (except
+the Identity review count, which adds counted web installs with no model) or
+write authority. User-sent support
 reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
 statistical population at all: they are review work only and never change any
 count, rate or chart. Optional installation-report `inventoryMetrics`

@@ -1162,6 +1162,16 @@ class CatalogService:
         reason: str | None = None,
         note: str | None = None,
     ) -> int:
+        # Web installer results use the same form with a ``web:`` key.
+        if operation_key.strip().startswith("web:"):
+            return self.database.resolve_web_installer_identity(
+                operation_key.strip().removeprefix("web:"),
+                action=action,
+                canonical_device_model_id=canonical_device_model_id,
+                admin_user_id=admin_user_id,
+                reason=reason,
+                note=note,
+            )
         return self.database.resolve_compatibility_identity(
             operation_key,
             action=action,
@@ -1928,13 +1938,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     LOGGER.exception("identity review queue failed")
                     pending_operations = None
                 try:
-                    web_watches: list[dict[str, Any]] = service.database.web_installer_unresolved_watches()
+                    web_results: list[dict[str, Any]] | None = service.database.web_installer_identity_review()
                 except Exception:
                     LOGGER.exception("identity review web installs failed")
-                    web_watches = []
+                    web_results = None
                 self._send_admin_html(identity_review_page(
                     pending_operations, session, csrf_token, identity_devices=identity_devices,
-                    web_watches=web_watches,
+                    web_results=web_results,
                 ), send_body=send_body)
                 return
             if request_path in {"/admin/support-reports", "/admin/support-reports/"}:
