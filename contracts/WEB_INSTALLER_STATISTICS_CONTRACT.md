@@ -33,6 +33,16 @@ shared install statistics from the start, like app results.
   names `epix Pro (Gen 2)`), and a reported case size prefers the catalog
   rows that state that size over a same-name row with no size. Text without
   a size that several sizes share stays unresolved.
+- **Learned USB code** (owner decision 2026-10-13): when the assessment leaves
+  the model open, the USB model code decides it if the code names exactly one
+  catalog model and the reported text names that model too
+  (`identity_resolution = USB_LEARNED`). The models a code names are its
+  catalog mappings that are not rejected plus every model a confirmed app
+  report (resolved by exact match or Identity review, not a local test) gave
+  with that code. A code alone, or a code that names several models, resolves
+  nothing; a `USB_LEARNED` record loses its model on the next scheduler cycle
+  once its code names several models. Counted web installs with no model are
+  listed on Identity review.
 - **Where they appear**: Dashboard charts (All, the default, App and Web
   switch), Dashboard Activity (web rows marked with the Web icon), Maps page
   and providers (combined numbers), Devices list and model pages (App, Web and
