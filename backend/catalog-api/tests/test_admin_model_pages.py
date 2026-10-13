@@ -126,6 +126,22 @@ class BlockedBeforeWritingTests(unittest.TestCase):
         self.assertIn("Installation blocked before writing", body)
 
 
+    def test_blocked_row_after_an_earlier_map_failure_names_the_cause(self):
+        # 2026-10-13 epix: the failed first map left no row, so the Blocked
+        # Ukraine row said "No error".
+        later = {"operation_key": "batch", "canonical_device_model_id": "garmin-fenix-8-47",
+                 "occurred_at": "2026-10-13T20:27:32Z", "phase_outcome": "NOT_STARTED", "write_started": False,
+                 "failure_stage": "preflight", "failure_code": "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE",
+                 "provider": "opentopomap", "region": "UKRAINE", "map_release": "2026-05"}
+        device = _admin_device_payload([DEVICE_ROW], None)["devices"][0]
+        body = device_detail_page(device, {"username": "operator"}, "csrf", operations=[later],
+                                  open_problem_count=0).decode()
+        row = body.split("<tbody id='diagnostic-rows'>", 1)[1].split("</tr>", 1)[0]
+        self.assertIn("<span>Blocked</span>", row)
+        self.assertIn("<small>Earlier map failed</small>", row)
+        self.assertNotIn("No error", row)
+
+
 class ModelHistoryLayoutTests(unittest.TestCase):
     """Desktop history: compact table rows at >=1024 px, cards below (review 2026-10-06)."""
 
