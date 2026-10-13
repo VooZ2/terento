@@ -44,6 +44,9 @@ WORDS = {
     "CONNECTION_LOST": "The connection to the watch ended",
     "OPEN_ACCESS_DENIED": "USB access denied",
     "INTERFACE_CLAIM_FAILED": "USB interface unavailable",
+    "USB_TRANSFER_FAILED": "A USB transfer to the watch failed",
+    "WATCH_REFUSED": "The watch refused the connection",
+    "UNEXPECTED_RESPONSE": "The watch gave an unexpected answer",
     "FAILED": "Other connection error",
     # Map and removal reasons
     "CANCELLED": "Cancelled by the person",

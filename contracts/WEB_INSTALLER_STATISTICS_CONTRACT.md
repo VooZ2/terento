@@ -123,7 +123,7 @@ count, and shown only as the "Test records" line on the Web installer page.
 | Stage | Outcomes |
 | --- | --- |
 | `GATE` | `PASSED`, `PASSED_TESTING_PLATFORM`, `BLOCKED_BROWSER`, `BLOCKED_MOBILE`, `BLOCKED_PLATFORM` |
-| `CONNECT` | `CONNECTED`, `NO_WATCH_CHOSEN`, `CHOOSER_TIMEOUT`, `STARTUP_ENTRY`, `MODEL_NOT_ENABLED`, `POLICY_UNAVAILABLE`, `OTHER_TAB`, `TIMEOUT`, `CONNECTION_LOST`, `OPEN_ACCESS_DENIED`, `INTERFACE_CLAIM_FAILED`, `FAILED` |
+| `CONNECT` | `CONNECTED`, `NO_WATCH_CHOSEN`, `CHOOSER_TIMEOUT`, `STARTUP_ENTRY`, `MODEL_NOT_ENABLED`, `POLICY_UNAVAILABLE`, `OTHER_TAB`, `TIMEOUT`, `CONNECTION_LOST`, `OPEN_ACCESS_DENIED`, `INTERFACE_CLAIM_FAILED`, `USB_TRANSFER_FAILED`, `WATCH_REFUSED`, `UNEXPECTED_RESPONSE`, `FAILED` |
 | `MAP_RESULT` | `SUCCEEDED`, `FAILED`, `CANCELLED` |
 | `REMOVE` | `SUCCEEDED`, `FAILED` |
 | `RECOVERY` | `FINISHED`, `STILL_BLOCKED` |
@@ -137,6 +137,16 @@ brand other than Google Chrome, such as Edge, Opera or Brave).
 USB open or interface claim before any MTP session existed (an unsupported
 Windows driver, missing Linux USB permission, possibly another app). `CONNECTION_LOST` is only for a
 connection that was made and then ended or became uncertain.
+
+A setup failure before that names its cause: `STARTUP_ENTRY` (the watch's
+startup USB entry was chosen, among them USB code `091e:0003`, "GPS (various
+models)"), `TIMEOUT` (a USB step got no answer in time), `USB_TRANSFER_FAILED`
+(the browser's USB transfer failed or ended short), `WATCH_REFUSED` (the watch
+answered with an MTP error code, sent as `mtpResponse`), `UNEXPECTED_RESPONSE`
+(an answer that is not the expected MTP, or a watch that does not report as a
+Garmin with the needed operations), `POLICY_UNAVAILABLE` (the list of supported
+watches could not be loaded, its timeout too). `FAILED` is left for anything
+else.
 
 Page reason codes: `CANCELLED`, `WATCH_FULL`, `CHECK_MISMATCH`,
 `CONNECTION_LOST`, `CATALOG_CHANGED`, `COMPUTER_FULL`, `EARLIER_CHANGE`,
