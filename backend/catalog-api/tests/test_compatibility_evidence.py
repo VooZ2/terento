@@ -217,6 +217,9 @@ class FakeEvidenceDatabase:
     def web_installer_installation_rows(self):
         return []
 
+    def app_installs_without_model_report(self):
+        return {"successful_install_count": 0, "last_success": None}
+
     def admin_device_snapshot(self):
         return [{
             "device_id": "garmin-fenix-8-47-amoled",

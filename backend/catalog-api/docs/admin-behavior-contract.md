@@ -620,10 +620,14 @@ Model history rows marked open are the per-map results of those operations.
 Maps applies the same fresh main-map write-boundary contract. A current
 map-side failure with no reliable write evidence, a pre-write failure, and an
 optional-component result stay in raw Event detail but do not enter the Maps
-install denominator. The App parts of Maps and Installations can still differ
-because their independently delivered telemetry populations are attributed
-differently (map-usage events carry no watch model); neither view invents the
-missing stream or a model identity. Their Web parts are the same population.
+install denominator. An app map install that Maps counts but no watch report
+backs (no compatibility report for its operation, provider, map result and
+region) is one Installations row, `Watch not reported` with the App icon, no
+model link, Evidence `—`, no Open problems or Identity review (owner decision
+2026-10-13), so the Installations App successes equal the all-time Maps App
+installs; Maps counts a failed map install only with its report, so that row
+has no failures. Neither view invents a model identity. Their Web parts are the
+same population.
 
 All, Failed, Open problems, Identity review and Successful quick filters retain
 their separate meanings; Identity review shows identities with a pending
