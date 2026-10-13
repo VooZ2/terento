@@ -2158,6 +2158,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         public_stats_enabled=service.public_compatibility_stats_enabled,
                         identity_devices=service.admin_devices().get("devices", []),
                         web_rows=service.database.web_installer_installation_rows(),
+                        unreported_app=service.database.app_installs_without_model_report(),
                         source=source if source in {"all", "app", "web"} else "all",
                     )
                 except Exception:
