@@ -743,7 +743,10 @@ A pre-write result (`writeStarted=false`) shows a `Blocked` status pill (its tit
 says `Blocked before writing`; quick filters also read `Blocked`, counts keep
 the full term), is not in the Failed filter, has its own Blocked filter, and
 stays an
-open problem when the canonical predicate says so.
+open problem when the canonical predicate says so. Its Error cell always names
+the cause, never `No error`: a map not started because an earlier map of the
+same operation failed reads `Earlier map failed`, even when that earlier
+result is not listed (a pre-install download failure or an unreported result).
 Narrow layouts stack that same reading order. Historical catalog provenance
 remains accessible and does not change Maps, Install policy, support, or public
 compatibility.

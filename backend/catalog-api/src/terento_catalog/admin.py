@@ -6851,6 +6851,14 @@ def device_detail_page(
                 "RESOLVED" if resolved else _operation_state(results, resolved=False).replace("-", "_")
             )
             error_markup = error_state + f"<small>{html.escape(_diagnostic_error_reason(results, resolved=resolved))}</small>"
+        elif result == "NOT_STARTED":
+            # A Blocked row always has a cause; the failed earlier map of a
+            # batch can be missing here (a pre-install download failure or
+            # an unreported result), so name it instead of "No error".
+            reason = ("Earlier map failed" if any(
+                item.get("failure_code") == "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE" for item in results
+            ) else _diagnostic_error_reason(results))
+            error_markup = f"<small>{html.escape(reason)}</small>"
         else:
             error_markup = "<span class='muted-value'>No error</span>"
         release = _admin_app_version_label(
