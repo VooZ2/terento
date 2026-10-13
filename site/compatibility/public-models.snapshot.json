@@ -82,6 +82,22 @@
       "lastSuccessfulInstallation": "2026-10-04T22:03:29+00:00"
     },
     {
+      "model": "fēnix 9 Pro · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04336-05/g/cf-lg.jpg",
+      "successfulInstallations": 9,
+      "appSuccessfulInstallations": 9,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-13T08:12:52+00:00"
+    },
+    {
       "model": "fēnix 7X Pro · Historical",
       "variant": "Historical",
       "caseSizeMm": null,
@@ -112,22 +128,6 @@
       "appSuccessfulInstallations": 7,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-27T02:47:41+00:00"
-    },
-    {
-      "model": "fēnix 9 Pro · 47 mm",
-      "variant": "47 mm",
-      "caseSizeMm": 47,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-04336-05/g/cf-lg.jpg",
-      "successfulInstallations": 7,
-      "appSuccessfulInstallations": 7,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-09T05:43:49+00:00"
     },
     {
       "model": "Forerunner 955 · Standard",
@@ -370,6 +370,22 @@
       "lastSuccessfulInstallation": "2026-10-07T19:58:02+00:00"
     },
     {
+      "model": "Enduro 2 · Historical",
+      "variant": "Historical",
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "enduro",
+      "familyName": "Enduro",
+      "imageUrl": "https://res.garmin.com/en/products/010-02754-00/g/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-13T08:47:02+00:00"
+    },
+    {
       "model": "fēnix 7X Pro · Solar (no Wi-Fi)",
       "variant": "Solar (no Wi-Fi)",
       "caseSizeMm": null,
@@ -450,5 +466,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-13T04:12:06.259171+00:00"
+  "generatedAt": "2026-10-13T13:03:33.175921+00:00"
 }
