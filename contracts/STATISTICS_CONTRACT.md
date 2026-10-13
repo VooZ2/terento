@@ -48,8 +48,9 @@ update, download, compatibility or Needs attention counts. Web installer records
 are another population. Their counted map results and finished relay jobs join
 the shared install, update and download numbers (owner decision 2026-10-11):
 they are aggregated separately and added next to app results, as App, Web and
-All on the Dashboard charts and model pages, combined on the Maps page and on
-public watch cards (with each part shown). The app read models defined below
+All on the Dashboard charts, Installations, Maps and model pages (owner
+decisions 2026-10-11 and 2026-10-13), and combined on public watch cards (with
+each part shown). The app read models defined below
 stay app-only, and web records never change evidence status (Tested/Verified),
 reconnect-verified installs, distinct-watch counts, Needs attention or write
 authority. User-sent support

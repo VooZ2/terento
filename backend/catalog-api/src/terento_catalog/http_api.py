@@ -792,9 +792,12 @@ class CatalogService:
         if period not in ADMIN_PERIODS:
             raise MapEventValidationError("invalid_period_filter")
         time_zone = _admin_time_zone(query.get("timeZone"))
+        source = str(query.get("source") or "all").strip().lower()
+        if source not in {"all", "app", "web"}:
+            raise MapEventValidationError("invalid_source_filter")
         filter_query = {
             key: value for key, value in query.items()
-            if key not in {"detailPage", "detailPageSize", "period", "timeZone"}
+            if key not in {"detailPage", "detailPageSize", "period", "timeZone", "source"}
         }
         start = period_start(period, now=datetime.now(timezone.utc), time_zone=time_zone)
         if start is not None:
@@ -811,20 +814,18 @@ class CatalogService:
             raise MapEventValidationError("invalid_detail_pagination") from exc
         if detail_page_size not in {25, 50}:
             raise MapEventValidationError("invalid_detail_page_size")
-        # The population sums app and web results (owner decision 2026-10-11);
-        # Event detail stays app reports only.
-        app_rows = self.database.map_statistics(population_filters)
-        rows = [*app_rows, *self.database.web_installer_map_statistics(population_filters)]
+        # All sums app and web results, App and Web show one source (owner
+        # decisions 2026-10-11 and 2026-10-13); Event detail stays app reports only.
+        def source_rows(population: dict[str, Any]) -> list[dict[str, Any]]:
+            return [*(self.database.map_statistics(population) if source != "web" else []),
+                    *(self.database.web_installer_map_statistics(population) if source != "app" else [])]
+
+        rows = source_rows(population_filters)
         all_time_filters = {
             key: value for key, value in population_filters.items()
             if key not in {"dateFrom", "dateTo"}
         }
-        all_time_rows = (
-            rows
-            if all_time_filters == population_filters
-            else [*self.database.map_statistics(all_time_filters),
-                  *self.database.web_installer_map_statistics(all_time_filters)]
-        )
+        all_time_rows = rows if all_time_filters == population_filters else source_rows(all_time_filters)
         rows = [
             {
                 **row,
@@ -848,8 +849,8 @@ class CatalogService:
             for row in rows
         ]
         detail_source_rows = (
-            [row for row in rows if row.get("source") != "web"]
-            if filters == population_filters
+            [] if source == "web"
+            else [row for row in rows if row.get("source") != "web"] if filters == population_filters
             else self.database.map_statistics(filters)
         )
         detail_total = len(detail_source_rows)
@@ -892,11 +893,13 @@ class CatalogService:
             if observed_starts:
                 trend_filters["dateFrom"] = min(observed_starts)
         trend, bucket = self.database.map_statistics_trend(
-            trend_filters, period=period, time_zone=time_zone, include_web=True,
+            trend_filters, period=period, time_zone=time_zone,
+            **({"web_only": True} if source == "web" else {"include_web": source == "all"}),
         )
         payload = {
             "schemaVersion": 1,
-            "filters": {**query, "period": period},
+            "filters": {**query, "period": period, "source": source},
+            "source": source,
             "generatedAt": datetime.now(timezone.utc),
             "rows": rows,
             "summary": _map_statistics_summary(rows),
@@ -2136,12 +2139,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 self._send_admin_html(body, send_body=send_body)
                 return
             if request_path in {"/admin/installations", "/admin/installations/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                source = (query.get("source") or ["all"])[-1]
                 try:
                     body = dashboard_page(
                         service.compatibility_statistics(), session, csrf_token,
                         diagnostic_summary=service.compatibility_diagnostic_summary(),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
                         identity_devices=service.admin_devices().get("devices", []),
+                        web_rows=service.database.web_installer_installation_rows(),
+                        source=source if source in {"all", "app", "web"} else "all",
                     )
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")
