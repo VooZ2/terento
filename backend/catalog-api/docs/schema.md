@@ -717,3 +717,15 @@ Widens the `web_installer_event.identity_resolution` check with
 names exactly one model
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
 Rollback-compatible: the previous revision never writes the value.
+
+### Migration082: manual web identity
+
+Widens the `web_installer_event.identity_resolution` check with `MANUAL` (an
+administrator assigned the model in Identity review) and adds
+`web_installer_identity_audit`: one row per decision (`ASSIGN`,
+`MANUAL_ASSIGN`, `LEAVE_UNRESOLVED`) with the previous and new model, the
+previous resolution, reason, optional note, administrator and time. A record
+with any decision is never resolved by the scheduler again.
+Rollback-compatible: the previous revision never writes `MANUAL`, never reads
+the audit table and only re-resolves records with no model or a learned USB
+code.

@@ -16,6 +16,7 @@ const input=JSON.parse(require('node:fs').readFileSync(0,'utf8'));
  event_type TEXT,outcome TEXT,map_package_id TEXT,provider_id TEXT,region TEXT,map_result_index INT,acquisition_id UUID,reported_map_id TEXT);
  CREATE TABLE map_package(id TEXT,provider_id TEXT,provider_region_id TEXT,canonical_region_id TEXT,region TEXT);
  CREATE TABLE admin_map_review_task(event_id UUID,task_type TEXT,status TEXT);
+ CREATE TABLE web_installer_map_result(event_id UUID,operation TEXT,canonical_device_model_id TEXT);
  INSERT INTO compatibility_evidence_event(event_id,operation_id,phase_outcome,write_started,canonical_device_model_id,diagnostic_status,is_local_test)
  VALUES('99999999-9999-4999-8999-999999999999','99999999-9999-4999-8999-999999999999','FAILED',TRUE,'exact-47','ACTIVE',FALSE);`);
  for(const migration of input.migrations) await db.exec(migration);

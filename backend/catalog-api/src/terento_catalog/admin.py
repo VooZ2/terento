@@ -6647,9 +6647,10 @@ def _device_information_markup(device: dict[str, Any]) -> str:
             f"<div class='device-information-more'>{more}{source_link}</div>")
 
 
-def _web_history_row(item: dict[str, Any]) -> str:
+def _web_history_row(item: dict[str, Any], *, csrf_token: str = "", return_to: str = "") -> str:
     """One counted web installer result in the model page Installation history,
-    marked with the Web icon; it has no app version, issue or Inspect dialog."""
+    marked with the Web icon; it has no app version, issue or Inspect dialog.
+    A model assigned in Identity review can be removed again (Unassign)."""
     from .admin_web_installer import WORDS
 
     result = str(item.get("result") or "").upper()
@@ -6661,6 +6662,16 @@ def _web_history_row(item: dict[str, Any]) -> str:
                         f"{(' · ' + html.escape(stage)) if stage else ''}</small>")
     else:
         error_markup = "<span class='muted-value'>No error</span>"
+    action = "<span class='muted-value'>—</span>"
+    if item.get("identity_resolution") == "MANUAL" and csrf_token:
+        action = (
+            "<form method='post' action='/admin/diagnostics/identity' class='web-identity-unassign'>"
+            f"<input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>"
+            f"<input type='hidden' name='operation_key' value='web:{html.escape(str(item.get('event_id') or ''), quote=True)}'>"
+            f"<input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>"
+            "<button type='submit' class='secondary-button' name='identity_action' value='LEAVE_UNRESOLVED'>Unassign</button>"
+            "</form>"
+        )
     return (
         "<tr data-diagnostic-state='history' data-review-open='false' data-review-resolved='false' "
         f"data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='false' data-source='web'>"
@@ -6670,7 +6681,7 @@ def _web_history_row(item: dict[str, Any]) -> str:
         f"<td class='history-error' data-label='Error'>{error_markup}</td>"
         f"<td data-label='GitHub issue'>{_github_issue_link(None)}</td>"
         f"<td data-label='App version'><span class='history-source-web'>{_admin_icon('source-web')}Web</span></td>"
-        "<td class='column-status' data-label='Action'><span class='muted-value'>—</span></td>"
+        f"<td class='column-status' data-label='Action'>{action}</td>"
         "</tr>"
     )
 
@@ -6810,7 +6821,9 @@ def device_detail_page(
             catalog_template=True,
         ))
     rows_markup.extend(
-        (_timestamp_iso(item.get("occurred_at")), _web_history_row(item)) for item in web_results or ()
+        (_timestamp_iso(item.get("occurred_at")),
+         _web_history_row(item, csrf_token=csrf_token, return_to=detail_url + "#installations"))
+        for item in web_results or ()
     )
     rows_markup.sort(key=lambda item: item[0], reverse=True)
     history_rows = "".join(row for _, row in rows_markup) or "<tr><td colspan='7' class='empty'>No installation history for this device.</td></tr>"
@@ -7260,45 +7273,55 @@ def _identity_review_item(
     )
 
 
-def _web_unresolved_watches_card(watches: list[dict[str, Any]], identity_devices: list[dict[str, Any]] | None) -> str:
-    """Counted web installs with no catalog model, with the models their text
-    and USB code may name (data only; they resolve when the code names one)."""
-    if not watches:
-        return ""
-    by_id = {str(d.get("id")): d for d in identity_devices or []}
-
-    def model_link(device_id: str) -> str:
-        model, variant, _ = _identity_parts(by_id.get(device_id) or {"model": device_id})
-        label = model if variant in {"", "—", "Historical"} else f"{model} · {variant}"
-        return f"<a href='{html.escape(_device_detail_url(device_id, origin='devices'), quote=True)}'>{html.escape(label)}</a>"
-
-    empty = "<span class='muted-value'>—</span>"
-
-    def code_cell(code: str | None) -> str:
-        return f"<code>{html.escape(code)}</code>" if code else empty
-
-    rows = "".join(
-        "<tr>"
-        f"<td data-label='Watch'>{html.escape(str(w.get('model') or '—'))}</td>"
-        f"<td data-label='USB code'>{code_cell(w.get('usb_code'))}</td>"
-        f"<td data-label='Possible models'>{'<br>'.join(model_link(i) for i in w.get('possible') or []) or empty}</td>"
-        f"<td class='column-number' data-label='Installs'>{int(w.get('installs') or 0)}</td>"
-        f"<td class='column-date' data-label='Last install'>{_timestamp_markup(w.get('last_seen'))}</td>"
-        "</tr>"
-        for w in watches
-    )
-    return (
-        "<section class='admin-card identity-review-web' id='identity-review-web' aria-labelledby='identity-review-web-title'>"
-        "<header class='admin-card-head'>"
-        f"<h2 id='identity-review-web-title'><span class='history-source-web'>{_admin_icon('source-web')}Web installer</span></h2>"
-        f"<span class='table-help'>{_count_label(sum(int(w.get('installs') or 0) for w in watches), 'installation')}</span>"
-        "</header>"
-        "<div class='table-wrap'><table class='mobile-record-table'><caption class='sr-only'>Web installs with no catalog model</caption>"
-        "<thead><tr><th scope='col'>Watch</th><th scope='col'>USB code</th><th scope='col'>Possible models</th>"
-        "<th scope='col' class='column-number'>Installs</th><th scope='col' class='column-date'>Last install</th></tr></thead>"
-        f"<tbody>{rows}</tbody></table></div>"
-        "</section>"
-    )
+def _web_identity_review_groups(
+    results: list[dict[str, Any]], *, csrf_token: str, identity_devices: list[dict[str, Any]] | None,
+) -> list[tuple[str, int, str]]:
+    """Counted web installs with no catalog model as Identity review groups:
+    one card per reported watch, one item per install, with the same identity
+    form as app results (key ``web:<event id>``). Returns (latest, count, card)."""
+    by_identity: dict[str, list[dict[str, Any]]] = {}
+    for row in results:
+        by_identity.setdefault(str(row.get("model") or "Unknown").strip() or "Unknown", []).append(row)
+    groups = []
+    for identity, rows in by_identity.items():
+        model, variant = _display_identity(identity)
+        anchor = "identity-web-" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:12]
+        items = []
+        for row in rows:
+            key = f"web:{row.get('event_id')}"
+            form = _identity_review_form(
+                key, [row], csrf_token=csrf_token, identity_devices=identity_devices,
+                return_to=IDENTITY_REVIEW_PATH,
+                id_suffix="identity-review-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:16],
+                catalog_template=True, inline=True,
+            )
+            code = row.get("usb_code")
+            items.append(
+                f"<li class='identity-review-item' data-identity-review-item data-operation='{html.escape(key, quote=True)}'>"
+                "<div class='identity-review-facts'>"
+                f"<span class='identity-review-date'>{_timestamp_markup(row.get('occurred_at'))}</span>"
+                f"<span class='identity-review-map'>{html.escape(_operation_map_label([row]))}</span>"
+                f"<span class='identity-review-result'>{_diagnostic_result(str(row.get('result') or ''))}</span>"
+                "<span class='identity-review-why'>"
+                f"<span class='identity-review-reason'>{html.escape(_identity_pending_reason([row]))}</span>"
+                + (f"<code class='identity-review-usb'>USB {html.escape(code)}</code>" if code else "")
+                + "</span></div>"
+                f"<div class='identity-review-decision'>{form}</div>"
+                "</li>"
+            )
+        variant_text = variant if variant not in {"—", "Historical"} else "Variant not reported"
+        groups.append((
+            max(_timestamp_iso(row.get("occurred_at")) for row in rows), len(rows),
+            f"<section class='admin-card identity-review-group' id='{anchor}' aria-labelledby='{anchor}-title' data-identity-review-group data-source='web'>"
+            "<header class='admin-card-head'>"
+            f"<h2 id='{anchor}-title'>{html.escape(model)}<small>{html.escape(variant_text)}</small></h2>"
+            f"<span class='table-help' data-identity-review-group-count>{_count_label(len(rows), 'installation')}</span>"
+            f"<span class='admin-card-action history-source-web'>{_admin_icon('source-web')}Web installer</span>"
+            "</header>"
+            f"<ol class='identity-review-items'>{''.join(items)}</ol>"
+            "</section>",
+        ))
+    return groups
 
 
 def identity_review_page(
@@ -7306,20 +7329,21 @@ def identity_review_page(
     user: dict[str, Any],
     csrf_token: str,
     *, identity_devices: list[dict[str, Any]] | None = None,
-    web_watches: list[dict[str, Any]] | None = None,
+    web_results: list[dict[str, Any]] | None = None,
 ) -> bytes:
-    """Every installation operation whose identity is pending, confirmable in place."""
+    """Every installation operation whose identity is pending, confirmable in
+    place: app results and counted web installer results, newest group first."""
     total = 0
     if operations is None:
         body = _unavailable_card("Identity review", "identity-review-list", retry_href=IDENTITY_REVIEW_PATH)
         summary = ""
     else:
         groups = _identity_review_groups(operations)
-        total = sum(len(tasks) for _, tasks in groups)
         done = _empty_state("empty", "No installations wait for identity review.")
-        cards: list[str] = []
+        cards: list[tuple[str, str]] = []
         number = 0
         for identity, tasks in groups:
+            total += len(tasks)
             model, variant = _display_identity(identity)
             anchor = _identity_review_anchor(identity)
             items = []
@@ -7330,7 +7354,9 @@ def identity_review_page(
                     csrf_token=csrf_token, identity_devices=identity_devices,
                 ))
             variant_text = variant if variant not in {"—", "Historical"} else "Variant not reported"
-            cards.append(
+            latest = max(_timestamp_iso(row.get("occurred_at"))
+                         for _, pending in tasks for _, rows in pending for row in rows)
+            cards.append((latest,
                 f"<section class='admin-card identity-review-group' id='{anchor}' aria-labelledby='{anchor}-title' data-identity-review-group>"
                 "<header class='admin-card-head'>"
                 f"<h2 id='{anchor}-title'>{html.escape(model)}<small>{html.escape(variant_text)}</small></h2>"
@@ -7340,7 +7366,14 @@ def identity_review_page(
                 "</header>"
                 f"<ol class='identity-review-items'>{''.join(items)}</ol>"
                 "</section>"
-            )
+            ))
+        for latest, count, card in _web_identity_review_groups(
+            web_results or [], csrf_token=csrf_token, identity_devices=identity_devices,
+        ):
+            total += count
+            cards.append((latest, card))
+        cards.sort(key=lambda card: card[0], reverse=True)
+        cards = [card for _, card in cards]
         if cards:
             body = (
                 "<div class='identity-review-groups'>" + "".join(cards) + "</div>"
@@ -7362,7 +7395,6 @@ def identity_review_page(
         <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
         <div class='heading-row'><div><h1>Identity review</h1></div>{summary}</div>
         {body}
-        {_web_unresolved_watches_card(web_watches or [], identity_devices)}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
     """
@@ -10273,6 +10305,8 @@ ADMIN_STYLES += """
 .identity-review-why{display:flex;flex-basis:100%;flex-wrap:wrap;align-items:center;gap:4px 12px}
 .identity-review-reason{color:var(--secondary);font-size:12px;line-height:16px}
 .identity-review-details{display:inline-flex;align-items:center;min-height:32px}
+.identity-review-usb{color:var(--secondary);font-size:12px;line-height:16px}
+.web-identity-unassign{margin:0}
 .identity-review-decision{display:grid;gap:10px;min-width:0}
 .identity-review-decision .identity-review-form{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:0;background:transparent}
 .identity-review-decision .identity-review-form[hidden]{display:none}

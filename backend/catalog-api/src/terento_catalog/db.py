@@ -1564,7 +1564,8 @@ class Database:
         """Return active review-task counts, grouped at operation level.
 
         A failed diagnostic and its linked GitHub issue are alternative task
-        states for one operation. Identity review is an additional task, while
+        states for one operation. Identity review is an additional task (app
+        operations plus counted web installs with no model), while
         publication review is counted per model. Resolved evidence is excluded.
         """
         query = """
@@ -1597,7 +1598,11 @@ class Database:
                     WHERE diagnostic_status='ACTIVE' AND is_local_test IS FALSE
                       AND linked_github_issue IS NOT NULL
                 ) AS github_issues_in_progress,
-                count(*) FILTER (WHERE identity_pending) AS identity_pending,
+                count(*) FILTER (WHERE identity_pending) + (
+                    -- Counted web installs with no catalog model (Identity review web items).
+                    SELECT count(*) FROM web_installer_map_result
+                    WHERE canonical_device_model_id IS NULL AND operation = 'install'
+                ) AS identity_pending,
                 (SELECT ready_to_publish FROM publication_reviews) AS ready_to_publish,
                 (SELECT missing_diagnostics FROM missing_diagnostic_reviews)
                     AS missing_diagnostics
@@ -4689,36 +4694,129 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def web_installer_unresolved_watches(self, *, limit: int = 50) -> list[dict[str, Any]]:
-        """Counted web installs with no catalog model, one row per reported
-        model text and USB code, with every catalog model they may name."""
+    def web_installer_identity_review(self, *, limit: int = 200) -> list[dict[str, Any]]:
+        """Counted web installs with no catalog model, newest first, each with
+        the current identity assessment of its model text and USB code (the
+        rows of the Identity review web items)."""
         with self.connection() as connection:
             rows = list(connection.execute(
-                """
-                SELECT e.model, e.usb_vendor_id, e.usb_product_id, count(*) AS installs, max(w.occurred_at) AS last_seen
+                f"""
+                SELECT e.event_id, e.occurred_at, w.result, e.provider AS provider_id, p.name AS provider_name,
+                       e.package_id AS map_package_id, mp.name AS map_package_name, mp.region,
+                       COALESCE(mp.geographic_region_id, mp.canonical_region_id) AS canonical_region_id,
+                       mp.country AS region_country, e.failure_stage, e.reason,
+                       e.model, e.usb_vendor_id, e.usb_product_id, e.canonical_device_model_id
                 FROM web_installer_map_result AS w
                 JOIN web_installer_event AS e USING (event_id)
+                LEFT JOIN map_package AS mp ON mp.id = e.package_id
+                LEFT JOIN map_provider AS p ON p.id = e.provider
                 WHERE w.canonical_device_model_id IS NULL AND w.operation = 'install'
-                GROUP BY e.model, e.usb_vendor_id, e.usb_product_id
-                ORDER BY last_seen DESC LIMIT %s
+                ORDER BY e.occurred_at DESC LIMIT %s
                 """, (limit,),
             ).fetchall())
             if not rows:
                 return []
             devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
             mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
-            usb_models = usb_code_models(mappings, list(connection.execute(LEARNED_USB_QUERY).fetchall()))
         result = []
         for row in rows:
-            code = (f"{row['usb_vendor_id']:04x}:{row['usb_product_id']:04x}"
-                    if row["usb_vendor_id"] is not None and row["usb_product_id"] is not None else None)
-            assessment = assess_identity(web_installer_identity_event(row), devices, mappings)
-            text_models = {c["deviceId"] for c in assessment["candidates"] if not c["conflict"]}
-            code_models = usb_models.get(code, set()) if code else set()
-            result.append({**dict(row), "usb_code": code,
-                           "possible": sorted(text_models & code_models if text_models and code_models
-                                              else text_models | code_models)})
+            item = {**dict(row), "event_id": str(row["event_id"])}
+            item["usb_code"] = (f"{row['usb_vendor_id']:04x}:{row['usb_product_id']:04x}"
+                                if row["usb_vendor_id"] is not None and row["usb_product_id"] is not None else None)
+            item["current_identity_assessment"] = assess_identity(web_installer_identity_event(row), devices, mappings)
+            result.append(item)
         return result
+
+    def resolve_web_installer_identity(
+        self,
+        event_id: str,
+        *,
+        action: str,
+        canonical_device_model_id: str | None,
+        admin_user_id: int | None,
+        reason: str | None = None,
+        note: str | None = None,
+    ) -> int:
+        """Apply an administrator identity decision to one counted web result,
+        with the app rules: ``ASSIGN`` refuses a model that conflicts with the
+        reported model text or USB code, ``MANUAL_ASSIGN`` confirms it
+        explicitly, ``LEAVE_UNRESOLVED`` removes the model again. Every
+        decision is audited; a repeat of the latest decision writes nothing."""
+        normalized_action = action.strip().upper()
+        if normalized_action not in {"ASSIGN", "MANUAL_ASSIGN", "LEAVE_UNRESOLVED"}:
+            raise IdentityResolutionError("unsupported_identity_action", "This identity action is not available.")
+        if normalized_action == "LEAVE_UNRESOLVED":
+            canonical_device_model_id = None
+        else:
+            canonical_device_model_id = (canonical_device_model_id or "").strip()
+            if not canonical_device_model_id:
+                raise IdentityResolutionError("missing_model_selection", "Choose a specific catalog model before confirming.")
+        try:
+            event_id = str(UUID(event_id.strip()))
+        except ValueError:
+            return 0
+        with self.connection() as connection:
+            # The counted population of web_installer_map_result, locked.
+            row = connection.execute(
+                """
+                SELECT * FROM web_installer_event
+                WHERE event_id = %s::uuid AND stage = 'MAP_RESULT' AND is_test IS NOT TRUE
+                  AND (outcome = 'SUCCEEDED' OR (outcome = 'FAILED' AND write_started IS TRUE))
+                FOR UPDATE
+                """, (event_id,),
+            ).fetchone()
+            if row is None:
+                return 0
+            if canonical_device_model_id is not None:
+                device = connection.execute(
+                    """
+                    SELECT id, model, variant, case_size_mm, screen_technology, solar, inreach
+                    FROM device_model WHERE id = %s AND manufacturer = 'Garmin'
+                    """, (canonical_device_model_id,),
+                ).fetchone()
+                if device is None:
+                    raise IdentityResolutionError("canonical_device_not_found", "That catalog model is no longer available.")
+                if normalized_action == "ASSIGN":
+                    mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
+                    conflicts = selected_identity_conflicts(web_installer_identity_event(row), device, mappings)
+                    if conflicts:
+                        devices = list(connection.execute("SELECT * FROM device_model").fetchall())
+                        raise IdentityResolutionError(
+                            "identity_conflict_manual_required",
+                            "The selected model conflicts with reported information. Use manual assignment to confirm it.",
+                            details={"conflicts": self._identity_conflict_details(row, device, conflicts, devices)},
+                        )
+            target_resolution = "UNRESOLVED" if canonical_device_model_id is None else "MANUAL"
+            latest = connection.execute(
+                "SELECT action, new_canonical_device_model_id FROM web_installer_identity_audit "
+                "WHERE event_id = %s::uuid ORDER BY id DESC LIMIT 1", (event_id,),
+            ).fetchone()
+            if (latest and latest["action"] == normalized_action
+                    and latest["new_canonical_device_model_id"] == canonical_device_model_id
+                    and row.get("canonical_device_model_id") == canonical_device_model_id
+                    and row.get("identity_resolution") == target_resolution):
+                return 1
+            generated_reason = {
+                "ASSIGN": "Administrator selected a catalog model for this web result.",
+                "MANUAL_ASSIGN": "Administrator manually confirmed a catalog model despite a reported conflict.",
+                "LEAVE_UNRESOLVED": "Administrator removed the catalog model of this web result.",
+            }[normalized_action]
+            connection.execute(
+                "UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = %s "
+                "WHERE event_id = %s::uuid", (canonical_device_model_id, target_resolution, event_id),
+            )
+            connection.execute(
+                """
+                INSERT INTO web_installer_identity_audit (
+                    event_id, previous_canonical_device_model_id, previous_resolution,
+                    new_canonical_device_model_id, action, reason, note, corrected_by
+                ) VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (event_id, row.get("canonical_device_model_id"), row.get("identity_resolution"),
+                 canonical_device_model_id, normalized_action,
+                 (reason or "").strip() or generated_reason, (note or "").strip() or None, admin_user_id),
+            )
+            return 1
 
     def resolve_web_installer_identities(self, *, limit: int = 5000) -> dict[str, int]:
         """Resolve the catalog model of web connections and map results that
@@ -4726,12 +4824,14 @@ class Database:
         scheduler runs it at start and after each cycle, so rows received
         before a catalog or USB mapping change resolve later. Rows resolved
         from a learned USB code are checked again: once the code names
-        several models they lose the model."""
+        several models they lose the model. A row with any administrator
+        decision (Identity review) keeps that decision."""
         with self.connection() as connection:
             rows = list(connection.execute(
                 """
                 SELECT event_id, model, usb_vendor_id, usb_product_id FROM web_installer_event
                 WHERE (canonical_device_model_id IS NULL OR identity_resolution = 'USB_LEARNED')
+                  AND NOT EXISTS (SELECT 1 FROM web_installer_identity_audit a WHERE a.event_id = web_installer_event.event_id)
                   AND is_test IS NOT TRUE
                   AND stage IN ('CONNECT', 'MAP_RESULT')
                   AND (model IS NOT NULL OR usb_product_id IS NOT NULL)
@@ -4872,7 +4972,7 @@ class Database:
                 SELECT w.event_id, w.occurred_at, w.result, w.provider AS provider_id, p.name AS provider_name,
                        w.package_id AS map_package_id, mp.name AS map_package_name, mp.region,
                        COALESCE(mp.geographic_region_id, mp.canonical_region_id) AS canonical_region_id,
-                       mp.country AS region_country, e.failure_stage, e.reason
+                       mp.country AS region_country, e.failure_stage, e.reason, e.identity_resolution
                 FROM web_installer_map_result AS w
                 JOIN web_installer_event AS e USING (event_id)
                 LEFT JOIN map_package AS mp ON mp.id = w.package_id

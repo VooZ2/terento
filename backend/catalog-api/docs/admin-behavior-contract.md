@@ -665,11 +665,20 @@ not identifiable, not a provider download failure) and the same operation
 unit, so they agree except when one operation reports results under two
 different reported identities, which then appears under each identity.
 
-Below the queue, a `Web installer` card (Web icon) lists the counted web
-installs that have no catalog model, one row per reported watch text and USB
-code (at most 50, newest first): Watch, USB code, Possible models (links to
-each model the text and code may name), Installs and Last install. It is data
-only, with no controls; a row leaves the card when its code names one model
+Counted web installs with no catalog model (at most 200, newest first) join
+the same queue: one group per reported watch text, marked `Web installer` with
+the Web icon, one item per install (Date, Map, Result, reason, `USB` code when
+reported) and the same inline identity form keyed `web:<event id>`; the Needs attention
+`Identity review` count adds them. The form
+offers only the models the reported text may name (the whole catalog when it
+names none); `Confirm` refuses a model the reported text or USB code
+contradicts (409) and `Confirm manual assignment` assigns it explicitly. Test
+records and failures before writing are refused (404). An assigned install
+(`identity_resolution = MANUAL`) shows `Unassign` in the Action column of the
+model page Installation history, which removes the model and returns the
+install to the queue. Every decision is audited in
+`web_installer_identity_audit`, and the scheduler never resolves a web record
+with a decision again
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)).
 
 ### Devices and device detail
