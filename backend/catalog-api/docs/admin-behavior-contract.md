@@ -311,7 +311,9 @@ Downloads are relay jobs (sent, failed on the server) and Installs are counted
 web map results (install and update, succeeded and failed; no Custom .img
 series); All adds App and Web per bucket. Activity lists app and web results
 together, newest first; a web row carries the globe icon after its label and
-no update-diagnostics link. No All time line, purpose breakdown or other
+no update-diagnostics link. A web row whose watch matches no single catalog
+model shows the model name the watch reported as plain text (no model link;
+it is not counted for any model). No All time line, purpose breakdown or other
 explanatory text is shown in these cards; all-time totals live on Maps. Header totals and charts use the same period
 population, so they agree. A legend elsewhere shows a count only where it adds
 information no total shows (the Maps Custom .img install split and the App
@@ -411,6 +413,11 @@ A, 2026-10-12):
    count is the number of listed rows.
 6. A last line counts test records (stored, kept out of every number) with
    the last receipt time, for delivery checks.
+
+A `Download CSV` button beside the period picker downloads every record of
+the selected period (page events and server requests together, newest first,
+test records excluded) with every stored field, times in the Admin time zone
+(owner decision 2026-10-13); see the statistics contract for the columns.
 
 Tables that would scroll sideways on a phone (Watch models, Providers, Recent
 requests, Recent results on watches) become records at ≤760 px whose result

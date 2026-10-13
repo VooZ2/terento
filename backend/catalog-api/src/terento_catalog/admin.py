@@ -1482,7 +1482,10 @@ def _overview_activity_device(event: dict[str, Any]) -> str:
     device_id = str(event.get("canonical_device_model_id") or "").strip()
     model = str(event.get("model") or "").strip()
     if not device_id or not model:
-        return ""
+        # A web result whose watch matches no single catalog model: the name
+        # the watch reported, as plain text (no model page, nothing counted).
+        reported = str(event.get("reported_model") or "").strip() if event.get("source") == "web" else ""
+        return f"<span class='overview-activity-reported'>{html.escape(reported)}</span>" if reported else ""
     variant = _normalise_variant(event.get("variant")) if event.get("variant") else ""
     if variant == "Historical":
         variant = ""
@@ -10520,6 +10523,7 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}
 @media(min-width:701px){main.web-installer-page>.heading-row{margin-bottom:0}main.web-installer-page.overview-page>*+*{margin-top:var(--admin-card-gap)}}
 .web-installer-source{display:inline-flex;align-items:center;gap:6px;color:var(--secondary);font-size:12px}.web-installer-source>.admin-icon{width:14px;height:14px}
+.web-installer-export>.admin-icon{width:13px;height:13px}@media(max-width:760px){main.web-installer-page .overview-period-form{flex-wrap:nowrap}main.web-installer-page .overview-period-form>label{flex:1;min-width:0}.web-installer-export{flex:0 0 auto}}
 .web-installer-kpis>.admin-metric-row,.web-installer-server>.admin-metric-row{grid-template-columns:repeat(6,minmax(0,1fr))}.web-installer-server>.admin-metric-row{margin-bottom:16px}
 @media(max-width:900px){.web-installer-kpis>.admin-metric-row,.web-installer-server>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .web-installer-count{margin-left:4px;color:var(--secondary);font-variant-numeric:tabular-nums}

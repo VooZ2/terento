@@ -90,7 +90,7 @@ from .compatibility_evidence import (
 )
 from .compatibility_status import calculate_compatibility_status
 from .collect import collect_provider_once
-from .admin_web_installer import web_installer_page
+from .admin_web_installer import web_installer_csv, web_installer_page
 from .web_installer import (
     MAX_WEB_INSTALLER_BYTES,
     WebInstallerValidationError,
@@ -598,6 +598,17 @@ class CatalogService:
             "testRecords": tests,
             **summarize_web_installer(events, jobs),
         }
+
+    def web_installer_export(self, query: dict[str, str]) -> tuple[bytes, str]:
+        """Every Web installer record of the page's period as CSV (test records
+        excluded) and its file name."""
+        period = query["period"]
+        time_zone = _admin_time_zone(query.get("timeZone"))
+        until = datetime.now(timezone.utc)
+        since = period_start(period, now=until, time_zone=time_zone)
+        events, jobs, _ = self.database.web_installer_rows(since, until)
+        day = until.astimezone(ZoneInfo(time_zone)).date().isoformat()
+        return web_installer_csv(events, jobs, time_zone), f"terento-web-installer-{period}-{day}.csv"
 
     def web_installer_chart(self, since: datetime | None, period: str, time_zone: str) -> dict[str, Any]:
         """Dashboard Web switch: web downloads and installs in the app chart shape."""
@@ -2166,6 +2177,26 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "The Dashboard could not be loaded.", session, csrf_token, send_body=send_body)
                     return
                 self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path == "/admin/web-installer.csv":
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                period = query.get("period", ["7d"])[-1]
+                if period not in ADMIN_PERIODS:
+                    period = "7d"
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
+                try:
+                    body, file_name = service.web_installer_export({"period": period, "timeZone": time_zone})
+                except Exception:
+                    LOGGER.exception("admin web installer export failed")
+                    self._send_admin_error(HTTPStatus.SERVICE_UNAVAILABLE, "The export could not be created.", session, csrf_token, send_body=send_body)
+                    return
+                self.send_response(HTTPStatus.OK)
+                self._common_headers(cache_control="no-store", content_type="text/csv; charset=utf-8", content_length=len(body))
+                self.send_header("Content-Disposition", f'attachment; filename="{file_name}"')
+                self.send_header("X-Robots-Tag", "noindex, nofollow")
+                self.end_headers()
+                if send_body:
+                    self.wfile.write(body)
                 return
             if request_path in {"/admin/web-installer", "/admin/web-installer/", "/admin/web-installer.json"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
