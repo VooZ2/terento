@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   refresh:
-    if: github.repository == 'VooZ2/terento'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:

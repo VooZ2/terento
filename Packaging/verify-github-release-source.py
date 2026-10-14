@@ -16,9 +16,10 @@ def run(*args):
 
 def source_branch(release_label):
     """Stable releases come from main; beta and RC prereleases from beta."""
-    if re.fullmatch(r'\d+\.\d+\.\d+', release_label):
+    version = r'(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)'
+    if re.fullmatch(version, release_label):
         return 'main'
-    if re.fullmatch(r'\d+\.\d+\.\d+-(beta|rc)\.[1-9]\d*', release_label):
+    if re.fullmatch(version + r'-(?:beta|rc)\.[1-9][0-9]*', release_label):
         return 'beta'
     raise ValueError(f'Release label {release_label!r} is neither stable nor a beta/RC prerelease.')
 

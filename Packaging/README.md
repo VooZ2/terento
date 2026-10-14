@@ -299,12 +299,13 @@ the release is not documentation-complete until the image, its derivatives,
 and every reference are updated from the canonical source.
 
 Every change to the public macOS update manifest selects the full CI matrix.
-A beta push containing that change automatically retains a release observation,
-including failed gates; no separate manual dispatch or new tag is required.
-Before reporting, CI compares the checked-out manifest with current beta metadata
-so a rerun of an older tag cannot replace the current release observation.
-For recovery, dispatch Swift CI on current beta with `run_release_gate=true`
-and `send_health_report=false`; do not edit observations or suppress drift warnings.
+A `main` push containing that change automatically retains a release
+observation, including failed gates; no separate manual dispatch or new tag is
+required. Tags run the test matrix but never send a report. Before reporting,
+CI compares the checked-out manifest with current `main` metadata so an older
+run cannot replace the current release observation. For recovery, dispatch
+Swift CI on current `main` with `run_release_gate=true` and
+`send_health_report=false`; do not edit observations or suppress drift warnings.
 
 Every distributed rebuild must receive a new monotonically increasing build
 and a new build-specific tag, even if its semantic beta label is unchanged.

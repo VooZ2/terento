@@ -585,6 +585,23 @@ def verify_release_reporting(swift):
     assert "if: always() && steps.report.outcome == 'success'" in report
     assert 'if [ "$GATE_RESULT" = "success" ]; then' in report
 
+def verify_main_only_job(workflow, job):
+    """A production job may run only for VooZ2/terento on main, for every trigger."""
+    body = workflow.split(f"\n  {job}:\n", 1)[1]
+    condition = re.search(r"^    if: (.+)$", body, re.M).group(1)
+    expression = condition.replace("&&", "and").replace("||", "or").replace(
+        "github.repository", "repository").replace("github.ref", "ref")
+    assert "github." not in expression and "event" not in expression, condition
+    def runs(ref, repository="VooZ2/terento"):
+        return eval(expression, {}, dict(ref=ref, repository=repository))
+    assert runs("refs/heads/main")
+    # A schedule runs on the default branch, which is beta until the cutover.
+    for ref in ("refs/heads/beta", "refs/heads/terento/task", "refs/tags/v1.0.0-build44",
+                "refs/tags/v1.1.0-beta.1-build50", "refs/pull/1/merge"):
+        assert not runs(ref), (job, ref)
+    assert not runs("refs/heads/main", repository="someone/terento")
+
+
 def verify_report_gate(report):
     """Only main may send production reports: never beta, task branches or tags."""
     condition = report.split("    if: >-\n", 1)[1].split("\n    needs:", 1)[0]
@@ -883,6 +900,11 @@ def main() -> int:
     verify_scoped_transport()
     refresh = (WORKFLOWS / "refresh-compatibility-snapshot.yml").read_text(encoding="utf-8")
     assert "cron: \"0 */6 * * *\"" in refresh
+    verify_main_only_job(refresh, "refresh")
+    for name, jobs in (("deploy-site.yml", ("publish", "deploy")), ("deploy-catalog-api.yml", ("publish",)),
+                       ("publish-vps-images.yml", ("publish",)), ("check-vps-access.yml", ("check",))):
+        for job in jobs:
+            verify_main_only_job((WORKFLOWS / name).read_text(encoding="utf-8"), job)
     assert "workflow_dispatch:" in refresh
     assert "scripts/update-compatibility-snapshot.py" in refresh
     assert "Detect factual changes" not in refresh and "steps.diff.outputs.changed" not in refresh, (

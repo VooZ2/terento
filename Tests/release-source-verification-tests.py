@@ -21,7 +21,8 @@ class SourceVerificationTests(unittest.TestCase):
                 self.assertEqual(run.call_args_list[-1].args, ('gh', 'api', f'repos/{gate.REPO}/compare/{SHA}...{branch}'))
 
     def test_unknown_label_stops_before_git(self):
-        for label in ('1.0.0-local', '1.0.0-rc.0', 'v1.0.0', '1.0', ''):
+        for label in ('1.0.0-local', '1.0.0-rc.0', 'v1.0.0', '1.0', '', '01.0.0', '1.00.0-rc.1',
+                      '1.0.0-rc.01', '1.0.0-RC.1', '\u0661.0.0', '1.0.0\n', '1.0.0-beta.1-build50'):
             with patch.object(gate, 'run') as run, self.assertRaises(ValueError):
                 gate.verify(label)
             run.assert_not_called()
