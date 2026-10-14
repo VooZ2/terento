@@ -62,7 +62,8 @@ DMG URL, concise summary, and trusted full release-notes URL.
 ## Verified release source
 
 New public builds must be packaged from a clean, GitHub-verified signed commit
-already merged into beta. Use the actual verified merge commit, not an unsigned
+already merged into `main` for a stable release, or into `beta` for a beta or
+RC prerelease. Use the actual verified merge commit, not an unsigned
 PR head with an equivalent tree. `Packaging/release.sh` enforces this through
 `Packaging/verify-github-release-source.py` before building or contacting Apple;
 `--no-notarize` remains available for undistributed local validation.

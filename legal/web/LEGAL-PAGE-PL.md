@@ -10,9 +10,9 @@ Aplikacja jest publiczną wersją beta dla komputerów Mac z Apple Silicon. Inst
 
 ## Licencje oprogramowania i komponentów
 
-Kod źródłowy Terento oraz własne pliki HTML, CSS i JavaScript witryny są objęte **GPL-3.0-or-later**, chyba że plik stanowi inaczej. Przeczytaj [licencję](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Kod źródłowy Terento oraz własne pliki HTML, CSS i JavaScript witryny są objęte **GPL-3.0-or-later**, chyba że plik stanowi inaczej. Przeczytaj [licencję](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Dołączone biblioteki zachowują własne licencje: **libmtp 1.1.23** i **libusb 1.0.30** korzystają z LGPL-2.1-or-later. Czcionki i inne materiały osób trzecich zachowują swoje warunki. Licencje i informacje o źródłach znajdziesz w [informacjach o komponentach](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Dołączone biblioteki zachowują własne licencje: **libmtp 1.1.23** i **libusb 1.0.30** korzystają z LGPL-2.1-or-later. Czcionki i inne materiały osób trzecich zachowują swoje warunki. Licencje i informacje o źródłach znajdziesz w [informacjach o komponentach](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 Licencja oprogramowania nie przyznaje praw do znaku Terento. Zmienionych wersji nie wolno przedstawiać jako oficjalnych wydań Terento.
 

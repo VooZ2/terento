@@ -10,7 +10,8 @@ tests.
 ## Preconditions
 
 - a clean checkout of a GitHub-verified signed release commit already merged
-  into beta, plus authenticated `gh` for the read-only source preflight;
+  into `main` (stable) or `beta` (beta and RC prereleases), plus authenticated
+  `gh` for the read-only source preflight;
 - macOS and Xcode with the `Terento.xcodeproj` toolchain available;
 - Node.js for the JavaScript-backed native/web regression contracts;
 - Python 3.12 or 3.13 for backend and shared JSON contract checks; the backend
@@ -241,7 +242,7 @@ Before distributing a public build:
 - publish and notarize the DMG using this existing process;
 - validate the manifest after publication and confirm its download and notes
   URLs remain official Terento destinations;
-- require the beta manifest commit's automatic full Swift CI matrix and retained
+- require the `main` manifest commit's automatic full Swift CI matrix and retained
   release health report to pass, then confirm System health shows matching
   release and website build numbers. A published DMG or successful site deploy
   alone does not complete this operational release gate.
@@ -298,12 +299,13 @@ the release is not documentation-complete until the image, its derivatives,
 and every reference are updated from the canonical source.
 
 Every change to the public macOS update manifest selects the full CI matrix.
-A beta push containing that change automatically retains a release observation,
-including failed gates; no separate manual dispatch or new tag is required.
-Before reporting, CI compares the checked-out manifest with current beta metadata
-so a rerun of an older tag cannot replace the current release observation.
-For recovery, dispatch Swift CI on current beta with `run_release_gate=true`
-and `send_health_report=false`; do not edit observations or suppress drift warnings.
+A `main` push containing that change automatically retains a release
+observation, including failed gates; no separate manual dispatch or new tag is
+required. Tags run the test matrix but never send a report. Before reporting,
+CI compares the checked-out manifest with current `main` metadata so an older
+run cannot replace the current release observation. For recovery, dispatch
+Swift CI on current `main` with `run_release_gate=true` and
+`send_health_report=false`; do not edit observations or suppress drift warnings.
 
 Every distributed rebuild must receive a new monotonically increasing build
 and a new build-specific tag, even if its semantic beta label is unchanged.
@@ -344,12 +346,14 @@ instructions; see [historical evidence](../history/README.md). The public beta
 includes all four reviewed providers. Never replace a packaged catalog or
 change activation flags manually as a normal release step.
 
-Merge the tested release source into beta, then package from the exact
+Merge the tested release source into `main` (stable) or `beta` (prerelease),
+then package from the exact
 GitHub-verified merge commit. Create a lightweight tag at that packaged SHA;
 verify its remote target and signature before publishing the draft release.
 See [the signature policy](../VERSIONING.md#verified-release-source).
-The beta push is the single site deployment trigger; a tag records app provenance
-and runs release CI, without redeploying an older site tree. Attach the verified
+The `main` push is the single site deployment trigger; a tag records app
+provenance and runs release CI without a health report or redeploying an older
+site tree. Attach the verified
 artifacts to the intended GitHub prerelease and verify the final live manifest,
 download URLs and checksums. The published source-client catalog matrix must
 retain prior route contracts and gain the new release source when appropriate.

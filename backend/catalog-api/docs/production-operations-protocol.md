@@ -21,7 +21,7 @@ needed, is an owner/root operation outside the GitHub protocol.
 
 ## Canonical flow
 
-1. GitHub tests the exact beta commit.
+1. GitHub tests the exact main commit.
 2. The publisher builds and pushes one immutable image and records its digest.
 3. The owner confirms the generic `confirm_production_deploy` workflow gate.
 4. CI sends only the digest and full revision through the deploy-only principal.

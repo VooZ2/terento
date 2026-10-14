@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Workflow-owned snapshot PR. Never push beta or bypass required checks.
+"""Workflow-owned snapshot PR. Never push main or bypass required checks.
 
 ``--indexnow-state`` reuses the same owned-branch, exact-head CI and merge
 gates for the IndexNow publication state written by deploy-site.yml.
@@ -180,7 +180,7 @@ def integrate(branch, marker, title, body, changed_files, owned_files, prepare,
     if not paths:
         print("No factual changes: success; no commit, PR or deploy")
         return
-    prs = gh("pr", "list", "--repo", REPO, "--head", branch, "--base", "beta",
+    prs = gh("pr", "list", "--repo", REPO, "--head", branch, "--base", "main",
              "--state", "open", "--json", "number,body,author,headRefOid")
     if len(prs) > 1:
         raise RuntimeError("Duplicate refresh PRs; refusing ambiguous ownership")
@@ -202,7 +202,7 @@ def integrate(branch, marker, title, body, changed_files, owned_files, prepare,
     run("git", "push", f"--force-with-lease=refs/heads/{branch}:{old}",
         "origin", f"HEAD:refs/heads/{branch}")
     if not prs:
-        run("gh", "pr", "create", "--repo", REPO, "--head", branch, "--base", "beta",
+        run("gh", "pr", "create", "--repo", REPO, "--head", branch, "--base", "main",
             "--title", title, "--body", body)
     pr = wait_for_pr_head(branch, sha)
     number = str(pr["number"])
@@ -225,20 +225,20 @@ def integrate(branch, marker, title, body, changed_files, owned_files, prepare,
     merged = gh("pr", "view", number, "--repo", REPO, "--json", "state,mergeCommit")
     if merged["state"] != "MERGED":
         raise RuntimeError("PR not merged")
-    beta = None
+    main_sha = None
     if deploy:
-        beta = run("git", "ls-remote", "origin", "refs/heads/beta").split()[0]
-        if beta != merged["mergeCommit"]["oid"]:
-            raise RuntimeError("Beta advanced concurrently; do not deploy unrelated source")
+        main_sha = run("git", "ls-remote", "origin", "refs/heads/main").split()[0]
+        if main_sha != merged["mergeCommit"]["oid"]:
+            raise RuntimeError("Main advanced concurrently; do not deploy unrelated source")
         # Reuse an automatic exact-SHA deployment if present; never double deploy.
-        dispatch_and_wait("deploy-site.yml", "beta", beta, reuse=True)
+        dispatch_and_wait("deploy-site.yml", "main", main_sha, reuse=True)
     remaining = gh("pr", "list", "--repo", REPO, "--head", branch,
-                   "--base", "beta", "--state", "open", "--json", "number")
+                   "--base", "main", "--state", "open", "--json", "number")
     if remaining:
         raise RuntimeError("Unexpected open refresh PR remains")
     delete_merged_branch(sha, branch)
     if deploy:
-        print(f"Merged refresh PR {number}; exact beta {beta} deployment passed")
+        print(f"Merged refresh PR {number}; exact main {main_sha} deployment passed")
     else:
         print(f"Merged PR {number} for {', '.join(changed_files)}")
 
@@ -257,14 +257,14 @@ def main(argv=None):
         # The state file is outside the deploy-site path filter: merge only, no deploy.
         integrate(INDEXNOW_BRANCH, INDEXNOW_MARKER, INDEXNOW_TITLE, body, INDEXNOW_FILES,
                   INDEXNOW_FILES, prepare_indexnow_commit,
-                  ci_inputs=("-f", "selection_base=beta"), deploy=False)
+                  ci_inputs=("-f", "selection_base=main"), deploy=False)
         return
     if args:
         raise SystemExit("usage: integrate-compatibility-refresh.py [--indexnow-state]")
     # Site-only facts: test what the branch changes, not the full native matrix, so an
-    # unrelated app test cannot hold back the data and beta has less time to move on.
+    # unrelated app test cannot hold back the data and main has less time to move on.
     integrate(BRANCH, MARKER, TITLE, BODY, FACT_FILES, OWNED_FILES, prepare_refresh_commits,
-              ci_inputs=("-f", "selection_base=beta"))
+              ci_inputs=("-f", "selection_base=main"))
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ A restricted host Caddy service terminates origin TLS and forwards site traffic 
 the unprivileged Caddy container on loopback. API traffic uses its separate route.
 
 `.github/workflows/deploy-site.yml` publishes the tracked `site/` tree after a
-relevant push to `beta` (or an explicit beta dispatch). Tags do not deploy the
+relevant push to `main` (or an explicit main dispatch). Tags do not deploy the
 site a second time. The reusable `publish-vps-images.yml` workflow runs
 site/release/legal checks and builds the pinned Caddy image on GitHub Actions. It
 publishes the image to GHCR and returns its immutable digest. The site deploy job
@@ -70,13 +70,13 @@ records are retained and deduplicated by URL plus content fingerprint; pending
 records, including their known oldest-pending time, are carried into the next
 plan and retried. A no-change run does not change either submission timestamp.
 The workflow updates only this file after successful live verification through
-a state-only pull request to the protected `beta` branch; the path is outside
+a state-only pull request to the protected `main` branch; the path is outside
 the site deployment filters, so state retention does not trigger a second site
 deployment. The workflow runs `scripts/integrate-compatibility-refresh.py
 --indexnow-state`, the same owned-branch integrator as the Compatibility
 refresh: it commits only this file to `terento/indexnow-state` as
 `github-actions[bot]` with a workflow marker, dispatches `swift-ci.yml` for
-the exact head with `selection_base=beta`, reruns the `GITHUB_TOKEN` PR's
+the exact head with `selection_base=main`, reruns the `GITHUB_TOKEN` PR's
 `action_required` `pull_request` run, waits for the required checks, merges
 with `--match-head-commit`, and deletes the branch. It never deploys. An
 existing state branch or open PR without the marker is refused rather than
@@ -161,7 +161,8 @@ Test the boundary rules with `python3 Tests/admin-access-boundary-tests.py`.
 
 ### Production release and migration boundaries
 
-Both deployment workflows and the scoped request script accept only `beta`.
+Both deployment workflows and the scoped request script accept only `main`;
+`beta` never deploys.
 A release tag records app provenance and triggers release CI, not a second site
 publication. GitHub environment restrictions can be stricter, never broader,
 than these workflow gates.
@@ -230,19 +231,19 @@ PR or deployment.
 
 Factual changes use the single workflow-owned
 `terento/compatibility-snapshot-refresh` branch and a reusable PR into protected
-`beta`; the factual commit includes only the snapshot JSON and six generated
+`main`; the factual commit includes only the snapshot JSON and six generated
 compatibility HTML/Markdown pairs. The subsequent sitemap metadata commit
 records the factual commit date. Unrelated page representations remain outside
 the automation allowlist. Existing branch ownership is checked before an explicit
-force-with-lease update. The workflow never pushes beta directly. It explicitly
+force-with-lease update. The workflow never pushes main directly. It explicitly
 dispatches Swift CI and waits for a new run on the exact PR head, including
 `build-and-test`, then checks all required PR checks and mergeability before
 merging without bypass. Failed checks retain the PR for investigation/reuse.
 
 GitHub-token event suppression is handled explicitly: after a factual PR merge,
-the workflow verifies the exact beta merge SHA and dispatches one site deploy,
+the workflow verifies the exact main merge SHA and dispatches one site deploy,
 or reuses an existing exact-SHA active/successful deployment. A failed existing
-deploy requires investigation rather than a duplicate dispatch. Concurrent beta
+deploy requires investigation rather than a duplicate dispatch. Concurrent main
 changes fail closed. The automation branch is deleted with an exact lease after
 successful deployment (already-auto-deleted branches are a successful no-op).
 Workflow enablement alone is not a deployment trigger.

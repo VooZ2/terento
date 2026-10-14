@@ -94,6 +94,9 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case providerConnectionFailed(providerId: String, code: URLError.Code)
     case downloadIncomplete(expected: UInt64?, actual: UInt64)
     case invalidPackage(String)
+    /// The provider replaced the file after the catalog last checked it, so it
+    /// no longer matches the catalog's source proof.
+    case providerSourceUpdated(providerId: String)
     case extractionFailed(String)
     case unsupportedPackageFormat
     case unsafeArchivePath(String)
@@ -139,6 +142,9 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "Cannot connect to \(name)’s download server. Check your connection or try again later."
         case .downloadIncomplete:
             return "The map download did not complete. Try again."
+        case .providerSourceUpdated(let providerID):
+            let name = MapProviderDisplay.downloadName(providerID)
+            return "\(name) has just updated this map. Terento usually lists the new version within a day. Try again later."
         case .invalidPackage, .extractionFailed, .unsupportedPackageFormat,
              .unsafeArchivePath, .noIMGFound, .ambiguousIMG:
             return "The downloaded map could not be verified and opened safely. Refresh the catalog and try again."
@@ -172,6 +178,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map package is incomplete: received \(actual) bytes."
         case .invalidPackage(let message):
             return "The downloaded map package is invalid: \(message)"
+        case .providerSourceUpdated:
+            return "The provider replaced the map after the catalog checked it."
         case .extractionFailed(let message):
             return "The map package could not be extracted: \(message)"
         case .unsupportedPackageFormat:
@@ -1017,14 +1025,14 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
                     if let finalURL = httpResponse.url {
                         try sourcePolicy.validate(finalURL)
                     }
-                    if let sourceProof {
-                        guard httpResponse.statusCode == 200,
-                              httpResponse.url == sourceProof.sourceURL,
-                              httpResponse.value(forHTTPHeaderField: "ETag") == sourceProof.etag,
-                              httpResponse.value(forHTTPHeaderField: "Last-Modified") == sourceProof.lastModified,
-                              httpResponse.expectedContentLength == Int64(sourceProof.downloadSizeBytes) else {
-                            throw MapAcquisitionError.invalidPackage("The BBBike source changed. Refresh the catalog.")
-                        }
+                    if let sourceProof, let failure = sourceProof.responseFailure(
+                        statusCode: httpResponse.statusCode,
+                        url: httpResponse.url,
+                        etag: httpResponse.value(forHTTPHeaderField: "ETag"),
+                        lastModified: httpResponse.value(forHTTPHeaderField: "Last-Modified"),
+                        contentLength: httpResponse.expectedContentLength
+                    ) {
+                        throw failure
                     }
                 },
                 onProgress: onProgress,
@@ -2155,11 +2163,33 @@ struct MapPackageAcquirer: Sendable {
         case .downloadFailed, .downloadIncomplete:
             return true
         case .acquisitionWithheld, .providerUnavailable, .providerConnectionFailed, .invalidPackage,
-             .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
+             .providerSourceUpdated, .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
              .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound,
              .ambiguousIMG, .workspaceFailed, .untrustedSourceURL,
              .customMapNotConfirmed, .insufficientMacStorage:
             return false
         }
+    }
+}
+
+extension BBBikeSourceProof {
+    /// nil only for the exact reviewed source. Only a response that proves the
+    /// provider replaced the file (412, or 200 with new validators) says so;
+    /// errors, redirects and incomplete headers stay a generic rejection.
+    func responseFailure(
+        statusCode: Int, url: URL?, etag: String?, lastModified: String?, contentLength: Int64
+    ) -> MapAcquisitionError? {
+        if statusCode == 412 { return .providerSourceUpdated(providerId: "bbbike") }
+        guard statusCode == 200, url == sourceURL else {
+            return .invalidPackage("The BBBike source did not return the reviewed file.")
+        }
+        if etag == self.etag, lastModified == self.lastModified, contentLength == Int64(downloadSizeBytes) {
+            return nil
+        }
+        guard etag != nil, lastModified != nil, contentLength > 0,
+              etag != self.etag || lastModified != self.lastModified else {
+            return .invalidPackage("The BBBike source did not return the reviewed file.")
+        }
+        return .providerSourceUpdated(providerId: "bbbike")
     }
 }

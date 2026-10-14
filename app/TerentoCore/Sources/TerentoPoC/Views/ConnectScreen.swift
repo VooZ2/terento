@@ -2596,7 +2596,8 @@ struct ConnectScreen: View {
         return TroubleshootingHelp.installationTopic(
             failure: mapEngine.evidenceFailure,
             acquisitionError: mapEngine.installationFailureAcquisitionError,
-            mayHaveLeftMapOnWatch: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true
+            mayHaveLeftMapOnWatch: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true,
+            failureContext: mapEngine.evidenceFailureContext
         )
     }
 

@@ -195,8 +195,8 @@ enum TroubleshootingHelp {
         case .acquisitionWithheld, .downloadFailed, .providerUnavailable, .providerConnectionFailed,
              .downloadIncomplete, .untrustedSourceURL:
             return .providerDownloadFailed
-        case .invalidPackage, .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
-             .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound, .ambiguousIMG,
+        case .invalidPackage, .providerSourceUpdated, .extractionFailed, .unsupportedPackageFormat,
+             .unsafeArchivePath, .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound, .ambiguousIMG,
              .customMapNotConfirmed:
             return .downloadedMapRejected
         case .workspaceFailed, .insufficientMacStorage:
@@ -229,10 +229,12 @@ enum TroubleshootingHelp {
     static func installationTopic(
         failure: InstallationFailure?,
         acquisitionError: MapAcquisitionError?,
-        mayHaveLeftMapOnWatch: Bool
+        mayHaveLeftMapOnWatch: Bool,
+        failureContext: InstallationFailureContext? = nil
     ) -> TroubleshootingTopic {
         if mayHaveLeftMapOnWatch { return .leftoverMapAfterFailure }
         if let acquisitionError { return topic(for: acquisitionError) }
+        if failure == .preflightMTPReadFailed, failureContext?.isWatchSessionBusy == true { return .garminBusy }
         if let failure { return topic(for: failure) }
         return .sendReport
     }

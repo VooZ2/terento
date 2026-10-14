@@ -526,7 +526,7 @@ receipt. Do not infer older-OS compatibility from a successful newer-host run.
 ## Coordinate the release source window
 
 Before final candidate CI, identify the release owner and pause unrelated merges
-into `beta` until the candidate is merged and its verified source SHA is recorded.
+into the release branch (`main` for stable, `beta` for prereleases) until the candidate is merged and its verified source SHA is recorded.
 An API change required by the new client must land before this window. Otherwise
 an unrelated merge can invalidate an up-to-date-branch check and force the entire
 candidate CI to rerun. Do not bypass branch protection to recover lost time.

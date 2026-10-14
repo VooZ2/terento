@@ -17,7 +17,7 @@ printf '%s\n' '== Repository =='
 printf 'root: %s\n' "$repo_root"
 printf 'branch: %s\n' "${current_branch:-DETACHED}"
 printf 'HEAD: %s\n' "$head_sha"
-printf 'canonical ref: %s\n' "$(git rev-parse --verify origin/beta 2>/dev/null || printf '%s' 'MISSING')"
+printf 'canonical ref: %s\n' "$(git rev-parse --verify origin/main 2>/dev/null || printf '%s' 'MISSING')"
 
 if [ -n "$upstream" ]; then
   printf 'upstream: %s\n' "$upstream"
@@ -26,8 +26,8 @@ else
   printf '%s\n' 'upstream: NONE'
 fi
 
-if git rev-parse --verify origin/beta >/dev/null 2>&1; then
-  printf 'ahead/behind origin/beta (ahead behind): %s\n' "$(git rev-list --left-right --count HEAD...origin/beta)"
+if git rev-parse --verify origin/main >/dev/null 2>&1; then
+  printf 'ahead/behind origin/main (ahead behind): %s\n' "$(git rev-list --left-right --count HEAD...origin/main)"
 fi
 
 printf '\n%s\n' '== Working tree =='
@@ -57,17 +57,17 @@ git worktree list --porcelain
 printf '\n%s\n' '== Local branches =='
 git for-each-ref --format='%(refname:short) %(objectname:short) upstream=%(upstream:short) %(subject)' refs/heads
 
-if git rev-parse --verify origin/beta >/dev/null 2>&1; then
-  printf '\n%s\n' '== Local branches ancestrally merged into origin/beta =='
+if git rev-parse --verify origin/main >/dev/null 2>&1; then
+  printf '\n%s\n' '== Local branches ancestrally merged into origin/main =='
   git for-each-ref --format='%(refname:short)' refs/heads | while IFS= read -r branch; do
-    if git merge-base --is-ancestor "$branch" origin/beta; then
+    if git merge-base --is-ancestor "$branch" origin/main; then
       printf '%s\n' "$branch"
     fi
   done
 
-  printf '\n%s\n' '== Local branches not ancestrally merged into origin/beta =='
+  printf '\n%s\n' '== Local branches not ancestrally merged into origin/main =='
   git for-each-ref --format='%(refname:short)' refs/heads | while IFS= read -r branch; do
-    if ! git merge-base --is-ancestor "$branch" origin/beta; then
+    if ! git merge-base --is-ancestor "$branch" origin/main; then
       printf '%s\n' "$branch"
     fi
   done

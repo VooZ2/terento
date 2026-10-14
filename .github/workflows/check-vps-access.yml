@@ -1,7 +1,7 @@
 name: Check restricted VPS access
 on:
   push:
-    branches: [beta]
+    branches: [main]
     paths: [.github/workflows/check-vps-access.yml]
   workflow_dispatch:
 permissions:
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   check:
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: rukas-${{ matrix.role }}
