@@ -114,6 +114,22 @@
       "lastSuccessfulInstallation": "2026-10-14T06:30:56+00:00"
     },
     {
+      "model": "Forerunner 955 · Standard",
+      "variant": "Standard",
+      "caseSizeMm": null,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "forerunner",
+      "familyName": "Forerunner",
+      "imageUrl": "https://res.garmin.com/en/products/010-02638-10/v/cf-lg-d0a186df-582c-4f80-aeef-7eb37b60471b.jpg",
+      "successfulInstallations": 8,
+      "appSuccessfulInstallations": 8,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-14T14:30:46+00:00"
+    },
+    {
       "model": "fēnix 7X Pro · Historical",
       "variant": "Historical",
       "caseSizeMm": null,
@@ -160,22 +176,6 @@
       "appSuccessfulInstallations": 7,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-27T02:47:41+00:00"
-    },
-    {
-      "model": "Forerunner 955 · Standard",
-      "variant": "Standard",
-      "caseSizeMm": null,
-      "displayType": "Solar",
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "forerunner",
-      "familyName": "Forerunner",
-      "imageUrl": "https://res.garmin.com/en/products/010-02638-10/v/cf-lg-d0a186df-582c-4f80-aeef-7eb37b60471b.jpg",
-      "successfulInstallations": 6,
-      "appSuccessfulInstallations": 6,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-03T07:25:56+00:00"
     },
     {
       "model": "fēnix 7 Pro · Solar (no Wi-Fi)",
@@ -482,5 +482,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-14T10:44:47.855669+00:00"
+  "generatedAt": "2026-10-14T16:04:17.330743+00:00"
 }
