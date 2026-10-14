@@ -603,8 +603,21 @@ private actor DelayedAuthorizationResponse {
                 let classified = MapEngine.readFailureDiagnostic(error)
                 check(classified?.failure == .preflightMTPReadFailed && classified?.context.isWatchSessionBusy == busy,
                       "only snapshot -5 is a busy watch session at the install boundary")
-                check(MapEngine.watchBusyMessage(classified) == (busy ? UserFacingErrorMessage.installationWatchBusy : nil),
+                check(MapEngine.watchBusyMessage(classified) == (busy ? UserFacingErrorMessage.installationWatchBusy(afterEarlierWrite: false) : nil),
                       "a busy watch session gets the busy-watch message; other read failures keep theirs")
+                if busy {
+                    check(MapEngine.watchBusyMessage(classified)?.contains("No map was written") == true,
+                          "a busy session before any write says no map was written")
+                    // First component written, then the next snapshot returns -5.
+                    let package = plan().installItems[0].package
+                    let earlier = [Self.result(package: package, failure: nil, wrote: true)]
+                    let wrote = MapEngine.wroteAnyComponent(earlier)
+                    check(wrote && !MapEngine.wroteAnyComponent([Self.result(package: package, failure: .insufficientSpace, wrote: false)]),
+                          "only a component that reached the device counts as an earlier write")
+                    let message = MapEngine.watchBusyMessage(classified, afterEarlierWrite: wrote)
+                    check(message?.contains("in use by another app") == true && message?.contains("No map was written") == false,
+                          "a busy session after an earlier component was written does not claim no map was written")
+                }
             }
         }
         for presence in [InstallationFailureContext.DevicePresence.unknown, .absent] {
