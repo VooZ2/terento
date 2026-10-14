@@ -63,7 +63,7 @@ This candidate changes only what the Device page shows when a watch doesn't conn
 
 Terento 1.0.0-rc.1 is the first release candidate for Terento 1.0.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Terento remains a Public beta until 1.0.0, later release candidates only contain fixes, and compatibility is still evaluated model by model.
 
-Map Update was validated on real watches with BBBike, Freizeitkarte and MapRando maps during the beta. Fast removal was validated on a real watch with this release candidate. Protected-map, ownership, safe Update and explicit Remove safeguards and the installation authorization rules are unchanged.
+Map Update was validated on real watches with BBBike and MapRando maps during the beta. (Corrected 2026-10-14: an earlier version of these notes also listed Freizeitkarte; a real Freizeitkarte Update has not been confirmed.) Fast removal was validated on a real watch with this release candidate. Protected-map, ownership, safe Update and explicit Remove safeguards and the installation authorization rules are unchanged.
 
 ## WHAT'S NEW?
 

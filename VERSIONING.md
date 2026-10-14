@@ -1,15 +1,16 @@
 # Terento versioning
 
-Terento uses semantic-style pre-release versions:
+Terento uses semantic versions with beta and release-candidate pre-releases:
 
 ```text
+MAJOR.MINOR.PATCH
 MAJOR.MINOR.PATCH-beta.N
 MAJOR.MINOR.PATCH-rc.N
 ```
 
 Current public Git tags combine the semantic release label with the distributed
 build: `v<release-label>-build<CFBundleVersion>`, for example
-`v1.0.0-beta.12-build28` or `v1.0.0-rc.1-build41`. Older tags without a build
+`v1.0.0-beta.12-build28`, `v1.0.0-rc.1-build41` or `v1.0.0-build44`. Older tags without a build
 suffix remain immutable historical identities; do not rename or overwrite them.
 
 - **MAJOR** is reserved for intentionally incompatible public changes after
@@ -44,7 +45,39 @@ pre-release channel that installed beta builds already follow. This keeps
 current beta users on an in-app update path to each release candidate, and
 installed clients only decode the `beta` and `stable` channel values. Do not
 introduce a separate `rc` channel. Moving from a release candidate to the
-stable label and `stable` channel requires its own release-contract review.
+stable label follows [Stable release](#stable-release).
+
+## Stable release
+
+A stable release has a plain `MAJOR.MINOR.PATCH` label, the `stable` update
+channel and a GitHub Release that is not a prerelease and is marked Latest.
+It is built from `main`. Beta and release-candidate prereleases are built from
+`beta` and published only as GitHub prereleases: once a stable release exists,
+the update manifest on `main` lists only stable releases. Installed beta.7 and
+later clients, including every release candidate, accept a `stable` manifest;
+a stable installation is never offered a beta.
+
+Allowed label transitions (the build always rises above every `v*-buildN` tag):
+
+| From | To | Branch | Manifest |
+|---|---|---|---|
+| `X.Y.Z-rc.N` | `X.Y.Z` | `main` | `stable` |
+| `X.Y.Z` | `X.Y.Z` (rebuild), `X.Y.(Z+1)`, `X.(Y+1).0` or `(X+1).0.0` | `main` | `stable` |
+| stable `X.Y.Z` | `beta.1` or `rc.1` of a newer version | `beta` | unchanged |
+| `beta.N` | the same label (rebuild), `beta.N+1` or `rc.1` | `beta` | unchanged |
+| `rc.N` | the same label (rebuild) or `rc.N+1` | `beta` | unchanged |
+
+A stable transition starts from the `main` manifest. A prerelease starts from
+the highest-build prerelease tag of the same marketing version, ordered by build
+number; with none, only `beta.1` or `rc.1` of a version newer than the
+published stable release is allowed. `Tests/release-documentation-tests.cjs`
+enforces the table and `Packaging/release.sh` checks the build against the
+remote tags and the packaged `TerentoReleaseChannel` against the label.
+
+A stable release needs every real-device gate of its release candidates to
+have passed. A gate may stay open only by an explicit, dated owner decision
+recorded in the project state; it is then reported as `DEFERRED`, never as
+passed, and the release notes list it under KNOWN ISSUES.
 
 Published tags are immutable: never reuse, overwrite, or force-push a tag.
 The release tag is the immutable source identity. The manifest releaseTag,

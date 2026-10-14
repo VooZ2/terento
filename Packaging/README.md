@@ -212,10 +212,15 @@ Before distributing a public build:
   suitable machine is available; until then, keep that future-OS result
   explicitly pending rather than inferring it from the current macOS run;
 - increment `CFBundleVersion` monotonically and set the public release label;
-- set the intended `TERENTO_RELEASE_CHANNEL` (`beta` or `stable`); beta and
-  release-candidate labels both use `beta`;
-- update `site/updates/macos-arm64.json` with the matching version, build,
-  minimum macOS, channel, release tag, and canonical DMG `downloadURL`;
+- set `TERENTO_RELEASE_CHANNEL` from the candidate label: `stable` for a
+  plain `X.Y.Z` label, `beta` for beta and release-candidate labels.
+  `Tests/release-documentation-tests.cjs` and `Packaging/release.sh` (packaged
+  `TerentoReleaseChannel`) reject any other combination;
+- for a stable release, update `site/updates/macos-arm64.json` on `main` with
+  the matching version, build, minimum macOS, channel, release tag, and
+  canonical DMG `downloadURL`. Once a stable release exists, a beta or RC
+  prerelease leaves the manifest unchanged and is published only as a GitHub
+  prerelease (see [Stable release](../VERSIONING.md#stable-release));
 - provide a plain-text `summary` of at most 240 characters and the canonical
   `releaseNotesURL`; validate the committed manifest with the app update test
   before publishing, including metadata-only corrections to an existing build.
@@ -354,7 +359,8 @@ See [the signature policy](../VERSIONING.md#verified-release-source).
 The `main` push is the single site deployment trigger; a tag records app
 provenance and runs release CI without a health report or redeploying an older
 site tree. Attach the verified
-artifacts to the intended GitHub prerelease and verify the final live manifest,
+artifacts to the intended GitHub Release: a stable release is not a
+prerelease and is marked Latest; a beta or RC is a prerelease. Verify the final live manifest,
 download URLs and checksums. The published source-client catalog matrix must
 retain prior route contracts and gain the new release source when appropriate.
 

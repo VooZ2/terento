@@ -22,7 +22,7 @@ for locale in links["COPY"]:
 print("Download layout checks passed for all six locales.")
 
 # A release-candidate manifest must change only the description of the current
-# build; the program-level beta wording stays, and a stable label is rejected.
+# build, and a stable label uses its own reviewed copy; other labels are rejected.
 import json
 release_pages = runpy.run_path("scripts/normalize-release-pages.py")
 published = json.loads(open("site/updates/macos-arm64.json", encoding="utf-8").read())
@@ -39,14 +39,20 @@ for locale in release_pages["LOCALES"]:
     assert release_pages["CURRENT_BUILD"]["beta"][locale] not in rc, locale
     assert '"softwareVersion": "1.0.0-rc.1"' in rc, locale
     assert release_pages["render"](rc, locale, published, path) == source, f"{locale}: beta round trip"
-    for label in ("1.0.0", "1.0.0-RC.1", "1.0.0-rc.0", "1.0.0-rc.1-local"):
+    stable = release_pages["render"](source, locale, dict(candidate, releaseLabel="1.0.0"), path)
+    assert release_pages["LATEST"]["stable"][locale] + ": <strong>v1.0.0</strong>" in stable, locale
+    assert release_pages["CURRENT_BUILD"]["stable"][locale] in stable, locale
+    assert release_pages["CURRENT_BUILD"]["rc"][locale] not in stable, locale
+    assert '"softwareVersion": "1.0.0"' in stable, locale
+    assert release_pages["render"](stable, locale, published, path) == source, f"{locale}: stable round trip"
+    for label in ("1.0", "01.0.0", "1.0.0-RC.1", "1.0.0-rc.0", "1.0.0-beta.0", "1.0.0-rc.1-local", "1.0.0-local"):
         try:
             release_pages["render"](source, locale, dict(candidate, releaseLabel=label), path)
         except ValueError:
             pass
         else:
             raise AssertionError(f"{locale}: unsupported release label accepted: {label}")
-print("Download release-candidate copy checks passed for all six locales.")
+print("Download release-candidate and stable copy checks passed for all six locales.")
 PYTHON
 
 generated="site/privacy/index.html

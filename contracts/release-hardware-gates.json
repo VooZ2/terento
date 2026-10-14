@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "gates": [
+    {
+      "id": "real-update-freizeitkarte-opentopomap",
+      "description": "A real safe map Update on a watch for Freizeitkarte and for OpenTopoMap.",
+      "status": "DEFERRED",
+      "decidedBy": "owner",
+      "decidedAt": "2026-10-14",
+      "knownIssue": "Map Update has not yet been confirmed on a real watch for Freizeitkarte and OpenTopoMap maps."
+    }
+  ]
+}

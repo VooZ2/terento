@@ -169,8 +169,8 @@ DMG, ZIP, release notes, and previous versions are available on
 [GitHub Releases](https://github.com/VooZ2/terento/releases).
 
 Terento is a **Public beta**. Compatibility and map updates are still being
-tested on real watches. Updates to newer BBBike, Freizeitkarte and MapRando
-releases were confirmed on a real watch; OpenTopoMap updates, the faster
+tested on real watches. Updates to newer BBBike and MapRando releases were
+confirmed on a real watch; Freizeitkarte and OpenTopoMap updates, the faster
 update checks of rc.1, the connection messages of rc.2 and the recovery fixes
 of rc.3 still need real-device confirmation.
 
