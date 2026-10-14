@@ -869,12 +869,12 @@ enum DeviceDetectionErrorClassifier {
             if context.resultKind == .timeout {
                 return .stoppedResponding
             }
+            if context.isWatchSessionBusy { return .busy }
             if context.nativeCodeNamespace == .terentoSnapshot,
                let code = context.nativeResultCode {
                 switch code {
                 case -2, -3: return .notYetEnumerated
                 case -4: return .multipleDevices
-                case -5: return .busy
                 default: break
                 }
             }

@@ -229,10 +229,12 @@ enum TroubleshootingHelp {
     static func installationTopic(
         failure: InstallationFailure?,
         acquisitionError: MapAcquisitionError?,
-        mayHaveLeftMapOnWatch: Bool
+        mayHaveLeftMapOnWatch: Bool,
+        failureContext: InstallationFailureContext? = nil
     ) -> TroubleshootingTopic {
         if mayHaveLeftMapOnWatch { return .leftoverMapAfterFailure }
         if let acquisitionError { return topic(for: acquisitionError) }
+        if failure == .preflightMTPReadFailed, failureContext?.isWatchSessionBusy == true { return .garminBusy }
         if let failure { return topic(for: failure) }
         return .sendReport
     }
