@@ -3,7 +3,7 @@ name: Deploy public site
 on:
   push:
     branches:
-      - beta
+      - main
     paths:
       - "site/**"
       - "site-deploy/**"
@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   publish:
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -43,7 +43,7 @@ jobs:
 
   deploy:
     needs: publish
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: rukas-site
@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          latest="$(git ls-remote origin refs/heads/beta | cut -f1)"
+          latest="$(git ls-remote origin refs/heads/main | cut -f1)"
           test -n "$latest"
           git fetch --no-tags origin "$latest"
           if git diff --quiet "$GITHUB_SHA" "$latest" -- site site-deploy \
@@ -76,7 +76,7 @@ jobs:
             echo 'deploy=true' >> "$GITHUB_OUTPUT"
           else
             echo 'deploy=false' >> "$GITHUB_OUTPUT"
-            echo 'Superseded by a newer beta revision; no site rollback requested.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Superseded by a newer main revision; no site rollback requested.' >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Deploy immutable site image through its scoped account
         if: steps.current.outputs.deploy == 'true'
@@ -115,8 +115,8 @@ jobs:
           expected = snapshot(Path("site/compatibility/index.html"))
           live = snapshot(Path(sys.argv[1]))
           if live != expected:
-              raise SystemExit("live Compatibility snapshot does not match deployed beta output")
-          print("Live Compatibility snapshot matches the deployed beta output.")
+              raise SystemExit("live Compatibility snapshot does not match deployed main output")
+          print("Live Compatibility snapshot matches the deployed main output.")
           PY
 
       - name: Prepare IndexNow delta plan
@@ -333,13 +333,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # beta requires all changes to arrive through a pull request. The
+          # main requires all changes to arrive through a pull request. The
           # state update is deliberately isolated from the site deployment:
           # its merge changes only this state file, which is excluded from the
           # deploy-site path filter. The shared integrator owns the PR, exact-head
           # CI (including action_required reruns), and merge gates.
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          latest="$(git ls-remote origin refs/heads/beta | cut -f1)"
+          latest="$(git ls-remote origin refs/heads/main | cut -f1)"
           test "$latest" = "$GITHUB_SHA"
           cp "$RUNNER_TEMP/indexnow-state.json" .github/indexnow/site-state.json
           python3 scripts/integrate-compatibility-refresh.py --indexnow-state

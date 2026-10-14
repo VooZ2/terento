@@ -3,7 +3,7 @@ name: Deploy catalog API
 on:
   push:
     branches:
-      - beta
+      - main
     paths:
       - "backend/catalog-api/src/**"
       - "backend/catalog-api/Dockerfile"
@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_production_deploy:
-        description: Confirm this immutable beta image may be deployed to production
+        description: Confirm this immutable main image may be deployed to production
         required: true
         type: boolean
         default: false
@@ -60,7 +60,7 @@ jobs:
 
   publish:
     needs: tests
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -70,7 +70,7 @@ jobs:
 
   deploy:
     needs: publish
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta' && github.event_name == 'workflow_dispatch' && inputs.confirm_production_deploy == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirm_production_deploy == true && vars.TERENTO_FIXED_OPS_INSTALLED == 'true'
     runs-on: ubuntu-latest
     # Remote ceiling: lock 10 + pull 10 + snapshot 10 + migrate/start/verify ~10 minutes.
     timeout-minutes: 60

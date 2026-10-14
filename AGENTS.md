@@ -127,11 +127,13 @@ scoped Admin implementation rules here.
 
 ## Git and workspace hygiene
 
-- When the repository and workflows confirm it, `origin/beta` is the canonical
-  integrated Terento source state. Do not treat a local task branch as canonical
+- `origin/main` is the canonical integrated Terento source state and the only
+  production deployment source. `origin/beta` carries only next-version app work
+  released as GitHub prereleases; sync it from `main` through a temporary branch,
+  never through a pull request whose head is `main`. Do not treat a local task branch as canonical
   merely because its SHA is different.
 - Before substantial work, run `scripts/check-workspace-state.sh` and inspect
-  the current branch, upstream, `origin/beta`, working tree, worktrees, stashes,
+  the current branch, upstream, `origin/main`, working tree, worktrees, stashes,
   and local branches. Fetch/prune remote refs when the task requires fresh
   remote state; the checker itself is read-only.
 - Create a new task branch or worktree only for independently reviewable work.
@@ -143,7 +145,7 @@ scoped Admin implementation rules here.
 - If an unexpected dirty worktree is found, audit staged, unstaged, untracked,
   and ignored state before any checkout, stash, reset, restore, clean, branch
   deletion, or worktree removal. Never auto-stash or discard it.
-- A task branch is temporary. After its work is integrated into `origin/beta`,
+- A task branch is temporary. After its work is integrated into `origin/main` (or `origin/beta`),
   remote state is verified, and semantic review finds no unique local content,
   remove its linked clean worktree, delete the local branch, and prune stale
   worktree metadata/remote refs as appropriate. Use `git branch -D` only when

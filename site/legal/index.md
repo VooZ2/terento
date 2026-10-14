@@ -15,9 +15,9 @@ The app is a Public beta for Apple Silicon Macs. The web installer is also a bet
 
 ## Software and third-party licences
 
-Terento source code and original website HTML, CSS and JavaScript are licensed under **GPL-3.0-or-later**, unless a file states otherwise. Read the [licence](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Terento source code and original website HTML, CSS and JavaScript are licensed under **GPL-3.0-or-later**, unless a file states otherwise. Read the [licence](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Bundled libraries retain their own licences: **libmtp 1.1.23** and **libusb 1.0.30** use LGPL-2.1-or-later. Fonts and other third-party assets also retain their respective terms. Licence notices and source information are in [Third-party notices](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Bundled libraries retain their own licences: **libmtp 1.1.23** and **libusb 1.0.30** use LGPL-2.1-or-later. Fonts and other third-party assets also retain their respective terms. Licence notices and source information are in [Third-party notices](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 The software licence does not grant trademark rights in Terento. Modified versions must not be presented as official Terento releases.
 
@@ -55,9 +55,9 @@ Die App ist eine Public beta für Macs mit Apple Silicon. Der Web-Installer ist 
 
 ## Software und Drittanbieter-Lizenzen
 
-Der Terento-Quellcode sowie eigenes HTML, CSS und JavaScript der Website stehen unter **GPL-3.0-or-later**, sofern eine Datei nichts anderes angibt. Lies die [Lizenz](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Der Terento-Quellcode sowie eigenes HTML, CSS und JavaScript der Website stehen unter **GPL-3.0-or-later**, sofern eine Datei nichts anderes angibt. Lies die [Lizenz](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Mitgelieferte Bibliotheken behalten ihre Lizenzen: **libmtp 1.1.23** und **libusb 1.0.30** stehen unter LGPL-2.1-or-later. Für Schriften und andere Inhalte Dritter gelten deren Bedingungen. Lizenz- und Quellinformationen stehen in den [Drittanbieter-Hinweisen](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Mitgelieferte Bibliotheken behalten ihre Lizenzen: **libmtp 1.1.23** und **libusb 1.0.30** stehen unter LGPL-2.1-or-later. Für Schriften und andere Inhalte Dritter gelten deren Bedingungen. Lizenz- und Quellinformationen stehen in den [Drittanbieter-Hinweisen](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 Die Softwarelizenz gewährt keine Markenrechte an Terento. Veränderte Versionen dürfen nicht als offizielle Terento-Veröffentlichungen dargestellt werden.
 
@@ -95,9 +95,9 @@ L’application est une bêta publique pour Mac avec Apple Silicon. L’installa
 
 ## Licences du logiciel et des composants tiers
 
-Le code source de Terento ainsi que le HTML, CSS et JavaScript originaux du site sont sous **GPL-3.0-or-later**, sauf indication contraire dans un fichier. Consultez la [licence](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Le code source de Terento ainsi que le HTML, CSS et JavaScript originaux du site sont sous **GPL-3.0-or-later**, sauf indication contraire dans un fichier. Consultez la [licence](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Les bibliothèques incluses conservent leurs licences : **libmtp 1.1.23** et **libusb 1.0.30** sont sous LGPL-2.1-or-later. Les polices et autres contenus tiers conservent leurs conditions. Les licences et informations sur les sources figurent dans les [mentions des composants tiers](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Les bibliothèques incluses conservent leurs licences : **libmtp 1.1.23** et **libusb 1.0.30** sont sous LGPL-2.1-or-later. Les polices et autres contenus tiers conservent leurs conditions. Les licences et informations sur les sources figurent dans les [mentions des composants tiers](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 La licence du logiciel n’accorde pas de droits sur la marque Terento. Une version modifiée ne doit pas être présentée comme une version officielle de Terento.
 
@@ -135,9 +135,9 @@ Aplikacja jest publiczną wersją beta dla komputerów Mac z Apple Silicon. Inst
 
 ## Licencje oprogramowania i komponentów
 
-Kod źródłowy Terento oraz własne pliki HTML, CSS i JavaScript witryny są objęte **GPL-3.0-or-later**, chyba że plik stanowi inaczej. Przeczytaj [licencję](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Kod źródłowy Terento oraz własne pliki HTML, CSS i JavaScript witryny są objęte **GPL-3.0-or-later**, chyba że plik stanowi inaczej. Przeczytaj [licencję](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Dołączone biblioteki zachowują własne licencje: **libmtp 1.1.23** i **libusb 1.0.30** korzystają z LGPL-2.1-or-later. Czcionki i inne materiały osób trzecich zachowują swoje warunki. Licencje i informacje o źródłach znajdziesz w [informacjach o komponentach](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Dołączone biblioteki zachowują własne licencje: **libmtp 1.1.23** i **libusb 1.0.30** korzystają z LGPL-2.1-or-later. Czcionki i inne materiały osób trzecich zachowują swoje warunki. Licencje i informacje o źródłach znajdziesz w [informacjach o komponentach](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 Licencja oprogramowania nie przyznaje praw do znaku Terento. Zmienionych wersji nie wolno przedstawiać jako oficjalnych wydań Terento.
 
@@ -175,9 +175,9 @@ Aplikace je veřejná beta pro Macy s Apple Silicon. Webový instalátor je tak�
 
 ## Licence softwaru a dalších součástí
 
-Zdrojový kód Terento a vlastní HTML, CSS a JavaScript webu jsou pod **GPL-3.0-or-later**, pokud soubor neuvádí jinak. Přečtěte si [licenci](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Zdrojový kód Terento a vlastní HTML, CSS a JavaScript webu jsou pod **GPL-3.0-or-later**, pokud soubor neuvádí jinak. Přečtěte si [licenci](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Přibalené knihovny si ponechávají vlastní licence: **libmtp 1.1.23** a **libusb 1.0.30** používají LGPL-2.1-or-later. Pro písma a další obsah třetích stran platí jejich podmínky. Licence a informace o zdrojích jsou v [oznámeních třetích stran](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Přibalené knihovny si ponechávají vlastní licence: **libmtp 1.1.23** a **libusb 1.0.30** používají LGPL-2.1-or-later. Pro písma a další obsah třetích stran platí jejich podmínky. Licence a informace o zdrojích jsou v [oznámeních třetích stran](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 Softwarová licence neposkytuje práva k ochranné známce Terento. Upravené verze nesmějí být prezentovány jako oficiální vydání Terento.
 
@@ -215,9 +215,9 @@ L’app è una beta pubblica per Mac con Apple Silicon. Anche l’installer web 
 
 ## Licenze del software e dei componenti
 
-Il codice sorgente di Terento e l’HTML, CSS e JavaScript originali del sito sono sotto **GPL-3.0-or-later**, salvo diversa indicazione nel file. Leggi la [licenza](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Il codice sorgente di Terento e l’HTML, CSS e JavaScript originali del sito sono sotto **GPL-3.0-or-later**, salvo diversa indicazione nel file. Leggi la [licenza](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Le librerie incluse mantengono le proprie licenze: **libmtp 1.1.23** e **libusb 1.0.30** usano LGPL-2.1-or-later. Font e altri contenuti di terzi mantengono le rispettive condizioni. Licenze e informazioni sui sorgenti sono nelle [note sui componenti di terzi](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Le librerie incluse mantengono le proprie licenze: **libmtp 1.1.23** e **libusb 1.0.30** usano LGPL-2.1-or-later. Font e altri contenuti di terzi mantengono le rispettive condizioni. Licenze e informazioni sui sorgenti sono nelle [note sui componenti di terzi](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 La licenza software non concede diritti sul marchio Terento. Le versioni modificate non devono essere presentate come versioni ufficiali di Terento.
 

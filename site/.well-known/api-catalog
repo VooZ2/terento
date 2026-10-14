@@ -10,7 +10,7 @@
       ],
       "service-doc": [
         {
-          "href": "https://github.com/VooZ2/terento/blob/beta/backend/catalog-api/docs/api.md",
+          "href": "https://github.com/VooZ2/terento/blob/main/backend/catalog-api/docs/api.md",
           "type": "text/html"
         }
       ],

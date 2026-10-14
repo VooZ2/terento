@@ -11,7 +11,7 @@
     }
   ],
   "externalDocs": {
-    "url": "https://github.com/VooZ2/terento/blob/beta/backend/catalog-api/docs/api.md"
+    "url": "https://github.com/VooZ2/terento/blob/main/backend/catalog-api/docs/api.md"
   },
   "paths": {
     "/maps/catalog.json": {

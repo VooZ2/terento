@@ -10,9 +10,9 @@ Aplikace je veřejná beta pro Macy s Apple Silicon. Webový instalátor je tak�
 
 ## Licence softwaru a dalších součástí
 
-Zdrojový kód Terento a vlastní HTML, CSS a JavaScript webu jsou pod **GPL-3.0-or-later**, pokud soubor neuvádí jinak. Přečtěte si [licenci](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Zdrojový kód Terento a vlastní HTML, CSS a JavaScript webu jsou pod **GPL-3.0-or-later**, pokud soubor neuvádí jinak. Přečtěte si [licenci](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Přibalené knihovny si ponechávají vlastní licence: **libmtp 1.1.23** a **libusb 1.0.30** používají LGPL-2.1-or-later. Pro písma a další obsah třetích stran platí jejich podmínky. Licence a informace o zdrojích jsou v [oznámeních třetích stran](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Přibalené knihovny si ponechávají vlastní licence: **libmtp 1.1.23** a **libusb 1.0.30** používají LGPL-2.1-or-later. Pro písma a další obsah třetích stran platí jejich podmínky. Licence a informace o zdrojích jsou v [oznámeních třetích stran](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 Softwarová licence neposkytuje práva k ochranné známce Terento. Upravené verze nesmějí být prezentovány jako oficiální vydání Terento.
 

@@ -134,7 +134,7 @@ def verify_refresh_flow():
     assert any(c[:4] == ("gh", "run", "rerun", "4") for c in calls)
     assert any(c[:4] == ("gh", "run", "watch", "4") for c in calls)
     with patch.object(flow, "runs", return_value=[old]), patch.object(flow, "run") as command:
-        assert flow.dispatch_and_wait("deploy-site.yml", "beta", sha, reuse=True) == 1
+        assert flow.dispatch_and_wait("deploy-site.yml", "main", sha, reuse=True) == 1
         command.assert_not_called()
     for result in ({"headSha": "b" * 40, "conclusion": "success", "jobs": []},
                    {"headSha": sha, "conclusion": "success", "jobs": [{"name": "build-and-test", "conclusion": "failure"}]}):
@@ -146,6 +146,7 @@ def verify_refresh_flow():
             else:
                 raise AssertionError("wrong SHA or failed required job accepted")
     verify_indexnow_state_flow(flow, sha)
+    verify_refresh_deploys_main(flow, sha)
     source = (REPO_ROOT / "scripts/integrate-compatibility-refresh.py").read_text()
     for guard in ('len(prs) > 1', 'marker not in', 'if not prs', 'wait_for_pr_head',
                   'ensure_pull_request_checks', '"event"] == "pull_request"',
@@ -161,15 +162,67 @@ def verify_refresh_flow():
     assert source.index('ensure_pull_request_checks(branch, sha)') < source.index(
         '"gh", "pr", "checks"')
     assert source.index('merged["state"] != "MERGED"') < source.index('dispatch_and_wait("deploy-site.yml"')
-    assert "HEAD:beta" not in source and "--admin" not in source
+    assert "HEAD:main" not in source and "HEAD:beta" not in source and "--admin" not in source
+    assert '"--base", "beta"' not in source and "refs/heads/beta" not in source, (
+        "production automation must target main only"
+    )
     refresh_call = source[source.index("integrate(BRANCH, MARKER, TITLE"):]
-    assert 'ci_inputs=("-f", "selection_base=beta")' in refresh_call.split("\n\n")[0], (
+    assert 'ci_inputs=("-f", "selection_base=main")' in refresh_call.split("\n\n")[0], (
         "the compatibility refresh tests only its site changes, not the full native matrix"
     )
 
 
+def verify_refresh_deploys_main(flow, sha):
+    """A changed snapshot goes through a PR into main and deploys only main's exact merge SHA."""
+    from unittest.mock import patch
+    merged_sha = "d" * 40
+
+    def scenario(main_head):
+        calls = []
+
+        def fake_run(*args, **kwargs):
+            calls.append(args)
+            if args == ("git", "diff", "--name-only", "HEAD"):
+                return flow.FACT_FILES[0]
+            if args == ("git", "ls-remote", "origin", "refs/heads/main"):
+                return f"{main_head}\trefs/heads/main"
+            return ""
+
+        responses = iter([
+            [],  # no open PR
+            {"number": 512, "headRefOid": sha},
+            {"headRefOid": sha, "mergeStateStatus": "CLEAN"},
+            {"state": "MERGED", "mergeCommit": {"oid": merged_sha}},
+            [],  # no remaining PR
+        ])
+        with patch.dict(os.environ, GITHUB_REPOSITORY=flow.REPO), \
+             patch.object(flow, "run", side_effect=fake_run), \
+             patch.object(flow, "gh", side_effect=lambda *a: next(responses)), \
+             patch.object(flow, "prepare_refresh_commits", return_value=sha), \
+             patch.object(flow, "dispatch_and_wait") as dispatch, \
+             patch.object(flow, "ensure_pull_request_checks"), \
+             patch.object(flow, "delete_merged_branch"):
+            flow.integrate(flow.BRANCH, flow.MARKER, flow.TITLE, flow.BODY, flow.FACT_FILES,
+                           flow.OWNED_FILES, flow.prepare_refresh_commits,
+                           ci_inputs=("-f", "selection_base=main"))
+        return calls, dispatch
+
+    calls, dispatch = scenario(merged_sha)
+    create = next(c for c in calls if c[:3] == ("gh", "pr", "create"))
+    assert create[create.index("--base") + 1] == "main"
+    assert dispatch.call_args_list[-1].args == ("deploy-site.yml", "main", merged_sha)
+    assert dispatch.call_args_list[-1].kwargs == {"reuse": True}
+    assert not any("refs/heads/beta" in c for c in calls)
+    try:
+        scenario("e" * 40)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("a moved main must not be deployed")
+
+
 def verify_indexnow_state_flow(flow, sha):
-    """The IndexNow state mode reuses the owned-PR gates, CI-selects beta, and never deploys."""
+    """The IndexNow state mode reuses the owned-PR gates, CI-selects main, and never deploys."""
     from unittest.mock import patch
     calls = []
 
@@ -197,7 +250,7 @@ def verify_indexnow_state_flow(flow, sha):
          patch.object(flow, "ensure_pull_request_checks") as checks:
         flow.main(["--indexnow-state"])
     dispatch.assert_called_once_with("swift-ci.yml", flow.INDEXNOW_BRANCH, sha,
-                                     inputs=("-f", "selection_base=beta"))
+                                     inputs=("-f", "selection_base=main"))
     checks.assert_called_once_with(flow.INDEXNOW_BRANCH, sha)
     create = next(c for c in calls if c[:3] == ("gh", "pr", "create"))
     body = create[create.index("--body") + 1]
@@ -300,11 +353,11 @@ def verify_scoped_transport() -> None:
         spy.chmod(0o700)
         record = root / "record.json"
         env = dict(os.environ, PATH=str(root)+os.pathsep+os.environ["PATH"],
-                   GITHUB_REPOSITORY="VooZ2/terento", GITHUB_REF="refs/heads/beta",
+                   GITHUB_REPOSITORY="VooZ2/terento", GITHUB_REF="refs/heads/main",
                    GITHUB_SHA="a"*40, VPS_IMAGE_DIGEST="sha256:"+"b"*64,
                    VPS_SSH_KEY="synthetic-test-key", RUNNER_TEMP=temporary,
                    SSH_RECORD=str(record))
-        for role, ref in (("api", "refs/heads/beta"), ("site", "refs/heads/beta")):
+        for role, ref in (("api", "refs/heads/main"), ("site", "refs/heads/main")):
             result = subprocess.run(["bash", str(script), role], env=dict(env, GITHUB_REF=ref), capture_output=True)
             assert result.returncode == 0, result.stderr.decode()
             args = json.loads(record.read_text())
@@ -338,6 +391,8 @@ def verify_scoped_transport() -> None:
                     (["api"], {"GITHUB_REF": "refs/tags/v0.1.0"}),
                     (["site"], {"GITHUB_REF": "refs/tags/v0.1.0"}),
                     (["site"], {"GITHUB_REF": "refs/heads/unreviewed"}),
+                    (["site"], {"GITHUB_REF": "refs/heads/beta"}),
+                    (["api"], {"GITHUB_REF": "refs/heads/beta"}),
                     (["site"], {"GITHUB_REPOSITORY": "someone/terento"}),
                     (["api"], {"VPS_IMAGE_DIGEST": "sha256:"+"b"*64+"; id"}),
                     (["api"], {"GITHUB_SHA": "a"*40+" x"})]
@@ -480,12 +535,12 @@ def verify_release_reporting(swift):
         git("commit", "-m", "publish next build")
         after = git("rev-parse", "HEAD")
         for event, ref, base, expected in (
-            ("push", "refs/heads/beta", before, "true"),
+            ("push", "refs/heads/main", before, "true"),
             ("pull_request", "refs/pull/1/merge", before, "false"),
-            ("push", "refs/heads/main", before, "false"),
+            ("push", "refs/heads/beta", before, "false"),
             ("push", "refs/tags/v1.0.0", before, "false"),
-            ("workflow_dispatch", "refs/heads/beta", "", "false"),
-            ("push", "refs/heads/beta", after, "false"),
+            ("workflow_dispatch", "refs/heads/main", "", "false"),
+            ("push", "refs/heads/main", after, "false"),
         ):
             output = root / "output"
             output.write_text("")
@@ -497,6 +552,7 @@ def verify_release_reporting(swift):
             if expected == "true":
                 assert set(json.loads(values["suites"])) == {"site", "app", "native", "backend", "release", "shared", "ci"}
         # A dispatch with selection_base tests only the task branch's changes.
+        git("update-ref", "refs/remotes/origin/main", after)
         git("update-ref", "refs/remotes/origin/beta", after)
         state = root / ".github/indexnow/site-state.json"
         state.parent.mkdir(parents=True)
@@ -514,17 +570,54 @@ def verify_release_reporting(swift):
                 return None
             values = dict(line.split("=", 1) for line in output.read_text().splitlines())
             return set(json.loads(values["suites"]))
+        assert dispatch("refs/heads/terento/indexnow-state", "main") == {"site", "shared", "ci"}
         assert dispatch("refs/heads/terento/indexnow-state", "beta") == {"site", "shared", "ci"}
         assert dispatch("refs/heads/terento/indexnow-state", "") == {"site", "app", "native", "backend", "release", "shared", "ci"}
         assert dispatch("refs/heads/terento/indexnow-state", "origin/beta") is None
         assert dispatch("refs/heads/beta", "beta") is None
+        assert dispatch("refs/heads/main", "main") is None
         assert dispatch("refs/tags/v1.0.0", "beta") is None
     report = swift.split("  publish-operational-report:", 1)[1]
     assert "needs.changes.outputs.release_manifest_changed == 'true'" in report
+    verify_report_gate(report)
     assert report.index("Reject superseded release metadata") < report.index("Build consolidated health report")
     assert 'scripts/check-live-release-manifest.py "$RUNNER_TEMP/current-release-manifest.json" site/updates/macos-arm64.json' in report
     assert "if: always() && steps.report.outcome == 'success'" in report
     assert 'if [ "$GATE_RESULT" = "success" ]; then' in report
+
+def verify_report_gate(report):
+    """Only main may send production reports: never beta, task branches or tags."""
+    condition = report.split("    if: >-\n", 1)[1].split("\n    needs:", 1)[0]
+    expression = " ".join(condition.split())
+    assert "startsWith(github.ref, 'refs/tags/v')" not in expression, "a tag must never send a report"
+    assert 'git ls-remote origin refs/heads/main' in report
+    replacements = (
+        ("always() &&", "True and"), ("&&", "and"), ("||", "or"),
+        ("needs.changes.outputs.release_manifest_changed", "manifest"),
+        ("github.event_name", "event"), ("github.ref", "ref"),
+        ("inputs.send_health_report", "send"), ("inputs.run_release_gate", "gate"),
+    )
+    for old, new in replacements:
+        expression = expression.replace(old, new)
+    def sends(event, ref, manifest="false", send=False, gate=False):
+        return eval(expression, {}, dict(event=event, ref=ref, manifest=manifest, send=send, gate=gate))
+    assert sends("push", "refs/heads/main", manifest="true")
+    assert sends("schedule", "refs/heads/main")
+    assert sends("workflow_dispatch", "refs/heads/main", send=True)
+    assert sends("workflow_dispatch", "refs/heads/main", gate=True)
+    for event, ref, kwargs in (
+        ("push", "refs/heads/beta", {"manifest": "true"}),
+        ("schedule", "refs/heads/beta", {}),
+        ("workflow_dispatch", "refs/heads/beta", {"send": True, "gate": True}),
+        ("workflow_dispatch", "refs/heads/terento/indexnow-state", {"send": True, "gate": True}),
+        ("push", "refs/tags/v1.1.0-beta.1-build50", {}),
+        ("push", "refs/tags/v1.0.0-build44", {}),
+        ("push", "refs/heads/main", {}),
+        ("workflow_dispatch", "refs/heads/main", {}),
+        ("pull_request", "refs/pull/1/merge", {}),
+    ):
+        assert not sends(event, ref, **kwargs), (event, ref, kwargs)
+
 
 def verify_backend_bootstrap_shells():
     """Exercise the missing-dependency path without installing packages."""
@@ -709,7 +802,8 @@ def main() -> int:
         assert f"environment: rukas-{role}" in source
         assert f"bash scripts/infra/deploy-vps-image.sh {role}" in source
         assert "${{ needs.publish.outputs.digest }}" in source
-        assert "github.ref == 'refs/heads/beta'" in source
+        assert "github.ref == 'refs/heads/main'" in source
+        assert "refs/heads/beta" not in source, f"{role} production deploy must run from main only"
         assert "github.event_name == 'workflow_dispatch' ||" not in source
         assert "TERENTO_SITE_SSH" not in source
         assert "scp " not in source and "bash -s" not in source
@@ -738,7 +832,7 @@ def main() -> int:
     assert "expect 0 " not in rejection and "expect 1 " not in rejection
     assert "f7e394d" not in rejection
     assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in swift
-    assert "tags:" not in deploy_site, "a tag must not duplicate the beta site deployment"
+    assert "tags:" not in deploy_site, "a tag must not duplicate the main site deployment"
     for dockerfile in ("site-deploy/Dockerfile", "backend/catalog-api/Dockerfile"):
         for line in (REPO_ROOT / dockerfile).read_text(encoding="utf-8").splitlines():
             if line.startswith("FROM "):
@@ -768,7 +862,7 @@ def main() -> int:
     assert "gh pr merge" not in deploy_site and "gh pr create" not in deploy_site, (
         "IndexNow state PR gates belong to the shared integrator"
     )
-    assert "git push origin HEAD:beta" not in deploy_site
+    assert "git push origin HEAD:main" not in deploy_site
     assert "GitHub contents API" not in deploy_site
     assert "site-state.json" not in (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
     assert "internal/infra/vps/deployment/site/compose.json" not in deploy_site
@@ -794,7 +888,8 @@ def main() -> int:
     assert "Detect factual changes" not in refresh and "steps.diff.outputs.changed" not in refresh, (
         "the integrator owns the factual-file list and the no-change exit"
     )
-    assert not re.search(r"git\s+push[^\n]*:beta", refresh)
+    assert not re.search(r"git\s+push[^\n]*:(main|beta)", refresh)
+    assert "          ref: main\n" in refresh and "ref: beta" not in refresh
     assert "actions: write" in refresh
     assert "pull-requests: write" in refresh
     assert "scripts/ci_http.py compatibility-snapshot --fail" in refresh
@@ -806,7 +901,7 @@ def main() -> int:
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "compatibility-page" in deploy_site
     assert "live-compatibility.html" in deploy_site
-    assert "live Compatibility snapshot does not match deployed beta output" in deploy_site
+    assert "live Compatibility snapshot does not match deployed main output" in deploy_site
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
     codeql_refs = re.findall(r"uses:\s*github/codeql-action/[^@\s]+@([0-9a-f]{40})", codeql)
     assert len(codeql_refs) >= 2 and len(set(codeql_refs)) == 1, "CodeQL steps must use the same pinned version"

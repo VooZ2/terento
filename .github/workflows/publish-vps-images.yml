@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   publish:
-    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -44,7 +44,7 @@ jobs:
           [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
           [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
           git show --check --oneline "$GITHUB_SHA"
-          [[ "$GITHUB_REF" == "refs/heads/beta" ]]
+          [[ "$GITHUB_REF" == "refs/heads/main" ]]
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.12'

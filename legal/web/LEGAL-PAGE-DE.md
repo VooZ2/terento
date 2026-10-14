@@ -10,9 +10,9 @@ Die App ist eine Public beta für Macs mit Apple Silicon. Der Web-Installer ist 
 
 ## Software und Drittanbieter-Lizenzen
 
-Der Terento-Quellcode sowie eigenes HTML, CSS und JavaScript der Website stehen unter **GPL-3.0-or-later**, sofern eine Datei nichts anderes angibt. Lies die [Lizenz](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Der Terento-Quellcode sowie eigenes HTML, CSS und JavaScript der Website stehen unter **GPL-3.0-or-later**, sofern eine Datei nichts anderes angibt. Lies die [Lizenz](https://github.com/VooZ2/terento/blob/main/LICENSE).
 
-Mitgelieferte Bibliotheken behalten ihre Lizenzen: **libmtp 1.1.23** und **libusb 1.0.30** stehen unter LGPL-2.1-or-later. Für Schriften und andere Inhalte Dritter gelten deren Bedingungen. Lizenz- und Quellinformationen stehen in den [Drittanbieter-Hinweisen](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Mitgelieferte Bibliotheken behalten ihre Lizenzen: **libmtp 1.1.23** und **libusb 1.0.30** stehen unter LGPL-2.1-or-later. Für Schriften und andere Inhalte Dritter gelten deren Bedingungen. Lizenz- und Quellinformationen stehen in den [Drittanbieter-Hinweisen](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 Die Softwarelizenz gewährt keine Markenrechte an Terento. Veränderte Versionen dürfen nicht als offizielle Terento-Veröffentlichungen dargestellt werden.
 

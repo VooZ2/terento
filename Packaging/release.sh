@@ -150,10 +150,6 @@ if [[ "$output_dir" != /* ]]; then
     output_dir="$repo_root/$output_dir"
 fi
 
-if (( ! no_notarize )); then
-    python3 "$script_dir/verify-github-release-source.py"
-fi
-
 require_command xcodebuild
 require_command swift
 require_command codesign
@@ -284,6 +280,10 @@ case "$release_label" in
         ;;
 esac
 printf '%s\n' "Release package version: $release_label"
+
+if (( ! no_notarize )); then
+    python3 "$script_dir/verify-github-release-source.py" "$release_label"
+fi
 
 identity_check="$run_dir/signing-identities.txt"
 if ! security find-identity -v -p codesigning >"$identity_check" 2>&1; then
