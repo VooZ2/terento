@@ -195,8 +195,8 @@ enum TroubleshootingHelp {
         case .acquisitionWithheld, .downloadFailed, .providerUnavailable, .providerConnectionFailed,
              .downloadIncomplete, .untrustedSourceURL:
             return .providerDownloadFailed
-        case .invalidPackage, .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
-             .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound, .ambiguousIMG,
+        case .invalidPackage, .providerSourceUpdated, .extractionFailed, .unsupportedPackageFormat,
+             .unsafeArchivePath, .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound, .ambiguousIMG,
              .customMapNotConfirmed:
             return .downloadedMapRejected
         case .workspaceFailed, .insufficientMacStorage:

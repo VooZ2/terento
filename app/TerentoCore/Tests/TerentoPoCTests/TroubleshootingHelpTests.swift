@@ -181,6 +181,7 @@ struct TroubleshootingHelpTests {
             (.downloadIncomplete(expected: 2, actual: 1), .downloadFailed),
             (.untrustedSourceURL("x"), .downloadFailed),
             (.invalidPackage("x"), .downloadFailed),
+            (.providerSourceUpdated(providerId: "bbbike"), .downloadFailed),
             (.extractionFailed("x"), .downloadFailed),
             (.unsupportedPackageFormat, .downloadFailed),
             (.unsafeArchivePath("x"), .downloadFailed),
