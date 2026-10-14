@@ -588,7 +588,10 @@ def verify_release_reporting(swift):
 def verify_main_only_job(workflow, job):
     """A production job may run only for VooZ2/terento on main, for every trigger."""
     body = workflow.split(f"\n  {job}:\n", 1)[1]
-    condition = re.search(r"^    if: (.+)$", body, re.M).group(1)
+    body = re.split(r"^  [A-Za-z0-9_-]+:\s*$", body, maxsplit=1, flags=re.M)[0]  # this job only
+    condition = re.search(r"^    if: (.+)$", body, re.M)
+    assert condition, f"{job} must have its own main-only condition"
+    condition = condition.group(1)
     expression = condition.replace("&&", "and").replace("||", "or").replace(
         "github.repository", "repository").replace("github.ref", "ref")
     assert "github." not in expression and "event" not in expression, condition
