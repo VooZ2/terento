@@ -5,7 +5,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from threading import Event, Thread
 
-from .collect import collect_all_providers, official_provider_adapters
+from .bbbike import BBBikeProviderAdapter
+from .collect import collect_all_providers, collect_provider_once, official_provider_adapters
 from .collect_devices import collect_devices_once
 from .config import Settings
 from .db import Database
@@ -21,6 +22,10 @@ WEEKDAYS = {
     "SAT": 5,
     "SUN": 6,
 }
+# BBBike rebuilds its regions weekly at unannounced times under the same URL.
+# The app binds each download to the catalog's exact source proof, so a
+# rebuilt region stays uninstallable until the next collection sees it.
+BBBIKE_REFRESH_INTERVAL_HOURS = 3
 
 
 def run_schedule(database: Database, schedule_utc: str) -> None:
@@ -159,6 +164,36 @@ def run_github_download_schedule(
         stop.wait(max(1, (target - datetime.now(timezone.utc)).total_seconds()))
 
 
+def _next_bbbike_refresh(value: datetime, daily_hour: int) -> datetime:
+    """Next UTC hour on the BBBike interval, leaving the daily cycle's hour to it."""
+    target = _next_hour_boundary(value)
+    while target.hour % BBBIKE_REFRESH_INTERVAL_HOURS or target.hour == daily_hour:
+        target += timedelta(hours=1)
+    return target
+
+
+def run_bbbike_refresh_schedule(
+    database: Database,
+    stop: Event,
+    *,
+    daily_hour: int,
+    collect=lambda database: collect_provider_once(database, BBBikeProviderAdapter()),
+) -> None:
+    """Re-collect BBBike between daily cycles; only changed sources are re-inspected."""
+    while not stop.is_set():
+        target = _next_bbbike_refresh(datetime.now(timezone.utc), daily_hour)
+        LOGGER.info("next BBBike catalog refresh at %s", target.isoformat())
+        if stop.wait(max(1, (target - datetime.now(timezone.utc)).total_seconds())):
+            return
+        try:
+            LOGGER.info("BBBike catalog refresh %s", collect(database))
+        except ValueError as exc:
+            # Provider lock held or provider rate-limit cooldown: skip this slot.
+            LOGGER.info("BBBike catalog refresh skipped: %s", exc)
+        except Exception:
+            LOGGER.exception("BBBike catalog refresh failed; next slot will retry")
+
+
 def _record_heartbeat(database: Database, **values: object) -> None:
     try:
         database.record_scheduler_heartbeat(**values)
@@ -218,6 +253,14 @@ def main() -> None:
         name="map-preview-renderer",
     )
     preview_worker.start()
+    bbbike_worker = Thread(
+        target=run_bbbike_refresh_schedule,
+        args=(database, stop),
+        kwargs={"daily_hour": _parse_schedule(settings.collector_schedule_utc)[1]},
+        daemon=True,
+        name="bbbike-catalog-refresh",
+    )
+    bbbike_worker.start()
     # Clears the waiting backlog right after a deploy restarts the scheduler.
     _run_identity_auto_resolution(database)
     try:
@@ -228,6 +271,7 @@ def main() -> None:
         recheck_worker.join(timeout=12)
         health_worker.join(timeout=12)
         preview_worker.join(timeout=12)
+        bbbike_worker.join(timeout=12)
 
 
 if __name__ == "__main__":
