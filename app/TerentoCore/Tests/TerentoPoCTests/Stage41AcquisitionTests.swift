@@ -49,6 +49,8 @@ struct Stage41AcquisitionTests {
         testAcquisitionPolicyIdentityMapping()
         testBundledCatalogPolicyCounts()
         testAcquisitionErrorsHaveSafeUserCopy()
+        testProviderSourceUpdatedSaysToWait()
+        testBBBikeResponseOnlyBlamesARealSourceUpdate()
         await testDownloadBlocksBeforeSideEffects()
         await testDownloadStartBoundary()
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
@@ -1314,6 +1316,49 @@ struct Stage41AcquisitionTests {
             },
             "acquisition failures keep paths and byte details in diagnostics, not user-facing copy"
         )
+    }
+
+    private static func testProviderSourceUpdatedSaysToWait() {
+        let message = MapAcquisitionError.providerSourceUpdated(providerId: "bbbike").userMessage
+        expect(
+            message == "BBBike has just updated this map. Terento usually lists the new version within a day. Try again later.",
+            "a provider rebuild after the catalog check says to wait, not to refresh the catalog"
+        )
+    }
+
+    private static func testBBBikeResponseOnlyBlamesARealSourceUpdate() {
+        let url = URL(string: "https://data.bbbike.org/osm/garmin/region/asia/china/china.osm.garmin-bbbike-latin1.zip")!
+        let proof = BBBikeSourceProof(
+            sourceURL: url, etag: "\"100\"", lastModified: "Tue, 06 Oct 2026 20:53:16 GMT",
+            downloadSizeBytes: 1_000, installSizeBytes: 2_000,
+            payloadPath: "china-garmin-bbbike-latin1/gmapsupp.img", revision: "r",
+            sourceIdentity: "bbbike:asia/china:bbbike-latin1", mapType: "bbbike-latin1",
+            sourceRegion: "asia/china", payloadMD5: String(repeating: "0", count: 32),
+            generatedAt: "2026-10-06T20:47:21+00:00")
+        func check(_ status: Int, url responseURL: URL? = nil, etag: String? = "\"100\"",
+                   lastModified: String? = "Tue, 06 Oct 2026 20:53:16 GMT", length: Int64 = 1_000) -> MapAcquisitionError? {
+            proof.responseFailure(statusCode: status, url: responseURL ?? url, etag: etag, lastModified: lastModified,
+                                  contentLength: length)
+        }
+        let updated = MapAcquisitionError.providerSourceUpdated(providerId: "bbbike")
+        expect(check(200) == nil, "the exact reviewed BBBike response passes")
+        expect(check(200, etag: "\"200\"", lastModified: "Tue, 13 Oct 2026 20:53:16 GMT", length: 1_100) == updated,
+               "a 200 with new validators is a provider update")
+        expect(check(412) == updated, "If-Match failure is a provider update")
+        for status in [403, 429, 500, 503] {
+            if case .invalidPackage = check(status) {} else {
+                expect(false, "HTTP \(status) is not reported as a provider update")
+            }
+        }
+        if case .invalidPackage = check(200, etag: nil, lastModified: nil) {} else {
+            expect(false, "missing validators are not reported as a provider update")
+        }
+        if case .invalidPackage = check(200, length: 900) {} else {
+            expect(false, "a different length with unchanged validators is not reported as a provider update")
+        }
+        if case .invalidPackage = check(200, url: URL(string: "https://data.bbbike.org/other.zip")) {} else {
+            expect(false, "a different final URL is not reported as a provider update")
+        }
     }
 
     private static func testDownloadBlocksBeforeSideEffects() async {
