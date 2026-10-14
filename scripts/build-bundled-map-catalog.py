@@ -7,7 +7,7 @@ Usage:
 
 The bundled file is the legacy catalogVersion 1 catalog the app shows when the
 catalog API is unreachable; it never authorizes a provider download on its
-own. Withheld packages (russia, Crimea) and packages that cannot be written to
+own. Withheld packages (the backend's acquisition policy: russia, Crimea) and packages that cannot be written to
 a FAT32 watch volume (over 4,294,967,295 bytes) are never bundled. Output is
 deterministic and keeps the existing formatting; no network request is made.
 """
@@ -19,6 +19,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "backend/catalog-api/src"))
+from terento_catalog.maprando import policy_identity as maprando_policy_identity  # noqa: E402
+from terento_catalog.provider_catalog import (  # noqa: E402
+    OPENTOPO_MAP_POLICY_COUNTRY_CODES, acquisition_withheld)
 BUNDLED = ROOT / "app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json"
 FAT32_MAX = 4_294_967_295
 PROVIDER_ORDER = ("freizeitkarte", "opentopomap", "bbbike", "maprando")
@@ -41,19 +45,27 @@ def is_size(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
 
+def policy_identity(provider_id: str, package: dict) -> tuple[str, list[str], str]:
+    """(provider region id, country codes, region) as the backend collectors set them."""
+    provider_region_id = str(package.get("providerRegionId") or "")
+    codes = [str(code) for code in package.get("countryCodes") or []]
+    region = str(package.get("canonicalRegionId") or package.get("region") or "")
+    if provider_id == "freizeitkarte":
+        # FZK rows carry the provider identifier (RUS_CENTRAL, RUS+KGD, ...) only.
+        provider_region_id = provider_region_id or str(package.get("identifier") or "")
+    elif provider_id == "opentopomap" and not codes:
+        codes = list(OPENTOPO_MAP_POLICY_COUNTRY_CODES.get(provider_region_id, ()))
+    elif provider_id == "maprando":
+        # MapRando's identity comes from its directory slug (crimee -> UA/CRIMEA).
+        region, slug_codes = maprando_policy_identity(provider_region_id)
+        codes = sorted(set(codes) | set(slug_codes))
+    return provider_region_id, codes, region
+
+
 def withheld(provider_id: str, package: dict) -> bool:
-    """Mirror of the backend acquisition policy and the app's MapAcquisitionPolicy."""
-    codes = {str(code).upper() for code in package.get("countryCodes") or []}
-    region = str(package.get("canonicalRegionId") or package.get("region") or "").upper()
-    tokens = " ".join(str(package.get(key) or "")
-                      for key in ("id", "region", "identifier", "providerRegionId", "name")).upper()
-    if package.get("availability") == "WITHHELD" or "RU" in codes:
-        return True
-    if ("UA" in codes and region == "CRIMEA") or "CRIMEA" in tokens or "CRIMEAN" in tokens:
-        return True
-    if provider_id == "freizeitkarte" and region.replace("_", "-").replace("+", "-").startswith("RUS"):
-        return True
-    return "RUSSIA" in tokens or "RUSSIAN" in tokens
+    """The backend's canonical acquisition policy, applied to a bundled row."""
+    provider_region_id, codes, region = policy_identity(provider_id, package)
+    return acquisition_withheld(provider_id, provider_region_id, codes, region, package.get("availability"))
 
 
 def install_size(item: dict) -> int:

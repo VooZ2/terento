@@ -29,8 +29,8 @@ class BundledCatalogTests(unittest.TestCase):
 
     def test_withheld_and_oversized_packages_are_removed(self):
         rows = [package('freizeitkarte-blr', region='BLR'),
-                package('freizeitkarte-rus-central', region='RUS-CENTRAL'),
-                package('freizeitkarte-rus-crimea', region='RUS-CRIMEA'),
+                package('freizeitkarte-rus-central', region='RUS-CENTRAL', identifier='RUS_CENTRAL'),
+                package('freizeitkarte-rus-crimea', region='RUS-CRIMEA', identifier='RUS_CRIMEA'),
                 package('freizeitkarte-ukr-crimea', region='CRIMEA', countryCodes=['UA']),
                 package('freizeitkarte-big', installSizeBytes=bundled.FAT32_MAX + 1),
                 package('freizeitkarte-contours', artifacts=[
@@ -44,6 +44,24 @@ class BundledCatalogTests(unittest.TestCase):
         self.assertEqual([row['id'] for row in kept], ['freizeitkarte-blr', 'freizeitkarte-contours'])
         self.assertEqual([artifact['id'] for artifact in kept[1]['artifacts']], ['main'])
         bundled.check(text)
+
+    def test_withheld_follows_the_backend_policy(self):
+        cases = [
+            ('freizeitkarte', {'providerRegionId': 'RUS_CENTRAL', 'canonicalRegionId': 'CENTRAL'}, True),
+            ('freizeitkarte', {'identifier': 'RUS+KGD', 'region': 'RUS-KGD'}, True),
+            ('freizeitkarte', {'identifier': 'BLR+', 'region': 'BLR'}, False),
+            ('bbbike', {'providerRegionId': 'europe/prussia', 'countryCodes': ['DE'], 'name': 'Prussia'}, False),
+            ('bbbike', {'providerRegionId': 'europe/russia', 'countryCodes': ['RU']}, True),
+            ('opentopomap', {'providerRegionId': 'russia-european-part', 'countryCodes': []}, True),
+            ('opentopomap', {'providerRegionId': 'belarus', 'countryCodes': [], 'name': 'Belarus'}, False),
+            ('maprando', {'providerRegionId': 'crimee', 'canonicalRegionId': 'CRIMEE', 'countryCodes': ['UA']}, True),
+            ('maprando', {'providerRegionId': 'russie-nord', 'countryCodes': []}, True),
+            ('maprando', {'providerRegionId': 'france', 'countryCodes': ['FR']}, False),
+            ('maprando', {'providerRegionId': 'france', 'countryCodes': ['FR'], 'availability': 'WITHHELD'}, True),
+        ]
+        for provider_id, row, expected in cases:
+            with self.subTest(provider_id=provider_id, row=row):
+                self.assertIs(bundled.withheld(provider_id, row), expected)
 
     def test_check_rejects_unsafe_catalogs(self):
         for doc in (document(package('opentopomap-russia', countryCodes=['RU']), provider='opentopomap'),

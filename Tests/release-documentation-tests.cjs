@@ -60,8 +60,13 @@ function candidateIdentity(candidate, published, tags = []) {
     }
     return candidate;
   }
-  // Prerelease: the predecessor is the highest build among prereleases of the
-  // same marketing version (tags, plus a prerelease manifest).
+  // Prerelease: never at or below a released stable version, whatever tags exist.
+  assert.ok(compareVersions(next.base, current.base) > (current.family === "stable" ? 0 : -1),
+    "a prerelease must be newer than the published stable release");
+  assert.ok(!tagged.some((tag) => tag.family === "stable" && compareVersions(next.base, tag.base) <= 0),
+    "a prerelease must be newer than every released stable version");
+  // The predecessor is the highest build among prereleases of the same
+  // marketing version (tags, plus a prerelease manifest).
   const prereleases = [...tagged, ...(current.family === "stable" ? [] : [{ ...published, ...current }])]
     .filter((item) => item.family !== "stable" && item.base === next.base)
     .sort((left, right) => left.build - right.build);
@@ -76,17 +81,19 @@ function candidateIdentity(candidate, published, tags = []) {
     "candidate must retain the previous prerelease label or advance exactly one beta or release candidate");
   return candidate;
 }
+// Only a staged candidate needs the remote tags; reading them must not fail
+// silently, or a stale local tag list could pick the wrong predecessor.
 function remoteReleaseTags() {
-  try {
-    return require("node:child_process").execFileSync("git", ["tag", "--list", "v*"], { cwd: root, encoding: "utf8" })
-      .split("\n").filter(Boolean);
-  } catch {
-    return [];
-  }
+  const output = require("node:child_process").execFileSync(
+    "git", ["ls-remote", "--tags", "--refs", "origin", "refs/tags/v*"], { cwd: root, encoding: "utf8" });
+  return output.split("\n").filter(Boolean).map((line) => {
+    const match = line.match(/^[0-9a-f]{40}\trefs\/tags\/(v\S+)$/);
+    assert.ok(match, `unexpected git ls-remote line: ${line}`);
+    return match[1];
+  });
 }
-const artifactIdentity = candidateIdentity(
-  fs.existsSync(candidatePath) ? JSON.parse(fs.readFileSync(candidatePath, "utf8")) : null, release, remoteReleaseTags(),
-);
+const stagedCandidate = fs.existsSync(candidatePath) ? JSON.parse(fs.readFileSync(candidatePath, "utf8")) : null;
+const artifactIdentity = candidateIdentity(stagedCandidate, release, stagedCandidate ? remoteReleaseTags() : []);
 assert.equal(candidateIdentity(null, release), release);
 for (const invalid of [
   { ...release, build: release.build + 1 },
@@ -158,6 +165,18 @@ for (const releaseLabel of ["1.1.0-beta.1", "1.1.0-beta.4", "1.1.0-rc.2"]) {
   assert.throws(() => candidateIdentity({ version: "1.1.0", releaseLabel, build: 11 }, stableBuild8, betaTags));
 }
 assert.throws(() => candidateIdentity({ version: "1.1.0", releaseLabel: "1.1.0-beta.3", build: 10 }, stableBuild8, betaTags));
+// Historical tags never reopen a released or older version for prereleases.
+const historical = ["v1.0.0-rc.3-build43", "v1.0.0-build44", "v0.9.0-beta.1-build5"];
+for (const [version, releaseLabel] of [["1.0.0", "1.0.0-rc.4"], ["0.9.0", "0.9.0-beta.2"], ["0.9.0", "0.9.0-rc.1"]]) {
+  assert.throws(() => candidateIdentity({ version, releaseLabel, build: 45 }, stable, historical));
+}
+// A stale main manifest does not hide a released stable tag.
+assert.throws(() => candidateIdentity({ version: "1.0.0", releaseLabel: "1.0.0-rc.4", build: 45 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 43 }, historical));
+assert.throws(() => candidateIdentity({ version: "0.9.0", releaseLabel: "0.9.0-beta.2", build: 44 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 43 }, ["v0.9.0-beta.1-build5"]));
+assert.equal(candidateIdentity({ version: "1.1.0", releaseLabel: "1.1.0-beta.1", build: 45 }, stable, historical).releaseLabel,
+  "1.1.0-beta.1");
 const label = release.releaseLabel;
 const releaseTag = release.releaseTag || `v${label}`;
 const semanticVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
