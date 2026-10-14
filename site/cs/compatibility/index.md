@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**29** modely s úspěšnými instalacemi**220** úspěšných instalacíPoslední úspěšná instalace 13. října 2026
+**30** modely s úspěšnými instalacemi**228** úspěšných instalacíPoslední úspěšná instalace 14. října 2026
 
 Jak tento seznam funguje
 
@@ -21,7 +21,7 @@ Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin
 
 Aktuální beta zahrnuje čtyři poskytovatele map. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
-29 modelů
+30 modelů
 
 fēnix
 
@@ -95,6 +95,30 @@ App 9
 
 Poslední úspěšná instalace 13. října 2026
 
+epix
+
+### epix Pro (Gen 2)
+
+47 mm, AMOLED
+
+8 úspěšných instalací
+
+App 6 Web 2
+
+Poslední úspěšná instalace 14. října 2026
+
+Forerunner
+
+### Forerunner 955
+
+Solar, Standard
+
+8 úspěšných instalací
+
+App 8
+
+Poslední úspěšná instalace 14. října 2026
+
 fēnix
 
 ### fēnix 7X Pro
@@ -111,13 +135,13 @@ epix
 
 ### epix Pro (Gen 2)
 
-47 mm, AMOLED
+51 mm, AMOLED
 
 7 úspěšných instalací
 
-App 5 Web 2
+App 6 Web 1
 
-Poslední úspěšná instalace 13. října 2026
+Poslední úspěšná instalace 14. října 2026
 
 fēnix
 
@@ -130,18 +154,6 @@ fēnix
 App 7
 
 Poslední úspěšná instalace 27. září 2026
-
-Forerunner
-
-### Forerunner 955
-
-Solar, Standard
-
-6 úspěšných instalací
-
-App 6
-
-Poslední úspěšná instalace 3. října 2026
 
 fēnix
 
@@ -227,18 +239,6 @@ App 5
 
 Poslední úspěšná instalace 11. října 2026
 
-epix
-
-### epix Pro (Gen 2)
-
-51 mm, AMOLED
-
-4 úspěšných instalací
-
-App 3 Web 1
-
-Poslední úspěšná instalace 13. října 2026
-
 fēnix
 
 ### fēnix 7S Pro
@@ -298,6 +298,18 @@ fēnix
 App 3
 
 Poslední úspěšná instalace 7. října 2026
+
+Descent
+
+### Descent Mk3i
+
+51 mm, AMOLED
+
+2 úspěšných instalací
+
+App 2
+
+Poslední úspěšná instalace 14. října 2026
 
 Enduro
 

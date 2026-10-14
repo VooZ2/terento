@@ -11,7 +11,7 @@ Terento est conçu pour les montres Garmin prenant en charge les cartes. Vous tr
 
 L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
 
-**29** modèles avec des installations réussies**220** installations réussiesDernière installation réussie 13 octobre 2026
+**30** modèles avec des installations réussies**228** installations réussiesDernière installation réussie 14 octobre 2026
 
 Comment fonctionne cette liste
 
@@ -21,7 +21,7 @@ Les résultats d’installation sont partagés avec Terento par les utilisateurs
 
 La bêta actuelle comprend quatre fournisseurs de cartes. Cette information produit est distincte des résultats d’appareils présentés ici.
 
-29 modèles
+30 modèles
 
 fēnix
 
@@ -95,6 +95,30 @@ App 9
 
 Dernière installation réussie 13 octobre 2026
 
+epix
+
+### epix Pro (Gen 2)
+
+47 mm, AMOLED
+
+8 installations réussies
+
+App 6 Web 2
+
+Dernière installation réussie 14 octobre 2026
+
+Forerunner
+
+### Forerunner 955
+
+Solar, Standard
+
+8 installations réussies
+
+App 8
+
+Dernière installation réussie 14 octobre 2026
+
 fēnix
 
 ### fēnix 7X Pro
@@ -111,13 +135,13 @@ epix
 
 ### epix Pro (Gen 2)
 
-47 mm, AMOLED
+51 mm, AMOLED
 
 7 installations réussies
 
-App 5 Web 2
+App 6 Web 1
 
-Dernière installation réussie 13 octobre 2026
+Dernière installation réussie 14 octobre 2026
 
 fēnix
 
@@ -130,18 +154,6 @@ fēnix
 App 7
 
 Dernière installation réussie 27 septembre 2026
-
-Forerunner
-
-### Forerunner 955
-
-Solar, Standard
-
-6 installations réussies
-
-App 6
-
-Dernière installation réussie 3 octobre 2026
 
 fēnix
 
@@ -227,18 +239,6 @@ App 5
 
 Dernière installation réussie 11 octobre 2026
 
-epix
-
-### epix Pro (Gen 2)
-
-51 mm, AMOLED
-
-4 installations réussies
-
-App 3 Web 1
-
-Dernière installation réussie 13 octobre 2026
-
 fēnix
 
 ### fēnix 7S Pro
@@ -298,6 +298,18 @@ fēnix
 App 3
 
 Dernière installation réussie 7 octobre 2026
+
+Descent
+
+### Descent Mk3i
+
+51 mm, AMOLED
+
+2 installations réussies
+
+App 2
+
+Dernière installation réussie 14 octobre 2026
 
 Enduro
 
