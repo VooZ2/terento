@@ -299,15 +299,6 @@ preventing the other snapshot from updating. The check reads provider metadata
 and bounded archive metadata only; it does not download or store map payloads.
 The Garmin retail device catalog keeps its weekly Monday collection cadence.
 
-BBBike is also re-collected on its own every three UTC hours (00, 06, 09, …;
-the daily cycle's hour is left to that cycle). BBBike rebuilds its regions
-weekly at unannounced times under the same URL, and the app accepts a download
-only when it matches the catalog's exact source proof (ETag, Last-Modified and
-size), so a rebuilt region is uninstallable until a collection sees the new
-file. A run reads the BBBike directory pages and sends one HEAD per package;
-only a changed source is re-inspected. A busy provider lock or a rate-limit
-cooldown skips that slot.
-
 Scheduled catalog collection remains a separate process. The authenticated
 admin `/collect` action may run one known adapter on demand and records a
 collection run; health checks perform only bounded source probes. Neither path

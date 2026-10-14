@@ -10,12 +10,10 @@ from unittest.mock import patch
 from terento_catalog.collect import collect_all_providers, snapshot_release_evidence
 from terento_catalog.config import Settings
 from terento_catalog.scheduler import (
-    _next_bbbike_refresh,
     _next_hour_boundary,
     _parse_schedule,
     _run_scheduled_cycle,
     run_collection_cycle,
-    run_bbbike_refresh_schedule,
     run_github_download_schedule,
 )
 
@@ -77,34 +75,6 @@ class SchedulerTests(unittest.TestCase):
 
         run_github_download_schedule(database, stop, collect=collect)
         self.assertEqual(calls, [database])
-
-    def test_bbbike_refresh_runs_every_three_utc_hours_except_the_daily_hour(self) -> None:
-        def at(hour, minute=0):
-            return datetime(2026, 10, 13, hour, minute, tzinfo=timezone.utc)
-
-        self.assertEqual(_next_bbbike_refresh(at(20, 53), daily_hour=3), at(21))
-        self.assertEqual(_next_bbbike_refresh(at(21), daily_hour=3), datetime(2026, 10, 14, tzinfo=timezone.utc))
-        self.assertEqual(_next_bbbike_refresh(datetime(2026, 10, 14, 1, 41, tzinfo=timezone.utc), daily_hour=3),
-                         datetime(2026, 10, 14, 6, tzinfo=timezone.utc))
-        self.assertEqual(_next_bbbike_refresh(at(4), daily_hour=3), at(6))
-
-    def test_bbbike_refresh_skips_a_busy_slot_and_can_be_stopped(self) -> None:
-        stop = Event()
-        calls = []
-
-        def collect(database):
-            calls.append(database)
-            if len(calls) == 1:
-                raise ValueError("provider_busy")
-            stop.set()
-            return {"provider": "bbbike", "packages": 760}
-
-        with patch.object(stop, "wait", return_value=False) as wait, \
-             self.assertLogs("terento_catalog.scheduler", level="INFO") as logs:
-            run_bbbike_refresh_schedule("db", stop, daily_hour=3, collect=collect)
-        self.assertEqual(calls, ["db", "db"])
-        self.assertEqual(wait.call_count, 2)
-        self.assertTrue(any("skipped: provider_busy" in line for line in logs.output))
 
     def test_invalid_weekday_is_rejected(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "MON-SUN"):
