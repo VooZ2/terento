@@ -220,6 +220,18 @@ struct TroubleshootingHelpTests {
             "the typed acquisition error wins over its coarse diagnostic failure")
         expect(TroubleshootingHelp.installationTopic(failure: nil, acquisitionError: nil,
             mayHaveLeftMapOnWatch: false).anchor == .sendReport, "an unknown stop links sending a report")
+        let busySession = InstallationFailureContext(boundary: .initialSnapshot, classificationSource: .native,
+            devicePresence: .unknown, operation: .snapshot, executionMode: .inProcess, resultKind: .nativeError,
+            nativeCategory: .sessionOpen, nativeCodeNamespace: .terentoSnapshot, nativeResultCode: -5)
+        expect(TroubleshootingHelp.installationTopic(failure: .preflightMTPReadFailed, acquisitionError: nil,
+            mayHaveLeftMapOnWatch: false, failureContext: busySession).anchor == .garminBusy,
+            "a watch session that could not be opened before writing links the busy-watch section")
+        let storageRead = InstallationFailureContext(boundary: .initialSnapshot, classificationSource: .native,
+            devicePresence: .unknown, operation: .snapshot, executionMode: .inProcess, resultKind: .nativeError,
+            nativeCategory: .storageRead, nativeCodeNamespace: .terentoSnapshot, nativeResultCode: -10)
+        expect(TroubleshootingHelp.installationTopic(failure: .preflightMTPReadFailed, acquisitionError: nil,
+            mayHaveLeftMapOnWatch: false, failureContext: storageRead).anchor == .watchNotResponding,
+            "other pre-write read failures keep the watch-not-responding section")
     }
 
     static func testLifecycleAndReview() {

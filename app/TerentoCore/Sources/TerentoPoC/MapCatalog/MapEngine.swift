@@ -2092,6 +2092,7 @@ final class MapEngine: ObservableObject {
                 }
                 self?.evidenceNativeFailureCode = readFailure?.native
                 self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
+                    ?? Self.watchBusyMessage(readFailure)
                     ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
@@ -2372,6 +2373,7 @@ final class MapEngine: ObservableObject {
                 // Reads before the coordinator ran; nothing was written.
                 retainForRetry = Self.retainsArtifactsForRetry(after: readFailure?.failure ?? known?.failure)
                 self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
+                    ?? Self.watchBusyMessage(readFailure)
                     ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
@@ -2444,6 +2446,15 @@ final class MapEngine: ObservableObject {
         return (transport.isConfirmedDeviceDisconnected ? .deviceDisconnected : .preflightMTPReadFailed,
                 transport.isConfirmedDeviceDisconnected ? .deviceDisconnected : .preflightMTPReadFailed,
                 context)
+    }
+
+    /// A pre-write read that could not open the watch's session gets the
+    /// busy-watch advice detection gives; nothing was written.
+    nonisolated static func watchBusyMessage(
+        _ read: (failure: InstallationFailure, native: EvidenceNativeFailureCode?, context: InstallationFailureContext)?
+    ) -> String? {
+        guard let read, read.failure == .preflightMTPReadFailed, read.context.isWatchSessionBusy else { return nil }
+        return UserFacingErrorMessage.installationWatchBusy
     }
 
     nonisolated private static func evidenceDiagnostic(

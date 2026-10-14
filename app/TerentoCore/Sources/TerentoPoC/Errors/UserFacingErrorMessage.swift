@@ -402,6 +402,12 @@ enum UserFacingErrorMessage {
         return "The map could not be installed safely. Reconnect the watch, refresh its maps, and try again."
     }
 
+    /// Installation stopped before writing because the watch's file-transfer
+    /// session could not be opened: the condition detection reports as busy.
+    /// One failed open does not name a running app.
+    static let installationWatchBusy =
+        "Your watch may be in use by another app. Quit Garmin Express and similar apps, then try again. No map was written."
+
     private static func isBusyConnectionError(_ message: String) -> Bool {
         // A failed read/session is not evidence that another app owns USB.
         // Only an explicit busy/claim result can support this suggestion.
