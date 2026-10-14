@@ -158,7 +158,7 @@ authentication failures remain failures. SSH retries only a confirmed connection
 timeout before the remote command can run. A dropped established connection
 must be investigated before replaying a mutation.
 
-Site publication comes from beta once. Live manifest identity must match the
+Site publication comes from main once. Live manifest identity must match the
 tested file, not merely report arm64. Operations-observation delivery is distinct
 from deployment/test success; permanent reporting configuration errors are still
 visible. Do not mute notifications to hide unexplained failures.

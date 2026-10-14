@@ -4,7 +4,7 @@ set -euo pipefail
 role="${1:-}"
 [[ $# == 1 && ( "$role" == site || "$role" == api ) ]] || exit 64
 [[ "${GITHUB_REPOSITORY:-}" == VooZ2/terento ]] || exit 64
-[[ "${GITHUB_REF:-}" == refs/heads/beta ]] || exit 64
+[[ "${GITHUB_REF:-}" == refs/heads/main ]] || exit 64
 [[ "${VPS_IMAGE_DIGEST:-}" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 64
 [[ "${GITHUB_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || exit 64
 : "${VPS_SSH_KEY:?Scoped environment SSH key required}"

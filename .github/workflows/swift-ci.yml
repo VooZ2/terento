@@ -83,7 +83,7 @@ jobs:
             suites="$(printf '%s\n' "$changed_paths" | python3 Tests/select-test-suites.py --json --stdin)"
           fi
           release_manifest_changed=false
-          if [ "$EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/beta" ]; then
+          if [ "$EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
             if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ] \
               || ! git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- site/updates/macos-arm64.json; then
               release_manifest_changed=true
@@ -367,9 +367,9 @@ jobs:
     name: Publish weekly or release health report
     if: >-
       always() &&
+      github.ref == 'refs/heads/main' &&
       (needs.changes.outputs.release_manifest_changed == 'true' ||
       github.event_name == 'schedule' ||
-      startsWith(github.ref, 'refs/tags/v') ||
       (github.event_name == 'workflow_dispatch' &&
       (inputs.send_health_report || inputs.run_release_gate)))
     needs:
@@ -410,7 +410,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          latest="$(git ls-remote origin refs/heads/beta | cut -f1)"
+          latest="$(git ls-remote origin refs/heads/main | cut -f1)"
           test -n "$latest"
           git fetch --no-tags origin "$latest"
           git show "$latest:site/updates/macos-arm64.json" > "$RUNNER_TEMP/current-release-manifest.json"
