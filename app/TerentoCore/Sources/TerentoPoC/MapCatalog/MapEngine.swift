@@ -2456,7 +2456,7 @@ final class MapEngine: ObservableObject {
             return (.download, .downloadFailed)
         case .workspaceFailed, .unsafeArchivePath, .extractionFailed, .insufficientMacStorage:
             return (.extract, .sourceValidationFailed)
-        case .unsupportedPackageFormat, .invalidPackage, .sourceIdentityMismatch,
+        case .unsupportedPackageFormat, .invalidPackage, .providerSourceUpdated, .sourceIdentityMismatch,
              .sourceVersionMismatch, .noIMGFound, .ambiguousIMG:
             return (.sourceValidation, .sourceValidationFailed)
         case .customMapNotConfirmed:

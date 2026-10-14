@@ -49,6 +49,7 @@ struct Stage41AcquisitionTests {
         testAcquisitionPolicyIdentityMapping()
         testBundledCatalogPolicyCounts()
         testAcquisitionErrorsHaveSafeUserCopy()
+        testProviderSourceUpdatedSaysToWait()
         await testDownloadBlocksBeforeSideEffects()
         await testDownloadStartBoundary()
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
@@ -1313,6 +1314,14 @@ struct Stage41AcquisitionTests {
                     && !$0.contains("12")
             },
             "acquisition failures keep paths and byte details in diagnostics, not user-facing copy"
+        )
+    }
+
+    private static func testProviderSourceUpdatedSaysToWait() {
+        let message = MapAcquisitionError.providerSourceUpdated(providerId: "bbbike").userMessage
+        expect(
+            message == "BBBike has just updated this map. Terento usually lists the new version within a day. Try again later.",
+            "a provider rebuild after the catalog check says to wait, not to refresh the catalog"
         )
     }
 
