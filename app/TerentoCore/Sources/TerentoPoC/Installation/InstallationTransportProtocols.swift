@@ -148,6 +148,13 @@ extension InstallationFailureContext {
              nativeResultCode: nativeResultCode, retryCount: retryCount,
              componentKind: componentKind ?? self.componentKind, protection: protection)
     }
+
+    /// `terento_mtp_read_snapshot_diagnostic` -5: exactly one Garmin is on
+    /// USB, but its file-transfer session could not be opened (usually another
+    /// app holds the watch). Detection reports the same code as busy.
+    var isWatchSessionBusy: Bool {
+        nativeCodeNamespace == .terentoSnapshot && nativeResultCode == -5
+    }
 }
 struct InstallationProtectionContext: Codable, Equatable, Sendable {
     enum Boundary: String, Codable, Sendable {

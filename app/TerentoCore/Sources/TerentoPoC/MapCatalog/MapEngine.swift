@@ -109,6 +109,10 @@ private final class InstallationComponentLog: @unchecked Sendable {
     func snapshot() -> [Int: [(kind: MapArtifactKind, result: MapInstallationResult)]] {
         lock.withLock { components }
     }
+
+    var wroteAnyComponent: Bool {
+        MapEngine.wroteAnyComponent(snapshot().values.joined().map { $0.result })
+    }
 }
 
 private final class InstallationMapIndexState: @unchecked Sendable {
@@ -2092,6 +2096,7 @@ final class MapEngine: ObservableObject {
                 }
                 self?.evidenceNativeFailureCode = readFailure?.native
                 self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
+                    ?? Self.watchBusyMessage(readFailure)
                     ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
@@ -2369,9 +2374,11 @@ final class MapEngine: ObservableObject {
                 self?.evidenceFailureStage = known?.stage ?? .preflight
                 self?.evidenceFailure = readFailure?.failure ?? known?.failure
                 self?.evidenceNativeFailureCode = readFailure?.native
-                // Reads before the coordinator ran; nothing was written.
+                // Reads before the coordinator ran the current component;
+                // earlier components of the batch may already be written.
                 retainForRetry = Self.retainsArtifactsForRetry(after: readFailure?.failure ?? known?.failure)
                 self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
+                    ?? Self.watchBusyMessage(readFailure, afterEarlierWrite: componentLog.wroteAnyComponent)
                     ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
@@ -2444,6 +2451,23 @@ final class MapEngine: ObservableObject {
         return (transport.isConfirmedDeviceDisconnected ? .deviceDisconnected : .preflightMTPReadFailed,
                 transport.isConfirmedDeviceDisconnected ? .deviceDisconnected : .preflightMTPReadFailed,
                 context)
+    }
+
+    /// A pre-write read that could not open the watch's session gets the
+    /// busy-watch advice detection gives. The current component was not
+    /// written; earlier components of the same operation may have been.
+    nonisolated static func watchBusyMessage(
+        _ read: (failure: InstallationFailure, native: EvidenceNativeFailureCode?, context: InstallationFailureContext)?,
+        afterEarlierWrite: Bool = false
+    ) -> String? {
+        guard let read, read.failure == .preflightMTPReadFailed, read.context.isWatchSessionBusy else { return nil }
+        return UserFacingErrorMessage.installationWatchBusy(afterEarlierWrite: afterEarlierWrite)
+    }
+
+    /// True when any recorded component reached the device: a write started
+    /// or a remote object was created.
+    nonisolated static func wroteAnyComponent(_ results: [MapInstallationResult]) -> Bool {
+        results.contains { $0.diagnostics.writeStarted || $0.diagnostics.remoteObjectCreated }
     }
 
     nonisolated private static func evidenceDiagnostic(

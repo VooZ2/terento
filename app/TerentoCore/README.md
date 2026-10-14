@@ -84,7 +84,13 @@ keyed by package and artifact with their SHA-256; Try again (offered for
 download, connection, pre-write check, write-start and authorization-check
 failures) keeps the selection, rereads the watch and reuses them instead of
 downloading again. Availability is rechecked and the coordinator revalidates
-identity, version, size and SHA-256 before any write. Quitting removes retained
+identity, version, size and SHA-256 before any write. When that pre-write
+reread finds the watch on USB but cannot open its file-transfer session (the
+snapshot result detection classifies as busy), the failure says the watch may be
+in use by another app, asks to quit Garmin Express and similar apps and links the
+guide's busy-watch section; it names no running app after one failed open,
+says no map was written only when no earlier map or contour of the same
+installation was written, and the reported failure code is unchanged. Quitting removes retained
 artifacts. While maps are downloaded, prepared, written or verified, and during
 Update and Remove, the app holds a user-initiated activity that prevents idle
 system sleep; Quit during a device write asks for confirmation. The app has one
