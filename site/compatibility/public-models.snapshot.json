@@ -34,6 +34,22 @@
       "lastSuccessfulInstallation": "2026-10-10T12:04:20+00:00"
     },
     {
+      "model": "Forerunner 965 · Historical",
+      "variant": "Historical",
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "forerunner",
+      "familyName": "Forerunner",
+      "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
+      "successfulInstallations": 18,
+      "appSuccessfulInstallations": 16,
+      "webSuccessfulInstallations": 2,
+      "lastSuccessfulInstallation": "2026-10-15T01:46:29+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · 51 mm",
       "variant": "51 mm",
       "caseSizeMm": 51,
@@ -48,22 +64,6 @@
       "appSuccessfulInstallations": 17,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-11T16:50:23+00:00"
-    },
-    {
-      "model": "Forerunner 965 · Historical",
-      "variant": "Historical",
-      "caseSizeMm": null,
-      "displayType": null,
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "forerunner",
-      "familyName": "Forerunner",
-      "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
-      "successfulInstallations": 16,
-      "appSuccessfulInstallations": 14,
-      "webSuccessfulInstallations": 2,
-      "lastSuccessfulInstallation": "2026-10-12T13:52:09+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -482,5 +482,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-14T16:04:17.330743+00:00"
+  "generatedAt": "2026-10-15T04:09:06.835824+00:00"
 }
