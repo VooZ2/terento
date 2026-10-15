@@ -329,10 +329,9 @@ when the tab becomes visible again, by re-reading their own URL and comparing
 values or observation clocks (`docs/admin-behavior-contract.md`, Freshness
 notice).
 
-Production `/admin*` is first protected by Cloudflare Access and the trusted
-origin assertion. The application then requires its native admin session and
-CSRF checks. A local preview that bypasses Access is not production authorization
-evidence. The first administrator can be created only once through `/admin/setup`
+Production `/admin*` is protected by the application's native admin session and
+CSRF checks; Cloudflare Access and the origin assertion guard were removed by
+owner decision on 2026-10-12. The first administrator can be created only once through `/admin/setup`
 with the environment bootstrap secret. Passwords use salted PBKDF2-SHA256;
 opaque session and CSRF values are stored only as SHA-256 hashes. Login and
 setup allow 10 failed attempts per client address per 15 minutes; each attempt
