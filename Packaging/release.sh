@@ -196,6 +196,12 @@ build_settings="$run_dir/build-settings.txt"
 # project .venv or python3.13/3.12) as python3 for every step below.
 release_python="$( . "$repo_root/Tests/backend-python-runtime.sh" >&2 && printf '%s' "$TERENTO_PYTHON_BIN" )" \
     || die "Release tests require Python 3.12 or 3.13 with the backend test extra"
+# A relative TERENTO_PYTHON_BIN (./.venv/bin/python) must not become a
+# dangling link in the run directory; keep the venv path, not its target.
+case "$release_python" in
+    /*) ;;
+    *) release_python="$(cd "$(dirname "$release_python")" && pwd)/$(basename "$release_python")" ;;
+esac
 /bin/mkdir -p "$run_dir/python-bin"
 /bin/ln -s "$release_python" "$run_dir/python-bin/python3"
 export TERENTO_PYTHON_BIN="$release_python"

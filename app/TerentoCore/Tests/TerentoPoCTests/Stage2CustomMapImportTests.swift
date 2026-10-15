@@ -84,6 +84,12 @@ struct Stage2CustomMapImportTests {
     }
 
     private static func testOversizedCustomIMGIsRejectedBeforeCopy() {
+        let limit = CustomMapSourceAcquirer.maximumMapFileBytes
+        expect(limit == 4 * 1024 * 1024 * 1024 - 1, "the custom IMG limit is the FAT32 file limit, 4 GiB - 1 byte")
+        expect(CustomMapSourceAcquirer.fitsOnWatch(fileBytes: limit),
+               "an IMG of exactly the FAT32 file limit is accepted")
+        expect(!CustomMapSourceAcquirer.fitsOnWatch(fileBytes: limit + 1),
+               "an IMG one byte over the FAT32 file limit is refused")
         let fixture = makeFixture(name: "oversized")
         defer { cleanup(fixture.root) }
         do {

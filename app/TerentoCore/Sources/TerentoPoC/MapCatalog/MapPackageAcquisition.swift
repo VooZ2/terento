@@ -1603,6 +1603,9 @@ struct CustomMapSourceAcquirer: Sendable {
     private static let fallbackVersion = MapVersion(year: 2000, month: 1)!
     /// FAT32, used by Garmin watch storage, holds files up to 4 GiB - 1 byte.
     static let maximumMapFileBytes: UInt64 = 4_294_967_295
+
+    /// A file of exactly `maximumMapFileBytes` fits; one byte more does not.
+    static func fitsOnWatch(fileBytes: UInt64) -> Bool { fileBytes <= maximumMapFileBytes }
     private let workspaceFactory: @Sendable () throws -> MapAcquisitionWorkspace
 
     init(
@@ -1728,7 +1731,7 @@ struct CustomMapSourceAcquirer: Sendable {
             )
         }
         // Checked before copying: such a file can never be written to the watch.
-        if let size = values.fileSize, UInt64(size) > Self.maximumMapFileBytes {
+        if let size = values.fileSize, !Self.fitsOnWatch(fileBytes: UInt64(size)) {
             throw MapAcquisitionError.customMapTooLarge(filename: fileURL.lastPathComponent)
         }
     }
