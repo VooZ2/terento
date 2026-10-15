@@ -110,6 +110,26 @@
         null
       ],
       "description": "Optional explicit reason for a component download. Absent/null historical values remain unknown; never infer from a missing install/update result."
+    },
+    "failureReason": {
+      "enum": [
+        "TIMED_OUT",
+        "CONNECTION_LOST",
+        "OFFLINE",
+        "CANNOT_CONNECT",
+        "NETWORK_ERROR",
+        "PROVIDER_REFUSED",
+        "PROVIDER_RATE_LIMITED",
+        "PROVIDER_NOT_FOUND",
+        "PROVIDER_SERVER_ERROR",
+        "INCOMPLETE",
+        "SOURCE_UPDATED",
+        "SOURCE_INVALID",
+        "MAC_STORAGE",
+        "OTHER",
+        null
+      ],
+      "description": "Optional closed reason for DOWNLOAD_FAILED only. Absent or null is unknown; released clients through 1.0.0 never send it."
     }
   },
   "required": [
@@ -184,6 +204,11 @@
               {
                 "required": [
                   "mapResultIndex"
+                ]
+              },
+              {
+                "required": [
+                  "failureReason"
                 ]
               }
             ]
@@ -406,6 +431,25 @@
           },
           "eventType": {
             "pattern": "^DOWNLOAD_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "failureReason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "failureReason"
+        ]
+      },
+      "then": {
+        "properties": {
+          "eventType": {
+            "const": "DOWNLOAD_FAILED"
           }
         }
       }

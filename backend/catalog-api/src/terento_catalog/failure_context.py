@@ -14,7 +14,7 @@ CONTEXT_ENUMS = {
     'executionMode': ('in_process', 'worker'),
     'resultKind': ('native_error', 'timeout', 'cancelled', 'process_launch_error', 'process_exit', 'request_io_error', 'response_io_error', 'decode_error', 'invalid_response', 'app_error', 'protection_failed'),
     'nativeCategory': ('detection', 'session_open', 'storage_read', 'inventory_read', 'object_read', 'allocation', 'invalid_argument', 'unspecified'),
-    'nativeCodeNamespace': ('terento_snapshot', 'terento_inventory', 'terento_file_prefix', 'terento_file_range'),
+    'nativeCodeNamespace': ('terento_snapshot', 'terento_inventory', 'terento_file_prefix', 'terento_file_range', 'terento_map_write'),
     'componentKind': ('main', 'contours'),
 }
 PROTECTION_ENUMS = {
@@ -94,6 +94,22 @@ def validate_context(context: Any) -> None:
         raise ValueError('inconsistent_protection_reason')
 
 
+def is_declined_cleanup(event: dict[str, Any]) -> bool:
+    """Released clients through 1.0.0 report an automatic cleanup that was
+    refused before any device mutation as a derived cleanup context with
+    cleanupAttempted=false; the originating failure stays in the original context."""
+    context = event.get('failureContext') or {}
+    return (
+        context.get('boundary') == 'cleanup'
+        and context.get('classificationSource') == 'derived'
+        and context.get('resultKind') == 'app_error'
+        and 'nativeCodeNamespace' not in context
+        and event.get('cleanupAttempted') is False
+        and event.get('cleanupSucceeded') is False
+        and isinstance(event.get('originalFailureContext'), dict)
+    )
+
+
 def validate_event_contexts(event: dict[str, Any]) -> None:
     for key in ('failureContext', 'originalFailureContext'):
         if key not in event:
@@ -114,7 +130,8 @@ def validate_event_contexts(event: dict[str, Any]) -> None:
         if event['phaseOutcome'] == 'SUCCEEDED' and context.get('componentKind') != 'contours':
             raise ValueError('inconsistent_success_context')
         if key == 'failureContext':
-            if context['boundary'] == 'cleanup' and event.get('cleanupAttempted') is not True:
+            if context['boundary'] == 'cleanup' and event.get('cleanupAttempted') is not True \
+                    and not is_declined_cleanup(event):
                 raise ValueError('cleanup_context_requires_attempt')
             stage = event.get('optionalComponentFailureStage') if context.get('componentKind') == 'contours' else event.get('failureStage')
             if stage is not None and stage != BOUNDARY_STAGES[context['boundary']]:

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "d2e00000-0000-4000-8000-000000000040",
+  "operationId": "d2e00000-0000-4000-8000-000000000041",
+  "timestamp": "2026-10-16T08:29:58Z",
+  "providerId": "opentopomap",
+  "releaseLabel": "1.0.1",
+  "mapId": "opentopomap-china",
+  "region": "CHN",
+  "eventType": "DOWNLOAD_FAILED",
+  "outcome": "FAILED",
+  "appBuild": "45",
+  "acquisitionId": "d2e00000-0000-4000-8000-000000000042",
+  "componentKind": "main",
+  "acquisitionPurpose": "install",
+  "failureReason": "TIMED_OUT"
+}

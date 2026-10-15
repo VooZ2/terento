@@ -25,7 +25,7 @@ class MapIntakeDatabase(FakeProviderDatabase):
         self.sql = sqlite3.connect(':memory:', check_same_thread=False)
         self.sql.row_factory = sqlite3.Row
         self.sql.execute('CREATE TABLE map_package (id TEXT PRIMARY KEY)')
-        self.sql.execute('CREATE TABLE map_download_event (event_id TEXT PRIMARY KEY, operation_id TEXT, provider_id TEXT, map_package_id TEXT, region TEXT, event_type TEXT, outcome TEXT, occurred_at TEXT, app_build TEXT, release_label TEXT, is_local_test BOOLEAN, acquisition_id TEXT, component_kind TEXT, map_result_index INTEGER, acquisition_purpose TEXT, reported_map_id TEXT)')
+        self.sql.execute('CREATE TABLE map_download_event (event_id TEXT PRIMARY KEY, operation_id TEXT, provider_id TEXT, map_package_id TEXT, region TEXT, event_type TEXT, outcome TEXT, occurred_at TEXT, app_build TEXT, release_label TEXT, is_local_test BOOLEAN, acquisition_id TEXT, component_kind TEXT, map_result_index INTEGER, acquisition_purpose TEXT, reported_map_id TEXT, failure_reason TEXT)')
 
     @contextmanager
     def connection(self):
@@ -57,6 +57,35 @@ class MapEventDeliveryTests(unittest.TestCase):
                 response, _ = test_catalog_api.CatalogAPITests._request(server, 'POST', '/map-events', json.dumps(dict(base, id=str(uuid4()), **changes)).encode(), {'Content-Type': 'application/json'})
                 self.assertEqual(response.status, 400)
             self.assertEqual(database.sql.execute('SELECT count(*) FROM map_download_event').fetchone()[0], 4)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+            database.sql.close()
+
+    def test_download_failure_reason_storage_and_scope(self):
+        database = MapIntakeDatabase()
+        server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(CatalogService(database)))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        root = Path(__file__).resolve().parents[3] / 'contracts/fixtures'
+        failed = json.loads((root / 'map-event.valid-download-failure-reason.json').read_text())
+        started = json.loads((root / 'map-event.valid-acquisition-purpose.json').read_text())
+        try:
+            for reason in ('TIMED_OUT', None, 'absent'):
+                event = dict(failed, id=str(uuid4()), failureReason=reason)
+                if reason == 'absent':
+                    del event['failureReason']
+                response, _ = test_catalog_api.CatalogAPITests._request(server, 'POST', '/map-events', json.dumps(event).encode(), {'Content-Type': 'application/json'})
+                self.assertEqual(response.status, 201)
+                row = database.sql.execute('SELECT failure_reason FROM map_download_event WHERE event_id=?', (event['id'],)).fetchone()
+                self.assertEqual(row['failure_reason'], 'TIMED_OUT' if reason == 'TIMED_OUT' else None)
+            for event in (dict(failed, id=str(uuid4()), failureReason='timed_out'),
+                          dict(failed, id=str(uuid4()), failureReason='/Users/me/map.img'),
+                          dict(failed, id=str(uuid4()), failureReason=['TIMED_OUT']),
+                          dict(started, id=str(uuid4()), failureReason='TIMED_OUT')):
+                response, _ = test_catalog_api.CatalogAPITests._request(server, 'POST', '/map-events', json.dumps(event).encode(), {'Content-Type': 'application/json'})
+                self.assertEqual(response.status, 400)
         finally:
             server.shutdown()
             server.server_close()

@@ -1195,6 +1195,25 @@ _MAP_ACTIVITY_STATES = {
 }
 
 
+# contracts/map-event.schema.json failureReason; absent means unknown.
+_DOWNLOAD_FAILURE_REASON_LABELS = {
+    "TIMED_OUT": "Connection timed out",
+    "CONNECTION_LOST": "Connection lost",
+    "OFFLINE": "Mac offline",
+    "CANNOT_CONNECT": "Provider unreachable",
+    "NETWORK_ERROR": "Network error",
+    "PROVIDER_REFUSED": "Provider refused",
+    "PROVIDER_RATE_LIMITED": "Provider rate limit",
+    "PROVIDER_NOT_FOUND": "Not found at provider",
+    "PROVIDER_SERVER_ERROR": "Provider server error",
+    "INCOMPLETE": "Incomplete download",
+    "SOURCE_UPDATED": "Provider updated the map",
+    "SOURCE_INVALID": "Downloaded file invalid",
+    "MAC_STORAGE": "Mac storage full",
+    "OTHER": "Other error",
+}
+
+
 def _admin_event_outcome_label(value: Any) -> str:
     """Keep a non-terminal UNKNOWN outcome neutral in admin presentation."""
     normalized = str(value or "").strip().upper()
@@ -1552,6 +1571,8 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
     if event_type == 'MAP_UPDATE_FAILED' and event.get('event_id'):
         status_markup += f" <a href='/admin/update-diagnostics?eventId={quote(str(event['event_id']),safe='')}'>View failure</a>"
     context = _overview_activity_context(event)
+    if event_type == 'DOWNLOAD_FAILED' and event.get('failure_reason') in _DOWNLOAD_FAILURE_REASON_LABELS:
+        context += ' · ' + html.escape(_DOWNLOAD_FAILURE_REASON_LABELS[event['failure_reason']])
     if event_type == 'MAP_UPDATE_NOT_STARTED' and event.get('reason_summary'):
         context += ' · ' + html.escape(str(event['reason_summary']))
     lifecycle = event.get("lifecycle") or []

@@ -70,6 +70,9 @@ or compatibility count.
   of the eventual device outcome. Missing historical purpose stays unknown.
   Downloads totals and charts include all purposes; their breakdown explicitly
   separates install, update and unknown acquisitions. A download is not an install.
+  An optional `failureReason` on `DOWNLOAD_FAILED` (1.0.1 and later) explains a
+  failure and never adds, removes or reclassifies a download; a missing reason
+  stays unknown.
 - **Fresh main-map installs** are independent main-map results. One result is
   identified by `operationId + mapResultIndex` and retains provider, region,
   package/map, and component/acquisition correlations where available. An

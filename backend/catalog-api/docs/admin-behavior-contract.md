@@ -489,6 +489,9 @@ placeholder `Historical` is omitted from this label; real variants remain visibl
 omits provider. The model link is inline in that same context row, never a
 separate row with a blank gap. Unassigned or ambiguous models are omitted rather
 than shown as a reported guess. Long context may wrap naturally on narrow screens.
+A download failure with a reported `failureReason` appends its short label
+(for example `Connection timed out`) to the context row; without one nothing is
+added.
 
 Dashboard chart series use one stacked bar for each bucket: downloads are
 successful/failed, while map operations distinguish install successful, custom

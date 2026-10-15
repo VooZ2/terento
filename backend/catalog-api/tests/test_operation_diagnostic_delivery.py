@@ -238,7 +238,7 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         values = json.loads(Path(path).read_text()) if path else [
             self.fixture(),
             *[json.loads((root / f'contracts/fixtures/compatibility-event.valid-context-{name}.json').read_text())
-              for name in ('preflight', 'cleanup', 'contours-cleanup')],
+              for name in ('preflight', 'cleanup', 'contours-cleanup', 'cleanup-declined')],
         ]
         require_context = os.environ.get('TERENTO_DIAGNOSTIC_REQUIRE_FAILURE_CONTEXT') == '1'
         if require_context:
