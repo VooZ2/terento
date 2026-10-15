@@ -1,5 +1,16 @@
 # App–API compatibility and release contract
 
+## Stable release 1.0.0 build 44 — staged
+
+Staged on the `stable` update channel; a stable build is offered stable
+releases only, and installed beta builds are offered it. It changes only app
+messages for an unopened watch session and a rebuilt BBBike map, and the
+bundled fallback catalog; it adds no API field, route, telemetry event or
+migration and keeps every rc.3 payload unchanged. The catalog API from its
+source revision is already deployed, so no further server deployment precedes
+it. The API validates its labels as SemVer: `1.0.0` is stored as public and
+`1.0.0-local` as local test data.
+
 ## Release candidate 1.0.0-rc.3 build 43 — published
 
 Published on 2026-10-11 from GitHub-verified source

@@ -36,6 +36,18 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.0.0 / build 44**, the first stable release (see
+[versioning](../VERSIONING.md), "Stable release"). Its Xcode channel is
+`stable`, so it is offered stable releases only; installed beta and
+release-candidate builds are offered it. It adds fixes only: clearer messages
+when the watch session can't be opened or BBBike has just rebuilt a map, and a
+built-in catalog without withheld or oversized maps; no API or migration
+precedes it. The real-watch Update gate for Freizeitkarte and OpenTopoMap is
+DEFERRED by the owner (`contracts/release-hardware-gates.json`) and listed in
+KNOWN ISSUES. Public metadata continues to identify rc.3 until signed,
+notarized artifacts exist, and the draft release-note section stays marked as
+a draft until the owner approves it.
+
 The published release is **1.0.0-rc.3 / build 43**, the third release
 candidate for 1.0.0, from signed source
 `5989cc32a13f8adc8408fcc5b01d9bb4a8e5a4c9` (tag `v1.0.0-rc.3-build43`). It is
