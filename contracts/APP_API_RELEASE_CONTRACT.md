@@ -19,6 +19,17 @@ Deploy and verify this API before any 1.0.1 client is published. It adds:
 Every other released payload is unchanged. 1.0.1 reports a declined cleanup
 with its original failure code and context instead.
 
+## Stable release 1.0.1 build 45 — staged
+
+Staged, not published. The app source sets `1.0.1` / build 45
+(`Packaging/release-candidate.json`) on the `stable` channel. It sends the
+`terento_map_write` native code, `failureReason` on `DOWNLOAD_FAILED`, and
+reports a declined cleanup with its original failure code and context, so the
+1.0.1 server-first acceptance API above must be deployed and verified first.
+It adds no route, telemetry event or migration of its own. Before publication:
+owner real-watch test of a local build, owner-approved release notes, the full
+packaging suite, notarization and the DMG/ZIP digests recorded here.
+
 ## Stable release 1.0.0 build 44 — published
 
 Published on 2026-10-15 from GitHub-verified source
