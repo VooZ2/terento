@@ -89,11 +89,20 @@ function remoteReleaseTags() {
   return output.split("\n").filter(Boolean).map((line) => {
     const match = line.match(/^[0-9a-f]{40}\trefs\/tags\/(v\S+)$/);
     assert.ok(match, `unexpected git ls-remote line: ${line}`);
-    return match[1];
+    return { sha: line.slice(0, 40), tag: match[1] };
   });
 }
+// Once the reviewed candidate is signed and tagged, CI runs on that tag: the
+// candidate's own tag on the checked-out commit is not an earlier build.
+function earlierReleaseTags(candidate, remoteTags, head) {
+  const ownTag = `v${candidate.releaseLabel}-build${candidate.build}`;
+  return remoteTags.filter(({ sha, tag }) => !(tag === ownTag && sha === head)).map(({ tag }) => tag);
+}
 const stagedCandidate = fs.existsSync(candidatePath) ? JSON.parse(fs.readFileSync(candidatePath, "utf8")) : null;
-const artifactIdentity = candidateIdentity(stagedCandidate, release, stagedCandidate ? remoteReleaseTags() : []);
+const headCommit = () => require("node:child_process").execFileSync(
+  "git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const artifactIdentity = candidateIdentity(stagedCandidate, release,
+  stagedCandidate ? earlierReleaseTags(stagedCandidate, remoteReleaseTags(), headCommit()) : []);
 assert.equal(candidateIdentity(null, release), release);
 for (const invalid of [
   { ...release, build: release.build + 1 },
@@ -155,6 +164,15 @@ for (const candidate of [
 const afterBeta = ["v1.0.0-build44", "v1.1.0-beta.1-build50", "v1.0.0-rc.3-build43", "not-a-tag"];
 assert.throws(() => candidateIdentity({ version: "1.0.1", releaseLabel: "1.0.1", build: 45 }, stable, afterBeta));
 assert.equal(candidateIdentity({ version: "1.0.1", releaseLabel: "1.0.1", build: 51 }, stable, afterBeta).build, 51);
+// The candidate's own tag counts only when it points at another commit.
+const tagged44 = { version: "1.0.0", releaseLabel: "1.0.0", build: 44 };
+const own = "a".repeat(40);
+const remote44 = [{ sha: own, tag: "v1.0.0-build44" }, { sha: "b".repeat(40), tag: "v1.0.0-rc.3-build43" }];
+assert.deepEqual(earlierReleaseTags(tagged44, remote44, own), ["v1.0.0-rc.3-build43"]);
+assert.equal(candidateIdentity(tagged44, { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 43 },
+  earlierReleaseTags(tagged44, remote44, own)).build, 44);
+assert.throws(() => candidateIdentity(tagged44, { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 43 },
+  earlierReleaseTags(tagged44, remote44, "c".repeat(40))));
 // The prerelease predecessor is the highest build of the same version, ordered by number (9 < 10).
 const betaTags = ["v1.1.0-beta.1-build9", "v1.1.0-beta.2-build10", "v1.0.0-build8"];
 const stableBuild8 = { version: "1.0.0", releaseLabel: "1.0.0", build: 8 };
