@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
+import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -78,24 +80,24 @@ class ReleaseIsolationTests(unittest.TestCase):
         self.assertLess(fresh, regression)
         self.assertIn('export PATH="$run_dir/python-bin:$PATH"', script)
 
-    def test_relative_release_python_becomes_a_working_absolute_link(self):
+    def test_relative_release_python_keeps_its_virtual_environment(self):
         script = (ROOT / 'Packaging/release.sh').read_text()
         start = script.index('case "$release_python" in')
         end = script.index('export TERENTO_PYTHON_BIN="$release_python"')
         selection = script[start:end]
-        with tempfile.TemporaryDirectory() as checkout, tempfile.TemporaryDirectory() as run_dir:
-            venv_bin = Path(checkout) / '.venv/bin'
-            venv_bin.mkdir(parents=True)
-            (venv_bin / 'python').write_text('#!/bin/sh\necho selected\n')
-            (venv_bin / 'python').chmod(0o755)
+        shell = shutil.which('zsh') or 'bash'
+        with tempfile.TemporaryDirectory() as parent, tempfile.TemporaryDirectory() as run_dir:
+            checkout = Path(parent) / 'repo with space'
+            checkout.mkdir()
+            subprocess.run([sys.executable, '-m', 'venv', '--without-pip', str(checkout / '.venv')], check=True)
             result = subprocess.run(
-                ['bash', '-c', 'release_python=./.venv/bin/python\n' + selection
-                 + '"$run_dir/python-bin/python3"; printf "%s" "$release_python" >&2'],
+                [shell, '-c', 'release_python=./.venv/bin/python\n' + selection
+                 + '"$run_dir/python-bin/python3" -c "import sys; print(sys.prefix)"'],
                 cwd=checkout, env={'PATH': '/usr/bin:/bin', 'run_dir': run_dir},
                 capture_output=True, text=True, check=True)
-            self.assertEqual(result.stdout.strip(), 'selected')
-            self.assertTrue(Path(result.stderr).is_absolute())
-            self.assertEqual(Path(result.stderr).parent.resolve(), venv_bin.resolve())
+            self.assertFalse((Path(run_dir) / 'python-bin/python3').is_symlink())
+            self.assertEqual(Path(result.stdout.strip()).resolve(), (checkout / '.venv').resolve(),
+                             'the release python3 runs inside the selected virtual environment')
 
     def test_packaging_gate_is_before_signing(self):
         script = (ROOT / 'Packaging/release.sh').read_text()
