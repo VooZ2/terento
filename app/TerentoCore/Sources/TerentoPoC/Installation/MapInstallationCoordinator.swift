@@ -1137,8 +1137,11 @@ struct MapInstallationCoordinator: Sendable {
                         filename: recoveryRecord.filename
                     )
                 }
+            } catch is CleanupIdentityUnproven {
+                // Declined before any device change: the map stays on the watch
+                // and the failure that stopped the install remains the result.
+                cleanupDeclined = true
             } catch {
-                cleanupDeclined = error is CleanupIdentityUnproven
                 cleanupFailure = .cleanupFailed
                 cleanupContext = Self.failureContext(for: error, boundary: .cleanup, operation: .cleanup)
             }
@@ -1164,7 +1167,7 @@ struct MapInstallationCoordinator: Sendable {
                 cleanupAttempted: cleanupAttempted,
                 cleanupSucceeded: cleanupAttempted && cleanupFailure == nil
             ).withNativeFailureCode(
-                cleanupFailure == nil || cleanupDeclined ? diagnostics.nativeFailureCode : .deleteFailed
+                cleanupFailure == nil ? diagnostics.nativeFailureCode : .deleteFailed
             ).withFailureContexts(
                 cleanupContext ?? diagnostics.failureContext,
                 original: cleanupFailure == nil ? diagnostics.originalFailureContext : diagnostics.failureContext

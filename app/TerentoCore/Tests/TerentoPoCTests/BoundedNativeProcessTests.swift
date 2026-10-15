@@ -102,6 +102,12 @@ struct BoundedNativeProcessTests {
         }
         precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=update_current_check method=/Users/x bytes=1") == nil)
         precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=update_new_check method=sampled bytes=many") == nil)
+        // A declined cleanup and watch-side inventory churn stay in the retained trace.
+        for line in ["FINISH_TRACE swift event=cleanup_result attempt=0 succeeded=0 declined=1",
+                     "FINISH_TRACE swift event=global_inventory_observation boundary=postwrite before=519 after=520 removedOrChanged=1 addedOrChanged=2"] {
+            precondition(FinishingTrace.safeLine(line) == line)
+        }
+        precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=global_inventory_observation boundary=/GARMIN/x before=1") == nil)
         let sourceFailure = "FINISH_TRACE swift event=source_validation validation=sourceFormatMismatch"
         precondition(FinishingTrace.safeLine(sourceFailure) == sourceFailure)
         for unsafe in [native + " path=/Users/private/map.img", native + " serial=1234",

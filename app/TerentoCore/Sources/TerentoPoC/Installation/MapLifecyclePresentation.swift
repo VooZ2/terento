@@ -91,14 +91,14 @@ struct MapLifecyclePresentationResolver: Sendable {
                 return MapLifecycleActionAvailability(
                     actions: [],
                     status: "Needs verification",
-                    reason: "Only the exact incomplete map can be recovered."
+                    reason: "Only this exact map can be removed."
                 )
             }
 
             return MapLifecycleActionAvailability(
                 actions: [.remove],
                 status: "Failed install recovery",
-                reason: "Only the exact incomplete map can be recovered."
+                reason: "Only this exact map can be removed."
             )
         }
 

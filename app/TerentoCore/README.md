@@ -110,7 +110,12 @@ planner. A failed map read on a connected watch shows "Couldn't read your
 maps" with Try again. When an install fails after a map object was created,
 the original cause stays the primary message, followed by "The map file may be
 on your watch. Open Manage maps to remove it, then install it again." and a
-"Go to Manage maps" action; automatic cleanup is still declined.
+"Go to Manage maps" action; automatic cleanup is still declined. A declined
+cleanup is not a cleanup failure: the result, the installation report and the
+Admin record keep the original failure code and context with
+`cleanupAttempted=false` (clients through 1.0.0 reported `INSTALL_FAILED_CLEANUP`
+and "a partial map may still remain", even when the map was complete). Manage
+maps shows such a map as "Installation not finished" with Remove only.
 
 The review Install action starts from idle. After successful preflight, the
 engine continues automatically; its transient `awaitingConfirmation` phase is

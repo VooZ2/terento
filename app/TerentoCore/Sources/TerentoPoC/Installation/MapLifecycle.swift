@@ -101,7 +101,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
         }
 
         if failedInstallRecovery != nil {
-            return [manageReleaseLabel, formattedInstalledSize, "Incomplete installation"]
+            return [manageReleaseLabel, formattedInstalledSize, "Installation not finished"]
                 .compactMap { $0 }
                 .joined(separator: " · ")
         }
@@ -147,7 +147,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
 
     var noteLabel: String {
         if failedInstallRecovery != nil {
-            return "Incomplete install · only this exact map can be recovered."
+            return "Installation not finished · only this exact map can be removed."
         }
 
         switch classification {

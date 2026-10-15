@@ -278,7 +278,7 @@ func runMapLifecyclePresentationTests() throws {
     try require(recovery.status == "Failed install recovery", "failed install recovery has a distinct status")
     try require(
         recoveryItem.manageMetadataLabel.contains("2026-05")
-            && recoveryItem.manageMetadataLabel.contains("Incomplete installation")
+            && recoveryItem.manageMetadataLabel.contains("Installation not finished")
             && !recoveryItem.manageMetadataLabel.contains("Freizeitkarte"),
         "recovery row uses explicit incomplete-installation metadata"
     )
@@ -526,7 +526,7 @@ private func testIncompleteCustomRecovery() throws {
         key: "custom", title: map.name, catalogPackage: nil, comparison: nil,
         installedMaps: [map], isSelectedCatalogMap: false)])
     let item = MapLifecycleInventoryBuilder().build(from: inventory, recoveryRecords: [record]).otherMaps[0]
-    try require(item.failedInstallRecovery == record && item.manageMetadataLabel.contains("Incomplete installation"),
+    try require(item.failedInstallRecovery == record && item.manageMetadataLabel.contains("Installation not finished"),
         "rescan associates exact Custom recovery and displays incomplete installation")
     let context = MapLifecycleContext(item: item, comparison: nil, selectedMap: nil,
         identity: identity(), availableStorage: 15000, profile: nil, deviceKey: record.deviceKey,
