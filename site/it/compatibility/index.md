@@ -11,7 +11,7 @@ Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Qui sot
 
 Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.
 
-**30** modelli con installazioni riuscite**230** installazioni riusciteUltima installazione riuscita 15 ottobre 2026
+**30** modelli con installazioni riuscite**231** installazioni riusciteUltima installazione riuscita 15 ottobre 2026
 
 Come funziona questo elenco
 
@@ -83,6 +83,18 @@ App 13
 
 Ultima installazione riuscita 4 ottobre 2026
 
+Forerunner
+
+### Forerunner 955
+
+Solar, Standard
+
+9 installazioni riuscite
+
+App 9
+
+Ultima installazione riuscita 15 ottobre 2026
+
 fēnix
 
 ### fēnix 9 Pro
@@ -104,18 +116,6 @@ epix
 8 installazioni riuscite
 
 App 6 Web 2
-
-Ultima installazione riuscita 14 ottobre 2026
-
-Forerunner
-
-### Forerunner 955
-
-Solar, Standard
-
-8 installazioni riuscite
-
-App 8
 
 Ultima installazione riuscita 14 ottobre 2026
 
