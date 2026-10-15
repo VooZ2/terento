@@ -69,6 +69,7 @@ struct InstallationFailureContext: Codable, Equatable, Sendable {
         case terentoInventory = "terento_inventory"
         case terentoFilePrefix = "terento_file_prefix"
         case terentoFileRange = "terento_file_range"
+        case terentoMapWrite = "terento_map_write"
     }
     enum ComponentKind: String, Codable, Sendable {
         case main = "main"

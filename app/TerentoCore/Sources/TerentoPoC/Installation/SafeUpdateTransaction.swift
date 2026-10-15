@@ -168,7 +168,8 @@ protocol SafeUpdateArtifactProvider: Sendable {
 }
 
 enum SafeUpdateAcquisitionEvent: Equatable, Sendable {
-    case started, processing, succeeded, failed, cancelled
+    case started, processing, succeeded, cancelled
+    case failed(MapDownloadFailureReason)
 }
 
 /// Tracks the real acquisition boundary without exposing provider errors or paths.
@@ -208,7 +209,7 @@ private final class SafeUpdateAcquisitionObserver: @unchecked Sendable {
         case .extractionFailed, .unsafeArchivePath:
             return .extract
         case .invalidPackage, .providerSourceUpdated, .unsupportedPackageFormat, .sourceIdentityMismatch,
-             .sourceVersionMismatch, .noIMGFound, .ambiguousIMG, .customMapNotConfirmed:
+             .sourceVersionMismatch, .noIMGFound, .ambiguousIMG, .customMapNotConfirmed, .customMapTooLarge:
             return .sourceValidation
         case .workspaceFailed, .acquisitionWithheld, .insufficientMacStorage:
             return .preflight
@@ -284,7 +285,7 @@ struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
             return SafeUpdateSourceArtifact(artifact)
         } catch {
             evidence.finish(Task.isCancelled || error is CancellationError
-                || (error as? URLError)?.code == .cancelled ? .cancelled : .failed)
+                || (error as? URLError)?.code == .cancelled ? .cancelled : .failed(MapDownloadFailureReason(error)))
             let stage = evidence.failureStage(for: error)
             if let acquisitionError = error as? MapAcquisitionError {
                 throw SafeUpdateAcquisitionError.acquisition(acquisitionError, stage: stage)

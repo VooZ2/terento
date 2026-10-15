@@ -4,7 +4,9 @@ import Foundation
 struct MTPRunningApplication {
     let bundleIdentifier: String?
     let displayName: String?
-    var isRegularApplication: Bool = true
+    /// A Dock or menu bar app the user can quit. App extensions and
+    /// background-only processes are not.
+    var isUserApplication: Bool = true
 }
 
 /// Read-only, local diagnostics for applications that are known to compete for
@@ -60,7 +62,9 @@ enum MTPConnectionConflictDiagnostics {
                 MTPRunningApplication(
                     bundleIdentifier: $0.bundleIdentifier,
                     displayName: $0.localizedName,
-                    isRegularApplication: $0.activationPolicy == .regular
+                    // MacDroid runs as a menu bar app (accessory policy).
+                    isUserApplication: $0.activationPolicy != .prohibited
+                        && $0.bundleURL?.pathExtension.lowercased() != "appex"
                 )
             }
         )
@@ -71,7 +75,7 @@ enum MTPConnectionConflictDiagnostics {
         // that into a claim that the main app is running. Labels come from the
         // actual running application, never from the candidate recognition list.
         let names = applications.compactMap { application -> String? in
-            guard application.isRegularApplication,
+            guard application.isUserApplication,
                   let name = application.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !name.isEmpty else { return nil }
             let bundleIdentifier = normalize(application.bundleIdentifier)

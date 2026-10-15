@@ -1292,8 +1292,13 @@ private func testRealUpdateAcquisitionEvents() async throws {
             try require(error.stage == (processing ? .sourceValidation : .download),
                 "typed acquirer failure retains validation versus download stage")
         }
-        try require(recorder.snapshot() == (processing ? [.started, .processing, .failed] : [.started, .failed]),
+        let events = recorder.snapshot()
+        var reason: MapDownloadFailureReason?
+        if case .failed(let failure)? = events.last { reason = failure }
+        try require(Array(events.dropLast()) == (processing ? [.started, .processing] : [.started]) && reason != nil,
             "real acquirer distinguishes failed download from failed processing without duplicate terminals")
+        try require(!processing || reason == .sourceInvalid,
+            "a download that fails validation reports its failure reason")
     }
     let archiveURL = root.appendingPathComponent("archive.zip")
     try Data([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]).write(to: archiveURL)

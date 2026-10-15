@@ -110,7 +110,12 @@ planner. A failed map read on a connected watch shows "Couldn't read your
 maps" with Try again. When an install fails after a map object was created,
 the original cause stays the primary message, followed by "The map file may be
 on your watch. Open Manage maps to remove it, then install it again." and a
-"Go to Manage maps" action; automatic cleanup is still declined.
+"Go to Manage maps" action; automatic cleanup is still declined. A declined
+cleanup is not a cleanup failure: the result, the installation report and the
+Admin record keep the original failure code and context with
+`cleanupAttempted=false` (clients through 1.0.0 reported `INSTALL_FAILED_CLEANUP`
+and "a partial map may still remain", even when the map was complete). Manage
+maps shows such a map as "Installation not finished" with Remove only.
 
 The review Install action starts from idle. After successful preflight, the
 engine continues automatically; its transient `awaitingConfirmation` phase is
@@ -437,7 +442,13 @@ a download start without a received outcome is not proof of a failed download.
   a 200, changed validator, size or host, 416 or malformed range restarts from
   zero. BBBike source-proof downloads are not resumed. Final size, identity,
   version and SHA-256 validation is unchanged; quitting removes partial files and
-  the launch scavenger removes stale ones.
+  the launch scavenger removes stale ones. A dropped, stalled or offline
+  connection (timeout, connection lost, no internet, host unreachable) is retried
+  automatically after 2, 5 and 15 seconds, resuming the same way, before the
+  error is shown; HTTP answers, validation failures, a full Mac and cancellation
+  are never retried. A failed download sends a coarse `failureReason` with its
+  DOWNLOAD_FAILED map event (for example `TIMED_OUT`, `OFFLINE`,
+  `PROVIDER_SERVER_ERROR`, `SOURCE_INVALID`; see `contracts/map-event.schema.json`).
 - **Time left.** "About N min left" is shown only for measured phases (download,
   device write, read-back, Update/Remove content checks) after a 5-second, 2 %
   warm-up, from a smoothed measured rate; it disappears after 15 seconds without

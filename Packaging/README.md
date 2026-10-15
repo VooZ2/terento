@@ -16,7 +16,11 @@ tests.
 - Node.js for the JavaScript-backed native/web regression contracts;
 - Python 3.12 or 3.13 for backend and shared JSON contract checks; the backend
   runner prepares the ignored repository `.venv` and installs
-  `backend/catalog-api[test]` when needed;
+  `backend/catalog-api[test]` when needed. `release.sh` resolves that
+  interpreter once and uses it as `python3` for every release test, so the
+  older macOS system Python is never used, and it deletes
+  `app/TerentoCore/.build` before the native build so no stale objects from an
+  earlier checkout reach the release tests;
 - the Developer ID Application identity for Team ID `VXALAZU3B5` in the local
   Keychain;
 - the notarytool Keychain profile `TerentoNotary` configured outside the
@@ -35,6 +39,17 @@ If Node.js is not on `PATH`, set `TERENTO_NODE_BIN` to its executable. The
 same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
+
+The next candidate is **1.0.1 / build 45**, a fix release on the `stable`
+channel (see [versioning](../VERSIONING.md)). It names menu bar apps such as
+MacDroid in the busy-watch message, refuses custom `.img` imports of 4 GiB or
+more, keeps the original failure (not a cleanup failure) when automatic cleanup
+is declined, reports the native map write result and a download
+`failureReason`, and retries dropped downloads automatically. Its server
+additions (`contracts/APP_API_RELEASE_CONTRACT.md`, "1.0.1 server-first
+acceptance") are deployed before it is published. Public metadata continues to
+identify 1.0.0 until signed, notarized artifacts exist, and the draft
+release-note section stays marked as a draft until the owner approves it.
 
 The published release is **1.0.0 / build 44**, the first stable release (see
 [versioning](../VERSIONING.md), "Stable release"), from GitHub-verified source

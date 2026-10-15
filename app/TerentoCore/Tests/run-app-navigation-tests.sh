@@ -188,7 +188,7 @@ fi
 
 if ! grep -Fq 'item.manageMetadataLabel' "$connect_screen" \
     || grep -Fq 'availability.reason ?? item.noteLabel' "$connect_screen" \
-    || ! grep -Fq 'Incomplete installation' \
+    || ! grep -Fq 'Installation not finished' \
         "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift"; then
     print -u2 "FAIL: Manage rows still use repetitive diagnostic copy"
     exit 1

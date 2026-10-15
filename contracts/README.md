@@ -211,12 +211,15 @@ Optional context fields have these controlled values:
 | `executionMode` | `in_process`, `worker` |
 | `resultKind` | `native_error`, `timeout`, `cancelled`, `process_launch_error`, `process_exit`, `request_io_error`, `response_io_error`, `decode_error`, `invalid_response`, `app_error`, `protection_failed` |
 | `nativeCategory` | `detection`, `session_open`, `storage_read`, `inventory_read`, `object_read`, `allocation`, `invalid_argument`, `unspecified` |
-| `nativeCodeNamespace` | `terento_snapshot`, `terento_inventory`, `terento_file_prefix`, `terento_file_range` |
+| `nativeCodeNamespace` | `terento_snapshot`, `terento_inventory`, `terento_file_prefix`, `terento_file_range`, `terento_map_write` |
 | `nativeResultCode` | Signed 32-bit integer; present if and only if `nativeCodeNamespace` is present |
 | `retryCount` | Integer 0–255; operation retries, not diagnostic upload attempts |
 | `componentKind` | `main`, `contours`, matching the artifact component kind |
 
-Booleans are not integers. Native codes describe the named Terento boundary;
+Booleans are not integers. Native codes describe the named Terento boundary
+(`terento_map_write` is the result of the native map write call, for example
+-4 when no single watch session could be opened and -7 when the transfer
+itself failed);
 no libmtp namespace or invented libmtp result code is accepted. Optional
 `protection` is a nested closed object requiring `protectionBoundary`
 (`pre-write` or `post-write`) and `protectionReason`, one of:
@@ -253,6 +256,15 @@ the original failure stage or reason. Reject a non-null orphan
 satisfy this requirement. A null original context means unavailable. When both contexts
 specify `componentKind`, they must match. Validate original protection against
 the original boundary, not the terminal cleanup boundary.
+
+Released clients through 1.0.0 refuse automatic cleanup before any device
+mutation and still report it as a cleanup context with `cleanupAttempted=false`.
+That declined cleanup is accepted only with `classificationSource=derived`,
+`resultKind=app_error`, no native code, `cleanupSucceeded=false` and a non-null
+`originalFailureContext` (fixture
+`compatibility-event.valid-context-cleanup-declined.json`). From 1.0.1 a declined
+cleanup is not a cleanup failure: the client reports the original failure code
+and context with `cleanupAttempted=false`.
 
 Context may accompany a successful main-map result only for an explicitly
 failed selected contours component: `componentKind=contours`,

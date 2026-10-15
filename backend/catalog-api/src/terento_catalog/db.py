@@ -2104,6 +2104,7 @@ class Database:
                     e.occurred_at,
                     e.component_kind,
                     e.lifecycle,
+                    e.failure_reason,
                     NULL AS canonical_device_model_id,
                     NULL AS compatibility_identity,
                     NULL AS model,
@@ -2128,6 +2129,7 @@ class Database:
                     c.occurred_at,
                     NULL AS component_kind,
                     NULL AS lifecycle,
+                    NULL AS failure_reason,
                     c.canonical_device_model_id,
                     c.compatibility_identity,
                     c.model,
@@ -4290,8 +4292,8 @@ class Database:
                     event_id, operation_id, provider_id, map_package_id,
                     region, event_type, outcome, occurred_at, app_build,
                     release_label, is_local_test, acquisition_id, component_kind,
-                    map_result_index, acquisition_purpose, reported_map_id
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    map_result_index, acquisition_purpose, reported_map_id, failure_reason
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 RETURNING event_id
                 """,
@@ -4302,7 +4304,7 @@ class Database:
                     event.get("releaseLabel"), is_local_release_label(event.get("releaseLabel")),
                     event.get("acquisitionId"), event.get("componentKind"),
                     event.get("mapResultIndex"), event.get("acquisitionPurpose"),
-                    reported_map_id,
+                    reported_map_id, event.get("failureReason"),
                 ),
             ).fetchone()
         return row is not None

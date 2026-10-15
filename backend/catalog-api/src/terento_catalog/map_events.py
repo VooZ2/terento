@@ -25,7 +25,15 @@ ALLOWED_EVENT_KEYS = {
     "outcome",
     "appBuild",
     "releaseLabel",
+    "failureReason",
 }
+# Why a map download failed (contracts/map-event.schema.json); DOWNLOAD_FAILED
+# only. Released clients through 1.0.0 send no reason, stored as unknown.
+DOWNLOAD_FAILURE_REASONS = (
+    "TIMED_OUT", "CONNECTION_LOST", "OFFLINE", "CANNOT_CONNECT", "NETWORK_ERROR",
+    "PROVIDER_REFUSED", "PROVIDER_RATE_LIMITED", "PROVIDER_NOT_FOUND", "PROVIDER_SERVER_ERROR",
+    "INCOMPLETE", "SOURCE_UPDATED", "SOURCE_INVALID", "MAC_STORAGE", "OTHER",
+)
 ALLOWED_EVENT_TYPES = {
     "DOWNLOAD_PROCESSING", "DOWNLOAD_CANCELLED", "DOWNLOAD_INTERRUPTED",
     "DOWNLOAD_STARTED",
@@ -103,6 +111,11 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         or not event["eventType"].startswith("DOWNLOAD_")
     ):
         raise MapEventValidationError("invalid_acquisition_purpose")
+    if event.get("failureReason") is not None and (
+        event["failureReason"] not in DOWNLOAD_FAILURE_REASONS
+        or event["eventType"] != "DOWNLOAD_FAILED"
+    ):
+        raise MapEventValidationError("invalid_failureReason")
     if event.get("eventType") in {"DOWNLOAD_PROCESSING", "DOWNLOAD_CANCELLED", "DOWNLOAD_INTERRUPTED"}:
         if not has_acquisition or event.get("outcome") != "UNKNOWN":
             raise MapEventValidationError("invalid_acquisition_outcome")

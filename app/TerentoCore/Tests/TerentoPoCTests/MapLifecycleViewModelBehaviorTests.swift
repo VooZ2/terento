@@ -71,7 +71,7 @@ struct MapLifecycleViewModelBehaviorTests {
         engine = nil
         try await Task.sleep(nanoseconds: 1_100_000_000)
         let actualEntry = Date()
-        await Task.detached { observer(.started); observer(.processing); observer(.failed) }.value
+        await Task.detached { observer(.started); observer(.processing); observer(.failed(.connectionLost)) }.value
         // Phases are persisted in callback order on the download context, before
         // any main-actor hop, so a fast terminal cannot overtake its start.
         let events = store.pendingEvents()
@@ -86,6 +86,8 @@ struct MapLifecycleViewModelBehaviorTests {
         precondition(events.allSatisfy { $0.operationId == operationID && $0.componentKind == .main })
         precondition(Set(events.compactMap(\.acquisitionId)).count == 1)
         precondition(!events.contains { $0.eventType == .installFailed || $0.eventType == .mapUpdateFailed })
+        precondition(events.first { $0.eventType == .downloadFailed }?.failureReason == "CONNECTION_LOST",
+            "an update download failure keeps its reason")
         controller.decideConsent(.declined)
         observer(.started); observer(.succeeded)
         for _ in 0..<10 { await Task.yield() }

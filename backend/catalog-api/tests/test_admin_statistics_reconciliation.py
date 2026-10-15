@@ -40,6 +40,15 @@ class AdminStatisticsReconciliationTests(unittest.TestCase):
         self.assertNotIn('Map update failed', body)
         self.assertEqual(_map_statistics_summary([dict(event_type='MAP_UPDATE_NOT_STARTED', outcome='NOT_STARTED', operation_count=1)])['failedMapUpdates'], 0)
 
+    def test_download_failure_reason_is_shown_only_when_reported(self):
+        body = _overview_map_activity_row(dict(event_type='DOWNLOAD_FAILED', failure_reason='TIMED_OUT', provider_id='opentopomap', region='CHN'))
+        self.assertIn('Download failed', body)
+        self.assertIn(' · Connection timed out', body)
+        for reason in (None, '<b>bad</b>', 'NOT_A_REASON'):
+            body = _overview_map_activity_row(dict(event_type='DOWNLOAD_FAILED', failure_reason=reason, provider_id='opentopomap', region='CHN'))
+            self.assertNotIn(' · Connection timed out', body)
+            self.assertNotIn('<b>bad</b>', body)
+
     @unittest.skipUnless(shutil.which('node'), 'Node required for actual renderer')
     def test_dates_and_rankings_ignore_ineligible_rows(self):
         base = dict(provider_id='freizeitkarte', map_package_id='lt', region='LT', event_type='INSTALL_SUCCEEDED', outcome='SUCCEEDED', operation_count=1, last_occurred_at='2026-10-01T10:00:00Z')

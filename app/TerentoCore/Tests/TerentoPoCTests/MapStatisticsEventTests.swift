@@ -96,7 +96,16 @@ struct MapStatisticsEventTests {
                 acquisitionId: UUID(), acquisitionPurpose: purpose, componentKind: .main,
                 mapResultIndex: 2)
             let phase = start.phase(.downloadSucceeded)
-            fixtures += [start, start.phase(.downloadProcessing), phase]
+            let failed = start.phase(.downloadFailed, failureReason: "TIMED_OUT")
+            fixtures += [start, start.phase(.downloadProcessing), phase, failed]
+            expect(failed.failureReason == "TIMED_OUT" && failed.outcome == .failed
+                && start.phase(.downloadCancelled, failureReason: "TIMED_OUT").failureReason == nil
+                && phase.failureReason == nil,
+                "a failure reason is kept only on DOWNLOAD_FAILED")
+            let failedPayload = try JSONSerialization.jsonObject(with: JSONEncoder().encode(failed)) as! [String: Any]
+            let succeededPayload = try JSONSerialization.jsonObject(with: JSONEncoder().encode(phase)) as! [String: Any]
+            expect(failedPayload["failureReason"] as? String == "TIMED_OUT" && succeededPayload["failureReason"] == nil,
+                "failureReason is sent only when known")
             expect(phase.acquisitionPurpose == purpose && phase.mapResultIndex == 2,
                 "terminal keeps acquisition purpose and result identity")
             let data = try JSONEncoder().encode(phase)

@@ -1,5 +1,35 @@
 # App–API compatibility and release contract
 
+## 1.0.1 server-first acceptance
+
+Deploy and verify this API before any 1.0.1 client is published. It adds:
+
+- the failure-context native code namespace `terento_map_write`, the result of
+  the native map write call ([shared contract](README.md#structured-installation-failure-context));
+- an optional map-event `failureReason` on `DOWNLOAD_FAILED` only, stored by
+  migration 083 (fixture `map-event.valid-download-failure-reason.json`);
+- acceptance of the declined-cleanup report that released clients through
+  1.0.0 already send: a derived `app_error` cleanup context with
+  `cleanupAttempted=false` and the original context kept (fixture
+  `compatibility-event.valid-context-cleanup-declined.json`). Earlier API
+  revisions rejected it with `400`, so those post-write failure reports stayed
+  parked on the Mac; once accepted, a parked report is delivered on its next
+  retry.
+
+Every other released payload is unchanged. 1.0.1 reports a declined cleanup
+with its original failure code and context instead.
+
+## Stable release 1.0.1 build 45 — staged
+
+Staged, not published. The app source sets `1.0.1` / build 45
+(`Packaging/release-candidate.json`) on the `stable` channel. It sends the
+`terento_map_write` native code, `failureReason` on `DOWNLOAD_FAILED`, and
+reports a declined cleanup with its original failure code and context, so the
+1.0.1 server-first acceptance API above must be deployed and verified first.
+It adds no route, telemetry event or migration of its own. Before publication:
+owner real-watch test of a local build, owner-approved release notes, the full
+packaging suite, notarization and the DMG/ZIP digests recorded here.
+
 ## Stable release 1.0.0 build 44 — published
 
 Published on 2026-10-15 from GitHub-verified source

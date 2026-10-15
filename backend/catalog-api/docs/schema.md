@@ -160,6 +160,8 @@ type/outcome, app build, and occurrence/receipt timestamps. It has no device
 identifier, raw JSON, local path, manifest, serial, Unit ID, or log field.
 `event_id` is the primary idempotency key; a secondary unique operation/event
 type/package key prevents accidental duplicates.
+Nullable `failure_reason` (migration 083) holds the closed download failure
+reason of a `DOWNLOAD_FAILED` event; NULL is unknown.
 
 ## `github_download_snapshot`
 
@@ -731,3 +733,11 @@ records with no model or a learned USB code, so manual assignments stay. It
 does not read the audit table: a record an administrator unassigned is
 resolved again by the automatic rules, which assign a model only where they
 name exactly one.
+
+### Migration083: download failure reason
+
+Additive and rollback-compatible: one nullable `map_download_event.failure_reason`
+column with a closed CHECK, allowed only on `DOWNLOAD_FAILED`
+([`map-event.schema.json`](../../../contracts/map-event.schema.json)). The
+previous revision never writes or reads it; clients through 1.0.0 send no
+reason, which stays NULL.

@@ -195,7 +195,7 @@ their providers.
 - OpenTopoMap contour lines are an optional add-on. Choose whether to include
   them when installing a region in Terento; the main map works without them.
 - Import compatible `.img` maps from your Mac. Terento cannot check these
-  maps for updates.
+  maps for updates. A single map file must be smaller than 4 GB.
 - Maps for Russia and Crimea are not offered in Terento. Maps already on a
   watch are not automatically removed.
 

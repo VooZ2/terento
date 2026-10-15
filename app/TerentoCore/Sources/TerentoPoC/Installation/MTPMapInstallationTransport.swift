@@ -143,7 +143,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         }
 
         guard result == 0 else {
-            throw Self.mapError(
+            throw Self.writeError(
                 result: result,
                 message: errorMessage(from: errorBuffer),
                 createdItemID: itemID == 0 ? nil : itemID
@@ -476,6 +476,28 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
             let readable = message.isEmpty ? "The native MTP map operation failed." : message
             return .operationFailed(readable, createdItemID: createdItemID)
         }
+    }
+
+    /// A generic write failure keeps the native write result for diagnostics
+    /// (`terento_map_write`), e.g. -4 when no single watch session opened and
+    /// -7 when the transfer itself failed. Specific results keep their cases.
+    static func writeError(
+        result: Int32,
+        message: String,
+        createdItemID: UInt32?
+    ) -> InstallationTransportError {
+        let mapped = mapError(result: result, message: message, createdItemID: createdItemID)
+        guard case .operationFailed(let readable, let createdID) = mapped else { return mapped }
+        return .contextual(
+            failure: .operationFailed,
+            message: readable,
+            createdItemID: createdID,
+            context: InstallationFailureContext(
+                boundary: .write, classificationSource: .native, devicePresence: .unknown,
+                operation: .write, executionMode: .inProcess, resultKind: .nativeError,
+                nativeCodeNamespace: .terentoMapWrite, nativeResultCode: result
+            )
+        )
     }
 
     private func errorMessage(from buffer: [CChar]) -> String {

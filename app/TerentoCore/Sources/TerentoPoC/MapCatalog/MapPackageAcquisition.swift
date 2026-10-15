@@ -107,6 +107,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case workspaceFailed(String)
     case untrustedSourceURL(String)
     case customMapNotConfirmed(String)
+    /// A local IMG larger than one file on the watch's FAT32 storage can hold.
+    case customMapTooLarge(filename: String)
     /// The Mac's volume cannot hold the download and its extraction.
     case insufficientMacStorage(requiredBytes: UInt64?)
 
@@ -158,6 +160,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map provider address could not be verified. Refresh the catalog and try again."
         case .customMapNotConfirmed(let message):
             return message
+        case .customMapTooLarge(let filename):
+            return "\(filename) is larger than 4 GB, the largest map file a Garmin watch can store. Choose a smaller map."
         case .insufficientMacStorage(let requiredBytes):
             return MacStorageCheck.userMessage(requiredBytes: requiredBytes)
         }
@@ -200,8 +204,73 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map provider address is not in Terento's reviewed HTTPS source list. Refresh the catalog and try again."
         case .customMapNotConfirmed(let message):
             return message
-        case .insufficientMacStorage:
+        case .customMapTooLarge, .insufficientMacStorage:
             return userMessage
+        }
+    }
+}
+
+/// Why a map download failed, sent with DOWNLOAD_FAILED map events
+/// (contracts/map-event.schema.json `failureReason`). Coarse by design: no
+/// provider text, URL or local path.
+enum MapDownloadFailureReason: String, Codable, Sendable, CaseIterable {
+    case timedOut = "TIMED_OUT"
+    case connectionLost = "CONNECTION_LOST"
+    case offline = "OFFLINE"
+    case cannotConnect = "CANNOT_CONNECT"
+    case networkError = "NETWORK_ERROR"
+    case providerRefused = "PROVIDER_REFUSED"
+    case providerRateLimited = "PROVIDER_RATE_LIMITED"
+    case providerNotFound = "PROVIDER_NOT_FOUND"
+    case providerServerError = "PROVIDER_SERVER_ERROR"
+    case incomplete = "INCOMPLETE"
+    case sourceUpdated = "SOURCE_UPDATED"
+    case sourceInvalid = "SOURCE_INVALID"
+    case macStorage = "MAC_STORAGE"
+    case other = "OTHER"
+
+    init(_ error: Error) {
+        if let error = error as? URLError {
+            self.init(code: error.code)
+            return
+        }
+        guard let error = error as? MapAcquisitionError else {
+            self = MacStorageCheck.isOutOfSpace(error) ? .macStorage : .other
+            return
+        }
+        switch error {
+        case .providerConnectionFailed(_, let code):
+            self.init(code: code)
+        case .providerUnavailable(_, let status):
+            switch status {
+            case 401, 403: self = .providerRefused
+            case 404, 410: self = .providerNotFound
+            case 429: self = .providerRateLimited
+            case .some(500...599), .none: self = .providerServerError
+            default: self = .other
+            }
+        case .downloadIncomplete:
+            self = .incomplete
+        case .providerSourceUpdated:
+            self = .sourceUpdated
+        case .invalidPackage, .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
+             .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound, .ambiguousIMG:
+            self = .sourceInvalid
+        case .insufficientMacStorage, .workspaceFailed:
+            self = .macStorage
+        case .acquisitionWithheld, .downloadFailed, .untrustedSourceURL,
+             .customMapNotConfirmed, .customMapTooLarge:
+            self = .other
+        }
+    }
+
+    private init(code: URLError.Code) {
+        switch code {
+        case .timedOut: self = .timedOut
+        case .networkConnectionLost: self = .connectionLost
+        case .notConnectedToInternet: self = .offline
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed: self = .cannotConnect
+        default: self = .networkError
         }
     }
 }
@@ -819,7 +888,11 @@ final class MapDownloadResumeStore: @unchecked Sendable {
         }
         stale.forEach { try? FileManager.default.removeItem(at: $0) }
         guard let entry else { return nil }
-        let values = try? entry.fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
+        // A URL caches resource values, and the same file URL is kept across
+        // resumes, so the size must be read fresh from disk.
+        var fileURL = entry.fileURL
+        fileURL.removeAllCachedResourceValues()
+        let values = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
         guard values?.isRegularFile == true, values?.isSymbolicLink != true,
               values?.fileSize.map(UInt64.init) == entry.bytes else {
             try? FileManager.default.removeItem(at: entry.fileURL)
@@ -888,17 +961,38 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
     private let directSourcePolicy: ReviewedProviderURLPolicy?
     private let sessionConfiguration: @Sendable () -> URLSessionConfiguration
     private let resumeStore: MapDownloadResumeStore?
+    private let automaticRetryDelays: [TimeInterval]
+    private let sleep: @Sendable (TimeInterval) async throws -> Void
+
+    /// A dropped or stalled connection is retried after each delay in
+    /// `automaticRetryDelays`, continuing from the kept partial file when the
+    /// provider allows it; the error is reported only after the last retry.
+    static let defaultAutomaticRetryDelays: [TimeInterval] = [2, 5, 15]
 
     init(
         sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry = .bundled,
         sourcePolicy: ReviewedProviderURLPolicy? = nil,
         sessionConfiguration: @escaping @Sendable () -> URLSessionConfiguration = { .ephemeral },
-        resumeStore: MapDownloadResumeStore? = .shared
+        resumeStore: MapDownloadResumeStore? = .shared,
+        automaticRetryDelays: [TimeInterval] = FoundationMapPackageDownloadClient.defaultAutomaticRetryDelays,
+        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        }
     ) {
         self.sourcePolicyRegistry = sourcePolicyRegistry
         self.directSourcePolicy = sourcePolicy
         self.sessionConfiguration = sessionConfiguration
         self.resumeStore = resumeStore
+        self.automaticRetryDelays = automaticRetryDelays
+        self.sleep = sleep
+    }
+
+    /// Connection failures worth retrying without the user; HTTP answers,
+    /// validation failures and a full Mac are never retried automatically.
+    static func isRetryableConnectionFailure(_ error: Error) -> Bool {
+        guard let error = error as? URLError else { return false }
+        return [.timedOut, .networkConnectionLost, .notConnectedToInternet, .cannotConnectToHost,
+                .cannotFindHost, .dnsLookupFailed].contains(error.code)
     }
 
     func download(from url: URL) async throws -> MapPackageDownloadResponse {
@@ -948,6 +1042,27 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         resumeKey: MapDownloadResumeKey? = nil
     ) async throws -> MapPackageDownloadResponse {
         try sourcePolicy.validate(url)
+        var remainingDelays = automaticRetryDelays[...]
+        while true {
+            do {
+                return try await downloadOnce(from: url, policy: sourcePolicy, onProgress: onProgress,
+                                              sourceProof: sourceProof, resumeKey: resumeKey)
+            } catch {
+                guard Self.isRetryableConnectionFailure(error), let delay = remainingDelays.popFirst() else {
+                    throw error
+                }
+                try await sleep(delay)
+            }
+        }
+    }
+
+    private func downloadOnce(
+        from url: URL,
+        policy sourcePolicy: ReviewedProviderURLPolicy,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?,
+        sourceProof: BBBikeSourceProof?,
+        resumeKey: MapDownloadResumeKey?
+    ) async throws -> MapPackageDownloadResponse {
         // BBBike downloads are bound to an exact source proof and are not resumed.
         let key = sourceProof == nil ? resumeKey : nil
         if let key, let store = resumeStore, let partial = store.take(key) {
@@ -1490,6 +1605,11 @@ struct CustomMapImportCandidate: Identifiable, Equatable, Sendable {
 struct CustomMapSourceAcquirer: Sendable {
     private static let customProviderID = "custom"
     private static let fallbackVersion = MapVersion(year: 2000, month: 1)!
+    /// FAT32, used by Garmin watch storage, holds files up to 4 GiB - 1 byte.
+    static let maximumMapFileBytes: UInt64 = 4_294_967_295
+
+    /// A file of exactly `maximumMapFileBytes` fits; one byte more does not.
+    static func fitsOnWatch(fileBytes: UInt64) -> Bool { fileBytes <= maximumMapFileBytes }
     private let workspaceFactory: @Sendable () throws -> MapAcquisitionWorkspace
 
     init(
@@ -1600,7 +1720,7 @@ struct CustomMapSourceAcquirer: Sendable {
 
         let values: URLResourceValues
         do {
-            values = try fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            values = try fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
         } catch {
             throw MapAcquisitionError.invalidPackage(
                 "The selected file could not be inspected safely."
@@ -1613,6 +1733,10 @@ struct CustomMapSourceAcquirer: Sendable {
             throw MapAcquisitionError.invalidPackage(
                 "The selected file is not a readable regular file."
             )
+        }
+        // Checked before copying: such a file can never be written to the watch.
+        if let size = values.fileSize, !Self.fitsOnWatch(fileBytes: UInt64(size)) {
+            throw MapAcquisitionError.customMapTooLarge(filename: fileURL.lastPathComponent)
         }
     }
 
@@ -2166,7 +2290,7 @@ struct MapPackageAcquirer: Sendable {
              .providerSourceUpdated, .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
              .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound,
              .ambiguousIMG, .workspaceFailed, .untrustedSourceURL,
-             .customMapNotConfirmed, .insufficientMacStorage:
+             .customMapNotConfirmed, .customMapTooLarge, .insufficientMacStorage:
             return false
         }
     }

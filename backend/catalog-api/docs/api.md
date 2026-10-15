@@ -1494,6 +1494,15 @@ Cancellation/interruption are excluded from download failure/success ratios.
 The API and migration supporting this contract must be deployed before a client
 that emits these fields is distributed.
 
+`DOWNLOAD_FAILED` may carry an optional `failureReason`: `TIMED_OUT`,
+`CONNECTION_LOST`, `OFFLINE`, `CANNOT_CONNECT`, `NETWORK_ERROR`,
+`PROVIDER_REFUSED`, `PROVIDER_RATE_LIMITED`, `PROVIDER_NOT_FOUND`,
+`PROVIDER_SERVER_ERROR`, `INCOMPLETE`, `SOURCE_UPDATED`, `SOURCE_INVALID`,
+`MAC_STORAGE` or `OTHER`. Any other value, or a reason on another event type,
+is `400`. Omitted or null is unknown; clients through 1.0.0 never send it.
+Migration 083 stores it in nullable `map_download_event.failure_reason`. It is a
+diagnostic label only and never changes a download count.
+
 ### Admin information hierarchy (local UI implementation)
 
 Diagnostic detail presents the saved model assignment separately from automatic

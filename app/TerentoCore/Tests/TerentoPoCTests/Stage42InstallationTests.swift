@@ -658,12 +658,15 @@ struct Stage42InstallationTests {
         harness.transport.readBackMode = .hashMismatch
         harness.transport.declineCleanup = true
         let result = harness.run()
-        var passed = expect(result.failure == .cleanupFailed && result.originalFailure != nil
+        var passed = expect(result.failure == .hashMismatch && result.originalFailure == nil
+            && result.cleanupFailure == nil
             && !result.diagnostics.cleanupAttempted && !result.diagnostics.cleanupSucceeded
             && harness.transport.deleteCount == 0 && harness.recovery.records.count == 1,
-            "unproven cleanup identity refuses mutation and retains recovery plus original failure")
-        passed += expect(result.primaryFailure == .hashMismatch && result.primaryFailure == result.originalFailure
-            && result.mayHaveLeftMapOnWatch,
+            "unproven cleanup identity refuses mutation, retains recovery and keeps the original failure")
+        passed += expect(result.failureContext?.boundary == .readback && result.failureContext?.boundary != .cleanup
+            && result.originalFailureContext == nil,
+            "a declined cleanup reports the original failure context, not a cleanup failure")
+        passed += expect(result.primaryFailure == .hashMismatch && result.mayHaveLeftMapOnWatch,
             "the user sees the original verification cause, plus a possible leftover map, not cleanup failure")
         let clean = makeHarness().run()
         passed += expect(clean.primaryFailure == nil && !clean.mayHaveLeftMapOnWatch,
@@ -690,8 +693,8 @@ struct Stage42InstallationTests {
         let records = try restartedStore.read(deviceKey: harness.request.identity.localManifestDeviceKey)
         let protectedBefore = harness.request.beforeDeviceFiles
         let protectedAfter = simulatedDevice?.files.filter { $0.path != targetPath }
-        let checks = expect(result.status == .failed && result.failure == .cleanupFailed
-            && result.originalFailure != nil && !result.diagnostics.cleanupAttempted
+        let checks = expect(result.status == .failed && result.failure == .hashMismatch
+            && result.cleanupFailure == nil && !result.diagnostics.cleanupAttempted
             && !result.diagnostics.cleanupSucceeded && harness.manifest.entries.isEmpty,
             "production cleanup refusal does not report success or record ownership")
             + expect(harness.transport.writeCount == 1 && harness.transport.productionCleanupEvaluations == 1

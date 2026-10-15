@@ -32,7 +32,7 @@ class FailureContextTests(unittest.TestCase):
                 validate_event(json.dumps(event).encode())
 
     def test_fixtures_and_legacy_versions(self):
-        for name in ('preflight', 'cleanup', 'contours-cleanup'):
+        for name in ('preflight', 'cleanup', 'contours-cleanup', 'cleanup-declined'):
             self.check(fixture(name))
         for version in (1, 2, 3, 4):
             event = legacy_event(schemaVersion=version) if version < 3 else fixture()
@@ -218,6 +218,35 @@ class FailureContextTests(unittest.TestCase):
                 self.check(candidate)
                 del context['protection'][field]
                 self.check(candidate)
+
+    def test_declined_cleanup_from_released_clients(self):
+        # 1.0.0 refuses automatic cleanup before any device mutation and still
+        # sends a derived cleanup context with cleanupAttempted=false.
+        declined = fixture('cleanup-declined')
+        self.check(declined)
+        for change in (
+            {'failureContext': {**declined['failureContext'], 'classificationSource': 'native'}},
+            {'failureContext': {**declined['failureContext'], 'resultKind': 'native_error'}},
+            {'failureContext': {**declined['failureContext'], 'nativeCodeNamespace': 'terento_map_write', 'nativeResultCode': -7}},
+            {'cleanupSucceeded': True},
+            {'originalFailureContext': None},
+        ):
+            candidate = deepcopy(declined)
+            candidate.update(deepcopy(change))
+            self.check(candidate, False)
+        candidate = deepcopy(declined)
+        del candidate['originalFailureContext']
+        self.check(candidate, False)
+
+    def test_map_write_native_code(self):
+        candidate = fixture('preflight')
+        candidate['failureContext'].update(boundary='write', operation='write', classificationSource='native',
+                                          resultKind='native_error', nativeCodeNamespace='terento_map_write',
+                                          nativeResultCode=-7)
+        candidate['failureContext'].pop('nativeCategory', None)
+        candidate.update(failureStage='write', failureCode='INSTALL_FAILED_WRITE', writeStarted=True,
+                         phaseOutcome='FAILED', automaticFinishingResult='FAILED', nativeFailureCode='SEND_OBJECT_FAILED')
+        self.check(candidate)
 
     def test_protection_reason_boundary_matrix(self):
         allowed = {

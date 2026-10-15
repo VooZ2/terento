@@ -1839,7 +1839,8 @@ final class MapEngine: ObservableObject {
                                     statistics?.record(start.phase(.downloadSucceeded))
                                 } catch {
                                     if self?.activeAcquisition?.acquisitionId == start.acquisitionId {
-                                        statistics?.record(start.phase(Task.isCancelled || error is CancellationError ? .downloadCancelled : .downloadFailed))
+                                        statistics?.record(start.phase(Task.isCancelled || error is CancellationError ? .downloadCancelled : .downloadFailed,
+                                                                       failureReason: MapDownloadFailureReason(error).rawValue))
                                         self?.activeAcquisition = nil
                                     }
                                     throw error
@@ -2483,7 +2484,7 @@ final class MapEngine: ObservableObject {
         case .unsupportedPackageFormat, .invalidPackage, .providerSourceUpdated, .sourceIdentityMismatch,
              .sourceVersionMismatch, .noIMGFound, .ambiguousIMG:
             return (.sourceValidation, .sourceValidationFailed)
-        case .customMapNotConfirmed:
+        case .customMapNotConfirmed, .customMapTooLarge:
             return (.sourceValidation, .sourceValidationFailed)
         }
     }
@@ -2584,7 +2585,10 @@ final class MapEngine: ObservableObject {
             case .failed: type = .downloadFailed
             case .cancelled: type = .downloadCancelled
             }
-            let event = start.phase(type) // Timestamp the actual boundary, not observer creation.
+            var reason: MapDownloadFailureReason?
+            if case .failed(let failure) = phase { reason = failure }
+            // Timestamp the actual boundary, not observer creation.
+            let event = start.phase(type, failureReason: reason?.rawValue)
             // Persist in callback order from the download context. Separate
             // main-actor tasks could reorder a fast terminal before its start.
             controller?.recordFromAnyContext(event)
