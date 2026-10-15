@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if sys.version_info < (3, 12):
+    sys.exit("build-bundled-map-catalog.py needs Python 3.12 or 3.13 (the backend runtime).")
 sys.path.insert(0, str(ROOT / "backend/catalog-api/src"))
 from terento_catalog.maprando import policy_identity as maprando_policy_identity  # noqa: E402
 from terento_catalog.provider_catalog import (  # noqa: E402
