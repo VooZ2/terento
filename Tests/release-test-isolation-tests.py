@@ -67,6 +67,16 @@ class ReleaseIsolationTests(unittest.TestCase):
             with self.subTest(symbol=symbol), self.assertRaises(ValueError):
                 guard.check_symbols('_' + symbol)
 
+    def test_release_tests_use_supported_python_and_fresh_native_build(self):
+        script = (ROOT / 'Packaging/release.sh').read_text()
+        python = script.index('Tests/backend-python-runtime.sh')
+        fresh = script.index('/bin/rm -rf "$repo_root/app/TerentoCore/.build"')
+        regression = script.index('"$repo_root/Tests/run-all-tests.sh"')
+        self.assertLess(python, regression)
+        self.assertLess(fresh, script.index('run_logged "swift-build"'))
+        self.assertLess(fresh, regression)
+        self.assertIn('export PATH="$run_dir/python-bin:$PATH"', script)
+
     def test_packaging_gate_is_before_signing(self):
         script = (ROOT / 'Packaging/release.sh').read_text()
         self.assertLess(script.index('verify-release-test-isolation.py'), script.index('Signing libusb'))

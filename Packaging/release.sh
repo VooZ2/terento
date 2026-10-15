@@ -190,6 +190,17 @@ run_dir="$(/usr/bin/mktemp -d /private/tmp/terento-stage65-run.XXXXXX)"
 derived_data="$run_dir/derived-data"
 app="$derived_data/Build/Products/$RELEASE_CONFIGURATION/$RELEASE_PRODUCT_NAME.app"
 build_settings="$run_dir/build-settings.txt"
+
+# Release tests need Python 3.12 or 3.13; macOS's /usr/bin/python3 is older.
+# Use the interpreter the backend suite resolves (TERENTO_PYTHON_BIN, the
+# project .venv or python3.13/3.12) as python3 for every step below.
+release_python="$( . "$repo_root/Tests/backend-python-runtime.sh" >&2 && printf '%s' "$TERENTO_PYTHON_BIN" )" \
+    || die "Release tests require Python 3.12 or 3.13 with the backend test extra"
+/bin/mkdir -p "$run_dir/python-bin"
+/bin/ln -s "$release_python" "$run_dir/python-bin/python3"
+export TERENTO_PYTHON_BIN="$release_python"
+export PATH="$run_dir/python-bin:$PATH"
+printf 'Release Python: %s\n' "$(python3 --version 2>&1)"
 dmg_mount="$run_dir/dmg-mount"
 dmg_attached=0
 
@@ -321,6 +332,10 @@ if [[ ! -v LIBMTP_PREFIX || -z "$LIBMTP_PREFIX" ]]; then
 fi
 export SWIFTPM_CONFIG_DIR="$run_dir/swiftpm-config"
 export CLANG_MODULE_CACHE_PATH="$run_dir/clang-module-cache"
+
+# Test runners link the SwiftPM objects in app/TerentoCore/.build; a tree left
+# by an older checkout must never be reused for a release, so build it fresh.
+/bin/rm -rf "$repo_root/app/TerentoCore/.build"
 
 run_logged "swift-build" \
     swift build \

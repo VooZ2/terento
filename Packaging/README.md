@@ -16,7 +16,11 @@ tests.
 - Node.js for the JavaScript-backed native/web regression contracts;
 - Python 3.12 or 3.13 for backend and shared JSON contract checks; the backend
   runner prepares the ignored repository `.venv` and installs
-  `backend/catalog-api[test]` when needed;
+  `backend/catalog-api[test]` when needed. `release.sh` resolves that
+  interpreter once and uses it as `python3` for every release test, so the
+  older macOS system Python is never used, and it deletes
+  `app/TerentoCore/.build` before the native build so no stale objects from an
+  earlier checkout reach the release tests;
 - the Developer ID Application identity for Team ID `VXALAZU3B5` in the local
   Keychain;
 - the notarytool Keychain profile `TerentoNotary` configured outside the
