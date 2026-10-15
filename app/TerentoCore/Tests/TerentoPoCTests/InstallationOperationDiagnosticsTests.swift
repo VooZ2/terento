@@ -49,6 +49,7 @@ private actor DelayedAuthorizationResponse {
         try await testContextFreeContourPreflight()
         try await testContextualContours()
         try await testResultsAndPrivacy()
+        try await testNativeWriteResultCode()
         try await testPartialBatchAndPreflight()
         try await testEngineContourPreflightAttribution()
         try await testDisconnectAndCancellation()
@@ -296,6 +297,37 @@ private actor DelayedAuthorizationResponse {
         // Optional transport to the backend regression: actual encoded Swift reports.
         emittedFixtures += fixtures
     }
+    @MainActor static func testNativeWriteResultCode() async throws {
+        let error = MTPMapInstallationTransport.writeError(
+            result: -7, message: "The selected map could not be transferred", createdItemID: nil)
+        let context = error.failureContext
+        check(context?.boundary == .write && context?.operation == .write
+              && context?.classificationSource == .native && context?.resultKind == .nativeError
+              && context?.nativeCodeNamespace == .terentoMapWrite && context?.nativeResultCode == -7
+              && !error.isConfirmedDeviceDisconnected,
+              "a generic native write failure keeps its write result code")
+        check(MTPMapInstallationTransport.writeError(
+                result: Int32(TERENTO_MTP_MAP_TARGET_EXISTS), message: "", createdItemID: nil) == .targetAlreadyExists,
+              "specific native write results keep their own failure")
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalInstallationEvidenceStore(rootURL: root)
+        let controller = InstallationEvidenceController(store: store, uploader: DiagnosticUploadRecorder(), automaticRetryDelays: [0])
+        let selection = plan()
+        let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity, plan: selection, controller: controller)
+        let package = selection.installItems[0].package
+        let artifact = selection.selectedPackagePlans[0].artifactPlan.selectedArtifacts[0]
+        operation.record(result(package: package, failure: .writeFailed, wrote: true, context: context),
+                         packageID: package.id, artifactID: artifact.id)
+        await operation.waitForDeliveryForTesting()
+        let events = store.events()
+        check(events.count == 1 && events[0].failureStage == .write
+              && events[0].failureContext?.nativeCodeNamespace == .terentoMapWrite
+              && events[0].failureContext?.nativeResultCode == -7,
+              "the native write result reaches the installation report")
+        emittedFixtures += events
+    }
+
     @MainActor static func testEngineContourPreflightAttribution() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
