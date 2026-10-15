@@ -22,8 +22,8 @@ struct UserFacingErrorMessageTests {
             MTPRunningApplication(bundleIdentifier: "com.garmin.renu.client", displayName: "Garmin Express"),
             MTPRunningApplication(bundleIdentifier: "com.vendor.openmtp", displayName: nil),
             MTPRunningApplication(bundleIdentifier: "com.adobe.LightroomClassicCC7", displayName: "Lightroom Classic"),
-            MTPRunningApplication(bundleIdentifier: "com.eltima.MacDroid.AFTFinderSync", displayName: "AFTFinderSync", isRegularApplication: false),
-            MTPRunningApplication(bundleIdentifier: "com.eltima.MacDroid", displayName: "MacDroid", isRegularApplication: false),
+            MTPRunningApplication(bundleIdentifier: "com.eltima.MacDroid.AFTFinderSync", displayName: "AFTFinderSync", isUserApplication: false),
+            MTPRunningApplication(bundleIdentifier: "com.eltima.MacDroid", displayName: "MacDroid", isUserApplication: false),
             MTPRunningApplication(bundleIdentifier: "app.terento.mac", displayName: "Terento"),
             MTPRunningApplication(bundleIdentifier: "com.getdropbox.dropbox", displayName: "Dropbox")
         ])

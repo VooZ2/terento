@@ -14,6 +14,16 @@ swiftc \
 
 "$binary_path"
 
+# MacDroid runs as a menu bar app: accessory apps count, app extensions and
+# background-only processes do not.
+error_source="$project_root/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift"
+for needle in 'isUserApplication: $0.activationPolicy != .prohibited' 'pathExtension.lowercased() != "appex"'; do
+    if ! grep -Fq -- "$needle" "$error_source"; then
+        print -u2 "FAIL: running-app conflict detection lost its menu bar app rule ($needle)"
+        exit 1
+    fi
+done
+
 connect_screen="$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"
 if ! grep -Fq 'if let message = deviceEngine.userErrorMessage' "$connect_screen"; then
     print -u2 "FAIL: Connect screen does not present the resolved device error"
