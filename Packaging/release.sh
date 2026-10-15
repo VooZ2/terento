@@ -281,8 +281,21 @@ case "$release_label" in
 esac
 printf '%s\n' "Release package version: $release_label"
 
+# VERSIONING.md: stable labels use the stable update channel; beta and RC
+# prereleases use beta. The packaged Info.plist is checked after the build.
+case "$release_label" in
+    *-beta.*|*-rc.*) expected_release_channel="beta" ;;
+    *) expected_release_channel="stable" ;;
+esac
+
 if (( ! no_notarize )); then
     python3 "$script_dir/verify-github-release-source.py" "$release_label"
+    # One build counter is shared by stable and prerelease tags and only rises.
+    highest_tagged_build="$(git -C "$repo_root" ls-remote --tags origin 'refs/tags/v*' \
+        | /usr/bin/sed -nE 's#.*refs/tags/v[^^]*-build([0-9]+)$#\1#p' | sort -n | tail -n 1)"
+    if [[ -n "$highest_tagged_build" ]] && (( project_build <= highest_tagged_build )); then
+        die "Build $project_build must be greater than the highest tagged build $highest_tagged_build"
+    fi
 fi
 
 identity_check="$run_dir/signing-identities.txt"
@@ -354,11 +367,13 @@ done
 app_version="$(plist_value CFBundleShortVersionString "$app/Contents/Info.plist")"
 app_build="$(plist_value CFBundleVersion "$app/Contents/Info.plist")"
 app_release_label="$(plist_value TerentoReleaseLabel "$app/Contents/Info.plist")"
+app_release_channel="$(plist_value TerentoReleaseChannel "$app/Contents/Info.plist")"
 app_bundle_identifier="$(plist_value CFBundleIdentifier "$app/Contents/Info.plist")"
 app_minimum_os="$(plist_value LSMinimumSystemVersion "$app/Contents/Info.plist")"
 assert_equal "Built app version" "$app_version" "$project_version"
 assert_equal "Built app build" "$app_build" "$project_build"
 assert_equal "Built app release label" "$app_release_label" "$release_label"
+assert_equal "Built app release channel" "$app_release_channel" "$expected_release_channel"
 assert_equal "Built app bundle identifier" "$app_bundle_identifier" "$RELEASE_BUNDLE_IDENTIFIER"
 assert_equal "Built app minimum macOS" "$app_minimum_os" "$RELEASE_DEPLOYMENT_TARGET"
 [[ "$(lipo -archs "$app/Contents/MacOS/$RELEASE_PRODUCT_NAME")" == "$RELEASE_ARCH" ]] || die "Unexpected app architecture"

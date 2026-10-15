@@ -39,7 +39,7 @@ struct Stage1ProviderNeutralTests {
             }
             document["providers"] = providers
             let catalog = try MapCatalogDocumentDecoder().decode(JSONSerialization.data(withJSONObject: document))
-            expect(catalog.packages.count == 1160 && MapCatalogClientCompatibilityValidator().isCompatible(catalog),
+            expect(catalog.packages.count == 1149 && MapCatalogClientCompatibilityValidator().isCompatible(catalog),
                 "all blocked providers retain complete compatible catalog")
             for lifecycle in [MapProviderLifecycleStatus.paused, .retired] {
                 let emptyProvider = MapProvider(id: "empty-provider", name: "Empty provider", website: nil,
@@ -145,7 +145,7 @@ struct Stage1ProviderNeutralTests {
                 return expect(false, "one bad package must not reject the whole catalog")
             }
             expect(accepted.droppedPackageIDs == [badID, "future-provider-alb"]
-                && accepted.catalog.packages.count == 1160 - 1
+                && accepted.catalog.packages.count == 1149 - 1
                 && !accepted.catalog.packages.contains { $0.id == badID },
                 "only the incompatible package and the unknown provider's package are dropped")
             expect(!accepted.catalog.providers.contains { $0.id == "future-provider" }
@@ -210,7 +210,7 @@ struct Stage1ProviderNeutralTests {
             expect(first != nil && first?.artifacts.count == 1 && first?.mainArtifact != nil,
                 "an optional artifact of an unknown kind is ignored without dropping its package")
             expect(report.droppedPackageCount == 1 && report.droppedPackageIDs.count == 1
-                && report.catalog.packages.count == 1159,
+                && report.catalog.packages.count == 1148,
                 "a required artifact of an unknown kind drops only its own package")
         } catch {
             expect(false, "tolerant decoding fixture: \(error)")
@@ -282,7 +282,7 @@ struct Stage1ProviderNeutralTests {
             let merged = try await loader(remoteOnlyFZK).loadCurrentMerged()
             let mergedProviders = Set(merged.catalog.providers.map { MapIdentity.normalizeProvider($0.id) })
             expect(merged.source == .remote && mergedProviders == ["freizeitkarte", "opentopomap", "bbbike", "maprando"]
-                && merged.catalog.packages.count == 1160,
+                && merged.catalog.packages.count == 1149,
                 "the shared connect/refresh load merges bundled-only providers instead of dropping them")
             let bundledContours = try MapCatalogDocumentDecoder().decode(JSONSerialization.data(withJSONObject: bundledDocument()))
                 .packages.filter { $0.artifacts.contains { $0.kind == .contours } }.count
@@ -790,7 +790,7 @@ struct Stage1ProviderNeutralTests {
             let usesBundledCatalog = identityContractCatalogURL == packageRoot.appendingPathComponent(
                 "Sources/TerentoPoC/Resources/Maps/catalog.json"
             )
-            let allRowsPass = (usesBundledCatalog ? packages.count == 177 : !packages.isEmpty)
+            let allRowsPass = (usesBundledCatalog ? packages.count == 173 : !packages.isEmpty)
                 && packages.allSatisfy { package in
                 let providerRegion = package.providerRegionId
                 let version = package.version
@@ -872,15 +872,15 @@ struct Stage1ProviderNeutralTests {
             ] == nil
             expect(
                 allRowsPass
-                    && (!requiresBundledContourFixture || contourRows.count == 176),
-                "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks "
+                    && (!requiresBundledContourFixture || contourRows.count == 172),
+                "all 173 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks "
                     + "[rows=\(packages.count), rowChecks=\(allRowsPass), "
                     + "contours=\(contourRows.count), externalCatalog=\(!requiresBundledContourFixture)]"
             )
         } catch {
             expect(
                 false,
-                "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks "
+                "all 173 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks "
                     + "[error=\(error)]"
             )
         }
@@ -897,7 +897,7 @@ struct Stage1ProviderNeutralTests {
             let usesBundledCatalog = identityContractCatalogURL == packageRoot.appendingPathComponent(
                 "Sources/TerentoPoC/Resources/Maps/catalog.json"
             )
-            let allRowsPass = (usesBundledCatalog ? packages.count == 63 : !packages.isEmpty)
+            let allRowsPass = (usesBundledCatalog ? packages.count == 56 : !packages.isEmpty)
                 && packages.allSatisfy { package in
                 let metadata = parser.parse(
                     Array(
@@ -931,12 +931,12 @@ struct Stage1ProviderNeutralTests {
 
             expect(
                 allRowsPass,
-                "all 63 Freizeitkarte rows match their provider-region IMG identity"
+                "all 56 Freizeitkarte rows match their provider-region IMG identity"
             )
         } catch {
             expect(
                 false,
-                "all 63 Freizeitkarte rows match their provider-region IMG identity"
+                "all 56 Freizeitkarte rows match their provider-region IMG identity"
             )
         }
     }
@@ -1017,7 +1017,7 @@ struct Stage1ProviderNeutralTests {
                 $0.providerId == "opentopomap"
             }
             expect(catalog.providers.contains { $0.id == "opentopomap" }, "the bundled catalog exposes OpenTopoMap")
-            expect(openTopoMapPackages.count == 177, "the bundled catalog exposes all 177 OpenTopoMap Garmin rows")
+            expect(openTopoMapPackages.count == 173, "the bundled catalog exposes all 173 OpenTopoMap Garmin rows")
             expect(
                 package?.sourceURL?.host == "garmin.opentopomap.org"
                     && package?.optionalArtifacts.contains {

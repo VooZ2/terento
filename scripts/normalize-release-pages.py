@@ -29,10 +29,8 @@ def page_path(locale: str) -> Path:
     return ROOT / "site" / prefix / "download" / "index.html"
 
 
-# Visible wording follows the manifest label family (VERSIONING.md). The
-# public program stays a beta; only the description of the current build
-# changes when the manifest publishes a release candidate. A stable label needs
-# its own copy review, so it is rejected instead of being described as a beta.
+# Visible wording follows the manifest label family (VERSIONING.md): a beta,
+# a release candidate or a stable release. Any other label is rejected.
 LATEST = {
     "beta": {"en": "Latest", "de": "Neueste Beta", "fr": "Dernière bêta", "pl": "Najnowsza beta", "cs": "Nejnovější beta", "it": "Ultima beta"},
     "rc": {
@@ -42,6 +40,14 @@ LATEST = {
         "pl": "Najnowsza wersja kandydująca",
         "cs": "Nejnovější kandidát na vydání",
         "it": "Ultima release candidate",
+    },
+    "stable": {
+        "en": "Latest",
+        "de": "Neueste Version",
+        "fr": "Dernière version",
+        "pl": "Najnowsza wersja",
+        "cs": "Nejnovější verze",
+        "it": "Ultima versione",
     },
 }
 CURRENT_BUILD = {
@@ -61,14 +67,22 @@ CURRENT_BUILD = {
         "cs": "Jde o aktuálního kandidáta na vydání Terento.",
         "it": "Questa è la release candidate attuale di Terento.",
     },
+    "stable": {
+        "en": "This is the current Terento release.",
+        "de": "Dies ist die aktuelle Terento-Version.",
+        "fr": "Il s’agit de la version actuelle de Terento.",
+        "pl": "To aktualna wersja Terento.",
+        "cs": "Jde o aktuální verzi Terento.",
+        "it": "Questa è la versione attuale di Terento.",
+    },
 }
 
 
 def release_family(label: str) -> str:
-    match = re.fullmatch(r"\d+\.\d+\.\d+-(beta|rc)\.[1-9]\d*", label)
+    match = re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(beta|rc)\.[1-9][0-9]*)?", label)
     if not match:
         raise ValueError(f"unsupported public release label for Download copy: {label}")
-    return match.group(1)
+    return match.group(1) or "stable"
 
 
 def release_line(locale: str, label: str, published: date) -> str:

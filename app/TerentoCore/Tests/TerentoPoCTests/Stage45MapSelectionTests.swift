@@ -1342,8 +1342,8 @@ struct Stage45MapSelectionTests {
         expect(!index.filtered(query: "French Southern and Antarctic Lands", geography: .europe).contains { $0.package.id == taafID },
                "TAAF sovereignty does not place the package in geographic Europe")
         expect(index.filtered(query: "Canary", geography: .africa).count > 0, "Canary Islands follow geographic Africa")
-        expect(!index.filtered(query: "", geography: .europe).contains { $0.package.regionId == "RUSSIAASIANPART" }, "Asian russia extract is not categorized as Europe")
-        expect(!index.filtered(query: "", geography: .asia).contains { $0.package.regionId == "RUSSIAEUROPEANPART" }, "European russia extract is not categorized as Asia")
+        expect(!items.contains { $0.package.regionId.hasPrefix("RUSSIA") || $0.package.regionId.hasPrefix("RUS-") },
+               "The bundled catalog lists no withheld russia extract")
     }
 
     private static func testCatalogFilterPerformance() {

@@ -1,0 +1,356 @@
+{
+  "catalogVersion": 1,
+  "updatedAt": "2026-09-12T16:34:33Z",
+  "providers": [
+    {
+      "id": "freizeitkarte",
+      "name": "Freizeitkarte",
+      "website": "https://www.freizeitkarte-osm.de/garmin/en/index.html",
+      "attribution": "Map data © OpenStreetMap contributors; produced map © FZK project",
+      "licenseURL": "https://www.freizeitkarte-osm.de/garmin/en/imprint.html",
+      "licenseInformation": "Map data © OpenStreetMap contributors (ODbL); produced map © FZK project. Contour-line sources vary by region.",
+      "maps": [
+        {
+          "id": "freizeitkarte-blr",
+          "region": "BLR",
+          "name": "Republic of Belarus",
+          "country": "Republic of Belarus",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 688855605,
+          "downloadSizeBytes": 688855605,
+          "installSizeBytes": 806666240,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/BLR+_ru_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "BLR+"
+        },
+        {
+          "id": "freizeitkarte-deu",
+          "region": "DEU",
+          "name": "Federal Republic of Germany",
+          "country": "Federal Republic of Germany",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 2709203003,
+          "downloadSizeBytes": 2709203003,
+          "installSizeBytes": 3589472256,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/DEU_en_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "DEU"
+        },
+        {
+          "id": "freizeitkarte-rus-central",
+          "region": "RUS-CENTRAL",
+          "name": "Russian Federation, Central Federal District",
+          "country": "Russian Federation, Central Federal District",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 1706341861,
+          "downloadSizeBytes": 1706341861,
+          "installSizeBytes": 2001862656,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/RUS_CENTRAL_ru_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "RUS_CENTRAL"
+        },
+        {
+          "id": "freizeitkarte-rus-crimea",
+          "region": "RUS-CRIMEA",
+          "name": "Russian Federation, Crimean Federal District",
+          "country": "Russian Federation, Crimean Federal District",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 57595347,
+          "downloadSizeBytes": 57595347,
+          "installSizeBytes": 68976640,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/RUS_CRIMEA_ru_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "RUS_CRIMEA"
+        },
+        {
+          "id": "freizeitkarte-rus-kgd",
+          "region": "RUS-KGD",
+          "name": "Russian Federation, Exclave Kaliningrad",
+          "country": "Russian Federation, Exclave Kaliningrad",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 123335807,
+          "downloadSizeBytes": 123335807,
+          "installSizeBytes": 146145280,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/RUS+KGD_ru_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "RUS+KGD"
+        },
+        {
+          "id": "freizeitkarte-rus-northcaucasus",
+          "region": "RUS-NORTHCAUCASUS",
+          "name": "Russian Federation, North Caucasian Federal District",
+          "country": "Russian Federation, North Caucasian Federal District",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 626761772,
+          "downloadSizeBytes": 626761772,
+          "installSizeBytes": 688193536,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/RUS_NORTHCAUCASUS_ru_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "RUS_NORTHCAUCASUS"
+        },
+        {
+          "id": "freizeitkarte-rus-northwest",
+          "region": "RUS-NORTHWEST",
+          "name": "Russian Federation, Northwestern Federal District",
+          "country": "Russian Federation, Northwestern Federal District",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 3625366894,
+          "downloadSizeBytes": 3625366894,
+          "installSizeBytes": 4043177984,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/RUS_NORTHWEST_ru_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "RUS_NORTHWEST"
+        },
+        {
+          "id": "freizeitkarte-rus-south",
+          "region": "RUS-SOUTH",
+          "name": "Russian Federation, Southern Federal District",
+          "country": "Russian Federation, Southern Federal District",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 830083985,
+          "downloadSizeBytes": 830083985,
+          "installSizeBytes": 945848320,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/RUS_SOUTH_ru_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "RUS_SOUTH"
+        },
+        {
+          "id": "freizeitkarte-rus-volga",
+          "region": "RUS-VOLGA",
+          "name": "Russian Federation, Central Federal District",
+          "country": "Russian Federation, Central Federal District",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 2215311309,
+          "downloadSizeBytes": 2215311309,
+          "installSizeBytes": 2571304960,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/RUS_VOLGA_ru_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "RUS_VOLGA"
+        },
+        {
+          "id": "freizeitkarte-ukr",
+          "region": "UKR",
+          "name": "Ukraine",
+          "country": "Ukraine",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 1683496269,
+          "downloadSizeBytes": 1683496269,
+          "installSizeBytes": 1987870720,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/UKR+_en_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "UKR+"
+        }
+      ]
+    },
+    {
+      "id": "opentopomap",
+      "name": "OpenTopoMap",
+      "website": "https://garmin.opentopomap.org/",
+      "attribution": "Map data © OpenStreetMap contributors; produced map © OpenTopoMap",
+      "licenseURL": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "licenseInformation": "CC BY-NC-SA 4.0; not for resale.",
+      "maps": [
+        {
+          "id": "opentopomap-russia-asian-part",
+          "region": "RUSSIAASIANPART",
+          "name": "Russia-Asian-Part",
+          "country": null,
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 4528199415,
+          "downloadSizeBytes": 4528199415,
+          "installSizeBytes": 5170790400,
+          "sourceURL": "https://garmin.opentopomap.org/asia/russia-asian-part/otm-russia-asian-part.zip",
+          "releaseDate": "2026-05-26",
+          "identifier": "otm-russia-asian-part",
+          "providerRegionId": "russia-asian-part",
+          "canonicalRegionId": "RUSSIAASIANPART",
+          "countryCodes": [
+            "RU"
+          ],
+          "regionKind": "multiCountry",
+          "tags": [
+            "hiking",
+            "topo",
+            "outdoor"
+          ],
+          "capabilities": [
+            "routing",
+            "elevation",
+            "contours-optional"
+          ],
+          "releaseMetadata": {
+            "releaseId": "otm-2026-05",
+            "versionLabel": "2026-05",
+            "generatedAt": "2026-05-26T00:00:00Z",
+            "sourceUpdatedAt": "2026-05-26"
+          },
+          "artifacts": [
+            {
+              "id": "opentopomap-russia-asian-part-main",
+              "source": "provider",
+              "kind": "main",
+              "required": true,
+              "providerId": "opentopomap",
+              "providerRegionId": "russia-asian-part",
+              "canonicalRegionId": "RUSSIAASIANPART",
+              "version": {
+                "year": 2026,
+                "month": 5
+              },
+              "releaseMetadata": {
+                "releaseId": "otm-2026-05",
+                "versionLabel": "2026-05",
+                "generatedAt": "2026-05-26T00:00:00Z",
+                "sourceUpdatedAt": "2026-05-26"
+              },
+              "sourceURL": "https://garmin.opentopomap.org/asia/russia-asian-part/otm-russia-asian-part.zip",
+              "sizeBytes": 5170790400,
+              "validationState": "notValidated"
+            },
+            {
+              "id": "opentopomap-russia-asian-part-contours",
+              "source": "provider",
+              "kind": "contours",
+              "required": false,
+              "providerId": "opentopomap",
+              "providerRegionId": "russia-asian-part",
+              "canonicalRegionId": "RUSSIAASIANPART",
+              "version": {
+                "year": 2026,
+                "month": 5
+              },
+              "releaseMetadata": {
+                "releaseId": "otm-2026-05",
+                "versionLabel": "2026-05",
+                "generatedAt": "2026-05-26T00:00:00Z",
+                "sourceUpdatedAt": "2026-05-26"
+              },
+              "sourceURL": "https://garmin.opentopomap.org/asia/russia-asian-part/otm-russia-asian-part-contours.zip",
+              "sizeBytes": 4174905344,
+              "validationState": "validated",
+              "downloadSizeBytes": 3692471925
+            }
+          ]
+        },
+        {
+          "id": "opentopomap-russia-european-part",
+          "region": "RUSSIAEUROPEANPART",
+          "name": "Russia-European-Part",
+          "country": null,
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 1719801829,
+          "downloadSizeBytes": 1719801829,
+          "installSizeBytes": 2087124992,
+          "sourceURL": "https://garmin.opentopomap.org/europe/russia-european-part/otm-russia-european-part.zip",
+          "releaseDate": "2026-05-25",
+          "identifier": "otm-russia-european-part",
+          "providerRegionId": "russia-european-part",
+          "canonicalRegionId": "RUSSIAEUROPEANPART",
+          "countryCodes": [
+            "RU"
+          ],
+          "regionKind": "multiCountry",
+          "tags": [
+            "hiking",
+            "topo",
+            "outdoor"
+          ],
+          "capabilities": [
+            "routing",
+            "elevation",
+            "contours-optional"
+          ],
+          "releaseMetadata": {
+            "releaseId": "otm-2026-05",
+            "versionLabel": "2026-05",
+            "generatedAt": "2026-05-25T00:00:00Z",
+            "sourceUpdatedAt": "2026-05-25"
+          },
+          "artifacts": [
+            {
+              "id": "opentopomap-russia-european-part-main",
+              "source": "provider",
+              "kind": "main",
+              "required": true,
+              "providerId": "opentopomap",
+              "providerRegionId": "russia-european-part",
+              "canonicalRegionId": "RUSSIAEUROPEANPART",
+              "version": {
+                "year": 2026,
+                "month": 5
+              },
+              "releaseMetadata": {
+                "releaseId": "otm-2026-05",
+                "versionLabel": "2026-05",
+                "generatedAt": "2026-05-25T00:00:00Z",
+                "sourceUpdatedAt": "2026-05-25"
+              },
+              "sourceURL": "https://garmin.opentopomap.org/europe/russia-european-part/otm-russia-european-part.zip",
+              "sizeBytes": 2087124992,
+              "validationState": "notValidated"
+            },
+            {
+              "id": "opentopomap-russia-european-part-contours",
+              "source": "provider",
+              "kind": "contours",
+              "required": false,
+              "providerId": "opentopomap",
+              "providerRegionId": "russia-european-part",
+              "canonicalRegionId": "RUSSIAEUROPEANPART",
+              "version": {
+                "year": 2026,
+                "month": 5
+              },
+              "releaseMetadata": {
+                "releaseId": "otm-2026-05",
+                "versionLabel": "2026-05",
+                "generatedAt": "2026-05-25T00:00:00Z",
+                "sourceUpdatedAt": "2026-05-25"
+              },
+              "sourceURL": "https://garmin.opentopomap.org/europe/russia-european-part/otm-russia-european-part-contours.zip",
+              "sizeBytes": 307757056,
+              "validationState": "validated",
+              "downloadSizeBytes": 274598077
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

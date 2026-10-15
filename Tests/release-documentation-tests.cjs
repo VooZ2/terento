@@ -10,26 +10,90 @@ const release = JSON.parse(read("site/updates/macos-arm64.json"));
 // A reviewed candidate can be merged and signed before its installer exists.
 // Published URLs/checksums continue to describe the actually available build.
 const candidatePath = path.join(root, "Packaging/release-candidate.json");
-function candidateIdentity(candidate, published) {
+// VERSIONING.md "Stable release": stable labels are X.Y.Z on main; prereleases
+// are X.Y.Z-beta.N / X.Y.Z-rc.N on beta. One build counter is shared by every
+// v*-buildN tag and only rises.
+function parseLabel(releaseLabel) {
+  const match = String(releaseLabel).match(/^((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))(?:-(beta|rc)\.([1-9]\d*))?$/);
+  assert.ok(match, `unsupported release label: ${releaseLabel}`);
+  return { base: match[1], family: match[2] || "stable", number: Number(match[3] || 0) };
+}
+function compareVersions(left, right) {
+  const a = left.split(".").map(Number);
+  const b = right.split(".").map(Number);
+  for (let index = 0; index < 3; index += 1) if (a[index] !== b[index]) return a[index] - b[index];
+  return 0;
+}
+function parseTag(tag) {
+  const match = String(tag).match(/^v(.+)-build([1-9]\d*)$/);
+  if (!match) return null;
+  try {
+    return { releaseLabel: match[1], build: Number(match[2]), ...parseLabel(match[1]) };
+  } catch {
+    return null;
+  }
+}
+function nextPrereleaseLabels(previous) {
+  if (previous.family === "beta") return [`${previous.base}-beta.${previous.number + 1}`, `${previous.base}-rc.1`];
+  return [`${previous.base}-rc.${previous.number + 1}`];
+}
+// `published` is the main manifest; `tags` are the remote v*-buildN tags.
+function candidateIdentity(candidate, published, tags = []) {
   if (!candidate) return published;
   assert.deepEqual(Object.keys(candidate).sort(), ["build", "releaseLabel", "version"]);
-  assert.equal(candidate.version, published.version, "candidate must preserve the marketing version");
-  const prerelease = published.releaseLabel.match(/^(\d+\.\d+\.\d+)-(beta|rc)\.([1-9]\d*)$/);
-  assert.ok(prerelease, "candidate staging requires a published numbered beta or release candidate");
-  const [, base, family, number] = prerelease;
-  // VERSIONING.md: beta.N -> beta.N+1 or rc.1; rc.N -> rc.N+1; never rc -> beta.
-  const nextLabels = family === "beta"
-    ? [`${base}-beta.${Number(number) + 1}`, `${base}-rc.1`]
-    : [`${base}-rc.${Number(number) + 1}`];
-  assert.ok(candidate.releaseLabel === published.releaseLabel || nextLabels.includes(candidate.releaseLabel),
-    "candidate must retain the published label or advance exactly one beta or release candidate");
-  assert.ok(Number.isInteger(candidate.build) && candidate.build > published.build,
-    "candidate build must be newer than the published build");
+  const next = parseLabel(candidate.releaseLabel);
+  assert.equal(candidate.version, next.base, "candidate marketing version must match its label");
+  const current = parseLabel(published.releaseLabel);
+  const tagged = tags.map(parseTag).filter(Boolean);
+  const buildFloor = Math.max(published.build, ...tagged.map((tag) => tag.build));
+  assert.ok(Number.isInteger(candidate.build) && candidate.build > buildFloor,
+    "candidate build must be newer than the published build and every tagged build");
+  if (next.family === "stable") {
+    if (current.family === "stable") {
+      // Same-label rebuild, or a newer patch, minor or major version.
+      const [major, minor, patch] = current.base.split(".").map(Number);
+      assert.ok([current.base, `${major}.${minor}.${patch + 1}`, `${major}.${minor + 1}.0`, `${major + 1}.0.0`]
+        .includes(next.base), "a stable candidate must rebuild the published version or advance it by one step");
+    } else {
+      assert.equal(current.family, "rc", "only a release candidate becomes stable");
+      assert.equal(next.base, current.base, "the stable release keeps its release candidate's version");
+    }
+    return candidate;
+  }
+  // Prerelease: never at or below a released stable version, whatever tags exist.
+  assert.ok(compareVersions(next.base, current.base) > (current.family === "stable" ? 0 : -1),
+    "a prerelease must be newer than the published stable release");
+  assert.ok(!tagged.some((tag) => tag.family === "stable" && compareVersions(next.base, tag.base) <= 0),
+    "a prerelease must be newer than every released stable version");
+  // The predecessor is the highest build among prereleases of the same
+  // marketing version (tags, plus a prerelease manifest).
+  const prereleases = [...tagged, ...(current.family === "stable" ? [] : [{ ...published, ...current }])]
+    .filter((item) => item.family !== "stable" && item.base === next.base)
+    .sort((left, right) => left.build - right.build);
+  const previous = prereleases.at(-1);
+  if (!previous) {
+    assert.ok(next.number === 1, "the first prerelease of a version is beta.1 or rc.1");
+    assert.ok(compareVersions(next.base, current.base) > 0,
+      "a new prerelease version must be newer than the published release");
+    return candidate;
+  }
+  assert.ok(candidate.releaseLabel === previous.releaseLabel || nextPrereleaseLabels(previous).includes(candidate.releaseLabel),
+    "candidate must retain the previous prerelease label or advance exactly one beta or release candidate");
   return candidate;
 }
-const artifactIdentity = candidateIdentity(
-  fs.existsSync(candidatePath) ? JSON.parse(fs.readFileSync(candidatePath, "utf8")) : null, release,
-);
+// Only a staged candidate needs the remote tags; reading them must not fail
+// silently, or a stale local tag list could pick the wrong predecessor.
+function remoteReleaseTags() {
+  const output = require("node:child_process").execFileSync(
+    "git", ["ls-remote", "--tags", "--refs", "origin", "refs/tags/v*"], { cwd: root, encoding: "utf8" });
+  return output.split("\n").filter(Boolean).map((line) => {
+    const match = line.match(/^[0-9a-f]{40}\trefs\/tags\/(v\S+)$/);
+    assert.ok(match, `unexpected git ls-remote line: ${line}`);
+    return match[1];
+  });
+}
+const stagedCandidate = fs.existsSync(candidatePath) ? JSON.parse(fs.readFileSync(candidatePath, "utf8")) : null;
+const artifactIdentity = candidateIdentity(stagedCandidate, release, stagedCandidate ? remoteReleaseTags() : []);
 assert.equal(candidateIdentity(null, release), release);
 for (const invalid of [
   { ...release, build: release.build + 1 },
@@ -57,16 +121,62 @@ for (const candidate of [
 const lastBeta = { version: "1.0.0", releaseLabel: "1.0.0-beta.18", build: 40 };
 assert.equal(candidateIdentity({ version: "1.0.0", releaseLabel: "1.0.0-rc.1", build: 41 }, lastBeta).releaseLabel, "1.0.0-rc.1");
 const stagedRc = { version: "1.0.0", releaseLabel: "1.0.0-rc.1", build: 41 };
-for (const releaseLabel of ["1.0.0-rc.1", "1.0.0-rc.2"]) {
+for (const releaseLabel of ["1.0.0-rc.1", "1.0.0-rc.2", "1.0.0"]) {
   assert.equal(candidateIdentity({ version: "1.0.0", releaseLabel, build: 42 }, stagedRc).releaseLabel, releaseLabel);
 }
 for (const candidate of [
   { version: "1.0.0", releaseLabel: "1.0.0-beta.19", build: 42 },
   { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 42 },
-  { version: "1.0.0", releaseLabel: "1.0.0", build: 42 },
+  { version: "1.0.0", releaseLabel: "1.0.0", build: 41 },
   { version: "1.0.0", releaseLabel: "1.0.0-rc.2", build: 41 },
   { version: "1.0.0", releaseLabel: "1.0.0-rc.2-local", build: 42 },
+  { version: "1.0.0", releaseLabel: "1.0.0-local", build: 42 },
+  { version: "1.0.1", releaseLabel: "1.0.1", build: 42 },
+  { version: "1.0.0", releaseLabel: "1.0.0", build: "42" },
+  { version: "1.1.0", releaseLabel: "1.0.0", build: 42 },
 ]) assert.throws(() => candidateIdentity(candidate, stagedRc));
+// After 1.0.0 the main manifest stays stable: stable rebuilds and patches, and
+// next-version prereleases from beta that are released only as GitHub prereleases.
+const stable = { version: "1.0.0", releaseLabel: "1.0.0", build: 44 };
+for (const [version, releaseLabel] of [["1.0.0", "1.0.0"], ["1.0.1", "1.0.1"], ["1.1.0", "1.1.0"], ["2.0.0", "2.0.0"],
+  ["1.1.0", "1.1.0-beta.1"], ["1.1.0", "1.1.0-rc.1"], ["1.0.1", "1.0.1-rc.1"]]) {
+  assert.equal(candidateIdentity({ version, releaseLabel, build: 45 }, stable).releaseLabel, releaseLabel);
+}
+for (const candidate of [
+  { version: "1.0.2", releaseLabel: "1.0.2", build: 45 },
+  { version: "1.2.0", releaseLabel: "1.2.0", build: 45 },
+  { version: "0.9.0", releaseLabel: "0.9.0", build: 45 },
+  { version: "1.1.0", releaseLabel: "1.1.0-beta.2", build: 45 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.4", build: 45 },
+  { version: "1.0.0", releaseLabel: "1.0.0-beta.1", build: 45 },
+  { version: "1.0.0", releaseLabel: "1.0.0", build: 44 },
+]) assert.throws(() => candidateIdentity(candidate, stable));
+// The build floor covers every tag: stable 44 plus a released beta build 50.
+const afterBeta = ["v1.0.0-build44", "v1.1.0-beta.1-build50", "v1.0.0-rc.3-build43", "not-a-tag"];
+assert.throws(() => candidateIdentity({ version: "1.0.1", releaseLabel: "1.0.1", build: 45 }, stable, afterBeta));
+assert.equal(candidateIdentity({ version: "1.0.1", releaseLabel: "1.0.1", build: 51 }, stable, afterBeta).build, 51);
+// The prerelease predecessor is the highest build of the same version, ordered by number (9 < 10).
+const betaTags = ["v1.1.0-beta.1-build9", "v1.1.0-beta.2-build10", "v1.0.0-build8"];
+const stableBuild8 = { version: "1.0.0", releaseLabel: "1.0.0", build: 8 };
+for (const releaseLabel of ["1.1.0-beta.2", "1.1.0-beta.3", "1.1.0-rc.1"]) {
+  assert.equal(candidateIdentity({ version: "1.1.0", releaseLabel, build: 11 }, stableBuild8, betaTags).releaseLabel, releaseLabel);
+}
+for (const releaseLabel of ["1.1.0-beta.1", "1.1.0-beta.4", "1.1.0-rc.2"]) {
+  assert.throws(() => candidateIdentity({ version: "1.1.0", releaseLabel, build: 11 }, stableBuild8, betaTags));
+}
+assert.throws(() => candidateIdentity({ version: "1.1.0", releaseLabel: "1.1.0-beta.3", build: 10 }, stableBuild8, betaTags));
+// Historical tags never reopen a released or older version for prereleases.
+const historical = ["v1.0.0-rc.3-build43", "v1.0.0-build44", "v0.9.0-beta.1-build5"];
+for (const [version, releaseLabel] of [["1.0.0", "1.0.0-rc.4"], ["0.9.0", "0.9.0-beta.2"], ["0.9.0", "0.9.0-rc.1"]]) {
+  assert.throws(() => candidateIdentity({ version, releaseLabel, build: 45 }, stable, historical));
+}
+// A stale main manifest does not hide a released stable tag.
+assert.throws(() => candidateIdentity({ version: "1.0.0", releaseLabel: "1.0.0-rc.4", build: 45 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 43 }, historical));
+assert.throws(() => candidateIdentity({ version: "0.9.0", releaseLabel: "0.9.0-beta.2", build: 44 },
+  { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 43 }, ["v0.9.0-beta.1-build5"]));
+assert.equal(candidateIdentity({ version: "1.1.0", releaseLabel: "1.1.0-beta.1", build: 45 }, stable, historical).releaseLabel,
+  "1.1.0-beta.1");
 const label = release.releaseLabel;
 const releaseTag = release.releaseTag || `v${label}`;
 const semanticVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
@@ -212,6 +322,40 @@ const formattedSections = releaseNoteSections(notes).filter((section) => !/-beta
 assert.ok(formattedSections.length > 0 || !artifactIdentity || /-beta\./.test(artifactIdentity.releaseLabel),
   "a release candidate or stable section must exist in the new format");
 for (const section of formattedSections) assertReleaseNoteFormat(section.text, section.title);
+// Real-device release gates (VERSIONING.md "Stable release"): PASS, FAIL or an
+// owner-dated DEFERRED that a stable release must list under KNOWN ISSUES.
+function assertHardwareGates(gates, candidate, notesText) {
+  assert.equal(gates.schemaVersion, 1);
+  const isStable = parseLabel(candidate.releaseLabel).family === "stable";
+  const section = releaseNoteSections(notesText).find((item) => item.label === candidate.releaseLabel);
+  const knownIssues = section ? section.text.split("## KNOWN ISSUES")[1] || "" : "";
+  for (const gate of gates.gates) {
+    assert.ok(["PASS", "FAIL", "DEFERRED"].includes(gate.status), `${gate.id}: unknown gate status`);
+    if (gate.status === "DEFERRED") {
+      assert.equal(gate.decidedBy, "owner", `${gate.id}: only the owner may defer a gate`);
+      assert.match(gate.decidedAt || "", /^\d{4}-\d{2}-\d{2}$/, `${gate.id}: a deferral needs its decision date`);
+      assert.ok(gate.knownIssue, `${gate.id}: a deferral needs its KNOWN ISSUES line`);
+    }
+    if (!isStable) continue;
+    assert.notEqual(gate.status, "FAIL", `${gate.id}: a failed gate blocks a stable release`);
+    if (gate.status === "DEFERRED") {
+      assert.ok(knownIssues.includes(gate.knownIssue), `${gate.id}: the stable release notes must list the deferred gate`);
+    }
+  }
+}
+const sampleGates = { schemaVersion: 1, gates: [{ id: "g", status: "DEFERRED", decidedBy: "owner", decidedAt: "2026-10-14", knownIssue: "Gate open." }] };
+const stableNotes = "# Terento v1.0.0 (build 44)\n\nIntro.\n\n## WHAT'S NEW?\n\n- New.\n\n## WHAT'S FIXED?\n\n- Fix.\n\n## KNOWN ISSUES\n\n- Gate open.\n";
+const stableCandidate = { version: "1.0.0", releaseLabel: "1.0.0", build: 44 };
+assertHardwareGates(sampleGates, stableCandidate, stableNotes);
+assertHardwareGates(sampleGates, { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 43 }, "");
+for (const [gates, text] of [
+  [sampleGates, stableNotes.replace("- Gate open.", "- Other.")],
+  [{ ...sampleGates, gates: [{ ...sampleGates.gates[0], status: "FAIL" }] }, stableNotes],
+  [{ ...sampleGates, gates: [{ ...sampleGates.gates[0], status: "PENDING" }] }, stableNotes],
+  [{ ...sampleGates, gates: [{ ...sampleGates.gates[0], decidedAt: "" }] }, stableNotes],
+  [{ ...sampleGates, gates: [{ ...sampleGates.gates[0], decidedBy: "ci" }] }, stableNotes],
+]) assert.throws(() => assertHardwareGates(gates, stableCandidate, text));
+assertHardwareGates(JSON.parse(read("contracts/release-hardware-gates.json")), artifactIdentity, notes);
 assert.ok(notes.includes(release.sha256), "release notes must contain the manifest DMG SHA-256");
 assert.equal(
   release.downloadURL,
@@ -254,6 +398,14 @@ assert.doesNotMatch(distributedReleaseLabel || "", /-local$/, "Public Release bu
 assert.notEqual(distributedReleaseLabel, "development", "Public Release builds must never use development telemetry identity");
 assertXcodeSetting("CURRENT_PROJECT_VERSION", artifactIdentity.build);
 assertXcodeSetting("MARKETING_VERSION", artifactIdentity.version);
+// The app trusts TerentoReleaseChannel and treats a missing value as beta, so
+// the reviewed candidate label decides the channel (VERSIONING.md).
+const expectedReleaseChannel = (releaseLabel) =>
+  parseLabel(String(releaseLabel).replace(/-local$/, "")).family === "stable" ? "stable" : "beta";
+for (const [releaseLabel, channel] of [["1.0.0", "stable"], ["1.0.0-local", "stable"], ["1.0.0-rc.3", "beta"],
+  ["1.1.0-beta.1-local", "beta"]]) assert.equal(expectedReleaseChannel(releaseLabel), channel);
+assert.throws(() => expectedReleaseChannel("1.0.0-RC.1"));
+assertXcodeSetting("TERENTO_RELEASE_CHANNEL", expectedReleaseChannel(artifactIdentity.releaseLabel));
 
 for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
   const prefix = locale === "en" ? "" : `${locale}/`;

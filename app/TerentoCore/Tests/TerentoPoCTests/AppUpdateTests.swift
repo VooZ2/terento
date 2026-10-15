@@ -41,6 +41,7 @@ struct AppUpdateTests {
         try testBeta9MaintenanceBuildIsAvailable()
         try testBeta10OfferedToBeta9()
         try testReleaseCandidateOfferedToBetaChannel()
+        try testStableReleaseUpgradePath()
         try testHigherMarketingVersionIsAvailable()
         try testOlderReleaseIsUpToDate()
         try testIncompatibleMinimumMacOS()
@@ -55,7 +56,7 @@ struct AppUpdateTests {
         try await testDeferredUpdateCanOfferNewerBuild()
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
-        print("PASS: 19 app update tests")
+        print("PASS: 20 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -135,6 +136,30 @@ struct AppUpdateTests {
             currentMacOSVersion: "14.0"
         )
         expect(downgrade == .upToDate, "an installed rc.1 is not offered beta.18")
+    }
+
+    /// VERSIONING.md "Stable release": the stable manifest is offered to the
+    /// last release candidate, and a stable installation is never offered a beta.
+    private static func testStableReleaseUpgradePath() throws {
+        let stable = manifest(version: "1.0.0", build: 44, releaseLabel: "1.0.0", channel: .stable)
+        try TerentoAppUpdateService.validate(manifest: stable)
+        expect(stable.displayVersion == "1.0.0", "stable label is displayed without a suffix")
+        let fromCandidate = try TerentoAppUpdateService.evaluate(manifest: stable, current: installedVersion(build: 43), currentMacOSVersion: "14.0")
+        expect(isAvailable(fromCandidate, version: "1.0.0"), "stable 1.0.0 build 44 is offered to rc.3 build 43")
+        for build in [44, 45] {
+            let result = try TerentoAppUpdateService.evaluate(manifest: stable, current: installedVersion(build: build), currentMacOSVersion: "14.0")
+            expect(result == .upToDate, "stable build 44 is not offered to an installed build \(build)")
+        }
+        let installedStable = TerentoInstalledVersion(version: "1.0.0", build: 44, channel: .stable)
+        let beta = manifest(version: "1.1.0", build: 50, releaseLabel: "1.1.0-beta.1")
+        let betaResult = try TerentoAppUpdateService.evaluate(manifest: beta, current: installedStable, currentMacOSVersion: "14.0")
+        expect(betaResult == .upToDate, "a stable installation is never offered a beta")
+        let patch = manifest(version: "1.0.1", build: 45, releaseLabel: "1.0.1", channel: .stable)
+        let patchResult = try TerentoAppUpdateService.evaluate(manifest: patch, current: installedStable, currentMacOSVersion: "14.0")
+        expect(isAvailable(patchResult, version: "1.0.1"), "a stable patch is offered to a stable installation")
+        let rebuild = manifest(version: "1.0.0", build: 45, releaseLabel: "1.0.0", channel: .stable)
+        let rebuildResult = try TerentoAppUpdateService.evaluate(manifest: rebuild, current: installedStable, currentMacOSVersion: "14.0")
+        expect(isAvailable(rebuildResult, version: "1.0.0"), "a stable rebuild is offered to a stable installation")
     }
 
     private static func testHigherMarketingVersionIsAvailable() throws {
@@ -458,7 +483,8 @@ struct AppUpdateTests {
         summary: String = "A concise test summary.",
         releaseNotesURL: URL? = URL(
             string: "https://github.com/VooZ2/terento/releases/tag/test"
-        )
+        ),
+        channel: TerentoUpdateChannel = .beta
     ) -> TerentoAppUpdateManifest {
         TerentoAppUpdateManifest(
             schemaVersion: 1,
@@ -477,7 +503,7 @@ struct AppUpdateTests {
             releaseNotesURL: releaseNotesURL,
             summary: summary,
             publishedAt: "2026-08-26",
-            channel: .beta,
+            channel: channel,
             sha256: nil,
             minimumMacOS: minimumMacOS
         )

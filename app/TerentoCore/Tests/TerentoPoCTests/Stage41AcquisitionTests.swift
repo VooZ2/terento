@@ -1270,18 +1270,27 @@ struct Stage41AcquisitionTests {
     private static func testBundledCatalogPolicyCounts() {
         do {
             let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            let data = try Data(contentsOf: root.appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json"))
-            let packages = try MapCatalogDocumentDecoder().decode(data).packages
             let resolver = MapPackageAcquisitionPolicyResolver()
+            // The bundled fallback never lists withheld packages (scripts/build-bundled-map-catalog.py).
+            let bundledData = try Data(contentsOf: root.appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json"))
+            let bundled = try MapCatalogDocumentDecoder().decode(bundledData).packages
+            // The policy itself is exercised with the withheld rows of the 2026-09-12 bundled catalog.
+            let fixtureData = try Data(contentsOf: root.appendingPathComponent("Tests/Fixtures/withheld-policy-catalog.json"))
+            let packages = try MapCatalogDocumentDecoder().decode(fixtureData).packages
             let grouped = Dictionary(grouping: packages, by: resolver.availability(for:))
             let crimea = grouped[.withheldCrimea]?.first
             expect(
-                packages.count == 1160
-                    && packages.filter { $0.providerId == "freizeitkarte" }.count == 63
-                    && packages.filter { $0.providerId == "opentopomap" }.count == 177
-                    && packages.filter { $0.providerId == "maprando" }.count == 160
-                    && packages.filter { $0.providerId == "bbbike" }.count == 760
-                    && grouped[.available]?.count == 1151
+                bundled.count == 1149
+                    && bundled.filter { $0.providerId == "freizeitkarte" }.count == 56
+                    && bundled.filter { $0.providerId == "opentopomap" }.count == 173
+                    && bundled.filter { $0.providerId == "maprando" }.count == 160
+                    && bundled.filter { $0.providerId == "bbbike" }.count == 760
+                    && bundled.allSatisfy { resolver.availability(for: $0) == .available },
+                "bundled catalog keeps all four providers and lists no withheld package"
+            )
+            expect(
+                packages.count == 12
+                    && grouped[.available]?.count == 3
                     && grouped[.withheldRussia]?.count == 8
                     && grouped[.withheldCrimea]?.count == 1
                     && packages
@@ -1293,10 +1302,10 @@ struct Stage41AcquisitionTests {
                             resolver.availability(for: $0) == .available
                         } == true
                     },
-                "bundled catalog preserves all four providers while policy withholds russia packages and Crimea"
+                "policy withholds russia packages and Crimea while neighbouring regions stay available"
             )
         } catch {
-            expect(false, "bundled catalog preserves all four providers while policy withholds russia packages and Crimea")
+            expect(false, "bundled catalog and withheld-policy fixture decode: \(error)")
         }
     }
 

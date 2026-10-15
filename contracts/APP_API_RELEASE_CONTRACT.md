@@ -69,7 +69,8 @@ The full 93-runner packaging suite and PR/merged-source CI passed. Apple
 submission `2f29874f-e088-4403-b1aa-6031d8063a4f` was Accepted. Signing,
 stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner approved the
 release notes before publication. Real-watch evidence: Update was validated
-during the beta with BBBike, Freizeitkarte and MapRando; fast removal was
+during the beta with BBBike and MapRando (corrected 2026-10-14: Freizeitkarte
+Update is not confirmed on a real watch); fast removal was
 validated with the rc.1 local build; the faster Update checks remain pending
 real-watch confirmation and are listed in the release notes' KNOWN ISSUES.
 
