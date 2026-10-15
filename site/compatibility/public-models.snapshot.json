@@ -60,10 +60,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 17,
-      "appSuccessfulInstallations": 17,
+      "successfulInstallations": 18,
+      "appSuccessfulInstallations": 18,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-11T16:50:23+00:00"
+      "lastSuccessfulInstallation": "2026-10-15T17:04:17+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -418,6 +418,22 @@
       "lastSuccessfulInstallation": "2026-10-11T02:28:26+00:00"
     },
     {
+      "model": "fēnix 9 Pro · Solar, 47 mm",
+      "variant": "Solar, 47 mm",
+      "caseSizeMm": 47,
+      "displayType": "Solar",
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04338-05/g/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-15T16:52:15+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · 43mm",
       "variant": "43mm",
       "caseSizeMm": 43,
@@ -450,22 +466,6 @@
       "lastSuccessfulInstallation": "2026-09-27T09:13:24+00:00"
     },
     {
-      "model": "fēnix 9 Pro · Solar, 47 mm",
-      "variant": "Solar, 47 mm",
-      "caseSizeMm": 47,
-      "displayType": "Solar",
-      "screenTechnology": "MIP",
-      "solar": true,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-04338-05/g/cf-lg.jpg",
-      "successfulInstallations": 1,
-      "appSuccessfulInstallations": 1,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-09-15T13:13:33+00:00"
-    },
-    {
       "model": "tactix Delta · Historical",
       "variant": "Historical",
       "caseSizeMm": null,
@@ -482,5 +482,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-15T16:43:49.512943+00:00"
+  "generatedAt": "2026-10-15T21:11:35.335021+00:00"
 }
