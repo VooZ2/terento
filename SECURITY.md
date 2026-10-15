@@ -1,16 +1,17 @@
 # Security Policy
 
-Terento is an active beta project. This policy covers the repository, the native macOS application, the catalog service, and the public web surfaces.
+Terento is an actively maintained project. This policy covers the repository, the native macOS application, the catalog service, and the public web surfaces.
 
 ## Supported versions
 
 | Version or branch | Support |
 | --- | --- |
+| Latest stable release | Security reports accepted; fixes are best effort |
 | Latest beta release | Security reports accepted; fixes are best effort |
 | Current default branch (`main`) | Security reports accepted; fixes are best effort |
-| Older beta releases | Not guaranteed |
+| Older releases | Not guaranteed |
 
-Terento is not a stable production release. Device and map behaviour may change between beta releases.
+Fixes are best effort. Device and map behaviour may change between releases.
 
 ## Reporting a vulnerability
 

@@ -19,7 +19,7 @@ Cette liste repose sur de vraies installations Terento réussies partagées par 
 
 Les résultats d’installation sont partagés avec Terento par les utilisateurs ; ils ne constituent pas une certification Garmin.
 
-La bêta actuelle comprend quatre fournisseurs de cartes. Cette information produit est distincte des résultats d’appareils présentés ici.
+La version actuelle comprend quatre fournisseurs de cartes. Cette information produit est distincte des résultats d’appareils présentés ici.
 
 30 modèles
 

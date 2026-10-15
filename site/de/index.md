@@ -3,7 +3,7 @@ title: "Terento — Drittanbieter-Karten für Garmin auf dem Mac"
 canonical: https://terento.app/de/
 ---
 
-Open-Source-Projekt · Beta
+Open-Source-Projekt
 
 # Karten einfach auf Garmin-Uhren installieren
 

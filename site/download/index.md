@@ -3,9 +3,9 @@ title: "Download Terento for Mac — Third-Party Maps for Garmin"
 canonical: https://terento.app/download/
 ---
 
-Terento beta
+Terento
 
-# Download the beta
+# Download Terento
 
 A native Mac app for installing and managing community maps on Garmin smartwatches with map support.
 
@@ -13,9 +13,9 @@ A native Mac app for installing and managing community maps on Garmin smartwatch
 - Notarized
 - Apple Silicon
 
-[Download DMG Recommended](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.3-build43/Terento-1.0.0-rc.3-macOS-arm64.dmg) [Download ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.3-build43/Terento-1.0.0-rc.3-macOS-arm64.zip) [View release notes](https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.3-build43)
+[Download DMG Recommended](https://github.com/VooZ2/terento/releases/download/v1.0.0-build44/Terento-1.0.0-macOS-arm64.dmg) [Download ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-build44/Terento-1.0.0-macOS-arm64.zip) [View release notes](https://github.com/VooZ2/terento/releases/tag/v1.0.0-build44)
 
-Latest: **v1.0.0-rc.3** Released 11 October 2026
+Latest: **v1.0.0** Released 15 October 2026
 
 Terento showing a connected Garmin watch on macOS
 
@@ -30,8 +30,8 @@ Before you install
 - Garmin smartwatch with map support
 [Read the Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/)
 
-## Beta status
+## Release status
 
-This is the current Terento release candidate. It supports maps from four map providers. The Compatibility page shows exact models and variants with successful shared installations. A model missing from the list is not an unsupported-device claim.
+This is the current Terento release. It supports maps from four map providers. The Compatibility page shows exact models and variants with successful shared installations. A model missing from the list is not an unsupported-device claim.
 
 [Check compatibility](https://terento.app/compatibility/)

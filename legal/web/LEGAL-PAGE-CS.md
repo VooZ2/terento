@@ -6,7 +6,7 @@ Terento je bezplatná aplikace macOS s otevřeným zdrojovým kódem pro instala
 
 Terento je nezávislý projekt vydávaný soukromou osobou. Tvůrce najdete na stránce [O projektu](/cs/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikace je veřejná beta pro Macy s Apple Silicon. Webový instalátor je také beta a vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
+Aplikace je určena pro Macy s Apple Silicon. Webový instalátor je beta a vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
 
 ## Licence softwaru a dalších součástí
 
@@ -26,9 +26,9 @@ Terento tyto mapy nevytváří, nemění jejich licence, neprovozuje knihovnu ma
 
 Garmin a názvy jeho produktů jsou ochranné známky Garmin Ltd. Apple, Mac, macOS a Apple Silicon jsou ochranné známky Apple Inc. Google a Chrome jsou ochranné známky Google LLC. Microsoft a Edge jsou ochranné známky Microsoft Corporation. Opera je ochranná známka Opera Norway AS. Brave je ochranná známka Brave Software, Inc. Používají se popisně. Terento není s těmito společnostmi spojeno ani jimi podporováno nebo certifikováno.
 
-## Beta a vaše práva
+## Záruka a vaše práva
 
-Beta může obsahovat chyby ovlivňující mapy, fungování zařízení nebo data. V rozsahu povoleném právem je software poskytován bez záruky, jak uvádí jeho licence.
+Software může obsahovat chyby ovlivňující mapy, fungování zařízení nebo data. V rozsahu povoleném právem je software poskytován bez záruky, jak uvádí jeho licence.
 
 Žádné oznámení nevylučuje ani neomezuje odpovědnost tam, kde to zákon zakazuje, včetně úmyslu nebo hrubé nedbalosti. Vaše kogentní práva podle litevského práva a práva EU zůstávají nedotčena.
 

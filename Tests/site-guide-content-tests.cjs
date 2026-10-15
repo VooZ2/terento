@@ -209,8 +209,8 @@ for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
   const source = read(path.join(root, file));
   assert.match(source, /data-page="(?:legal|privacy)"/);
   const scripts = [...source.matchAll(/<script defer src="([^"]+)"/g)].map((match) => match[1]);
-  const controller = "/page-language.js?v=20261006-shared-page-language-v2";
-  const copy = `/${file.split("/")[1]}-language.js?v=20261006-shared-page-language-v2`;
+  const controller = "/page-language.js?v=20261015-shared-page-language-v3";
+  const copy = `/${file.split("/")[1]}-language.js?v=20261015-shared-page-language-v3`;
   assert.equal(scripts.filter((src) => src === controller).length, 1);
   assert.equal(scripts.filter((src) => src === copy).length, 1);
   assert.ok(scripts.findIndex((src) => src.startsWith("/language.js?")) < scripts.indexOf(controller));

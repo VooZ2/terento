@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
   <title id="title">Terento — Your device, ready for where you're going.</title>
-  <desc id="desc">Terento beta — maps for Garmin smartwatches on an Apple Silicon Mac.</desc>
+  <desc id="desc">Terento — maps for Garmin smartwatches on an Apple Silicon Mac.</desc>
   <rect width="1200" height="630" fill="#F7F3EC"/>
   <path d="M0 132 C175 72 290 92 407 148 S670 218 822 128 S1037 70 1200 105" fill="none" stroke="#D7DDDA" stroke-width="2"/>
   <path d="M0 229 C172 165 283 190 427 248 S673 321 827 233 S1031 181 1200 215" fill="none" stroke="#D7DDDA" stroke-width="2"/>

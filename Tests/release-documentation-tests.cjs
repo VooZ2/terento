@@ -216,7 +216,7 @@ const readme = read("README.md");
 assert.ok(readme.includes(publicLabel), "README must identify the public beta label");
 assert.match(readme, new RegExp(`build\\s+${release.build}\\b`, "i"), "README must identify the public build");
 const compatibilitySection = readme.match(
-  /## Requirements and compatibility[\s\S]*?(?=\n## Download and beta status)/,
+  /## Requirements and compatibility[\s\S]*?(?=\n## Download and release status)/,
 )?.[0] || "";
 assert.match(compatibilitySection, /successful-\s*installation\s+directory/i);
 assert.match(

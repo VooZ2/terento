@@ -18,7 +18,7 @@ LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20261011-compatibility-install-sources-v1"
 COMPATIBILITY_VERSION = "20261011-compatibility-install-sources-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
-PAGE_LANGUAGE_VERSION = "20261006-shared-page-language-v2"
+PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
 # Footer Web installer link (lab host until the terento.app/install/ launch).
 # Localized pages add ?lang=; site-shell.js sets it on Legal/Privacy after a language switch.
 WEB_INSTALLER_URL = "https://lab.terento.app/install/"
@@ -127,7 +127,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
           <a data-shell-copy="privacy" href="/privacy/"{umami_attributes("privacy-link-click", "footer-nav")}>{copy["privacy"]}</a>
         </nav>
       </div>
-      <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
+      <div class="shell footer-bottom"><p>© 2026 Terento Project</p></div>
     </footer>'''
     if page in {"legal", "privacy"}:
         translations = json.dumps(LOCALES, ensure_ascii=False).replace("<", "\\u003c")

@@ -19,7 +19,7 @@ Lista powstaje na podstawie rzeczywistych, udanych instalacji Terento udostępni
 
 Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyfikacją Garmin.
 
-Aktualna beta obejmuje czterech dostawców map. Ta informacja o produkcie jest oddzielona od pokazanych tutaj wyników dla urządzeń.
+Aktualna wersja obejmuje czterech dostawców map. Ta informacja o produkcie jest oddzielona od pokazanych tutaj wyników dla urządzeń.
 
 30 modeli
 

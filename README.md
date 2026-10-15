@@ -24,7 +24,7 @@ compatible `.img` map.
 · [Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_guide)
 · [Compare map styles](https://terento.app/map-styles/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_map_styles)
 
-**Public beta · macOS 13+ · Apple Silicon**
+**Free and open source · macOS 13+ · Apple Silicon**
 
 On Linux? Try the [web installer beta](#web-installer-beta) in Google Chrome, Microsoft Edge, Opera or Brave.
 
@@ -154,11 +154,11 @@ Evidence for one model does not establish compatibility with every Garmin
 watch. Handheld GPS devices, Edge cycling computers, and automotive devices
 are outside the current public scope.
 
-## Download and beta status
+## Download and release status
 
-The latest public release is **rc.3 (build 43)**, the third release candidate
-for Terento 1.0.0. Download the notarized macOS app below; no additional
-software is required.
+The latest public release is **1.0.0 (build 44)**, the first stable release of
+Terento. Download the notarized macOS app below; no additional software is
+required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
@@ -168,16 +168,15 @@ are disabled until downloads are available again; installed maps remain usable.
 DMG, ZIP, release notes, and previous versions are available on
 [GitHub Releases](https://github.com/VooZ2/terento/releases).
 
-Terento is a **Public beta**. Compatibility and map updates are still being
-tested on real watches. Updates to newer BBBike and MapRando releases were
-confirmed on a real watch; Freizeitkarte and OpenTopoMap updates, the faster
-update checks of rc.1, the connection messages of rc.2 and the recovery fixes
-of rc.3 still need real-device confirmation.
+Compatibility is still evaluated model by model. Updates to newer BBBike and
+MapRando releases were confirmed on a real watch; Freizeitkarte and OpenTopoMap
+updates, the faster update checks of rc.1 and the recovery fixes of rc.3 still
+need real-device confirmation. Of the connection messages of rc.2, only the
+busy-watch message has been checked on a real watch.
 
 During an update, Terento checks the new map before removing the old version
 it installed. If there is not enough space for both, it stops and keeps the
 working map. Terento does not keep a backup of your maps on your Mac.
-Bugs are still possible during the beta.
 Some watches may need to be reconnected if detection or map listing stalls.
 
 ## Maps
@@ -197,15 +196,15 @@ their providers.
   them when installing a region in Terento; the main map works without them.
 - Import compatible `.img` maps from your Mac. Terento cannot check these
   maps for updates.
-- Maps for Russia and Crimea appear in the catalog but cannot be downloaded
-  or updated through Terento. Existing maps are not automatically removed.
+- Maps for Russia and Crimea are not offered in Terento. Maps already on a
+  watch are not automatically removed.
 
 ## Privacy
 
 No account or cloud device profile is required.
 
-Compatibility reports and map-usage diagnostics are enabled by default
-during the beta. You can turn either off in
+Compatibility reports and map-usage diagnostics are enabled by default.
+You can turn either off in
 `Terento → Diagnostics` without affecting installation. Custom map imports
 contribute only to compatibility diagnostics, never map-usage diagnostics.
 
@@ -228,7 +227,7 @@ feel simple. I'm keeping it free and open source so it can help the community.
 
 Donations are optional and do not unlock features, maps, or provider access.
 
-## Help make the beta better
+## Help make Terento better
 
 If installation fails, Terento offers to open a GitHub issue with the
 diagnostic information needed to investigate. You can also

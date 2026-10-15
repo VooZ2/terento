@@ -6,7 +6,7 @@ Terento ist eine kostenlose, quelloffene macOS-App zum Installieren und Verwalte
 
 Terento ist ein unabhängiges Projekt einer Privatperson. Mehr über den Entwickler erfährst du unter [Über uns](/de/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Die App ist eine Public beta für Macs mit Apple Silicon. Der Web-Installer ist ebenfalls eine Beta und braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
+Die App ist für Macs mit Apple Silicon. Der Web-Installer ist eine Beta und braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
 
 ## Software und Drittanbieter-Lizenzen
 
@@ -26,9 +26,9 @@ Terento erstellt oder lizenziert diese Karten nicht neu, betreibt keine Kartenbi
 
 Garmin und seine Produktnamen sind Marken von Garmin Ltd. Apple, Mac, macOS und Apple Silicon sind Marken von Apple Inc. Google und Chrome sind Marken von Google LLC. Microsoft und Edge sind Marken der Microsoft Corporation. Opera ist eine Marke von Opera Norway AS. Brave ist eine Marke von Brave Software, Inc. Die Namen werden beschreibend verwendet. Terento ist mit keinem dieser Unternehmen verbunden und wird von ihnen weder unterstützt noch zertifiziert.
 
-## Betasoftware und deine Rechte
+## Gewährleistung und deine Rechte
 
-Betasoftware kann Fehler enthalten, die Karten, Gerätefunktionen oder Daten beeinträchtigen. Soweit gesetzlich zulässig, wird die Software ohne Gewährleistung gemäß ihrer Lizenz bereitgestellt.
+Die Software kann Fehler enthalten, die Karten, Gerätefunktionen oder Daten beeinträchtigen. Soweit gesetzlich zulässig, wird die Software ohne Gewährleistung gemäß ihrer Lizenz bereitgestellt.
 
 Diese Hinweise schließen keine Haftung aus und begrenzen sie nicht, soweit das Gesetz dies untersagt, insbesondere bei Vorsatz oder grober Fahrlässigkeit. Deine zwingenden Rechte nach litauischem und EU-Recht bleiben unberührt.
 

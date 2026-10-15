@@ -4,10 +4,10 @@ Thank you for taking an interest in Terento. Contributions, bug reports, documen
 
 ## Project status
 
-Terento is an active public beta project for macOS. It is not a stable
-production release. The current release identity, supported artifacts, and
-availability are maintained in `RELEASE_NOTES.md`, GitHub Releases, and the
-current release metadata; do not copy a version number into this document.
+Terento is an actively maintained open-source project for macOS. The current
+release identity, supported artifacts, and availability are maintained in
+`RELEASE_NOTES.md`, GitHub Releases, and the current release metadata; do not
+copy a version number into this document.
 
 The production app is the root Xcode macOS target and consumes the SwiftPM
 source module in `app/TerentoCore/`. The SwiftPM target also
@@ -91,7 +91,7 @@ incorrectly named tests.
 
 Pull requests run the minimum safe suites selected from changed paths. Tags,
 manual full runs, weekly runs, and `Packaging/release.sh` execute the complete
-matrix. Every release uses the same release gate, independent of its beta number.
+matrix. Every release uses the same release gate, whether it is a stable, beta or release-candidate version.
 
 If Node.js is not on `PATH`, set `TERENTO_NODE_BIN` to its executable before
 running the checks. The repository's web, native, backend, and release
@@ -146,7 +146,7 @@ Changes should preserve the project's safety boundaries:
 - keep Garmin independence and trademark disclaimers intact;
 - avoid collecting device data that the app does not need;
 - add or update tests for behaviour changes; and
-- document beta limitations honestly.
+- document known limitations honestly.
 
 ## Maps, data, and third-party code
 

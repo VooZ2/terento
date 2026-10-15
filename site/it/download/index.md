@@ -3,18 +3,18 @@ title: "Scarica Terento per Mac — Mappe di terze parti per Garmin"
 canonical: https://terento.app/it/download/
 ---
 
-Terento beta
+Terento
 
-# Scarica la beta
+# Scarica Terento
 
 Un’app Mac nativa per installare e gestire mappe della comunità sugli smartwatch Garmin con supporto alle mappe.
 
 - Gratuita
 - Notarizzata
 - Apple Silicon
-[Scarica DMG Consigliato](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.3-build43/Terento-1.0.0-rc.3-macOS-arm64.dmg) [Scarica ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-rc.3-build43/Terento-1.0.0-rc.3-macOS-arm64.zip) [Note di rilascio](https://github.com/VooZ2/terento/releases/tag/v1.0.0-rc.3-build43)
+[Scarica DMG Consigliato](https://github.com/VooZ2/terento/releases/download/v1.0.0-build44/Terento-1.0.0-macOS-arm64.dmg) [Scarica ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-build44/Terento-1.0.0-macOS-arm64.zip) [Note di rilascio](https://github.com/VooZ2/terento/releases/tag/v1.0.0-build44)
 
-Ultima release candidate: **v1.0.0-rc.3** Pubblicata l'11 ottobre 2026
+Ultima versione: **v1.0.0** Pubblicata il 15 ottobre 2026
 
 Terento mostra uno smartwatch Garmin collegato su macOS
 
@@ -29,8 +29,8 @@ Prima dell’installazione
 - Smartwatch Garmin con supporto mappe
 [Leggi la guida all’installazione su Mac](https://terento.app/it/guides/install-garmin-maps-mac/)
 
-## Stato della beta
+## Stato della versione
 
-Questa è la release candidate attuale di Terento. Supporta le mappe di quattro provider. La pagina Compatibilità mostra i modelli e le varianti esatti con installazioni riuscite condivise. L’assenza di un modello non significa che il dispositivo non sia supportato.
+Questa è la versione attuale di Terento. Supporta le mappe di quattro provider. La pagina Compatibilità mostra i modelli e le varianti esatti con installazioni riuscite condivise. L’assenza di un modello non significa che il dispositivo non sia supportato.
 
 [Verifica la compatibilità](https://terento.app/it/compatibility/)

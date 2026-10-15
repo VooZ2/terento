@@ -9,7 +9,7 @@ Terento
 
 Terento is a free, open-source Mac app for choosing, installing, and managing community maps on Garmin smartwatches with map support. Built to make getting ready for your next trip simpler.
 
-Public beta for Apple Silicon Macs. The Compatibility page shows exact models and variants with at least one successful shared installation; it is not a complete supported-device list. [Check compatibility](https://terento.app/compatibility/)
+For Apple Silicon Macs. The Compatibility page shows exact models and variants with at least one successful shared installation; it is not a complete supported-device list. [Check compatibility](https://terento.app/compatibility/)
 
 [Download](https://terento.app/download/)
 

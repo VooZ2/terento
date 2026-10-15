@@ -6,7 +6,7 @@ Terento is a free, open-source macOS app for installing and managing third-party
 
 Terento is an independent project published by a private individual. Meet the maker on the [About page](/about/). Contact: [hello@terento.app](mailto:hello@terento.app).
 
-The app is a Public beta for Apple Silicon Macs. The web installer is also a beta and needs Google Chrome, Microsoft Edge, Opera or Brave on a Mac or Linux computer. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
+The app is for Apple Silicon Macs. The web installer is a beta and needs Google Chrome, Microsoft Edge, Opera or Brave on a Mac or Linux computer. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
 
 ## Software and third-party licences
 
@@ -26,9 +26,9 @@ Terento does not create or relicense these maps, host a map library or mirror pr
 
 Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS and Apple Silicon are trademarks of Apple Inc. Google and Chrome are trademarks of Google LLC. Microsoft and Edge are trademarks of Microsoft Corporation. Opera is a trademark of Opera Norway AS. Brave is a trademark of Brave Software, Inc. They are used descriptively. Terento is not affiliated with, endorsed or certified by any of these companies.
 
-## Beta software and your rights
+## Warranty and your rights
 
-Beta software may contain errors, including errors affecting maps, device operation or data. To the extent permitted by applicable law, the software is provided without warranty as described in its licence.
+The software may contain errors, including errors affecting maps, device operation or data. To the extent permitted by applicable law, the software is provided without warranty as described in its licence.
 
 No notice here excludes or limits liability where the law prohibits that exclusion or limitation, including liability for intent or gross negligence. Your mandatory rights under Lithuanian and EU law remain unaffected.
 

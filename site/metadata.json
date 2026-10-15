@@ -124,7 +124,7 @@
       "path": "/download/",
       "locale": "en",
       "title": "Download Terento for Mac — Third-Party Maps for Garmin",
-      "description": "Download the free, notarized Terento beta for Apple Silicon Macs to install and manage third-party maps on Garmin smartwatches with map support.",
+      "description": "Download the free, notarized Terento app for Apple Silicon Macs to install and manage third-party maps on Garmin smartwatches with map support.",
       "alternates": true
     },
     {
@@ -132,7 +132,7 @@
       "path": "/de/download/",
       "locale": "de",
       "title": "Terento für Mac herunterladen — Drittanbieter-Karten für Garmin",
-      "description": "Lade die kostenlose, notarielle Terento-Beta für Apple-Silicon-Macs herunter, um Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung zu installieren und zu verwalten.",
+      "description": "Lade die kostenlose, notarielle Terento-App für Apple-Silicon-Macs herunter, um Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung zu installieren und zu verwalten.",
       "alternates": true
     },
     {
@@ -140,7 +140,7 @@
       "path": "/fr/download/",
       "locale": "fr",
       "title": "Télécharger Terento pour Mac — Cartes tierces pour Garmin",
-      "description": "Téléchargez la bêta Terento gratuite et notariée pour Mac Apple Silicon afin d’installer et de gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.",
+      "description": "Téléchargez l’app Terento gratuite et notariée pour Mac Apple Silicon afin d’installer et de gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.",
       "alternates": true
     },
     {
@@ -148,7 +148,7 @@
       "path": "/pl/download/",
       "locale": "pl",
       "title": "Pobierz Terento na Maca — Mapy innych firm dla Garmina",
-      "description": "Pobierz bezpłatną, notaryzowaną betę Terento na Maci z Apple Silicon, aby instalować i zarządzać mapami innych firm na zegarkach Garmin obsługujących mapy.",
+      "description": "Pobierz bezpłatną, notaryzowaną aplikację Terento na Maci z Apple Silicon, aby instalować i zarządzać mapami innych firm na zegarkach Garmin obsługujących mapy.",
       "alternates": true
     },
     {
@@ -156,7 +156,7 @@
       "path": "/cs/download/",
       "locale": "cs",
       "title": "Stáhnout Terento pro Mac — Mapy třetích stran pro Garmin",
-      "description": "Stáhněte si bezplatnou, notářsky ověřenou betu Terento pro Macy s Apple Silicon k instalaci a správě map třetích stran na hodinkách Garmin s podporou map.",
+      "description": "Stáhněte si bezplatnou, notářsky ověřenou aplikaci Terento pro Macy s Apple Silicon k instalaci a správě map třetích stran na hodinkách Garmin s podporou map.",
       "alternates": true
     },
     {
@@ -164,7 +164,7 @@
       "path": "/it/download/",
       "locale": "it",
       "title": "Scarica Terento per Mac — Mappe di terze parti per Garmin",
-      "description": "Scarica la beta gratuita e notarizzata di Terento per Mac Apple Silicon per installare e gestire mappe di terze parti sugli smartwatch Garmin con supporto alle mappe.",
+      "description": "Scarica l’app gratuita e notarizzata di Terento per Mac Apple Silicon per installare e gestire mappe di terze parti sugli smartwatch Garmin con supporto alle mappe.",
       "alternates": true
     },
     {
@@ -376,7 +376,7 @@
       "path": "/legal/",
       "locale": "en",
       "title": "Legal — Terento",
-      "description": "Terento legal notices for the website and public macOS beta, including independence, map and software licences, online services and warranty terms.",
+      "description": "Terento legal notices for the website and macOS app, including independence, map and software licences, online services and warranty terms.",
       "indexable": false,
       "alternates": false
     },
@@ -385,7 +385,7 @@
       "path": "/privacy/",
       "locale": "en",
       "title": "Privacy — Terento",
-      "description": "Terento privacy notice for the public website and macOS beta, including optional compatibility reports, Cloudflare services and privacy-preserving Umami visit statistics.",
+      "description": "Terento privacy notice for the public website and macOS app, including optional compatibility reports, Cloudflare services and privacy-preserving Umami visit statistics.",
       "indexable": false,
       "alternates": false
     }

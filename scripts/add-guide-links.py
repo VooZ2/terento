@@ -199,7 +199,7 @@ def normalize_download_layout(source: str, locale: str) -> str:
     )
     sections = list(re.finditer(r'<section class="download-detail">[\s\S]*?</section>', source))
     if len(sections) < 2:
-        raise RuntimeError("Download page must contain a beta-status section")
+        raise RuntimeError("Download page must contain a release-status section")
     status_section = sections[1]
     updated_status = re.sub(
         r'(<h2>[^<]*</h2>\s*)<p>[\s\S]*?</p>',
