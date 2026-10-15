@@ -888,7 +888,11 @@ final class MapDownloadResumeStore: @unchecked Sendable {
         }
         stale.forEach { try? FileManager.default.removeItem(at: $0) }
         guard let entry else { return nil }
-        let values = try? entry.fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
+        // A URL caches resource values, and the same file URL is kept across
+        // resumes, so the size must be read fresh from disk.
+        var fileURL = entry.fileURL
+        fileURL.removeAllCachedResourceValues()
+        let values = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
         guard values?.isRegularFile == true, values?.isSymbolicLink != true,
               values?.fileSize.map(UInt64.init) == entry.bytes else {
             try? FileManager.default.removeItem(at: entry.fileURL)
