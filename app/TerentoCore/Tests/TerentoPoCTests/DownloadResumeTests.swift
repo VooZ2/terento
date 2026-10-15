@@ -75,6 +75,8 @@ final class ResumableServerProtocol: URLProtocol {
         if let encoding = scenario.contentEncoding { headers["Content-Encoding"] = encoding }
         var status = 200
         var payload = scenario.body
+        // Where the payload starts in the file; progress reports file bytes.
+        var payloadStart = 0
         let validatorMatches = ifRange == nil || ifRange == scenario.etag || ifRange == scenario.lastModified
         if let range, range.hasPrefix("bytes="), range.hasSuffix("-"),
            let start = Int(range.dropFirst(6).dropLast()), validatorMatches, scenario.rangeBehaviour != .ignore {
@@ -90,6 +92,7 @@ final class ResumableServerProtocol: URLProtocol {
             case .honour, .ignore:
                 status = 206
                 payload = scenario.body.subdata(in: start..<scenario.body.count)
+                payloadStart = start
                 headers["Content-Range"] = "bytes \(start)-\(scenario.body.count - 1)/\(scenario.body.count)"
             }
         }
@@ -107,9 +110,10 @@ final class ResumableServerProtocol: URLProtocol {
                 // before it hands the queued body to the delegate, so wait
                 // until the delegate has written them (bounded).
                 let client = self.client
+                let reached = UInt64(payloadStart + failAfter)
                 DispatchQueue.global().async {
                     let deadline = Date().addingTimeInterval(10)
-                    while Self.lock.withLock({ Self.delivered }) < UInt64(failAfter), Date() < deadline {
+                    while Self.lock.withLock({ Self.delivered }) < reached, Date() < deadline {
                         usleep(1_000)
                     }
                     client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
