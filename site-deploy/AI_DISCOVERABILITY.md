@@ -149,7 +149,7 @@ The API hostname and production Cloudflare settings are separate operational
 boundaries. Public-host robots do not apply to `api.terento.app` or testing
 hosts. Operator edge files under ignored `internal/infra/` are not shipped by
 a website image. API-wide noindex and a restrictive API robots response require
-an owner-reviewed edge change; preserve Cloudflare Access and the origin guard.
+an owner-reviewed edge change; preserve native admin authentication.
 Staging must retain its existing noindex/no-tracking configuration.
 
 The `terento.app` Cloudflare zone has an active Response Header Transform Rule
