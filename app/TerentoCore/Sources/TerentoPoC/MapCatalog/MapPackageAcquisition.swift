@@ -107,6 +107,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case workspaceFailed(String)
     case untrustedSourceURL(String)
     case customMapNotConfirmed(String)
+    /// A local IMG larger than one file on the watch's FAT32 storage can hold.
+    case customMapTooLarge(filename: String)
     /// The Mac's volume cannot hold the download and its extraction.
     case insufficientMacStorage(requiredBytes: UInt64?)
 
@@ -158,6 +160,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map provider address could not be verified. Refresh the catalog and try again."
         case .customMapNotConfirmed(let message):
             return message
+        case .customMapTooLarge(let filename):
+            return "\(filename) is larger than 4 GB, the largest map file a Garmin watch can store. Choose a smaller map."
         case .insufficientMacStorage(let requiredBytes):
             return MacStorageCheck.userMessage(requiredBytes: requiredBytes)
         }
@@ -200,7 +204,7 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map provider address is not in Terento's reviewed HTTPS source list. Refresh the catalog and try again."
         case .customMapNotConfirmed(let message):
             return message
-        case .insufficientMacStorage:
+        case .customMapTooLarge, .insufficientMacStorage:
             return userMessage
         }
     }
@@ -1490,6 +1494,8 @@ struct CustomMapImportCandidate: Identifiable, Equatable, Sendable {
 struct CustomMapSourceAcquirer: Sendable {
     private static let customProviderID = "custom"
     private static let fallbackVersion = MapVersion(year: 2000, month: 1)!
+    /// FAT32, used by Garmin watch storage, holds files up to 4 GiB - 1 byte.
+    static let maximumMapFileBytes: UInt64 = 4_294_967_295
     private let workspaceFactory: @Sendable () throws -> MapAcquisitionWorkspace
 
     init(
@@ -1600,7 +1606,7 @@ struct CustomMapSourceAcquirer: Sendable {
 
         let values: URLResourceValues
         do {
-            values = try fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            values = try fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
         } catch {
             throw MapAcquisitionError.invalidPackage(
                 "The selected file could not be inspected safely."
@@ -1613,6 +1619,10 @@ struct CustomMapSourceAcquirer: Sendable {
             throw MapAcquisitionError.invalidPackage(
                 "The selected file is not a readable regular file."
             )
+        }
+        // Checked before copying: such a file can never be written to the watch.
+        if let size = values.fileSize, UInt64(size) > Self.maximumMapFileBytes {
+            throw MapAcquisitionError.customMapTooLarge(filename: fileURL.lastPathComponent)
         }
     }
 
@@ -2166,7 +2176,7 @@ struct MapPackageAcquirer: Sendable {
              .providerSourceUpdated, .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
              .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound,
              .ambiguousIMG, .workspaceFailed, .untrustedSourceURL,
-             .customMapNotConfirmed, .insufficientMacStorage:
+             .customMapNotConfirmed, .customMapTooLarge, .insufficientMacStorage:
             return false
         }
     }

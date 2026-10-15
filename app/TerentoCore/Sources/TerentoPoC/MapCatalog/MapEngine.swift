@@ -2483,7 +2483,7 @@ final class MapEngine: ObservableObject {
         case .unsupportedPackageFormat, .invalidPackage, .providerSourceUpdated, .sourceIdentityMismatch,
              .sourceVersionMismatch, .noIMGFound, .ambiguousIMG:
             return (.sourceValidation, .sourceValidationFailed)
-        case .customMapNotConfirmed:
+        case .customMapNotConfirmed, .customMapTooLarge:
             return (.sourceValidation, .sourceValidationFailed)
         }
     }

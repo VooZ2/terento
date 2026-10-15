@@ -16,12 +16,13 @@ struct Stage2CustomMapImportTests {
         testRawIMGIsPreparedAsCustomSource()
         testNonIMGContentIsRejectedWithConfirmationWarning()
         testNonRegularFileIsRejected()
+        testOversizedCustomIMGIsRejectedBeforeCopy()
         testUnchangedCachedCustomIMGIsRevalidated()
         testCachedCustomIMGIsRevalidatedBeforeInstall()
         testCustomArtifactPassesSharedArtifactGate()
         testCustomManifestRecordRestoresOwnership()
         testCustomLifecycleHasRemoveButNoUpdate()
-        print("PASS: 8 Stage 2 custom map import tests")
+        print("PASS: 9 Stage 2 custom map import tests")
     }
 
     private static func testRawIMGIsPreparedAsCustomSource() {
@@ -79,6 +80,33 @@ struct Stage2CustomMapImportTests {
             expect(true, "symbolic link input is rejected before content preparation")
         } catch {
             fail("symbolic link input should be rejected as an invalid file: \(error)")
+        }
+    }
+
+    private static func testOversizedCustomIMGIsRejectedBeforeCopy() {
+        let fixture = makeFixture(name: "oversized")
+        defer { cleanup(fixture.root) }
+        do {
+            let handle = try FileHandle(forWritingTo: fixture.file)
+            try handle.truncate(atOffset: CustomMapSourceAcquirer.maximumMapFileBytes + 1)
+            try handle.close()
+        } catch {
+            fail("sparse oversized fixture should be created: \(error)")
+        }
+
+        do {
+            _ = try acquirer(root: fixture.root).prepare(fileURL: fixture.file)
+            fail("an IMG larger than the FAT32 file limit must not be accepted")
+        } catch let error as MapAcquisitionError {
+            guard case .customMapTooLarge = error else {
+                fail("oversized IMG should use the too-large error: \(error)")
+            }
+            expect(
+                error.userMessage.contains("larger than 4 GB"),
+                "oversized custom IMG is rejected before copying with a clear message"
+            )
+        } catch {
+            fail("oversized IMG should use the too-large error: \(error)")
         }
     }
 

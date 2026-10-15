@@ -197,7 +197,7 @@ enum TroubleshootingHelp {
             return .providerDownloadFailed
         case .invalidPackage, .providerSourceUpdated, .extractionFailed, .unsupportedPackageFormat,
              .unsafeArchivePath, .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound, .ambiguousIMG,
-             .customMapNotConfirmed:
+             .customMapNotConfirmed, .customMapTooLarge:
             return .downloadedMapRejected
         case .workspaceFailed, .insufficientMacStorage:
             return .macStorageFull

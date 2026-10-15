@@ -208,7 +208,7 @@ private final class SafeUpdateAcquisitionObserver: @unchecked Sendable {
         case .extractionFailed, .unsafeArchivePath:
             return .extract
         case .invalidPackage, .providerSourceUpdated, .unsupportedPackageFormat, .sourceIdentityMismatch,
-             .sourceVersionMismatch, .noIMGFound, .ambiguousIMG, .customMapNotConfirmed:
+             .sourceVersionMismatch, .noIMGFound, .ambiguousIMG, .customMapNotConfirmed, .customMapTooLarge:
             return .sourceValidation
         case .workspaceFailed, .acquisitionWithheld, .insufficientMacStorage:
             return .preflight
