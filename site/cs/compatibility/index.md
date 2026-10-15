@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**30** modely s úspěšnými instalacemi**228** úspěšných instalacíPoslední úspěšná instalace 14. října 2026
+**30** modely s úspěšnými instalacemi**230** úspěšných instalacíPoslední úspěšná instalace 15. října 2026
 
 Jak tento seznam funguje
 
@@ -47,6 +47,18 @@ App 20
 
 Poslední úspěšná instalace 10. října 2026
 
+Forerunner
+
+### Forerunner 965
+
+Historical
+
+18 úspěšných instalací
+
+App 16 Web 2
+
+Poslední úspěšná instalace 15. října 2026
+
 fēnix
 
 ### fēnix 9 Pro
@@ -58,18 +70,6 @@ fēnix
 App 17
 
 Poslední úspěšná instalace 11. října 2026
-
-Forerunner
-
-### Forerunner 965
-
-Historical
-
-16 úspěšných instalací
-
-App 14 Web 2
-
-Poslední úspěšná instalace 12. října 2026
 
 fēnix
 
