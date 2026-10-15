@@ -442,7 +442,13 @@ a download start without a received outcome is not proof of a failed download.
   a 200, changed validator, size or host, 416 or malformed range restarts from
   zero. BBBike source-proof downloads are not resumed. Final size, identity,
   version and SHA-256 validation is unchanged; quitting removes partial files and
-  the launch scavenger removes stale ones.
+  the launch scavenger removes stale ones. A dropped, stalled or offline
+  connection (timeout, connection lost, no internet, host unreachable) is retried
+  automatically after 2, 5 and 15 seconds, resuming the same way, before the
+  error is shown; HTTP answers, validation failures, a full Mac and cancellation
+  are never retried. A failed download sends a coarse `failureReason` with its
+  DOWNLOAD_FAILED map event (for example `TIMED_OUT`, `OFFLINE`,
+  `PROVIDER_SERVER_ERROR`, `SOURCE_INVALID`; see `contracts/map-event.schema.json`).
 - **Time left.** "About N min left" is shown only for measured phases (download,
   device write, read-back, Update/Remove content checks) after a 5-second, 2 %
   warm-up, from a smoothed measured rate; it disappears after 15 seconds without

@@ -1318,7 +1318,7 @@ struct Stage1ProviderNeutralTests {
             let configuration = URLSessionConfiguration.ephemeral
             configuration.protocolClasses = [TimeoutDownloadProtocol.self]
             return configuration
-        })
+        }, automaticRetryDelays: [])
         do {
             _ = try await MapPackageAcquirer(downloadClient: downloader).acquire(package: makePackage(),
                 workspace: MapAcquisitionWorkspace(rootURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))

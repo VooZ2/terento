@@ -143,12 +143,17 @@ struct DownloadResumeTests {
         await testRedirectToAnotherHostNeverResumes()
         await testIneligibleResponsesKeepNothing()
         await testWeakETagAndLastModified()
+        await testDroppedConnectionResumesAutomatically()
+        await testAutomaticRetriesStopAfterTheLastDelay()
+        testOnlyConnectionFailuresRetryAutomatically()
         testStoreLifetimeAndPurge()
         testContentRangeParsing()
         print("PASS: resumable provider downloads (Range/If-Range, validators, restart and host rules)")
     }
 
-    static func client(_ store: MapDownloadResumeStore) -> FoundationMapPackageDownloadClient {
+    /// Manual Try again scenarios run without automatic retries.
+    static func client(_ store: MapDownloadResumeStore, retryDelays: [TimeInterval] = [],
+                       sleeps: SleepLog? = nil) -> FoundationMapPackageDownloadClient {
         FoundationMapPackageDownloadClient(
             sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry(policies: [
                 "freizeitkarte": ReviewedProviderURLPolicy(allowedHosts: ["resume.example", "mirror.example"])
@@ -158,7 +163,9 @@ struct DownloadResumeTests {
                 configuration.protocolClasses = [ResumableServerProtocol.self]
                 return configuration
             },
-            resumeStore: store)
+            resumeStore: store,
+            automaticRetryDelays: retryDelays,
+            sleep: { sleeps?.append($0) })
     }
 
     static func package(url: URL = sourceURL) -> MapPackage {
@@ -168,9 +175,11 @@ struct DownloadResumeTests {
     }
 
     @discardableResult
-    static func attempt(_ store: MapDownloadResumeStore, progress: ProgressLog? = nil) async -> Result<Data, Error> {
+    static func attempt(_ store: MapDownloadResumeStore, progress: ProgressLog? = nil,
+                        retryDelays: [TimeInterval] = [], sleeps: SleepLog? = nil) async -> Result<Data, Error> {
         do {
-            let response = try await client(store).download(package: package(), onProgress: {
+            let response = try await client(store, retryDelays: retryDelays, sleeps: sleeps)
+                .download(package: package(), onProgress: {
                 ResumableServerProtocol.noteDelivered($0.bytesDownloaded)
                 progress?.append($0)
             })
@@ -287,6 +296,52 @@ struct DownloadResumeTests {
             "Last-Modified is used as If-Range when there is no strong ETag")
     }
 
+    static func testDroppedConnectionResumesAutomatically() async {
+        let store = MapDownloadResumeStore()
+        let sleeps = SleepLog()
+        ResumableServerProtocol.configure(.init(body: body, failAfter: [6 * 1024 * 1024]))
+        guard case .success(let data) = await attempt(store, retryDelays: [7, 11], sleeps: sleeps) else {
+            return fail("a dropped connection is resumed without Try again")
+        }
+        let requests = ResumableServerProtocol.requests
+        expect(data == body && requests.count == 2 && requests[1].range?.hasPrefix("bytes=") == true
+            && requests[1].ifRange == "\"v1\"" && sleeps.values == [7],
+            "a dropped connection waits the first delay and resumes from the kept bytes automatically")
+        expect(store.count == 0, "an automatically resumed download leaves no partial entry")
+    }
+
+    static func testAutomaticRetriesStopAfterTheLastDelay() async {
+        let store = MapDownloadResumeStore()
+        let sleeps = SleepLog()
+        ResumableServerProtocol.configure(.init(body: body, failAfter: [3 * 1024 * 1024, 1024 * 1024, 1024 * 1024]))
+        guard case .failure(let error) = await attempt(store, retryDelays: [1, 2], sleeps: sleeps) else {
+            return fail("retries are bounded")
+        }
+        let requests = ResumableServerProtocol.requests
+        expect((error as? URLError)?.code == .networkConnectionLost && requests.count == 3 && sleeps.values == [1, 2],
+            "after the last automatic retry the connection error is reported unchanged")
+        expect(requests.dropFirst().allSatisfy { $0.range != nil } && store.count == 1,
+            "every automatic retry resumes, and the partial file stays for a manual Try again")
+        guard case .success(let data) = await attempt(store) else { return fail("Try again after retries") }
+        expect(data == body, "Try again after exhausted retries completes the exact file")
+    }
+
+    static func testOnlyConnectionFailuresRetryAutomatically() {
+        for code in [URLError.Code.timedOut, .networkConnectionLost, .notConnectedToInternet,
+                     .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed] {
+            expect(FoundationMapPackageDownloadClient.isRetryableConnectionFailure(URLError(code)),
+                "\(code.rawValue) is retried automatically")
+        }
+        let final: [Error] = [URLError(.cancelled), URLError(.secureConnectionFailed), CancellationError(),
+                              MapAcquisitionError.providerUnavailable(providerId: "freizeitkarte", statusCode: 503),
+                              MapAcquisitionError.insufficientMacStorage(requiredBytes: nil),
+                              MapAcquisitionError.invalidPackage("bad")]
+        expect(!final.contains(where: FoundationMapPackageDownloadClient.isRetryableConnectionFailure),
+            "cancellation, TLS, HTTP, storage and validation failures are never retried automatically")
+        expect(FoundationMapPackageDownloadClient.defaultAutomaticRetryDelays == [2, 5, 15],
+            "the app retries a dropped download three times before reporting it")
+    }
+
     static func testStoreLifetimeAndPurge() {
         let clock = Clock()
         let store = MapDownloadResumeStore(now: { clock.now })
@@ -344,6 +399,13 @@ final class ProgressLog: @unchecked Sendable {
     private var stored: [MapDownloadProgress] = []
     func append(_ value: MapDownloadProgress) { lock.withLock { stored.append(value) } }
     var values: [MapDownloadProgress] { lock.withLock { stored } }
+}
+
+final class SleepLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [TimeInterval] = []
+    func append(_ value: TimeInterval) { lock.withLock { stored.append(value) } }
+    var values: [TimeInterval] { lock.withLock { stored } }
 }
 
 final class Clock: @unchecked Sendable {

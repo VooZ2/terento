@@ -53,6 +53,9 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
     let timestamp: Date
     let appBuild: String
     let releaseLabel: String
+    /// DOWNLOAD_FAILED only: a `MapDownloadFailureReason` raw value. Kept as
+    /// text so this payload model stays independent of the acquisition code.
+    let failureReason: String?
 
     init(
         id: UUID = UUID(),
@@ -93,14 +96,16 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         self.timestamp = timestamp
         self.appBuild = String(appBuild.prefix(80))
         self.releaseLabel = String(releaseLabel.prefix(80))
+        failureReason = nil
     }
 
     /// Derive a phase from the immutable start, preserving package/build identity.
-    func phase(_ type: MapStatisticsEventType, at timestamp: Date = Date()) -> Self {
-        Self(start: self, type: type, timestamp: timestamp)
+    /// A failure reason is kept only on DOWNLOAD_FAILED.
+    func phase(_ type: MapStatisticsEventType, at timestamp: Date = Date(), failureReason: String? = nil) -> Self {
+        Self(start: self, type: type, timestamp: timestamp, failureReason: failureReason)
     }
 
-    private init(start: Self, type: MapStatisticsEventType, timestamp: Date) {
+    private init(start: Self, type: MapStatisticsEventType, timestamp: Date, failureReason: String?) {
         schemaVersion = start.schemaVersion
         id = UUID()
         operationId = start.operationId
@@ -116,6 +121,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         self.timestamp = timestamp
         appBuild = start.appBuild
         releaseLabel = start.releaseLabel
+        self.failureReason = type == .downloadFailed ? failureReason : nil
     }
 
     private static func optionalSafeIdentifier(_ value: String) -> String? {

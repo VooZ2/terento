@@ -210,6 +210,71 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     }
 }
 
+/// Why a map download failed, sent with DOWNLOAD_FAILED map events
+/// (contracts/map-event.schema.json `failureReason`). Coarse by design: no
+/// provider text, URL or local path.
+enum MapDownloadFailureReason: String, Codable, Sendable, CaseIterable {
+    case timedOut = "TIMED_OUT"
+    case connectionLost = "CONNECTION_LOST"
+    case offline = "OFFLINE"
+    case cannotConnect = "CANNOT_CONNECT"
+    case networkError = "NETWORK_ERROR"
+    case providerRefused = "PROVIDER_REFUSED"
+    case providerRateLimited = "PROVIDER_RATE_LIMITED"
+    case providerNotFound = "PROVIDER_NOT_FOUND"
+    case providerServerError = "PROVIDER_SERVER_ERROR"
+    case incomplete = "INCOMPLETE"
+    case sourceUpdated = "SOURCE_UPDATED"
+    case sourceInvalid = "SOURCE_INVALID"
+    case macStorage = "MAC_STORAGE"
+    case other = "OTHER"
+
+    init(_ error: Error) {
+        if let error = error as? URLError {
+            self.init(code: error.code)
+            return
+        }
+        guard let error = error as? MapAcquisitionError else {
+            self = MacStorageCheck.isOutOfSpace(error) ? .macStorage : .other
+            return
+        }
+        switch error {
+        case .providerConnectionFailed(_, let code):
+            self.init(code: code)
+        case .providerUnavailable(_, let status):
+            switch status {
+            case 401, 403: self = .providerRefused
+            case 404, 410: self = .providerNotFound
+            case 429: self = .providerRateLimited
+            case .some(500...599), .none: self = .providerServerError
+            default: self = .other
+            }
+        case .downloadIncomplete:
+            self = .incomplete
+        case .providerSourceUpdated:
+            self = .sourceUpdated
+        case .invalidPackage, .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
+             .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound, .ambiguousIMG:
+            self = .sourceInvalid
+        case .insufficientMacStorage, .workspaceFailed:
+            self = .macStorage
+        case .acquisitionWithheld, .downloadFailed, .untrustedSourceURL,
+             .customMapNotConfirmed, .customMapTooLarge:
+            self = .other
+        }
+    }
+
+    private init(code: URLError.Code) {
+        switch code {
+        case .timedOut: self = .timedOut
+        case .networkConnectionLost: self = .connectionLost
+        case .notConnectedToInternet: self = .offline
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed: self = .cannotConnect
+        default: self = .networkError
+        }
+    }
+}
+
 /// Mac-side storage for downloads. A download needs room for the package,
 /// its extraction and the validated map, so about 2.5 times its size is
 /// required before the download starts.
@@ -892,17 +957,38 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
     private let directSourcePolicy: ReviewedProviderURLPolicy?
     private let sessionConfiguration: @Sendable () -> URLSessionConfiguration
     private let resumeStore: MapDownloadResumeStore?
+    private let automaticRetryDelays: [TimeInterval]
+    private let sleep: @Sendable (TimeInterval) async throws -> Void
+
+    /// A dropped or stalled connection is retried after each delay in
+    /// `automaticRetryDelays`, continuing from the kept partial file when the
+    /// provider allows it; the error is reported only after the last retry.
+    static let defaultAutomaticRetryDelays: [TimeInterval] = [2, 5, 15]
 
     init(
         sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry = .bundled,
         sourcePolicy: ReviewedProviderURLPolicy? = nil,
         sessionConfiguration: @escaping @Sendable () -> URLSessionConfiguration = { .ephemeral },
-        resumeStore: MapDownloadResumeStore? = .shared
+        resumeStore: MapDownloadResumeStore? = .shared,
+        automaticRetryDelays: [TimeInterval] = FoundationMapPackageDownloadClient.defaultAutomaticRetryDelays,
+        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        }
     ) {
         self.sourcePolicyRegistry = sourcePolicyRegistry
         self.directSourcePolicy = sourcePolicy
         self.sessionConfiguration = sessionConfiguration
         self.resumeStore = resumeStore
+        self.automaticRetryDelays = automaticRetryDelays
+        self.sleep = sleep
+    }
+
+    /// Connection failures worth retrying without the user; HTTP answers,
+    /// validation failures and a full Mac are never retried automatically.
+    static func isRetryableConnectionFailure(_ error: Error) -> Bool {
+        guard let error = error as? URLError else { return false }
+        return [.timedOut, .networkConnectionLost, .notConnectedToInternet, .cannotConnectToHost,
+                .cannotFindHost, .dnsLookupFailed].contains(error.code)
     }
 
     func download(from url: URL) async throws -> MapPackageDownloadResponse {
@@ -952,6 +1038,27 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         resumeKey: MapDownloadResumeKey? = nil
     ) async throws -> MapPackageDownloadResponse {
         try sourcePolicy.validate(url)
+        var remainingDelays = automaticRetryDelays[...]
+        while true {
+            do {
+                return try await downloadOnce(from: url, policy: sourcePolicy, onProgress: onProgress,
+                                              sourceProof: sourceProof, resumeKey: resumeKey)
+            } catch {
+                guard Self.isRetryableConnectionFailure(error), let delay = remainingDelays.popFirst() else {
+                    throw error
+                }
+                try await sleep(delay)
+            }
+        }
+    }
+
+    private func downloadOnce(
+        from url: URL,
+        policy sourcePolicy: ReviewedProviderURLPolicy,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?,
+        sourceProof: BBBikeSourceProof?,
+        resumeKey: MapDownloadResumeKey?
+    ) async throws -> MapPackageDownloadResponse {
         // BBBike downloads are bound to an exact source proof and are not resumed.
         let key = sourceProof == nil ? resumeKey : nil
         if let key, let store = resumeStore, let partial = store.take(key) {
