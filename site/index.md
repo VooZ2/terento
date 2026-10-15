@@ -3,7 +3,7 @@ title: "Terento — Third-Party Maps for Garmin on Mac"
 canonical: https://terento.app/
 ---
 
-Open-source project · Beta
+Open-source project
 
 # Install maps on Garmin watches, simply
 

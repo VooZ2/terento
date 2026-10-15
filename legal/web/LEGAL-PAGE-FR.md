@@ -6,7 +6,7 @@ Terento est une application macOS gratuite et open source pour installer et gér
 
 Terento est un projet indépendant publié par un particulier. Découvrez son créateur sur la page [À propos](/fr/about/). Contact : [hello@terento.app](mailto:hello@terento.app).
 
-L’application est une bêta publique pour Mac avec Apple Silicon. L’installateur web est aussi une bêta et nécessite Google Chrome, Microsoft Edge, Opera ou Brave sur un Mac ou un ordinateur Linux. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
+L’application est destinée aux Mac avec Apple Silicon. L’installateur web est une bêta et nécessite Google Chrome, Microsoft Edge, Opera ou Brave sur un Mac ou un ordinateur Linux. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
 
 ## Licences du logiciel et des composants tiers
 
@@ -26,9 +26,9 @@ Terento ne crée pas ces cartes, ne change pas leurs licences, n’héberge pas 
 
 Garmin et ses noms de produits sont des marques de Garmin Ltd. Apple, Mac, macOS et Apple Silicon sont des marques d’Apple Inc. Google et Chrome sont des marques de Google LLC. Microsoft et Edge sont des marques de Microsoft Corporation. Opera est une marque d’Opera Norway AS. Brave est une marque de Brave Software, Inc. Leur utilisation est descriptive. Terento n’est affilié à aucune de ces sociétés et n’est ni approuvé ni certifié par elles.
 
-## Bêta et vos droits
+## Garantie et vos droits
 
-Une bêta peut contenir des erreurs affectant les cartes, le fonctionnement de l’appareil ou les données. Dans la mesure permise par la loi, le logiciel est fourni sans garantie, comme indiqué dans sa licence.
+Le logiciel peut contenir des erreurs affectant les cartes, le fonctionnement de l’appareil ou les données. Dans la mesure permise par la loi, le logiciel est fourni sans garantie, comme indiqué dans sa licence.
 
 Aucune mention n’exclut ni ne limite une responsabilité lorsque la loi l’interdit, notamment en cas de faute intentionnelle ou lourde. Vos droits impératifs au titre du droit lituanien et européen restent inchangés.
 

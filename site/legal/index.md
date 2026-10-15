@@ -11,7 +11,7 @@ Terento is a free, open-source macOS app for installing and managing third-party
 
 Terento is an independent project published by a private individual. Meet the maker on the [About page](https://terento.app/about/). Contact: [hello@terento.app](mailto:hello@terento.app).
 
-The app is a Public beta for Apple Silicon Macs. The web installer is also a beta and needs Google Chrome, Microsoft Edge, Opera or Brave on a Mac or Linux computer. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](https://terento.app/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
+The app is for Apple Silicon Macs. The web installer is a beta and needs Google Chrome, Microsoft Edge, Opera or Brave on a Mac or Linux computer. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](https://terento.app/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
 
 ## Software and third-party licences
 
@@ -31,9 +31,9 @@ Terento does not create or relicense these maps, host a map library or mirror pr
 
 Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS and Apple Silicon are trademarks of Apple Inc. Google and Chrome are trademarks of Google LLC. Microsoft and Edge are trademarks of Microsoft Corporation. Opera is a trademark of Opera Norway AS. Brave is a trademark of Brave Software, Inc. They are used descriptively. Terento is not affiliated with, endorsed or certified by any of these companies.
 
-## Beta software and your rights
+## Warranty and your rights
 
-Beta software may contain errors, including errors affecting maps, device operation or data. To the extent permitted by applicable law, the software is provided without warranty as described in its licence.
+The software may contain errors, including errors affecting maps, device operation or data. To the extent permitted by applicable law, the software is provided without warranty as described in its licence.
 
 No notice here excludes or limits liability where the law prohibits that exclusion or limitation, including liability for intent or gross negligence. Your mandatory rights under Lithuanian and EU law remain unaffected.
 
@@ -51,7 +51,7 @@ Terento ist eine kostenlose, quelloffene macOS-App zum Installieren und Verwalte
 
 Terento ist ein unabhängiges Projekt einer Privatperson. Mehr über den Entwickler erfährst du unter [Über uns](https://terento.app/de/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Die App ist eine Public beta für Macs mit Apple Silicon. Der Web-Installer ist ebenfalls eine Beta und braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](https://terento.app/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
+Die App ist für Macs mit Apple Silicon. Der Web-Installer ist eine Beta und braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](https://terento.app/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
 
 ## Software und Drittanbieter-Lizenzen
 
@@ -71,9 +71,9 @@ Terento erstellt oder lizenziert diese Karten nicht neu, betreibt keine Kartenbi
 
 Garmin und seine Produktnamen sind Marken von Garmin Ltd. Apple, Mac, macOS und Apple Silicon sind Marken von Apple Inc. Google und Chrome sind Marken von Google LLC. Microsoft und Edge sind Marken der Microsoft Corporation. Opera ist eine Marke von Opera Norway AS. Brave ist eine Marke von Brave Software, Inc. Die Namen werden beschreibend verwendet. Terento ist mit keinem dieser Unternehmen verbunden und wird von ihnen weder unterstützt noch zertifiziert.
 
-## Betasoftware und deine Rechte
+## Gewährleistung und deine Rechte
 
-Betasoftware kann Fehler enthalten, die Karten, Gerätefunktionen oder Daten beeinträchtigen. Soweit gesetzlich zulässig, wird die Software ohne Gewährleistung gemäß ihrer Lizenz bereitgestellt.
+Die Software kann Fehler enthalten, die Karten, Gerätefunktionen oder Daten beeinträchtigen. Soweit gesetzlich zulässig, wird die Software ohne Gewährleistung gemäß ihrer Lizenz bereitgestellt.
 
 Diese Hinweise schließen keine Haftung aus und begrenzen sie nicht, soweit das Gesetz dies untersagt, insbesondere bei Vorsatz oder grober Fahrlässigkeit. Deine zwingenden Rechte nach litauischem und EU-Recht bleiben unberührt.
 
@@ -91,7 +91,7 @@ Terento est une application macOS gratuite et open source pour installer et gér
 
 Terento est un projet indépendant publié par un particulier. Découvrez son créateur sur la page [À propos](https://terento.app/fr/about/). Contact : [hello@terento.app](mailto:hello@terento.app).
 
-L’application est une bêta publique pour Mac avec Apple Silicon. L’installateur web est aussi une bêta et nécessite Google Chrome, Microsoft Edge, Opera ou Brave sur un Mac ou un ordinateur Linux. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](https://terento.app/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
+L’application est destinée aux Mac avec Apple Silicon. L’installateur web est une bêta et nécessite Google Chrome, Microsoft Edge, Opera ou Brave sur un Mac ou un ordinateur Linux. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](https://terento.app/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
 
 ## Licences du logiciel et des composants tiers
 
@@ -111,9 +111,9 @@ Terento ne crée pas ces cartes, ne change pas leurs licences, n’héberge pas 
 
 Garmin et ses noms de produits sont des marques de Garmin Ltd. Apple, Mac, macOS et Apple Silicon sont des marques d’Apple Inc. Google et Chrome sont des marques de Google LLC. Microsoft et Edge sont des marques de Microsoft Corporation. Opera est une marque d’Opera Norway AS. Brave est une marque de Brave Software, Inc. Leur utilisation est descriptive. Terento n’est affilié à aucune de ces sociétés et n’est ni approuvé ni certifié par elles.
 
-## Bêta et vos droits
+## Garantie et vos droits
 
-Une bêta peut contenir des erreurs affectant les cartes, le fonctionnement de l’appareil ou les données. Dans la mesure permise par la loi, le logiciel est fourni sans garantie, comme indiqué dans sa licence.
+Le logiciel peut contenir des erreurs affectant les cartes, le fonctionnement de l’appareil ou les données. Dans la mesure permise par la loi, le logiciel est fourni sans garantie, comme indiqué dans sa licence.
 
 Aucune mention n’exclut ni ne limite une responsabilité lorsque la loi l’interdit, notamment en cas de faute intentionnelle ou lourde. Vos droits impératifs au titre du droit lituanien et européen restent inchangés.
 
@@ -131,7 +131,7 @@ Terento to bezpłatna aplikacja macOS o otwartym kodzie do instalowania i zarzą
 
 Terento to niezależny projekt publikowany przez osobę prywatną. Poznaj twórcę na stronie [O projekcie](https://terento.app/pl/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikacja jest publiczną wersją beta dla komputerów Mac z Apple Silicon. Instalator webowy też jest wersją beta i wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](https://terento.app/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
+Aplikacja jest przeznaczona dla komputerów Mac z Apple Silicon. Instalator webowy jest wersją beta i wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](https://terento.app/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
 
 ## Licencje oprogramowania i komponentów
 
@@ -151,9 +151,9 @@ Terento nie tworzy tych map, nie zmienia ich licencji, nie prowadzi biblioteki m
 
 Garmin i nazwy jego produktów są znakami Garmin Ltd. Apple, Mac, macOS i Apple Silicon są znakami Apple Inc. Google i Chrome są znakami Google LLC. Microsoft i Edge są znakami Microsoft Corporation. Opera jest znakiem Opera Norway AS. Brave jest znakiem Brave Software, Inc. Używamy ich opisowo. Terento nie jest powiązane z tymi firmami ani przez nie zatwierdzone lub certyfikowane.
 
-## Wersja beta i Twoje prawa
+## Gwarancja i Twoje prawa
 
-Wersja beta może zawierać błędy wpływające na mapy, działanie urządzenia lub dane. W zakresie dozwolonym prawem oprogramowanie jest dostarczane bez gwarancji, zgodnie z licencją.
+Oprogramowanie może zawierać błędy wpływające na mapy, działanie urządzenia lub dane. W zakresie dozwolonym prawem oprogramowanie jest dostarczane bez gwarancji, zgodnie z licencją.
 
 Żadna informacja nie wyłącza ani nie ogranicza odpowiedzialności, gdy prawo tego zabrania, w tym za winę umyślną lub rażące niedbalstwo. Twoje bezwzględnie obowiązujące prawa wynikające z prawa litewskiego i unijnego pozostają nienaruszone.
 
@@ -171,7 +171,7 @@ Terento je bezplatná aplikace macOS s otevřeným zdrojovým kódem pro instala
 
 Terento je nezávislý projekt vydávaný soukromou osobou. Tvůrce najdete na stránce [O projektu](https://terento.app/cs/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikace je veřejná beta pro Macy s Apple Silicon. Webový instalátor je také beta a vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](https://terento.app/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
+Aplikace je určena pro Macy s Apple Silicon. Webový instalátor je beta a vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](https://terento.app/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
 
 ## Licence softwaru a dalších součástí
 
@@ -191,9 +191,9 @@ Terento tyto mapy nevytváří, nemění jejich licence, neprovozuje knihovnu ma
 
 Garmin a názvy jeho produktů jsou ochranné známky Garmin Ltd. Apple, Mac, macOS a Apple Silicon jsou ochranné známky Apple Inc. Google a Chrome jsou ochranné známky Google LLC. Microsoft a Edge jsou ochranné známky Microsoft Corporation. Opera je ochranná známka Opera Norway AS. Brave je ochranná známka Brave Software, Inc. Používají se popisně. Terento není s těmito společnostmi spojeno ani jimi podporováno nebo certifikováno.
 
-## Beta a vaše práva
+## Záruka a vaše práva
 
-Beta může obsahovat chyby ovlivňující mapy, fungování zařízení nebo data. V rozsahu povoleném právem je software poskytován bez záruky, jak uvádí jeho licence.
+Software může obsahovat chyby ovlivňující mapy, fungování zařízení nebo data. V rozsahu povoleném právem je software poskytován bez záruky, jak uvádí jeho licence.
 
 Žádné oznámení nevylučuje ani neomezuje odpovědnost tam, kde to zákon zakazuje, včetně úmyslu nebo hrubé nedbalosti. Vaše kogentní práva podle litevského práva a práva EU zůstávají nedotčena.
 
@@ -211,7 +211,7 @@ Terento è un’app macOS gratuita e open source per installare e gestire mappe 
 
 Terento è un progetto indipendente pubblicato da un privato. Scopri l’autore nella pagina [Informazioni](https://terento.app/it/about/). Contatto: [hello@terento.app](mailto:hello@terento.app).
 
-L’app è una beta pubblica per Mac con Apple Silicon. Anche l’installer web è una beta e richiede Google Chrome, Microsoft Edge, Opera o Brave su un Mac o un computer Linux. La compatibilità viene valutata per ogni modello e variante esatta di orologio. Controlla la [compatibilità](https://terento.app/it/compatibility/) prima dell’uso. Le donazioni sono facoltative e non sbloccano funzioni, mappe o fornitori.
+L’app è per Mac con Apple Silicon. L’installer web è una beta e richiede Google Chrome, Microsoft Edge, Opera o Brave su un Mac o un computer Linux. La compatibilità viene valutata per ogni modello e variante esatta di orologio. Controlla la [compatibilità](https://terento.app/it/compatibility/) prima dell’uso. Le donazioni sono facoltative e non sbloccano funzioni, mappe o fornitori.
 
 ## Licenze del software e dei componenti
 
@@ -231,9 +231,9 @@ Terento non crea queste mappe, non ne cambia la licenza, non gestisce una librer
 
 Garmin e i nomi dei suoi prodotti sono marchi di Garmin Ltd. Apple, Mac, macOS e Apple Silicon sono marchi di Apple Inc. Google e Chrome sono marchi di Google LLC. Microsoft ed Edge sono marchi di Microsoft Corporation. Opera è un marchio di Opera Norway AS. Brave è un marchio di Brave Software, Inc. Sono usati a scopo descrittivo. Terento non è affiliato, approvato o certificato da nessuna di queste società.
 
-## Beta e diritti dell’utente
+## Garanzia e diritti dell’utente
 
-Il software beta può contenere errori che interessano mappe, funzionamento del dispositivo o dati. Nei limiti consentiti dalla legge, il software è fornito senza garanzia, come descritto nella licenza.
+Il software può contenere errori che interessano mappe, funzionamento del dispositivo o dati. Nei limiti consentiti dalla legge, il software è fornito senza garanzia, come descritto nella licenza.
 
 Nessuna nota esclude o limita la responsabilità quando la legge lo vieta, anche in caso di dolo o colpa grave. I diritti inderogabili previsti dal diritto lituano e dell’UE restano invariati.
 

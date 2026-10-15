@@ -6,7 +6,7 @@ Terento to bezpłatna aplikacja macOS o otwartym kodzie do instalowania i zarzą
 
 Terento to niezależny projekt publikowany przez osobę prywatną. Poznaj twórcę na stronie [O projekcie](/pl/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikacja jest publiczną wersją beta dla komputerów Mac z Apple Silicon. Instalator webowy też jest wersją beta i wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
+Aplikacja jest przeznaczona dla komputerów Mac z Apple Silicon. Instalator webowy jest wersją beta i wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
 
 ## Licencje oprogramowania i komponentów
 
@@ -26,9 +26,9 @@ Terento nie tworzy tych map, nie zmienia ich licencji, nie prowadzi biblioteki m
 
 Garmin i nazwy jego produktów są znakami Garmin Ltd. Apple, Mac, macOS i Apple Silicon są znakami Apple Inc. Google i Chrome są znakami Google LLC. Microsoft i Edge są znakami Microsoft Corporation. Opera jest znakiem Opera Norway AS. Brave jest znakiem Brave Software, Inc. Używamy ich opisowo. Terento nie jest powiązane z tymi firmami ani przez nie zatwierdzone lub certyfikowane.
 
-## Wersja beta i Twoje prawa
+## Gwarancja i Twoje prawa
 
-Wersja beta może zawierać błędy wpływające na mapy, działanie urządzenia lub dane. W zakresie dozwolonym prawem oprogramowanie jest dostarczane bez gwarancji, zgodnie z licencją.
+Oprogramowanie może zawierać błędy wpływające na mapy, działanie urządzenia lub dane. W zakresie dozwolonym prawem oprogramowanie jest dostarczane bez gwarancji, zgodnie z licencją.
 
 Żadna informacja nie wyłącza ani nie ogranicza odpowiedzialności, gdy prawo tego zabrania, w tym za winę umyślną lub rażące niedbalstwo. Twoje bezwzględnie obowiązujące prawa wynikające z prawa litewskiego i unijnego pozostają nienaruszone.
 

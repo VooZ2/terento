@@ -1,8 +1,5 @@
 # Terento v1.0.0 (build 44)
 
-<!-- DRAFT: unpublished; publish only after owner approval, notarization and the GitHub release. -->
-<!-- TODO: add the DMG SHA-256 comment after packaging. -->
-
 Terento 1.0.0 is the first stable release of the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
 This release contains the fixes from the release candidates and clearer messages when an installation stops. Installed beta and release-candidate builds are offered it by the in-app update check.
@@ -21,11 +18,14 @@ This release contains the fixes from the release candidates and clearer messages
 ## KNOWN ISSUES
 
 - Map Update has not yet been confirmed on a real watch for Freizeitkarte and OpenTopoMap maps.
-- The recovery fixes from rc.3, the connection messages from rc.2 and the faster Update checks from rc.1 have not yet been confirmed on a real watch.
+- The recovery fixes from rc.3 and the faster Update checks from rc.1 have not yet been confirmed on a real watch. Of the connection messages from rc.2, only the busy-watch message has been checked on a real watch.
 - Updating or removing a map installed with an earlier version still uses the full check and can stay at a high displayed percentage for a while before it finishes.
+- When MacDroid is using the watch, Terento shows the general "Your Garmin is busy" message without naming MacDroid. Quit MacDroid, then connect the watch again.
 - Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
 - A watch connected to a phone over Bluetooth may not connect over USB. Turn off Bluetooth on the phone, wait until the watch shows that the phone is disconnected, then connect the watch again ([issue #257](https://github.com/VooZ2/terento/issues/257)).
 - Garmin Edge devices remain outside the current supported scope. This release does not broaden device compatibility claims.
+
+<!-- DMG SHA-256: 1c2285c775a59925b5d7d9520e687e654944cc967ce234ba4bf0bbaf01e17fef -->
 
 # Terento v1.0.0-rc.3 (build 43)
 

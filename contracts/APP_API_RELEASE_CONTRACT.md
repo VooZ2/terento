@@ -1,15 +1,33 @@
 # App–API compatibility and release contract
 
-## Stable release 1.0.0 build 44 — staged
+## Stable release 1.0.0 build 44 — published
 
-Staged on the `stable` update channel; a stable build is offered stable
-releases only, and installed beta builds are offered it. It changes only app
-messages for an unopened watch session and a rebuilt BBBike map, and the
+Published on 2026-10-15 from GitHub-verified source
+`d6bd129eeac7e5f833bb0b17148453155fdb8c6d` (merge of PR #485), tag
+`v1.0.0-build44`, on the `stable` update channel; a stable build is offered
+stable releases only, and installed beta builds are offered it. It changes only
+app messages for an unopened watch session and a rebuilt BBBike map, and the
 bundled fallback catalog; it adds no API field, route, telemetry event or
 migration and keeps every rc.3 payload unchanged. The catalog API from its
-source revision is already deployed, so no further server deployment precedes
+source revision was already deployed, so no further server deployment preceded
 it. The API validates its labels as SemVer: `1.0.0` is stored as public and
 `1.0.0-local` as local test data.
+
+The full 94-runner packaging suite and PR CI passed, and the tagged source's
+decoder passed the live catalog contract on every route; the tag is listed in
+`contracts/released-catalog-clients.json`. Apple notarization was Accepted.
+Signing, stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner
+approved the release notes before publication. Real-watch evidence: the owner
+used a local build of the same app source for a BBBike installation and the
+busy-watch message; the deferred Freizeitkarte and OpenTopoMap Update gate is
+listed in KNOWN ISSUES.
+
+DMG: 7,485,026 bytes, SHA-256
+`1c2285c775a59925b5d7d9520e687e654944cc967ce234ba4bf0bbaf01e17fef`.
+ZIP: 6,734,425 bytes, SHA-256
+`be30e3f151bb5bb476d5f0da63fd296cc80fb168c7cf7fafdcca4b34fc812cb2`.
+GitHub asset digests and independently downloaded draft bytes match these
+values.
 
 ## Release candidate 1.0.0-rc.3 build 43 — published
 

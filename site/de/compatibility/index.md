@@ -19,7 +19,7 @@ Diese Liste basiert auf echten erfolgreichen Terento-Installationen, die Nutzer 
 
 Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind keine Garmin-Zertifizierung.
 
-Die aktuelle Beta umfasst vier Kartenanbieter. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
+Die aktuelle Version umfasst vier Kartenanbieter. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
 
 30 Modelle
 
