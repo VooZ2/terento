@@ -82,6 +82,22 @@
       "lastSuccessfulInstallation": "2026-10-04T22:03:29+00:00"
     },
     {
+      "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
+      "variant": "51 mm, AMOLED",
+      "caseSizeMm": 51,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "epix",
+      "familyName": "epix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02804-00/v/cf-lg.jpg",
+      "successfulInstallations": 10,
+      "appSuccessfulInstallations": 9,
+      "webSuccessfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-10-15T22:24:13+00:00"
+    },
+    {
       "model": "Forerunner 955 · Standard",
       "variant": "Standard",
       "caseSizeMm": null,
@@ -144,22 +160,6 @@
       "appSuccessfulInstallations": 7,
       "webSuccessfulInstallations": 1,
       "lastSuccessfulInstallation": "2026-10-13T00:32:36+00:00"
-    },
-    {
-      "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
-      "variant": "51 mm, AMOLED",
-      "caseSizeMm": 51,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "epix",
-      "familyName": "epix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02804-00/v/cf-lg.jpg",
-      "successfulInstallations": 7,
-      "appSuccessfulInstallations": 6,
-      "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-10-14T06:51:12+00:00"
     },
     {
       "model": "fēnix 8 · 51 mm, AMOLED",
@@ -482,5 +482,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-15T21:11:35.335021+00:00"
+  "generatedAt": "2026-10-16T04:05:09.220273+00:00"
 }
