@@ -11,7 +11,7 @@ Terento est conçu pour les montres Garmin prenant en charge les cartes. Vous tr
 
 L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
 
-**30** modèles avec des installations réussies**239** installations réussiesDernière installation réussie 16 octobre 2026
+**31** modèles avec des installations réussies**243** installations réussiesDernière installation réussie 16 octobre 2026
 
 Comment fonctionne cette liste
 
@@ -21,7 +21,7 @@ Les résultats d’installation sont partagés avec Terento par les utilisateurs
 
 La version actuelle comprend quatre fournisseurs de cartes. Cette information produit est distincte des résultats d’appareils présentés ici.
 
-30 modèles
+31 modèles
 
 fēnix
 
@@ -37,6 +37,18 @@ Dernière installation réussie 12 octobre 2026
 
 Forerunner
 
+### Forerunner 965
+
+Historical
+
+20 installations réussies
+
+App 18 Web 2
+
+Dernière installation réussie 16 octobre 2026
+
+Forerunner
+
 ### Forerunner 970
 
 AMOLED
@@ -46,18 +58,6 @@ AMOLED
 App 20
 
 Dernière installation réussie 10 octobre 2026
-
-Forerunner
-
-### Forerunner 965
-
-Historical
-
-18 installations réussies
-
-App 16 Web 2
-
-Dernière installation réussie 15 octobre 2026
 
 fēnix
 
@@ -299,6 +299,18 @@ App 3
 
 Dernière installation réussie 7 octobre 2026
 
+fēnix
+
+### fēnix 9 Pro
+
+47 mm, MIP, Solar
+
+3 installations réussies
+
+App 3
+
+Dernière installation réussie 16 octobre 2026
+
 Descent
 
 ### Descent Mk3i
@@ -335,17 +347,17 @@ App 2
 
 Dernière installation réussie 11 octobre 2026
 
-fēnix
+Enduro
 
-### fēnix 9 Pro
+### Enduro 4
 
-47 mm, MIP, Solar
+MIP, Solar
 
-2 installations réussies
+1 installation réussie
 
-App 2
+App 1
 
-Dernière installation réussie 15 octobre 2026
+Dernière installation réussie 16 octobre 2026
 
 fēnix
 

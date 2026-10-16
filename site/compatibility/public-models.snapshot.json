@@ -18,6 +18,22 @@
       "lastSuccessfulInstallation": "2026-10-12T08:39:53+00:00"
     },
     {
+      "model": "Forerunner 965 · Historical",
+      "variant": "Historical",
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "forerunner",
+      "familyName": "Forerunner",
+      "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
+      "successfulInstallations": 20,
+      "appSuccessfulInstallations": 18,
+      "webSuccessfulInstallations": 2,
+      "lastSuccessfulInstallation": "2026-10-16T19:06:29+00:00"
+    },
+    {
       "model": "Forerunner 970",
       "variant": null,
       "caseSizeMm": null,
@@ -32,22 +48,6 @@
       "appSuccessfulInstallations": 20,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-10T12:04:20+00:00"
-    },
-    {
-      "model": "Forerunner 965 · Historical",
-      "variant": "Historical",
-      "caseSizeMm": null,
-      "displayType": null,
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "forerunner",
-      "familyName": "Forerunner",
-      "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
-      "successfulInstallations": 18,
-      "appSuccessfulInstallations": 16,
-      "webSuccessfulInstallations": 2,
-      "lastSuccessfulInstallation": "2026-10-15T01:46:29+00:00"
     },
     {
       "model": "fēnix 9 Pro · 51 mm",
@@ -370,6 +370,22 @@
       "lastSuccessfulInstallation": "2026-10-07T19:58:02+00:00"
     },
     {
+      "model": "fēnix 9 Pro · Solar, 47 mm",
+      "variant": "Solar, 47 mm",
+      "caseSizeMm": 47,
+      "displayType": "Solar",
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04338-05/g/cf-lg.jpg",
+      "successfulInstallations": 3,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-16T12:42:44+00:00"
+    },
+    {
       "model": "Descent Mk3i · 51 mm",
       "variant": "51 mm",
       "caseSizeMm": 51,
@@ -418,20 +434,20 @@
       "lastSuccessfulInstallation": "2026-10-11T02:28:26+00:00"
     },
     {
-      "model": "fēnix 9 Pro · Solar, 47 mm",
-      "variant": "Solar, 47 mm",
-      "caseSizeMm": 47,
-      "displayType": "Solar",
+      "model": "Enduro 4",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
       "screenTechnology": "MIP",
       "solar": true,
       "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-04338-05/g/cf-lg.jpg",
-      "successfulInstallations": 2,
-      "appSuccessfulInstallations": 2,
+      "family": "enduro",
+      "familyName": "Enduro",
+      "imageUrl": "https://res.garmin.com/en/products/010-04799-00/g/cf-lg.jpg",
+      "successfulInstallations": 1,
+      "appSuccessfulInstallations": 1,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-15T16:52:15+00:00"
+      "lastSuccessfulInstallation": "2026-10-16T17:27:36+00:00"
     },
     {
       "model": "fēnix 9 Pro · 43mm",
@@ -482,5 +498,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-16T16:26:30.117858+00:00"
+  "generatedAt": "2026-10-16T20:49:18.602362+00:00"
 }
