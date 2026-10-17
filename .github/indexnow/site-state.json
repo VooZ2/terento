@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "260a054b75798d6221523c791e958e1ccae3ce87",
+    "commit": "7f861f11c7ab629601b7d963a932f00e31b4a42e",
     "pages": [
       {
         "path": "/",
@@ -10,8 +10,8 @@
         "file": "site/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "cc3670f54147e7b446ec2a01d5d2e5ff568fb3b5317453f9801a749bcc95be02",
-        "lastmod": "2026-10-15"
+        "fingerprint": "58b37d7547f2ce5af270785bba7a83f4d585b8792aeac1dda5440c1047ad2f07",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/about/",
@@ -37,8 +37,8 @@
         "file": "site/cs/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "a482ffee4f2698b69111ee899e862ddc3971fca07c1a7b8a76662349eb449d3a",
-        "lastmod": "2026-10-15"
+        "fingerprint": "0f0a0a36b5217780d5fcdcb79e196e1297ae1fe4b641400d775ee4e8d92047bf",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/cs/about/",
@@ -64,8 +64,8 @@
         "file": "site/cs/download/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "93fac6e05900ad770730befbe21b96923ed066b1cb5c5a88a28c33b8c66c87c6",
-        "lastmod": "2026-10-15"
+        "fingerprint": "4a05f46ec1cc088612e48fb39a6f6d5a95f3e964ff362edea564e2954746c97f",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/cs/guides/install-garmin-maps-mac/",
@@ -73,8 +73,8 @@
         "file": "site/cs/guides/install-garmin-maps-mac/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "301b665bbfb6006c381dce271b4bb76cb92d8073b8cff9e943e099e600d8dcdd",
-        "lastmod": "2026-10-15"
+        "fingerprint": "6cb68cc64ed251ef1bc18b50a8296b8036d397fe6675005b13245b7991688139",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/cs/guides/troubleshooting/",
@@ -100,8 +100,8 @@
         "file": "site/de/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "30b587d82a4ff56b603b463c08f52cd8661cac010b89b291c16d39d0a0e16aaa",
-        "lastmod": "2026-10-15"
+        "fingerprint": "4210430a67754f7d62b4959cc716b6e4df220001f254418117aacbbaf03d42dd",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/de/about/",
@@ -127,8 +127,8 @@
         "file": "site/de/download/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "b1887bc4aabee48b1c7e3774f12a4fa37a891c0786340eb049c30a3faf43951c",
-        "lastmod": "2026-10-15"
+        "fingerprint": "0ef5aa534fc156edfe159b935dfeabbbceb3f4475968fff8d84105c3c11ff251",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/de/guides/install-garmin-maps-mac/",
@@ -136,8 +136,8 @@
         "file": "site/de/guides/install-garmin-maps-mac/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "4ac9923471592abfca22037bc019cc399723a293cb460651c8d3a0c900f80808",
-        "lastmod": "2026-10-15"
+        "fingerprint": "10e09e3ac504549ef983e25b5f499e74485d7090ee4694b0133c5c0f611aad90",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/de/guides/troubleshooting/",
@@ -163,8 +163,8 @@
         "file": "site/download/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "9e6d2ab7b928c1a9de44d95ae948853ba80b6027deaeabdeecb31576e42784cd",
-        "lastmod": "2026-10-15"
+        "fingerprint": "f8c780d50d593108fd70c88cbfded7c9e82ceeede2cbea1bfacea72626f78551",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/fr/",
@@ -172,8 +172,8 @@
         "file": "site/fr/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "ebe80a4773c79d8c5d1fc08f464c8a81e9513795408e3fe7b4718744e44260dc",
-        "lastmod": "2026-10-15"
+        "fingerprint": "449482d2c1c90c63c9a34d19fed9d7bc834c3e7f6f97934549a377058c557195",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/fr/about/",
@@ -199,8 +199,8 @@
         "file": "site/fr/download/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "fcba58ce5db21135e721739091bdffe1efe657e7325eec8db2a3016b20806b34",
-        "lastmod": "2026-10-15"
+        "fingerprint": "be941bda360094e3beeffc83538f7086cba95bd9ed59bdb2380921ded1c3e221",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/fr/guides/install-garmin-maps-mac/",
@@ -208,8 +208,8 @@
         "file": "site/fr/guides/install-garmin-maps-mac/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "6fe96e3ec449bbc3c4234c77d70b015f16c33c9bca9f53d63d1474ce0eb0e5c4",
-        "lastmod": "2026-10-15"
+        "fingerprint": "53556c8f41290f986c538987fa0eb22f576b849139c9c03349c48b263388b84f",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/fr/guides/troubleshooting/",
@@ -235,8 +235,8 @@
         "file": "site/guides/install-garmin-maps-mac/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "0db1c32ee041128c1f07119efefc9e2ee45f794d3fd5e635f1ba261d4929670a",
-        "lastmod": "2026-10-15"
+        "fingerprint": "d708e1eff0919a4f78d06988a0bc6e3c29ac9e2308f3c2d17a9cb43eb5e6d8f4",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/guides/troubleshooting/",
@@ -253,8 +253,8 @@
         "file": "site/it/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "f8a4e962beb8dac652c7e4498a408919fc46f062634dd7f7d274e91345659862",
-        "lastmod": "2026-10-15"
+        "fingerprint": "0ece0d783c4dd32ba32707477bd174da5445df42279c89a0f31cd3ba3b6c1891",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/it/about/",
@@ -280,8 +280,8 @@
         "file": "site/it/download/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "cd0244eb48da1631bb1b8af610e480f29a738a584cb00f0be405eafc9d3106ac",
-        "lastmod": "2026-10-15"
+        "fingerprint": "ea06f0d9e6aa04daa307c0854b68939ec1238a673d796bc5567855a3b3ef8b77",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/it/guides/install-garmin-maps-mac/",
@@ -289,8 +289,8 @@
         "file": "site/it/guides/install-garmin-maps-mac/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "f856e3609cb40c4df7aaed084fbb988267310eeffb0204cd59e8fdde4668d8e7",
-        "lastmod": "2026-10-15"
+        "fingerprint": "8a9551880585dbe20ca575270fe7cd3aecb4a391401478e4897b285dc3bf5463",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/it/guides/troubleshooting/",
@@ -334,8 +334,8 @@
         "file": "site/pl/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "3245dbe4bc180db5af54ec00501fb02aebd3c882d2dd514ac818e78df8d39098",
-        "lastmod": "2026-10-15"
+        "fingerprint": "75973f476edc26a27c50ea32019c474f7db5a2f5151cf09938b61c27304ab730",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/pl/about/",
@@ -361,8 +361,8 @@
         "file": "site/pl/download/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "05c80195cf9bc2a0971c4173848ec1f603ba7a688909cf8c3ff6c65eaa8bf324",
-        "lastmod": "2026-10-15"
+        "fingerprint": "a95382fae208838c54040012956f0a53ae6c1c8720b3542d7e4c5a947409a307",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/pl/guides/install-garmin-maps-mac/",
@@ -370,8 +370,8 @@
         "file": "site/pl/guides/install-garmin-maps-mac/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "7d20a96bd8882cc31fd839146d75bcaefcb4d165f2e4a0a46037cdc5196c1dba",
-        "lastmod": "2026-10-15"
+        "fingerprint": "3a97490f3ec0b8ef2b7c1109eb242bbd116e001060b1e4c4ab81f7f8d827afd3",
+        "lastmod": "2026-10-17"
       },
       {
         "path": "/pl/guides/troubleshooting/",
@@ -3235,21 +3235,129 @@
         "fingerprint": "fb0cd0723daa3e43d31c0ca99f6f89bd7214b1452a0e72baa98249477ac63abd",
         "status": 200,
         "acceptedAt": "2026-10-17T15:25:27Z"
+      },
+      {
+        "url": "https://terento.app/",
+        "fingerprint": "58b37d7547f2ce5af270785bba7a83f4d585b8792aeac1dda5440c1047ad2f07",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/cs/",
+        "fingerprint": "0f0a0a36b5217780d5fcdcb79e196e1297ae1fe4b641400d775ee4e8d92047bf",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/cs/download/",
+        "fingerprint": "4a05f46ec1cc088612e48fb39a6f6d5a95f3e964ff362edea564e2954746c97f",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/cs/guides/install-garmin-maps-mac/",
+        "fingerprint": "6cb68cc64ed251ef1bc18b50a8296b8036d397fe6675005b13245b7991688139",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/de/",
+        "fingerprint": "4210430a67754f7d62b4959cc716b6e4df220001f254418117aacbbaf03d42dd",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/de/download/",
+        "fingerprint": "0ef5aa534fc156edfe159b935dfeabbbceb3f4475968fff8d84105c3c11ff251",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/de/guides/install-garmin-maps-mac/",
+        "fingerprint": "10e09e3ac504549ef983e25b5f499e74485d7090ee4694b0133c5c0f611aad90",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/download/",
+        "fingerprint": "f8c780d50d593108fd70c88cbfded7c9e82ceeede2cbea1bfacea72626f78551",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/fr/",
+        "fingerprint": "449482d2c1c90c63c9a34d19fed9d7bc834c3e7f6f97934549a377058c557195",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/fr/download/",
+        "fingerprint": "be941bda360094e3beeffc83538f7086cba95bd9ed59bdb2380921ded1c3e221",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/fr/guides/install-garmin-maps-mac/",
+        "fingerprint": "53556c8f41290f986c538987fa0eb22f576b849139c9c03349c48b263388b84f",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/guides/install-garmin-maps-mac/",
+        "fingerprint": "d708e1eff0919a4f78d06988a0bc6e3c29ac9e2308f3c2d17a9cb43eb5e6d8f4",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/it/",
+        "fingerprint": "0ece0d783c4dd32ba32707477bd174da5445df42279c89a0f31cd3ba3b6c1891",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/it/download/",
+        "fingerprint": "ea06f0d9e6aa04daa307c0854b68939ec1238a673d796bc5567855a3b3ef8b77",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/it/guides/install-garmin-maps-mac/",
+        "fingerprint": "8a9551880585dbe20ca575270fe7cd3aecb4a391401478e4897b285dc3bf5463",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/pl/",
+        "fingerprint": "75973f476edc26a27c50ea32019c474f7db5a2f5151cf09938b61c27304ab730",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/pl/download/",
+        "fingerprint": "a95382fae208838c54040012956f0a53ae6c1c8720b3542d7e4c5a947409a307",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
+      },
+      {
+        "url": "https://terento.app/pl/guides/install-garmin-maps-mac/",
+        "fingerprint": "3a97490f3ec0b8ef2b7c1109eb242bbd116e001060b1e4c4ab81f7f8d827afd3",
+        "status": 200,
+        "acceptedAt": "2026-10-17T20:01:38Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-10-17T15:25:27Z",
-    "lastSuccessfulSubmissionAt": "2026-10-17T15:25:27Z",
+    "lastSubmissionAt": "2026-10-17T20:01:37Z",
+    "lastSuccessfulSubmissionAt": "2026-10-17T20:01:37Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-10-17T15:25:27Z",
+    "at": "2026-10-17T20:01:38Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 6,
-    "accepted": 6,
+    "planned": 18,
+    "accepted": 18,
     "pending": 0,
-    "previousAccepted": 466
+    "previousAccepted": 472
   }
 }
