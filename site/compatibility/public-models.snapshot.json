@@ -114,6 +114,22 @@
       "lastSuccessfulInstallation": "2026-10-16T21:58:47+00:00"
     },
     {
+      "model": "fēnix 7 · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02540-01/v/cf-lg-f8d67916-945d-46c2-b5a7-768e40f3acd4.jpg",
+      "successfulInstallations": 12,
+      "appSuccessfulInstallations": 11,
+      "webSuccessfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-10-17T15:39:37+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · 47 mm",
       "variant": "47 mm",
       "caseSizeMm": 47,
@@ -144,22 +160,6 @@
       "appSuccessfulInstallations": 6,
       "webSuccessfulInstallations": 2,
       "lastSuccessfulInstallation": "2026-10-14T06:30:56+00:00"
-    },
-    {
-      "model": "fēnix 7 · 47 mm",
-      "variant": "47 mm",
-      "caseSizeMm": 47,
-      "displayType": "Solar",
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02540-01/v/cf-lg-f8d67916-945d-46c2-b5a7-768e40f3acd4.jpg",
-      "successfulInstallations": 8,
-      "appSuccessfulInstallations": 7,
-      "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-10-17T14:15:16+00:00"
     },
     {
       "model": "fēnix 7X Pro · Historical",
@@ -514,5 +514,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-17T15:20:50.610684+00:00"
+  "generatedAt": "2026-10-17T20:24:30.017633+00:00"
 }

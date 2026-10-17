@@ -11,7 +11,7 @@ Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Unten 
 
 Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.
 
-**32** Modelle mit erfolgreichen Installationen**251** erfolgreiche InstallationenLetzte erfolgreiche Installation 17. Oktober 2026
+**32** Modelle mit erfolgreichen Installationen**255** erfolgreiche InstallationenLetzte erfolgreiche Installation 17. Oktober 2026
 
 So funktioniert diese Liste
 
@@ -109,6 +109,18 @@ Letzte erfolgreiche Installation 16. Oktober 2026
 
 fēnix
 
+### fēnix 7
+
+47 mm, Solar
+
+12 erfolgreiche Installationen
+
+App 11 Web 1
+
+Letzte erfolgreiche Installation 17. Oktober 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 47 mm, AMOLED
@@ -130,18 +142,6 @@ epix
 App 6 Web 2
 
 Letzte erfolgreiche Installation 14. Oktober 2026
-
-fēnix
-
-### fēnix 7
-
-47 mm, Solar
-
-8 erfolgreiche Installationen
-
-App 7 Web 1
-
-Letzte erfolgreiche Installation 17. Oktober 2026
 
 fēnix
 
