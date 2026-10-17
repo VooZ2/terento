@@ -29,7 +29,7 @@ Strona wysyła do Terento krótkie informacje o każdym kroku, które nie pozwal
 - krok, który się nie powiódł, stały kod przyczyny, standardowe kody błędów przeglądarki, naszego serwera lub zegarka oraz czas zapisu i sprawdzania
 - losowy kod tworzony przy każdym otwarciu strony, aby połączyć kroki jednej wizyty
 
-Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Udane i nieudane instalacje oraz aktualizacje map są też liczone w statystykach instalacji Terento, razem z tymi wykonanymi w aplikacji; strona [Kompatybilność](/pl/compatibility/) pokazuje, ile udanych instalacji wykonano aplikacją, a ile instalatorem webowym. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
+Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest używany w pamięci serwera, aby ograniczyć liczbę żądań z jednego komputera; nie jest zapisywany w bazie danych i jest okresowo usuwany, także przy ponownym uruchomieniu serwera. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Udane i nieudane instalacje oraz aktualizacje map są też liczone w statystykach instalacji Terento, razem z tymi wykonanymi w aplikacji; strona [Kompatybilność](/pl/compatibility/) pokazuje, ile udanych instalacji wykonano aplikacją, a ile instalatorem webowym. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
 
 Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które mapy instalator webowy zainstalował i na którym zegarku, aby później bezpiecznie je aktualizować lub usuwać, tymczasowa kopia mapy do czasu instalacji oraz wybrany język. Aby rozpoznać zegarek, zapisuje jednokierunkowy kod utworzony z danych zegarka i losowej wartości, z którego nie da się odtworzyć numeru seryjnego. Wyczyszczenie w przeglądarce danych witryny instalatora webowego usuwa to wszystko. Instalator webowy nie ładuje statystyk witryny.
 
@@ -49,7 +49,7 @@ Zgłoszenie GitHub jest oddzielne od automatycznej diagnostyki: sprawdzasz i wys
 
 Gdy aplikacja oferuje wysłanie raportu pomocy do Terento, raport jest wysyłany tylko wtedy, gdy zdecydujesz się go wysłać po zapoznaniu się z jego treścią. Zawiera oczyszczone informacje o problemie używane także w raportach GitHub: wersje aplikacji i macOS, model i wariant zegarka, etap, który się nie powiódł, kategorię i komunikat błędu, dostawcę i region mapy oraz czasy, a także opcjonalny opis. Nie zawiera numerów seryjnych, Unit IDs, danych kont, lokalnych ścieżek, surowych logów ani map; konto GitHub nie jest potrzebne. Nie podawaj w opisie danych osobowych.
 
-Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są używane w statystykach i są przechowywane przez 12 miesięcy. Dostęp ma administracja projektu; adres IP nie jest zapisywany z raportem. Podstawą jest uzasadniony interes w odpowiedzi na zgłoszenie i utrzymaniu aplikacji, zgodnie z art. 6 ust. 1 lit. f RODO.
+Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są używane w statystykach i są przechowywane przez 12 miesięcy. Dostęp ma administracja projektu, która widzi raport razem z diagnostyką tej samej instalacji lub aktualizacji, aby zbadać problem. Adres IP jest używany w pamięci serwera, aby ograniczyć ponowne wysyłanie; nie jest zapisywany z raportem ani w bazie danych i jest okresowo usuwany, także przy ponownym uruchomieniu serwera. Podstawą jest uzasadniony interes w odpowiedzi na zgłoszenie i utrzymaniu aplikacji, zgodnie z art. 6 ust. 1 lit. f RODO.
 
 ## Statystyki i pamięć przeglądarki
 
@@ -75,4 +75,4 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 11 października 2026 r.
+Aktualizacja: 17 października 2026 r.

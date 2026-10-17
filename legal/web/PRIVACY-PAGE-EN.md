@@ -29,7 +29,7 @@ The page sends Terento short notes that do not identify you, one for each step: 
 - the step that failed, a fixed reason code, standard error codes from the browser, our server or the watch, and how long writing and checking took
 - a random code created each time the page opens, so the steps of one visit can be grouped
 
-They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. Successful and failed map installations and updates are also counted in Terento’s install statistics, together with those made with the app; the [Compatibility page](/compatibility/) shows how many successful installations were made with each. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
+They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is used in server memory to limit how many requests one computer can make; it is not written to the database and is cleared periodically and when the server restarts. The notes show us which watches, systems and browsers work and help us fix what fails. Successful and failed map installations and updates are also counted in Terento’s install statistics, together with those made with the app; the [Compatibility page](/compatibility/) shows how many successful installations were made with each. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
 
 Some data stays in your browser, not on our server: which maps the web installer installed and on which watch, so it can update or remove them safely later; a temporary copy of a map until it is installed; and the language you choose. To recognise the watch, it stores a one-way code made from the watch details and a random value, which cannot be turned back into the serial number. Clearing the web installer’s site data in your browser removes all of this. The web installer does not load website statistics.
 
@@ -49,7 +49,7 @@ A GitHub issue is separate from automatic diagnostics: you review and submit it,
 
 Where the app offers to send a support report to Terento, a report is sent only when you choose to send it, after you have seen its content. It contains the sanitised issue details also used for GitHub reports: app and macOS versions, watch model and variant, the failed step, error category and message, map provider and region, and timings, plus any description you add. It excludes serial numbers, Unit IDs, account details, local paths, raw logs and map files, and no GitHub account is needed. Do not include personal information in the description.
 
-Support reports are used only to diagnose the reported problem, are not used for statistics and are kept for 12 months. Access is restricted to project administration; your IP address is not stored with the report. The basis is legitimate interests in answering your request and maintaining the app, under GDPR Article 6(1)(f).
+Support reports are used only to diagnose the reported problem, are not used for statistics and are kept for 12 months. Access is restricted to project administration, which sees a report together with the diagnostics of the same installation or update to investigate the problem. Your IP address is used in server memory to limit repeated sending; it is not saved with the report or in the database and is cleared periodically and when the server restarts. The basis is legitimate interests in answering your request and maintaining the app, under GDPR Article 6(1)(f).
 
 ## Website statistics and browser storage
 
@@ -75,4 +75,4 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 11 October 2026.
+Updated: 17 October 2026.
