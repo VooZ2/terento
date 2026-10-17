@@ -1,7 +1,5 @@
 # Terento v1.0.1 (build 45)
 
-<!-- DRAFT: unpublished; needs owner approval and the DMG SHA-256 before publication -->
-
 Terento 1.0.1 is a fix release for Terento 1.0.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
 This release makes map downloads sturdier and the messages after a stopped installation more accurate. Installed 1.0.0 builds are offered it by the in-app update check.
@@ -14,19 +12,21 @@ This release makes map downloads sturdier and the messages after a stopped insta
 
 - A map download that loses its connection or stalls is retried automatically up to three times, continuing where it stopped when the map provider allows it, before Terento shows an error.
 - When MacDroid or another menu bar app is using the watch, the "Your Garmin is busy" message names that app.
-- An imported `.img` map of 4 GB or more is refused right away with a clear message. A Garmin watch can't store a single map file that large; before, the installation failed while writing.
+- An imported `.img` map larger than 4 GB is refused right away with a clear message. A Garmin watch can't store a single map file that large; before, the installation failed while writing.
 - When another file on the watch changes during an installation, Terento shows that cause instead of saying a partial map may remain. The map stays on the watch, and Manage maps lists it as "Installation not finished" with Remove.
 - Problem reports for a failed download or map write now include the exact cause, so these problems can be diagnosed.
 
 ## KNOWN ISSUES
 
-- The fixes in this release have not yet been confirmed on a real watch.
+- Of the fixes in this release, only the busy-watch message naming MacDroid has been checked on a real watch.
 - Map Update has not yet been confirmed on a real watch for Freizeitkarte and OpenTopoMap maps.
 - The recovery fixes from rc.3 and the faster Update checks from rc.1 have not yet been confirmed on a real watch. Of the connection messages from rc.2, only the busy-watch message has been checked on a real watch.
 - Updating or removing a map installed with an earlier version still uses the full check and can stay at a high displayed percentage for a while before it finishes.
 - Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
 - A watch connected to a phone over Bluetooth may not connect over USB. Turn off Bluetooth on the phone, wait until the watch shows that the phone is disconnected, then connect the watch again ([issue #257](https://github.com/VooZ2/terento/issues/257)).
 - Garmin Edge devices remain outside the current supported scope. This release does not broaden device compatibility claims.
+
+<!-- DMG SHA-256: c1237c668c4aa62f263670a4d421ad198fd2cb6b0d5e79bb1313923416ec65c6 -->
 
 # Terento v1.0.0 (build 44)
 

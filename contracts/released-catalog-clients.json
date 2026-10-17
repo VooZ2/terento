@@ -43,5 +43,10 @@
     "tag": "v1.0.0-build44",
     "commit": "d6bd129eeac7e5f833bb0b17148453155fdb8c6d",
     "route": "catalog-v4.json"
+  },
+  {
+    "tag": "v1.0.1-build45",
+    "commit": "6fb3e56b8d0f289f802f7a6ead2d8801596fe903",
+    "route": "catalog-v4.json"
   }
 ]
