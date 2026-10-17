@@ -68,6 +68,16 @@ struct DiagnosticsView: View {
                     }
                     #endif
 
+                    #if TERENTO_APP_STORE
+                    // App Store builds compile out every diagnostics upload;
+                    // results stay in local history (Packaging/AppStore/README.md).
+                    diagnosticsSection(title: "Sharing") {
+                        Text("This build does not send diagnostics. Installation results and failure reports stay on this Mac.")
+                            .font(.terentoUI(size: 13, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    #else
                     diagnosticsSection(title: "Sharing") {
                         Toggle(isOn: compatibilitySharingBinding) {
                             VStack(alignment: .leading, spacing: 3) {
@@ -101,12 +111,20 @@ struct DiagnosticsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 4)
                     }
+                    #endif
 
                     diagnosticsSection(title: "Failure report") {
+                        #if TERENTO_APP_STORE
+                        Text("After an installation, update, or removal fails, Terento saves a report on this Mac. Report latest failure copies the full report and opens GitHub. If the report field is not filled in, click it and press ⌘A, then ⌘V. Review before submitting. GitHub issues are public.")
+                            .font(.terentoUI(size: 13, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        #else
                         Text("After an installation, update, or removal fails, Terento saves a report on this Mac. Report latest failure copies the full report and opens GitHub. If the report field is not filled in, click it and press ⌘A, then ⌘V. Review before submitting. GitHub issues are public. Without a GitHub account, send the report to Terento instead: you see exactly what is sent first. Sending a report doesn't depend on the sharing settings above.")
                             .font(.terentoUI(size: 13, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
+                        #endif
                         DiagnosticsActionButton(title: "Report latest failure") {
                             failureReportMessage = TerentoDiagnosticLog.reportLatestFailure()
                                 ? "The report is copied. Paste it into the GitHub form and review it before submitting."
@@ -118,6 +136,7 @@ struct DiagnosticsView: View {
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
+                        #if !TERENTO_APP_STORE
                         HStack(spacing: 18) {
                             Button {
                                 openWindow(id: "support-report")
@@ -130,8 +149,10 @@ struct DiagnosticsView: View {
                             .accessibilityHint("Shows exactly what will be sent before anything is sent.")
                             TerentoHelpLink(topic: .sendReport)
                         }
+                        #endif
                     }
 
+                    #if !TERENTO_APP_STORE
                     diagnosticsSection(title: "Delivery") {
                         VStack(alignment: .leading, spacing: 8) {
                             diagnosticCountRow(
@@ -168,6 +189,7 @@ struct DiagnosticsView: View {
                                 .padding(.top, 8)
                         }
                     }
+                    #endif
 
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

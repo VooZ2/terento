@@ -357,6 +357,8 @@ struct ConnectScreen: View {
         .onChange(of: lifecycleViewModel.isBusy) { _ in
             updatePresenceMonitoring(for: mapEngine.state)
         }
+        // App Store builds have no update check, so no update prompt either.
+        #if !TERENTO_APP_STORE
         .onAppear {
             presentUpdatePromptIfSafe()
         }
@@ -383,6 +385,7 @@ struct ConnectScreen: View {
                 }
             )
         }
+        #endif
         .sheet(
             isPresented: $isShowingInstallationFailure,
             onDismiss: handleInstallationFailureDismissed
@@ -3085,6 +3088,13 @@ private struct InstallationFailureDialog: View {
     var helpTopic: TroubleshootingTopic? = nil
     var onSendSupportReport: (() -> Void)? = nil
 
+    #if TERENTO_APP_STORE
+    // App Store builds compile out sending reports to Terento.
+    private static let reportGuidance = "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting."
+    #else
+    private static let reportGuidance = "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting. No GitHub account? Send the report to Terento instead."
+    #endif
+
     private var primaryAction: (label: String, action: () -> Void)? {
         if let onTryAgain { return ("Try again", onTryAgain) }
         if let onManageMaps { return ("Go to Manage maps", onManageMaps) }
@@ -3093,7 +3103,7 @@ private struct InstallationFailureDialog: View {
 
     private var supportingMessage: String? {
         [safetyMessage, onManageMaps == nil ? nil : InstallationFailure.leftoverMapFollowUp,
-         "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting. No GitHub account? Send the report to Terento instead.", reportError]
+         Self.reportGuidance, reportError]
             .compactMap { value in
                 let normalized = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 return normalized.isEmpty ? nil : normalized
@@ -3179,7 +3189,12 @@ private struct TerentoConfirmationDialog: View {
         onSendSupportReport: (() -> Void)? = nil
     ) {
         self.helpTopic = helpTopic
+        #if TERENTO_APP_STORE
+        // App Store builds compile out sending reports to Terento.
+        self.onSendSupportReport = nil
+        #else
         self.onSendSupportReport = onSendSupportReport
+        #endif
         self.icon = icon
         self.iconColor = iconColor
         self.title = title

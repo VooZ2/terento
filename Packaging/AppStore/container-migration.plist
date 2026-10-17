@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Move</key>
+	<array>
+		<string>${ApplicationSupport}/Terento/.device-key-secret</string>
+		<string>${ApplicationSupport}/Terento/devices</string>
+		<string>${ApplicationSupport}/Terento/failed-install-recovery.json</string>
+		<string>${ApplicationSupport}/Terento/MutationEvidence</string>
+		<string>${ApplicationSupport}/Terento/installation-evidence.json</string>
+		<string>${ApplicationSupport}/Terento/update-evidence.json</string>
+		<string>${ApplicationSupport}/Terento/map-statistics-events.json</string>
+	</array>
+</dict>
+</plist>

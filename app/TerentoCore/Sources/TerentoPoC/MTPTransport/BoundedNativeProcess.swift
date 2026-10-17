@@ -25,6 +25,13 @@ enum BoundedNativeProcess {
         do { try process.run() }
         catch { throw NativeProcessFailure.launchFailed }
         FinishingTrace.event("worker_started", "child=\(process.processIdentifier) timeout=\(timeout)")
+        #if TERENTO_APP_STORE
+        // Declared before the kill-and-wait cleanup below, so it runs after it:
+        // the identifier leaves the registry only once the child has exited.
+        let child = process.processIdentifier
+        BoundedNativeChildren.insert(child)
+        defer { BoundedNativeChildren.remove(child) }
+        #endif
         defer {
             try? stdin.fileHandleForWriting.close()
             if process.isRunning {
@@ -58,6 +65,35 @@ enum BoundedNativeProcess {
         guard process.terminationStatus == 0 else { throw NativeProcessFailure.processExit }
     }
 }
+
+#if TERENTO_APP_STORE
+/// Live sandboxed helper processes started by `BoundedNativeProcess`. App
+/// termination ends them; the helper also exits on its own when this app is
+/// gone (`MTPFinishingWorker`). Only our own children are ever signalled.
+enum BoundedNativeChildren {
+    private static let lock = NSLock()
+    // Every access to this field is protected by lock.
+    nonisolated(unsafe) private static var identifiers: Set<pid_t> = []
+
+    static func insert(_ identifier: pid_t) {
+        lock.lock(); defer { lock.unlock() }
+        identifiers.insert(identifier)
+    }
+
+    static func remove(_ identifier: pid_t) {
+        lock.lock(); defer { lock.unlock() }
+        identifiers.remove(identifier)
+    }
+
+    /// The helper only reads from the watch; ending it cannot change a map.
+    static func terminateAll() {
+        lock.lock(); defer { lock.unlock() }
+        for identifier in identifiers where identifier > 0 {
+            kill(identifier, SIGKILL)
+        }
+    }
+}
+#endif
 
 /// Only new verified bytes renew the inactivity budget; the absolute ceiling
 /// always wins, including when progress arrives after a deadline has expired.
