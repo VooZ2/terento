@@ -43,7 +43,8 @@ DMG: 7,499,246 bytes, SHA-256
 `c1237c668c4aa62f263670a4d421ad198fd2cb6b0d5e79bb1313923416ec65c6`.
 ZIP: 6,742,079 bytes, SHA-256
 `33bdafdde342f4132725ce09f42caf29e8626719ea7cdd43aaad593dd2e32c8c`.
-GitHub asset digests match the digests of the locally built files.
+GitHub asset digests and publicly downloaded bytes match the digests of the
+locally built files.
 
 ## Stable release 1.0.0 build 44 — published
 
