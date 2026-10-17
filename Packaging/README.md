@@ -40,31 +40,21 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The next candidate is **1.0.1 / build 45**, a fix release on the `stable`
-channel (see [versioning](../VERSIONING.md)). It names menu bar apps such as
-MacDroid in the busy-watch message, refuses custom `.img` imports of 4 GiB or
-more, keeps the original failure (not a cleanup failure) when automatic cleanup
-is declined, reports the native map write result and a download
-`failureReason`, and retries dropped downloads automatically. Its server
-additions (`contracts/APP_API_RELEASE_CONTRACT.md`, "1.0.1 server-first
-acceptance") are deployed before it is published. Public metadata continues to
-identify 1.0.0 until signed, notarized artifacts exist, and the draft
-release-note section stays marked as a draft until the owner approves it.
-
-The published release is **1.0.0 / build 44**, the first stable release (see
-[versioning](../VERSIONING.md), "Stable release"), from GitHub-verified source
-`d6bd129eeac7e5f833bb0b17148453155fdb8c6d` (tag `v1.0.0-build44`). Its Xcode
-channel is `stable`, so it is offered stable releases only; installed beta and
-release-candidate builds are offered it by the in-app update check. Its ZIP and
-DMG passed the full release suite, Apple notarization, stapling, Gatekeeper and
-launch validation. It adds fixes only: clearer messages when the watch session
-can't be opened or BBBike has just rebuilt a map, and a built-in catalog
-without withheld or oversized maps; no API or migration preceded it. The
-real-watch Update gate for Freizeitkarte and OpenTopoMap is DEFERRED by the
-owner (`contracts/release-hardware-gates.json`) and listed in KNOWN ISSUES.
-Real-watch confirmation of rc.3's recovery fixes, rc.1's faster Update checks
-and rc.2's connection messages other than the busy-watch message remains
-pending.
+The published release is **1.0.1 / build 45**, a fix release on the `stable`
+channel (see [versioning](../VERSIONING.md)), from GitHub-verified source
+`6fb3e56b8d0f289f802f7a6ead2d8801596fe903` (tag `v1.0.1-build45`). Installed
+1.0.0 builds are offered it by the in-app update check. Its ZIP and DMG passed
+the full release suite, Apple notarization, stapling, Gatekeeper and launch
+validation. It names menu bar apps such as MacDroid in the busy-watch message,
+refuses custom `.img` imports of 4 GiB or more, keeps the original failure (not
+a cleanup failure) when automatic cleanup is declined, reports the native map
+write result and a download `failureReason`, and retries dropped downloads
+automatically. Its server additions (`contracts/APP_API_RELEASE_CONTRACT.md`,
+"1.0.1 server-first acceptance") were deployed before it was published. Of its
+fixes, only the busy-watch message naming MacDroid has been checked on a real
+watch. The real-watch Update gate for Freizeitkarte and OpenTopoMap stays
+DEFERRED by the owner (`contracts/release-hardware-gates.json`) and listed in
+KNOWN ISSUES.
 
 The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public

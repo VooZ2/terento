@@ -156,8 +156,8 @@ are outside the current public scope.
 
 ## Download and release status
 
-The latest public release is **1.0.0 (build 44)**, the first stable release of
-Terento. Download the notarized macOS app below; no additional software is
+The latest public release is **1.0.1 (build 45)**, a fix release for Terento
+1.0.0. Download the notarized macOS app below; no additional software is
 required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**

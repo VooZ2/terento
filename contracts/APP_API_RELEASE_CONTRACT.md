@@ -19,16 +19,32 @@ Deploy and verify this API before any 1.0.1 client is published. It adds:
 Every other released payload is unchanged. 1.0.1 reports a declined cleanup
 with its original failure code and context instead.
 
-## Stable release 1.0.1 build 45 — staged
+## Stable release 1.0.1 build 45 — published
 
-Staged, not published. The app source sets `1.0.1` / build 45
-(`Packaging/release-candidate.json`) on the `stable` channel. It sends the
+Published on 2026-10-17 from GitHub-verified source
+`6fb3e56b8d0f289f802f7a6ead2d8801596fe903` (main after PR #491), tag
+`v1.0.1-build45`, on the `stable` update channel. It sends the
 `terento_map_write` native code, `failureReason` on `DOWNLOAD_FAILED`, and
-reports a declined cleanup with its original failure code and context, so the
-1.0.1 server-first acceptance API above must be deployed and verified first.
-It adds no route, telemetry event or migration of its own. Before publication:
-owner real-watch test of a local build, owner-approved release notes, the full
-packaging suite, notarization and the DMG/ZIP digests recorded here.
+reports a declined cleanup with its original failure code and context. The
+1.0.1 server-first acceptance API above was deployed from the same source and
+verified first (catalog API deploy run 39060510620, 2026-10-17). It adds no
+route, telemetry event or migration of its own. The tag is listed in
+`contracts/released-catalog-clients.json`.
+
+The full packaging suite and PR CI passed. Apple notarization was Accepted.
+Signing, stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner
+approved the release notes before publication. Real-watch evidence: the owner
+used a local build `1.0.1-local` (45) of the same app source for a BBBike
+installation and the busy-watch message naming MacDroid; the other fixes and
+the deferred Freizeitkarte and OpenTopoMap Update gate are listed in KNOWN
+ISSUES.
+
+DMG: 7,499,246 bytes, SHA-256
+`c1237c668c4aa62f263670a4d421ad198fd2cb6b0d5e79bb1313923416ec65c6`.
+ZIP: 6,742,079 bytes, SHA-256
+`33bdafdde342f4132725ce09f42caf29e8626719ea7cdd43aaad593dd2e32c8c`.
+GitHub asset digests and publicly downloaded bytes match the digests of the
+locally built files.
 
 ## Stable release 1.0.0 build 44 — published
 

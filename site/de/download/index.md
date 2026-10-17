@@ -12,9 +12,9 @@ Eine native Mac-App zum Installieren und Verwalten von Community-Karten auf Garm
 - Kostenlos
 - Notarisiert
 - Apple Silicon
-[DMG herunterladen Empfohlen](https://github.com/VooZ2/terento/releases/download/v1.0.0-build44/Terento-1.0.0-macOS-arm64.dmg) [ZIP herunterladen](https://github.com/VooZ2/terento/releases/download/v1.0.0-build44/Terento-1.0.0-macOS-arm64.zip) [Versionshinweise](https://github.com/VooZ2/terento/releases/tag/v1.0.0-build44)
+[DMG herunterladen Empfohlen](https://github.com/VooZ2/terento/releases/download/v1.0.1-build45/Terento-1.0.1-macOS-arm64.dmg) [ZIP herunterladen](https://github.com/VooZ2/terento/releases/download/v1.0.1-build45/Terento-1.0.1-macOS-arm64.zip) [Versionshinweise](https://github.com/VooZ2/terento/releases/tag/v1.0.1-build45)
 
-Neueste Version: **v1.0.0** Veröffentlicht am 15. Oktober 2026
+Neueste Version: **v1.0.1** Veröffentlicht am 17. Oktober 2026
 
 Terento zeigt eine verbundene Garmin-Uhr unter macOS
 
