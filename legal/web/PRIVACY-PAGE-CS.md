@@ -29,7 +29,7 @@ Stránka posílá Terento o každém kroku krátké zprávy, které vás neident
 - krok, který selhal, pevný kód důvodu, standardní chybové kódy prohlížeče, našeho serveru nebo hodinek a dobu zápisu a kontroly
 - náhodný kód vytvořený při každém otevření stránky, aby bylo možné spojit kroky jedné návštěvy
 
-Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Úspěšné i neúspěšné instalace a aktualizace map se také započítávají do statistik instalací Terento, spolu s těmi z aplikace; stránka [Kompatibilita](/cs/compatibility/) ukazuje, kolik úspěšných instalací proběhlo přes aplikaci a kolik přes webový instalátor. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
+Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se používá v paměti serveru, aby se omezil počet požadavků z jednoho počítače; nezapisuje se do databáze a průběžně se maže, také při restartu serveru. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Úspěšné i neúspěšné instalace a aktualizace map se také započítávají do statistik instalací Terento, spolu s těmi z aplikace; stránka [Kompatibilita](/cs/compatibility/) ukazuje, kolik úspěšných instalací proběhlo přes aplikaci a kolik přes webový instalátor. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
 
 Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: které mapy webový instalátor nainstaloval a do kterých hodinek, aby je později mohl bezpečně aktualizovat nebo odebrat, dočasná kopie mapy do dokončení instalace a zvolený jazyk. K rozpoznání hodinek ukládá jednosměrný kód vytvořený z údajů hodinek a náhodné hodnoty, ze kterého nelze zjistit sériové číslo. Vymazáním dat webu webového instalátoru v prohlížeči se to vše odstraní. Webový instalátor nenačítá statistiky webu.
 
@@ -49,7 +49,7 @@ GitHub issue je oddělené od automatické diagnostiky: sami jej zkontrolujete a
 
 Pokud aplikace nabízí odeslání zprávy podpoře Terento, zpráva se odešle jen tehdy, když se tak rozhodnete po zobrazení jejího obsahu. Obsahuje očištěné údaje o problému, které se používají i pro hlášení na GitHubu: verze aplikace a macOS, model a variantu hodinek, neúspěšný krok, kategorii a zprávu chyby, poskytovatele a oblast mapy a časové údaje, spolu s volitelným popisem. Neobsahuje sériová čísla, Unit IDs, účty, místní cesty, surové protokoly ani mapy; účet na GitHubu není potřeba. Do popisu neuvádějte osobní údaje.
 
-Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužívají se pro statistiky a uchovávají se 12 měsíců. Přístup má správa projektu; vaše IP adresa se se zprávou neukládá. Základem jsou oprávněné zájmy na vyřízení vašeho požadavku a údržbě aplikace podle čl. 6 odst. 1 písm. f GDPR.
+Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužívají se pro statistiky a uchovávají se 12 měsíců. Přístup má správa projektu, která vidí zprávu spolu s diagnostikou téže instalace nebo aktualizace, aby problém prošetřila. Vaše IP adresa se používá v paměti serveru k omezení opakovaného odesílání; neukládá se se zprávou ani do databáze a průběžně se maže, také při restartu serveru. Základem jsou oprávněné zájmy na vyřízení vašeho požadavku a údržbě aplikace podle čl. 6 odst. 1 písm. f GDPR.
 
 ## Statistiky a úložiště prohlížeče
 
@@ -75,4 +75,4 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 11. října 2026.
+Aktualizováno: 17. října 2026.

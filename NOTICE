@@ -36,10 +36,12 @@ Website HTML, CSS, and JavaScript of Terento origin are also GPL unless a file s
 
 ## Other software
 
-So the macOS app can talk to the watch over MTP, development builds link to Homebrew libraries. They are **not** in the Terento repository and are not bundled with the project:
+So the macOS app can talk to the watch over MTP, the released Terento.app bundles two libraries in `Contents/Frameworks`. They are rebuilt from pinned upstream sources (`Packaging/NativeDependencies/build.sh`). libmtp carries small local patches, which are published as source in `Packaging/NativeDependencies`. Development builds may link to Homebrew copies instead.
 
-- **libmtp** — GPL-2.0-or-later, [github.com/libmtp/libmtp](https://github.com/libmtp/libmtp)
-- **libusb** — LGPL-2.1-or-later, [github.com/libusb/libusb](https://github.com/libusb/libusb)
+- **libmtp** 1.1.23 — LGPL-2.1-or-later, [github.com/libmtp/libmtp](https://github.com/libmtp/libmtp)
+- **libusb** 1.0.30 — LGPL-2.1-or-later, [github.com/libusb/libusb](https://github.com/libusb/libusb)
+
+Details: [THIRD_PARTY_NOTICES.md](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
 
 Each library keeps its own licence. Terento does not relicense them.
 

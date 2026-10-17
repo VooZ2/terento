@@ -34,7 +34,7 @@ The page sends Terento short notes that do not identify you, one for each step: 
 - the step that failed, a fixed reason code, standard error codes from the browser, our server or the watch, and how long writing and checking took
 - a random code created each time the page opens, so the steps of one visit can be grouped
 
-They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is held briefly in memory to limit how many requests one computer can make, and is not stored. The notes show us which watches, systems and browsers work and help us fix what fails. Successful and failed map installations and updates are also counted in Terento’s install statistics, together with those made with the app; the [Compatibility page](https://terento.app/compatibility/) shows how many successful installations were made with each. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
+They never include your watch’s serial number or Unit ID, your IP address, file names, the list of maps on your watch or error text. Your IP address is used in server memory to limit how many requests one computer can make; it is not written to the database and is cleared periodically and when the server restarts. The notes show us which watches, systems and browsers work and help us fix what fails. Successful and failed map installations and updates are also counted in Terento’s install statistics, together with those made with the app; the [Compatibility page](https://terento.app/compatibility/) shows how many successful installations were made with each. The basis is legitimate interests under GDPR Article 6(1)(f). There is no switch on the page; contact us to object. Individual notes are private and kept for 24 months.
 
 Some data stays in your browser, not on our server: which maps the web installer installed and on which watch, so it can update or remove them safely later; a temporary copy of a map until it is installed; and the language you choose. To recognise the watch, it stores a one-way code made from the watch details and a random value, which cannot be turned back into the serial number. Clearing the web installer’s site data in your browser removes all of this. The web installer does not load website statistics.
 
@@ -54,7 +54,7 @@ A GitHub issue is separate from automatic diagnostics: you review and submit it,
 
 Where the app offers to send a support report to Terento, a report is sent only when you choose to send it, after you have seen its content. It contains the sanitised issue details also used for GitHub reports: app and macOS versions, watch model and variant, the failed step, error category and message, map provider and region, and timings, plus any description you add. It excludes serial numbers, Unit IDs, account details, local paths, raw logs and map files, and no GitHub account is needed. Do not include personal information in the description.
 
-Support reports are used only to diagnose the reported problem, are not used for statistics and are kept for 12 months. Access is restricted to project administration; your IP address is not stored with the report. The basis is legitimate interests in answering your request and maintaining the app, under GDPR Article 6(1)(f).
+Support reports are used only to diagnose the reported problem, are not used for statistics and are kept for 12 months. Access is restricted to project administration, which sees a report together with the diagnostics of the same installation or update to investigate the problem. Your IP address is used in server memory to limit repeated sending; it is not saved with the report or in the database and is cleared periodically and when the server restarts. The basis is legitimate interests in answering your request and maintaining the app, under GDPR Article 6(1)(f).
 
 ## Website statistics and browser storage
 
@@ -80,7 +80,7 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 11 October 2026.
+Updated: 17 October 2026.
 
 # Datenschutz
 
@@ -113,7 +113,7 @@ Die Seite sendet Terento zu jedem Schritt kurze Meldungen, die dich nicht identi
 - den fehlgeschlagenen Schritt, einen festen Grundcode, Standard-Fehlercodes von Browser, Server oder Uhr und die Dauer von Schreiben und Prüfen
 - einen zufälligen Code, der bei jedem Öffnen der Seite neu entsteht, damit die Schritte eines Besuchs zusammengehören
 
-Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird nur kurz im Arbeitsspeicher gehalten, um zu begrenzen, wie viele Anfragen ein Computer stellen kann, und nicht gespeichert. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Erfolgreiche und fehlgeschlagene Installationen und Updates von Karten zählen außerdem zusammen mit denen aus der App zu Terentos Installationsstatistik; die Seite [Kompatibilität](https://terento.app/de/compatibility/) zeigt, wie viele erfolgreiche Installationen jeweils mit der App und mit dem Web-Installer erfolgten. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.
+Sie enthalten nie die Seriennummer oder Unit ID deiner Uhr, deine IP-Adresse, Dateinamen, die Liste der Karten auf deiner Uhr oder Fehlertexte. Deine IP-Adresse wird im Arbeitsspeicher des Servers verwendet, um zu begrenzen, wie viele Anfragen ein Computer stellen kann; sie wird nicht in die Datenbank geschrieben und regelmäßig sowie beim Neustart des Servers gelöscht. Die Meldungen zeigen uns, welche Uhren, Systeme und Browser funktionieren, und helfen, Fehler zu beheben. Erfolgreiche und fehlgeschlagene Installationen und Updates von Karten zählen außerdem zusammen mit denen aus der App zu Terentos Installationsstatistik; die Seite [Kompatibilität](https://terento.app/de/compatibility/) zeigt, wie viele erfolgreiche Installationen jeweils mit der App und mit dem Web-Installer erfolgten. Grundlage sind berechtigte Interessen nach Art. 6 Abs. 1 lit. f DSGVO. Auf der Seite gibt es keinen Schalter; für einen Widerspruch kontaktiere uns. Einzelne Meldungen sind privat und werden 24 Monate aufbewahrt.
 
 Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten der Web-Installer auf welcher Uhr installiert hat, damit er sie später sicher aktualisieren oder entfernen kann, eine vorübergehende Kopie einer Karte bis zur Installation und die gewählte Sprache. Um die Uhr wiederzuerkennen, speichert er einen Einwegcode aus Uhrendaten und einem Zufallswert, aus dem sich die Seriennummer nicht zurückgewinnen lässt. Wenn du in deinem Browser die Websitedaten des Web-Installers löschst, wird all das entfernt. Der Web-Installer lädt keine Website-Statistik.
 
@@ -133,7 +133,7 @@ Ein GitHub-Issue ist von automatischer Diagnose getrennt: Du prüfst und sendest
 
 Wenn die App anbietet, einen Supportbericht an Terento zu senden, wird er nur gesendet, wenn du dich dafür entscheidest, nachdem du seinen Inhalt gesehen hast. Er enthält die bereinigten Fehlerangaben, die auch für GitHub-Berichte verwendet werden: App- und macOS-Version, Uhrenmodell und -variante, den fehlgeschlagenen Schritt, Fehlerkategorie und -meldung, Kartenanbieter und Region sowie Zeitangaben, dazu eine optionale Beschreibung. Seriennummern, Unit IDs, Kontodaten, lokale Pfade, Rohprotokolle und Kartendateien sind ausgeschlossen; ein GitHub-Konto ist nicht nötig. Gib in der Beschreibung keine personenbezogenen Daten an.
 
-Supportberichte dienen nur der Diagnose des gemeldeten Problems, fließen nicht in Statistiken ein und werden 12 Monate aufbewahrt. Zugriff hat nur die Projektverwaltung; deine IP-Adresse wird nicht mit dem Bericht gespeichert. Grundlage sind berechtigte Interessen an der Beantwortung deiner Anfrage und der Wartung der App nach Art. 6 Abs. 1 lit. f DSGVO.
+Supportberichte dienen nur der Diagnose des gemeldeten Problems, fließen nicht in Statistiken ein und werden 12 Monate aufbewahrt. Zugriff hat nur die Projektverwaltung; sie sieht einen Bericht zusammen mit den Diagnosen derselben Installation oder Aktualisierung, um das Problem zu untersuchen. Deine IP-Adresse wird im Arbeitsspeicher des Servers verwendet, um wiederholtes Senden zu begrenzen; sie wird weder mit dem Bericht noch in der Datenbank gespeichert und regelmäßig sowie beim Neustart des Servers gelöscht. Grundlage sind berechtigte Interessen an der Beantwortung deiner Anfrage und der Wartung der App nach Art. 6 Abs. 1 lit. f DSGVO.
 
 ## Website-Statistik und Browserspeicher
 
@@ -159,7 +159,7 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 11. Oktober 2026.
+Aktualisiert: 17. Oktober 2026.
 
 # Confidentialité
 
@@ -192,7 +192,7 @@ La page envoie à Terento, à chaque étape, de courtes notes qui ne vous identi
 - l’étape en échec, un code de motif fixe, des codes d’erreur standard du navigateur, de notre serveur ou de la montre, et la durée d’écriture et de vérification
 - un code aléatoire créé à chaque ouverture de la page, pour regrouper les étapes d’une même visite
 
-Elles ne contiennent jamais le numéro de série ou l’Unit ID de votre montre, votre adresse IP, des noms de fichiers, la liste des cartes de votre montre ni de texte d’erreur. Votre adresse IP n’est gardée que brièvement en mémoire pour limiter le nombre de requêtes d’un même ordinateur, et n’est pas enregistrée. Ces notes nous montrent quelles montres et quels systèmes et navigateurs fonctionnent et nous aident à corriger les échecs. Les installations et mises à jour de cartes, réussies ou échouées, sont aussi comptées dans les statistiques d’installation de Terento, avec celles faites depuis l’application ; la page [Compatibilité](https://terento.app/fr/compatibility/) indique combien d’installations réussies ont été faites avec l’application et avec l’installateur web. La base est l’intérêt légitime selon l’article 6(1)(f) du RGPD. La page n’a pas d’interrupteur ; contactez-nous pour vous opposer. Les notes individuelles sont privées et conservées 24 mois.
+Elles ne contiennent jamais le numéro de série ou l’Unit ID de votre montre, votre adresse IP, des noms de fichiers, la liste des cartes de votre montre ni de texte d’erreur. Votre adresse IP est utilisée dans la mémoire du serveur pour limiter le nombre de requêtes d’un même ordinateur ; elle n’est pas écrite dans la base de données et est effacée régulièrement ainsi qu’au redémarrage du serveur. Ces notes nous montrent quelles montres et quels systèmes et navigateurs fonctionnent et nous aident à corriger les échecs. Les installations et mises à jour de cartes, réussies ou échouées, sont aussi comptées dans les statistiques d’installation de Terento, avec celles faites depuis l’application ; la page [Compatibilité](https://terento.app/fr/compatibility/) indique combien d’installations réussies ont été faites avec l’application et avec l’installateur web. La base est l’intérêt légitime selon l’article 6(1)(f) du RGPD. La page n’a pas d’interrupteur ; contactez-nous pour vous opposer. Les notes individuelles sont privées et conservées 24 mois.
 
 Certaines données restent dans votre navigateur, pas sur notre serveur : les cartes installées par l’installateur web et sur quelle montre, pour pouvoir les mettre à jour ou les supprimer en toute sécurité, une copie temporaire d’une carte jusqu’à son installation et la langue choisie. Pour reconnaître la montre, il enregistre un code à sens unique tiré des données de la montre et d’une valeur aléatoire, qui ne permet pas de retrouver le numéro de série. Effacer dans votre navigateur les données du site de l’installateur web supprime tout cela. L’installateur web ne charge pas les statistiques du site.
 
@@ -212,7 +212,7 @@ Un ticket GitHub est distinct des diagnostics automatiques : vous le vérifiez e
 
 Lorsque l’application propose d’envoyer un rapport d’assistance à Terento, le rapport n’est envoyé que si vous choisissez de l’envoyer, après en avoir vu le contenu. Il contient les détails nettoyés également utilisés pour les rapports GitHub : versions de l’application et de macOS, modèle et variante de la montre, étape en échec, catégorie et message d’erreur, fournisseur et région de la carte, durées, ainsi que la description que vous ajoutez. Il exclut les numéros de série, Unit IDs, comptes, chemins locaux, journaux bruts et cartes ; aucun compte GitHub n’est nécessaire. N’indiquez pas de données personnelles dans la description.
 
-Les rapports d’assistance servent uniquement à diagnostiquer le problème signalé, ne sont pas utilisés pour les statistiques et sont conservés 12 mois. L’accès est réservé à l’administration du projet ; votre adresse IP n’est pas enregistrée avec le rapport. Le fondement est l’intérêt légitime à répondre à votre demande et maintenir l’application, selon l’article 6(1)(f) du RGPD.
+Les rapports d’assistance servent uniquement à diagnostiquer le problème signalé, ne sont pas utilisés pour les statistiques et sont conservés 12 mois. L’accès est réservé à l’administration du projet, qui voit un rapport avec les diagnostics de la même installation ou mise à jour pour étudier le problème. Votre adresse IP est utilisée dans la mémoire du serveur pour limiter les envois répétés ; elle n’est enregistrée ni avec le rapport ni dans la base de données, et est effacée régulièrement ainsi qu’au redémarrage du serveur. Le fondement est l’intérêt légitime à répondre à votre demande et maintenir l’application, selon l’article 6(1)(f) du RGPD.
 
 ## Statistiques et stockage du navigateur
 
@@ -238,7 +238,7 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 11 octobre 2026.
+Mise à jour : 17 octobre 2026.
 
 # Prywatność
 
@@ -271,7 +271,7 @@ Strona wysyła do Terento krótkie informacje o każdym kroku, które nie pozwal
 - krok, który się nie powiódł, stały kod przyczyny, standardowe kody błędów przeglądarki, naszego serwera lub zegarka oraz czas zapisu i sprawdzania
 - losowy kod tworzony przy każdym otwarciu strony, aby połączyć kroki jednej wizyty
 
-Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest przez chwilę trzymany w pamięci, aby ograniczyć liczbę żądań z jednego komputera, i nie jest zapisywany. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Udane i nieudane instalacje oraz aktualizacje map są też liczone w statystykach instalacji Terento, razem z tymi wykonanymi w aplikacji; strona [Kompatybilność](https://terento.app/pl/compatibility/) pokazuje, ile udanych instalacji wykonano aplikacją, a ile instalatorem webowym. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
+Nigdy nie zawierają numeru seryjnego ani Unit ID zegarka, Twojego adresu IP, nazw plików, listy map na zegarku ani tekstu błędów. Adres IP jest używany w pamięci serwera, aby ograniczyć liczbę żądań z jednego komputera; nie jest zapisywany w bazie danych i jest okresowo usuwany, także przy ponownym uruchomieniu serwera. Informacje te pokazują nam, które zegarki, systemy i przeglądarki działają, i pomagają naprawiać błędy. Udane i nieudane instalacje oraz aktualizacje map są też liczone w statystykach instalacji Terento, razem z tymi wykonanymi w aplikacji; strona [Kompatybilność](https://terento.app/pl/compatibility/) pokazuje, ile udanych instalacji wykonano aplikacją, a ile instalatorem webowym. Podstawą jest uzasadniony interes zgodnie z art. 6 ust. 1 lit. f RODO. Na stronie nie ma przełącznika; skontaktuj się, aby zgłosić sprzeciw. Pojedyncze informacje są prywatne i przechowywane przez 24 miesiące.
 
 Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które mapy instalator webowy zainstalował i na którym zegarku, aby później bezpiecznie je aktualizować lub usuwać, tymczasowa kopia mapy do czasu instalacji oraz wybrany język. Aby rozpoznać zegarek, zapisuje jednokierunkowy kod utworzony z danych zegarka i losowej wartości, z którego nie da się odtworzyć numeru seryjnego. Wyczyszczenie w przeglądarce danych witryny instalatora webowego usuwa to wszystko. Instalator webowy nie ładuje statystyk witryny.
 
@@ -291,7 +291,7 @@ Zgłoszenie GitHub jest oddzielne od automatycznej diagnostyki: sprawdzasz i wys
 
 Gdy aplikacja oferuje wysłanie raportu pomocy do Terento, raport jest wysyłany tylko wtedy, gdy zdecydujesz się go wysłać po zapoznaniu się z jego treścią. Zawiera oczyszczone informacje o problemie używane także w raportach GitHub: wersje aplikacji i macOS, model i wariant zegarka, etap, który się nie powiódł, kategorię i komunikat błędu, dostawcę i region mapy oraz czasy, a także opcjonalny opis. Nie zawiera numerów seryjnych, Unit IDs, danych kont, lokalnych ścieżek, surowych logów ani map; konto GitHub nie jest potrzebne. Nie podawaj w opisie danych osobowych.
 
-Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są używane w statystykach i są przechowywane przez 12 miesięcy. Dostęp ma administracja projektu; adres IP nie jest zapisywany z raportem. Podstawą jest uzasadniony interes w odpowiedzi na zgłoszenie i utrzymaniu aplikacji, zgodnie z art. 6 ust. 1 lit. f RODO.
+Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są używane w statystykach i są przechowywane przez 12 miesięcy. Dostęp ma administracja projektu, która widzi raport razem z diagnostyką tej samej instalacji lub aktualizacji, aby zbadać problem. Adres IP jest używany w pamięci serwera, aby ograniczyć ponowne wysyłanie; nie jest zapisywany z raportem ani w bazie danych i jest okresowo usuwany, także przy ponownym uruchomieniu serwera. Podstawą jest uzasadniony interes w odpowiedzi na zgłoszenie i utrzymaniu aplikacji, zgodnie z art. 6 ust. 1 lit. f RODO.
 
 ## Statystyki i pamięć przeglądarki
 
@@ -317,7 +317,7 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 11 października 2026 r.
+Aktualizacja: 17 października 2026 r.
 
 # Soukromí
 
@@ -350,7 +350,7 @@ Stránka posílá Terento o každém kroku krátké zprávy, které vás neident
 - krok, který selhal, pevný kód důvodu, standardní chybové kódy prohlížeče, našeho serveru nebo hodinek a dobu zápisu a kontroly
 - náhodný kód vytvořený při každém otevření stránky, aby bylo možné spojit kroky jedné návštěvy
 
-Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se jen krátce drží v paměti, aby se omezil počet požadavků z jednoho počítače, a neukládá se. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Úspěšné i neúspěšné instalace a aktualizace map se také započítávají do statistik instalací Terento, spolu s těmi z aplikace; stránka [Kompatibilita](https://terento.app/cs/compatibility/) ukazuje, kolik úspěšných instalací proběhlo přes aplikaci a kolik přes webový instalátor. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
+Nikdy neobsahují sériové číslo ani Unit ID hodinek, vaši IP adresu, názvy souborů, seznam map v hodinkách ani text chyb. IP adresa se používá v paměti serveru, aby se omezil počet požadavků z jednoho počítače; nezapisuje se do databáze a průběžně se maže, také při restartu serveru. Zprávy nám ukazují, které hodinky, systémy a prohlížeče fungují, a pomáhají opravovat chyby. Úspěšné i neúspěšné instalace a aktualizace map se také započítávají do statistik instalací Terento, spolu s těmi z aplikace; stránka [Kompatibilita](https://terento.app/cs/compatibility/) ukazuje, kolik úspěšných instalací proběhlo přes aplikaci a kolik přes webový instalátor. Základem jsou oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR. Stránka nemá přepínač; pro námitku nás kontaktujte. Jednotlivé zprávy jsou soukromé a uchovávají se 24 měsíců.
 
 Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: které mapy webový instalátor nainstaloval a do kterých hodinek, aby je později mohl bezpečně aktualizovat nebo odebrat, dočasná kopie mapy do dokončení instalace a zvolený jazyk. K rozpoznání hodinek ukládá jednosměrný kód vytvořený z údajů hodinek a náhodné hodnoty, ze kterého nelze zjistit sériové číslo. Vymazáním dat webu webového instalátoru v prohlížeči se to vše odstraní. Webový instalátor nenačítá statistiky webu.
 
@@ -370,7 +370,7 @@ GitHub issue je oddělené od automatické diagnostiky: sami jej zkontrolujete a
 
 Pokud aplikace nabízí odeslání zprávy podpoře Terento, zpráva se odešle jen tehdy, když se tak rozhodnete po zobrazení jejího obsahu. Obsahuje očištěné údaje o problému, které se používají i pro hlášení na GitHubu: verze aplikace a macOS, model a variantu hodinek, neúspěšný krok, kategorii a zprávu chyby, poskytovatele a oblast mapy a časové údaje, spolu s volitelným popisem. Neobsahuje sériová čísla, Unit IDs, účty, místní cesty, surové protokoly ani mapy; účet na GitHubu není potřeba. Do popisu neuvádějte osobní údaje.
 
-Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužívají se pro statistiky a uchovávají se 12 měsíců. Přístup má správa projektu; vaše IP adresa se se zprávou neukládá. Základem jsou oprávněné zájmy na vyřízení vašeho požadavku a údržbě aplikace podle čl. 6 odst. 1 písm. f GDPR.
+Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužívají se pro statistiky a uchovávají se 12 měsíců. Přístup má správa projektu, která vidí zprávu spolu s diagnostikou téže instalace nebo aktualizace, aby problém prošetřila. Vaše IP adresa se používá v paměti serveru k omezení opakovaného odesílání; neukládá se se zprávou ani do databáze a průběžně se maže, také při restartu serveru. Základem jsou oprávněné zájmy na vyřízení vašeho požadavku a údržbě aplikace podle čl. 6 odst. 1 písm. f GDPR.
 
 ## Statistiky a úložiště prohlížeče
 
@@ -396,7 +396,7 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 11. října 2026.
+Aktualizováno: 17. října 2026.
 
 # Privacy
 
@@ -429,7 +429,7 @@ La pagina invia a Terento, per ogni passaggio, brevi note che non ti identifican
 - il passaggio non riuscito, un codice di motivo fisso, codici di errore standard del browser, del nostro server o dell’orologio e la durata di scrittura e verifica
 - un codice casuale creato a ogni apertura della pagina, per raggruppare i passaggi di una visita
 
-Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP resta solo brevemente in memoria per limitare quante richieste può fare un computer e non viene salvato. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. Le installazioni e gli aggiornamenti di mappe, riusciti o non riusciti, vengono conteggiati anche nelle statistiche di installazione di Terento, insieme a quelli fatti con l’app; la pagina [Compatibilità](https://terento.app/it/compatibility/) mostra quante installazioni riuscite sono state fatte con l’app e quante con l’installer web. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.
+Non contengono mai numero di serie o Unit ID dell’orologio, il tuo indirizzo IP, nomi di file, l’elenco delle mappe sull’orologio o testi di errore. L’indirizzo IP è usato nella memoria del server per limitare quante richieste può fare un computer; non viene scritto nel database e viene cancellato periodicamente e al riavvio del server. Le note ci mostrano quali orologi, sistemi e browser funzionano e ci aiutano a correggere gli errori. Le installazioni e gli aggiornamenti di mappe, riusciti o non riusciti, vengono conteggiati anche nelle statistiche di installazione di Terento, insieme a quelli fatti con l’app; la pagina [Compatibilità](https://terento.app/it/compatibility/) mostra quante installazioni riuscite sono state fatte con l’app e quante con l’installer web. La base è il legittimo interesse ai sensi dell’art. 6(1)(f) GDPR. La pagina non ha un interruttore; contattaci per opporti. Le singole note sono private e conservate per 24 mesi.
 
 Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’installer web ha installato e su quale orologio, per poterle aggiornare o rimuovere in sicurezza in seguito, una copia temporanea di una mappa fino all’installazione e la lingua scelta. Per riconoscere l’orologio salva un codice a senso unico ricavato dai dati dell’orologio e da un valore casuale, da cui non si può risalire al numero di serie. Cancellare nel browser i dati del sito dell’installer web rimuove tutto questo. L’installer web non carica le statistiche del sito.
 
@@ -449,7 +449,7 @@ Una issue GitHub è distinta dalla diagnostica automatica: la controlli e invii 
 
 Quando l’app offre di inviare un rapporto di assistenza a Terento, il rapporto viene inviato solo se scegli di inviarlo, dopo averne visto il contenuto. Contiene i dettagli ripuliti usati anche per le segnalazioni GitHub: versioni dell’app e di macOS, modello e variante dell’orologio, passaggio non riuscito, categoria e messaggio di errore, provider e regione della mappa e tempi, oltre all’eventuale descrizione che aggiungi. Esclude numeri di serie, Unit IDs, account, percorsi locali, log grezzi e mappe; non serve un account GitHub. Non inserire dati personali nella descrizione.
 
-I rapporti di assistenza servono solo a diagnosticare il problema segnalato, non sono usati per statistiche e sono conservati per 12 mesi. L’accesso è riservato all’amministrazione del progetto; il tuo indirizzo IP non viene salvato con il rapporto. La base è il legittimo interesse a rispondere alla tua richiesta e mantenere l’app, ai sensi dell’art. 6(1)(f) GDPR.
+I rapporti di assistenza servono solo a diagnosticare il problema segnalato, non sono usati per statistiche e sono conservati per 12 mesi. L’accesso è riservato all’amministrazione del progetto, che vede un rapporto insieme alla diagnostica della stessa installazione o aggiornamento per indagare il problema. Il tuo indirizzo IP è usato nella memoria del server per limitare invii ripetuti; non viene salvato con il rapporto né nel database e viene cancellato periodicamente e al riavvio del server. La base è il legittimo interesse a rispondere alla tua richiesta e mantenere l’app, ai sensi dell’art. 6(1)(f) GDPR.
 
 ## Statistiche e memoria del browser
 
@@ -475,4 +475,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 11 ottobre 2026.
+Aggiornamento: 17 ottobre 2026.
