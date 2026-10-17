@@ -88,10 +88,11 @@ api.terento.app/support/reports
 STRINGS
 
 if [ -n "$control_app" ]; then
-    control="$control_app/Contents/MacOS/Terento"
-    test -f "$control" || fail "control executable is missing: $control"
+    # Debug builds put the app code in Contents/MacOS/Terento.debug.dylib
+    # (Xcode ENABLE_DEBUG_DYLIB), so search every file in Contents/MacOS.
+    test -f "$control_app/Contents/MacOS/Terento" || fail "control executable is missing: $control_app/Contents/MacOS/Terento"
     while IFS= read -r needle; do
-        LC_ALL=C grep -a -F -q -- "$needle" "$control" \
+        LC_ALL=C grep -a -F -q -- "$needle" "$control_app/Contents/MacOS/"* \
             || fail "control build lacks '$needle'; the absence check would prove nothing"
     done <"$forbidden_strings"
 fi
