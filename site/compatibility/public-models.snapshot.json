@@ -12,10 +12,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 48,
-      "appSuccessfulInstallations": 48,
+      "successfulInstallations": 49,
+      "appSuccessfulInstallations": 49,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-12T08:39:53+00:00"
+      "lastSuccessfulInstallation": "2026-10-18T18:24:13+00:00"
     },
     {
       "model": "Forerunner 965 · Historical",
@@ -514,5 +514,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-18T15:42:08.127816+00:00"
+  "generatedAt": "2026-10-18T20:25:15.826799+00:00"
 }
