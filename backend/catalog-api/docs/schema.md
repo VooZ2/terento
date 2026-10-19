@@ -751,3 +751,11 @@ Migration 048 linked the part numbers only to quatix 7. An administrator
 reviews the links in Admin; a PENDING USB link already counts as a model the
 code names for web installs (`WEB_INSTALLER_STATISTICS_CONTRACT.md`). No
 report, assignment, permission or statistic is changed by the migration.
+
+### Migration085: epix (Gen 2) photograph
+
+Media only and rollback-compatible: fills the missing `source_image_url` of the
+historical `garmin-epix-gen-2-47` row with Garmin's official epix (Gen 2)
+Standard Edition 47 mm product photograph (checked 2026-10-19), recorded in
+`specification_evidence.source_image` like migrations 051–053. Identity,
+specifications and approvals are unchanged.

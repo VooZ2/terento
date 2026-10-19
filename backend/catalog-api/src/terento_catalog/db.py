@@ -1507,6 +1507,7 @@ class Database:
                 dm.canonical_model,
                 dm.screen_technology, dm.solar, dm.inreach,
                 dm.model AS catalog_model,
+                dm.variant AS catalog_variant,
                 dm.source_image_url,
                 asset.asset_type,
                 asset.status AS asset_status,

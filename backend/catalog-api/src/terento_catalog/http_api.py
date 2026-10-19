@@ -2976,8 +2976,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         image = {"url": source_image_url, "origin": "garmin-source", "status": "SOURCE"}
                 if image is None:
                     image = generic_fallback_image()
+                # The catalog row names a resolved model. A review display name
+                # is keyed by the reported identity, which two generations can
+                # share ("EPIX"), so it may name the other generation.
+                catalog_model = str(row.get("catalog_model") or "").strip()
+                catalog_variant = str(row.get("catalog_variant") or "").strip()
+                catalog_label = f"{catalog_model} · {catalog_variant}" if catalog_model and catalog_variant else catalog_model
                 models.append({
-                    "model": row.get("model") or row.get("evidence_model"),
+                    "model": catalog_label or row.get("model") or row.get("evidence_model"),
                     "canonicalModel": row.get("canonical_model") or row.get("evidence_model"),
                     "family": row.get("family") or "other",
                     "familyName": row.get("family_name") or row.get("family") or "Other",
