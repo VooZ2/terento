@@ -756,6 +756,10 @@ enum MTPFinishingWorker {
     }
 
     static func runIfRequested() -> Bool {
+        #if TERENTO_APP_STORE
+        // The embedded helper copy only ever runs as the worker, never as a second app.
+        if !isWorker, URL(fileURLWithPath: CommandLine.arguments[0]).lastPathComponent == sandboxHelperName { return true }
+        #endif
         guard isWorker else { return false }
         guard CommandLine.arguments.count == 3 else { return true }
         #if TERENTO_APP_STORE

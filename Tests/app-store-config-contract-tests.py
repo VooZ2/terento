@@ -223,6 +223,28 @@ class AppStoreConfigurationContract(unittest.TestCase):
         # the printed cleanup command at the real DMG data.
         self.assertIn('output="$HOME/TerentoSandboxTest"', script)
         self.assertNotIn("TERENTO_SANDBOX_TEST_OUTPUT", script)
+        # A symbolic link at the output, seed or container is refused before
+        # any write, and the output is a new folder on every run.
+        guard = script.index('for path in "$output" "$seed" "$container"; do')
+        self.assertIn('[ ! -L "$path" ] || die', script[guard:guard + 200])
+        first_write = min(script.index('rm -rf "$seed"'), script.index('mkdir -m 700 "$seed"'), script.index('rm -rf "$output"'))
+        self.assertLess(guard, first_write)
+        self.assertNotIn("mkdir -p", script)
+        fresh = script.index('rm -rf "$output"\nmkdir -m 700 "$output"\n')
+        self.assertLess(fresh, script.index("xcodebuild \\"))
+
+    def test_ci_scan_covers_all_bundle_code(self) -> None:
+        verify = (APP_STORE_DIR / "verify-app-store-build.sh").read_text(encoding="utf-8")
+        # Debug builds keep app code in Terento.debug.dylib and the libraries
+        # live in Frameworks, so both folders are scanned file by file.
+        self.assertIn('find "$app/Contents/MacOS" "$app/Contents/Frameworks" -type f >"$work/bundle-code.txt"', verify)
+        self.assertIn('"$control_app/Contents/MacOS/"*', verify)
+
+    def test_docs_say_migration_copies(self) -> None:
+        readme = (APP_STORE_DIR / "README.md").read_text(encoding="utf-8")
+        self.assertIn('"The\noperating system will copy the file"', readme)
+        self.assertIn("The originals stay where they were.", readme)
+        self.assertNotRegex(readme, r"(?i)\bmoves?\b.{0,40}\bcontainer\b")
 
     def test_helper_exits_unless_the_app_is_its_parent(self) -> None:
         app_store = {"RELEASE", "TERENTO_BUNDLED_MTP", "TERENTO_APP_STORE"}
@@ -231,8 +253,18 @@ class AppStoreConfigurationContract(unittest.TestCase):
         worker = active_source((SWIFT_SOURCES / "Installation" / "MTPMapInstallationTransport.swift").read_text(encoding="utf-8"), app_store)
         guard = worker.index('ProcessInfo.processInfo.environment["TERENTO_PARENT_PID"]')
         self.assertIn("getppid() == parent else { _exit(1) }", worker[guard:guard + 300])
-        # The parent check runs before the request is read.
+        # The parent check runs before the request is read, and the watchdog
+        # that ends the helper with the app is started.
         self.assertLess(worker.index("exitWhenParentExits()\n"), worker.index("FileHandle.standardInput.read"))
+        watchdog = worker.index("let watchdog = Thread {")
+        self.assertIn("while getppid() == parent { usleep(200_000) }\n            _exit(1)", worker[watchdog:watchdog + 200])
+        self.assertIn("watchdog.start()", worker[watchdog:watchdog + 300])
+        # The helper copy never starts as a second app without the worker arguments.
+        self.assertLess(worker.index("if !isWorker, URL(fileURLWithPath: CommandLine.arguments[0]).lastPathComponent == sandboxHelperName { return true }"),
+                        worker.index("guard isWorker else { return false }"))
+        # App termination signals only helpers that are still running.
+        self.assertIn("for process in processes.values where process.isRunning", launcher)
+        self.assertNotIn("Set<pid_t>", launcher)
 
     def test_app_store_build_queues_no_interrupted_download_events(self) -> None:
         source = (SWIFT_SOURCES / "Statistics" / "MapStatisticsEvent.swift").read_text(encoding="utf-8")
@@ -240,6 +272,11 @@ class AppStoreConfigurationContract(unittest.TestCase):
         dmg = active_source(source, {"RELEASE"})
         self.assertIn("let queueInterrupted = false", app_store)
         self.assertIn("let queueInterrupted = file.consent?.choice != .declined", dmg)
+        # The only place interrupted downloads are queued is behind that flag.
+        guarded = "if queueInterrupted {\n                file.pendingEvents += (file.activeAcquisitions ?? []).map { $0.phase(.downloadInterrupted) }"
+        for text in (app_store, dmg):
+            self.assertEqual(text.count(".phase(.downloadInterrupted)"), 1)
+            self.assertIn(guarded, text)
 
     def test_uploads_update_check_and_donation_are_compiled_out(self) -> None:
         dmg = {"RELEASE", "TERENTO_BUNDLED_MTP"}

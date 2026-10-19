@@ -2,7 +2,8 @@
 # Local App Sandbox test build of the AppStore configuration (App Store plan,
 # stage 1). Run on a Mac with Xcode; no Apple account is needed.
 #
-# Safety: the real DMG Terento data is never moved or changed.
+# Safety: the real DMG Terento data is never moved or changed. With --seed copy
+# it is read once, to make the seed copy below.
 #   - The test app uses its own bundle ID, app.terento.mac.sandboxtest, so it
 #     gets its own container: ~/Library/Containers/app.terento.mac.sandboxtest.
 #   - Its migration manifest (container-migration.sandboxtest.plist) copies only
@@ -32,7 +33,7 @@ while [ "$#" -gt 0 ]; do
             shift
             ;;
         -h|--help)
-            sed -n '2,19p' "$0"
+            sed -n '2,18p' "$0"
             exit 0
             ;;
         *)
@@ -60,6 +61,11 @@ container="$HOME/Library/Containers/$test_bundle_id"
 # Fixed path, never configurable: the cleanup command below deletes it.
 output="$HOME/TerentoSandboxTest"
 app="$output/DerivedData/Build/Products/AppStore/Terento.app"
+
+# A symbolic link at any of these could send writes into the real DMG data.
+for path in "$output" "$seed" "$container"; do
+    [ ! -L "$path" ] || die "$path is a symbolic link. Delete it and run this script again."
+done
 
 # Every migration source must be inside the seed folder. This guard is the
 # reason the real DMG data is never a migration source in this test.
@@ -99,8 +105,7 @@ if [ -e "$container" ]; then
 elif [ -e "$seed" ]; then
     echo "Using the existing seed: $seed"
 else
-    mkdir -p "$seed"
-    chmod 700 "$seed"
+    mkdir -m 700 "$seed"
     if [ "$seed_mode" = "copy" ] && [ -d "$real_data" ]; then
         echo "Copying DMG data into the seed (read-only; the originals stay in place)..."
         for item in .device-key-secret devices failed-install-recovery.json MutationEvidence \
@@ -121,7 +126,10 @@ marketing_version="$(sed -n 's/^[[:space:]]*MARKETING_VERSION = \(.*\);$/\1/p' \
 [ -n "$marketing_version" ] || die "Could not read MARKETING_VERSION"
 
 echo "Building the AppStore configuration (ad-hoc signed, bundle ID $test_bundle_id)..."
-mkdir -p "$output"
+# A new, empty folder on every run, so nothing inside it can point elsewhere.
+# rm -rf removes only this folder (a symbolic link was refused above).
+rm -rf "$output"
+mkdir -m 700 "$output"
 xcodebuild \
     -project "$repo_root/Terento.xcodeproj" \
     -scheme Terento \

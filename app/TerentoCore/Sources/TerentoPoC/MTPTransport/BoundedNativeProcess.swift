@@ -33,10 +33,9 @@ enum BoundedNativeProcess {
         FinishingTrace.event("worker_started", "child=\(process.processIdentifier) timeout=\(timeout)")
         #if TERENTO_APP_STORE
         // Declared before the kill-and-wait cleanup below, so it runs after it:
-        // the identifier leaves the registry only once the child has exited.
-        let child = process.processIdentifier
-        BoundedNativeChildren.insert(child)
-        defer { BoundedNativeChildren.remove(child) }
+        // the child leaves the registry only once it has exited.
+        BoundedNativeChildren.insert(process)
+        defer { BoundedNativeChildren.remove(process) }
         #endif
         defer {
             try? stdin.fileHandleForWriting.close()
@@ -79,23 +78,25 @@ enum BoundedNativeProcess {
 enum BoundedNativeChildren {
     private static let lock = NSLock()
     // Every access to this field is protected by lock.
-    nonisolated(unsafe) private static var identifiers: Set<pid_t> = []
+    nonisolated(unsafe) private static var processes: [ObjectIdentifier: Process] = [:]
 
-    static func insert(_ identifier: pid_t) {
+    static func insert(_ process: Process) {
         lock.lock(); defer { lock.unlock() }
-        identifiers.insert(identifier)
+        processes[ObjectIdentifier(process)] = process
     }
 
-    static func remove(_ identifier: pid_t) {
+    static func remove(_ process: Process) {
         lock.lock(); defer { lock.unlock() }
-        identifiers.remove(identifier)
+        processes[ObjectIdentifier(process)] = nil
     }
 
     /// The helper only reads from the watch; ending it cannot change a map.
+    /// A child that already exited is skipped: its PID may belong to another
+    /// process by now.
     static func terminateAll() {
         lock.lock(); defer { lock.unlock() }
-        for identifier in identifiers where identifier > 0 {
-            kill(identifier, SIGKILL)
+        for process in processes.values where process.isRunning && process.processIdentifier > 0 {
+            kill(process.processIdentifier, SIGKILL)
         }
     }
 }
