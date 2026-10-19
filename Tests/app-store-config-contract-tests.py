@@ -32,7 +32,7 @@ HELPER_ENTITLEMENTS = {
     "com.apple.security.app-sandbox": True,
     "com.apple.security.inherit": True,
 }
-# Plan section 1a: move these DMG items unchanged; mixed JSON files are moved
+# Plan section 1a: migrate these DMG items unchanged; mixed JSON files are copied
 # whole because the manifest cannot filter file content.
 MIGRATED_ITEMS = [
     ".device-key-secret",
@@ -219,6 +219,27 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertIn('PRODUCT_BUNDLE_IDENTIFIER="$test_bundle_id"', script)
         self.assertIn('TERENTO_CONTAINER_MIGRATION_MANIFEST="$test_manifest"', script)
         self.assertNotIn("container-migration.plist\"", script.replace("Resources/container-migration.plist", ""))
+        # The output folder is fixed: an override could point the build and
+        # the printed cleanup command at the real DMG data.
+        self.assertIn('output="$HOME/TerentoSandboxTest"', script)
+        self.assertNotIn("TERENTO_SANDBOX_TEST_OUTPUT", script)
+
+    def test_helper_exits_unless_the_app_is_its_parent(self) -> None:
+        app_store = {"RELEASE", "TERENTO_BUNDLED_MTP", "TERENTO_APP_STORE"}
+        launcher = active_source((SWIFT_SOURCES / "MTPTransport" / "BoundedNativeProcess.swift").read_text(encoding="utf-8"), app_store)
+        self.assertIn('helperEnvironment["TERENTO_PARENT_PID"] = String(getpid())', launcher)
+        worker = active_source((SWIFT_SOURCES / "Installation" / "MTPMapInstallationTransport.swift").read_text(encoding="utf-8"), app_store)
+        guard = worker.index('ProcessInfo.processInfo.environment["TERENTO_PARENT_PID"]')
+        self.assertIn("getppid() == parent else { _exit(1) }", worker[guard:guard + 300])
+        # The parent check runs before the request is read.
+        self.assertLess(worker.index("exitWhenParentExits()\n"), worker.index("FileHandle.standardInput.read"))
+
+    def test_app_store_build_queues_no_interrupted_download_events(self) -> None:
+        source = (SWIFT_SOURCES / "Statistics" / "MapStatisticsEvent.swift").read_text(encoding="utf-8")
+        app_store = active_source(source, {"RELEASE", "TERENTO_APP_STORE"})
+        dmg = active_source(source, {"RELEASE"})
+        self.assertIn("let queueInterrupted = false", app_store)
+        self.assertIn("let queueInterrupted = file.consent?.choice != .declined", dmg)
 
     def test_uploads_update_check_and_donation_are_compiled_out(self) -> None:
         dmg = {"RELEASE", "TERENTO_BUNDLED_MTP"}

@@ -833,9 +833,12 @@ enum MTPFinishingWorker {
 extension MTPFinishingWorker {
     /// The sandboxed helper must not outlive the app (App Store plan A5): after
     /// Quit anyway, a crash or a force quit it is re-parented, and it exits.
+    /// The app passes its own PID, so a helper whose app died before this check
+    /// exits at once instead of watching its new parent.
     /// It only reads from the watch, so ending it cannot change a map.
     static func exitWhenParentExits() {
-        let parent = getppid()
+        guard let value = ProcessInfo.processInfo.environment["TERENTO_PARENT_PID"],
+              let parent = pid_t(value), parent > 1, getppid() == parent else { _exit(1) }
         let watchdog = Thread {
             while getppid() == parent { usleep(200_000) }
             _exit(1)

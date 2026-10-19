@@ -5,7 +5,7 @@
 # Safety: the real DMG Terento data is never moved or changed.
 #   - The test app uses its own bundle ID, app.terento.mac.sandboxtest, so it
 #     gets its own container: ~/Library/Containers/app.terento.mac.sandboxtest.
-#   - Its migration manifest (container-migration.sandboxtest.plist) moves only
+#   - Its migration manifest (container-migration.sandboxtest.plist) copies only
 #     items from a throwaway seed folder,
 #     ~/Library/Application Support/TerentoSandboxTestSeed.
 #   - With --seed copy (the default) the seed is a read-only copy of the DMG
@@ -57,11 +57,12 @@ application_support="$HOME/Library/Application Support"
 real_data="$application_support/Terento"
 seed="$application_support/TerentoSandboxTestSeed"
 container="$HOME/Library/Containers/$test_bundle_id"
-output="${TERENTO_SANDBOX_TEST_OUTPUT:-$HOME/TerentoSandboxTest}"
+# Fixed path, never configurable: the cleanup command below deletes it.
+output="$HOME/TerentoSandboxTest"
 app="$output/DerivedData/Build/Products/AppStore/Terento.app"
 
 # Every migration source must be inside the seed folder. This guard is the
-# reason the real DMG data cannot be moved by this test.
+# reason the real DMG data is never a migration source in this test.
 index=0
 while source="$(/usr/bin/plutil -extract "Move.$index.0" raw -o - "$test_manifest" 2>/dev/null)"; do
     case "$source" in
@@ -161,8 +162,10 @@ Next steps
 2. Open the test app WITHOUT the watch connected:
      open "$app"
    A3: the normal "connect your watch" screen appears.
-   Migration (B6): this folder now holds the migrated files, and the seed folder is empty:
+   Migration (B6): this folder now holds the migrated files:
      ls -la "$container/Data/Library/Application Support/Terento"
+   Apple documents the migration as a copy, so the seed may still hold the
+   originals; that is not a failure. Note which happened:
      ls -la "$seed"
 3. Connect the watch.
    A1: Terento shows the watch model, free space and the maps on it.

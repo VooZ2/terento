@@ -98,8 +98,9 @@ entitlements.
 
 ## Container migration
 
-macOS moves the items in `Contents/Resources/container-migration.plist` into
-the app container once, when it first creates the container. The manifest
+macOS copies the items in `Contents/Resources/container-migration.plist` into
+the app container once, when it first creates the container (Apple: "The
+operating system will copy the file"). The originals stay where they were. The manifest
 cannot use wildcards or filter file content.
 
 `container-migration.plist` (production) lists, under
@@ -119,7 +120,7 @@ copy), `support-report-unsent.json`, `DeviceAssets` (image cache), Caches,
 Logs and the preferences (window size and download-speed samples only; no
 sharing choice is kept in user defaults).
 
-The three mixed JSON files are moved whole. This build never uploads their
+The three mixed JSON files are copied whole. This build never uploads their
 queues. Before a build sends anything (stage 3), it must drop the migrated
 queues and treat a migrated `accepted` or missing choice as not answered, and
 only a migrated `declined` as an answer (plan section 2).
@@ -133,9 +134,11 @@ Embedding rules (`embed-sandbox-helper.sh`):
   `app.terento.mac` creates that container without migration, and macOS then
   never migrates for that ID on this Mac; the build prints a warning.
 
-Installing a TestFlight build moves the real DMG data into the container. The
-DMG app then no longer finds those files. Back up
-`~/Library/Application Support/Terento` first.
+Installing a TestFlight build copies the real DMG data into the container.
+After that the DMG app and the App Store app each keep their own manifests,
+and they are not synchronised: a map installed or removed with one app is not
+recorded by the other. Use one app per Mac. Back up
+`~/Library/Application Support/Terento` before the first TestFlight install.
 
 ## Local sandbox test
 
@@ -147,7 +150,7 @@ Packaging/AppStore/build-local-sandbox-test.sh
 
 The script builds `AppStore` ad-hoc signed with the bundle ID
 `app.terento.mac.sandboxtest` and `container-migration.sandboxtest.plist`.
-That manifest moves items only from
+That manifest copies items only from
 `~/Library/Application Support/TerentoSandboxTestSeed` into the test
 container, `~/Library/Containers/app.terento.mac.sandboxtest`. By default the
 script fills the seed with a copy of the DMG data; the originals are only
@@ -165,7 +168,7 @@ Checks with a real watch (plan stage 1):
 - A5: after `Quit`, `Quit anyway` during verification, and a force quit,
   `pgrep -fl TerentoFinishingWorker` prints nothing;
 - B6: the migrated files are in the container and DMG-installed maps show as
-  managed.
+  managed. The seed may keep its originals (Apple documents a copy).
 
 Install only a map that is not on the watch yet and remove it again with the
 test app. The test app works on a copy of the manifests, so do not update or

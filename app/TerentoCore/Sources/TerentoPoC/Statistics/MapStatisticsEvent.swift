@@ -290,7 +290,14 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
     func reconcileInterruptedAcquisitions() throws {
         try lock.withLock {
             var file = try loadUnlocked()
-            if file.consent?.choice != .declined {
+            #if TERENTO_APP_STORE
+            // App Store builds send nothing, so a migrated interrupted download
+            // is dropped instead of queued.
+            let queueInterrupted = false
+            #else
+            let queueInterrupted = file.consent?.choice != .declined
+            #endif
+            if queueInterrupted {
                 file.pendingEvents += (file.activeAcquisitions ?? []).map { $0.phase(.downloadInterrupted) }
             }
             file.activeAcquisitions = []

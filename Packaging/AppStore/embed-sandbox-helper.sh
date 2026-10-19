@@ -12,7 +12,7 @@
 #      TERENTO_CONTAINER_MIGRATION_MANIFEST (the local sandbox test passes its
 #      seed-only manifest), or the production manifest during `archive`.
 #      An ordinary build never embeds the production manifest, so running it
-#      can never move the real DMG data;
+#      can never migrate the real DMG data;
 #   3. signs nested code inside-out when code signing is allowed: both bundled
 #      dylibs and the helper. Xcode then signs the app itself.
 set -eu

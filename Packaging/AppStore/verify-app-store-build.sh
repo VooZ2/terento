@@ -97,12 +97,14 @@ if [ -n "$control_app" ]; then
     done <"$forbidden_strings"
 fi
 
-for executable in "$app/Contents/MacOS/"*; do
+# Every code file in the bundle: the app, the helper and the embedded libraries.
+find "$app/Contents/MacOS" "$app/Contents/Frameworks" -type f >"$work/bundle-code.txt"
+while IFS= read -r executable; do
     while IFS= read -r needle; do
         if LC_ALL=C grep -a -F -q -- "$needle" "$executable"; then
             fail "'$needle' is compiled into $executable"
         fi
     done <"$forbidden_strings"
-done
+done <"$work/bundle-code.txt"
 
 echo "PASS: AppStore configuration builds, signs nested code, has exact entitlements and no update, donation or diagnostics-upload strings"
