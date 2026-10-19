@@ -29,8 +29,9 @@ shared install statistics from the start, like app results.
   assessment as app reports, at receipt and again on each scheduler cycle
   while unresolved. An automatic resolution (`EXACT`, `SINGLE_MATCH`,
   `USB_LEARNED`) is checked again on each cycle as well, so a record whose
-  model the current rules no longer give loses or changes it; unresolved
-  records are processed first. Only resolved results count per model. The
+  model the current rules no longer give loses or changes it. Each cycle
+  walks every such record in bounded batches (one transaction per batch); a
+  record locked by a concurrent write is checked on the next cycle. Only resolved results count per model. The
   assessment reads the reviewed generation-label aliases of
   `contracts/INSTALLATION_AUTHORIZATION.md` (a watch text `epix pro - 47mm`
   names `epix Pro (Gen 2)`) and its reviewed ambiguous names (a watch text

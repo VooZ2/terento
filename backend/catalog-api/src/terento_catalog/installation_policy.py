@@ -181,12 +181,19 @@ def _ambiguous_name_rows(devices: list[dict[str, Any]]) -> list[dict[str, Any]]:
     The real rows of the reported name stay, so the shipped resolver weighs
     every generation: all Maps=Yes approve, anything mixed or NULL is
     ``PENDING``. Without real rows of the reported name nothing is added.
+    Shipped clients drop inactive rows before weighing, so a withdrawn row
+    would stop counting while a mirror approved; when any row of the name
+    or a listed generation is inactive nothing is mirrored and the name's
+    own rows decide, as without the table.
     """
     real_ids = {device["id"] for device in devices}
     real_base_models = {device["baseModel"] for device in devices}
     mirrored: list[dict[str, Any]] = []
     for name, targets in sorted(AMBIGUOUS_REPORTED_BASE_MODELS.items()):
         if name not in real_base_models:
+            continue
+        group = [device for device in devices if device["baseModel"] == name or device["baseModel"] in targets]
+        if not all(device["active"] for device in group):
             continue
         suffix = ALIAS_ROW_ID_SEPARATOR + name.replace(" ", "-")
         for device in devices:

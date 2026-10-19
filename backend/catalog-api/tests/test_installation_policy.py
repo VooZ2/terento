@@ -476,6 +476,22 @@ class AmbiguousReportedNameTests(unittest.TestCase):
         gen2 = [dict(row, map_capable=False) if row["device_id"] == "garmin-epix-gen-2-47" else row for row in EPIX_ROWS]
         self.assertEqual(app_resolve(build_installation_policy([*gen2, EPIX_GEN_1], WHEN), garmin("EPIX"))[0], "PENDING")
 
+    def test_an_inactive_generation_never_lets_a_mirror_approve(self):
+        # Shipped clients drop inactive rows before weighing candidates, so a
+        # withdrawn generation must not leave the other one deciding alone.
+        gen2 = "garmin-epix-gen-2-47"
+        inactive_gen2 = [dict(row, active=False) if row["device_id"] == gen2 else row for row in EPIX_ROWS]
+        for label, rows, expected in (
+                ("gen 1 inactive", [*EPIX_ROWS, dict(EPIX_GEN_1, active=False)], "OUT_OF_SCOPE"),
+                ("gen 2 inactive", [*inactive_gen2, EPIX_GEN_1], "APPROVED"),
+                ("both inactive", [*inactive_gen2, dict(EPIX_GEN_1, active=False)], "OUT_OF_SCOPE")):
+            with self.subTest(label):
+                policy = build_installation_policy(rows, WHEN)
+                self.assertNotIn(gen2 + "@alias-epix", {d["id"] for d in policy["devices"]})
+                for strict in (True, False):
+                    # Exactly the decision without the table: the "epix" row's own.
+                    self.assertEqual(app_resolve(policy, garmin("EPIX"), strict=strict)[0], expected)
+
     def test_no_mirror_without_a_real_row_of_the_ambiguous_name(self):
         policy = build_installation_policy(EPIX_ROWS, WHEN)
         self.assertNotIn("epix", {d["baseModel"] for d in policy["devices"]})

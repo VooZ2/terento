@@ -79,7 +79,11 @@ catalog row of each listed base model, built exactly like an alias row (only
 differ). Every generation is then a candidate under the same rules: all Maps=Yes
 approve; mixed, NULL or `false` capability is `PENDING` or `BLOCKED` as above.
 Without a real row of the reported name nothing is mirrored, so the table can
-never let one generation stand in for an unknown other. The identity
+never let one generation stand in for an unknown other. Shipped clients drop
+inactive rows before weighing candidates, so when any row of the reported name
+or of a listed base model is inactive nothing is mirrored either, and the
+name's own rows decide exactly as without the table: a withdrawn generation
+can never be bypassed through another generation's mirror. The identity
 assessment reads the same table: the name alone keeps every listed generation
 possible, so only a reviewed code, a reported size or an Identity review
 decision picks one. Add an entry only with repository evidence that each

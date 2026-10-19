@@ -829,6 +829,15 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertEqual(self.db.resolve_web_installer_identities(),
                          {"pending": 0, "resolved": 0, "rechecked": 2, "changed": 2})
         self.assertEqual(resolved(), {0x4F67: (gen2, "USB_LEARNED"), None: (None, "UNRESOLVED")})
+        # Every row is checked on each call, whatever the batch size: an
+        # unchanged first batch never hides later rows.
+        self.sql("UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = 'SINGLE_MATCH'",
+                 (gen1,))
+        self.assertEqual(self.db.resolve_web_installer_identities(limit=1),
+                         {"pending": 0, "resolved": 0, "rechecked": 2, "changed": 2})
+        self.assertEqual(self.db.resolve_web_installer_identities(limit=1),
+                         {"pending": 1, "resolved": 0, "rechecked": 1, "changed": 0})
+        self.assertEqual(resolved(), {0x4F67: (gen2, "USB_LEARNED"), None: (None, "UNRESOLVED")})
         # An app report of the same code confirmed as the original epix makes the
         # code name two models, so the web install waits for review.
         app = validate_compatibility_event(encode(compatibility_event(
