@@ -12,7 +12,10 @@ DMG configuration.
 from __future__ import annotations
 
 import plistlib
+import os
 import re
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -233,6 +236,56 @@ class AppStoreConfigurationContract(unittest.TestCase):
         fresh = script.index('rm -rf "$output"\nmkdir -m 700 "$output"\n')
         self.assertLess(fresh, script.index("xcodebuild \\"))
 
+    def test_local_test_refuses_paths_that_reach_real_data(self) -> None:
+        """Runs the script's path checks (they run before the macOS check)."""
+        script = APP_STORE_DIR / "build-local-sandbox-test.sh"
+
+        def run(layout) -> str:
+            with tempfile.TemporaryDirectory() as home_name:
+                home = Path(home_name)
+                support = home / "Library" / "Application Support"
+                (support / "Terento").mkdir(parents=True)
+                (support / "Terento" / "devices").write_text("real", encoding="utf-8")
+                layout(home, support)
+                result = subprocess.run(["sh", str(script)], env={**os.environ, "HOME": str(home)},
+                                        capture_output=True, text=True, timeout=30)
+                self.assertEqual((support / "Terento" / "devices").read_text(encoding="utf-8"), "real")
+                self.assertNotEqual(result.returncode, 0)
+                return result.stderr
+
+        def nothing(home: Path, support: Path) -> None:
+            pass
+
+        def containers_into_real_data(home: Path, support: Path) -> None:
+            (home / "Library" / "Containers").symlink_to(support / "Terento")
+            (support / "Terento" / "app.terento.mac.sandboxtest").mkdir()
+
+        def output_link(home: Path, support: Path) -> None:
+            (home / "TerentoSandboxTest").symlink_to(support / "Terento")
+
+        def output_holds_real_data(home: Path, support: Path) -> None:
+            moved = home / "TerentoSandboxTest" / "data"
+            moved.mkdir(parents=True)
+            (support / "Terento" / "devices").rename(moved / "devices")
+            (support / "Terento").rmdir()
+            (support / "Terento").symlink_to(moved)
+
+        def other_support_folder(home: Path, support: Path) -> None:
+            elsewhere = home / "elsewhere"
+            elsewhere.mkdir()
+            (support / "TerentoSandboxTestSeed").mkdir()
+            (home / "Library" / "Containers").symlink_to(elsewhere)
+
+        self.assertIn("leads into the real Terento data", run(containers_into_real_data))
+        self.assertIn("is a symbolic link", run(output_link))
+        self.assertIn("contains the real Terento data", run(output_holds_real_data))
+        # APFS ignores case, so paths are compared in lower case.
+        self.assertIn("tr '[:upper:]' '[:lower:]'", script.read_text(encoding="utf-8"))
+        # Safe layouts pass the checks; on macOS the script would go on to build.
+        if os.uname().sysname != "Darwin":
+            for layout in (nothing, other_support_folder):
+                self.assertIn("Run this on macOS", run(layout), layout.__name__)
+
     def test_ci_scan_covers_all_bundle_code(self) -> None:
         verify = (APP_STORE_DIR / "verify-app-store-build.sh").read_text(encoding="utf-8")
         # Debug builds keep app code in Terento.debug.dylib and the libraries
@@ -262,9 +315,11 @@ class AppStoreConfigurationContract(unittest.TestCase):
         # The helper copy never starts as a second app without the worker arguments.
         self.assertLess(worker.index("if !isWorker, URL(fileURLWithPath: CommandLine.arguments[0]).lastPathComponent == sandboxHelperName { return true }"),
                         worker.index("guard isWorker else { return false }"))
-        # App termination signals only helpers that are still running.
-        self.assertIn("for process in processes.values where process.isRunning", launcher)
-        self.assertNotIn("Set<pid_t>", launcher)
+        # The app never signals a helper by PID at quit (a reused PID could
+        # belong to another process); the watchdog alone ends the helper.
+        app = active_source((SWIFT_SOURCES / "TerentoPoCApp.swift").read_text(encoding="utf-8"), app_store)
+        self.assertNotIn("BoundedNativeChildren", launcher + app)
+        self.assertNotIn("terminateAll", launcher + app)
 
     def test_app_store_build_queues_no_interrupted_download_events(self) -> None:
         source = (SWIFT_SOURCES / "Statistics" / "MapStatisticsEvent.swift").read_text(encoding="utf-8")

@@ -78,10 +78,9 @@ executable. For `Debug` and `Release` the phase exits at once.
 
 The helper only reads from the watch. It must not outlive the app (plan A5):
 
-- `applicationWillTerminate` sends `SIGKILL` to every live helper
-  (`BoundedNativeChildren`), after `Quit` and `Quit anyway`;
 - the helper polls its parent and exits within 0.2 s when the app is gone
-  (crash or force quit);
+  (`Quit`, `Quit anyway`, crash or force quit). The app never signals a
+  helper by PID at quit, so a reused PID cannot be hit;
 - the existing deadline still ends a helper that stops responding.
 
 The same termination would be safe for the DMG worker, but the DMG behaviour

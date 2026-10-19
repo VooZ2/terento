@@ -836,7 +836,8 @@ enum MTPFinishingWorker {
 #if TERENTO_APP_STORE
 extension MTPFinishingWorker {
     /// The sandboxed helper must not outlive the app (App Store plan A5): after
-    /// Quit anyway, a crash or a force quit it is re-parented, and it exits.
+    /// Quit, Quit anyway, a crash or a force quit it is re-parented, and it exits.
+    /// The app never signals a helper by PID, so a reused PID is never hit.
     /// The app passes its own PID, so a helper whose app died before this check
     /// exits at once instead of watching its new parent.
     /// It only reads from the watch, so ending it cannot change a map.

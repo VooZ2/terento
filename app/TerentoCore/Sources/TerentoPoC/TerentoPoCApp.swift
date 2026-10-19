@@ -232,11 +232,6 @@ final class TerentoAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        #if TERENTO_APP_STORE
-        // The sandboxed finishing helper is a separate process: it must not
-        // outlive the app after Quit or Quit anyway (App Store plan A5).
-        BoundedNativeChildren.terminateAll()
-        #endif
         MainActor.assumeIsolated { DeviceOperationActivityMonitor.shared.applicationWillTerminate() }
     }
 }

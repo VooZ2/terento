@@ -49,9 +49,6 @@ die() {
     exit 1
 }
 
-[ "$(uname -s)" = "Darwin" ] || die "Run this on macOS with Xcode."
-command -v xcodebuild >/dev/null 2>&1 || die "xcodebuild not found. Install Xcode and run: sudo xcode-select -s /Applications/Xcode.app"
-
 repo_root="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 test_manifest="$repo_root/Packaging/AppStore/container-migration.sandboxtest.plist"
 application_support="$HOME/Library/Application Support"
@@ -62,10 +59,35 @@ container="$HOME/Library/Containers/$test_bundle_id"
 output="$HOME/TerentoSandboxTest"
 app="$output/DerivedData/Build/Products/AppStore/Terento.app"
 
-# A symbolic link at any of these could send writes into the real DMG data.
+# The path with every symbolic link in its existing part resolved, in lower
+# case (APFS ignores case). Missing trailing parts are kept as written.
+physical_path() {
+    dir="$1"
+    rest=""
+    while [ ! -d "$dir" ]; do
+        rest="/$(basename -- "$dir")$rest"
+        dir="$(dirname -- "$dir")"
+    done
+    printf '%s%s\n' "$(CDPATH= cd -P -- "$dir" && pwd -P)" "$rest" | tr '[:upper:]' '[:lower:]'
+}
+
+# This script deletes and creates only these three folders. A symbolic link at
+# one of them, or at any folder above them, could point it at the real DMG data,
+# so each is refused if it resolves into that data or contains it.
+real_physical="$(physical_path "$real_data")"
 for path in "$output" "$seed" "$container"; do
     [ ! -L "$path" ] || die "$path is a symbolic link. Delete it and run this script again."
+    resolved="$(physical_path "$path")"
+    case "$resolved/" in
+        "$real_physical/"*) die "$path leads into the real Terento data ($resolved). Nothing was changed." ;;
+    esac
+    case "$real_physical/" in
+        "$resolved/"*) die "$path contains the real Terento data ($real_physical). Nothing was changed." ;;
+    esac
 done
+
+[ "$(uname -s)" = "Darwin" ] || die "Run this on macOS with Xcode."
+command -v xcodebuild >/dev/null 2>&1 || die "xcodebuild not found. Install Xcode and run: sudo xcode-select -s /Applications/Xcode.app"
 
 # Every migration source must be inside the seed folder. This guard is the
 # reason the real DMG data is never a migration source in this test.
