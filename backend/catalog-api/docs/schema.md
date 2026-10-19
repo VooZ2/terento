@@ -741,3 +741,13 @@ column with a closed CHECK, allowed only on `DOWNLOAD_FAILED`
 ([`map-event.schema.json`](../../../contracts/map-event.schema.json)). The
 previous revision never writes or reads it; clients through 1.0.0 send no
 reason, which stays NULL.
+
+### Migration084: epix (Gen 2) identity codes
+
+Data only and rollback-compatible: three PENDING `device_identity_mapping`
+rows link XML part numbers 006-B3943-00 and 006-B3944-00 (Garmin's device list:
+"epix (Gen 2)") and USB 091e:4f67 (libmtp: "EPIX 2") to `garmin-epix-gen-2-47`.
+Migration 048 linked the part numbers only to quatix 7. An administrator
+reviews the links in Admin; a PENDING USB link already counts as a model the
+code names for web installs (`WEB_INSTALLER_STATISTICS_CONTRACT.md`). No
+report, assignment, permission or statistic is changed by the migration.

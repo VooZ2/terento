@@ -1264,7 +1264,11 @@ copies every field except `baseModel`, which becomes the alias, and `id`, which
 becomes `<catalog id>@alias-<alias>`. Released clients require unique ids and use
 them for nothing else. Therefore the policy has more `devices` entries than the
 audit query has catalog rows: one extra entry per aliased target row. The
-schema, key sets and `policyVersion` are unchanged. The owning rule is in
+schema, key sets and `policyVersion` are unchanged. The reviewed
+`AMBIGUOUS_REPORTED_BASE_MODELS` table adds rows the same way: while a real
+`epix` row exists, every `epix gen 2` row is copied as
+`<catalog id>@alias-epix` with `baseModel: "epix"`, because the original epix
+and epix (Gen 2) both report `EPIX`. The owning rule is in
 [`INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md).
 
 The local policy implementation sends `Cache-Control: no-store` and returns

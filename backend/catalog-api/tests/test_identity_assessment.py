@@ -89,6 +89,47 @@ class IdentityAssessmentTests(unittest.TestCase):
         # The alias is exact: another model name never reaches the epix Pro rows.
         self.assertEqual(assess_identity(dict(rawMTPModel='epix - 47mm'), rows, [])['candidates'], [])
 
+    def test_ambiguous_epix_name_keeps_both_generations_until_a_code_decides(self):
+        # Production 2026-10-19: an epix (Gen 2) reports "EPIX", the same name as
+        # the original epix, so the name alone never picks a generation.
+        gen1 = dict(id='epix-gen-1', model='epix', case_size_mm=None, screen_technology=None)
+        gen2 = dict(id='epix-gen-2-47', model='epix (Gen 2)', case_size_mm=47, screen_technology=None)
+        quatix = dict(id='quatix-7', model='quatix 7', case_size_mm=47, screen_technology=None)
+        rows = [gen1, gen2, quatix]
+        event = dict(rawMTPModel='EPIX', model='EPIX', garminModelDescription='EPIX',
+                     garminModelPartNumber='006-B3943-00', usbVendorID=0x091E, usbProductID=0x4F67)
+        result = assess_identity(event, rows, [])
+        self.assertEqual([c['deviceId'] for c in result['candidates']], ['epix-gen-1', 'epix-gen-2-47'])
+        self.assertTrue(all(c['checks'][0]['observedState'] == 'MATCH' for c in result['candidates']))
+        self.assertEqual((result['state'], result['canonicalDeviceId']), ('UNRESOLVED', None))
+        self.assertEqual(result['candidates'][1]['checks'][0]['evidence'][0],
+                         {'source': 'rawMTPModel (reviewed ambiguous name)', 'value': 'epix gen 2'})
+        # Pending links decide nothing.
+        def link(kind, value, device_id, status):
+            return dict(kind=kind, value=value, device_model_id=device_id, status=status,
+                        source_url='https://example.org/evidence', source_version='1')
+        pending = [link('XML_PART_NUMBER', '006-B3943-00', 'epix-gen-2-47', 'PENDING'),
+                   link('XML_PART_NUMBER', '006-B3943-00', 'quatix-7', 'PENDING'),
+                   link('USB', '091e:4f67', 'epix-gen-2-47', 'PENDING')]
+        self.assertIsNone(assess_identity(event, rows, pending)['canonicalDeviceId'])
+        # Reviewed codes exclude the original epix; the Gen 2 row is the single match.
+        approved = [dict(m, status='APPROVED') for m in pending]
+        result = assess_identity(event, rows, approved)
+        self.assertEqual((result['canonicalDeviceId'], result['resolution']), ('epix-gen-2-47', 'SINGLE_MATCH'))
+        # An original epix with its own reviewed code resolves to the original row.
+        original = dict(rawMTPModel='EPIX', garminModelPartNumber='006-B1988-00')
+        result = assess_identity(original, rows, [link('XML_PART_NUMBER', '006-B1988-00', 'epix-gen-1', 'APPROVED')])
+        self.assertEqual((result['canonicalDeviceId'], result['resolution']), ('epix-gen-1', 'SINGLE_MATCH'))
+        # Without a real "epix" row nothing is added: the name never reaches Gen 2 alone.
+        self.assertEqual(assess_identity(dict(rawMTPModel='EPIX'), [gen2], [])['candidates'], [])
+        # Explicit generation names stay exact.
+        self.assertEqual([c['deviceId'] for c in assess_identity(dict(rawMTPModel='epix (Gen 2)'), rows, [])['candidates']],
+                         ['epix-gen-2-47'])
+        # Assigning either generation to an "EPIX" report is no model contradiction.
+        self.assertEqual(selected_identity_conflicts(dict(rawMTPModel='EPIX'), gen2), [])
+        self.assertEqual(selected_identity_conflicts(dict(rawMTPModel='EPIX'), gen1), [])
+        self.assertEqual([c['field'] for c in selected_identity_conflicts(dict(rawMTPModel='EPIX'), quatix)], ['model'])
+
     def test_code_without_reported_model_name_stays_unresolved(self):
         event = dict(self.event, model=None, rawMTPModel=None)
         result = assess_identity(event, [self.device], self.mappings)

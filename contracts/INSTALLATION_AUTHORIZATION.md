@@ -67,9 +67,32 @@ Garmin sold exactly one generation under it. Current table: reported `epix Pro`
 (`EPIX PRO`, `epix Pro 51mm`) → `epix pro gen 2`. Garmin sold only one epix Pro
 generation, catalogued as "epix Pro (Gen 2)", so the reported name cannot mean
 another product. Plain `epix` is not an alias because Garmin sold an original
-epix and epix (Gen 2); it is a real catalog row for the original epix (see
-below), so a watch that reports plain `epix` is decided by that row (Maps=Yes).
-Both epix generations have maps, so the result is the same for either. The
+epix and epix (Gen 2); it is a real catalog row for the original epix.
+
+**Ambiguous reported names.** Some names are reported by more than one
+catalog generation. `AMBIGUOUS_REPORTED_BASE_MODELS` in the same file is a
+small, reviewed table of exact, whole normalized names, each with the other
+catalog base models that report it. While real catalog rows carry the reported
+name, the policy keeps those rows and also contains one mirror row for every
+catalog row of each listed base model, built exactly like an alias row (only
+`baseModel`, set to the reported name, and `id`, `<catalog id>@alias-<name>`,
+differ). Every generation is then a candidate under the same rules: all Maps=Yes
+approve; mixed, NULL or `false` capability is `PENDING` or `BLOCKED` as above.
+Without a real row of the reported name nothing is mirrored, so the table can
+never let one generation stand in for an unknown other. Shipped clients drop
+inactive rows before weighing candidates, so when any row of the reported name
+or of a listed base model is inactive nothing is mirrored either, and the
+name's own rows decide exactly as without the table: a withdrawn generation
+can never be bypassed through another generation's mirror. The identity
+assessment reads the same table: the name alone keeps every listed generation
+possible, so only a reviewed code, a reported size or an Identity review
+decision picks one. Add an entry only with repository evidence that each
+generation reports the name. Current table: reported `epix` → the original
+`epix` row and `epix gen 2`. Production reports of 2026-10-13 and 2026-10-19
+with raw MTP `EPIX` carry XML part number 006-B3943-00 and USB 091e:4f67, which
+Garmin's device list and libmtp name epix (Gen 2). Both epix generations have
+maps, so authorization stays `APPROVED`; before this entry such a watch was
+decided by the original epix row alone and counted as that model. The
 MARQ (Gen 2) lines are not aliased because first-generation MARQ editions exist
 under the same names; those first-generation names are real Maps=Yes rows, so
 a Gen 2 watch that reported a plain first-generation name would also be
