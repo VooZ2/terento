@@ -626,7 +626,10 @@ size prefers rows that state that size over a same-name row with no size),
 every reported model label matches its name (since version 5 also through a
 reviewed generation-label alias, `GENERATION_LABEL_BASE_MODEL_ALIASES`, unless a
 real catalog row carries the alias name), and no pending mapping of a reported code points outside the
-candidate set. A reported code alone, or a client `canonicalDeviceId` alone,
+candidate set. Since version 6 a reviewed ambiguous name
+(`AMBIGUOUS_REPORTED_BASE_MODELS`: reported `epix` is the original epix or
+epix (Gen 2)) matches every generation it lists while a real catalog row
+carries the name, so the name alone never assigns one of them. A reported code alone, or a client `canonicalDeviceId` alone,
 never assigns. Only approved mappings are positive evidence. Pending
 alternative targets prevent a partially reviewed shared code from appearing
 unique. Shared mappings only prove a property when all targets agree. Two or

@@ -6,9 +6,9 @@ import unicodedata
 from functools import lru_cache
 from typing import Any
 
-from .installation_policy import GENERATION_LABEL_BASE_MODEL_ALIASES
+from .installation_policy import AMBIGUOUS_REPORTED_BASE_MODELS, GENERATION_LABEL_BASE_MODEL_ALIASES
 
-VERSION = 5
+VERSION = 6
 
 # Historical review statuses are not observations of a device model. Match
 # only the legacy model field; original MTP/XML values remain evidence.
@@ -87,6 +87,13 @@ def model_label(value: Any) -> str:
     return _model_label_text(str(value or ''))
 
 
+def _ambiguous_names(catalog_labels: set[str]) -> dict[str, frozenset[str]]:
+    """Reviewed names several catalog generations report (installation_policy),
+    while real catalog rows carry the name: the name or any listed model."""
+    return {name: frozenset({name, *targets}) for name, targets in AMBIGUOUS_REPORTED_BASE_MODELS.items()
+            if name in catalog_labels}
+
+
 def _identity_observations(event: dict) -> dict[str, Any]:
     """Collect safe, independently reported identity facts.
 
@@ -148,9 +155,11 @@ def selected_identity_conflicts(
     observations = _identity_observations(event)
     conflicts: list[dict[str, Any]] = []
     expected_model = model_label(device.get('model'))
+    # A reviewed ambiguous name ("epix") is no contradiction of any generation it names.
     for source, value in observations['labels']:
         reported_model = model_label(value)
-        if reported_model and expected_model and reported_model != expected_model:
+        if (reported_model and expected_model and reported_model != expected_model
+                and expected_model not in AMBIGUOUS_REPORTED_BASE_MODELS.get(reported_model, ())):
             conflicts.append({'field': 'model', 'source': source,
                               'reported': reported_model, 'reportedRaw': value,
                               'selected': expected_model})
@@ -249,11 +258,21 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     def reported_label(value: Any) -> str:
         return aliases.get(model_label(value), model_label(value))
 
+    # A reviewed ambiguous name ("epix", reported by the original epix and
+    # epix (Gen 2)) names every listed generation, so the name alone never
+    # picks one; codes, sizes or review decide.
+    ambiguous = _ambiguous_names(catalog_labels)
+
+    def names(value: Any, expected: str) -> bool:
+        return expected in ambiguous.get(reported_label(value), {reported_label(value)})
+
     # XML provides the primary model. Specifications may fill an unobserved
     # property only when every variant compatible with the observations agrees
     # and each fact has reviewed provenance. Shared USB codes cannot widen it.
     observed_model_labels = {reported_label(value) for _, value in labels if reported_label(value)}
     specification_model = next(iter(observed_model_labels), '') if len(observed_model_labels) == 1 else ''
+    if specification_model in ambiguous:
+        specification_model = ''
     specification_targets = [d for d in devices if specification_model
         and model_label(d.get('model')) == specification_model
         and all(reported_label(value) == specification_model for _, value in labels)
@@ -274,7 +293,7 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     for device in devices:
         device_id = device['id']
         expected = model_label(device.get('model'))
-        label_matches = [(key, value) for key, value in labels if reported_label(value) == expected]
+        label_matches = [(key, value) for key, value in labels if names(value, expected)]
         linked = any(any(m['device_model_id'] == device_id for m in group) for group in matched.values())
         if not label_matches and not linked and event.get('canonicalDeviceId') != device_id:
             continue
@@ -287,8 +306,10 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
             checks.append({'name': name, 'state': state, 'expected': target,
                            'evidence': [{'source': key, 'value': value} for key, value in evidence]})
 
-        check('model', [(key if reported_label(value) == model_label(value) else f'{key} (reviewed alias)',
-                        reported_label(value)) for key, value in labels], expected)
+        check('model', [(f'{key} (reviewed ambiguous name)', expected) if reported_label(value) in ambiguous
+                        and names(value, expected) else
+                        (key if reported_label(value) == model_label(value) else f'{key} (reviewed alias)',
+                         reported_label(value)) for key, value in labels], expected)
         model_check = checks[-1]
         model_check['observedState'] = model_check['state']
         derived_size, derived_screen = list(sizes), list(screens)

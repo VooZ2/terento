@@ -4825,23 +4825,29 @@ class Database:
         """Resolve the catalog model of web connections and map results that
         have none yet, with the same identity assessment as app reports. The
         scheduler runs it at start and after each cycle, so rows received
-        before a catalog or USB mapping change resolve later. Rows resolved
-        from a learned USB code are checked again: once the code names
-        several models they lose the model. A row with any administrator
-        decision (Identity review) keeps that decision."""
+        before a catalog or USB mapping change resolve later. Automatic
+        resolutions (exact, single match, learned USB code) are checked again
+        under the current rules: a row whose model the rules no longer give,
+        such as a learned code that now names several models, loses or
+        changes it. Unresolved rows come first within ``limit``. A row with
+        any administrator decision (Identity review) keeps that decision."""
         with self.connection() as connection:
             rows = list(connection.execute(
                 """
-                SELECT event_id, model, usb_vendor_id, usb_product_id FROM web_installer_event
-                WHERE (canonical_device_model_id IS NULL OR identity_resolution = 'USB_LEARNED')
+                SELECT event_id, model, usb_vendor_id, usb_product_id,
+                       canonical_device_model_id, identity_resolution
+                FROM web_installer_event
+                WHERE (canonical_device_model_id IS NULL
+                       OR identity_resolution IN ('EXACT', 'SINGLE_MATCH', 'USB_LEARNED'))
                   AND NOT EXISTS (SELECT 1 FROM web_installer_identity_audit a WHERE a.event_id = web_installer_event.event_id)
                   AND is_test IS NOT TRUE
                   AND stage IN ('CONNECT', 'MAP_RESULT')
                   AND (model IS NOT NULL OR usb_product_id IS NOT NULL)
-                ORDER BY received_at LIMIT %s FOR UPDATE SKIP LOCKED
+                ORDER BY canonical_device_model_id IS NOT NULL, received_at LIMIT %s FOR UPDATE SKIP LOCKED
                 """, (limit,),
             ).fetchall())
-            summary = {"pending": len(rows), "resolved": 0}
+            pending = [row for row in rows if row["canonical_device_model_id"] is None]
+            summary = {"pending": len(pending), "resolved": 0, "rechecked": len(rows) - len(pending), "changed": 0}
             if not rows:
                 return summary
             devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
@@ -4849,11 +4855,16 @@ class Database:
             usb_models = usb_code_models(mappings, list(connection.execute(LEARNED_USB_QUERY).fetchall()))
             for row in rows:
                 device_id, resolution = web_installer_identity(row, devices, mappings, usb_models)
+                if (device_id, resolution) == (row["canonical_device_model_id"], row["identity_resolution"]):
+                    continue
                 connection.execute(
                     "UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = %s "
                     "WHERE event_id = %s", (device_id, resolution, row["event_id"]),
                 )
-                summary["resolved"] += device_id is not None
+                if row["canonical_device_model_id"] is None:
+                    summary["resolved"] += device_id is not None
+                else:
+                    summary["changed"] += 1
         return summary
 
     @staticmethod

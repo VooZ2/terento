@@ -27,10 +27,15 @@ shared install statistics from the start, like app results.
 - **Watch model**: the API resolves the catalog model of each `CONNECT` and
   `MAP_RESULT` from `model` and the USB model code with the same identity
   assessment as app reports, at receipt and again on each scheduler cycle
-  while unresolved. Only resolved results count per model. The assessment
-  reads the reviewed generation-label aliases of
+  while unresolved. An automatic resolution (`EXACT`, `SINGLE_MATCH`,
+  `USB_LEARNED`) is checked again on each cycle as well, so a record whose
+  model the current rules no longer give loses or changes it; unresolved
+  records are processed first. Only resolved results count per model. The
+  assessment reads the reviewed generation-label aliases of
   `contracts/INSTALLATION_AUTHORIZATION.md` (a watch text `epix pro - 47mm`
-  names `epix Pro (Gen 2)`), and a reported case size prefers the catalog
+  names `epix Pro (Gen 2)`) and its reviewed ambiguous names (a watch text
+  `epix` names both the original epix and epix (Gen 2), so the text alone
+  resolves neither), and a reported case size prefers the catalog
   rows that state that size over a same-name row with no size. Text without
   a size that several sizes share stays unresolved.
 - **Learned USB code** (owner decision 2026-10-13): when the assessment leaves
