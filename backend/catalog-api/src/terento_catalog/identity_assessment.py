@@ -68,7 +68,8 @@ def apply_corrections(event: dict, corrections: list[dict]) -> dict:
 # the text, so caching changes no result.
 @lru_cache(maxsize=8192)
 def _normalized_text(text: str) -> str:
-    text = unicodedata.normalize('NFKD', text).lower()
+    # Trademark signs are not letters: NFKD turns "epix™" into "epixTM".
+    text = unicodedata.normalize('NFKD', re.sub('[\u2122\u2120\u00ae]', ' ', text)).lower()
     text = ''.join(c for c in text if not unicodedata.combining(c))
     return re.sub(r'[^a-z0-9]+', ' ', text).strip()
 

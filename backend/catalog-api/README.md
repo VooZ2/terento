@@ -674,7 +674,15 @@ python -m terento_catalog.identity_registry audit
 
 Imports/enrichment default to dry-run. `--apply` stages identifier candidates
 as PENDING, or enriches existing exact product URLs from `<product-id>.html`;
-it never reassigns installations. Identifier approval is a separate admin
+it never reassigns installations. A source name links the catalog rows of its
+model name (trademark signs ignored, the reviewed `epix Pro` generation alias
+applied) that also fit what the name states: a size, AMOLED or MicroLED,
+Solar or Dual Power (MIP rows only), No Wi-Fi. A code whose names state no
+Solar skips Solar rows when another code names them Solar only, and a stated
+size skips the unsized legacy row when a row of that size exists. libmtp lists
+of full product names ("Fenix 7X/tactix 7/Enduro 2") are split. A link that is
+already stored, in any state, is never added again from a newer snapshot or a
+changed product page. Identifier approval is a separate admin
 review requiring evidence and reason. Source SHA-256/revision and review
 history remain in the registry. If the original XML field actually contains a
 `010-…` SKU, its check uses the retail registry kind; `006-B…` observations use
