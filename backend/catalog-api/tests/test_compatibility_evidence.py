@@ -1206,6 +1206,23 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("fēnix 8 Pro", admin)
         self.assertNotIn(">fēnix 8<", admin)
 
+    def test_public_model_name_comes_from_the_resolved_catalog_row(self):
+        # Production 2026-10-19: epix (Gen 2) evidence shares the reported
+        # identity "EPIX" with the original epix, whose published review name
+        # "epix · Gen 1" was shown on the Gen 2 card.
+        row = next(iter(self.database.public_compatibility_models(1)))
+        row.update(model="epix · Gen 1", canonical_model="epix gen 2", catalog_model="epix (Gen 2)",
+                   catalog_variant="47 mm", variant="47 mm", canonical_device_model_id="garmin-epix-gen-2-47")
+        unresolved = dict(row, model="Legacy watch", catalog_model=None, catalog_variant=None,
+                          canonical_device_model_id=None)
+        no_variant = dict(row, catalog_model="epix", catalog_variant="", canonical_device_model_id="garmin-epix-gen-1")
+        self.database.public_compatibility_models = lambda limit: [row, unresolved, no_variant][:limit]
+
+        response, body = self.request("GET", "/compatibility/public/models.json?limit=5")
+        self.assertEqual(response.status, 200)
+        self.assertEqual([m["model"] for m in json.loads(body)["models"]],
+                         ["epix (Gen 2) · 47 mm", "Legacy watch", "epix"])
+
 
 class PasswordHashTests(unittest.TestCase):
     def test_password_hash_round_trip_and_wrong_password(self):

@@ -608,7 +608,9 @@ website does not need to join the retail device catalog. Historical evidence
 rows can therefore appear even when Garmin no longer lists that model in its
 current retail category. The response contains exact identity, evidence
 counts, `evidenceStatus`, family/variant display metadata, and an `image`
-object. `image` follows controlled Terento asset → allowlisted Garmin
+object. `model` is the resolved catalog row's name (`model · variant`); only a
+row without a catalog model uses the reviewed display name, because a review is
+keyed by the reported identity, which two generations can share (`EPIX`). `image` follows controlled Terento asset → allowlisted Garmin
 `garmin-source` URL → the neutral Terento `fallback` image at
 `https://terento.app/assets/generic-garmin-watch.png` (with a cache-busting
 version query in emitted URLs). The fallback is
