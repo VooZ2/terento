@@ -450,6 +450,22 @@
       "lastSuccessfulInstallation": "2026-10-13T08:47:02+00:00"
     },
     {
+      "model": "fēnix 6X · 51 mm",
+      "variant": "51 mm",
+      "caseSizeMm": 51,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://terento.app/assets/generic-garmin-watch.png?v=20260826-1",
+      "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-20T14:56:42+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · Solar, 51 mm",
       "variant": "Solar, 51 mm",
       "caseSizeMm": 51,
@@ -546,5 +562,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-20T16:41:11.246646+00:00"
+  "generatedAt": "2026-10-20T21:27:34.439894+00:00"
 }
