@@ -677,12 +677,16 @@ as PENDING, or enriches existing exact product URLs from `<product-id>.html`;
 it never reassigns installations. A source name links the catalog rows of its
 model name (trademark signs ignored, the reviewed `epix Pro` generation alias
 applied) that also fit what the name states: a size, AMOLED or MicroLED,
-Solar or Dual Power (MIP rows only), No Wi-Fi. A code whose names state no
-Solar skips Solar rows when another code names them Solar only, and a stated
+Solar or Dual Power (MIP rows only), No Wi-Fi. Each product name of a code is
+checked on its own ("Instinct Crossover" next to "Instinct Crossover Dual
+Power"); bare tags such as "AMOLED" or "Solar" apply to every name of the code.
+A name that states no Solar or screen skips the rows another code names only
+Solar or only that screen, when the model also has other rows, and a stated
 size skips the unsized legacy row when a row of that size exists. libmtp lists
 of full product names ("Fenix 7X/tactix 7/Enduro 2") are split. A link that is
 already stored, in any state, is never added again from a newer snapshot or a
-changed product page. Identifier approval is a separate admin
+changed product page; link writers hold one transaction lock, so concurrent
+runs cannot add it twice. Identifier approval is a separate admin
 review requiring evidence and reason. Source SHA-256/revision and review
 history remain in the registry. If the original XML field actually contains a
 `010-…` SKU, its check uses the retail registry kind; `006-B…` observations use

@@ -45,16 +45,18 @@ def _device_facts(device: dict) -> tuple[str | None, bool | None, bool]:
     return screen, solar, 'NO_WIFI' in stated
 
 
-def _variant_fits(device: dict, code_facts: set[str], elsewhere: set[str]) -> bool:
+def _variant_fits(device: dict, facts: set[str], elsewhere: set[str]) -> bool:
     screen, solar, no_wifi = _device_facts(device)
-    if 'SOLAR' in code_facts and (solar is False or screen in {'AMOLED', 'MicroLED'}):
+    if 'SOLAR' in facts and (solar is False or screen in {'AMOLED', 'MicroLED'}):
         return False
-    if 'SOLAR' not in code_facts and solar is True and 'SOLAR_ONLY' in elsewhere:
+    if 'SOLAR' not in facts and solar is True and 'SOLAR_ONLY' in elsewhere:
         return False
-    screens = code_facts & {'AMOLED', 'MicroLED'}
+    screens = facts & {'AMOLED', 'MicroLED'}
     if screens and (screen == 'MIP' or solar is True or (screen is not None and screen not in screens)):
         return False
-    if no_wifi != ('NO_WIFI' in code_facts) and 'NO_WIFI' in elsewhere:
+    if not screens and screen in {'AMOLED', 'MicroLED'} and f'{screen}_ONLY' in elsewhere:
+        return False
+    if no_wifi != ('NO_WIFI' in facts) and 'NO_WIFI' in elsewhere:
         return False
     return True
 
@@ -71,6 +73,14 @@ def _usb_names(name: str) -> list[str]:
 def _source_label(name: str, aliases: dict[str, str]) -> str:
     label = _NO_WIFI.sub(' ', model_label(name)).strip()
     return aliases.get(label, label)
+
+
+def _name_facts(names: list[str], aliases: dict[str, str]) -> dict[str, set[str]]:
+    # Each product name of a code is its own variant: "Instinct Crossover" and
+    # "Instinct Crossover Dual Power" share one code. Bare tags such as "AMOLED"
+    # or "Solar" carry no model name and describe every name of the code.
+    tags = set().union(*(_stated(normalized(name)) for name in names if not _source_label(name, aliases)))
+    return {name: _stated(normalized(name)) | tags for name in names}
 
 
 def prepare_mappings(kind: str, content: str, devices: list[dict]) -> list[dict]:
@@ -95,19 +105,27 @@ def prepare_mappings(kind: str, content: str, devices: list[dict]) -> list[dict]
     stated_elsewhere: dict[str, set[str]] = {}
     for _, _, names, _ in observations:
         by_label: dict[str, list[set[str]]] = {}
-        for name in names:
-            by_label.setdefault(_source_label(name, aliases), []).append(_stated(normalized(name)))
+        for name, facts in _name_facts(names, aliases).items():
+            by_label.setdefault(_source_label(name, aliases), []).append(facts)
         for label, facts in by_label.items():
             stated = stated_elsewhere.setdefault(label, set())
             stated.update(*facts)
-            # Only a code whose every name states Solar sets the solar rows
-            # apart; "fēnix 7X Pro" and its Solar Edition share one code.
-            if all('SOLAR' in fact for fact in facts):
-                stated.add('SOLAR_ONLY')
+            # Only a code whose every name states Solar or a screen sets those
+            # rows apart; "fēnix 7X Pro" and its Solar Edition share one code.
+            stated.update(f'{fact}_ONLY' for fact in set.intersection(*facts) - {'NO_WIFI'})
+    # A sibling's variant sets rows apart only from other rows of the model:
+    # quatix 7X exists only as a Solar row, so a plain "quatix 7X" still names it.
+    for label, stated in stated_elsewhere.items():
+        facts = [_device_facts(device) for device in devices if model_label(device['model']) == label]
+        if all(solar is True for _, solar, _ in facts):
+            stated.discard('SOLAR_ONLY')
+        for screen in ('AMOLED', 'MicroLED'):
+            if all(row_screen == screen for row_screen, _, _ in facts):
+                stated.discard(f'{screen}_ONLY')
     sized_rows = {(model_label(device['model']), device.get('case_size_mm', device.get('caseSizeMm'))) for device in devices}
     rows = {}
     for code_kind, value, names, source in observations:
-        code_facts = set().union(*(_stated(normalized(name)) for name in names))
+        name_facts = _name_facts(names, aliases)
         for device in devices:
             # Explicit source sizes narrow candidates; an omitted size or
             # feature still proves nothing. Keep original names for review.
@@ -124,7 +142,7 @@ def prepare_mappings(kind: str, content: str, devices: list[dict]) -> list[dict]
                 # row of the same model (epix Pro (Gen 2) next to 42/47/51 mm).
                 if sizes and size is None and any((label, stated_size) in sized_rows for stated_size in sizes):
                     continue
-                if not _variant_fits(device, code_facts, stated_elsewhere.get(label, set())):
+                if not _variant_fits(device, name_facts[name], stated_elsewhere.get(label, set())):
                     continue
                 matching_names.append(name)
             if matching_names:
@@ -191,6 +209,7 @@ def main() -> None:
         if args.command == 'import':
             rows = prepare_mappings(args.kind, args.snapshot.read_text(), devices)
             if args.apply:
+                connection.execute("SELECT pg_advisory_xact_lock(hashtext('device_identity_mapping'))")
                 for row in rows:
                     # A newer snapshot of a link already stored adds no second row.
                     connection.execute('INSERT INTO device_identity_mapping (kind,value,device_model_id,source_url,source_version,source_names) SELECT %(kind)s,%(value)s,%(device_model_id)s,%(source_url)s,%(source_version)s,%(source_names)s::jsonb WHERE NOT EXISTS (SELECT 1 FROM device_identity_mapping m WHERE m.kind=%(kind)s AND m.value=%(value)s AND m.device_model_id=%(device_model_id)s)', dict(row, source_names=json.dumps(row['source_names'])))

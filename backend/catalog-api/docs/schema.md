@@ -768,10 +768,11 @@ without review history are deleted when the same kind, code and model already
 has a decided or older row (a newer source snapshot or changed product page had
 added them; the unique key includes `source_version`). It then records
 source-backed decisions, checked 2026-10-19 against Garmin's device list and
-libmtp (the source versions of migration 084): 51 links the source names
-directly are approved (missing ones are added first, only for existing catalog
-models) and 41 earlier import links whose source names a different screen,
-Solar or Wi-Fi variant are rejected. Only PENDING rows change; each change gets
+libmtp (the source versions of migration 084). Every link the corrected import
+makes from those versions is added when missing, only for existing catalog
+models, so no import run is needed. 54 links the source names directly are
+approved and 41 earlier import links whose source names a different variant or
+size are rejected; the other added links stay PENDING. Only PENDING rows change; each change gets
 a `device_identity_mapping_audit` row with no administrator. Administrator
 decisions, reports, assignments, permissions and statistics are unchanged;
 identity assessment reads the reviewed links on its next pass.

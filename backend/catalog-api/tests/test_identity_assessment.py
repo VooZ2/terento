@@ -309,6 +309,31 @@ class IdentityAssessmentTests(unittest.TestCase):
             {'partNumber': '006-B4596-00', 'name': 'fēnix® 7X Pro No Wi-Fi', 'additionalNames': []}], shared)
         self.assertEqual(rows, [('006-B4376-00', '7x-pro'), ('006-B4596-00', '7x-pro-no-wifi')])
 
+    def test_import_checks_each_product_name_of_a_code_and_applies_bare_tags(self):
+        # Garmin's device list, 2026-10-19: one code names a model and its Dual
+        # Power variant; another code names the AMOLED variant only.
+        devices = [dict(id='crossover', model='Instinct Crossover', screen_technology='MIP', solar=False),
+                   dict(id='crossover-solar', model='Instinct Crossover Solar', screen_technology='MIP', solar=True),
+                   dict(id='crossover-amoled', model='Instinct Crossover AMOLED', screen_technology='AMOLED', solar=None)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B4155-00', 'name': 'Instinct® Crossover', 'additionalNames': ['Instinct® Crossover Dual Power']},
+            {'partNumber': '006-B4678-00', 'name': 'Instinct® Crossover AMOLED', 'additionalNames': []}], devices)
+        self.assertEqual(rows, [('006-B4155-00', 'crossover'), ('006-B4155-00', 'crossover-solar'),
+                                ('006-B4678-00', 'crossover-amoled')])
+        # "tactix 8 – 51 mm" with the tag "AMOLED" is the AMOLED 51 mm row.
+        tactix = [dict(id='51-amoled', model='tactix 8', case_size_mm=51, screen_technology='AMOLED', solar=None),
+                  dict(id='51-solar', model='tactix 8', case_size_mm=51, screen_technology='MIP', solar=True)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B4775-00', 'name': 'tactix® 8 – 47 mm, AMOLED', 'additionalNames': ['tactix® 8 – 51 mm', 'AMOLED']},
+            {'partNumber': '006-B4776-00', 'name': 'tactix® 8 – 51 mm, Solar', 'additionalNames': ['tactix® 8 – 51 mm', 'Solar', 'Elite']}], tactix)
+        self.assertEqual(rows, [('006-B4775-00', '51-amoled'), ('006-B4776-00', '51-solar')])
+        # A model sold only as Solar keeps its row for a plain name.
+        quatix = [dict(id='quatix-7x-solar', model='quatix 7X Solar', screen_technology='MIP', solar=True)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B3907-00', 'name': 'fēnix® 7X', 'additionalNames': ['quatix® 7X – Solar Edition']},
+            {'partNumber': '006-B3910-00', 'name': 'fēnix® 7X', 'additionalNames': ['quatix® 7X']}], quatix)
+        self.assertEqual(rows, [('006-B3907-00', 'quatix-7x-solar'), ('006-B3910-00', 'quatix-7x-solar')])
+
     def test_import_reads_trademark_names_generation_alias_and_stated_sizes(self):
         devices = [dict(id='enduro-2', model='Enduro 2', case_size_mm=None),
                    dict(id='epix-pro', model='epix Pro (Gen 2)', variant='Historical', case_size_mm=None),

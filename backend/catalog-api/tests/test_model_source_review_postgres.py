@@ -62,6 +62,18 @@ class ModelSourceReviewTests(PGliteTestCase):
         self.assertEqual(self.links("006-B5169-00"), {("garmin-enduro-4", "APPROVED")})
         # Seed rows for catalog models this database lacks (Enduro 3) add nothing.
         self.assertEqual(self.links("006-B4575-00"), set())
+        self.assertIn(("garmin-tactix-7", "APPROVED"), self.links("091e:4f43"))
+        self.assertEqual(self.links("091e:50da"), {("garmin-epix-pro-gen-2-51", "APPROVED")})
+
+    def test_other_import_links_are_added_undecided_and_existing_links_keep_their_state(self):
+        self.link("USB", "091e:50d8", "garmin-epix-pro-gen-2-42", status="REJECTED")
+        self.migrate()
+        # An unsized libmtp name keeps every size open for review.
+        self.assertEqual(self.links("091e:50d8"), {
+            ("garmin-epix-pro-gen-2", "PENDING"), ("garmin-epix-pro-gen-2-42", "REJECTED"),
+            ("garmin-epix-pro-gen-2-47", "PENDING"), ("garmin-epix-pro-gen-2-51", "PENDING")})
+        self.assertEqual(self.sql("SELECT count(*) AS n FROM device_identity_mapping_audit m JOIN device_identity_mapping d"
+                                  " ON d.id = m.mapping_id WHERE d.value = '091e:50d8'")[0]["n"], 0)
 
     def test_undecided_duplicates_of_a_link_are_removed(self):
         kept = self.link("RETAIL_SKU", "010-99999-00", "garmin-fenix-7-47", status="APPROVED", version="1")

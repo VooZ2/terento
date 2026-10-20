@@ -2789,6 +2789,9 @@ class Database:
                 (values.get("screen_technology"), values.get("solar"), values.get("inreach"), source, json.dumps(evidence), device_id))
         # A changed product page (new version) adds no second link for an SKU
         # the model already has; the first link keeps its review decision.
+        # Link writers take one lock so two runs cannot both pass NOT EXISTS.
+        if skus:
+            connection.execute("SELECT pg_advisory_xact_lock(hashtext('device_identity_mapping'))")
         for sku in skus:
             connection.execute("""INSERT INTO device_identity_mapping (kind,value,device_model_id,source_url,source_version)
                 SELECT 'RETAIL_SKU',%s,%s,%s,%s WHERE NOT EXISTS (SELECT 1 FROM device_identity_mapping m
