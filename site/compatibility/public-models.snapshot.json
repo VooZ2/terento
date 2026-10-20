@@ -12,10 +12,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 49,
-      "appSuccessfulInstallations": 49,
+      "successfulInstallations": 51,
+      "appSuccessfulInstallations": 51,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-18T18:24:13+00:00"
+      "lastSuccessfulInstallation": "2026-10-20T15:35:50+00:00"
     },
     {
       "model": "Forerunner 965 · Historical",
@@ -130,6 +130,22 @@
       "lastSuccessfulInstallation": "2026-10-17T15:39:37+00:00"
     },
     {
+      "model": "fēnix 8 · 47 mm, Solar",
+      "variant": "47 mm, Solar",
+      "caseSizeMm": 47,
+      "displayType": "Solar",
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02906-10/g/cf-lg.jpg",
+      "successfulInstallations": 11,
+      "appSuccessfulInstallations": 11,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-20T16:15:40+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · 47 mm",
       "variant": "47 mm",
       "caseSizeMm": 47,
@@ -192,22 +208,6 @@
       "appSuccessfulInstallations": 7,
       "webSuccessfulInstallations": 1,
       "lastSuccessfulInstallation": "2026-10-18T09:03:33+00:00"
-    },
-    {
-      "model": "fēnix 8 · 47 mm, Solar",
-      "variant": "47 mm, Solar",
-      "caseSizeMm": 47,
-      "displayType": "Solar",
-      "screenTechnology": "MIP",
-      "solar": true,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02906-10/g/cf-lg.jpg",
-      "successfulInstallations": 7,
-      "appSuccessfulInstallations": 7,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-20T08:22:31+00:00"
     },
     {
       "model": "fēnix 7 Pro · Solar (no Wi-Fi)",
@@ -546,5 +546,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-20T11:16:36.129470+00:00"
+  "generatedAt": "2026-10-20T16:41:11.246646+00:00"
 }
