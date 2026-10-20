@@ -78,7 +78,7 @@ executable. For `Debug` and `Release` the phase exits at once.
 
 The helper only reads from the watch. It must not outlive the app (plan A5):
 
-- the helper polls its parent and exits within 0.2 s when the app is gone
+- the helper checks its parent every 0.2 s and exits once the app is gone
   (`Quit`, `Quit anyway`, crash or force quit). The app never signals a
   helper by PID at quit, so a reused PID cannot be hit;
 - the existing deadline still ends a helper that stops responding.
