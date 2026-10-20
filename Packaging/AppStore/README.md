@@ -165,7 +165,9 @@ Checks with a real watch (plan stage 1):
 - A2: one small catalog map installs to the end, including the read-back in
   the helper (`pgrep -fl TerentoFinishingWorker` while it verifies);
 - A5: after `Quit`, `Quit anyway` during verification, and a force quit,
-  `pgrep -fl TerentoFinishingWorker` prints nothing;
+  `pgrep -fl TerentoFinishingWorker` prints nothing within 1 s of the
+  Terento process ending (not of the click: quitting first removes partial
+  downloads, and the helper ends with the process);
 - B6: the migrated files are in the container and DMG-installed maps show as
   managed. The seed may keep its originals (Apple documents a copy).
 

@@ -207,10 +207,12 @@ Next steps
    remove maps that the DMG app manages: the DMG app's records are not changed
    by this test (the test app works on a copy).
 5. A5: start another install, and while it verifies choose Terento > Quit,
-   then "Quit anyway". Then this must print nothing:
-     pgrep -fl TerentoFinishingWorker
+   then "Quit anyway". When Terento has closed, this must print nothing:
+     sleep 1; pgrep -fl TerentoFinishingWorker
    Also after a normal Quit, and after a force quit during verification
-   (Activity Monitor > Force Quit): the helper must be gone within 1 second.
+   (Activity Monitor > Force Quit): the helper must be gone within 1 second
+   of Terento closing. The helper ends when Terento's process ends, not at
+   the click: while Terento finishes quitting, the helper may still run.
 6. If something is blocked, collect the sandbox messages:
      log show --last 15m --predicate 'eventMessage CONTAINS "Sandbox" AND eventMessage CONTAINS "Terento"'
 
