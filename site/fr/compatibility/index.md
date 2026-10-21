@@ -11,7 +11,7 @@ Terento est conçu pour les montres Garmin prenant en charge les cartes. Vous tr
 
 L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
 
-**35** modèles avec des installations réussies**272** installations réussiesDernière installation réussie 20 octobre 2026
+**34** modèles avec des installations réussies**273** installations réussiesDernière installation réussie 21 octobre 2026
 
 Comment fonctionne cette liste
 
@@ -21,7 +21,7 @@ Les résultats d’installation sont partagés avec Terento par les utilisateurs
 
 La version actuelle comprend quatre fournisseurs de cartes. Cette information produit est distincte des résultats d’appareils présentés ici.
 
-35 modèles
+34 modèles
 
 fēnix
 
@@ -41,11 +41,11 @@ Forerunner
 
 Historical
 
-20 installations réussies
+21 installations réussies
 
-App 18 Web 2
+App 19 Web 2
 
-Dernière installation réussie 16 octobre 2026
+Dernière installation réussie 21 octobre 2026
 
 Forerunner
 
@@ -121,6 +121,18 @@ Dernière installation réussie 17 octobre 2026
 
 fēnix
 
+### fēnix 7X Pro
+
+Solar, Historical
+
+11 installations réussies
+
+App 10 Web 1
+
+Dernière installation réussie 17 octobre 2026
+
+fēnix
+
 ### fēnix 8
 
 47 mm, MIP, Solar
@@ -154,18 +166,6 @@ epix
 App 6 Web 2
 
 Dernière installation réussie 14 octobre 2026
-
-fēnix
-
-### fēnix 7X Pro
-
-Solar, Historical
-
-8 installations réussies
-
-App 7 Web 1
-
-Dernière installation réussie 13 octobre 2026
 
 fēnix
 
@@ -286,18 +286,6 @@ fēnix
 App 4
 
 Dernière installation réussie 23 septembre 2026
-
-fēnix
-
-### fēnix 7X Pro
-
-Solar, (no Wi-Fi)
-
-3 installations réussies
-
-App 3
-
-Dernière installation réussie 17 octobre 2026
 
 fēnix
 

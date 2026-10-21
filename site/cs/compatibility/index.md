@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**35** modely s úspěšnými instalacemi**272** úspěšných instalacíPoslední úspěšná instalace 20. října 2026
+**34** modely s úspěšnými instalacemi**273** úspěšných instalacíPoslední úspěšná instalace 21. října 2026
 
 Jak tento seznam funguje
 
@@ -21,7 +21,7 @@ Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin
 
 Aktuální verze zahrnuje čtyři poskytovatele map. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
-35 modelů
+34 modelů
 
 fēnix
 
@@ -41,11 +41,11 @@ Forerunner
 
 Historical
 
-20 úspěšných instalací
+21 úspěšných instalací
 
-App 18 Web 2
+App 19 Web 2
 
-Poslední úspěšná instalace 16. října 2026
+Poslední úspěšná instalace 21. října 2026
 
 Forerunner
 
@@ -121,6 +121,18 @@ Poslední úspěšná instalace 17. října 2026
 
 fēnix
 
+### fēnix 7X Pro
+
+Solar, Historical
+
+11 úspěšných instalací
+
+App 10 Web 1
+
+Poslední úspěšná instalace 17. října 2026
+
+fēnix
+
 ### fēnix 8
 
 47 mm, MIP, Solar
@@ -154,18 +166,6 @@ epix
 App 6 Web 2
 
 Poslední úspěšná instalace 14. října 2026
-
-fēnix
-
-### fēnix 7X Pro
-
-Solar, Historical
-
-8 úspěšných instalací
-
-App 7 Web 1
-
-Poslední úspěšná instalace 13. října 2026
 
 fēnix
 
@@ -286,18 +286,6 @@ fēnix
 App 4
 
 Poslední úspěšná instalace 23. září 2026
-
-fēnix
-
-### fēnix 7X Pro
-
-Solar, (no Wi-Fi)
-
-3 úspěšných instalací
-
-App 3
-
-Poslední úspěšná instalace 17. října 2026
 
 fēnix
 
