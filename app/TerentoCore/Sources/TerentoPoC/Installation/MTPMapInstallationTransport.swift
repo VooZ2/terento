@@ -675,8 +675,21 @@ enum MTPFinishingWorker {
     }
     static var isWorker: Bool { CommandLine.arguments.dropFirst().first == "--terento-finishing-worker" }
 
+    #if TERENTO_APP_STORE
+    /// Under App Sandbox a child cannot be the app's own executable: it must be
+    /// a separate executable signed with only app-sandbox + inherit. The App
+    /// Store build embeds a copy of this binary under that name in
+    /// Contents/MacOS (Packaging/AppStore/embed-sandbox-helper.sh).
+    static let sandboxHelperName = "TerentoFinishingWorker"
+    #endif
+
     static func perform(_ request: Request, progress: (@Sendable (TransferProgress) -> Void)? = nil, sampleTimeout: TimeInterval = 600) throws -> Response {
-        guard let executable = Bundle.main.executableURL else {
+        #if TERENTO_APP_STORE
+        let workerExecutable = Bundle.main.url(forAuxiliaryExecutable: sandboxHelperName)
+        #else
+        let workerExecutable = Bundle.main.executableURL
+        #endif
+        guard let executable = workerExecutable else {
             throw failure(for: request.operation, kind: .processLaunchError)
         }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -743,8 +756,15 @@ enum MTPFinishingWorker {
     }
 
     static func runIfRequested() -> Bool {
+        #if TERENTO_APP_STORE
+        // The embedded helper copy only ever runs as the worker, never as a second app.
+        if !isWorker, URL(fileURLWithPath: CommandLine.arguments[0]).lastPathComponent == sandboxHelperName { return true }
+        #endif
         guard isWorker else { return false }
         guard CommandLine.arguments.count == 3 else { return true }
+        #if TERENTO_APP_STORE
+        exitWhenParentExits()
+        #endif
         let output = URL(fileURLWithPath: CommandLine.arguments[2])
         var response = Response()
         var operation: Operation?
@@ -812,6 +832,26 @@ enum MTPFinishingWorker {
         return true
     }
 }
+
+#if TERENTO_APP_STORE
+extension MTPFinishingWorker {
+    /// The sandboxed helper must not outlive the app (App Store plan A5): after
+    /// Quit, Quit anyway, a crash or a force quit it is re-parented, and it exits.
+    /// The app never signals a helper by PID, so a reused PID is never hit.
+    /// The app passes its own PID, so a helper whose app died before this check
+    /// exits at once instead of watching its new parent.
+    /// It only reads from the watch, so ending it cannot change a map.
+    static func exitWhenParentExits() {
+        guard let value = ProcessInfo.processInfo.environment["TERENTO_PARENT_PID"],
+              let parent = pid_t(value), parent > 1, getppid() == parent else { _exit(1) }
+        let watchdog = Thread {
+            while getppid() == parent { usleep(200_000) }
+            _exit(1)
+        }
+        watchdog.start()
+    }
+}
+#endif
 
 private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
     let operationProfile: DeviceMapOperationProfile?

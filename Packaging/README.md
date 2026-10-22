@@ -400,3 +400,10 @@ The app CI job provisions Python3.12 and the backend test extra so fresh native
 payloads are validated by the actual API, including on the oldest CI Swift6
 toolchain. Pure diagnostic error classification is nonisolated; it does not
 read mutable engine/UI state.
+
+## Mac App Store configuration
+
+The `AppStore` Xcode configuration is an unreleased App Sandbox variant for a
+private technical test. `Packaging/release.sh` never builds it, and it does not
+change the Developer ID artifacts above. See
+[the App Store configuration](AppStore/README.md).

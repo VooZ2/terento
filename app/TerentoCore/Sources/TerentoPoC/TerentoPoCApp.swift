@@ -33,11 +33,16 @@ struct TerentoPoCApp: App {
     init() {
         let statistics = MapStatisticsEventController()
         let evidence = InstallationEvidenceController()
+        #if TERENTO_APP_STORE
+        // App Store builds compile out funnel delivery (Packaging/AppStore/README.md).
+        let funnel = AppFunnelTelemetryController(sharingEnabled: { false })
+        #else
         // The funnel shares the device-compatibility reporting preference.
         let evidenceStore = evidence.store
         let funnel = AppFunnelTelemetryController(sharingEnabled: {
             evidenceStore.consent()?.choice != .declined
         })
+        #endif
         evidence.onSharingDeclined = { [weak funnel] in funnel?.sharingDeclined() }
         self.funnel = funnel
         let device = DeviceEngine()
@@ -67,7 +72,9 @@ struct TerentoPoCApp: App {
             )
             .background(TerentoWindowConfigurator())
             .task {
+                #if !TERENTO_APP_STORE
                 appUpdateController.startAutomaticCheck()
+                #endif
                 if funnelObserver == nil {
                     funnelObserver = AppFunnelStateObserver(funnel: funnel,
                         deviceEngine: deviceEngine, mapEngine: mapEngine)
@@ -88,9 +95,11 @@ struct TerentoPoCApp: App {
                 Button("Diagnostics") {
                     openWindow(id: "diagnostics")
                 }
+                #if !TERENTO_APP_STORE
                 Button("Check updates") {
                     appUpdateController.checkForUpdates()
                 }
+                #endif
             }
             CommandGroup(replacing: .help) {
                 Button("Terento Website") {
@@ -105,9 +114,11 @@ struct TerentoPoCApp: App {
                 Button("Report an Issue") {
                     openExternalURL(TerentoAppLinks.issues)
                 }
+                #if !TERENTO_APP_STORE
                 Button("Send Report to Terento…") {
                     openWindow(id: "support-report")
                 }
+                #endif
                 Button("GitHub Repository") {
                     openExternalURL(TerentoAppLinks.repository)
                 }
@@ -131,12 +142,14 @@ struct TerentoPoCApp: App {
         .defaultSize(width: 520, height: 600)
         .windowResizability(.contentSize)
         .windowStyle(.titleBar)
+        #if !TERENTO_APP_STORE
         Window("Send Report to Terento", id: "support-report") {
             SupportReportWindow()
                 .background(TerentoSecondaryWindowPlacement())
         }
         .windowResizability(.contentSize)
         .windowStyle(.titleBar)
+        #endif
     }
 
     private func openExternalURL(_ url: URL) {

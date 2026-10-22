@@ -389,6 +389,7 @@
 				00000000000000000000000e /* Sources */,
 				00000000000000000000000f /* Resources */,
 				000000000000000000000010 /* Frameworks */,
+				A55700000000000000000003 /* Embed App Store sandbox helper */,
 			);
 			buildRules = (
 			);
@@ -479,6 +480,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -eu\n\"${SRCROOT}/Packaging/verify-release-label.sh\"\n";
+		};
+		A55700000000000000000003 /* Embed App Store sandbox helper */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Packaging/AppStore/embed-sandbox-helper.sh",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+				"$(DERIVED_FILE_DIR)/TerentoNativeDependencies/lib/libmtp.9.dylib",
+				"$(DERIVED_FILE_DIR)/TerentoNativeDependencies/lib/libusb-1.0.0.dylib",
+			);
+			name = "Embed App Store sandbox helper";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n\"${SRCROOT}/Packaging/AppStore/embed-sandbox-helper.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -723,6 +743,78 @@
 			};
 			name = Release;
 		};
+		A55700000000000000000001 /* AppStore */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = AppStore;
+		};
+		A55700000000000000000002 /* AppStore */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = "app/Terento/Terento-AppStore.entitlements";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 45;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = VXALAZU3B5;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"NDEBUG=1",
+					"TERENTO_BUNDLED_MTP=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include",
+					"$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include/libusb-1.0",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = app/Terento/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Terento;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(DERIVED_FILE_DIR)/TerentoNativeDependencies/lib",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.1;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lmtp",
+					"-lusb-1.0",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.terento.mac;
+				PRODUCT_NAME = Terento;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "RELEASE TERENTO_BUNDLED_MTP TERENTO_APP_STORE";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/app/Terento/Terento-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TERENTO_APP_STORE_SANDBOX = YES;
+				TERENTO_CONTAINER_MIGRATION_MANIFEST = "";
+				TERENTO_RELEASE_CHANNEL = stable;
+				TERENTO_RELEASE_LABEL = "1.0.1";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = AppStore;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -731,6 +823,7 @@
 			buildConfigurations = (
 				000000000000000000000005 /* Debug */,
 				000000000000000000000006 /* Release */,
+				A55700000000000000000001 /* AppStore */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -740,6 +833,7 @@
 			buildConfigurations = (
 				000000000000000000000007 /* Debug */,
 				000000000000000000000008 /* Release */,
+				A55700000000000000000002 /* AppStore */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

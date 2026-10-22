@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Move</key>
+	<array>
+		<array>
+			<string>${ApplicationSupport}/TerentoSandboxTestSeed/.device-key-secret</string>
+			<string>${ApplicationSupport}/Terento/.device-key-secret</string>
+		</array>
+		<array>
+			<string>${ApplicationSupport}/TerentoSandboxTestSeed/devices</string>
+			<string>${ApplicationSupport}/Terento/devices</string>
+		</array>
+		<array>
+			<string>${ApplicationSupport}/TerentoSandboxTestSeed/failed-install-recovery.json</string>
+			<string>${ApplicationSupport}/Terento/failed-install-recovery.json</string>
+		</array>
+		<array>
+			<string>${ApplicationSupport}/TerentoSandboxTestSeed/MutationEvidence</string>
+			<string>${ApplicationSupport}/Terento/MutationEvidence</string>
+		</array>
+		<array>
+			<string>${ApplicationSupport}/TerentoSandboxTestSeed/installation-evidence.json</string>
+			<string>${ApplicationSupport}/Terento/installation-evidence.json</string>
+		</array>
+		<array>
+			<string>${ApplicationSupport}/TerentoSandboxTestSeed/update-evidence.json</string>
+			<string>${ApplicationSupport}/Terento/update-evidence.json</string>
+		</array>
+		<array>
+			<string>${ApplicationSupport}/TerentoSandboxTestSeed/map-statistics-events.json</string>
+			<string>${ApplicationSupport}/Terento/map-statistics-events.json</string>
+		</array>
+	</array>
+</dict>
+</plist>

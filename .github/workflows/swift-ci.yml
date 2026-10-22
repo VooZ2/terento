@@ -137,7 +137,7 @@ jobs:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.suites), 'app')
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -191,6 +191,15 @@ jobs:
           /usr/bin/cmp THIRD_PARTY_NOTICES.md "$app/Contents/Resources/THIRD_PARTY_NOTICES.md"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = "app.terento.mac"
           test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app/Contents/Info.plist")" = "13.0"
+      - name: Build and inspect the App Store sandbox configuration
+        run: |
+          set -euo pipefail
+          # Ad-hoc signed AppStore build: exact app and helper entitlements,
+          # signed nested code, and no update, donation or upload strings. The
+          # Debug app above is the control that still contains those strings.
+          Packaging/AppStore/verify-app-store-build.sh \
+            "$RUNNER_TEMP/terento-xcode-appstore" \
+            "$RUNNER_TEMP/terento-xcode-debug/Build/Products/Debug/Terento.app"
 
       - name: Retain first-attempt test output
         if: always()

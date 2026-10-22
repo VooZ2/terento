@@ -16,6 +16,12 @@ enum BoundedNativeProcess {
             environment["TERENTO_FINISHING_TRACE_FILE"] = diagnosticFile.path
             process.environment = environment
         }
+        #if TERENTO_APP_STORE
+        // The helper checks it is still this app's child before any work.
+        var helperEnvironment = process.environment ?? ProcessInfo.processInfo.environment
+        helperEnvironment["TERENTO_PARENT_PID"] = String(getpid())
+        process.environment = helperEnvironment
+        #endif
         let stdin = Pipe()
         process.standardInput = stdin
         process.standardOutput = FileHandle.nullDevice
