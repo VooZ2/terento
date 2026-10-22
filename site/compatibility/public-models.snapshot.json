@@ -28,10 +28,10 @@
       "family": "forerunner",
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
-      "successfulInstallations": 21,
-      "appSuccessfulInstallations": 19,
+      "successfulInstallations": 31,
+      "appSuccessfulInstallations": 29,
       "webSuccessfulInstallations": 2,
-      "lastSuccessfulInstallation": "2026-10-21T11:18:54+00:00"
+      "lastSuccessfulInstallation": "2026-10-22T08:05:21+00:00"
     },
     {
       "model": "Forerunner 970",
@@ -60,10 +60,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 18,
-      "appSuccessfulInstallations": 18,
+      "successfulInstallations": 19,
+      "appSuccessfulInstallations": 19,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-15T17:04:17+00:00"
+      "lastSuccessfulInstallation": "2026-10-22T06:36:22+00:00"
     },
     {
       "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
@@ -172,10 +172,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04336-05/g/cf-lg.jpg",
-      "successfulInstallations": 9,
-      "appSuccessfulInstallations": 9,
+      "successfulInstallations": 10,
+      "appSuccessfulInstallations": 10,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-13T08:12:52+00:00"
+      "lastSuccessfulInstallation": "2026-10-22T09:53:37+00:00"
     },
     {
       "model": "epix Pro (Gen 2) · 47 mm, AMOLED",
@@ -546,5 +546,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-21T16:59:40.571221+00:00"
+  "generatedAt": "2026-10-22T11:32:30.130168+00:00"
 }
