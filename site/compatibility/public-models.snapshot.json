@@ -434,6 +434,22 @@
       "lastSuccessfulInstallation": "2026-10-13T08:47:02+00:00"
     },
     {
+      "model": "Enduro 4",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": null,
+      "family": "enduro",
+      "familyName": "Enduro",
+      "imageUrl": "https://res.garmin.com/en/products/010-04799-00/g/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-23T09:00:18+00:00"
+    },
+    {
       "model": "fēnix 6X · 51 mm",
       "variant": "51 mm",
       "caseSizeMm": 51,
@@ -464,22 +480,6 @@
       "appSuccessfulInstallations": 2,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-19T15:10:46+00:00"
-    },
-    {
-      "model": "Enduro 4",
-      "variant": null,
-      "caseSizeMm": null,
-      "displayType": null,
-      "screenTechnology": "MIP",
-      "solar": true,
-      "inReach": null,
-      "family": "enduro",
-      "familyName": "Enduro",
-      "imageUrl": "https://res.garmin.com/en/products/010-04799-00/g/cf-lg.jpg",
-      "successfulInstallations": 1,
-      "appSuccessfulInstallations": 1,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-16T17:27:36+00:00"
     },
     {
       "model": "fēnix 9 Pro · 43mm",
@@ -546,5 +546,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-22T11:32:30.130168+00:00"
+  "generatedAt": "2026-10-23T11:22:01.354284+00:00"
 }
