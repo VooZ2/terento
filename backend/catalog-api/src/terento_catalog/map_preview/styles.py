@@ -26,6 +26,7 @@ STYLES: tuple[PreviewStyle, ...] = (
     PreviewStyle("maprando", "maprando", None, "MapRando"),
     PreviewStyle("bbbike", "bbbike", "bbbike-latin1", "BBBike"),
     PreviewStyle("bbbike-ontrail", "bbbike", "ontrail-latin1", "BBBike (Ontrail)"),
+    PreviewStyle("bbbike-opentopo", "bbbike", "opentopo-latin1", "BBBike (OpenTopoMap)"),
 )
 STYLE_BY_ID = {style.id: style for style in STYLES}
 

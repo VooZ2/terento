@@ -37,7 +37,7 @@ ALLOWED_SOURCES: dict[str, tuple[set[str], re.Pattern[str]]] = {
     ),
     "bbbike": (
         {"data.bbbike.org"},
-        re.compile(r"/osm/garmin/region/[a-z0-9/_-]+\.osm\.garmin-(?:bbbike|ontrail)-latin1\.zip"),
+        re.compile(r"/osm/garmin/region/[a-z0-9/_-]+\.osm\.garmin-(?:bbbike|ontrail|opentopo)-latin1\.zip"),
     ),
 }
 

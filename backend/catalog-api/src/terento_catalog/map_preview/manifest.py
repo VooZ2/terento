@@ -17,6 +17,7 @@ STYLE_CREDITS: dict[str, tuple[str, str]] = {
     "maprando": ("MapRando by Alexis Lecanu", "https://ravenfeld.gitlab.io/open-garmin-map/"),
     "bbbike": ("Garmin map style by BBBike", "https://extract.bbbike.org/garmin.html"),
     "bbbike-ontrail": ("Garmin Ontrail style by BBBike", "https://extract.bbbike.org/garmin.html"),
+    "bbbike-opentopo": ("OpenTopoMap style (CC BY-SA), Garmin map by BBBike", "https://extract.bbbike.org/garmin.html"),
 }
 
 

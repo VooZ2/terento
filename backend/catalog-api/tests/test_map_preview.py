@@ -104,6 +104,7 @@ class PackageChoiceTests(unittest.TestCase):
             snapshot_row("nord-est", region="EUROPE-ITALY-NORD-EST", size=200),
             snapshot_row("sud", region="EUROPE-ITALY-SUD", size=50),
             snapshot_row("ontrail", map_type="ontrail-latin1", size=10),
+            snapshot_row("opentopo", map_type="opentopo-latin1", size=20),
             snapshot_row("france", region="EUROPE-FRANCE", codes=("FR",), size=1),
         ]
         packages = packages_from_snapshot(rows)
@@ -117,6 +118,8 @@ class PackageChoiceTests(unittest.TestCase):
         self.assertNotIn("sud", [c.package_id for c in chosen])
         ontrail = candidates_for(target, STYLE_BY_ID["bbbike-ontrail"], packages)
         self.assertEqual([c.package_id for c in ontrail], ["ontrail"])
+        opentopo = candidates_for(target, STYLE_BY_ID["bbbike-opentopo"], packages)
+        self.assertEqual([c.package_id for c in opentopo], ["opentopo"])
 
     def test_disabled_withheld_and_russian_packages_are_skipped(self):
         rows = [
@@ -168,6 +171,7 @@ class AcquisitionTests(unittest.TestCase):
             ("opentopomap", "https://garmin.opentopomap.org/europe/andorra/otm-andorra-contours.zip"),
             ("maprando", "https://ravenfeld.fr/MapRando/Saint-Barth%C3%A9lemy/MapRando_Saint-Barth%C3%A9lemy_2026_09_02.img"),
             ("bbbike", "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip"),
+            ("bbbike", "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-opentopo-latin1.zip"),
         ]
         for provider, url in good:
             self.assertEqual(acquire.reviewed_url(provider, url), url)
@@ -175,6 +179,7 @@ class AcquisitionTests(unittest.TestCase):
             ("bbbike", "http://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip"),
             ("bbbike", "https://evil.example/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip"),
             ("bbbike", "https://data.bbbike.org/osm/garmin/region/../x.osm.garmin-bbbike-latin1.zip"),
+            ("bbbike", "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-osm-latin1.zip"),
             ("opentopomap", "https://garmin.opentopomap.org/europe/andorra/otm-andorra.zip?x=1"),
             ("maprando", "https://ravenfeld.fr/other/file.img"),
             ("custom", "https://example.com/map.img"),
@@ -418,8 +423,8 @@ class WindowTests(unittest.TestCase):
                                           "package_version": "2026-09-01", "rendered_at": NOW - timedelta(days=5)}}
         work, uncovered = plan_work([target], packages, fresh, {}, {"bbbike"}, now=NOW, refresh_days=90)
         self.assertEqual(work, [])
-        # The Ontrail style of the same provider has no package here.
-        self.assertEqual([style.id for _area, style in uncovered], ["bbbike-ontrail"])
+        # The other styles of the same provider have no package here.
+        self.assertEqual([style.id for _area, style in uncovered], ["bbbike-ontrail", "bbbike-opentopo"])
         stale = {(target.id, "bbbike"): {**fresh[(target.id, "bbbike")], "rendered_at": NOW - timedelta(days=120)}}
         work, _ = plan_work([target], packages, stale, {}, {"bbbike"}, now=NOW, refresh_days=90)
         self.assertEqual(len(work), 1)
@@ -427,7 +432,7 @@ class WindowTests(unittest.TestCase):
         work, _ = plan_work([target], packages, waiting, {}, {"bbbike"}, now=NOW, refresh_days=90)
         self.assertEqual(work, [])
         work, uncovered = plan_work([target], [], {}, {}, {"bbbike"}, now=NOW, refresh_days=90)
-        self.assertEqual(len(uncovered), 2)
+        self.assertEqual(len(uncovered), 3)
 
     def test_drawn_but_unpublished_layers_are_drawn_again(self):
         target = area()
