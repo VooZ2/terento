@@ -550,6 +550,11 @@ The map statistics read model uses geographical identity for grouping and a
 separate `map_type` for type attribution. The compatibility provider constraint
 adds BBBike independently of its PAUSED activation state.
 
+Migration087: registers OSMapaPL (`osmapa`) as `PAUSED` without changing an
+existing row, requires an OSMapaPL `map_type` in `podstawowa`, `ogonki`,
+`light`, `warstwice` with a non-null geographical key, and adds `osmapa` to the
+compatibility provider constraint. Additive; no existing row changes.
+
 ### Migration049: component acquisition evidence
 
 `map_download_event` adds nullable paired `acquisition_id` UUID and

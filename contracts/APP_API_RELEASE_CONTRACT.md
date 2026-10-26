@@ -18,8 +18,32 @@ adds:
   protection stop cannot say which watch file changed.
 
 The 1.0.1 API rejects both with `400`; a report sent to it would stay parked
-on the Mac until this API is deployed. No route, migration or other payload
-changes.
+on the Mac until this API is deployed. These two additions change no route,
+migration or other payload.
+
+### OSMapaPL (planned for 1.0.2)
+
+Deploy and verify this API before any client that requests catalog-v5 is
+published. It adds:
+
+- the closed projection `/maps/catalog-v5.json`: the four v4 providers plus
+  OSMapaPL (`osmapa`), eight packages (`podstawowa`, `ogonki`, `light` and
+  standalone `warstwice` contour lines, each for Poland and Poland with border
+  areas), additive package `conflictGroup` and the OSMapaPL `mapType` values
+  ([shared contract](README.md#responses-and-client-compatibility));
+- `osmapa` as an accepted compatibility-event provider (migration 087).
+
+`catalog.json`, `catalog-v3.json` and `catalog-v4.json` never contain `osmapa`,
+and each projection's `updatedAt`, `Last-Modified` and ETag now come only from
+its own providers, so OSMapaPL registration, collection and health checks do
+not change those responses. On deploy, v1 and v3 `updatedAt` may move earlier
+once because providers they do not publish stop counting; released clients use
+`updatedAt` for display only. Released 1.0.x clients are otherwise unchanged. The provider is
+registered `PAUSED` and every v5 OSMapaPL package carries
+`downloadBlockReason=PROVIDER_PAUSED` until the activation gate passes
+(hardware evidence per package). The 1.0.2 client requests v5 and is added to
+`released-catalog-clients.json` only when it is published; the live
+checkout-client validator adds v5 with that client change, never before.
 
 ## 1.0.1 server-first acceptance
 

@@ -3270,11 +3270,29 @@ class Database:
                 artifact.validation_status AS artifact_validation_status,
                 artifact.source_updated_at AS artifact_source_updated_at,
                 artifact.install_payload_path AS artifact_install_payload_path,
-                artifact.source_proof AS artifact_source_proof
+                artifact.source_proof AS artifact_source_proof,
+                changes.changed_at AS provider_changed_at
             FROM map_provider AS p
             LEFT JOIN map_package AS package ON package.provider_id = p.id
                 AND package.availability <> 'RETIRED'
             LEFT JOIN map_artifact AS artifact ON artifact.package_id = package.id
+            -- Per-provider latest change: a closed projection's updatedAt,
+            -- Last-Modified and ETag never move for a provider outside it.
+            LEFT JOIN (
+                SELECT provider_id, MAX(changed_at) AS changed_at
+                FROM (
+                    SELECT id AS provider_id, updated_at AS changed_at FROM map_provider
+                    UNION ALL
+                    SELECT provider_id, updated_at FROM map_package
+                    UNION ALL
+                    SELECT owner.provider_id, item.updated_at
+                    FROM map_artifact AS item
+                    JOIN map_package AS owner ON owner.id = item.package_id
+                    UNION ALL
+                    SELECT provider_id, checked_at FROM provider_health_check
+                ) AS provider_changes
+                GROUP BY provider_id
+            ) AS changes ON changes.provider_id = p.id
             LEFT JOIN LATERAL (
                 SELECT ph.status, ph.checked_at, ph.download_status
                 FROM provider_health_check AS ph
@@ -3865,7 +3883,7 @@ class Database:
                         (definition.id, artifact.source_url),
                     )
 
-            if definition.id in {"opentopomap", "maprando", "bbbike"}:
+            if definition.id in {"opentopomap", "maprando", "bbbike", "osmapa"}:
                 # A complete provider snapshot retires only that provider's stale
                 # package/artifact metadata. It never touches map binaries or
                 # another provider's records.

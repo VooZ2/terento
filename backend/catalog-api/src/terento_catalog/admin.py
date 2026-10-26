@@ -3383,7 +3383,7 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
     now = datetime.now(timezone.utc)
     providers = [
         provider for provider in health.get("providers") or []
-        if str(provider.get("id") or "") in {"freizeitkarte", "opentopomap", "maprando", "bbbike"}
+        if str(provider.get("id") or "") in {"freizeitkarte", "opentopomap", "maprando", "bbbike", "osmapa"}
     ]
     observations = {
         str(item.get("component") or ""): item
@@ -4910,7 +4910,7 @@ _EVENT_TYPE_LABELS = {
 }
 _PROVIDER_LABELS = {
     "freizeitkarte": "Freizeitkarte", "opentopomap": "OpenTopoMap", "maprando": "MapRando",
-    "bbbike": "BBBike", "custom": "Custom .img",
+    "bbbike": "BBBike", "osmapa": "OSMapaPL", "custom": "Custom .img",
 }
 
 
@@ -6145,7 +6145,7 @@ def _operation_region_label(results: list[dict[str, Any]]) -> str:
 def _operation_map_label(results: list[dict[str, Any]]) -> str:
     """Keep each reported region paired with its actual provider in the summary."""
     providers = {'freizeitkarte': 'Freizeitkarte', 'opentopomap': 'OpenTopoMap',
-                 'maprando': 'MapRando', 'bbbike': 'BBBike', 'custom': 'Custom import'}
+                 'maprando': 'MapRando', 'bbbike': 'BBBike', 'osmapa': 'OSMapaPL', 'custom': 'Custom import'}
     labels = []
     for row in results:
         provider = str(row.get('provider') or row.get('provider_id') or '').strip()

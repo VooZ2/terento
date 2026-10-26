@@ -67,6 +67,10 @@ class DefaultProviderProbe:
             path = suffix.rsplit("/", 1)[0]
             map_type = suffix.rsplit(".osm.garmin-", 1)[-1].removesuffix(".zip")
             return inspect_bbbike(url, path, map_type)
+        if url.startswith("https://osmapa-garmin.las.org.pl/products/"):
+            from .osmapa import inspect_osmapa, source_url as osmapa_source
+            coverage, style, _, _ = osmapa_source(url)
+            return inspect_osmapa(url, coverage, style)
         return ZipRangeInspector(HTTPRangeFetcher(timeout_seconds=15)).inspect(
             url, expected_payload_path=None
         )
