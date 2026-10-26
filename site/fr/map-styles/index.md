@@ -7,7 +7,7 @@ Styles de carte
 
 # Comparez les cartes Garmin gratuites avant de les installer
 
-Voyez comment quatre styles de carte gratuits représentent le même lieu. Choisissez une zone, un sentier ou une ville populaire, puis comparez courbes de niveau, sentiers, rues et libellés.
+Voyez comment des styles de carte gratuits représentent le même lieu. Choisissez une zone, un sentier ou une ville populaire, puis comparez courbes de niveau, sentiers, rues et libellés.
 
 Lieu
 
@@ -15,7 +15,7 @@ Lieu
 
 Style de la carte de gauche Style de la carte de droite
 
-À propos des quatre styles de carte
+À propos des styles de carte
 
 ### Freizeitkarte
 

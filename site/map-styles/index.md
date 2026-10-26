@@ -7,7 +7,7 @@ Map styles
 
 # Compare free Garmin maps before you install
 
-See how four free map styles draw the same place. Pick a popular area, trail or city, then compare contour lines, trails, streets and labels.
+See how free map styles draw the same place. Pick a popular area, trail or city, then compare contour lines, trails, streets and labels.
 
 Place
 
@@ -15,7 +15,7 @@ Place
 
 Left map style Right map style
 
-About the four map styles
+About the map styles
 
 ### Freizeitkarte
 

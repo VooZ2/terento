@@ -18,7 +18,7 @@ La licence du logiciel n’accorde pas de droits sur la marque Terento. Une vers
 
 ## Licences des cartes
 
-Les cartes proviennent de [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), d’[OpenTopoMap](https://garmin.opentopomap.org/) et de [BBBike](https://garmin.bbbike.org). Elles restent soumises aux licences de leurs fournisseurs et à l’[attribution OpenStreetMap](https://www.openstreetmap.org/copyright). Vos cartes importées restent soumises à leurs propres conditions.
+Les cartes proviennent de [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), d’[OpenTopoMap](https://garmin.opentopomap.org/), de [BBBike](https://garmin.bbbike.org) et d’[OSMapaPL](https://osmapa-garmin.las.org.pl/). Elles restent soumises aux licences de leurs fournisseurs et à l’[attribution OpenStreetMap](https://www.openstreetmap.org/copyright). Vos cartes importées restent soumises à leurs propres conditions.
 
 Terento ne crée pas ces cartes, ne change pas leurs licences, n’héberge pas de bibliothèque de cartes et ne copie pas en miroir les fichiers des fournisseurs. Dans l’application, les cartes du catalogue sont téléchargées depuis le fournisseur d’origine vers votre Mac, puis votre montre. Avec l’installateur web, le serveur de Terento télécharge la carte choisie depuis le fournisseur d’origine et la transmet à votre navigateur. Cette copie ne sert qu’à votre demande et est supprimée dès que votre navigateur l’a reçue, ou après deux heures si elle n’est pas récupérée. Pour la page [Styles de carte](/fr/map-styles/), le serveur de Terento télécharge temporairement certaines cartes du catalogue depuis le fournisseur d’origine, en tire de petites images d’aperçu, puis supprime les fichiers de carte. Les aperçus affichent l’attribution du fournisseur et d’OpenStreetMap.
 
@@ -36,4 +36,4 @@ Aucune mention n’exclut ni ne limite une responsabilité lorsque la loi l’in
 
 Pour le traitement des données, les diagnostics et les statistiques du site, consultez la [politique de confidentialité](/privacy/).
 
-Mise à jour : 11 octobre 2026.
+Mise à jour : 26 octobre 2026.

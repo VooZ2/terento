@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-PROVIDER_SCRIPT_VERSION = "20261006-map-styles-link-v1"
+PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
 FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
@@ -408,11 +408,52 @@ for _locale, (_base_summary, _trail_summary, _base_benefits, _trail_benefits) in
             "benefits": _benefits,
         }
 
+# OSMapaPL ships hidden; provider-list.js shows it once the catalog lists the provider as active.
+OSMAPA_CARD_COPY = {
+    "en": ("For trips across Poland, on foot or by bike.", [
+        "Detailed map of Poland, also with border areas",
+        "Three styles: with Polish letters, without them, or a lighter, smaller map",
+        "Contour lines as a separate package",
+    ]),
+    "de": ("Für Touren durch ganz Polen, zu Fuß oder mit dem Rad.", [
+        "Detaillierte Karte von Polen, auch mit Grenzgebieten",
+        "Drei Stile: mit polnischen Sonderzeichen, ohne sie oder als leichtere, kleinere Karte",
+        "Höhenlinien als eigenes Paket",
+    ]),
+    "fr": ("Pour parcourir la Pologne à pied ou à vélo.", [
+        "Carte détaillée de la Pologne, aussi avec les zones frontalières",
+        "Trois styles : avec les lettres polonaises, sans elles, ou une carte plus légère et plus petite",
+        "Courbes de niveau dans un paquet séparé",
+    ]),
+    "pl": ("Na piesze i rowerowe wycieczki po całej Polsce.", [
+        "Szczegółowa mapa Polski, także z terenami przygranicznymi",
+        "Trzy style: z polskimi znakami, bez nich lub lżejsza, mniejsza mapa",
+        "Poziomice jako osobny pakiet",
+    ]),
+    "cs": ("Na pěší a cyklistické výlety po celém Polsku.", [
+        "Podrobná mapa Polska, také s příhraničními oblastmi",
+        "Tři styly: s polskými znaky, bez nich, nebo lehčí a menší mapa",
+        "Vrstevnice jako samostatný balíček",
+    ]),
+    "it": ("Per girare la Polonia a piedi o in bici.", [
+        "Mappa dettagliata della Polonia, anche con le zone di confine",
+        "Tre stili: con le lettere polacche, senza, oppure una mappa più leggera e più piccola",
+        "Curve di livello in un pacchetto separato",
+    ]),
+}
+for _locale, (_summary, _benefits) in OSMAPA_CARD_COPY.items():
+    PROVIDER_CARD_COPY[_locale]["osmapa"] = {
+        "name": "OSMapaPL",
+        "count_template": PROVIDER_CARD_COPY[_locale]["maprando"]["count_template"],
+        "summary": _summary,
+        "benefits": _benefits,
+    }
+
 MAPRANDO_LANGUAGE_NOTES = {'en': 'Some map labels are in French.', 'de': 'Einige Kartenbeschriftungen sind auf Französisch.', 'fr': 'Certains libellés de la carte sont en français.', 'pl': 'Niektóre opisy na mapie są po francusku.', 'cs': 'Některé popisky mapy jsou ve francouzštině.', 'it': 'Alcune etichette della mappa sono in francese.'}
 
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail"):
+    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail", "osmapa"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
         fallback_count = {"freizeitkarte": "63", "opentopomap": "177"}.get(provider_id)
         count_markup = provider["count_template"].replace("{count}", fallback_count) if fallback_count else ""
@@ -433,6 +474,8 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         if provider_id.startswith("bbbike"):
             map_type = "ontrail-latin1" if provider_id == "bbbike-ontrail" else "bbbike-latin1"
             type_attributes = f' data-provider-type="{map_type}" hidden'
+        if provider_id == "osmapa":
+            type_attributes = " hidden"
         cards.append(
             f'''<article class="provider-card" data-provider-card="{catalog_provider_id}"{type_attributes}>
               <div class="provider-card-header">

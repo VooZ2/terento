@@ -4,7 +4,7 @@
 Offline and read-only. Inputs are files the operator already has:
 
 * ``contracts/map-preview-areas.json`` (default) – the curated area list;
-* ``--catalog`` – a saved public catalog, e.g. ``/maps/catalog-v4.json``;
+* ``--catalog`` – a saved public catalog, e.g. ``/maps/catalog-v5.json``;
 * ``--statistics`` – optional saved Admin ``/admin/map-statistics.json``
   (period ``all``); only successful main-map installs are counted, matching
   the Admin "Top countries" population.
@@ -33,6 +33,9 @@ STYLES = {
     "maprando": ("maprando", None),
     "bbbike": ("bbbike", "bbbike-latin1"),
     "bbbike-ontrail": ("bbbike", "ontrail-latin1"),
+    "osmapa-podstawowa": ("osmapa", "podstawowa"),
+    "osmapa-ogonki": ("osmapa", "ogonki"),
+    "osmapa-light": ("osmapa", "light"),
 }
 # Freizeitkarte catalog rows may not carry country codes; its published
 # coverage is Europe plus Türkiye.

@@ -29,8 +29,8 @@
     updateControls();
   }
 
-  const API_URL = 'https://api.terento.app/maps/catalog-v4.json';
-  const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap", "maprando", "bbbike"]);
+  const API_URL = 'https://api.terento.app/maps/catalog-v5.json';
+  const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap", "maprando", "bbbike", "osmapa"]);
   const render = (providers) => {
     const activeProviders = new Map(providers
       .filter((provider) => PUBLIC_PROVIDER_IDS.has(String(provider?.id || '').trim().toLowerCase()))

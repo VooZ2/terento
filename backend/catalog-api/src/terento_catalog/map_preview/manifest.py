@@ -11,6 +11,10 @@ DATA_ATTRIBUTION = "© OpenStreetMap contributors"
 DATA_ATTRIBUTION_URL = "https://www.openstreetmap.org/copyright"
 # Provider credits shown next to each preview layer. They restate the
 # attribution each provider asks for; map data credit is shown separately.
+_OSMAPA_CREDIT = (
+    "OSMapaPL by OSMapa volunteers and Fundacja Centrum Badań nad Lasem i Zasobami Przyrodniczymi",
+    "https://osmapa-garmin.las.org.pl/",
+)
 STYLE_CREDITS: dict[str, tuple[str, str]] = {
     "freizeitkarte": ("Map © Freizeitkarte (FZK project)", "https://www.freizeitkarte-osm.de/garmin/en/index.html"),
     "opentopomap": ("Map rendering © OpenTopoMap (CC BY-SA)", "https://opentopomap.org/about"),
@@ -18,6 +22,9 @@ STYLE_CREDITS: dict[str, tuple[str, str]] = {
     "bbbike": ("Garmin map style by BBBike", "https://extract.bbbike.org/garmin.html"),
     "bbbike-ontrail": ("Garmin Ontrail style by BBBike", "https://extract.bbbike.org/garmin.html"),
     "bbbike-opentopo": ("OpenTopoMap style (CC BY-SA), Garmin map by BBBike", "https://extract.bbbike.org/garmin.html"),
+    "osmapa-podstawowa": _OSMAPA_CREDIT,
+    "osmapa-ogonki": _OSMAPA_CREDIT,
+    "osmapa-light": _OSMAPA_CREDIT,
 }
 
 
@@ -29,8 +36,13 @@ def build_manifest(
     scores: dict[str, float | None],
     release: str | None,
     public_base_url: str,
+    enabled_providers: set[str] | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
+    styles = [
+        style for style in STYLES
+        if not style.listed_when_enabled or style.provider_id in (enabled_providers or set())
+    ]
     template = (
         f"{public_base_url.rstrip('/')}/assets/previews/{release}/{{area}}/{{style}}/{{z}}/{{x}}/{{y}}.webp"
         if release else None
@@ -40,7 +52,7 @@ def build_manifest(
         document = area.public()
         document["diffScore"] = _rounded(scores.get(area.id))
         area_layers = []
-        for style in STYLES:
+        for style in styles:
             row = layers.get((area.id, style.id))
             status = "PENDING"
             version = rendered = None
@@ -77,7 +89,7 @@ def build_manifest(
                 "attribution": STYLE_CREDITS[style.id][0],
                 "attributionUrl": STYLE_CREDITS[style.id][1],
             }
-            for style in STYLES
+            for style in styles
         ],
         "areas": documents,
     }

@@ -35,7 +35,7 @@ Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’inst
 
 ## Connessioni del sito e dell’app
 
-Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando o BBBike; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
+Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando, BBBike o OSMapaPL; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
 
 Le connessioni forniscono contenuti e funzioni richieste e proteggono dagli abusi. Il trattamento per sicurezza si basa sul legittimo interesse ai sensi dell’art. 6(1)(f) GDPR.
 
@@ -75,4 +75,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 17 ottobre 2026.
+Aggiornamento: 26 ottobre 2026.

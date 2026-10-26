@@ -7,7 +7,7 @@ Style map
 
 # Porównaj darmowe mapy Garmin przed instalacją
 
-Zobacz, jak cztery darmowe style map przedstawiają to samo miejsce. Wybierz popularny obszar, szlak lub miasto i porównaj poziomice, szlaki, ulice oraz opisy.
+Zobacz, jak darmowe style map przedstawiają to samo miejsce. Wybierz popularny obszar, szlak lub miasto i porównaj poziomice, szlaki, ulice oraz opisy.
 
 Miejsce
 
@@ -15,7 +15,7 @@ Miejsce
 
 Styl lewej mapy Styl prawej mapy
 
-O czterech stylach map
+O stylach map
 
 ### Freizeitkarte
 

@@ -6,7 +6,7 @@
       "type": "skill-md",
       "description": "Read Terento’s public map catalog and follow original-provider sources while preserving attribution, licensing, and device-safety boundaries.",
       "url": "https://terento.app/.well-known/agent-skills/terento-map-catalog/SKILL.md",
-      "digest": "sha256:a191276e53ab639860927f52be14fe91813eabefe74a9f8a7f68ff208dfb0687"
+      "digest": "sha256:8ffbeba7bbd13fa78267456ce1bdf69bd11f7bfb3df799a2b423dcfd17ad118b"
     }
   ]
 }
