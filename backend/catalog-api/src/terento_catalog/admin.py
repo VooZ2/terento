@@ -881,7 +881,7 @@ def _failure_context_fields(result: dict[str, Any], key: str, *, technical: bool
         ))
         fields.extend((name, protection.get(name)) for name in (
             'protectionBoundary', 'stableIdentityComparisonVersion', 'beforeObjectCount', 'afterObjectCount',
-            'addedObjectCount', 'removedObjectCount', 'changedObjectCount', 'targetPresent', 'targetUnique',
+            'addedObjectCount', 'removedObjectCount', 'changedObjectCount', 'affectedFolder', 'targetPresent', 'targetUnique',
             'targetKindMatches', 'targetFilenameMatches', 'targetSizeMatches', 'targetPathMatches', 'targetItemIDMatches',
         ))
     return [(label, 'unavailable' if value is None else value) for label, value in fields]
