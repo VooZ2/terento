@@ -1258,8 +1258,8 @@ struct MapInstallationCoordinator: Sendable {
         case .nonTargetObjectAdded: afterKeys.subtracting(beforeKeys).compactMap { afterGroups[$0]?.first }
         default: nil
         }
-        let affectedFolder = deciding?
-            .min { ($0.storageID, $0.path) < ($1.storageID, $1.path) }
+        let affectedFolder = deciding
+            .flatMap(InstallationProtectionContext.AffectedFolder.decidingObject(in:))
             .map(InstallationProtectionContext.AffectedFolder.init(file:))
         return InstallationFailureContext(
             boundary: prewrite ? .prewriteProtection : (targetValidation ? .targetValidation : .postwriteProtection),
@@ -1908,6 +1908,11 @@ private extension MapInstallationDiagnostics {
 
 extension InstallationProtectionContext.AffectedFolder {
     private static let buckets: Set<Self> = [.mapFile, .garminRoot, .garminOther, .outsideGarmin]
+
+    /// The first object in path order; the storage ID only breaks a tie.
+    static func decidingObject(in files: [DeviceFile]) -> DeviceFile? {
+        files.min { ($0.path, $0.storageID) < ($1.path, $1.storageID) }
+    }
 
     init(file: DeviceFile) {
         if ProtectedMapInventory.isMapFile(file) { self = .mapFile; return }

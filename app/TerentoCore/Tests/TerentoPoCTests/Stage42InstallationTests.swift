@@ -490,6 +490,15 @@ struct Stage42InstallationTests {
             && folder("/GARMIN", isFolder: true) == .garminRoot
             && folder("/Music/song.mp3") == .outsideGarmin,
             "unknown names fall into coarse buckets, never their own name")
+        func entry(_ storageID: UInt32, _ path: String) -> DeviceFile {
+            DeviceFile(itemID: 1, parentID: 0, storageID: storageID, path: path,
+                filename: (path as NSString).lastPathComponent, sizeBytes: 1, isFolder: false)
+        }
+        let picked = Folder.decidingObject(in: [entry(1, "/GARMIN/Sleep/b.fit"), entry(2, "/GARMIN/Metrics/a.fit"),
+                                                entry(3, "/GARMIN/Metrics/a.fit")])
+        passed += expect(picked?.path == "/GARMIN/Metrics/a.fit" && picked?.storageID == 2
+            && Folder.decidingObject(in: []) == nil,
+            "the deciding object is first in path order on any storage; storage only breaks a tie")
         return passed
     }
 
@@ -547,6 +556,7 @@ struct Stage42InstallationTests {
                 && result.failureContext?.protection?.protectionReason == reason
                 && result.failureContext?.protection?.stableIdentityComparisonVersion == nil
                 && result.failureContext?.protection?.targetItemIDMatches == nil
+                && result.failureContext?.protection?.affectedFolder == nil
                 && harness.transport.writeCount == 1 && harness.transport.deleteCount == 1
                 && reader?.inventoryReadCount == (reason == .targetMissing ? 3 : 2),
                 "\(reason.rawValue) retains target failure code and existing read/cleanup behavior")

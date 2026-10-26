@@ -252,6 +252,20 @@ class FailureContextTests(unittest.TestCase):
     def test_affected_folder_is_a_closed_coarse_location(self):
         schema = self.schema.schema['$defs']['failureContext']['properties']['protection']['properties']
         self.assertEqual(schema['affectedFolder']['enum'], list(AFFECTED_FOLDERS))
+        support = json.loads((ROOT / 'contracts/support-report.schema.json').read_text())
+        support_lists = []
+
+        def collect(node):
+            if isinstance(node, dict):
+                if 'affectedFolder' in node.get('properties', {}):
+                    support_lists.append(node['properties']['affectedFolder']['enum'])
+                for value in node.values():
+                    collect(value)
+            elif isinstance(node, list):
+                for value in node:
+                    collect(value)
+        collect(support)
+        self.assertEqual(support_lists, [list(AFFECTED_FOLDERS)])
         for folder in ('Metrics', 'Sleep', 'map-file', 'garmin-root', 'garmin-other', 'outside-garmin'):
             for key in ('failureContext', 'originalFailureContext'):
                 with self.subTest(folder=folder, key=key):
