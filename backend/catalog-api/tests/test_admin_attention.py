@@ -129,6 +129,18 @@ class AttentionReportTests(unittest.TestCase):
         self.assertEqual(report["supportReports"]["total"], 1)
 
 
+    def test_health_reason_and_action_are_sanitised(self):
+        card = {"title": "Email report", "status": "WARNING", "group": "service",
+                "reason": "Delivery to ops@example.com failed",
+                "action": "Check <b>password=SECRET-PASS</b> for ops@example.com in /Users/alice/.env",
+                "actionHref": "/admin/system-health", "lastChecked": NOW}
+        with patch.object(admin_attention, "load_update_diagnostics", return_value=UPDATE_ROWS), \
+                patch.object(admin_attention, "_system_health_cards", return_value=([card], None, {})):
+            check = attention_report(FakeService())["systemChecks"]["items"][0]
+        self.assertEqual(check["reason"], "Delivery to [redacted email] failed")
+        self.assertEqual(check["action"], "Check password=[redacted] for [redacted email] in /Users/<redacted>/[redacted]")
+        self.assertEqual(check["actionUrl"], "https://api.terento.app/admin/system-health")
+
     def test_update_section_is_unavailable_when_its_open_total_fails(self):
         rows = {**UPDATE_ROWS, "totals": None}
         with patch.object(admin_attention, "load_update_diagnostics", return_value=rows), \

@@ -1385,10 +1385,13 @@ read fails is `{"available": false}`, never a shorter list:
   (including provider catalogs) with `check`, `status`, `group`, `reason`,
   `action`, `actionUrl` and `lastChecked`.
 
-Issue titles and bodies are the sanitised reports Admin prepares; every other
-text value at any depth (including support report bodies, descriptions and
-Health reasons) passes through the same issue-report sanitiser, which redacts
-email addresses, serial/Unit/device IDs, secrets, tokens and local paths. The
+Every text value inside the sections, at any depth (including support report
+bodies, descriptions and Health reasons and actions), passes through the
+issue-report sanitiser, which redacts email addresses, serial/Unit/device IDs,
+secrets, tokens and local paths. The only exceptions are `issueTitle` and
+`issueBody` (already the sanitised reports Admin prepares), `adminUrl` and
+`actionUrl` (links the server builds) and the top-level server timestamp
+`generatedAt`. The
 Open update total comes from its own count; if that count fails, the section
 is unavailable.
 
