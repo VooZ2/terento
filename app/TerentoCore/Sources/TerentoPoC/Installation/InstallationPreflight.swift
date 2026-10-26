@@ -378,8 +378,12 @@ extension BBBikeProviderAdapter {
         let unverifiedFile = inspectedFiles.contains { file in
             conflicts(package, filename: file.filename) && !owned.contains { $0.sourceFile == file }
         }
-        return !owned.isEmpty && matches.allSatisfy { $0.managementState == .managedByTerento } && !unverifiedFile
-            ? installedTypeConflictMessage(for: package)
-            : unverifiedTypeConflictMessage(for: package)
+        let otherType = matches.lazy.compactMap { conflictingType(package, provider: $0.provider, region: $0.region) }.first
+            ?? inspectedFiles.lazy.compactMap { conflictingType(package, filename: $0.filename) }.first
+        if let installedType = otherType, !owned.isEmpty,
+           matches.allSatisfy({ $0.managementState == .managedByTerento }), !unverifiedFile {
+            return installedTypeConflictMessage(for: package, installedType: installedType)
+        }
+        return unverifiedTypeConflictMessage(for: package, otherType: otherType)
     }
 }

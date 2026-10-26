@@ -119,6 +119,7 @@ class PublishedCatalogGateTests(PGliteTestCase):
             self.assertNotIn(new, {m.get("mapType") for p in older["providers"] for m in p["maps"]})
         v5 = json.loads(service.catalog_v5_response()[0])
         self.assertEqual(self.bbbike_package(v5, package["id"])["mapType"], new)
+        self.assertEqual(catalog_rejections(v5), [])
 
     def test_failed_bbbike_recheck_is_published_without_proof(self):
         failed_id = BBBIKE_MAPS[0]["id"]

@@ -128,8 +128,10 @@ processing, not a second executable Install action. Authorization, device
 identity and pre-write safety checks still apply to the continuation.
 
 Freizeitkarte, OpenTopoMap, MapRando and BBBike use the shared lifecycle.
-BBBike and BBBike (Ontrail) are separate map types from one provider; opposite
-same-region types conflict and cannot be installed together. OSMapaPL has four
+BBBike, BBBike (Ontrail) and BBBike (OpenTopoMap) are separate map types from
+one provider. All types of one region share Garmin tile numbers, so any two
+same-region types conflict and cannot be installed together; the copy names the
+installed type when Terento owns it. OSMapaPL has four
 map types (Podstawowa, Ogonki, Light and standalone Warstwice contour lines),
 each for Poland and Poland with border areas. Both coverages of one type share
 one Garmin map ID, so they are never installed together; any other OSMapaPL
