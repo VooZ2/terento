@@ -278,13 +278,14 @@
           "enum": [
             "bbbike-latin1",
             "ontrail-latin1",
+            "opentopo-latin1",
             "podstawowa",
             "ogonki",
             "light",
             "warstwice",
             null
           ],
-          "description": "Independent BBBike or OSMapaPL map type; not a separate provider or contour component. OSMapaPL types are published only by catalog-v5."
+          "description": "Independent BBBike or OSMapaPL map type; not a separate provider or contour component. OSMapaPL types and BBBike opentopo-latin1 are published only by catalog-v5."
         },
         "conflictGroup": {
           "type": [
