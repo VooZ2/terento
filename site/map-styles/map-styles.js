@@ -36,7 +36,7 @@
   const state = {
     area: areaById[fromHash.area] ? fromHash.area : "dolomites-tre-cime",
     a: styleIds.includes(fromHash.style) ? fromHash.style : "opentopomap",
-    b: styleIds.includes(fromHash.compare) ? fromHash.compare : "bbbike",
+    b: styleIds.includes(fromHash.compare) ? fromHash.compare : "bbbike-ontrail",
     mode: fromHash.mode || "split",
     tab: "places",
     query: "",

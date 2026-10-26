@@ -11,7 +11,7 @@ Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Unten 
 
 Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.
 
-**34** Modelle mit erfolgreichen Installationen**303** erfolgreiche InstallationenLetzte erfolgreiche Installation 25. Oktober 2026
+**36** Modelle mit erfolgreichen Installationen**313** erfolgreiche InstallationenLetzte erfolgreiche Installation 26. Oktober 2026
 
 So funktioniert diese Liste
 
@@ -21,7 +21,7 @@ Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind kei
 
 Die aktuelle Version umfasst vier Kartenanbieter. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
 
-34 Modelle
+36 Modelle
 
 fēnix
 
@@ -29,11 +29,11 @@ fēnix
 
 47 mm, AMOLED
 
-51 erfolgreiche Installationen
+53 erfolgreiche Installationen
 
-App 51
+App 53
 
-Letzte erfolgreiche Installation 20. Oktober 2026
+Letzte erfolgreiche Installation 26. Oktober 2026
 
 Forerunner
 
@@ -157,6 +157,18 @@ Letzte erfolgreiche Installation 22. Oktober 2026
 
 fēnix
 
+### fēnix 8 Pro
+
+51 mm, AMOLED, inReach
+
+9 erfolgreiche Installationen
+
+App 9
+
+Letzte erfolgreiche Installation 23. Oktober 2026
+
+fēnix
+
 ### fēnix 8
 
 51 mm, AMOLED
@@ -202,18 +214,6 @@ Solar, (no Wi-Fi)
 App 6
 
 Letzte erfolgreiche Installation 12. Oktober 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
-
-6 erfolgreiche Installationen
-
-App 6
-
-Letzte erfolgreiche Installation 16. September 2026
 
 fēnix
 
@@ -301,6 +301,18 @@ Letzte erfolgreiche Installation 23. September 2026
 
 fēnix
 
+### fēnix 6 Pro
+
+47 mm, MIP, Historical
+
+3 erfolgreiche Installationen
+
+Web 3
+
+Letzte erfolgreiche Installation 20. Oktober 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 51 mm, MIP, Solar, inReach
@@ -358,6 +370,18 @@ MIP, Solar
 App 2
 
 Letzte erfolgreiche Installation 23. Oktober 2026
+
+fēnix
+
+### fēnix 6X Pro
+
+51 mm, MIP, Historical
+
+2 erfolgreiche Installationen
+
+App 2
+
+Letzte erfolgreiche Installation 24. Oktober 2026
 
 fēnix
 

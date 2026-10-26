@@ -89,7 +89,12 @@ function testPages() {
     assert.equal(page.areas.length, contract.areas.length, `${locale}: every contract area is offered`);
     assert.deepEqual(page.areas.map((area) => area.id), contract.areas.map((area) => area.id));
     assert.ok(page.areas.some((area) => area.id === "dolomites-tre-cime"), `${locale}: default area exists`);
-    assert.equal(page.styles.length, 5);
+    // BBBike no longer publishes its classic style for regular regions, so the
+    // page compares four styles and opens on one that has previews.
+    assert.deepEqual(page.styles.map((style) => style.id), ["freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail"]);
+    const defaults = read(path.join(root, "site/map-styles/map-styles.js")).match(/a: styleIds\.includes\(fromHash\.style\) \? fromHash\.style : "([^"]+)",\s*b: styleIds\.includes\(fromHash\.compare\) \? fromHash\.compare : "([^"]+)"/);
+    assert.ok(defaults, "default styles found");
+    assert.ok(page.styles.some((style) => style.id === defaults[1]) && page.styles.some((style) => style.id === defaults[2]), `${locale}: default styles are on the page`);
 
     const h1 = source.match(/<h1 id="map-styles-title">([^<]+)<\/h1>/);
     assert.ok(h1 && h1[1].trim() && !h1[1].trim().endsWith("."), `${locale}: H1 is present without a trailing full stop`);
@@ -120,7 +125,7 @@ function testPages() {
     const cards = homeCards(locale);
     assert.ok(cards.length >= 4, `${locale}: home provider cards found`);
     const about = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
-    assert.equal(about.length, 5, `${locale}: five style descriptions`);
+    assert.equal(about.length, 4, `${locale}: four style descriptions`);
     for (const [, styleId, body] of about) {
       const name = decode(body.match(/<h3>([^<]+)/)[1].trim());
       const summary = decode(body.match(/<p class="map-styles-about-summary">([^<]+)<\/p>/)[1]);

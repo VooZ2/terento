@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "fb82e88bbc99de045230535f7992f186c074aa7b",
+    "commit": "d1eae42f16688030b831b50b0f8500c8125eb2e1",
     "pages": [
       {
         "path": "/",
@@ -28,7 +28,7 @@
         "file": "site/compatibility/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "5a1d1c554cdf657ad76a0b98595df8b196d2a4aaed659d437c575b2470d36885",
+        "fingerprint": "9999180f912a4d7ce34ac127584687e93e6104f366d547bbbdd0a6ea01feb402",
         "lastmod": "2026-10-26"
       },
       {
@@ -55,7 +55,7 @@
         "file": "site/cs/compatibility/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "ae15c09a166f68bb8513d4005aaa7a8ad16a3e1dc8d25df7e86f7ca0f927c270",
+        "fingerprint": "939aff79d86d3dfa9bc3c8af8b7e8e31826724d64b804048e52f7d5cb34c8cca",
         "lastmod": "2026-10-26"
       },
       {
@@ -118,7 +118,7 @@
         "file": "site/de/compatibility/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "d035d39f7857a010fe82895b48c0e615d2c3d7952b4ebf9cee3c557fe058865e",
+        "fingerprint": "853fac68bef1b631f8ee8163d9f02e61f6d8c761562ac66e79e5411fabeaa019",
         "lastmod": "2026-10-26"
       },
       {
@@ -190,7 +190,7 @@
         "file": "site/fr/compatibility/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "caccd453d3aebdf4acf9869ba7f89b6efc9b73120d5f682803dd7d434ca981a9",
+        "fingerprint": "23b0b8788e84ebf7c7c44cee404ba0eb6d447927c0b8fc06ab1c76aca4a7d81d",
         "lastmod": "2026-10-26"
       },
       {
@@ -271,7 +271,7 @@
         "file": "site/it/compatibility/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "4eb97d571c6754a78ec5236ff41baa2aa7abd09ff8e9d914b5f2237fe39e8df5",
+        "fingerprint": "f027774aba052ef92c3a9165e6fb1a3aa9528c0f29fb0796371c2ea216f4e9a1",
         "lastmod": "2026-10-26"
       },
       {
@@ -352,7 +352,7 @@
         "file": "site/pl/compatibility/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "f9230af1bef0aec17290a752a9551141770a42db12e3bf4c8bb742637c72c3ca",
+        "fingerprint": "d0934a6088a5975b86269d1547e44caeafa5cdab5605ba2a10c6cc1576cf15c4",
         "lastmod": "2026-10-26"
       },
       {
@@ -3925,21 +3925,57 @@
         "fingerprint": "f9230af1bef0aec17290a752a9551141770a42db12e3bf4c8bb742637c72c3ca",
         "status": 200,
         "acceptedAt": "2026-10-26T04:20:01Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "9999180f912a4d7ce34ac127584687e93e6104f366d547bbbdd0a6ea01feb402",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "939aff79d86d3dfa9bc3c8af8b7e8e31826724d64b804048e52f7d5cb34c8cca",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "853fac68bef1b631f8ee8163d9f02e61f6d8c761562ac66e79e5411fabeaa019",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "23b0b8788e84ebf7c7c44cee404ba0eb6d447927c0b8fc06ab1c76aca4a7d81d",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "f027774aba052ef92c3a9165e6fb1a3aa9528c0f29fb0796371c2ea216f4e9a1",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "d0934a6088a5975b86269d1547e44caeafa5cdab5605ba2a10c6cc1576cf15c4",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-10-26T04:20:01Z",
-    "lastSuccessfulSubmissionAt": "2026-10-26T04:20:01Z",
+    "lastSubmissionAt": "2026-10-26T12:48:54Z",
+    "lastSuccessfulSubmissionAt": "2026-10-26T12:48:54Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-10-26T04:20:01Z",
+    "at": "2026-10-26T12:48:55Z",
     "status": "accepted",
     "bootstrap": false,
     "planned": 6,
     "accepted": 6,
     "pending": 0,
-    "previousAccepted": 581
+    "previousAccepted": 587
   }
 }
