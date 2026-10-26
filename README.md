@@ -188,6 +188,7 @@ The current catalog includes main-map packages from
 [BBBike](https://garmin.bbbike.org), based on OpenStreetMap data.
 BBBike offers the smaller BBBike (Ontrail) packages for hiking and cycling and
 BBBike (OpenTopoMap) packages in the OpenTopoMap look, without contour lines.
+Only one BBBike map type can be installed for the same region.
 In the Mac app, maps download directly from their providers.
 
 - Install several regions together by choosing maps from the same provider.
