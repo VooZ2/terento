@@ -92,10 +92,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
-      "successfulInstallations": 14,
-      "appSuccessfulInstallations": 10,
-      "webSuccessfulInstallations": 4,
-      "lastSuccessfulInstallation": "2026-10-25T02:45:46+00:00"
+      "successfulInstallations": 16,
+      "appSuccessfulInstallations": 11,
+      "webSuccessfulInstallations": 5,
+      "lastSuccessfulInstallation": "2026-10-25T23:23:22+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -546,5 +546,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-25T04:11:04.712867+00:00"
+  "generatedAt": "2026-10-26T04:15:20.167862+00:00"
 }
