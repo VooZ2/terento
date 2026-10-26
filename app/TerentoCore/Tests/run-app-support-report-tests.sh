@@ -49,6 +49,8 @@ swiftc -D TERENTO_TESTING -target "${swiftpm_arch}-apple-macosx13.0" \
   -o "$binary_path"
 
 export TERENTO_SUPPORT_REPORT_PAYLOADS="$build_dir/support-report-payloads.json"
+# Saved failure reports go to a temporary folder, never the user's log.
+export TERENTO_LOG_DIRECTORY="$build_dir/logs"
 (
   cd "$project_root"
   "$binary_path"

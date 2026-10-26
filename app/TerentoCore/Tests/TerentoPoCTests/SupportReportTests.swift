@@ -33,6 +33,8 @@ struct SupportReportTests {
         produced.append(try testInstallationReportMirrorsTheGitHubReport())
         produced.append(testUpdateReportOmitsInstallOnlyFacts())
         produced.append(testMinimalReport())
+        produced.append(testMapScanReport())
+        produced.append(testMapScanReportReachesHelpMenu())
         testTextRules()
         testResponseMapping()
         try await testExplicitSendAndRetry()
@@ -138,6 +140,69 @@ struct SupportReportTests {
             && report.message == nil && report.maps?.first?.plannedBytes == nil,
             "facts the GitHub report marks Unavailable are omitted")
         return SupportReportPayload(category: .updateFailed, operationID: nil, userMessage: "   ", report: report)
+    }
+
+    @MainActor
+    static func testMapScanReport() -> SupportReportPayload {
+        let busy = MTPTransport.nativeReadError(message: "Garmin MTP device could not be opened at /Users/alice", result: -5,
+            operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 2)
+        let draft = InstallationIssueReport.mapScanFailure(identity: identity, error: busy,
+            errorCategory: DeviceDetectionErrorClassifier.classify(busy).mapScanReportCategory,
+            userMessage: "The watch's installed maps could not be read. Reconnect it and try again.")
+        let saved = draft.supportReport!
+        let report = saved.report
+        expect(saved.category == .connection && saved.operationID == nil && report.operation == nil,
+            "a map scan failure is a CONNECTION report without an operation")
+        expect(report.stage == "Map scan" && report.errorCategory == "watch_busy"
+            && report.errorCodes == ["MAP_SCAN_FAILED", "terento_snapshot:-5"]
+            && report.failureContext?.isWatchSessionBusy == true,
+            "the report names the failed read, its native code and the detection class")
+        expect(report.device?.model != nil && report.device?.firmware == "2244",
+            "the report names the connected watch")
+        expect(report.writeStarted == nil && report.objectCreated == nil && report.cleanupAttempted == nil
+            && report.transferProgressPercent == nil && report.maps == nil,
+            "a read-only scan sends no write, cleanup or map facts")
+        expect(saved.title == draft.title && draft.body.contains("MAP_SCAN_FAILED")
+            && !draft.body.contains("/Users/") && !draft.body.contains("PRIVATE-UNIT-SERIAL"),
+            "the GitHub report states the same facts without paths or serials")
+        let plain = InstallationIssueReport.mapScanFailure(identity: nil, error: URLError(.cancelled),
+            errorCategory: "read_failed", userMessage: nil)
+        expect(plain.supportReport?.report.errorCodes == ["MAP_SCAN_FAILED"] && plain.supportReport?.report.device == nil
+            && plain.supportReport?.report.failureContext == nil,
+            "without native facts or a watch only the scan code is sent")
+        return SupportReportPayload(category: saved.category, operationID: nil, userMessage: nil, report: report)
+    }
+
+    /// The engine's save rule and the path to Help > Send Report to Terento:
+    /// saved report, structured fields read back, offered without an unsent one.
+    @MainActor
+    static func testMapScanReportReachesHelpMenu() -> SupportReportPayload {
+        guard TerentoLogLocation.overrideDirectory != nil else {
+            fatalError("TERENTO_LOG_DIRECTORY must point at a temporary folder")
+        }
+        let busy = MTPTransport.nativeReadError(message: "Garmin MTP device could not be opened", result: -5,
+            operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 2)
+        let message = "The watch's installed maps could not be read. Reconnect it and try again."
+        expect(MapEngine.mapScanFailureReport(error: URLError(.notConnectedToInternet), identity: identity,
+            userMessage: message, deviceScanStarted: false, preservingInstallationResult: false) == nil,
+            "a catalog that could not load saves no watch report")
+        expect(MapEngine.mapScanFailureReport(error: busy, identity: identity, userMessage: message,
+            deviceScanStarted: true, preservingInstallationResult: true) == nil,
+            "a refresh after an install or update keeps that operation's report")
+        guard let draft = MapEngine.mapScanFailureReport(error: busy, identity: identity, userMessage: message,
+            deviceScanStarted: true, preservingInstallationResult: false) else {
+            fatalError("a failed watch scan of its own saves a report")
+        }
+        TerentoDiagnosticLog.saveFailureReport(draft)
+        expect(TerentoDiagnosticLog.latestSavedSupportReport() == draft.supportReport,
+            "the saved map scan report reads back with its structured fields")
+        let outboxRoot = FileManager.default.temporaryDirectory.appendingPathComponent("terento-support-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: outboxRoot) }
+        let source = SupportReportSource.latest(outbox: SupportReportOutbox(rootURL: outboxRoot))
+        expect(source.payload.category == .connection && source.payload.operationId == nil
+            && source.payload.report == draft.supportReport?.report && !source.allowsCategoryChoice,
+            "Help > Send Report to Terento offers the saved map scan report, not an empty one")
+        return source.payload
     }
 
     static func testMinimalReport() -> SupportReportPayload {

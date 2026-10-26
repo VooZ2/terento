@@ -86,7 +86,12 @@ failures) keeps the selection, rereads the watch and reuses them instead of
 downloading again. Availability is rechecked and the coordinator revalidates
 identity, version, size and SHA-256 before any write. When that pre-write
 reread finds the watch on USB but cannot open its file-transfer session (the
-snapshot result detection classifies as busy), the failure says the watch may be
+snapshot result detection classifies as busy), it first retries that read-only
+snapshot every 2 s, at most 6 times, as detection does, and counts the retries in
+the failure context. Every map and contour of an installation rereads the watch
+before its own write, and each of those reads has its own 6 retries, so a watch
+still busy after an earlier map's write does not stop the rest; cancelling ends
+the wait. If the session is still busy, the failure says the watch may be
 in use by another app, asks to quit Garmin Express and similar apps and links the
 guide's busy-watch section; it names no running app after one failed open,
 says no map was written only when no earlier map or contour of the same
@@ -417,7 +422,10 @@ a download start without a received outcome is not proof of a failed download.
   again with the same id. Saved failures keep their structured fields in
   `failure-report.json` beside `failure-report.md`, so the Diagnostics and Help
   menu entry points send the full report; without one only `macOSVersion` and a
-  chosen category are sent. `-local` builds are marked by `releaseLabel`. The
+  chosen category are sent. A failed read of the watch's maps ("Couldn't read your maps") saves
+  a `CONNECTION` report with the watch, `MAP_SCAN_FAILED`, the native code and
+  the detection class; a map catalog that could not load saves none, and a
+  refresh after an operation keeps that operation's report. `-local` builds are marked by `releaseLabel`. The
   API must be deployed before an app that sends reports is released.
 - **Help links.** `Errors/TroubleshootingHelp.swift` is the only mapping from
   connection outcomes, authorization verdicts, catalog/acquisition errors,
