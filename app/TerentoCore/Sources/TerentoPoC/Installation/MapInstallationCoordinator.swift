@@ -1905,3 +1905,17 @@ private extension MapInstallationDiagnostics {
         )
     }
 }
+
+extension InstallationProtectionContext.AffectedFolder {
+    private static let buckets: Set<Self> = [.mapFile, .garminRoot, .garminOther, .outsideGarmin]
+
+    init(file: DeviceFile) {
+        if ProtectedMapInventory.isMapFile(file) { self = .mapFile; return }
+        let parts = file.path.split(separator: "/", omittingEmptySubsequences: true)
+        guard parts.first?.lowercased() == "garmin" else { self = .outsideGarmin; return }
+        if parts.count == 1 || (parts.count == 2 && !file.isFolder) { self = .garminRoot; return }
+        let folder = parts[1].lowercased()
+        let named = Self.allCases.first { !Self.buckets.contains($0) && $0.rawValue.lowercased() == folder }
+        self = named ?? .garminOther
+    }
+}

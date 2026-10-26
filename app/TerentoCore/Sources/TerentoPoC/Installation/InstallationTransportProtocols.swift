@@ -177,7 +177,7 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
     /// Where the first protected non-target object that decided an
     /// added/removed/changed reason lives: a standard `/GARMIN` folder name,
     /// a map file, or a coarse bucket. Never a path or filename. The
-    /// classifier lives beside `ProtectedMapInventory`.
+    /// classifier lives in MapInstallationCoordinator.swift.
     enum AffectedFolder: String, Codable, Sendable, CaseIterable {
         case activity = "Activity", apps = "Apps", courses = "Courses", debug = "Debug"
         case device = "Device", errLogs = "ErrLogs", goals = "Goals", locations = "Locations"
