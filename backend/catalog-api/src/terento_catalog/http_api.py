@@ -349,7 +349,8 @@ class CatalogService:
         return {"schemaVersion": 1, "providers": providers}
 
     def catalog_response(self, *, include_maprando: bool = False, include_bbbike: bool = False,
-                         include_osmapa: bool = False) -> tuple[bytes, str, datetime]:
+                         include_osmapa: bool = False,
+                         include_bbbike_opentopo: bool = False) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
         # Every released projection is a closed provider set. A new DB provider
         # must never leak into a client that rejects unknown identities.
@@ -361,6 +362,12 @@ class CatalogService:
         if include_osmapa:
             allowed.add("osmapa")
         rows = [row for row in rows if row["provider_id"] in allowed]
+        if not include_bbbike_opentopo:
+            # Released v3/v4 clients know only the first two BBBike map types.
+            from .bbbike import LEGACY_MAP_TYPES
+            rows = [row for row in rows
+                    if row["provider_id"] != "bbbike" or not row.get("package_id")
+                    or row.get("map_type") in LEGACY_MAP_TYPES]
         if any("provider_changed_at" in row for row in rows):
             # updatedAt (and so Last-Modified and ETag) covers only this
             # projection's providers, never one it does not publish.
@@ -385,7 +392,8 @@ class CatalogService:
         return self.catalog_response(include_maprando=True, include_bbbike=True)
 
     def catalog_v5_response(self) -> tuple[bytes, str, datetime]:
-        return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True)
+        return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True,
+                                     include_bbbike_opentopo=True)
 
     def device_catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.device_catalog_snapshot()

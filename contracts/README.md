@@ -115,8 +115,10 @@ BBBike with `bbbike-latin1` and `ontrail-latin1` map types. v5 additionally expo
 OSMapaPL (`osmapa`) for clients from 1.0.2: map types `podstawowa`, `ogonki`, `light` and
 `warstwice` (contour lines as a standalone package), each for Poland and Poland with border areas,
 and `conflictGroup`: two packages of one group share a Garmin family ID and tiles and must not be
-on one device; the client blocks and never deletes automatically. Released 1.0.x clients never
-receive `osmapa`. Catalog body versions
+on one device; the client blocks and never deletes automatically. v5 also adds the BBBike
+`opentopo-latin1` map type (BBBike OpenTopoMap style); all BBBike types of one region share tiles,
+so at most one type per region may be on a device. Released 1.0.x clients never
+receive `osmapa` or `opentopo-latin1`. Catalog body versions
 remain unchanged. Source activation and exact-model evidence are separate.
 MapRando/BBBike/OSMapaPL versions may include an optional day; legacy provider versions
 retain their existing meanings.

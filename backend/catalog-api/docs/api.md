@@ -1496,7 +1496,14 @@ BBBike packages expose `mapType` (`bbbike-latin1` or `ontrail-latin1`) and
 lifecycle identity slot and include source path plus type; for example
 `EUROPE-LITHUANIA-BBBIKE-LATIN1`. `providerRegionId` is `europe/lithuania`, and
 both variants share geographic identity `LITHUANIA`. The package name is the
-reviewed geographic display name. Two types remain one statistics provider.
+reviewed geographic display name. All types remain one statistics provider.
+
+`opentopo-latin1` (BBBike OpenTopoMap style, no contour lines) is published
+only in `/maps/catalog-v5.json`; `catalog.json`, v3 and v4 keep exactly the
+`bbbike-latin1` and `ontrail-latin1` packages that released 1.0.x clients know.
+All BBBike types of one source region share Garmin tile numbers, so at most one
+type per region may be on a device; the client blocks the second type instead
+of replacing or deleting it.
 
 Main artifacts include bounded original-source `sourceProof`: source URL,
 strong ETag, Last-Modified, exact ZIP/IMG lengths, payload path, README source
