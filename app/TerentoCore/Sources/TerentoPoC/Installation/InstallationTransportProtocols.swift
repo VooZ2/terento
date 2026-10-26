@@ -174,6 +174,33 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         case targetFilenameMismatch = "target-filename-mismatch"
         case targetSizeMismatch = "target-size-mismatch"
     }
+    /// Where the first protected non-target object that decided an
+    /// added/removed/changed reason lives: a standard `/GARMIN` folder name,
+    /// a map file, or a coarse bucket. Never a path or filename.
+    enum AffectedFolder: String, Codable, Sendable, CaseIterable {
+        case activity = "Activity", apps = "Apps", courses = "Courses", debug = "Debug"
+        case device = "Device", errLogs = "ErrLogs", goals = "Goals", locations = "Locations"
+        case map = "Map", metrics = "Metrics", monitor = "Monitor", newFiles = "NewFiles"
+        case records = "Records", remoteSW = "RemoteSW", schedules = "Schedules"
+        case settings = "Settings", sleep = "Sleep", sports = "Sports", text = "Text"
+        case tlg = "TLG", totals = "Totals", workouts = "Workouts"
+        case mapFile = "map-file"
+        case garminRoot = "garmin-root"
+        case garminOther = "garmin-other"
+        case outsideGarmin = "outside-garmin"
+
+        private static let buckets: Set<Self> = [.mapFile, .garminRoot, .garminOther, .outsideGarmin]
+
+        init(file: DeviceFile) {
+            if ProtectedMapInventory.isMapFile(file) { self = .mapFile; return }
+            let parts = file.path.split(separator: "/", omittingEmptySubsequences: true)
+            guard parts.first?.lowercased() == "garmin" else { self = .outsideGarmin; return }
+            if parts.count == 1 || (parts.count == 2 && !file.isFolder) { self = .garminRoot; return }
+            let folder = parts[1].lowercased()
+            let named = Self.allCases.first { !Self.buckets.contains($0) && $0.rawValue.lowercased() == folder }
+            self = named ?? .garminOther
+        }
+    }
 
     let protectionBoundary: Boundary
     let protectionReason: Reason
@@ -183,6 +210,7 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
     let addedObjectCount: Int?
     let removedObjectCount: Int?
     let changedObjectCount: Int?
+    let affectedFolder: AffectedFolder?
     let targetPresent: Bool?
     let targetUnique: Bool?
     let targetKindMatches: Bool?
@@ -200,6 +228,7 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         addedObjectCount: Int? = nil,
         removedObjectCount: Int? = nil,
         changedObjectCount: Int? = nil,
+        affectedFolder: AffectedFolder? = nil,
         targetPresent: Bool? = nil,
         targetUnique: Bool? = nil,
         targetKindMatches: Bool? = nil,
@@ -216,6 +245,7 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         self.addedObjectCount = addedObjectCount
         self.removedObjectCount = removedObjectCount
         self.changedObjectCount = changedObjectCount
+        self.affectedFolder = affectedFolder
         self.targetPresent = targetPresent
         self.targetUnique = targetUnique
         self.targetKindMatches = targetKindMatches

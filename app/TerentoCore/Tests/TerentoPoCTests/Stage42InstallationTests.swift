@@ -358,6 +358,7 @@ struct Stage42InstallationTests {
         passed += testSuccessClearsFailedInstallRecoveryRecord()
         passed += testFailedVerificationPreservesRecoveryRecordWhenCleanupFails()
         passed += testProtectionContextObservations()
+        passed += testAffectedFolderClassification()
         passed += testProtectionCleanupPreservesOriginalContext()
         passed += testTargetReasonObservations()
         passed += testContextualReadBoundaries()
@@ -441,8 +442,53 @@ struct Stage42InstallationTests {
                         && protection?.changedObjectCount == (reason == .preexistingObjectChanged ? 1 : 0),
                         "non-target delta counts describe the current comparison")
                 }
+                let decidesByDelta = [.nonTargetObjectAdded, .preexistingObjectRemoved, .preexistingObjectChanged].contains(reason)
+                passed += expect(protection?.affectedFolder == (decidesByDelta ? .mapFile : nil),
+                    "\(reason.rawValue) names only the coarse location of the deciding object")
             }
         }
+        // A watch data file changed during the write: only its /GARMIN folder name is kept.
+        let harness = makeHarness()
+        let metrics = DeviceFile(itemID: 700, parentID: 0, storageID: 1, path: "/GARMIN/Metrics",
+            filename: "Metrics", sizeBytes: 0, isFolder: true)
+        let sleep = DeviceFile(itemID: 701, parentID: 700, storageID: 1, path: "/GARMIN/Metrics/private-name.fit",
+            filename: "private-name.fit", sizeBytes: 10, isFolder: false)
+        let result = harness.run(configureReader: { reader in
+            reader.initialFiles += [metrics, sleep]
+            reader.files += [metrics, DeviceFile(itemID: sleep.itemID, parentID: sleep.parentID,
+                storageID: sleep.storageID, path: sleep.path, filename: sleep.filename,
+                sizeBytes: 11, isFolder: false)]
+        })
+        let protection = result.failureContext?.protection
+        passed += expect(protection?.protectionReason == .preexistingObjectChanged
+            && protection?.affectedFolder == .metrics
+            && !String(describing: protection as Any).contains("private-name"),
+            "a changed watch data file reports its Garmin folder, never its filename")
+        return passed
+    }
+
+    private static func testAffectedFolderClassification() -> Int {
+        typealias Folder = InstallationProtectionContext.AffectedFolder
+        func folder(_ path: String, isFolder: Bool = false) -> Folder {
+            Folder(file: DeviceFile(itemID: 1, parentID: 0, storageID: 1, path: path,
+                filename: (path as NSString).lastPathComponent, sizeBytes: 1, isFolder: isFolder))
+        }
+        var passed = 0
+        passed += expect(folder("/GARMIN/Metrics/a.fit") == .metrics
+            && folder("/garmin/SLEEP/b.fit") == .sleep
+            && folder("/GARMIN/Activity", isFolder: true) == .activity
+            && folder("/GARMIN/Apps/DATA/x.dat") == .apps,
+            "standard Garmin folders are named case-insensitively in Garmin spelling")
+        passed += expect(folder("/GARMIN/gmapsupp.img") == .mapFile
+            && folder("/Music/song.img") == .mapFile
+            && folder("/GARMIN/Map/abc.gma") == .mapFile,
+            "map files are one bucket wherever they are")
+        passed += expect(folder("/GARMIN/settings.dat") == .garminRoot
+            && folder("/GARMIN/MyOwnFolder/x.txt") == .garminOther
+            && folder("/GARMIN/map-file/x.txt") == .garminOther
+            && folder("/GARMIN", isFolder: true) == .garminRoot
+            && folder("/Music/song.mp3") == .outsideGarmin,
+            "unknown names fall into coarse buckets, never their own name")
         return passed
     }
 

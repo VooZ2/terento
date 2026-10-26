@@ -240,6 +240,20 @@ Before/after counts cover all observed entries; deltas cover non-target objects.
 Omit deltas when inventories cannot be paired. Never clamp an observed count
 to fit the bound.
 
+Optional `affectedFolder` (apps newer than 1.0.1) is allowed only with
+`non-target-object-added`, `preexisting-object-removed` or
+`preexisting-object-changed`. It names where the first object (in path order)
+of the set that decided the reason lives, as one closed value: a standard
+`/GARMIN` folder name in Garmin spelling (`Activity`, `Apps`, `Courses`,
+`Debug`, `Device`, `ErrLogs`, `Goals`, `Locations`, `Map`, `Metrics`,
+`Monitor`, `NewFiles`, `Records`, `RemoteSW`, `Schedules`, `Settings`, `Sleep`,
+`Sports`, `Text`, `TLG`, `Totals`, `Workouts`), `map-file` (any `.img`, `.gma`,
+`.unl` or `.sid` file), `garmin-root` (an object directly in `/GARMIN`),
+`garmin-other` (any other `/GARMIN` folder) or `outside-garmin`. Folder names
+are matched case-insensitively; a path, filename or unlisted name is never
+sent. It is a diagnostic observation only and never tolerates or authorizes a
+change.
+
 Optional `targetPresent`, `targetUnique`, `targetKindMatches`,
 `targetFilenameMatches`, `targetSizeMatches`, `targetPathMatches` and
 `targetItemIDMatches` are nullable booleans. Unknown is omitted or null, not
