@@ -32,12 +32,13 @@ diagnose the reported problem.
 ## Report sources in the app
 
 A failed installation, update or removal saves its report with the matching
-category. A failed map scan of a connected watch ("Couldn't read your maps")
+category. A failed read of a connected watch's maps ("Couldn't read your maps")
 saves a `CONNECTION` report with no `operationId` or `operation`: stage
 `Map scan`, the watch, `errorCodes` `MAP_SCAN_FAILED` plus the native
 `namespace:code` when known, the detection class as `errorCategory` and the
 structured `failureContext` when the read carried one; it writes nothing, so no
-write or cleanup facts are sent. A scan that refreshes the watch after an
+write or cleanup facts are sent. A map catalog that could not load is not a
+watch failure and saves no report. A scan that refreshes the watch after an
 operation keeps that operation's saved report. "Send report to Terento" from
 the Help menu offers the latest saved report; without one it sends `OTHER`
 with only `macOSVersion` and the user's description.

@@ -34,6 +34,7 @@ struct SupportReportTests {
         produced.append(testUpdateReportOmitsInstallOnlyFacts())
         produced.append(testMinimalReport())
         produced.append(testMapScanReport())
+        produced.append(testMapScanReportReachesHelpMenu())
         testTextRules()
         testResponseMapping()
         try await testExplicitSendAndRetry()
@@ -170,6 +171,38 @@ struct SupportReportTests {
             && plain.supportReport?.report.failureContext == nil,
             "without native facts or a watch only the scan code is sent")
         return SupportReportPayload(category: saved.category, operationID: nil, userMessage: nil, report: report)
+    }
+
+    /// The engine's save rule and the path to Help > Send Report to Terento:
+    /// saved report, structured fields read back, offered without an unsent one.
+    @MainActor
+    static func testMapScanReportReachesHelpMenu() -> SupportReportPayload {
+        guard TerentoLogLocation.overrideDirectory != nil else {
+            fatalError("TERENTO_LOG_DIRECTORY must point at a temporary folder")
+        }
+        let busy = MTPTransport.nativeReadError(message: "Garmin MTP device could not be opened", result: -5,
+            operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 2)
+        let message = "The watch's installed maps could not be read. Reconnect it and try again."
+        expect(MapEngine.mapScanFailureReport(error: URLError(.notConnectedToInternet), identity: identity,
+            userMessage: message, deviceScanStarted: false, preservingInstallationResult: false) == nil,
+            "a catalog that could not load saves no watch report")
+        expect(MapEngine.mapScanFailureReport(error: busy, identity: identity, userMessage: message,
+            deviceScanStarted: true, preservingInstallationResult: true) == nil,
+            "a refresh after an install or update keeps that operation's report")
+        guard let draft = MapEngine.mapScanFailureReport(error: busy, identity: identity, userMessage: message,
+            deviceScanStarted: true, preservingInstallationResult: false) else {
+            fatalError("a failed watch scan of its own saves a report")
+        }
+        TerentoDiagnosticLog.saveFailureReport(draft)
+        expect(TerentoDiagnosticLog.latestSavedSupportReport() == draft.supportReport,
+            "the saved map scan report reads back with its structured fields")
+        let outboxRoot = FileManager.default.temporaryDirectory.appendingPathComponent("terento-support-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: outboxRoot) }
+        let source = SupportReportSource.latest(outbox: SupportReportOutbox(rootURL: outboxRoot))
+        expect(source.payload.category == .connection && source.payload.operationID == nil
+            && source.payload.report == draft.supportReport?.report && !source.allowsCategoryChoice,
+            "Help > Send Report to Terento offers the saved map scan report, not an empty one")
+        return source.payload
     }
 
     static func testMinimalReport() -> SupportReportPayload {

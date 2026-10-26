@@ -556,6 +556,7 @@ final class MapEngine: ObservableObject {
         ownershipManifestDeviceKeys = Self.manifestDeviceKeys(for: deviceIdentity)
         activeTask?.cancel()
         activeTask = Task { [weak self] in
+            var deviceScanStarted = false
             do {
                 let loaded = try await CancellableDetached.run(priority: .userInitiated) {
                     try await operationGate.withAsyncOperation(kind: .catalog) {
@@ -572,6 +573,7 @@ final class MapEngine: ObservableObject {
                 self?.catalogSource = loaded.source
                 self?.catalogUpdatedAt = loaded.catalog.updatedAt
                 self?.state = .scanning
+                deviceScanStarted = true
 
                 let expectedObjectCount = self?.lastObservedInventoryCount
                 let scanOutput = try await CancellableDetached.run(priority: .userInitiated) {
@@ -652,15 +654,29 @@ final class MapEngine: ObservableObject {
                     ? UserFacingErrorMessage.stoppedResponding
                     : UserFacingErrorMessage.forMapScan(error)
                 self?.userErrorMessage = userMessage
-                // A refresh after an install or update keeps that operation's
-                // saved report; only a scan of its own becomes the latest one.
-                if !preservingInstallationResult {
-                    TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.mapScanFailure(
-                        identity: deviceIdentity, error: error,
-                        errorCategory: failureClass.mapScanReportCategory, userMessage: userMessage))
+                if let report = Self.mapScanFailureReport(error: error, identity: deviceIdentity,
+                    userMessage: userMessage, deviceScanStarted: deviceScanStarted,
+                    preservingInstallationResult: preservingInstallationResult) {
+                    TerentoDiagnosticLog.saveFailureReport(report)
                 }
             }
         }
+    }
+
+    /// Only a failed read of the watch becomes the latest saved report. A
+    /// catalog that could not load is not a watch problem, and a refresh after
+    /// an install or update keeps that operation's report.
+    static func mapScanFailureReport(
+        error: Error,
+        identity: DeviceIdentity?,
+        userMessage: String?,
+        deviceScanStarted: Bool,
+        preservingInstallationResult: Bool
+    ) -> InstallationIssueDraft? {
+        guard deviceScanStarted, !preservingInstallationResult else { return nil }
+        return InstallationIssueReport.mapScanFailure(identity: identity, error: error,
+            errorCategory: DeviceDetectionErrorClassifier.classify(error).mapScanReportCategory,
+            userMessage: userMessage)
     }
 
     /// Validates and stages a user-selected raw IMG without changing the
@@ -2447,10 +2463,14 @@ final class MapEngine: ObservableObject {
     }
 
     /// Snapshot -5 right after connect is usually short: detection retries
-    /// it every 2 s and then connects. The install's first read, before
-    /// anything on the watch is touched, waits it out the same way a bounded
-    /// number of times; any other failure, or a session still busy after the
-    /// last retry, is reported as before with the retries counted.
+    /// it every 2 s and then connects. Each component's initial snapshot
+    /// (every map and contour of a batch) waits it out the same way a bounded
+    /// number of times. The read comes before that component touches the
+    /// watch, so a wait changes nothing there; without it a busy watch after
+    /// an earlier component's write stops the rest of the batch. Each
+    /// component has its own retry budget. Any other failure, or a session
+    /// still busy after the last retry, is reported as before with the
+    /// retries counted.
     nonisolated static let busySnapshotRetryLimit: UInt8 = 6
     nonisolated static let busySnapshotRetryInterval: Duration = .seconds(2)
 

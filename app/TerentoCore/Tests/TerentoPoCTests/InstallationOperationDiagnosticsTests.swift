@@ -603,6 +603,72 @@ private actor DelayedAuthorizationResponse {
                       "snapshot \(code) is not retried")
             }
         }
+
+        // The batch reads an initial snapshot per component; each one has its
+        // own budget, so a busy contour read after the main map is not cut short.
+        var readsByComponent: [InstallationFailureContext.ComponentKind: Int] = [:]
+        waits = []
+        for component in [InstallationFailureContext.ComponentKind.main, .contours] {
+            let value: Int = try await MapEngine.readInitialSnapshot(componentKind: component,
+                wait: { waits.append($0) }) {
+                readsByComponent[component, default: 0] += 1
+                if readsByComponent[component]! <= 4 { throw nativeError(-5, category: 2) }
+                return 1
+            }
+            check(value == 1, "the \(component) snapshot is read after its own busy retries")
+        }
+        check(readsByComponent == [.main: 5, .contours: 5] && waits.count == 8,
+              "retries are counted per component, not across the batch")
+        readsByComponent = [:]
+        do {
+            let _: Int = try await MapEngine.readInitialSnapshot(componentKind: .contours, wait: { _ in }) {
+                readsByComponent[.contours, default: 0] += 1
+                throw nativeError(-5, category: 2)
+            }
+            fatalError("read unexpectedly succeeded")
+        } catch {
+            let classified = MapEngine.readFailureDiagnostic(error)
+            check(classified?.context.componentKind == .contours
+                  && classified?.context.retryCount == MapEngine.busySnapshotRetryLimit,
+                  "a contour snapshot still busy names the contours and its own retries")
+        }
+
+        // Cancelling the operation ends the wait: no further read, and the
+        // cancellation is reported as such, not as a busy watch.
+        calls = 0
+        do {
+            let _: Int = try await MapEngine.readInitialSnapshot(componentKind: .main,
+                wait: { _ in throw CancellationError() }) {
+                calls += 1
+                throw nativeError(-5, category: 2)
+            }
+            fatalError("read unexpectedly succeeded")
+        } catch {
+            check(calls == 1 && error is CancellationError && MapEngine.isObservedCancellation(error),
+                  "a cancelled wait stops the retries as a cancellation")
+        }
+        let reads = BusyReadCounter()
+        let cancelled = Task { () -> Int in
+            try await MapEngine.readInitialSnapshot(componentKind: .main) {
+                reads.increment()
+                throw nativeError(-5, category: 2)
+            }
+        }
+        cancelled.cancel()
+        do {
+            _ = try await cancelled.value
+            fatalError("read unexpectedly succeeded")
+        } catch {
+            check(error is CancellationError && reads.value == 1,
+                  "a cancelled install does not sleep through the remaining retries")
+        }
+    }
+
+    private final class BusyReadCounter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+        func increment() { lock.lock(); count += 1; lock.unlock() }
+        var value: Int { lock.lock(); defer { lock.unlock() }; return count }
     }
 
     @MainActor static func testReadBoundaryAndPresence() async throws {
