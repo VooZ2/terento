@@ -36,7 +36,7 @@ class FakeDatabase:
             "compatibility_identity": "fēnix 7X Pro", "canonical_device_model_id": "garmin-fenix-7x-pro",
             "phase_outcome": "FAILED", "failure_stage": "postwrite", "failure_code": "INSTALL_FAILED_CLEANUP",
             "write_started": True, "provider": "custom", "region": "CUSTOM",
-            "release_label": "1.0.1", "app_build": "45",
+            "release_label": "1.0.1", "app_build": "45 owner@example.com",
             "firmware_version": "serialNumber=SERIAL-123 owner@example.com /Users/alice/private.img",
         }]
 
@@ -46,7 +46,9 @@ class FakeDatabase:
             "release_label": "1.0.1", "app_build": "45", "operation_id": None,
             "linked_github_issue": None,
             "user_message": "Maps vanish. Write me at owner@example.com, unitId=UNIT-456",
-            "report": {"macOSVersion": "15.6", "device": {"model": "fēnix 8"}},
+            "report": {"macOSVersion": "15.6", "device": {"model": "fēnix 8 serial=SERIAL-789"},
+                       "message": "Copy failed for owner@example.com api_key=SECRET-KEY",
+                       "lifecycleFacts": ["unitId=UNIT-999 kept"]},
         }]
 
 
@@ -62,7 +64,8 @@ class FakeService:
     def operational_health(self):
         return {
             "providers": [], "observations": [], "scheduler": None,
-            "weekly": {"status": "FAILED", "summary": "One or more required Terento quality gates failed.",
+            "weekly": {"status": "FAILED", "summary": "One or more required Terento quality gates failed. "
+                                                         "Contact ci@example.com token=SECRET-TOKEN",
                        "observed_at": NOW.isoformat()},
         }
 
@@ -92,7 +95,7 @@ class AttentionReportTests(unittest.TestCase):
         self.assertEqual(report["installationProblems"]["total"], 1)
         self.assertEqual(problem["operationKey"], "0f0c7f4e-79a8-4c0b-9a3a-6b8d6e0d1c11")
         self.assertEqual(problem["model"], "fēnix 7X Pro")
-        self.assertEqual(problem["appVersion"], "1.0.1 · build 45")
+        self.assertEqual(problem["appVersion"], "1.0.1 · build 45 [redacted email]")
         self.assertTrue(problem["adminUrl"].startswith("https://api.terento.app/admin/"))
         self.assertIn("INSTALL\\_FAILED\\_CLEANUP", problem["issueBody"])
 
@@ -104,12 +107,16 @@ class AttentionReportTests(unittest.TestCase):
         self.assertEqual(support["reference"], "TR-4GBKXX")
         self.assertEqual(support["adminUrl"], "https://api.terento.app/admin/support-reports/TR-4GBKXX")
         self.assertIn("Maps vanish.", support["userMessage"])
+        self.assertEqual(support["report"]["device"]["model"], "fēnix 8 serial=[redacted]")
+        self.assertEqual(support["report"]["lifecycleFacts"], ["unitId=[redacted] kept"])
 
         check = report["systemChecks"]["items"][0]
         self.assertEqual((check["check"], check["status"]), ("Weekly tests", "FAILED"))
+        self.assertTrue(check["reason"].startswith("One or more required Terento quality gates failed."))
 
         serialized = json.dumps(report, ensure_ascii=False)
-        for forbidden in ("SERIAL-123", "UNIT-456", "owner@example.com", "/Users/alice"):
+        for forbidden in ("SERIAL-123", "SERIAL-789", "UNIT-456", "UNIT-999", "owner@example.com",
+                          "ci@example.com", "SECRET-KEY", "SECRET-TOKEN", "/Users/alice"):
             self.assertNotIn(forbidden, serialized)
 
     def test_a_failing_section_is_unavailable_not_empty(self):
@@ -120,6 +127,14 @@ class AttentionReportTests(unittest.TestCase):
             report = attention_report(service)
         self.assertEqual(report["installationProblems"], {"available": False})
         self.assertEqual(report["supportReports"]["total"], 1)
+
+
+    def test_update_section_is_unavailable_when_its_open_total_fails(self):
+        rows = {**UPDATE_ROWS, "totals": None}
+        with patch.object(admin_attention, "load_update_diagnostics", return_value=rows), \
+                self.assertLogs("terento_catalog.admin_attention", "ERROR"):
+            report = attention_report(FakeService())
+        self.assertEqual(report["updateProblems"], {"available": False})
 
 
 class AttentionRouteTests(unittest.TestCase):

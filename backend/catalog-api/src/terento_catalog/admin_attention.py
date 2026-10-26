@@ -2,8 +2,9 @@
 
 The populations are the Dashboard Needs attention ones (open installation
 problems, open failed update reports, open support reports, failed or degraded
-Health checks). Free text comes only from the sanitised reports Admin already
-prepares for GitHub issues; nothing here changes data.
+Health checks). Issue titles and bodies are the sanitised reports Admin already
+prepares for GitHub issues; every other text value, including stored support
+report bodies, passes through the same sanitiser. Nothing here changes data.
 """
 from __future__ import annotations
 
@@ -45,7 +46,7 @@ def attention_report(service: Any) -> dict[str, Any]:
 
     def section(name: str, reader: Any) -> Any:
         try:
-            return reader()
+            return _sanitised(reader())
         except Exception:
             LOGGER.exception("attention section %s failed", name)
             return {"available": False}
@@ -59,6 +60,21 @@ def attention_report(service: Any) -> dict[str, Any]:
         "supportReports": section("supportReports", lambda: _support_reports(service.database, admin_url)),
         "systemChecks": section("systemChecks", lambda: _system_checks(service, admin_url)),
     }
+
+
+# Already sanitised Markdown reports and server-built links keep their form.
+_PRESANITISED_KEYS = frozenset({"issueTitle", "issueBody", "adminUrl", "actionUrl"})
+
+
+def _sanitised(value: Any, key: str = "") -> Any:
+    """Pass every other text value, at any depth, through the issue sanitiser."""
+    if isinstance(value, dict):
+        return {name: _sanitised(item, name) for name, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitised(item, key) for item in value]
+    if isinstance(value, str) and key not in _PRESANITISED_KEYS:
+        return _sanitised_issue_value(value)
+    return value
 
 
 def _counts(database: Any) -> dict[str, Any]:
@@ -128,14 +144,17 @@ def _update_problems(database: Any, admin_url: str) -> dict[str, Any]:
             "issueTitle": title,
             "issueBody": body,
         })
-    totals = data.get("totals") or {}
-    return {"total": totals.get("open_failed", len(items)), "items": items}
+    totals = data.get("totals")
+    if not isinstance(totals, dict) or totals.get("open_failed") is None:
+        # The list read alone cannot give the Open total.
+        raise RuntimeError("update report totals unavailable")
+    return {"total": int(totals["open_failed"]), "items": items}
 
 
 def _support_reports(database: Any, admin_url: str) -> dict[str, Any]:
     items = []
     for row in database.open_support_report_details(LIST_LIMIT):
-        message = _sanitised_issue_value(row.get("user_message"), max_length=MAX_USER_MESSAGE_LENGTH)
+        message = str(row.get("user_message") or "")[:MAX_USER_MESSAGE_LENGTH]
         items.append({
             "reference": row["reference"],
             "receivedAt": _timestamp_iso(row.get("received_at")) or None,
@@ -167,8 +186,8 @@ def _system_checks(service: Any, admin_url: str) -> dict[str, Any]:
         "check": card["title"],
         "status": card["status"],
         "group": card.get("group"),
-        "reason": " ".join(_plain(card.get("reason")).split()) or None,
-        "action": " ".join(_plain(card.get("action")).split()) or None,
+        "reason": _plain(card.get("reason")) or None,
+        "action": _plain(card.get("action")) or None,
         "actionUrl": _absolute(admin_url, card.get("actionHref")),
         "lastChecked": _timestamp_iso(card.get("lastChecked")) or None,
     } for card in cards if card["status"] in _HEALTH_ISSUE_STATES]

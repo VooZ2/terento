@@ -120,7 +120,7 @@ report. A report with an `operationId` links to the public installation or
 update diagnostics of the same operation when they exist. Local test reports
 appear only under Tools → Test data. Presentation rules are owned by
 `backend/catalog-api/docs/admin-behavior-contract.md`. Open public reports are
-also readable, unchanged except the description passes the issue-report
+also readable, with every text value passed through the issue-report
 sanitiser, through the token-protected read-only `GET /internal/attention`
 (`backend/catalog-api/docs/api.md`) so an operator agent can diagnose them;
 that read never changes a report.

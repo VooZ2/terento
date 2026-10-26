@@ -1380,10 +1380,17 @@ read fails is `{"available": false}`, never a shorter list:
 - `supportReports`: `total` open public reports and up to 50 newest `items`
   with `reference`, `receivedAt`, `category`, `appVersion`, `operationId`,
   `linkedGithubIssue`, `adminUrl`, the stored allowlisted `report` and the
-  user's description passed through the issue-report sanitiser.
+  user's description.
 - `systemChecks`: Health checks whose status is `FAILED` or `WARNING`
   (including provider catalogs) with `check`, `status`, `group`, `reason`,
   `action`, `actionUrl` and `lastChecked`.
+
+Issue titles and bodies are the sanitised reports Admin prepares; every other
+text value at any depth (including support report bodies, descriptions and
+Health reasons) passes through the same issue-report sanitiser, which redacts
+email addresses, serial/Unit/device IDs, secrets, tokens and local paths. The
+Open update total comes from its own count; if that count fails, the section
+is unavailable.
 
 The response is `Cache-Control: no-store` and `noindex`. It contains no
 serial number, Unit ID, account, local path, raw log, manifest, map content,
