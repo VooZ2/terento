@@ -342,7 +342,8 @@ class CatalogService:
             })
         return {"schemaVersion": 1, "providers": providers}
 
-    def catalog_response(self, *, include_maprando: bool = False, include_bbbike: bool = False) -> tuple[bytes, str, datetime]:
+    def catalog_response(self, *, include_maprando: bool = False, include_bbbike: bool = False,
+                         include_osmapa: bool = False) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
         # Every released projection is a closed provider set. A new DB provider
         # must never leak into a client that rejects unknown identities.
@@ -351,6 +352,8 @@ class CatalogService:
             allowed.add("maprando")
         if include_bbbike:
             allowed.add("bbbike")
+        if include_osmapa:
+            allowed.add("osmapa")
         rows = [row for row in rows if row["provider_id"] in allowed]
         body = serialize_catalog(
             build_catalog(
@@ -367,6 +370,9 @@ class CatalogService:
 
     def catalog_v4_response(self) -> tuple[bytes, str, datetime]:
         return self.catalog_response(include_maprando=True, include_bbbike=True)
+
+    def catalog_v5_response(self) -> tuple[bytes, str, datetime]:
+        return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True)
 
     def device_catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.device_catalog_snapshot()
@@ -523,6 +529,9 @@ class CatalogService:
         elif provider_id == "bbbike":
             from .bbbike import BBBikeProviderAdapter
             adapter = BBBikeProviderAdapter()
+        elif provider_id == "osmapa":
+            from .osmapa import OSMapaProviderAdapter
+            adapter = OSMapaProviderAdapter()
         elif provider_id == "maprando":
             from .maprando import MapRandoProviderAdapter
             adapter = MapRandoProviderAdapter()
@@ -1522,8 +1531,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/health":
                 self._handle_health(send_body=send_body)
                 return
-            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json", "/maps/catalog-v4.json"}:
+            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json", "/maps/catalog-v4.json", "/maps/catalog-v5.json"}:
                 self._handle_catalog(
+                    service.catalog_v5_response if request_path == "/maps/catalog-v5.json" else
                     service.catalog_v4_response if request_path == "/maps/catalog-v4.json" else
                     service.catalog_v3_response if request_path == "/maps/catalog-v3.json" else service.catalog_response,
                     send_body=send_body,

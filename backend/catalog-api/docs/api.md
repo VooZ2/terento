@@ -1477,6 +1477,43 @@ Map statistics resolve the stored package to its geographic identity and expose
 package or type. Candidate package IDs must be seeded in the receiving DB before
 owner testing, because unknown map IDs cannot link to package geography.
 
+### OSMapaPL v5 projection
+
+`/maps/catalog-v5.json` is the v4 provider set plus `osmapa` (OSMapaPL,
+https://osmapa-garmin.las.org.pl). `catalog.json`, v3 and v4 never contain
+`osmapa`; released 1.0.x clients request v4. Migration 087 registers the
+provider `PAUSED`, so every v5 OSMapaPL package carries
+`downloadBlockReason=PROVIDER_PAUSED` until activation.
+
+Eight packages: `osmapa-<pl|plext>-<podstawowa|ogonki|light|warstwice>`.
+`mapType` is the style, `geographicRegionId` is `POLAND` or
+`POLAND-WITH-BORDER-AREAS`, `region`/`canonicalRegionId` is the variant
+lifecycle identity (for example `PLEXT-OGONKI`), `country` is `PL`.
+WARSTWICE (20 m contour lines) is a standalone main package, not a contour
+component. `conflictGroup` (`osmapa-<style>`) names packages that share one
+Garmin family ID and tile numbers (PL and PLext of one style): at most one may
+be on a device, and the client blocks instead of replacing or deleting.
+
+Collection is one index GET plus two ranged GETs per package (64 KiB ZIP tail
+and head); no HEAD, no full download, no MPS read. Only the newest exact
+`/products/OSMapaPL(ext)?-<STYLE>-YYYYMMDDV<n.n>_IMG.zip` link per package is
+accepted, without redirects; a missing or ambiguous package fails the whole
+collection. Each response must be HTTP 206 with an exact `Content-Range`,
+strong ETag and Last-Modified equal on both ranges. The ZIP must hold exactly
+one unencrypted deflated `gmapsupp.img` below 4 GiB; its first 4 KiB must be an
+unencrypted Garmin IMG whose stitched description (`0x49` plus `0x65`) equals
+the filename coverage and style, whose creation date equals the filename date,
+and whose only MDR index name equals the style family ID (4, 5, 6, 12).
+`sourceProof` records URL, ETag, Last-Modified, ZIP and IMG sizes, CRC32,
+coverage, style, family ID, title, source version, date and a revision. The
+source publishes no checksum: native acquisition validates the whole payload
+and its MPS family ID before any write.
+
+HTTP 403, 429 or 5xx on the index or any range closes the source gate: the run
+fails and the previous snapshot stays. A package that fails validation is not
+offered; if it was known before, it stays listed `UNAVAILABLE` without proof.
+Compatibility events accept `osmapa`.
+
 ### Acquisition lifecycle extension
 
 Schema1 additionally accepts paired optional `acquisitionId` (random UUID) and

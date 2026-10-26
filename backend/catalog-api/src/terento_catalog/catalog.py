@@ -189,7 +189,7 @@ def _build_provider_neutral_catalog(
             or not artifact_source_url
             or artifact_download_size is None
             or (int(artifact_download_size) <= 0 and not (
-                provider_id == "bbbike" and row.get("availability") == "UNAVAILABLE"
+                provider_id in {"bbbike", "osmapa"} and row.get("availability") == "UNAVAILABLE"
                 and row.get("artifact_validation_status") == "UNAVAILABLE"))
         ):
             continue
@@ -242,11 +242,15 @@ def _build_provider_neutral_catalog(
                 },
                 "artifacts": [],
             }
-            if provider_id == "bbbike":
+            if provider_id in {"bbbike", "osmapa"}:
                 daily = datetime.strptime(release, "%Y-%m-%d")
                 package["version"]["day"] = daily.day
                 package["mapType"] = row.get("map_type")
                 package["geographicRegionId"] = row.get("geographic_region_id")
+            if provider_id == "osmapa":
+                # Same-style packages share one Garmin FID: at most one per watch.
+                from .osmapa import conflict_group
+                package["conflictGroup"] = conflict_group(str(row.get("map_type") or ""))
             if provider_id == "maprando":
                 try:
                     daily = datetime.strptime(release, "%Y-%m-%d")
@@ -285,12 +289,12 @@ def _build_provider_neutral_catalog(
                     row.get("artifact_validation_status") or "NOT_VALIDATED"
                 ),
             }
-            # A failed BBBike check keeps its stored proof as evidence, but an
+            # A failed BBBike/OSMapaPL check keeps its stored proof as evidence, but an
             # unavailable main artifact is published without proof: released
             # clients accept such a package only as one proof-free artifact
             # and otherwise reject the whole catalog.
             bbbike_unavailable_main = (
-                provider_id == "bbbike"
+                provider_id in {"bbbike", "osmapa"}
                 and str(row.get("artifact_kind") or "") == "main"
                 and str(row.get("artifact_validation_status") or "") in ("UNAVAILABLE", "FAILED")
             )

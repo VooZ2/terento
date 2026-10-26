@@ -3843,7 +3843,7 @@ class Database:
                         (definition.id, artifact.source_url),
                     )
 
-            if definition.id in {"opentopomap", "maprando", "bbbike"}:
+            if definition.id in {"opentopomap", "maprando", "bbbike", "osmapa"}:
                 # A complete provider snapshot retires only that provider's stale
                 # package/artifact metadata. It never touches map binaries or
                 # another provider's records.
