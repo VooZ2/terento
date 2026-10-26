@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**34** modely s úspěšnými instalacemi**303** úspěšných instalacíPoslední úspěšná instalace 25. října 2026
+**36** modely s úspěšnými instalacemi**313** úspěšných instalacíPoslední úspěšná instalace 26. října 2026
 
 Jak tento seznam funguje
 
@@ -21,7 +21,7 @@ Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin
 
 Aktuální verze zahrnuje čtyři poskytovatele map. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
-34 modelů
+36 modelů
 
 fēnix
 
@@ -29,11 +29,11 @@ fēnix
 
 47 mm, AMOLED
 
-51 úspěšných instalací
+53 úspěšných instalací
 
-App 51
+App 53
 
-Poslední úspěšná instalace 20. října 2026
+Poslední úspěšná instalace 26. října 2026
 
 Forerunner
 
@@ -157,6 +157,18 @@ Poslední úspěšná instalace 22. října 2026
 
 fēnix
 
+### fēnix 8 Pro
+
+51 mm, AMOLED, inReach
+
+9 úspěšných instalací
+
+App 9
+
+Poslední úspěšná instalace 23. října 2026
+
+fēnix
+
 ### fēnix 8
 
 51 mm, AMOLED
@@ -202,18 +214,6 @@ Solar, (no Wi-Fi)
 App 6
 
 Poslední úspěšná instalace 12. října 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
-
-6 úspěšných instalací
-
-App 6
-
-Poslední úspěšná instalace 16. září 2026
 
 fēnix
 
@@ -301,6 +301,18 @@ Poslední úspěšná instalace 23. září 2026
 
 fēnix
 
+### fēnix 6 Pro
+
+47 mm, MIP, Historical
+
+3 úspěšných instalací
+
+Web 3
+
+Poslední úspěšná instalace 20. října 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 51 mm, MIP, Solar, inReach
@@ -358,6 +370,18 @@ MIP, Solar
 App 2
 
 Poslední úspěšná instalace 23. října 2026
+
+fēnix
+
+### fēnix 6X Pro
+
+51 mm, MIP, Historical
+
+2 úspěšných instalací
+
+App 2
+
+Poslední úspěšná instalace 24. října 2026
 
 fēnix
 

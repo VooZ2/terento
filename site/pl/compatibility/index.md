@@ -11,7 +11,7 @@ Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej po
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
-**34** modele z udanymi instalacjami**303** udane instalacjeOstatnia udana instalacja 25 października 2026
+**36** modele z udanymi instalacjami**313** udane instalacjeOstatnia udana instalacja 26 października 2026
 
 Jak działa ta lista
 
@@ -21,7 +21,7 @@ Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyf
 
 Aktualna wersja obejmuje czterech dostawców map. Ta informacja o produkcie jest oddzielona od pokazanych tutaj wyników dla urządzeń.
 
-34 modeli
+36 modeli
 
 fēnix
 
@@ -29,11 +29,11 @@ fēnix
 
 47 mm, AMOLED
 
-51 udanych instalacji
+53 udanych instalacji
 
-App 51
+App 53
 
-Ostatnia udana instalacja 20 października 2026
+Ostatnia udana instalacja 26 października 2026
 
 Forerunner
 
@@ -157,6 +157,18 @@ Ostatnia udana instalacja 22 października 2026
 
 fēnix
 
+### fēnix 8 Pro
+
+51 mm, AMOLED, inReach
+
+9 udanych instalacji
+
+App 9
+
+Ostatnia udana instalacja 23 października 2026
+
+fēnix
+
 ### fēnix 8
 
 51 mm, AMOLED
@@ -202,18 +214,6 @@ Solar, (no Wi-Fi)
 App 6
 
 Ostatnia udana instalacja 12 października 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
-
-6 udanych instalacji
-
-App 6
-
-Ostatnia udana instalacja 16 września 2026
 
 fēnix
 
@@ -301,6 +301,18 @@ Ostatnia udana instalacja 23 września 2026
 
 fēnix
 
+### fēnix 6 Pro
+
+47 mm, MIP, Historical
+
+3 udanych instalacji
+
+Web 3
+
+Ostatnia udana instalacja 20 października 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 51 mm, MIP, Solar, inReach
@@ -358,6 +370,18 @@ MIP, Solar
 App 2
 
 Ostatnia udana instalacja 23 października 2026
+
+fēnix
+
+### fēnix 6X Pro
+
+51 mm, MIP, Historical
+
+2 udanych instalacji
+
+App 2
+
+Ostatnia udana instalacja 24 października 2026
 
 fēnix
 
