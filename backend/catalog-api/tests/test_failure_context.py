@@ -290,6 +290,22 @@ class FailureContextTests(unittest.TestCase):
         self.assertIn('Failure affectedfolder: Metrics', report)
         self.assertIn('affectedFolder', _diagnostic_technical_details(row, 1))
 
+    def test_map_verify_native_code(self):
+        # Next client: the native sampled read-back result after a complete
+        # write; automatic cleanup is declined and the original failure kept.
+        candidate = fixture('preflight')
+        candidate['failureContext'].update(boundary='readback', operation='readback', classificationSource='native',
+                                          executionMode='worker', resultKind='native_error',
+                                          nativeCodeNamespace='terento_map_verify', nativeResultCode=-11)
+        candidate['failureContext'].pop('nativeCategory', None)
+        candidate.update(failureStage='verify', failureCode='INSTALL_BLOCKED_VERIFICATION_REQUIRED', writeStarted=True,
+                         remoteObjectCreated=True, cleanupAttempted=False, cleanupSucceeded=False,
+                         transferProgressBucket='100', phaseOutcome='FAILED', automaticFinishingResult='FAILED',
+                         nativeFailureCode='READBACK_FAILED')
+        self.check(candidate)
+        candidate['failureContext']['nativeCodeNamespace'] = 'terento_map_readback'
+        self.check(candidate, False)
+
     def test_protection_reason_boundary_matrix(self):
         allowed = {
             'target-present-before-write': {'prewrite_protection'},

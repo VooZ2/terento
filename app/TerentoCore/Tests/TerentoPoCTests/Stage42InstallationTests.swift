@@ -370,6 +370,7 @@ struct Stage42InstallationTests {
         passed += testOversizedProtectionCountsAreOmitted()
         passed += testRuntimeChurnIsDiagnostic()
         passed += testDeclinedCleanupPreservesEvidence()
+        passed += testNativeReadBackResultReachesFailureContext()
         passed += testTargetStorageMismatch()
         passed += testDuplicateMusicPathsStayProtected()
         passed += testHeavyWatchInventoryCompletes()
@@ -721,6 +722,33 @@ struct Stage42InstallationTests {
         let blocked = prewrite.run(configureReader: { $0.inventoryError = .operationFailed("stall", createdItemID: nil); $0.inventoryErrorRead = 0 })
         passed += expect(blocked.primaryFailure == blocked.failure && !blocked.mayHaveLeftMapOnWatch,
             "a pre-write failure keeps its own cause and cannot leave a map behind")
+        return passed
+    }
+
+    private static func testNativeReadBackResultReachesFailureContext() -> Int {
+        let harness = makeHarness()
+        harness.transport.readError = .contextual(
+            failure: .operationFailed, message: "A sampled map region did not match the validated source",
+            createdItemID: nil,
+            context: InstallationFailureContext(
+                boundary: .readback, classificationSource: .native, devicePresence: .unknown,
+                operation: .readback, executionMode: .worker, resultKind: .nativeError,
+                nativeCodeNamespace: .terentoMapVerify, nativeResultCode: -11
+            )
+        )
+        harness.transport.declineCleanup = true
+        let result = harness.run()
+        var passed = expect(result.failure == .verificationRequired && result.cleanupFailure == nil
+            && result.diagnostics.nativeFailureCode == .readbackFailed
+            && harness.transport.readBackCount == 1 && harness.transport.deleteCount == 0
+            && harness.recovery.records.count == 1,
+            "a native read-back failure stays a verification failure with the map kept for recovery")
+        passed += expect(result.failureContext?.boundary == .readback
+            && result.failureContext?.classificationSource == .native
+            && result.failureContext?.nativeCodeNamespace == .terentoMapVerify
+            && result.failureContext?.nativeResultCode == -11
+            && !result.diagnostics.cleanupAttempted,
+            "the native read-back result code reaches the reported failure context")
         return passed
     }
 
