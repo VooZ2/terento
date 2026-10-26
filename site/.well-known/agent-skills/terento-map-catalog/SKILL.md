@@ -14,7 +14,7 @@ permission to install, replace, or remove files on a Garmin device.
 1. Fetch `https://terento.app/.well-known/api-catalog` and follow its
    `service-desc` relation to the current OpenAPI document.
 2. Read the OpenAPI document before choosing an endpoint. The current catalog
-   including BBBike is `GET https://api.terento.app/maps/catalog-v4.json`.
+   including BBBike and OSMapaPL is `GET https://api.terento.app/maps/catalog-v5.json`.
 3. Fetch the catalog as JSON and use its provider, map, region, version,
    attribution, license, availability, and source metadata as applicable.
 

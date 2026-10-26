@@ -8,18 +8,18 @@ const fixture = name => JSON.parse(fs.readFileSync(path.join(root, 'contracts/fi
 const script = fs.readFileSync(path.join(root, 'site/provider-list.js'), 'utf8');
 
 // Run the production script without changing the public asset or its caching.
-async function present(payload, fail = false, cardID = 'freizeitkarte', mapType = '') {
+async function present(payload, fail = false, cardID = 'freizeitkarte', mapType = '', startsHidden = Boolean(mapType)) {
   const counter = { dataset: { countTemplate: '{count} packages in {countries} countries' }, textContent: 'Static fallback' };
   const contourCounter = { dataset: { countTemplate: '{count} contour regions' }, textContent: 'Contour fallback' };
   const addon = { hidden: false, querySelector: () => contourCounter };
-  const card = { dataset: { providerCard: cardID, providerType: mapType }, hidden: Boolean(mapType),
+  const card = { dataset: { providerCard: cardID, providerType: mapType }, hidden: startsHidden,
     querySelector: selector => selector === '[data-provider-count]' ? counter : cardID === 'opentopomap' ? addon : null };
   let requests = 0;
   vm.runInNewContext(script, {
     document: { querySelector: () => null, querySelectorAll: selector => { assert.equal(selector, '[data-provider-card]'); return [card]; } },
     fetch: async (url, options) => {
       requests++;
-      assert.equal(url, 'https://api.terento.app/maps/catalog-v4.json');
+      assert.equal(url, 'https://api.terento.app/maps/catalog-v5.json');
       assert.equal(options.headers.Accept, 'application/json');
       if (fail) throw Error('offline');
       return { ok: true, json: async () => payload };
@@ -110,6 +110,15 @@ function checkNavigation(reducedMotion) {
   assert.equal((await present(bbbike, false, 'bbbike', 'other-type')).hidden, true);
   bbbike.providers[0].status = 'PAUSED';
   assert.equal((await present(bbbike, false, 'bbbike', 'bbbike-latin1')).hidden, true);
+  // OSMapaPL ships hidden and appears only once the catalog lists it as active.
+  const osmapa = { providers: [{id: 'osmapa', status: 'PAUSED', maps: [
+    {availability: 'AVAILABLE', mapType: 'ogonki', countryCodes: ['PL']},
+    {availability: 'AVAILABLE', mapType: 'warstwice', countryCodes: ['PL']},
+  ]}] };
+  assert.equal((await present(osmapa, false, 'osmapa', '', true)).hidden, true);
+  assert.equal((await present(osmapa, true, 'osmapa', '', true)).hidden, true, 'OSMapaPL stays hidden when offline');
+  osmapa.providers[0].status = 'ACTIVE';
+  assert.deepEqual(await present(osmapa, false, 'osmapa', '', true), {hidden: false, text: '2 packages in 1 countries'});
   const contours = structuredClone(valid);
   contours.providers = [{
     id: 'opentopomap',

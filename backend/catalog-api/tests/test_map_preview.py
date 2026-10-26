@@ -127,6 +127,24 @@ class PackageChoiceTests(unittest.TestCase):
         ]
         self.assertEqual(candidates_for(area(), STYLE_BY_ID["bbbike"], packages_from_snapshot(rows)), [])
 
+    def test_osmapa_styles_prefer_the_smaller_poland_package(self):
+        def osmapa(coverage, style, size):
+            name = {"pl": "OSMapaPL", "plext": "OSMapaPLext"}[coverage]
+            return snapshot_row(f"osmapa-{coverage}-{style}", provider="osmapa", region=f"{coverage}-{style}".upper(),
+                                codes=("PL",), size=size, map_type=style,
+                                url=f"https://osmapa-garmin.las.org.pl/products/{name}-{style.upper()}-20261001V2.1_IMG.zip")
+        packages = packages_from_snapshot([
+            osmapa("pl", "ogonki", 900), osmapa("plext", "ogonki", 1200),
+            osmapa("pl", "light", 500), osmapa("pl", "warstwice", 50),
+        ])
+        target = area("tatra", countries=("PL",), center=(19.95, 49.23))
+        self.assertEqual([c.package_id for c in candidates_for(target, STYLE_BY_ID["osmapa-ogonki"], packages)],
+                         ["osmapa-pl-ogonki", "osmapa-plext-ogonki"])
+        self.assertEqual([c.package_id for c in candidates_for(target, STYLE_BY_ID["osmapa-light"], packages)],
+                         ["osmapa-pl-light"])
+        self.assertEqual(candidates_for(target, STYLE_BY_ID["osmapa-podstawowa"], packages), [])
+        self.assertEqual(candidates_for(area(), STYLE_BY_ID["osmapa-ogonki"], packages), [])
+
     def test_freizeitkarte_alpha3_regions_and_contour_overlay(self):
         self.assertEqual(package_country_codes({"provider_id": "freizeitkarte", "provider_region_id": "BEL-NLD-LUX"}),
                          {"BE", "NL", "LU"})
@@ -168,6 +186,8 @@ class AcquisitionTests(unittest.TestCase):
             ("opentopomap", "https://garmin.opentopomap.org/europe/andorra/otm-andorra-contours.zip"),
             ("maprando", "https://ravenfeld.fr/MapRando/Saint-Barth%C3%A9lemy/MapRando_Saint-Barth%C3%A9lemy_2026_09_02.img"),
             ("bbbike", "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip"),
+            ("osmapa", "https://osmapa-garmin.las.org.pl/products/OSMapaPL-OGONKI-20261001V2.1_IMG.zip"),
+            ("osmapa", "https://osmapa-garmin.las.org.pl/products/OSMapaPLext-LIGHT-20261001V2.1_IMG.zip"),
         ]
         for provider, url in good:
             self.assertEqual(acquire.reviewed_url(provider, url), url)
@@ -177,6 +197,10 @@ class AcquisitionTests(unittest.TestCase):
             ("bbbike", "https://data.bbbike.org/osm/garmin/region/../x.osm.garmin-bbbike-latin1.zip"),
             ("opentopomap", "https://garmin.opentopomap.org/europe/andorra/otm-andorra.zip?x=1"),
             ("maprando", "https://ravenfeld.fr/other/file.img"),
+            # Contour lines are an add-on package, never a preview base map.
+            ("osmapa", "https://osmapa-garmin.las.org.pl/products/OSMapaPL-WARSTWICE-20261001V2.1_IMG.zip"),
+            ("osmapa", "http://osmapa-garmin.las.org.pl/products/OSMapaPL-OGONKI-20261001V2.1_IMG.zip"),
+            ("osmapa", "https://osmapa-garmin.las.org.pl/other/OSMapaPL-OGONKI-20261001V2.1_IMG.zip"),
             ("custom", "https://example.com/map.img"),
         ]
         for provider, url in bad:
@@ -311,6 +335,21 @@ class ManifestTests(unittest.TestCase):
                                public_base_url="https://api.terento.app", now=NOW)
         self.assertEqual(list(validator.iter_errors(empty)), [])
         self.assertIsNone(empty["tileUrlTemplate"])
+
+    def test_osmapa_styles_are_listed_only_while_its_previews_are_on(self):
+        validator = Draft202012Validator(json.loads((CONTRACTS / "map-preview-manifest.schema.json").read_text()))
+        osmapa = {"osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"}
+        for enabled, listed in ((None, False), ({"bbbike"}, False), ({"osmapa"}, True)):
+            document = build_manifest(areas=load_areas(), layers={}, published=set(), scores={}, release=None,
+                                      public_base_url="https://api.terento.app", enabled_providers=enabled, now=NOW)
+            self.assertEqual(list(validator.iter_errors(document)), [])
+            styles = {style["id"] for style in document["styles"]}
+            self.assertEqual(osmapa <= styles, listed)
+            self.assertEqual(bool(osmapa & styles), listed)
+            # Styles already public stay listed as before.
+            self.assertIn("bbbike", styles)
+            for item in document["areas"]:
+                self.assertEqual({layer["style"] for layer in item["layers"]}, styles)
 
 
 class FakePreviewDatabase:
