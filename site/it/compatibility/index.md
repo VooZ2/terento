@@ -11,7 +11,7 @@ Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Qui sot
 
 Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.
 
-**34** modelli con installazioni riuscite**303** installazioni riusciteUltima installazione riuscita 25 ottobre 2026
+**36** modelli con installazioni riuscite**313** installazioni riusciteUltima installazione riuscita 26 ottobre 2026
 
 Come funziona questo elenco
 
@@ -21,7 +21,7 @@ I risultati delle installazioni sono condivisi con Terento dagli utenti; non cos
 
 La versione attuale include quattro provider di mappe. Questa informazione sul prodotto è distinta dai risultati dei dispositivi mostrati qui.
 
-34 modelli
+36 modelli
 
 fēnix
 
@@ -29,11 +29,11 @@ fēnix
 
 47 mm, AMOLED
 
-51 installazioni riuscite
+53 installazioni riuscite
 
-App 51
+App 53
 
-Ultima installazione riuscita 20 ottobre 2026
+Ultima installazione riuscita 26 ottobre 2026
 
 Forerunner
 
@@ -157,6 +157,18 @@ Ultima installazione riuscita 22 ottobre 2026
 
 fēnix
 
+### fēnix 8 Pro
+
+51 mm, AMOLED, inReach
+
+9 installazioni riuscite
+
+App 9
+
+Ultima installazione riuscita 23 ottobre 2026
+
+fēnix
+
 ### fēnix 8
 
 51 mm, AMOLED
@@ -202,18 +214,6 @@ Solar, (no Wi-Fi)
 App 6
 
 Ultima installazione riuscita 12 ottobre 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
-
-6 installazioni riuscite
-
-App 6
-
-Ultima installazione riuscita 16 settembre 2026
 
 fēnix
 
@@ -301,6 +301,18 @@ Ultima installazione riuscita 23 settembre 2026
 
 fēnix
 
+### fēnix 6 Pro
+
+47 mm, MIP, Historical
+
+3 installazioni riuscite
+
+Web 3
+
+Ultima installazione riuscita 20 ottobre 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 51 mm, MIP, Solar, inReach
@@ -358,6 +370,18 @@ MIP, Solar
 App 2
 
 Ultima installazione riuscita 23 ottobre 2026
+
+fēnix
+
+### fēnix 6X Pro
+
+51 mm, MIP, Historical
+
+2 installazioni riuscite
+
+App 2
+
+Ultima installazione riuscita 24 ottobre 2026
 
 fēnix
 
