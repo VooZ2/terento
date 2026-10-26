@@ -33,6 +33,7 @@ struct SupportReportTests {
         produced.append(try testInstallationReportMirrorsTheGitHubReport())
         produced.append(testUpdateReportOmitsInstallOnlyFacts())
         produced.append(testMinimalReport())
+        produced.append(testMapScanReport())
         testTextRules()
         testResponseMapping()
         try await testExplicitSendAndRetry()
@@ -138,6 +139,35 @@ struct SupportReportTests {
             && report.message == nil && report.maps?.first?.plannedBytes == nil,
             "facts the GitHub report marks Unavailable are omitted")
         return SupportReportPayload(category: .updateFailed, operationID: nil, userMessage: "   ", report: report)
+    }
+
+    @MainActor
+    static func testMapScanReport() -> SupportReportPayload {
+        let busy = MTPTransport.nativeReadError(message: "Garmin MTP device could not be opened at /Users/alice", result: -5,
+            operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 2)
+        let draft = InstallationIssueReport.mapScanFailure(identity: identity, error: busy,
+            userMessage: "The watch's installed maps could not be read. Reconnect it and try again.")
+        let saved = draft.supportReport!
+        let report = saved.report
+        expect(saved.category == .connection && saved.operationID == nil && report.operation == nil,
+            "a map scan failure is a CONNECTION report without an operation")
+        expect(report.stage == "Map scan" && report.errorCategory == "watch_busy"
+            && report.errorCodes == ["MAP_SCAN_FAILED", "terento_snapshot:-5"]
+            && report.failureContext?.isWatchSessionBusy == true,
+            "the report names the failed read, its native code and the detection class")
+        expect(report.device?.model != nil && report.device?.firmware == "2244",
+            "the report names the connected watch")
+        expect(report.writeStarted == nil && report.objectCreated == nil && report.cleanupAttempted == nil
+            && report.transferProgressPercent == nil && report.maps == nil,
+            "a read-only scan sends no write, cleanup or map facts")
+        expect(saved.title == draft.title && draft.body.contains("MAP_SCAN_FAILED")
+            && !draft.body.contains("/Users/") && !draft.body.contains("PRIVATE-UNIT-SERIAL"),
+            "the GitHub report states the same facts without paths or serials")
+        let plain = InstallationIssueReport.mapScanFailure(identity: nil, error: URLError(.cancelled), userMessage: nil)
+        expect(plain.supportReport?.report.errorCodes == ["MAP_SCAN_FAILED"] && plain.supportReport?.report.device == nil
+            && plain.supportReport?.report.failureContext == nil,
+            "without native facts or a watch only the scan code is sent")
+        return SupportReportPayload(category: saved.category, operationID: nil, userMessage: nil, report: report)
     }
 
     static func testMinimalReport() -> SupportReportPayload {

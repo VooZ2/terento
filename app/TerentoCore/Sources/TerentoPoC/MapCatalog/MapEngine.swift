@@ -647,9 +647,16 @@ final class MapEngine: ObservableObject {
 
                 self?.state = .failed
                 self?.errorMessage = error.localizedDescription
-                self?.userErrorMessage = DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding
+                let userMessage = DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding
                     ? UserFacingErrorMessage.stoppedResponding
                     : UserFacingErrorMessage.forMapScan(error)
+                self?.userErrorMessage = userMessage
+                // A refresh after an install or update keeps that operation's
+                // saved report; only a scan of its own becomes the latest one.
+                if !preservingInstallationResult {
+                    TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.mapScanFailure(
+                        identity: deviceIdentity, error: error, userMessage: userMessage))
+                }
             }
         }
     }

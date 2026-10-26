@@ -91,16 +91,7 @@ enum InstallationIssueReport {
             .filter { !$0.isEmpty }
         let boundedProgress = min(100, max(0, transferProgressPercent))
 
-        var deviceLines: [String] = []
-        if let identity {
-            deviceLines.append("- Model: \(sanitizedLine(identity.presentationModel, fallback: "Unavailable"))")
-            deviceLines.append("- Variant: \(sanitizedLine(identity.variant ?? "Unavailable", fallback: "Unavailable"))")
-            deviceLines.append("- Family: \(sanitizedLine(identity.family ?? "Unavailable", fallback: "Unavailable"))")
-            deviceLines.append("- Firmware: \(sanitizedLine(identity.firmware ?? "Unavailable", fallback: "Unavailable"))")
-            deviceLines.append("- Raw MTP model: \(sanitizedLine(identity.model, fallback: "Unavailable"))")
-        } else {
-            deviceLines.append("- Model: Unavailable")
-        }
+        let deviceLines = Self.deviceReportLines(identity)
 
         var referenceLines = ["- Diagnostic ID: \(diagnosticID.uuidString.lowercased())"]
         if let operationID {
@@ -211,6 +202,106 @@ enum InstallationIssueReport {
                 originalFailureContext: originalFailureContext,
                 finishingTrace: FinishingTrace.failureReport, operatingSystem: operatingSystem))
         return result
+    }
+
+    /// "Couldn't read your maps": the map scan of a connected watch failed.
+    /// Nothing was written. The report names the watch, the read that failed
+    /// and how detection classifies it, so "Send report to Terento" from the
+    /// Help menu is not empty.
+    static func mapScanFailure(
+        identity: DeviceIdentity?,
+        error: Error,
+        userMessage: String?,
+        diagnosticID: UUID = UUID(),
+        timestamp: Date = Date(),
+        appVersion: String = TerentoTelemetryMetadata.releaseLabel,
+        appBuild: String = TerentoTelemetryMetadata.eventBuild,
+        operatingSystem: String = ProcessInfo.processInfo.operatingSystemVersionString
+    ) -> InstallationIssueDraft {
+        let title = "Couldn't read maps on the watch"
+        let stage = "Map scan"
+        let errorCategory = mapScanErrorCategory(DeviceDetectionErrorClassifier.classify(error))
+        let context = (error as? any InstallationFailureContextProviding)?.failureContext
+        var errorCodes = ["MAP_SCAN_FAILED"]
+        if let context, let namespace = context.nativeCodeNamespace, let code = context.nativeResultCode {
+            errorCodes.append("\(namespace.rawValue):\(code)")
+        }
+        let safeMessage = userMessage.map { sanitizedLine($0, fallback: "Unavailable") }
+
+        let deviceLines = Self.deviceReportLines(identity)
+        let body = DiagnosticReportSanitizer.sanitize("""
+        ## Summary
+
+        - Result: FAILED
+        - Failure stage: \(stage)
+        - Error category: \(errorCategory)
+        - Error code: \(errorCodes.joined(separator: ", "))
+        - Nothing was written to the watch.
+        \(safeMessage.map { "- Detail: \($0)" } ?? "")
+
+        ## Device
+
+        \(deviceLines.joined(separator: "\n"))
+
+        ## Operation
+
+        - Operation: Map scan
+        - App version: \(sanitizedLine(appVersion, fallback: TerentoTelemetryMetadata.version))
+        - Build: \(sanitizedLine(appBuild, fallback: TerentoTelemetryMetadata.eventBuild))
+        - macOS: \(sanitizedLine(operatingSystem, fallback: "Unavailable"))
+        - Timestamp: \(ISO8601DateFormatter().string(from: timestamp))
+
+        ## Structured failure context
+
+        \(contextLines(context))
+
+        ## Reference
+
+        - Diagnostic ID: \(diagnosticID.uuidString.lowercased())
+
+        ---
+        Prepared by Terento. Please review before submitting.
+        """)
+
+        var result = draft(title: title, body: body)
+        var report = SupportReportBody.make(
+            title: title, identity: identity, maps: [], stage: stage, operation: .installation,
+            lifecycleFacts: [], error: userMessage, failureStages: [stage],
+            errorCategory: errorCategory, errorCodes: errorCodes, writeStarted: false,
+            transferProgressPercent: 0, remoteObjectCreated: false, cleanupAttempted: false,
+            cleanupSucceeded: false, verification: .init(), failureContext: context,
+            originalFailureContext: nil, finishingTrace: "", operatingSystem: operatingSystem)
+        // A map scan is no map operation and writes nothing.
+        report.operation = nil
+        report.writeStarted = nil
+        report.objectCreated = nil
+        report.cleanupAttempted = nil
+        report.cleanupSucceeded = nil
+        report.transferProgressPercent = nil
+        result.supportReport = SavedSupportReport(title: result.title, category: .connection,
+                                                  operationID: nil, report: report)
+        return result
+    }
+
+    private static func deviceReportLines(_ identity: DeviceIdentity?) -> [String] {
+        guard let identity else { return ["- Model: Unavailable"] }
+        return [
+            "- Model: \(sanitizedLine(identity.presentationModel, fallback: "Unavailable"))",
+            "- Variant: \(sanitizedLine(identity.variant ?? "Unavailable", fallback: "Unavailable"))",
+            "- Family: \(sanitizedLine(identity.family ?? "Unavailable", fallback: "Unavailable"))",
+            "- Firmware: \(sanitizedLine(identity.firmware ?? "Unavailable", fallback: "Unavailable"))",
+            "- Raw MTP model: \(sanitizedLine(identity.model, fallback: "Unavailable"))"
+        ]
+    }
+
+    static func mapScanErrorCategory(_ failure: DeviceDetectionErrorClass) -> String {
+        switch failure {
+        case .notYetEnumerated: return "watch_not_visible"
+        case .multipleDevices: return "multiple_watches"
+        case .busy: return "watch_busy"
+        case .stoppedResponding: return "watch_stopped_responding"
+        case .transient: return "read_failed"
+        }
     }
 
     private static func contextLines(_ context: InstallationFailureContext?) -> String {

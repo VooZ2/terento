@@ -410,7 +410,9 @@ a download start without a received outcome is not proof of a failed download.
   again with the same id. Saved failures keep their structured fields in
   `failure-report.json` beside `failure-report.md`, so the Diagnostics and Help
   menu entry points send the full report; without one only `macOSVersion` and a
-  chosen category are sent. `-local` builds are marked by `releaseLabel`. The
+  chosen category are sent. A failed map scan ("Couldn't read your maps") saves
+  a `CONNECTION` report with the watch, `MAP_SCAN_FAILED`, the native code and
+  the detection class; a refresh after an operation keeps that operation's report. `-local` builds are marked by `releaseLabel`. The
   API must be deployed before an app that sends reports is released.
 - **Help links.** `Errors/TroubleshootingHelp.swift` is the only mapping from
   connection outcomes, authorization verdicts, catalog/acquisition errors,
