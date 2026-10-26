@@ -647,7 +647,8 @@ final class MapEngine: ObservableObject {
 
                 self?.state = .failed
                 self?.errorMessage = error.localizedDescription
-                let userMessage = DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding
+                let failureClass = DeviceDetectionErrorClassifier.classify(error)
+                let userMessage = failureClass == .stoppedResponding
                     ? UserFacingErrorMessage.stoppedResponding
                     : UserFacingErrorMessage.forMapScan(error)
                 self?.userErrorMessage = userMessage
@@ -655,7 +656,8 @@ final class MapEngine: ObservableObject {
                 // saved report; only a scan of its own becomes the latest one.
                 if !preservingInstallationResult {
                     TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.mapScanFailure(
-                        identity: deviceIdentity, error: error, userMessage: userMessage))
+                        identity: deviceIdentity, error: error,
+                        errorCategory: failureClass.mapScanReportCategory, userMessage: userMessage))
                 }
             }
         }

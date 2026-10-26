@@ -146,6 +146,7 @@ struct SupportReportTests {
         let busy = MTPTransport.nativeReadError(message: "Garmin MTP device could not be opened at /Users/alice", result: -5,
             operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 2)
         let draft = InstallationIssueReport.mapScanFailure(identity: identity, error: busy,
+            errorCategory: DeviceDetectionErrorClassifier.classify(busy).mapScanReportCategory,
             userMessage: "The watch's installed maps could not be read. Reconnect it and try again.")
         let saved = draft.supportReport!
         let report = saved.report
@@ -163,7 +164,8 @@ struct SupportReportTests {
         expect(saved.title == draft.title && draft.body.contains("MAP_SCAN_FAILED")
             && !draft.body.contains("/Users/") && !draft.body.contains("PRIVATE-UNIT-SERIAL"),
             "the GitHub report states the same facts without paths or serials")
-        let plain = InstallationIssueReport.mapScanFailure(identity: nil, error: URLError(.cancelled), userMessage: nil)
+        let plain = InstallationIssueReport.mapScanFailure(identity: nil, error: URLError(.cancelled),
+            errorCategory: "read_failed", userMessage: nil)
         expect(plain.supportReport?.report.errorCodes == ["MAP_SCAN_FAILED"] && plain.supportReport?.report.device == nil
             && plain.supportReport?.report.failureContext == nil,
             "without native facts or a watch only the scan code is sent")

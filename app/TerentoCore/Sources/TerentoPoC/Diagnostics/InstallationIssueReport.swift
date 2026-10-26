@@ -206,11 +206,12 @@ enum InstallationIssueReport {
 
     /// "Couldn't read your maps": the map scan of a connected watch failed.
     /// Nothing was written. The report names the watch, the read that failed
-    /// and how detection classifies it, so "Send report to Terento" from the
-    /// Help menu is not empty.
+    /// and the detection class the caller passes as `errorCategory`, so
+    /// "Send report to Terento" from the Help menu is not empty.
     static func mapScanFailure(
         identity: DeviceIdentity?,
         error: Error,
+        errorCategory: String,
         userMessage: String?,
         diagnosticID: UUID = UUID(),
         timestamp: Date = Date(),
@@ -220,7 +221,6 @@ enum InstallationIssueReport {
     ) -> InstallationIssueDraft {
         let title = "Couldn't read maps on the watch"
         let stage = "Map scan"
-        let errorCategory = mapScanErrorCategory(DeviceDetectionErrorClassifier.classify(error))
         let context = (error as? any InstallationFailureContextProviding)?.failureContext
         var errorCodes = ["MAP_SCAN_FAILED"]
         if let context, let namespace = context.nativeCodeNamespace, let code = context.nativeResultCode {
@@ -292,16 +292,6 @@ enum InstallationIssueReport {
             "- Firmware: \(sanitizedLine(identity.firmware ?? "Unavailable", fallback: "Unavailable"))",
             "- Raw MTP model: \(sanitizedLine(identity.model, fallback: "Unavailable"))"
         ]
-    }
-
-    static func mapScanErrorCategory(_ failure: DeviceDetectionErrorClass) -> String {
-        switch failure {
-        case .notYetEnumerated: return "watch_not_visible"
-        case .multipleDevices: return "multiple_watches"
-        case .busy: return "watch_busy"
-        case .stoppedResponding: return "watch_stopped_responding"
-        case .transient: return "read_failed"
-        }
     }
 
     private static func contextLines(_ context: InstallationFailureContext?) -> String {
