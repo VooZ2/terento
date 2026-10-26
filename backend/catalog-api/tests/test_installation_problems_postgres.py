@@ -10,6 +10,7 @@ import unittest
 from pglite_support import PGliteTestCase
 from statistics_fixtures import FENIX_8, StatisticsRows
 from terento_catalog.admin import dashboard_page, device_detail_page, diagnostics_page
+from terento_catalog.admin_attention import attention_report
 from terento_catalog.http_api import CatalogService
 
 KPI = re.compile(r"data-stat='openProblems'>(?:<svg.*?</svg>)?(\d+)</strong>")
@@ -80,6 +81,18 @@ class InstallationProblemParityTests(PGliteTestCase):
         ).decode()
         self.assertEqual(int(KPI.search(detail).group(1)), dashboard)
         self.assertIn("2 installation problems need review.", detail)
+
+    def test_attention_read_lists_exactly_the_dashboard_open_problems(self):
+        self.seed_audit_scenario()
+        report = attention_report(self.service)
+        problems = report["installationProblems"]
+        self.assertEqual(report["counts"]["installationIssues"], 2)
+        self.assertEqual(problems["total"], 2)
+        self.assertEqual(len({item["operationKey"] for item in problems["items"]}), 2)
+        self.assertEqual(sorted(item["issueTitle"].split(" — ")[-1] for item in problems["items"]),
+                         ["INSTALL_BLOCKED_INSUFFICIENT_SPACE", "INSTALL_FAILED_WRITE"])
+        for section in ("updateProblems", "supportReports", "systemChecks"):
+            self.assertNotEqual(report[section], {"available": False}, section)
 
     def test_prewrite_only_identity_stays_visible_and_counts(self):
         self.rows.diagnostic(canonical_device_model_id=None, identity_resolution_state="UNRESOLVED",

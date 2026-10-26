@@ -1373,11 +1373,14 @@ class Database:
             exclude_statistics=True, catalog=catalog,
         )
 
-    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str | list[str] = "", exclude_statistics: bool = False, issue_only: bool = False, catalog: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str | list[str] = "", exclude_statistics: bool = False, issue_only: bool = False, operation_keys: list[str] | None = None, catalog: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
         limit_clause = "LIMIT %s" if limit is not None else ""
         identity_clause = ""
         scope_values = []
-        if device_id:
+        if operation_keys is not None:
+            identity_clause = " AND COALESCE(operation_id::text, 'legacy:' || event_id::text) = ANY(%s)"
+            scope_values = [operation_keys]
+        elif device_id:
             identity_clause = " AND canonical_device_model_id = %s"
             scope_values = [device_id]
         elif identity:
@@ -1692,6 +1695,25 @@ class Database:
             for row in rows if row.get("identity_key")
         }
         return {"total": sum(by_identity.values()), "byIdentity": by_identity}
+
+    def open_installation_problem_details(self) -> list[dict[str, Any]]:
+        """Active result rows of every open installation problem operation.
+
+        The operations are exactly those ``installation_problem_counts``
+        counts; each keeps all its active results, as the Admin dialog does.
+        """
+        query = """
+            WITH """ + INSTALLATION_PROBLEM_OPERATIONS_CTE + """
+            SELECT operation_key FROM operation_reviews
+            WHERE has_failure AND NOT has_github_issue
+        """
+        with self.connection() as connection:
+            keys = [str(row["operation_key"]) for row in connection.execute(query).fetchall()]
+        if not keys:
+            return []
+        return self._compatibility_operation_details(
+            "ACTIVE", None, exclude_statistics=True, operation_keys=keys,
+        )
 
     def missing_diagnostic_failures(self, *, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """Every active install failure without a matching device report (newest first).
@@ -4398,6 +4420,26 @@ class Database:
                 "SELECT count(*) AS n FROM support_report WHERE status = 'OPEN' AND is_local_test IS FALSE"
             ).fetchone() or {}
         return int(row.get("n") or 0)
+
+    def open_support_report_details(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Open public reports with their stored report body, newest receipt first."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT reference, received_at, created_at, app_build, release_label, category,
+                       operation_id, linked_github_issue, user_message, report
+                FROM support_report
+                WHERE status = 'OPEN' AND is_local_test IS FALSE
+                ORDER BY received_at DESC, id
+                LIMIT %s
+                """,
+                (max(1, min(int(limit), 200)),),
+            ).fetchall()
+        details = [dict(row) for row in rows]
+        for detail in details:
+            if isinstance(detail.get("report"), str):
+                detail["report"] = json.loads(detail["report"])
+        return details
 
     def support_reports(
         self, *, status: str = "OPEN", limit: int = 50, offset: int = 0, local: bool = False,

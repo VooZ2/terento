@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import logging
@@ -22,6 +23,7 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .admin_attention import attention_report
 from .admin_revisions import statistics_revisions
 from .admin import (
     ADMIN_STYLES,
@@ -149,6 +151,8 @@ SUPPORT_REPORT_DAILY_LIMIT = 30
 PUBLIC_ROWS_MAX_LIMIT = 500
 SUPPORT_REPORT_DAILY_WINDOW_SECONDS = 86_400
 RATE_LIMIT_WINDOW_SECONDS = 60
+# Read-only operator agent reads (GET /internal/attention), counted before auth.
+ATTENTION_RATE_LIMIT = 12
 # Socket timeout for one blocking read or write. A stalled or slow-loris client
 # cannot pin a server thread indefinitely; large bodies and responses still
 # progress as long as each chunk arrives within this interval.
@@ -249,6 +253,7 @@ class CatalogService:
         public_compatibility_stats_enabled: bool = False,
         operations_ingest_secret: str | None = None,
         web_installer_ingest_secret: str | None = None,
+        admin_read_token_sha256: str | None = None,
         opentopomap_contour_mode: str = "off",
         opentopomap_contour_allowlist: tuple[str, ...] = (),
         public_base_url: str = "https://api.terento.app",
@@ -270,6 +275,7 @@ class CatalogService:
         self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
         self.operations_ingest_secret = operations_ingest_secret
         self.web_installer_ingest_secret = web_installer_ingest_secret
+        self.admin_read_token_sha256 = admin_read_token_sha256
         self.opentopomap_contour_mode = opentopomap_contour_mode
         self.opentopomap_contour_allowlist = frozenset(opentopomap_contour_allowlist)
 
@@ -1448,6 +1454,19 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _operations_authorized(self) -> bool:
             return self._bearer_matches(service.operations_ingest_secret)
 
+        def _admin_read_authorized(self) -> bool:
+            # Only the token's SHA-256 digest is configured on the server.
+            authorization = self.headers.get("Authorization", "")
+            supplied = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
+            return bool(
+                service.admin_read_token_sha256
+                and 32 <= len(supplied) <= 512
+                and hmac.compare_digest(
+                    hashlib.sha256(supplied.encode()).hexdigest().encode(),
+                    service.admin_read_token_sha256.encode(),
+                )
+            )
+
         def _bearer_matches(self, configured_secret: str | None) -> bool:
             authorization = self.headers.get("Authorization", "")
             supplied_secret = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
@@ -1456,6 +1475,17 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 and supplied_secret
                 and hmac.compare_digest(supplied_secret.encode(), configured_secret.encode())
             )
+
+        def _handle_attention(self, *, send_body: bool) -> None:
+            client = (f"attention:{self._client_ip()}", ATTENTION_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS)
+            if self._rate_limited(client, record=True):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            if not self._admin_read_authorized():
+                self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            LOGGER.info("attention read served")
+            self._send_json(HTTPStatus.OK, attention_report(service), send_body=send_body, cache_control="no-store", noindex=True)
 
         def _handle_map_event(self) -> None:
             raw = self._intake_body(
@@ -1507,6 +1537,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_request(self, *, send_body: bool) -> None:
             request_path = urlsplit(self.path).path
+            if request_path == "/internal/attention":
+                self._handle_attention(send_body=send_body)
+                return
             if request_path == "/internal/operations/report-context":
                 if not self._operations_authorized():
                     self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=send_body, cache_control="no-store", noindex=True)
