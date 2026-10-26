@@ -555,6 +555,10 @@ existing row, requires an OSMapaPL `map_type` in `podstawowa`, `ogonki`,
 `light`, `warstwice` with a non-null geographical key, and adds `osmapa` to the
 compatibility provider constraint. Additive; no existing row changes.
 
+Migration088: widens `bbbike_map_type_check` to also allow `opentopo-latin1`
+(BBBike OpenTopoMap style). Additive; no existing row changes. Catalog v3/v4
+projections exclude that type (see `docs/api.md`).
+
 ### Migration049: component acquisition evidence
 
 `map_download_event` adds nullable paired `acquisition_id` UUID and

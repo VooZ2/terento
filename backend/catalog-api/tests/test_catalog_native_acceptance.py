@@ -96,6 +96,30 @@ class PublishedCatalogGateTests(PGliteTestCase):
         self.assertEqual(sum(len(p["maps"]) for p in catalog["providers"]), 3)
         self.assertEqual(catalog_rejections(catalog), [])
 
+    def test_opentopo_type_is_stored_but_never_published_to_released_clients(self):
+        # This build is also the rollback target once the collector stores opentopo rows.
+        package = deepcopy(BBBIKE_MAPS[0])
+        old, new = package["mapType"], "opentopo-latin1"
+        swap = lambda value: value.replace(old, new).replace(old.upper(), new.upper())
+        package.update(id=swap(package["id"]), region=swap(package["region"]),
+                       canonicalRegionId=swap(package["canonicalRegionId"]), mapType=new)
+        artifact = package["artifacts"][0]
+        artifact.update(id=swap(artifact["id"]), sourceURL=swap(artifact["sourceURL"]))
+        artifact["sourceProof"] = {**artifact["sourceProof"], "mapType": new,
+                                   "sourceURL": artifact["sourceURL"],
+                                   "payloadPath": swap(artifact["sourceProof"]["payloadPath"]),
+                                   "sourceIdentity": swap(artifact["sourceProof"]["sourceIdentity"])}
+        self.insert_bbbike(package)
+        v4 = self.catalog()
+        self.assertNotIn(package["id"], {m["id"] for p in v4["providers"] for m in p["maps"]})
+        self.assertEqual(catalog_rejections(v4), [])
+        service = CatalogService(self.db)
+        for method in (service.catalog_response, service.catalog_v3_response):
+            older = json.loads(method()[0])
+            self.assertNotIn(new, {m.get("mapType") for p in older["providers"] for m in p["maps"]})
+        v5 = json.loads(service.catalog_v5_response()[0])
+        self.assertEqual(self.bbbike_package(v5, package["id"])["mapType"], new)
+
     def test_failed_bbbike_recheck_is_published_without_proof(self):
         failed_id = BBBIKE_MAPS[0]["id"]
         provider_rechecks.enqueue(self.db, "bbbike", failed_id, None)

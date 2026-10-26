@@ -29,6 +29,8 @@ ARTIFACT_ROOT = "https://data.bbbike.org/osm/garmin/region/"
 EXAMPLE_ROOT = "https://data.bbbike.org/osm/garmin/example/"
 EXAMPLE_REGIONS = frozenset({"asia/cambodia", "asia/jordan", "europe/luxembourg"})
 MAP_TYPES = ("bbbike-latin1", "ontrail-latin1")
+# Released 1.0.0/1.0.1 clients (catalog v3/v4) know only these BBBike map types.
+LEGACY_MAP_TYPES = ("bbbike-latin1", "ontrail-latin1")
 MAX_INDEX_BYTES = 1024 * 1024
 MAX_DIRECTORIES = 4096
 MAX_DEPTH = 8

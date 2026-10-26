@@ -56,6 +56,9 @@ if sys.argv[2].endswith('/maps/catalog-v4.json'):
     ids = {provider.get('id') for provider in providers}
     if ids - {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike'}:
         raise SystemExit('v4 catalog must not expose providers unknown to released 1.0.x clients')
+    types = {m.get('mapType') for provider in providers if provider.get('id') == 'bbbike' for m in provider.get('maps', [])}
+    if types - {'bbbike-latin1', 'ontrail-latin1'}:
+        raise SystemExit('v4 catalog must not expose BBBike map types unknown to released 1.0.x clients')
 if sys.argv[2].endswith('/maps/catalog-v5.json'):
     ids = {provider.get('id') for provider in providers}
     if ids - {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike', 'osmapa'}:
