@@ -236,6 +236,18 @@ private struct PathPrefixReader: DeviceFileReader {
             let tampered = try package(.pl, .ogonki, edit: edit)
             check(!compatible(tampered), "catalog rejects \(label)")
         }
+        // Swift JSONDecoder reads an integral 5.0 as 5; the backend mirror follows it.
+        let integralJSON: [String: Any] = ["catalogVersion": 5, "updatedAt": "2026-10-26T00:00:00Z", "providers": [[
+            "id": "osmapa", "name": "OSMapaPL", "status": "ACTIVE", "website": "https://osmapa-garmin.las.org.pl/",
+            "maps": [try document(.pl, .ogonki)]]]]
+        let integralText = String(decoding: try JSONSerialization.data(withJSONObject: integralJSON), as: UTF8.self)
+            .replacingOccurrences(of: #""familyId":5(?=[,}])"#, with: #""familyId":5.0"#, options: .regularExpression)
+        check(integralText.contains(#""familyId":5.0"#), "the fixture writes the family ID as 5.0")
+        let integral = try MapCatalogDocumentDecoder().decode(Data(integralText.utf8)).packages[0]
+        check(integral.mainArtifact?.osmapaSourceProof?.familyId == 5 && compatible(integral),
+              "integral numbers written as 5.0 decode as integers, as in the Python mirror")
+        let fraction = try package(.pl, .ogonki) { _, proof in proof["familyId"] = 5.5 }
+        check(fraction.mainArtifact?.osmapaSourceProof == nil && !compatible(fraction), "a fractional family ID is rejected")
         let unavailableDocument = try document(.pl, .ogonki) { map, _ in map["sourceURL"] = nil }
         var artifact = (unavailableDocument["artifacts"] as! [[String: Any]])[0]
         artifact["validationState"] = "unavailable"

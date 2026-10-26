@@ -164,7 +164,14 @@ OSMAPA_PROOF_STRINGS = ("sourceURL", "etag", "lastModified", "payloadPath", "crc
 
 
 def _uint(value: Any, maximum: int) -> bool:
-    # JSON true/false and 5.0 are not Swift unsigned integers; bool is an int subclass in Python.
+    """Mirror of Swift ``JSONDecoder`` for unsigned integers.
+
+    It accepts an integral number written as ``5.0`` or ``1e1`` and rejects a
+    fraction, a string and JSON ``true``/``false`` (``bool`` is an ``int``
+    subclass in Python, so it is excluded by type).
+    """
+    if type(value) is float and value.is_integer():
+        value = int(value)
     return type(value) is int and 0 <= value <= maximum
 
 

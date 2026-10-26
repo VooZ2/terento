@@ -339,10 +339,16 @@ class OSMapaTests(unittest.TestCase):
             'szlaki': lambda m, p: m.update(providerRegionId='pl-szlaki'),
             'lastModified true': lambda m, p: p.update(lastModified=True),
             'size true': lambda m, p: (p.update(downloadSizeBytes=True), m.update(downloadSizeBytes=True)),
-            'familyId float': lambda m, p: p.update(familyId=5.0),
+            'familyId fraction': lambda m, p: p.update(familyId=5.5),
             'header flag 1': lambda m, p: p.update(headerIdentityValidated=1),
             'missing field': lambda m, p: p.pop('sourceVersion'),
         }
+        # Swift JSONDecoder reads an integral 5.0 as the integer 5, so the mirror does too.
+        integral = json.loads(json.dumps(catalog))
+        package = next(m for m in integral['providers'][0]['maps'] if m['id'] == 'osmapa-pl-ogonki')
+        package['artifacts'][0]['sourceProof'].update(familyId=5.0, installSizeBytes=float(package['installSizeBytes']))
+        self.assertEqual(catalog_rejections(integral), [])
+
         for label, edit in tampering.items():
             with self.subTest(label):
                 broken = json.loads(json.dumps(catalog))
