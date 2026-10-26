@@ -7,7 +7,7 @@ Styly map
 
 # Porovnejte bezplatné mapy Garmin před instalací
 
-Podívejte se, jak čtyři bezplatné styly map zobrazují stejné místo. Vyberte oblíbenou oblast, stezku nebo město a porovnejte vrstevnice, stezky, ulice a popisky.
+Podívejte se, jak bezplatné styly map zobrazují stejné místo. Vyberte oblíbenou oblast, stezku nebo město a porovnejte vrstevnice, stezky, ulice a popisky.
 
 Místo
 
@@ -15,7 +15,7 @@ Místo
 
 Styl levé mapy Styl pravé mapy
 
-O čtyřech stylech map
+O stylech map
 
 ### Freizeitkarte
 

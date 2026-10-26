@@ -89,6 +89,31 @@
         }
       }
     },
+    "/maps/catalog-v5.json": {
+      "get": {
+        "summary": "Read the map catalog including OSMapaPL",
+        "operationId": "maps_catalog_v5_json",
+        "responses": {
+          "200": {
+            "description": "Read the map catalog including BBBike and OSMapaPL. Catalog membership and compatibility evidence do not grant device write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged response; reuse the cached representation."
+          },
+          "503": {
+            "description": "Service temporarily unavailable."
+          }
+        }
+      }
+    },
     "/maps/previews/manifest.json": {
       "get": {
         "summary": "Read the map style preview manifest",

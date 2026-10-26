@@ -1055,6 +1055,7 @@ class CatalogService:
             scores=db.scores(),
             release=release,
             public_base_url=self.public_base_url,
+            enabled_providers=enabled,
         )
         body = json.dumps(document, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         self._preview_manifest_cache = (time.monotonic(), body, generation)

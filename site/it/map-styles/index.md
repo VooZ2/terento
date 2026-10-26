@@ -7,7 +7,7 @@ Stili di mappa
 
 # Confronta le mappe Garmin gratuite prima di installarle
 
-Guarda come quattro stili di mappa gratuiti disegnano lo stesso luogo. Scegli una zona, un sentiero o una città popolare, poi confronta curve di livello, sentieri, strade ed etichette.
+Guarda come diversi stili di mappa gratuiti disegnano lo stesso luogo. Scegli una zona, un sentiero o una città popolare, poi confronta curve di livello, sentieri, strade ed etichette.
 
 Luogo
 
@@ -15,7 +15,7 @@ Luogo
 
 Stile della mappa a sinistra Stile della mappa a destra
 
-Informazioni sui quattro stili di mappa
+Informazioni sugli stili di mappa
 
 ### Freizeitkarte
 

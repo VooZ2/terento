@@ -18,7 +18,7 @@ The software licence does not grant trademark rights in Terento. Modified versio
 
 ## Map licences
 
-Maps come from [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/) and [BBBike](https://garmin.bbbike.org) and remain subject to their providers’ licences and [OpenStreetMap attribution](https://www.openstreetmap.org/copyright). Your own imported maps remain subject to their applicable terms.
+Maps come from [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org) and [OSMapaPL](https://osmapa-garmin.las.org.pl/) and remain subject to their providers’ licences and [OpenStreetMap attribution](https://www.openstreetmap.org/copyright). Your own imported maps remain subject to their applicable terms.
 
 Terento does not create or relicense these maps, host a map library or mirror provider files. In the app, catalog maps download from the original provider to your Mac and then your watch. With the web installer, Terento’s server downloads the map you chose from the original provider and passes it to your browser. That copy serves your request only and is deleted once your browser has it, or after two hours if it is not collected. To show how maps look on the [Map styles](/map-styles/) page, Terento’s server temporarily downloads selected catalog maps from the original provider, draws small preview images and then deletes the map files. Previews show the provider and OpenStreetMap attribution.
 
@@ -36,4 +36,4 @@ No notice here excludes or limits liability where the law prohibits that exclusi
 
 For data processing, diagnostics and website statistics, read the [Privacy notice](/privacy/).
 
-Updated: 11 October 2026.
+Updated: 26 October 2026.

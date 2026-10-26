@@ -18,6 +18,9 @@ class PreviewStyle:
     name: str
     # Optional add-on artifact kinds drawn on top of the main map.
     overlays: tuple[str, ...] = ()
+    # Listed in the public manifest only while its provider's previews are on,
+    # so a provider that is not offered yet never appears as "coming soon".
+    listed_when_enabled: bool = False
 
 
 STYLES: tuple[PreviewStyle, ...] = (
@@ -26,6 +29,9 @@ STYLES: tuple[PreviewStyle, ...] = (
     PreviewStyle("maprando", "maprando", None, "MapRando"),
     PreviewStyle("bbbike", "bbbike", "bbbike-latin1", "BBBike"),
     PreviewStyle("bbbike-ontrail", "bbbike", "ontrail-latin1", "BBBike (Ontrail)"),
+    PreviewStyle("osmapa-podstawowa", "osmapa", "podstawowa", "OSMapaPL Podstawowa", listed_when_enabled=True),
+    PreviewStyle("osmapa-ogonki", "osmapa", "ogonki", "OSMapaPL Ogonki", listed_when_enabled=True),
+    PreviewStyle("osmapa-light", "osmapa", "light", "OSMapaPL Light", listed_when_enabled=True),
 )
 STYLE_BY_ID = {style.id: style for style in STYLES}
 

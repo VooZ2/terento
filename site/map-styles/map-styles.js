@@ -10,9 +10,8 @@
   const data = JSON.parse(dataNode.textContent);
   const copy = data.copy;
   const locale = data.locale;
-  const styles = data.styles;
-  const styleIds = styles.map((style) => style.id);
-  const styleById = Object.fromEntries(styles.map((style) => [style.id, style]));
+  const allStyles = data.styles;
+  const styleById = Object.fromEntries(allStyles.map((style) => [style.id, style]));
   const areas = data.areas.map((area) => ({...area, bbox: D.bbox(area)}));
   const areaById = Object.fromEntries(areas.map((area) => [area.id, area]));
   const $ = (id) => document.getElementById(id);
@@ -33,6 +32,25 @@
   };
 
   const fromHash = D.parseHash(window.location.hash);
+  let manifest = null;
+  let best = D.bestAreas(areas, null);
+
+  // Optional styles are listed only once the manifest lists them; until it
+  // loads, a shared link may still name one.
+  let styles = [];
+  let styleIds = [];
+  const listed = (style) => !style.optional || (manifest
+    ? Array.isArray(manifest.styles) && manifest.styles.some((item) => item && item.id === style.id)
+    : style.id === fromHash.style || style.id === fromHash.compare);
+  function updateStyles() {
+    styles = allStyles.filter(listed);
+    styleIds = styles.map((style) => style.id);
+    document.querySelectorAll("[data-style-ids]").forEach((card) => {
+      card.hidden = !card.dataset.styleIds.split(" ").some((id) => styleIds.includes(id));
+    });
+  }
+  updateStyles();
+
   const state = {
     area: areaById[fromHash.area] ? fromHash.area : "dolomites-tre-cime",
     a: styleIds.includes(fromHash.style) ? fromHash.style : "opentopomap",
@@ -42,10 +60,11 @@
     query: "",
     split: 50,
   };
-  if (state.b === state.a) state.b = styleIds.find((id) => id !== state.a);
-
-  let manifest = null;
-  let best = D.bestAreas(areas, null);
+  function keepSelection() {
+    if (!styleIds.includes(state.a)) state.a = "opentopomap";
+    if (!styleIds.includes(state.b) || state.b === state.a) state.b = styleIds.find((id) => id !== state.a);
+  }
+  keepSelection();
 
   // Maps ----------------------------------------------------------------------
   const mapOptions = {
@@ -185,7 +204,7 @@
     const tags = current.tags.filter((tag) => copy.tags[tag]).slice(0, 2)
       .map((tag) => `<span class="map-styles-tag">${escapeHtml(copy.tags[tag])}</span>`).join("");
     const covered = D.coveredCount(manifest, current.id, styleIds);
-    $("map-styles-area-meta").innerHTML = `${ICON_PIN}<span>${escapeHtml(countries)}</span>${tags}<span>${escapeHtml(D.format(copy.styles_of, {n: covered}))}</span>`;
+    $("map-styles-area-meta").innerHTML = `${ICON_PIN}<span>${escapeHtml(countries)}</span>${tags}<span>${escapeHtml(D.format(copy.styles_of, {n: covered, total: styleIds.length}))}</span>`;
   }
 
   function styleOption(styleId, selected, other) {
@@ -530,6 +549,8 @@
       const document = await fetchJson(data.manifestUrl);
       if (!document || document.schemaVersion !== 1 || !Array.isArray(document.areas)) throw new Error("invalid manifest");
       manifest = document;
+      updateStyles();
+      keepSelection();
       best = D.bestAreas(areas, manifest);
       if (status(state.a) === "NOT_COVERED") state.a = styleIds.find((id) => status(id) !== "NOT_COVERED") || state.a;
       refresh();
@@ -551,6 +572,8 @@
       if (!latest || latest.schemaVersion !== 1 || !Array.isArray(latest.areas)) return;
       if (latest.release === manifest.release) return;
       manifest = latest;
+      updateStyles();
+      keepSelection();
       best = D.bestAreas(areas, manifest);
       refresh();
     } catch (error) {

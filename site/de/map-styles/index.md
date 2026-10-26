@@ -7,7 +7,7 @@ Kartenstile
 
 # Kostenlose Garmin-Karten vor der Installation vergleichen
 
-Sieh, wie vier kostenlose Kartenstile denselben Ort darstellen. Wähle ein beliebtes Gebiet, einen Weg oder eine Stadt und vergleiche Höhenlinien, Wege, Straßen und Beschriftungen.
+Sieh, wie kostenlose Kartenstile denselben Ort darstellen. Wähle ein beliebtes Gebiet, einen Weg oder eine Stadt und vergleiche Höhenlinien, Wege, Straßen und Beschriftungen.
 
 Ort
 
@@ -15,7 +15,7 @@ Ort
 
 Kartenstil links Kartenstil rechts
 
-Über die vier Kartenstile
+Über die Kartenstile
 
 ### Freizeitkarte
 
