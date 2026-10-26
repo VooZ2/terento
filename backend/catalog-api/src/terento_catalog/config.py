@@ -28,6 +28,7 @@ class Settings:
     public_compatibility_stats_enabled: bool = False
     operations_ingest_secret: str | None = None
     web_installer_ingest_secret: str | None = None
+    admin_read_token_sha256: str | None = None
     opentopomap_contour_mode: str = "off"
     opentopomap_contour_allowlist: tuple[str, ...] = ()
     trusted_proxies: tuple[str, ...] = DEFAULT_TRUSTED_PROXIES
@@ -67,6 +68,7 @@ class Settings:
             public_compatibility_stats_enabled=_boolean("PUBLIC_COMPATIBILITY_STATS_ENABLED", False),
             operations_ingest_secret=_optional_secret("OPERATIONS_INGEST_SECRET"),
             web_installer_ingest_secret=_optional_secret("WEB_INSTALLER_INGEST_SECRET"),
+            admin_read_token_sha256=_optional_sha256("ADMIN_READ_TOKEN_SHA256"),
             opentopomap_contour_mode=_contour_mode(),
             opentopomap_contour_allowlist=_csv("OPENTOPO_MAP_CONTOUR_ALLOWLIST"),
             map_preview_enabled=_boolean("MAP_PREVIEW_ENABLED", False),
@@ -137,6 +139,16 @@ def _optional_secret(name: str) -> str | None:
         return None
     if len(value) < 32 or len(value) > 512:
         raise RuntimeError(f"{name} must contain 32–512 characters")
+    return value
+
+
+def _optional_sha256(name: str) -> str | None:
+    """A token digest only; the token itself never reaches the server config."""
+    value = os.environ.get(name, "").strip().lower()
+    if not value:
+        return None
+    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+        raise RuntimeError(f"{name} must be a SHA-256 hex digest")
     return value
 
 

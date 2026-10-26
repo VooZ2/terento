@@ -1349,6 +1349,48 @@ last successful collection, last detected release change, and an actionable
 reason. It contains no credentials, user/device identifiers, raw logs, or map
 binaries and is returned with `Cache-Control: no-store`.
 
+## `GET /internal/attention`
+
+Read-only Needs attention projection for an operator agent (for example a
+scheduled Claude session) so open work is triaged without an Admin login.
+Requests require `Authorization: Bearer` with a token whose lowercase SHA-256
+hex digest is configured as `ADMIN_READ_TOKEN_SHA256`; the server never holds
+the token itself. Without a configured digest, or with any other token, the
+route answers `401 {"error":"unauthorized"}`. At most 12 requests per client
+per minute are counted before authorization (`429` above that). The token
+grants no Admin page, form, CSRF token or write; it is independent of the
+Admin login, `OPERATIONS_INGEST_SECRET` and `WEB_INSTALLER_INGEST_SECRET`.
+Rotating or removing the digest and redeploying revokes it.
+
+`schemaVersion: 1` returns `generatedAt` and five sections. A section whose
+read fails is `{"available": false}`, never a shorter list:
+
+- `counts`: the Dashboard Needs attention counts (`installationIssues`,
+  `githubIssuesInProgress`, `identityPending`, `readyToPublish`,
+  `missingDiagnostics`, `supportReports`).
+- `installationProblems`: `total` and up to 50 newest `items`, one per open
+  installation problem operation (the `installationIssues` population and
+  unit). Each item has `operationKey`, `occurredAt`, catalog `model`/`variant`
+  or the reported identity, `canonicalDeviceModelId`, `reason`, `appVersion`,
+  `adminUrl`, and the sanitised `issueTitle`/`issueBody` that Admin prepares
+  for a GitHub issue.
+- `updateProblems`: `total` (the Update reports Open tile: failed, active) and
+  up to 50 newest `items` with `diagnosticId`, identity, `appVersion`,
+  `linkedGithubIssue`, `adminUrl` and the sanitised update issue report.
+- `supportReports`: `total` open public reports and up to 50 newest `items`
+  with `reference`, `receivedAt`, `category`, `appVersion`, `operationId`,
+  `linkedGithubIssue`, `adminUrl`, the stored allowlisted `report` and the
+  user's description passed through the issue-report sanitiser.
+- `systemChecks`: Health checks whose status is `FAILED` or `WARNING`
+  (including provider catalogs) with `check`, `status`, `group`, `reason`,
+  `action`, `actionUrl` and `lastChecked`.
+
+The response is `Cache-Control: no-store` and `noindex`. It contains no
+serial number, Unit ID, account, local path, raw log, manifest, map content,
+client IP or Admin user data. Reading it changes no diagnostic, report,
+statistic or audit state; resolving, linking and handling stay authenticated
+Admin actions.
+
 ## Optional contour metadata and admin projections
 
 OpenTopoMap source-validated contours are enabled by the public rollout policy.
