@@ -22,12 +22,13 @@ HOME = runpy.run_path(str(ROOT / "scripts/normalize-home-ia.py"))
 SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
+STYLE_NOTES = {"maprando": MAPRANDO_NOTES, "bbbike-opentopo": HOME["BBBIKE_OPENTOPO_NOTES"]}
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261026-map-styles-v10"
+SCRIPT_VERSION = "20261026-map-styles-v11"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
 # BBBike stopped publishing its classic "bbbike" Garmin style for regular
-# regions in October 2026, so only its Ontrail style is compared.
-STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail")
+# regions in October 2026, so its Ontrail and OpenTopoMap styles are compared.
+STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail", "bbbike-opentopo")
 # Optional styles appear only while the preview manifest lists them, which the
 # API does once their provider is offered and its previews are switched on.
 OPTIONAL_STYLES = {
@@ -400,7 +401,7 @@ def style_copy(locale: str) -> list[dict[str, object]]:
             "name": provider["name"],
             "summary": provider["summary"],
             "benefits": list(provider["benefits"]),
-            "note": MAPRANDO_NOTES[locale] if style_id == "maprando" else None,
+            "note": STYLE_NOTES[style_id][locale] if style_id in STYLE_NOTES else None,
         })
     for provider_id, provider_styles in OPTIONAL_STYLES.items():
         provider = PROVIDER_COPY[locale][provider_id]
