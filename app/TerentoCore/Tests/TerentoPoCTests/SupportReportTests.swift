@@ -199,7 +199,7 @@ struct SupportReportTests {
         let outboxRoot = FileManager.default.temporaryDirectory.appendingPathComponent("terento-support-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: outboxRoot) }
         let source = SupportReportSource.latest(outbox: SupportReportOutbox(rootURL: outboxRoot))
-        expect(source.payload.category == .connection && source.payload.operationID == nil
+        expect(source.payload.category == .connection && source.payload.operationId == nil
             && source.payload.report == draft.supportReport?.report && !source.allowsCategoryChoice,
             "Help > Send Report to Terento offers the saved map scan report, not an empty one")
         return source.payload
