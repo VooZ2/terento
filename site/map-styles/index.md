@@ -7,7 +7,7 @@ Map styles
 
 # Compare free Garmin maps before you install
 
-See how five free map styles draw the same place. Pick a popular area, trail or city, then compare contour lines, trails, streets and labels.
+See how four free map styles draw the same place. Pick a popular area, trail or city, then compare contour lines, trails, streets and labels.
 
 Place
 
@@ -15,7 +15,7 @@ Place
 
 Left map style Right map style
 
-About the five map styles
+About the four map styles
 
 ### Freizeitkarte
 
@@ -42,14 +42,6 @@ For exploring smaller trails on foot.
 - New editions bring in OpenStreetMap changes
 
 Some map labels are in French.
-
-### BBBike
-
-For exploring streets, cycle paths, and their surroundings.
-
-- Distinct styling for roads, cycle paths, and footpaths
-- Buildings, parks, and woodland for context
-- Regional maps updated weekly
 
 ### BBBike (Ontrail)
 
