@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from terento_catalog.bbbike import (ARTIFACT_ROOT, ROOT, BBBikeProviderAdapter, BBBikeMeasurement,
-    MAP_TYPES, directory_contents, inspect_bbbike, region_path, source_url)
+    LEGACY_MAP_TYPES, MAP_TYPES, directory_contents, inspect_bbbike, region_path, source_url)
 from terento_catalog.bbbike_geography import geography
 from terento_catalog.collectors.freizeitkarte.range_zip import RangeResponse
 from terento_catalog.http_api import CatalogService
@@ -23,15 +23,16 @@ PREFIX='andorra-garmin-bbbike-latin1/'
 README='This Garmin map was created on: Wed  9 Sep 00:15:05 UTC 2026\nGarmin map style: bbbike (latin1)\nName of area: europe/andorra\n'
 
 class MemoryFetcher:
-    def __init__(self, *, readme=README, extra=None, encrypted=False):
+    def __init__(self, *, readme=README, extra=None, encrypted=False, style='bbbike'):
         img=bytearray(2048); img[16:22]=b'DSKIMG'; img[65:71]=b'GARMIN'
-        title=b'europe/andorra bbbike/latin1 BBBike.org 09-Sep-2026'[:50].ljust(50,b' ')
+        title=f'europe/andorra {style}/latin1 BBBike.org 09-Sep-2026'.encode()[:50].ljust(50,b' ')
         img[0x49:0x5D]=title[:20]; img[0x65:0x83]=title[20:]
+        prefix=PREFIX.replace('bbbike-latin1',f'{style}-latin1')
         buffer=io.BytesIO()
         with zipfile.ZipFile(buffer,'w',zipfile.ZIP_DEFLATED) as z:
-            z.writestr(PREFIX+'gmapsupp.img',img)
-            z.writestr(PREFIX+'README.txt',readme)
-            z.writestr(PREFIX+'CHECKSUM.txt','a'*32+'  gmapsupp.img\n')
+            z.writestr(prefix+'gmapsupp.img',img)
+            z.writestr(prefix+'README.txt',readme)
+            z.writestr(prefix+'CHECKSUM.txt','a'*32+'  gmapsupp.img\n')
             if extra: z.writestr(*extra)
         self.body=buffer.getvalue(); self.bytes_read=0
     def metadata(self,url): return len(self.body),'"stable"','Wed, 09 Sep 2026 00:15:08 GMT'
@@ -79,6 +80,21 @@ class BBBikeTests(unittest.TestCase):
         for extra in ((PREFIX+'../escape','x'),(PREFIX+'second.img','x'),(symlink,'gmapsupp.img')):
             with self.assertRaises(ProviderCollectionError):inspect_bbbike(URL,PATH,TYPE,fetcher=MemoryFetcher(extra=extra))
 
+    def test_opentopo_style_uses_the_same_identity_rules(self):
+        url=URL.replace('bbbike-latin1','opentopo-latin1')
+        self.assertEqual(source_url(url,artifact=True),url)
+        _,artifacts=directory_contents(f'<a href="{URL}">BBBike</a><a href="{url}">OpenTopoMap</a>'
+            f'<a href="{URL.replace("bbbike-latin1","osm-latin1")}">OSM</a>',ROOT+PATH+'/')
+        self.assertEqual(artifacts,{TYPE:URL,'opentopo-latin1':url})
+        readme=README.replace('bbbike (latin1)','opentopo (latin1)')
+        result=inspect_bbbike(url,PATH,'opentopo-latin1',fetcher=MemoryFetcher(readme=readme,style='opentopo'))
+        self.assertEqual(result.source_proof['sourceIdentity'],'bbbike:europe/andorra:opentopo-latin1')
+        self.assertEqual(result.payload_path,'andorra-garmin-opentopo-latin1/gmapsupp.img')
+        for wrong in (MemoryFetcher(readme=README,style='opentopo'),MemoryFetcher(readme=readme,style='ontrail')):
+            with self.assertRaises(ProviderCollectionError):inspect_bbbike(url,PATH,'opentopo-latin1',fetcher=wrong)
+        with self.assertRaises(ProviderCollectionError):
+            source_url(URL.replace('bbbike-latin1','osm-latin1'),artifact=True)
+
     def test_changed_source_rejected(self):
         fetcher=MemoryFetcher(); before=fetcher.metadata(URL)
         with patch.object(fetcher,'metadata',side_effect=[before,(before[0],'"changed"',before[2])]):
@@ -89,7 +105,8 @@ class BBBikeTests(unittest.TestCase):
         provider=fixture['providers'][0]
         self.assertEqual(provider['id'],'bbbike'); self.assertEqual(provider['status'],'PAUSED')
         packages=provider['maps'];self.assertEqual(len(packages),6)
-        self.assertEqual({p['mapType'] for p in packages},set(MAP_TYPES))
+        # The fixture is the released (v4) projection: only the legacy types.
+        self.assertEqual({p['mapType'] for p in packages},set(LEGACY_MAP_TYPES))
         lithuania=[p for p in packages if p['geographicRegionId']=='LITHUANIA']
         self.assertEqual(len(lithuania),2)
         self.assertEqual({p['name'] for p in lithuania},{'Lithuania'})
@@ -108,6 +125,33 @@ class BBBikeTests(unittest.TestCase):
         service=CatalogService(SimpleNamespace(catalog_snapshot=lambda:(rows,now)))
         for method,expected in ((service.catalog_response,{'freizeitkarte','opentopomap'}),(service.catalog_v3_response,{'freizeitkarte','opentopomap','maprando'}),(service.catalog_v4_response,{'freizeitkarte','opentopomap','maprando','bbbike'})):
             data=json.loads(method()[0]);self.assertEqual({p['id'] for p in data['providers']},expected)
+
+    def test_opentopo_type_only_in_catalog_v5(self):
+        now=datetime.now(timezone.utc)
+        base=dict(provider_name='BBBike',provider_website='https://example.test',provider_attribution='',
+                  provider_license_url='https://example.test/license',provider_license_information='',version_year=None)
+        rows=[dict(base,provider_id=p,package_id=None) for p in ('freizeitkarte','opentopomap','maprando','osmapa')]
+        def package(map_type):
+            token='europe-andorra-'+map_type
+            return dict(base,provider_id='bbbike',package_id='bbbike-'+token,package_region=token.upper(),
+                        package_name='Andorra',release='2026-10-21',map_type=map_type,geographic_region_id='ANDORRA',
+                        provider_region_id=PATH,canonical_region_id=token.upper(),country_codes=['AD'],
+                        artifact_id='bbbike-'+token+'-main',artifact_kind='main',artifact_size_bytes=1000,
+                        artifact_install_size_bytes=2000,artifact_validation_status='VALIDATED',
+                        artifact_source_url=ARTIFACT_ROOT+PATH+'/andorra.osm.garmin-'+map_type+'.zip')
+        rows+=[package(t) for t in MAP_TYPES]
+        service=CatalogService(SimpleNamespace(catalog_snapshot=lambda:(rows,now)))
+        def types(method):
+            data=json.loads(method()[0])
+            provider=next(p for p in data['providers'] if p['id']=='bbbike')
+            return {m['mapType'] for m in provider['maps']}
+        self.assertEqual(types(service.catalog_v4_response),set(LEGACY_MAP_TYPES))
+        self.assertEqual(types(service.catalog_v5_response),set(MAP_TYPES))
+        # A BBBike provider row without packages stays listed in v4.
+        only_new=[r for r in rows if r['provider_id']!='bbbike']+[package('opentopo-latin1'),
+                  dict(base,provider_id='bbbike',package_id=None)]
+        service=CatalogService(SimpleNamespace(catalog_snapshot=lambda:(only_new,now)))
+        self.assertEqual(types(service.catalog_v4_response),set())
 
     def test_exact_example_aliases_are_not_a_namespace_allowlist(self):
         for path in ('asia/cambodia','asia/jordan','europe/luxembourg'):

@@ -1491,7 +1491,8 @@ provider; activation is a separately reviewed operation.
 remains exactly FZK/OTM/MapRando. The additive catalog body retains schemaVersion2.
 Provider registration is not a public compatibility claim or activation.
 
-BBBike packages expose `mapType` (`bbbike-latin1` or `ontrail-latin1`) and
+BBBike packages expose `mapType` (`bbbike-latin1`, `ontrail-latin1` or, in v5
+only, `opentopo-latin1`) and
 `geographicRegionId`. `region` and `canonicalRegionId` are the existing native
 lifecycle identity slot and include source path plus type; for example
 `EUROPE-LITHUANIA-BBBIKE-LATIN1`. `providerRegionId` is `europe/lithuania`, and

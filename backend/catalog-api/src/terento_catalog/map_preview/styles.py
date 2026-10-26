@@ -29,6 +29,7 @@ STYLES: tuple[PreviewStyle, ...] = (
     PreviewStyle("maprando", "maprando", None, "MapRando"),
     PreviewStyle("bbbike", "bbbike", "bbbike-latin1", "BBBike"),
     PreviewStyle("bbbike-ontrail", "bbbike", "ontrail-latin1", "BBBike (Ontrail)"),
+    PreviewStyle("bbbike-opentopo", "bbbike", "opentopo-latin1", "BBBike (OpenTopoMap)"),
     PreviewStyle("osmapa-podstawowa", "osmapa", "podstawowa", "OSMapaPL Podstawowa", listed_when_enabled=True),
     PreviewStyle("osmapa-ogonki", "osmapa", "ogonki", "OSMapaPL Ogonki", listed_when_enabled=True),
     PreviewStyle("osmapa-light", "osmapa", "light", "OSMapaPL Light", listed_when_enabled=True),

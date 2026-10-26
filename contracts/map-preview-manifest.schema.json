@@ -32,7 +32,7 @@
     "style": {
       "type": "object",
       "properties": {
-        "id": {"enum": ["freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail", "osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"]},
+        "id": {"enum": ["freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail", "bbbike-opentopo", "osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"]},
         "providerId": {"type": "string", "minLength": 1},
         "mapType": {"type": ["string", "null"]},
         "name": {"type": "string", "minLength": 1},
