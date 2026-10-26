@@ -11,8 +11,12 @@ Deploy and verify this API before any 1.0.2 client is published. It adds:
   ([shared contract](README.md#responses-and-client-compatibility));
 - `osmapa` as an accepted compatibility-event provider (migration 087).
 
-`catalog.json`, `catalog-v3.json` and `catalog-v4.json` stay byte-for-byte
-without `osmapa`, so released 1.0.x clients are unchanged. The provider is
+`catalog.json`, `catalog-v3.json` and `catalog-v4.json` never contain `osmapa`,
+and each projection's `updatedAt`, `Last-Modified` and ETag now come only from
+its own providers, so OSMapaPL registration, collection and health checks do
+not change those responses. On deploy, v1 and v3 `updatedAt` may move earlier
+once because providers they do not publish stop counting; released clients use
+`updatedAt` for display only. Released 1.0.x clients are otherwise unchanged. The provider is
 registered `PAUSED` and every v5 OSMapaPL package carries
 `downloadBlockReason=PROVIDER_PAUSED` until the activation gate passes
 (hardware evidence per package). The 1.0.2 client requests v5 and is added to

@@ -355,6 +355,13 @@ class CatalogService:
         if include_osmapa:
             allowed.add("osmapa")
         rows = [row for row in rows if row["provider_id"] in allowed]
+        if any("provider_changed_at" in row for row in rows):
+            # updatedAt (and so Last-Modified and ETag) covers only this
+            # projection's providers, never one it does not publish.
+            changes = [row["provider_changed_at"] for row in rows if row.get("provider_changed_at")]
+            updated_at = max(changes, default=datetime(1970, 1, 1, tzinfo=timezone.utc))
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=timezone.utc)
         body = serialize_catalog(
             build_catalog(
                 rows,

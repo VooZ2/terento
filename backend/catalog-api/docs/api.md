@@ -1495,10 +1495,13 @@ Garmin family ID and tile numbers (PL and PLext of one style): at most one may
 be on a device, and the client blocks instead of replacing or deleting.
 
 Collection is one index GET plus two ranged GETs per package (64 KiB ZIP tail
-and head); no HEAD, no full download, no MPS read. Only the newest exact
+and head); no HEAD, no full download, no MPS read. A transport error without an
+HTTP status (for example a connection reset) is retried once per request; an
+HTTP status is never retried. Only the newest exact
 `/products/OSMapaPL(ext)?-<STYLE>-YYYYMMDDV<n.n>_IMG.zip` link per package is
 accepted, without redirects; a missing or ambiguous package fails the whole
-collection. Each response must be HTTP 206 with an exact `Content-Range`,
+collection. Each response must be HTTP 206 with a `Content-Range` whose start
+and end equal the requested range,
 strong ETag and Last-Modified equal on both ranges. The ZIP must hold exactly
 one unencrypted deflated `gmapsupp.img` below 4 GiB; its first 4 KiB must be an
 unencrypted Garmin IMG whose stitched description (`0x49` plus `0x65`) equals
@@ -1513,6 +1516,13 @@ HTTP 403, 429 or 5xx on the index or any range closes the source gate: the run
 fails and the previous snapshot stays. A package that fails validation is not
 offered; if it was known before, it stays listed `UNAVAILABLE` without proof.
 Compatibility events accept `osmapa`.
+
+Each closed projection computes `updatedAt`, `Last-Modified` and the ETag from
+the change times of its own providers only, so registering, collecting or
+checking `osmapa` (or any provider outside a projection) never changes
+`catalog.json`, v3 or v4. Since this change, v1 and v3 no longer count MapRando
+(v1) or BBBike changes, so their `updatedAt` may move earlier once; their
+provider content is unchanged.
 
 ### Acquisition lifecycle extension
 

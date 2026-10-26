@@ -60,12 +60,13 @@ def fixture(source):
 
 
 class MemoryFetcher:
-    def __init__(self, bodies=None, *, html=None, etags=None, status=206, errors=None):
+    def __init__(self, bodies=None, *, html=None, etags=None, status=206, errors=None, short_head=False):
         self.bodies = bodies or {}
         self.html = html if html is not None else index()
         self.etags = etags or {}
         self.status = status
         self.errors = errors or {}
+        self.short_head = short_head
         self.requests = []; self.bytes_read = 0
 
     def fetch_index(self):
@@ -83,6 +84,8 @@ class MemoryFetcher:
             start, end = max(0, total - int(match[1])), total - 1
         else:
             start, end = int(match[2]), min(int(match[3]), total - 1)
+            if self.short_head:
+                end = start + 8191  # Enough for the IMG header, shorter than requested.
         if self.status != 206:
             raise ProviderCollectionError('OSMapaPL metadata requires exact HTTP206')
         chunk = body[start:end + 1]; self.bytes_read += len(chunk)
@@ -166,6 +169,8 @@ class OSMapaTests(unittest.TestCase):
                 inspect_osmapa(source, 'plext', 'podstawowa', fetcher=MemoryFetcher({source: body}))
         with self.assertRaises(ProviderCollectionError):
             inspect_osmapa(source, 'pl', 'podstawowa', fetcher=MemoryFetcher())
+        with self.assertRaises(ProviderCollectionError):
+            inspect_osmapa(source, 'plext', 'podstawowa', fetcher=MemoryFetcher(short_head=True))
         changed = MemoryFetcher(etags={(source, 'head'): '"changed"'})
         with self.assertRaises(ProviderCollectionError):
             inspect_osmapa(source, 'plext', 'podstawowa', fetcher=changed)
@@ -219,12 +224,21 @@ class OSMapaTests(unittest.TestCase):
         fetcher = OSMapaFetcher()
         for response in (Response(200, headers), Response(206, {**headers, 'ETag': 'W/"a"'}),
                          Response(206, {**headers, 'Content-Range': 'bytes 0-31/1000'}),
+                         Response(206, {**headers, 'Content-Range': 'bytes 0-7/1000'}, body=b'x' * 8),
+                         Response(206, {**headers, 'Content-Range': 'bytes 1-16/1000'}),
                          Response(206, headers, location=url('plext'))):
             fetcher.opener = SimpleNamespace(open=lambda *_args, response=response, **_kw: response)
             with self.assertRaises(ProviderCollectionError):
                 fetcher.fetch_range(url(), 'bytes=0-15')
         fetcher.opener = SimpleNamespace(open=lambda *_a, **_k: Response(206, headers))
         self.assertEqual(fetcher.fetch_range(url(), 'bytes=0-15')[0].total_size, 1000)
+        tail = {**headers, 'Content-Range': 'bytes 984-999/1000'}
+        fetcher.opener = SimpleNamespace(open=lambda *_a, **_k: Response(206, tail))
+        self.assertEqual(fetcher.fetch_range(url(), 'bytes=-16')[0].start, 984)
+        with self.assertRaises(ProviderCollectionError):
+            fetcher.fetch_range(url(), 'bytes=-32')
+        with self.assertRaises(ProviderCollectionError):
+            fetcher.fetch_range(url(), 'bytes=0-')
         from terento_catalog.osmapa import _NoRedirect
         with self.assertRaises(ProviderCollectionError):
             _NoRedirect().redirect_request(None, None, 302, 'Found', {}, 'https://evil.test/')
@@ -253,6 +267,22 @@ class OSMapaTests(unittest.TestCase):
                                   (service.catalog_v5_response, expected | {'osmapa'})):
             self.assertEqual({p['id'] for p in json.loads(method()[0])['providers']}, providers)
         self.assertIs(KNOWN_PROVIDER_DEFINITIONS['osmapa'], OSMAPA)
+
+    def test_closed_projection_timestamp_ignores_providers_outside_it(self):
+        global_change = datetime(2026, 10, 26, 8, tzinfo=timezone.utc)
+        changed = {'freizeitkarte': datetime(2026, 9, 1, tzinfo=timezone.utc),
+                   'opentopomap': datetime(2026, 9, 2, tzinfo=timezone.utc),
+                   'maprando': datetime(2026, 9, 3, tzinfo=timezone.utc),
+                   'bbbike': datetime(2026, 10, 1, tzinfo=timezone.utc), 'osmapa': global_change}
+        rows = [dict(provider_id=p, provider_name=p, provider_website='https://example.test', provider_attribution='',
+                     provider_license_url='https://example.test/license', provider_license_information='',
+                     version_year=None, provider_changed_at=at) for p, at in changed.items()]
+        service = CatalogService(SimpleNamespace(catalog_snapshot=lambda: (rows, global_change)))
+        for method, expected in ((service.catalog_response, '2026-09-02'), (service.catalog_v3_response, '2026-09-03'),
+                                 (service.catalog_v4_response, '2026-10-01'), (service.catalog_v5_response, '2026-10-26')):
+            body, _, last_modified = method()
+            self.assertEqual(json.loads(body)['updatedAt'][:10], expected)
+            self.assertEqual(last_modified.date().isoformat(), expected)
 
     def test_paused_package_is_published_blocked_with_type_geography_and_conflict_group(self):
         snapshot = OSMapaProviderAdapter(fetcher=MemoryFetcher()).collect()

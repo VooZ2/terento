@@ -114,6 +114,9 @@ class OSMapaFetcher:
         return body.decode("utf-8", errors="strict")
 
     def fetch_range(self, url, header):
+        requested = re.fullmatch(r"bytes=(?:-([0-9]+)|([0-9]+)-([0-9]+))", header)
+        if not requested:
+            raise ProviderCollectionError("OSMapaPL range request is not reviewed")
         with self._open(url, {"Range": header}) as response:
             if response.status != 206 or response.geturl() != url:
                 raise ProviderCollectionError("OSMapaPL metadata requires exact HTTP206")
@@ -123,7 +126,12 @@ class OSMapaFetcher:
                 raise ProviderCollectionError("OSMapaPL source lacks stable range metadata")
             start, end, total = int(match[1]), int(match[2]), int(match[3])
             body = response.read(PROBE_BYTES + 1)
-        if end < start or total <= end or end - start + 1 > PROBE_BYTES or len(body) != end - start + 1:
+        if requested[1]:
+            exact = (start, end) == (max(0, total - int(requested[1])), total - 1)
+        else:
+            exact = (start, end) == (int(requested[2]), min(int(requested[3]), total - 1))
+        if (not exact or end < start or total <= end or end - start + 1 > PROBE_BYTES
+                or len(body) != end - start + 1):
             raise ProviderCollectionError("OSMapaPL source returned invalid Content-Range")
         return RangeResponse(206, start, end, total, body, url), etag, modified
 
@@ -255,7 +263,8 @@ def inspect_osmapa(url, coverage, style, *, fetcher=None):
         raise ProviderCollectionError("OSMapaPL tail range is not the archive end")
     crc, compressed, size, cd_offset = _central_entry(tail.body, tail.start, total)
     head, head_etag, head_modified = fetcher.fetch_range(url, f"bytes=0-{min(PROBE_BYTES, total) - 1}")
-    if head.start != 0 or head.total_size != total or (head_etag, head_modified) != (tail_etag, tail_modified):
+    if ((head.start, head.end) != (0, min(PROBE_BYTES, total) - 1) or head.total_size != total
+            or (head_etag, head_modified) != (tail_etag, tail_modified)):
         raise ProviderCollectionError("OSMapaPL source changed during inspection")
     header = _img_header(head.body, compressed, cd_offset)
     title, created, hints = header_identity(header)
