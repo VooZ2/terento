@@ -337,6 +337,11 @@ class OSMapaTests(unittest.TestCase):
             'url date': lambda m, p: p.update(sourceURL=url('pl', 'OGONKI', '20261023')),
             'mapType': lambda m, p: m.update(mapType='light'),
             'szlaki': lambda m, p: m.update(providerRegionId='pl-szlaki'),
+            'lastModified true': lambda m, p: p.update(lastModified=True),
+            'size true': lambda m, p: (p.update(downloadSizeBytes=True), m.update(downloadSizeBytes=True)),
+            'familyId float': lambda m, p: p.update(familyId=5.0),
+            'header flag 1': lambda m, p: p.update(headerIdentityValidated=1),
+            'missing field': lambda m, p: p.pop('sourceVersion'),
         }
         for label, edit in tampering.items():
             with self.subTest(label):
@@ -354,6 +359,13 @@ class OSMapaTests(unittest.TestCase):
         self.assertEqual(catalog_rejections(catalog), [])
         light = next(m for m in catalog['providers'][0]['maps'] if m['id'] == 'osmapa-pl-light')
         self.assertNotIn('sourceProof', light['artifacts'][0])
+        for proof in ({'lastModified': True}, {}, 'proof'):
+            with self.subTest(proof=proof):
+                broken = json.loads(json.dumps(catalog))
+                package = next(m for m in broken['providers'][0]['maps'] if m['id'] == 'osmapa-pl-light')
+                package['artifacts'][0]['sourceProof'] = proof
+                self.assertIn('osmapa-pl-light: unavailable osmapa main artifact must not carry sourceProof',
+                              catalog_rejections(broken))
 
 
 if __name__ == '__main__':

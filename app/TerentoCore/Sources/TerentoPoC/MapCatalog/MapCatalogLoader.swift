@@ -474,12 +474,12 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
         if MapIdentity.normalizeProvider(package.providerId) == "bbbike",
            package.mainArtifact?.validationState == .unavailable {
             return BBBikeProviderAdapter.validIdentity(package)
-                && package.artifacts.count == 1 && package.mainArtifact?.sourceProof == nil
+                && package.artifacts.count == 1 && package.mainArtifact?.carriesSourceProof == false
         }
         if MapIdentity.normalizeProvider(package.providerId) == "osmapa",
            package.mainArtifact?.validationState == .unavailable {
             return OSMapaProviderAdapter.validIdentity(package) && package.artifacts.count == 1
-                && package.mainArtifact?.sourceProof == nil && package.mainArtifact?.osmapaSourceProof == nil
+                && package.mainArtifact?.carriesSourceProof == false
         }
         let providerID = MapIdentity.normalizeProvider(package.providerId)
         guard let adapter = providerRegistry.adapter(for: providerID),

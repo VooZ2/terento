@@ -29,6 +29,11 @@ private struct PathPrefixReader: DeviceFileReader {
 }
 
 @main struct OSMapaTests {
+    static let identity = DeviceIdentity(manufacturer: "Garmin", model: "fenix 8 - 51mm", family: "fēnix", variant: "51mm",
+        usbVendorId: 0x091e, usbProductId: 0x7777, firmware: "2244", storageCapacity: 32 << 30, freeSpace: 16 << 30,
+        localHardwareIdentifier: "OSMAPA-LOCAL-FIXTURE", localIdentityResolution: .garminUnitID)
+    static let root = DeviceFile(itemID: 9, parentID: 0, storageID: 1, path: "/GARMIN", filename: "GARMIN", sizeBytes: 0, isFolder: true)
+
     static func check(_ condition: @autoclosure () -> Bool, _ label: String) {
         guard condition() else { fatalError("FAIL: \(label)") }
         print("PASS: \(label)")
@@ -245,6 +250,24 @@ private struct PathPrefixReader: DeviceFileReader {
         withProof["artifacts"] = [artifact]
         let unavailableWithProof = try catalog([withProof]).packages[0]
         check(!compatible(unavailableWithProof), "an unavailable package must not carry proof")
+        var malformed = (try document(.pl, .ogonki)["artifacts"] as! [[String: Any]])[0]["sourceProof"] as! [String: Any]
+        malformed["lastModified"] = true
+        for (label, proof) in [("a malformed proof", malformed as Any), ("an empty proof object", [String: Any]() as Any),
+                               ("a proof of the wrong JSON type", "proof" as Any)] {
+            artifact["sourceProof"] = proof
+            var map = unavailableMap
+            map["artifacts"] = [artifact]
+            let decoded = try catalog([map]).packages[0]
+            check(decoded.mainArtifact?.carriesSourceProof == true && !compatible(decoded),
+                  "an unavailable package with \(label) is rejected, not read as having no proof")
+            let reencoded = try JSONDecoder().decode(MapPackage.self, from: JSONEncoder().encode(decoded))
+            check(reencoded.mainArtifact?.carriesSourceProof == true, "\(label) stays marked after re-encoding")
+        }
+        artifact["sourceProof"] = NSNull()
+        var nullProof = unavailableMap
+        nullProof["artifacts"] = [artifact]
+        let withNullProof = try catalog([nullProof]).packages[0]
+        check(compatible(withNullProof), "a JSON null proof counts as no proof")
 
         let policy = ReviewedProviderURLPolicyRegistry.bundled.policy(for: "osmapa")!
         for url in [source(.pl, .ogonki), source(.plext, .warstwice)] {
@@ -315,6 +338,7 @@ private struct PathPrefixReader: DeviceFileReader {
         check(artifact.packageFormat == .zip && artifact.installSizeBytes == package.installSizeBytes
             && artifact.targetFilename == "terento_osmapa_pl_ogonki.img",
               "ZIP → single IMG → MPS family ID → final write validator")
+        try finalBoundary(package, artifact)
         for name in ["bad-mps", "two-entries", "stored"] {
             let bound = try self.package(.pl, .ogonki, fixture: name)
             do {
@@ -335,11 +359,40 @@ private struct PathPrefixReader: DeviceFileReader {
         catch { print("PASS: a changed payload is rejected at the final boundary") }
     }
 
+    /// The last check before transfer sees file content through the scan
+    /// evidence of the same inventory; a map image without evidence blocks.
+    static func finalBoundary(_ package: MapPackage, _ artifact: ValidatedMapArtifact) throws {
+        let profile = DeviceInstallProfileRegistry.local.profile(for: identity, deviceFiles: [root])!
+        func file(_ name: String, _ id: UInt32, size: UInt64 = 65536) -> DeviceFile {
+            DeviceFile(itemID: id, parentID: 9, storageID: 1, path: "/GARMIN/" + name, filename: name, sizeBytes: size, isFolder: false)
+        }
+        func evidence(_ file: DeviceFile, _ prefix: [UInt8]?, size: UInt64? = nil) -> InstalledMapFile {
+            InstalledMapFile(path: file.path, filename: file.filename, sizeBytes: size ?? file.sizeBytes, itemID: file.itemID,
+                prefixEvidence: GarminIMGPrefixEvidence(prefix: prefix))
+        }
+        func passes(_ files: [DeviceFile], _ inspected: [InstalledMapFile]) -> Bool {
+            (try? Stage42TargetPolicy().validate(package: package, artifact: artifact, profile: profile, identity: identity,
+                deviceFiles: [root] + files, installedMaps: [], inspectedFiles: inspected,
+                installationAuthorization: authorization(for: identity))) != nil
+        }
+        let manual = file("gmapsupp.img", 101)
+        let foreign = file("other.img", 102)
+        let foreignPrefix = Array(header("Topo Poland").prefix(0x800)) + [1] + Array("00000005MDR".utf8)
+            + Array(repeating: 0, count: 4096 - 0x80C)
+        check(passes([], []), "an empty watch passes the final boundary")
+        check(passes([file("D1234567A.img", 103)], []), "Garmin-owned images are outside the OSMapaPL content check")
+        let light = try bytes("pl-light")
+        let otherCoverage = try bytes("plext-ogonki")
+        check(passes([manual], [evidence(manual, light)]), "another style under a generic name passes")
+        check(!passes([manual], []), "a generic-named map image without scan evidence blocks the write")
+        check(!passes([manual], [evidence(manual, light, size: 1)]), "evidence for another file size blocks the write")
+        check(!passes([manual], [evidence(manual, Array(repeating: 0xFF, count: 4096))]), "an unreadable generic-named image blocks the write")
+        check(!passes([manual], [evidence(manual, nil)]), "a generic-named image whose prefix was not read blocks the write")
+        check(!passes([manual], [evidence(manual, otherCoverage)]), "the other coverage under a generic name blocks the write")
+        check(!passes([foreign], [evidence(foreign, foreignPrefix)]), "a foreign map with the same family ID blocks the write")
+    }
+
     static func conflictMatrix() throws {
-        let identity = DeviceIdentity(manufacturer: "Garmin", model: "fenix 8 - 51mm", family: "fēnix", variant: "51mm",
-            usbVendorId: 0x091e, usbProductId: 0x7777, firmware: "2244", storageCapacity: 32 << 30, freeSpace: 16 << 30,
-            localHardwareIdentifier: "OSMAPA-LOCAL-FIXTURE", localIdentityResolution: .garminUnitID)
-        let root = DeviceFile(itemID: 9, parentID: 0, storageID: 1, path: "/GARMIN", filename: "GARMIN", sizeBytes: 0, isFolder: true)
         let profile = DeviceInstallProfileRegistry.local.profile(for: identity, deviceFiles: [root])!
         let plOgonki = try package(.pl, .ogonki)
         let plextOgonki = try package(.plext, .ogonki)

@@ -144,7 +144,9 @@ extension MapArtifact {
             downloadSizeBytes: downloadSizeBytes,
             checksum: checksum,
             validationState: validationState,
-            sourceProof: sourceProof
+            sourceProof: sourceProof,
+            osmapaSourceProof: osmapaSourceProof,
+            carriesSourceProof: carriesSourceProof
         )
     }
 
@@ -165,7 +167,9 @@ extension MapArtifact {
             downloadSizeBytes: downloadSizeBytes,
             checksum: checksum,
             validationState: validationState,
-            sourceProof: sourceProof
+            sourceProof: sourceProof,
+            osmapaSourceProof: osmapaSourceProof,
+            carriesSourceProof: carriesSourceProof
         )
     }
 }

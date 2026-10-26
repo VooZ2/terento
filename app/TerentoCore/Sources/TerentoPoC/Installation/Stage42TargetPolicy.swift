@@ -45,6 +45,8 @@ struct Stage42TargetPolicy: Sendable {
         profile: DeviceInstallProfile?,
         identity: DeviceIdentity,
         deviceFiles: [DeviceFile],
+        installedMaps: [InstalledMap] = [],
+        inspectedFiles: [InstalledMapFile] = [],
         installationAuthorization: InstallationAuthorizationState
     ) throws {
         guard installationAuthorization.canInstall,
@@ -58,12 +60,40 @@ struct Stage42TargetPolicy: Sendable {
             || OSMapaProviderAdapter.conflicts(package, filename: $0.filename) }) {
             throw Stage42TargetPolicyError.unsupportedPackage
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "osmapa" {
+            try validateOSMapaContent(package: package, deviceFiles: deviceFiles,
+                                      installedMaps: installedMaps, inspectedFiles: inspectedFiles)
+        }
         if package.sourceKind == .custom {
             try validateCustom(package: package, artifact: artifact)
         } else {
             try validateProvider(package: package, artifact: artifact)
         }
         try validateDeviceProfile(profile: profile, identity: identity, deviceFiles: deviceFiles)
+    }
+
+    /// OSMapaPL conflicts depend on file content, not names. Every map image
+    /// on the device must have scan evidence from this same inventory, and
+    /// that evidence must show no conflict; otherwise nothing is written.
+    private func validateOSMapaContent(
+        package: MapPackage,
+        deviceFiles: [DeviceFile],
+        installedMaps: [InstalledMap],
+        inspectedFiles: [InstalledMapFile]
+    ) throws {
+        var evidence: [InstalledMapFile] = []
+        for file in GarminMapScanner.inspectionCandidates(deviceFiles) {
+            let matches = inspectedFiles.filter {
+                $0.path == file.path && $0.filename == file.filename && $0.sizeBytes == file.sizeBytes
+            }
+            guard matches.count == 1 else { throw Stage42TargetPolicyError.unsupportedPackage }
+            evidence.append(matches[0])
+        }
+        guard OSMapaProviderAdapter.installedConflict(
+            for: package, installedMaps: installedMaps, inspectedFiles: evidence
+        ) == nil else {
+            throw Stage42TargetPolicyError.unsupportedPackage
+        }
     }
 
     private func validateProvider(

@@ -104,13 +104,13 @@ def _bbbike_proof_matches(package: dict[str, Any]) -> bool:
         proof.get("sourceURL") == url
         and isinstance(etag, str) and etag.startswith('"') and etag.endswith('"') and len(etag) > 2
         and install_size == package.get("installSizeBytes")
-        and isinstance(install_size, int) and install_size > 0
-        and isinstance(download_size, int) and download_size > 0
-        and bool(re.fullmatch(r"[a-f0-9]{32}", str(proof.get("payloadMD5") or "")))
-        and bool(re.fullmatch(r"[a-f0-9]{64}", str(proof.get("revision") or "")))
+        and _uint(install_size, 2**64 - 1) and install_size > 0
+        and _uint(download_size, 2**64 - 1) and download_size > 0
+        and isinstance(proof.get("payloadMD5"), str) and bool(re.fullmatch(r"[a-f0-9]{32}", proof["payloadMD5"]))
+        and isinstance(proof.get("revision"), str) and bool(re.fullmatch(r"[a-f0-9]{64}", proof["revision"]))
         and proof.get("payloadPath") == f"{leaf}-garmin-{map_type}/gmapsupp.img"
-        and str(proof.get("generatedAt") or "").startswith(version_label + "T")
-        and bool(proof.get("lastModified"))
+        and isinstance(proof.get("generatedAt"), str) and proof["generatedAt"].startswith(version_label + "T")
+        and isinstance(proof.get("lastModified"), str) and proof["lastModified"] != ""
         and region == package.get("providerRegionId")
         and map_type == package.get("mapType")
         and proof.get("sourceIdentity") == f"bbbike:{region}:{map_type}"
@@ -159,10 +159,31 @@ def osmapa_reviewed_source(url: Any) -> tuple[str, str, str, str] | None:
     return ("plext" if match.group(1) else "pl"), match.group(2).lower(), match.group(3), match.group(4)
 
 
+OSMAPA_PROOF_STRINGS = ("sourceURL", "etag", "lastModified", "payloadPath", "crc32", "sourceIdentity", "coverage",
+                        "mapType", "imgTitle", "sourceVersion", "generatedAt", "revision")
+
+
+def _uint(value: Any, maximum: int) -> bool:
+    # JSON true/false and 5.0 are not Swift unsigned integers; bool is an int subclass in Python.
+    return type(value) is int and 0 <= value <= maximum
+
+
+def osmapa_proof_decodes(proof: Any) -> bool:
+    """Mirror of decoding ``OSMapaSourceProof``: every field present with its Swift type."""
+    return (
+        isinstance(proof, dict)
+        and all(isinstance(proof.get(key), str) for key in OSMAPA_PROOF_STRINGS)
+        and _uint(proof.get("downloadSizeBytes"), 2**64 - 1)
+        and _uint(proof.get("installSizeBytes"), 2**64 - 1)
+        and _uint(proof.get("familyId"), 2**16 - 1)
+        and type(proof.get("headerIdentityValidated")) is bool
+    )
+
+
 def _osmapa_proof_matches(package: dict[str, Any]) -> bool:
     main = _main(package) or {}
     proof = main.get("sourceProof")
-    if not isinstance(proof, dict) or not osmapa_valid_identity(package):
+    if not osmapa_proof_decodes(proof) or not osmapa_valid_identity(package):
         return False
     coverage, style = _osmapa_region(package.get("providerRegionId"))
     source = osmapa_reviewed_source(proof.get("sourceURL"))
@@ -183,8 +204,8 @@ def _osmapa_proof_matches(package: dict[str, Any]) -> bool:
         and source[:3] == (coverage, style, version_label.replace("-", ""))
         and source[3] == proof.get("sourceVersion")
         and isinstance(etag, str) and etag.startswith('"') and etag.endswith('"') and len(etag) > 2
-        and bool(proof.get("lastModified"))
-        and str(proof.get("generatedAt") or "").startswith(version_label + "T")
+        and proof["lastModified"] != ""
+        and proof["generatedAt"].startswith(version_label + "T")
         and proof.get("sourceIdentity") == f"osmapa:{coverage}:{style}"
         and proof.get("coverage") == coverage and proof.get("mapType") == style
         and proof.get("familyId") == OSMAPA_FAMILY_IDS[style]
@@ -193,10 +214,10 @@ def _osmapa_proof_matches(package: dict[str, Any]) -> bool:
         and proof.get("payloadPath") == "gmapsupp.img"
         and download_size == (package.get("downloadSizeBytes") or package.get("sizeBytes"))
         and install_size == package.get("installSizeBytes")
-        and isinstance(download_size, int) and download_size > 0
-        and isinstance(install_size, int) and 0x1000 <= install_size <= OSMAPA_MAXIMUM_IMG_BYTES
-        and bool(re.fullmatch(r"[0-9a-f]{8}", str(proof.get("crc32") or "")))
-        and bool(re.fullmatch(r"[a-f0-9]{64}", str(proof.get("revision") or "")))
+        and download_size > 0
+        and 0x1000 <= install_size <= OSMAPA_MAXIMUM_IMG_BYTES
+        and bool(re.fullmatch(r"[0-9a-f]{8}", proof["crc32"]))
+        and bool(re.fullmatch(r"[a-f0-9]{64}", proof["revision"]))
     )
 
 

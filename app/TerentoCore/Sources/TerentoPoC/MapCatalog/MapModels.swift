@@ -90,6 +90,9 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
     let validationState: MapArtifactValidationState
     let sourceProof: BBBikeSourceProof?
     let osmapaSourceProof: OSMapaSourceProof?
+    /// The catalog sent a non-null `sourceProof`, even one neither proof type
+    /// could decode. An unavailable artifact must not carry one at all.
+    let carriesSourceProof: Bool
 
     init(
         id: String,
@@ -108,7 +111,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         checksum: String? = nil,
         validationState: MapArtifactValidationState = .notValidated,
         sourceProof: BBBikeSourceProof? = nil,
-        osmapaSourceProof: OSMapaSourceProof? = nil
+        osmapaSourceProof: OSMapaSourceProof? = nil,
+        carriesSourceProof: Bool? = nil
     ) {
         self.id = id
         self.source = source
@@ -127,6 +131,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         self.validationState = validationState
         self.sourceProof = sourceProof
         self.osmapaSourceProof = osmapaSourceProof
+        self.carriesSourceProof = carriesSourceProof ?? (sourceProof != nil || osmapaSourceProof != nil)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -167,7 +172,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             checksum: try container.decodeIfPresent(String.self, forKey: .checksum),
             validationState: try container.decodeIfPresent(MapArtifactValidationState.self, forKey: .validationState) ?? .notValidated,
             sourceProof: try? container.decodeIfPresent(BBBikeSourceProof.self, forKey: .sourceProof),
-            osmapaSourceProof: try? container.decodeIfPresent(OSMapaSourceProof.self, forKey: .sourceProof)
+            osmapaSourceProof: try? container.decodeIfPresent(OSMapaSourceProof.self, forKey: .sourceProof),
+            carriesSourceProof: container.contains(.sourceProof) && (try? container.decodeNil(forKey: .sourceProof)) == false
         )
     }
 
@@ -190,8 +196,11 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         try container.encode(validationState, forKey: .validationState)
         if let sourceProof {
             try container.encode(sourceProof, forKey: .sourceProof)
-        } else {
-            try container.encodeIfPresent(osmapaSourceProof, forKey: .sourceProof)
+        } else if let osmapaSourceProof {
+            try container.encode(osmapaSourceProof, forKey: .sourceProof)
+        } else if carriesSourceProof {
+            // Keep the marker: an undecodable proof re-decodes as carried.
+            try container.encode([String: String](), forKey: .sourceProof)
         }
     }
 }

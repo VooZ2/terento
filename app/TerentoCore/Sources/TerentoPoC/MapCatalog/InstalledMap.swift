@@ -585,6 +585,12 @@ struct GarminIMGMetadataParser: Sendable {
 struct GarminMapScanner: Sendable {
     private let parser = GarminIMGMetadataParser()
 
+    /// The device files a scan reads prefix evidence for.
+    static func inspectionCandidates(_ files: [DeviceFile]) -> [DeviceFile] {
+        let scanner = GarminMapScanner()
+        return files.filter { scanner.isMapFile($0) && !scanner.isKnownGarminOwned($0) }
+    }
+
     func scan(
         files: [DeviceFile],
         reader: DeviceFileReader,
