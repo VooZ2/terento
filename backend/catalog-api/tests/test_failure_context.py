@@ -280,7 +280,7 @@ class FailureContextTests(unittest.TestCase):
                 self.check(candidate, False)
         # The app's closed enum sends exactly these values, in this order.
         swift = (ROOT / 'app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift').read_text()
-        enum = swift.split('enum AffectedFolder', 1)[1].split('init(file:', 1)[0]
+        enum = swift.split('enum AffectedFolder', 1)[1].split('\n    }\n', 1)[0]
         self.assertEqual(re.findall(r'= "([^"]+)"', enum), list(AFFECTED_FOLDERS))
         declined = fixture('cleanup-declined')
         declined['originalFailureContext']['protection']['affectedFolder'] = 'Metrics'

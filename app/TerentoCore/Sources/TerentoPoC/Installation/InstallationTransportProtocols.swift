@@ -176,7 +176,8 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
     }
     /// Where the first protected non-target object that decided an
     /// added/removed/changed reason lives: a standard `/GARMIN` folder name,
-    /// a map file, or a coarse bucket. Never a path or filename.
+    /// a map file, or a coarse bucket. Never a path or filename. The
+    /// classifier lives beside `ProtectedMapInventory`.
     enum AffectedFolder: String, Codable, Sendable, CaseIterable {
         case activity = "Activity", apps = "Apps", courses = "Courses", debug = "Debug"
         case device = "Device", errLogs = "ErrLogs", goals = "Goals", locations = "Locations"
@@ -188,18 +189,6 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         case garminRoot = "garmin-root"
         case garminOther = "garmin-other"
         case outsideGarmin = "outside-garmin"
-
-        private static let buckets: Set<Self> = [.mapFile, .garminRoot, .garminOther, .outsideGarmin]
-
-        init(file: DeviceFile) {
-            if ProtectedMapInventory.isMapFile(file) { self = .mapFile; return }
-            let parts = file.path.split(separator: "/", omittingEmptySubsequences: true)
-            guard parts.first?.lowercased() == "garmin" else { self = .outsideGarmin; return }
-            if parts.count == 1 || (parts.count == 2 && !file.isFolder) { self = .garminRoot; return }
-            let folder = parts[1].lowercased()
-            let named = Self.allCases.first { !Self.buckets.contains($0) && $0.rawValue.lowercased() == folder }
-            self = named ?? .garminOther
-        }
     }
 
     let protectionBoundary: Boundary

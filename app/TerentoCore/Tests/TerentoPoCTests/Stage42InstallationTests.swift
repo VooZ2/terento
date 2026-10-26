@@ -448,13 +448,13 @@ struct Stage42InstallationTests {
             }
         }
         // A watch data file changed during the write: only its /GARMIN folder name is kept.
-        let harness = makeHarness()
         let metrics = DeviceFile(itemID: 700, parentID: 0, storageID: 1, path: "/GARMIN/Metrics",
             filename: "Metrics", sizeBytes: 0, isFolder: true)
         let sleep = DeviceFile(itemID: 701, parentID: 700, storageID: 1, path: "/GARMIN/Metrics/private-name.fit",
             filename: "private-name.fit", sizeBytes: 10, isFolder: false)
+        // The preflight baseline and the pre-write read both hold the watch file.
+        let harness = Harness(beforeFilesTransform: { $0 + [metrics, sleep] })
         let result = harness.run(configureReader: { reader in
-            reader.initialFiles += [metrics, sleep]
             reader.files += [metrics, DeviceFile(itemID: sleep.itemID, parentID: sleep.parentID,
                 storageID: sleep.storageID, path: sleep.path, filename: sleep.filename,
                 sizeBytes: 11, isFolder: false)]
