@@ -2200,8 +2200,9 @@ final class MapEngine: ObservableObject {
                                 lifecycleLease: lease
                             )
                             let component = InstallationFailureContext.ComponentKind(rawValue: selectedArtifact.kind.rawValue)
-                            let snapshot = try Self.readAtInstallationBoundary(.initialSnapshot,
-                                componentKind: component) { try lifecycleReader.readSnapshot() }
+                            let snapshot = try await Self.readInitialSnapshot(componentKind: component) {
+                                try lifecycleReader.readSnapshot()
+                            }
                             let identity = CompatibilityEngine().evaluate(snapshot: snapshot).identity
                             let inventory = try Self.readAtInstallationBoundary(.initialInventory,
                                 lastSuccessfulBoundary: .initialSnapshot, componentKind: component) {
@@ -2433,6 +2434,37 @@ final class MapEngine: ObservableObject {
             throw InstallationTransportError.contextual(
                 failure: presence == .absent ? .deviceDisconnected : .operationFailed,
                 message: error.localizedDescription, createdItemID: nil, context: context)
+        }
+    }
+
+    /// Snapshot -5 right after connect is usually short: detection retries
+    /// it every 2 s and then connects. The install's first read, before
+    /// anything on the watch is touched, waits it out the same way a bounded
+    /// number of times; any other failure, or a session still busy after the
+    /// last retry, is reported as before with the retries counted.
+    nonisolated static let busySnapshotRetryLimit: UInt8 = 6
+    nonisolated static let busySnapshotRetryInterval: Duration = .seconds(2)
+
+    nonisolated static func readInitialSnapshot<T>(
+        componentKind: InstallationFailureContext.ComponentKind?,
+        retryLimit: UInt8 = busySnapshotRetryLimit,
+        wait: (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+        read: () throws -> T
+    ) async throws -> T {
+        var retries: UInt8 = 0
+        while true {
+            do {
+                return try readAtInstallationBoundary(.initialSnapshot, componentKind: componentKind, read: read)
+            } catch let error as InstallationTransportError {
+                guard case .contextual(let failure, let message, let createdItemID, let context) = error,
+                      context.isWatchSessionBusy else { throw error }
+                guard retries < retryLimit else {
+                    throw InstallationTransportError.contextual(failure: failure, message: message,
+                        createdItemID: createdItemID, context: context.retried(retries))
+                }
+                retries += 1
+                try await wait(busySnapshotRetryInterval)
+            }
         }
     }
 

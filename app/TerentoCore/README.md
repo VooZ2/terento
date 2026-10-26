@@ -86,7 +86,9 @@ failures) keeps the selection, rereads the watch and reuses them instead of
 downloading again. Availability is rechecked and the coordinator revalidates
 identity, version, size and SHA-256 before any write. When that pre-write
 reread finds the watch on USB but cannot open its file-transfer session (the
-snapshot result detection classifies as busy), the failure says the watch may be
+snapshot result detection classifies as busy), it first retries that read-only
+snapshot every 2 s, at most 6 times, as detection does, and counts the retries in
+the failure context; if the session is still busy, the failure says the watch may be
 in use by another app, asks to quit Garmin Express and similar apps and links the
 guide's busy-watch section; it names no running app after one failed open,
 says no map was written only when no earlier map or contour of the same
