@@ -152,6 +152,12 @@ struct InstallationPreflightEngine: Sendable {
                 comparisonStatus: comparison.status, status: .blockedMapTypeConflict,
                 installTarget: profile.targetDirectory, reason: BBBikeProviderAdapter.typeConflictMessage(for: selectedMap, installedMaps: installedMaps, inspectedFiles: inspectedFiles))
         }
+        if let conflict = OSMapaProviderAdapter.installedConflict(for: selectedMap, installedMaps: installedMaps, inspectedFiles: inspectedFiles) {
+            return blocked(selectedMap: selectedMap, installedMatch: installedMatch, ownership: ownership,
+                comparisonStatus: comparison.status, status: .blockedMapTypeConflict,
+                installTarget: profile.targetDirectory,
+                reason: OSMapaProviderAdapter.installedConflictMessage(for: selectedMap, conflict: conflict))
+        }
         let proposedFilename: String
         do {
             proposedFilename = try TerentoManagedFilenameGenerator().filename(

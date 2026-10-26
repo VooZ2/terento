@@ -54,7 +54,8 @@ struct Stage42TargetPolicy: Sendable {
             }
             throw Stage42TargetPolicyError.installationAuthorizationRequired
         }
-        if deviceFiles.contains(where: { BBBikeProviderAdapter.conflicts(package, filename: $0.filename) }) {
+        if deviceFiles.contains(where: { BBBikeProviderAdapter.conflicts(package, filename: $0.filename)
+            || OSMapaProviderAdapter.conflicts(package, filename: $0.filename) }) {
             throw Stage42TargetPolicyError.unsupportedPackage
         }
         if package.sourceKind == .custom {

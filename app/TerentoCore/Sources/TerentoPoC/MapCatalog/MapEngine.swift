@@ -1572,9 +1572,13 @@ final class MapEngine: ObservableObject {
             existingMaps.contains { BBBikeProviderAdapter.conflicts(package, provider: $0.provider, region: $0.region) }
                 || existingFiles.contains { BBBikeProviderAdapter.conflicts(package, filename: $0.filename) }
         })
-        if BBBikeProviderAdapter.selectionConflicts(selectedPackages) || installedTypeConflict != nil {
+        let osmapaConflict = selectedPackages.lazy.compactMap { package in
+            OSMapaProviderAdapter.installedConflict(for: package, installedMaps: existingMaps, inspectedFiles: existingFiles)
+                .map { OSMapaProviderAdapter.installedConflictMessage(for: package, conflict: $0) }
+        }.first ?? OSMapaProviderAdapter.selectionConflictReason(selectedPackages)
+        if BBBikeProviderAdapter.selectionConflicts(selectedPackages) || installedTypeConflict != nil || osmapaConflict != nil {
             installationErrorMessage = installedTypeConflict.map { BBBikeProviderAdapter.typeConflictMessage(for: $0, installedMaps: existingMaps, inspectedFiles: existingFiles) }
-                ?? BBBikeProviderAdapter.coexistenceReason
+                ?? osmapaConflict ?? BBBikeProviderAdapter.coexistenceReason
             installationPhase = .failed
             state = .failed
             operationDiagnostics?.failed(index: 0, stage: .preflight, failure: .existingMapConflict)

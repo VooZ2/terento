@@ -193,7 +193,7 @@ struct MapCatalogLoader: Sendable {
             return nil
         }
         #endif
-        return URLComponents(string: "https://api.terento.app/maps/catalog-v4.json")?.url
+        return URLComponents(string: "https://api.terento.app/maps/catalog-v5.json")?.url
     }()
 
     let endpoint: URL?
@@ -476,6 +476,11 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
             return BBBikeProviderAdapter.validIdentity(package)
                 && package.artifacts.count == 1 && package.mainArtifact?.sourceProof == nil
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "osmapa",
+           package.mainArtifact?.validationState == .unavailable {
+            return OSMapaProviderAdapter.validIdentity(package) && package.artifacts.count == 1
+                && package.mainArtifact?.sourceProof == nil && package.mainArtifact?.osmapaSourceProof == nil
+        }
         let providerID = MapIdentity.normalizeProvider(package.providerId)
         guard let adapter = providerRegistry.adapter(for: providerID),
               let sourcePolicy = sourcePolicyRegistry.policy(for: providerID),
@@ -500,10 +505,10 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
         )
     }
 
-    /// Two BBBike packages claiming one IMG identity are ambiguous; neither
-    /// can be installed safely.
+    /// Two BBBike or OSMapaPL packages claiming one IMG identity are
+    /// ambiguous; neither can be installed safely.
     private func duplicateBBBikeIdentityPackageIDs(_ packages: [MapPackage]) -> Set<String> {
-        let bbbike = packages.filter { MapIdentity.normalizeProvider($0.providerId) == "bbbike" }
+        let bbbike = packages.filter { ["bbbike", "osmapa"].contains(MapIdentity.normalizeProvider($0.providerId)) }
         let grouped = Dictionary(grouping: bbbike.compactMap { package in
             package.identity.map { ($0, package.id) }
         }, by: \.0)

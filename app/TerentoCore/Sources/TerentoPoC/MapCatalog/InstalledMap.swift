@@ -8,17 +8,22 @@ struct InstalledMapFile: Identifiable, Equatable, Sendable {
     /// device scan. A path alone is never sufficient for a destructive
     /// operation.
     let itemID: UInt32?
+    /// What the bounded scan prefix proved about this file. Nil means the
+    /// file was not inspected, which OSMapaPL conflict checks treat as unreadable.
+    let prefixEvidence: GarminIMGPrefixEvidence?
 
     init(
         path: String,
         filename: String,
         sizeBytes: UInt64,
-        itemID: UInt32? = nil
+        itemID: UInt32? = nil,
+        prefixEvidence: GarminIMGPrefixEvidence? = nil
     ) {
         self.path = path
         self.filename = filename
         self.sizeBytes = sizeBytes
         self.itemID = itemID
+        self.prefixEvidence = prefixEvidence
     }
 
     var id: String {
@@ -121,6 +126,7 @@ struct GarminIMGMetadataParser: Sendable {
         }
 
         if let metadata = mapRandoMetadata(bytes) { return metadata }
+        if let metadata = OSMapaIMGMetadata.metadata(bytes) { return metadata }
         if let metadata = BBBikeIMGMetadata.standaloneMetadata(bytes) { return metadata }
 
         let description = text(bytes, offset: 0x49, length: 20)
@@ -602,7 +608,8 @@ struct GarminMapScanner: Sendable {
                 path: file.path,
                 filename: file.filename,
                 sizeBytes: file.sizeBytes,
-                itemID: file.itemID
+                itemID: file.itemID,
+                prefixEvidence: GarminIMGPrefixEvidence(prefix: prefixes[file.stableIdentity])
             )
             inspectedFiles.append(installedFile)
 
@@ -859,5 +866,157 @@ enum BBBikeIMGMetadata {
         return GarminIMGMetadata(name: context.displayName, provider: "BBBike", region: context.canonicalRegion,
             family: type.title, rawVersion: version.description, version: version,
             identifier: nil, productId: nil, familyId: nil)
+    }
+}
+
+/// Facts from the same bounded prefix the scanner already reads; no extra
+/// MTP read. mkgmap's FAT names the MDR index after the family ID, which
+/// gives a family-ID hint for any indexed map.
+struct GarminIMGPrefixEvidence: Equatable, Sendable {
+    let isGarminIMG: Bool
+    let osmapa: OSMapaMapMarker?
+    let mdrFamilyIDs: Set<UInt16>
+
+    init(isGarminIMG: Bool, osmapa: OSMapaMapMarker?, mdrFamilyIDs: Set<UInt16>) {
+        self.isGarminIMG = isGarminIMG
+        self.osmapa = osmapa
+        self.mdrFamilyIDs = mdrFamilyIDs
+    }
+
+    init(prefix: [UInt8]?) {
+        guard let prefix, OSMapaIMGMetadata.isGarminIMG(prefix) else {
+            self.init(isGarminIMG: false, osmapa: nil, mdrFamilyIDs: [])
+            return
+        }
+        self.init(isGarminIMG: true, osmapa: OSMapaIMGMetadata.marker(prefix),
+                  mdrFamilyIDs: OSMapaIMGMetadata.mdrFamilyIDs(prefix))
+    }
+}
+
+/// OSMapaPL titles are complete in the fixed header: `OSMapaPL[ext]-<STYLE>`
+/// stitched from 0x49 and 0x65, and the creation date at 0x39 is the release.
+enum OSMapaIMGMetadata {
+    static func isGarminIMG(_ bytes: [UInt8]) -> Bool {
+        bytes.count >= 0x84
+            && Array(bytes[0x10..<0x16]) == Array("DSKIMG".utf8)
+            && Array(bytes[0x41..<0x47]) == Array("GARMIN".utf8)
+    }
+
+    static func title(_ bytes: [UInt8]) -> [UInt8] {
+        var title = Array(bytes[0x49..<0x5D]) + Array(bytes[0x65..<0x83])
+        while let last = title.last, last == 0x20 || last == 0 { title.removeLast() }
+        return title
+    }
+
+    static func version(_ bytes: [UInt8]) -> MapVersion? {
+        guard bytes.count >= 0x84 else { return nil }
+        let year = Int(bytes[0x39]) | Int(bytes[0x3A]) << 8
+        return MapVersion(year: year, month: Int(bytes[0x3B]), day: Int(bytes[0x3C]))
+    }
+
+    static func marker(_ bytes: [UInt8]) -> OSMapaMapMarker? {
+        guard isGarminIMG(bytes) else { return nil }
+        let title = title(bytes)
+        guard title.starts(with: Array("OSMapaPL".utf8)) else { return nil }
+        guard version(bytes) != nil, let text = String(bytes: title, encoding: .ascii) else { return .ambiguous }
+        for coverage in OSMapaCoverage.allCases {
+            for style in OSMapaStyle.allCases where text == "\(coverage.titlePrefix)-\(style.headerToken)" {
+                return .map(coverage: coverage, style: style)
+            }
+        }
+        return .ambiguous
+    }
+
+    static func metadata(_ bytes: [UInt8]) -> GarminIMGMetadata? {
+        guard case .map(let coverage, let style) = marker(bytes), let version = version(bytes) else { return nil }
+        return GarminIMGMetadata(
+            name: OSMapaProviderAdapter.displayName(coverage: coverage, style: style), provider: "OSMapa",
+            region: OSMapaProviderAdapter.regionToken(coverage: coverage, style: style).uppercased(),
+            family: style.title, rawVersion: version.description, version: version,
+            identifier: nil, productId: nil, familyId: nil
+        )
+    }
+
+    /// FAT records start at 0x400 in 512-byte steps: flag, 8-byte name, 3-byte type.
+    static func mdrFamilyIDs(_ bytes: [UInt8]) -> Set<UInt16> {
+        var ids = Set<UInt16>()
+        var offset = 0x400
+        while offset + 12 <= bytes.count {
+            if bytes[offset] == 1, Array(bytes[(offset + 9)..<(offset + 12)]) == Array("MDR".utf8) {
+                let name = bytes[(offset + 1)..<(offset + 9)]
+                if name.allSatisfy({ (0x30...0x39).contains($0) }),
+                   let value = UInt16(String(decoding: name, as: UTF8.self)) {
+                    ids.insert(value)
+                }
+            }
+            offset += 0x200
+        }
+        return ids
+    }
+}
+
+/// D3: one style per watch. Same coverage and style managed by Terento is the
+/// update path; any other file of the style, an ambiguous OSMapaPL marker,
+/// an unreadable IMG or a foreign map with the style's family ID blocks.
+/// Nothing is ever deleted, renamed or converted here.
+extension OSMapaProviderAdapter {
+    enum InstalledConflict: Equatable, Sendable {
+        case otherCoverageManaged(OSMapaCoverage)
+        case unmanaged
+        case ambiguous
+        case unreadable
+        case familyID
+
+        var priority: Int {
+            switch self {
+            case .unreadable: return 0
+            case .ambiguous: return 1
+            case .unmanaged: return 2
+            case .otherCoverageManaged: return 3
+            case .familyID: return 4
+            }
+        }
+    }
+
+    static func installedConflict(for package: MapPackage, installedMaps: [InstalledMap],
+                                  inspectedFiles: [InstalledMapFile]) -> InstalledConflict? {
+        guard MapIdentity.normalizeProvider(package.providerId) == "osmapa" else { return nil }
+        guard let (coverage, style) = region(package.providerRegionId), style != .szlaki else { return .ambiguous }
+        let conflicts = inspectedFiles.compactMap { file -> InstalledConflict? in
+            guard let evidence = file.prefixEvidence, evidence.isGarminIMG else { return .unreadable }
+            let named = managedFileMarker(file.filename)
+            if named == .ambiguous || evidence.osmapa == .ambiguous { return .ambiguous }
+            if let named, named != evidence.osmapa { return .ambiguous }
+            guard case .map(let fileCoverage, let fileStyle) = evidence.osmapa else {
+                return evidence.mdrFamilyIDs.contains(style.familyID) ? .familyID : nil
+            }
+            guard fileStyle == style else { return nil }
+            let managed = named != nil && installedMaps.contains { map in
+                map.sourceFile == file && map.managementState == .managedByTerento
+                    && MapIdentity.normalizeProvider(map.provider ?? "") == "osmapa"
+                    && region(map.region ?? "").map { $0.coverage == fileCoverage && $0.style == fileStyle } == true
+            }
+            guard managed else { return .unmanaged }
+            return fileCoverage == coverage ? nil : .otherCoverageManaged(fileCoverage)
+        }
+        return conflicts.min { $0.priority < $1.priority }
+    }
+
+    static func installedConflictMessage(for package: MapPackage, conflict: InstalledConflict) -> String {
+        let style = region(package.providerRegionId)?.style
+        let name = style.map { "\($0.title) - \(package.name)" } ?? package.name
+        switch conflict {
+        case .otherCoverageManaged(let other):
+            let otherName = style.map { "\($0.title) - \(OSMapaProviderAdapter.displayName(coverage: other, style: $0))" } ?? other.displayName
+            return "To install “\(name)”, first remove “\(otherName)” in Manage maps. OSMapaPL maps of one style cannot be installed together."
+        case .unmanaged:
+            return "Another \(style?.title ?? "OSMapaPL") map is on this watch and Terento does not manage it. Remove it before installing “\(name)”."
+        case .ambiguous:
+            return "An OSMapaPL map on this watch needs review before installing “\(name)”. Terento could not identify its style."
+        case .unreadable:
+            return "One map file could not be read. Disconnect and reconnect the watch."
+        case .familyID:
+            return "Another map on this watch uses the same Garmin map ID as “\(name)”. Remove it before installing."
+        }
     }
 }

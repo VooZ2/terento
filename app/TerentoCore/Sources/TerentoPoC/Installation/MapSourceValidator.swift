@@ -46,9 +46,13 @@ struct MapSourceValidator: Sendable {
         onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> ValidatedMapSource {
         let isBBBike = MapIdentity.normalizeProvider(expectedPackage.providerId) == "bbbike"
-        let inspected = try inspect(fileURL: fileURL, computeMD5: isBBBike, onProgress: onProgress)
+        let isOSMapa = MapIdentity.normalizeProvider(expectedPackage.providerId) == "osmapa"
+        let inspected = try inspect(fileURL: fileURL, computeMD5: isBBBike, computeCRC32: isOSMapa, onProgress: onProgress)
         if isBBBike {
             return try validateBBBike(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
+        }
+        if isOSMapa {
+            return try validateOSMapa(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
         }
 
         guard let metadata = parser.parse(
@@ -87,7 +91,7 @@ struct MapSourceValidator: Sendable {
     }
 
     private func validateBBBike(fileURL: URL, expectedPackage package: MapPackage,
-        inspected: (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String?)) throws -> ValidatedMapSource {
+        inspected: InspectedSource) throws -> ValidatedMapSource {
         guard BBBikeProviderAdapter().expectedIMGIdentity(for: package) != nil,
               let proof = package.mainArtifact?.sourceProof,
               let context = BBBikeMapMetadata(package: package),
@@ -127,6 +131,28 @@ struct MapSourceValidator: Sendable {
         return ValidatedMapSource(url: fileURL, sizeBytes: inspected.sizeBytes, sha256: inspected.sha256, metadata: metadata)
     }
 
+    /// The whole IMG is bound to the catalog proof (size, CRC-32, header) and
+    /// its MPS product file must name only the style's Garmin family ID.
+    private func validateOSMapa(fileURL: URL, expectedPackage package: MapPackage,
+        inspected: InspectedSource) throws -> ValidatedMapSource {
+        guard OSMapaProviderAdapter().expectedIMGIdentity(for: package) != nil,
+              let proof = package.mainArtifact?.osmapaSourceProof,
+              let (coverage, style) = OSMapaProviderAdapter.region(package.providerRegionId),
+              fileURL.lastPathComponent == proof.payloadPath,
+              inspected.sizeBytes == proof.installSizeBytes,
+              inspected.crc32 == proof.crc32,
+              OSMapaIMGMetadata.marker(inspected.prefix) == .map(coverage: coverage, style: style),
+              let metadata = OSMapaIMGMetadata.metadata(inspected.prefix),
+              OSMapaIMGMetadata.mdrFamilyIDs(inspected.prefix) == [style.familyID],
+              (try? OSMapaIMGInspection.mpsFamilyIDs(fileURL: fileURL)) == [style.familyID] else {
+            throw MapSourceValidationError.identityMismatch
+        }
+        guard metadata.version == package.version else {
+            throw MapSourceValidationError.versionMismatch
+        }
+        return ValidatedMapSource(url: fileURL, sizeBytes: inspected.sizeBytes, sha256: inspected.sha256, metadata: metadata)
+    }
+
     static func bbbikeCreationDate(_ value: String) -> Date? {
         let normalized = value.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
         let formatter = DateFormatter()
@@ -142,9 +168,12 @@ struct MapSourceValidator: Sendable {
         return nil
     }
 
-    /// MD5 is only the BBBike payload proof; other providers skip it.
-    private func inspect(fileURL: URL, computeMD5: Bool = false,
-                         onProgress: (@Sendable (Double) -> Void)? = nil) throws -> (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String?) {
+    typealias InspectedSource = (prefix: [UInt8], sizeBytes: UInt64, sha256: String, md5: String?, crc32: String?)
+
+    /// MD5 is only the BBBike payload proof and CRC-32 only the OSMapaPL one;
+    /// other providers skip them.
+    private func inspect(fileURL: URL, computeMD5: Bool = false, computeCRC32: Bool = false,
+                         onProgress: (@Sendable (Double) -> Void)? = nil) throws -> InspectedSource {
         guard FileManager.default.isReadableFile(atPath: fileURL.path) else {
             throw MapSourceValidationError.fileMissing
         }
@@ -165,6 +194,7 @@ struct MapSourceValidator: Sendable {
         prefix.reserveCapacity(GarminIMGMetadataParser.prefixLength)
         var hasher = SHA256()
         var md5: Insecure.MD5? = computeMD5 ? Insecure.MD5() : nil
+        var crc32: CRC32? = computeCRC32 ? CRC32() : nil
         var sizeBytes: UInt64 = 0
 
         do {
@@ -177,6 +207,7 @@ struct MapSourceValidator: Sendable {
 
                 hasher.update(data: chunk)
                 md5?.update(data: chunk)
+                crc32?.update(chunk)
                 let (newSize, overflow) = sizeBytes.addingReportingOverflow(UInt64(chunk.count))
                 guard !overflow else {
                     throw MapSourceValidationError.readFailed
@@ -198,11 +229,101 @@ struct MapSourceValidator: Sendable {
             prefix: prefix,
             sizeBytes: sizeBytes,
             sha256: digestString(hasher.finalize()),
-            md5: md5?.finalize().map { String(format: "%02x", $0) }.joined()
+            md5: md5?.finalize().map { String(format: "%02x", $0) }.joined(),
+            crc32: crc32.map { String(format: "%08x", $0.value) }
         )
     }
 
     private func digestString(_ digest: SHA256.Digest) -> String {
         digest.map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// Standard ZIP CRC-32 (reflected polynomial 0xEDB88320).
+struct CRC32: Sendable {
+    private static let table: [UInt32] = (0..<256).map { index in
+        (0..<8).reduce(UInt32(index)) { value, _ in value & 1 == 1 ? 0xEDB8_8320 ^ (value >> 1) : value >> 1 }
+    }
+    private var state: UInt32 = 0xFFFF_FFFF
+
+    var value: UInt32 { state ^ 0xFFFF_FFFF }
+
+    mutating func update(_ data: Data) {
+        let table = Self.table
+        var crc = state
+        data.withUnsafeBytes { buffer in
+            for byte in buffer {
+                crc = table[Int((crc ^ UInt32(byte)) & 0xFF)] ^ (crc >> 8)
+            }
+        }
+        state = crc
+    }
+}
+
+/// Reads the mkgmap product file (`MAKEGMAP.MPS`) through the IMG FAT. Its
+/// `L` (map) and `F` (family) records carry the Garmin family ID that decides
+/// which maps a watch shows together.
+enum OSMapaIMGInspection {
+    enum Failure: Error { case invalidIMG }
+
+    static func mpsFamilyIDs(fileURL: URL) throws -> Set<UInt16> {
+        let handle = try FileHandle(forReadingFrom: fileURL)
+        defer { try? handle.close() }
+        let size = try handle.seekToEnd()
+        func require(_ condition: Bool) throws {
+            guard condition else { throw Failure.invalidIMG }
+        }
+        func read(_ offset: UInt64, _ count: Int) throws -> [UInt8] {
+            try require(count >= 0 && count <= 2_097_152 && offset <= size && UInt64(count) <= size - offset)
+            try handle.seek(toOffset: offset)
+            let bytes = [UInt8](try handle.read(upToCount: count) ?? Data())
+            try require(bytes.count == count)
+            return bytes
+        }
+        func number(_ bytes: [UInt8], _ offset: Int, _ count: Int) throws -> Int {
+            try require(offset >= 0 && offset + count <= bytes.count)
+            return (0..<count).reduce(0) { $0 | Int(bytes[offset + $1]) << ($1 * 8) }
+        }
+        let head = try read(0, Int(min(size, 2_097_152)))
+        try require(OSMapaIMGMetadata.isGarminIMG(head))
+        let exponent = Int(head[0x61]) + Int(head[0x62])
+        try require(exponent >= 9 && exponent <= 20)
+        let blockSize = 1 << exponent
+        var mps: [UInt8]?
+        var offset = 0x400
+        while offset + 0x200 <= head.count, head[offset] == 1 {
+            if Array(head[(offset + 1)..<(offset + 12)]) == Array("MAKEGMAPMPS".utf8) {
+                try require(mps == nil && number(head, offset + 0x10, 2) == 0)
+                let length = try number(head, offset + 0x0C, 4)
+                try require(length > 0 && length <= 1_048_576)
+                let blockCount = (length + blockSize - 1) / blockSize
+                try require(blockCount <= 240)
+                var data: [UInt8] = []
+                for index in 0..<blockCount {
+                    let block = try number(head, offset + 0x20 + index * 2, 2)
+                    try require(block != 0xFFFF)
+                    data += try read(UInt64(block) * UInt64(blockSize), min(blockSize, length - data.count))
+                }
+                mps = data
+            }
+            offset += 0x200
+        }
+        guard let mps else { throw Failure.invalidIMG }
+        var families = Set<UInt16>()
+        var kinds = Set<UInt8>()
+        var cursor = 0
+        while cursor < mps.count {
+            let kind = mps[cursor]
+            let length = try number(mps, cursor + 1, 2)
+            try require(cursor + 3 + length <= mps.count)
+            if kind == 0x4C || kind == 0x46 {
+                try require(length >= 4)
+                families.insert(UInt16(try number(mps, cursor + 5, 2)))
+                kinds.insert(kind)
+            }
+            cursor += 3 + length
+        }
+        try require(kinds == [0x4C, 0x46])
+        return families
     }
 }
