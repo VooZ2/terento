@@ -220,7 +220,7 @@ Optional context fields have these controlled values:
 | `executionMode` | `in_process`, `worker` |
 | `resultKind` | `native_error`, `timeout`, `cancelled`, `process_launch_error`, `process_exit`, `request_io_error`, `response_io_error`, `decode_error`, `invalid_response`, `app_error`, `protection_failed` |
 | `nativeCategory` | `detection`, `session_open`, `storage_read`, `inventory_read`, `object_read`, `allocation`, `invalid_argument`, `unspecified` |
-| `nativeCodeNamespace` | `terento_snapshot`, `terento_inventory`, `terento_file_prefix`, `terento_file_range`, `terento_map_write` |
+| `nativeCodeNamespace` | `terento_snapshot`, `terento_inventory`, `terento_file_prefix`, `terento_file_range`, `terento_map_write`, `terento_map_verify` |
 | `nativeResultCode` | Signed 32-bit integer; present if and only if `nativeCodeNamespace` is present |
 | `retryCount` | Integer 0–255; operation retries, not diagnostic upload attempts |
 | `componentKind` | `main`, `contours`, matching the artifact component kind |
@@ -228,7 +228,10 @@ Optional context fields have these controlled values:
 Booleans are not integers. Native codes describe the named Terento boundary
 (`terento_map_write` is the result of the native map write call, for example
 -4 when no single watch session could be opened and -7 when the transfer
-itself failed);
+itself failed; `terento_map_verify` is the result of the native sampled
+read-back after the write, for example -8 when the fresh watch session could
+not be opened, -9 when a sample could not be read and -11 when the sampled
+bytes differ from the validated source);
 no libmtp namespace or invented libmtp result code is accepted. Optional
 `protection` is a nested closed object requiring `protectionBoundary`
 (`pre-write` or `post-write`) and `protectionReason`, one of:

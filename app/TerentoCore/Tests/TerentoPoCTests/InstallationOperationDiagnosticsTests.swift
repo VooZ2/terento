@@ -50,6 +50,7 @@ private actor DelayedAuthorizationResponse {
         try await testContextualContours()
         try await testResultsAndPrivacy()
         try await testNativeWriteResultCode()
+        try testNativeReadBackResultCode()
         try await testPartialBatchAndPreflight()
         try await testEngineContourPreflightAttribution()
         try await testDisconnectAndCancellation()
@@ -326,6 +327,35 @@ private actor DelayedAuthorizationResponse {
               && events[0].failureContext?.nativeResultCode == -7,
               "the native write result reaches the installation report")
         emittedFixtures += events
+    }
+
+    static func testNativeReadBackResultCode() throws {
+        let error = MTPMapInstallationTransport.verifyError(
+            result: -11, message: "A sampled map region did not match the validated source")
+        let context = error.failureContext
+        check(context?.boundary == .readback && context?.operation == .readback
+              && context?.classificationSource == .native && context?.resultKind == .nativeError
+              && context?.nativeCodeNamespace == .terentoMapVerify && context?.nativeResultCode == -11
+              && !error.isConfirmedDeviceDisconnected,
+              "a generic native read-back failure keeps its read-back result code")
+        check(MTPMapInstallationTransport.verifyError(
+                result: Int32(TERENTO_MTP_MAP_REMOTE_FILE_MISSING), message: "") == .remoteFileMissing
+              && MTPMapInstallationTransport.verifyError(
+                result: Int32(TERENTO_MTP_MAP_OBJECT_ID_MISMATCH), message: "") == .objectIdentityMismatch,
+              "specific native read-back results keep their own failure and retry behaviour")
+        check(MTPMapInstallationTransport.verifyError(
+                result: Int32(TERENTO_MTP_MAP_UNSUPPORTED_DEVICE), message: "") == .unsupportedDevice
+              && MTPMapInstallationTransport.verifyError(
+                result: Int32(TERENTO_MTP_MAP_IDENTITY_MISMATCH), message: "") == .liveIdentityMismatch,
+              "unsupported-device and identity-mismatch read-back results keep their own failure")
+        // The sampled read-back runs in the finishing worker; its error crosses
+        // the JSON response file to the parent before the coordinator sees it.
+        let encoded = try JSONEncoder().encode(MTPFinishingWorker.Response(error: error))
+        let decoded = try MTPFinishingWorker.decodeResponse(encoded, operation: .samples)
+        check(decoded.error == error && decoded.error?.failureContext == context
+              && decoded.error?.failureContext?.nativeCodeNamespace == .terentoMapVerify
+              && decoded.error?.failureContext?.nativeResultCode == -11,
+              "the native read-back result survives the worker response round trip unchanged")
     }
 
     @MainActor static func testEngineContourPreflightAttribution() async throws {
