@@ -3,15 +3,23 @@
 ## Next release server-first acceptance
 
 Deploy and verify this API before any client that sends it is published. It
-adds the failure-context native code namespace `terento_map_verify`, the
-result of the native sampled read-back after a complete map write
-([shared contract](README.md#structured-installation-failure-context)).
-Released clients through 1.0.1 report such a failure only as a derived
-`app_error` readback context with `nativeFailureCode=READBACK_FAILED`, so
-Admin cannot tell an unreadable sample from sampled bytes that differ from the
-source. The 1.0.1 API rejects the new namespace with `400`; a report sent to
-it would stay parked on the Mac until this API is deployed. This native code
-changes no route, field, migration or other payload.
+adds:
+
+- the failure-context native code namespace `terento_map_verify`, the
+  result of the native sampled read-back after a complete map write
+  ([shared contract](README.md#structured-installation-failure-context)).
+  Released clients through 1.0.1 report such a failure only as a derived
+  `app_error` readback context with `nativeFailureCode=READBACK_FAILED`, so
+  Admin cannot tell an unreadable sample from sampled bytes that differ from
+  the source;
+- the optional protection field `affectedFolder` (closed list of `/GARMIN`
+  folder names and coarse buckets, only with an added/removed/changed
+  protection reason). Released clients through 1.0.1 never send it, so a
+  protection stop cannot say which watch file changed.
+
+The 1.0.1 API rejects both with `400`; a report sent to it would stay parked
+on the Mac until this API is deployed. These two additions change no route,
+migration or other payload.
 
 ### OSMapaPL (planned for 1.0.2)
 
