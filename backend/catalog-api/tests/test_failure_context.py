@@ -1,12 +1,13 @@
 """Schema/runtime parity, privacy, persistence, and per-result context presentation."""
 from copy import deepcopy
 import json
+import re
 from pathlib import Path
 import unittest
 
 from jsonschema import Draft202012Validator
 from terento_catalog.compatibility_evidence import validate_event, EvidenceValidationError
-from terento_catalog.failure_context import CONTEXT_ENUMS, PROTECTION_ENUMS, COUNT_FIELDS, TARGET_FIELDS, BOUNDARIES, BOUNDARY_STAGES
+from terento_catalog.failure_context import CONTEXT_ENUMS, PROTECTION_ENUMS, COUNT_FIELDS, TARGET_FIELDS, BOUNDARIES, BOUNDARY_STAGES, AFFECTED_FOLDERS, DELTA_REASONS
 from terento_catalog.admin import _github_issue_report, _diagnostic_technical_details
 from test_operation_diagnostic_delivery import IntakeDatabase
 from test_compatibility_evidence import event as legacy_event
@@ -247,6 +248,61 @@ class FailureContextTests(unittest.TestCase):
         candidate.update(failureStage='write', failureCode='INSTALL_FAILED_WRITE', writeStarted=True,
                          phaseOutcome='FAILED', automaticFinishingResult='FAILED', nativeFailureCode='SEND_OBJECT_FAILED')
         self.check(candidate)
+
+    def test_affected_folder_is_a_closed_coarse_location(self):
+        schema = self.schema.schema['$defs']['failureContext']['properties']['protection']['properties']
+        self.assertEqual(schema['affectedFolder']['enum'], list(AFFECTED_FOLDERS))
+        support = json.loads((ROOT / 'contracts/support-report.schema.json').read_text())
+        support_lists = []
+
+        def collect(node):
+            if isinstance(node, dict):
+                if 'affectedFolder' in node.get('properties', {}):
+                    support_lists.append(node['properties']['affectedFolder']['enum'])
+                for value in node.values():
+                    collect(value)
+            elif isinstance(node, list):
+                for value in node:
+                    collect(value)
+        collect(support)
+        self.assertEqual(support_lists, [list(AFFECTED_FOLDERS)])
+        for folder in ('Metrics', 'Sleep', 'map-file', 'garmin-root', 'garmin-other', 'outside-garmin'):
+            for key in ('failureContext', 'originalFailureContext'):
+                with self.subTest(folder=folder, key=key):
+                    candidate = fixture('cleanup')
+                    if key == 'failureContext':
+                        candidate['failureContext'] = candidate.pop('originalFailureContext')
+                        candidate['failureStage'] = 'verify'
+                    candidate[key]['protection']['affectedFolder'] = folder
+                    self.check(candidate)
+        for hostile in ('/GARMIN/Metrics/private.fit', 'metrics', 'Music', '', None, 1, ['Metrics']):
+            with self.subTest(hostile=hostile):
+                candidate = fixture('cleanup')
+                candidate['originalFailureContext']['protection']['affectedFolder'] = hostile
+                self.check(candidate, False)
+        for reason in PROTECTION_ENUMS['protectionReason']:
+            if reason in DELTA_REASONS:
+                continue
+            with self.subTest(reason=reason):
+                candidate = fixture('cleanup')
+                context = candidate['originalFailureContext']
+                context['protection'] = {'protectionReason': reason, 'protectionBoundary': 'post-write',
+                                         'affectedFolder': 'Metrics'}
+                if reason == 'target-present-before-write':
+                    context['boundary'] = 'prewrite_protection'
+                    context['protection']['protectionBoundary'] = 'pre-write'
+                self.check(candidate, False)
+        # The app's closed enum sends exactly these values, in this order.
+        swift = (ROOT / 'app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift').read_text()
+        enum = swift.split('enum AffectedFolder', 1)[1].split('\n    }\n', 1)[0]
+        self.assertEqual(re.findall(r'= "([^"]+)"', enum), list(AFFECTED_FOLDERS))
+        declined = fixture('cleanup-declined')
+        declined['originalFailureContext']['protection']['affectedFolder'] = 'Metrics'
+        self.check(declined)
+        row = {'map_result_index': 0, 'failure_context': declined['originalFailureContext']}
+        _, report = _github_issue_report('Test watch', [row])
+        self.assertIn('Failure affectedfolder: Metrics', report)
+        self.assertIn('affectedFolder', _diagnostic_technical_details(row, 1))
 
     def test_map_verify_native_code(self):
         # Next client: the native sampled read-back result after a complete

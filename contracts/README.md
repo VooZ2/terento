@@ -9,6 +9,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `map-catalog.schema.json` | `GET /maps/catalog.json` | `schemaVersion: 2`, legacy `catalogVersion: 1` |
 | `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; Freizeitkarte, OpenTopoMap, MapRando |
 | `map-catalog.schema.json` | `GET /maps/catalog-v4.json` | same body versions; adds BBBike and its two map types |
+| `map-catalog.schema.json` | `GET /maps/catalog-v5.json` | same body versions; adds OSMapaPL (`osmapa`), its four map types and `conflictGroup`; for 1.0.2 and later |
 | `device-catalog.schema.json` | `GET /devices/catalog.json` | independent `catalogVersion: 2` |
 | `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
@@ -110,9 +111,14 @@ package make the whole catalog incompatible, which the client reports as
 "update Terento" rather than a connection problem. Acquisition re-validates only
 the package being acquired against the current catalog. Release and deploy gates
 still require every published package to pass the strict client validator. v4 additionally exposes
-BBBike with `bbbike-latin1` and `ontrail-latin1` map types. Catalog body versions
+BBBike with `bbbike-latin1` and `ontrail-latin1` map types. v5 additionally exposes
+OSMapaPL (`osmapa`) for clients from 1.0.2: map types `podstawowa`, `ogonki`, `light` and
+`warstwice` (contour lines as a standalone package), each for Poland and Poland with border areas,
+and `conflictGroup`: two packages of one group share a Garmin family ID and tiles and must not be
+on one device; the client blocks and never deletes automatically. Released 1.0.x clients never
+receive `osmapa`. Catalog body versions
 remain unchanged. Source activation and exact-model evidence are separate.
-MapRando/BBBike versions may include an optional day; legacy provider versions
+MapRando/BBBike/OSMapaPL versions may include an optional day; legacy provider versions
 retain their existing meanings.
 
 `released-catalog-clients.json` pins a published source revision for each route.
@@ -242,6 +248,20 @@ server change does not implement or validate that comparator. Optional
 Before/after counts cover all observed entries; deltas cover non-target objects.
 Omit deltas when inventories cannot be paired. Never clamp an observed count
 to fit the bound.
+
+Optional `affectedFolder` (apps newer than 1.0.1) is allowed only with
+`non-target-object-added`, `preexisting-object-removed` or
+`preexisting-object-changed`. It names where the first object (in path order)
+of the set that decided the reason lives, as one closed value: a standard
+`/GARMIN` folder name in Garmin spelling (`Activity`, `Apps`, `Courses`,
+`Debug`, `Device`, `ErrLogs`, `Goals`, `Locations`, `Map`, `Metrics`,
+`Monitor`, `NewFiles`, `Records`, `RemoteSW`, `Schedules`, `Settings`, `Sleep`,
+`Sports`, `Text`, `TLG`, `Totals`, `Workouts`), `map-file` (any `.img`, `.gma`,
+`.unl` or `.sid` file), `garmin-root` (an object directly in `/GARMIN`),
+`garmin-other` (any other `/GARMIN` folder) or `outside-garmin`. Folder names
+are matched case-insensitively; a path, filename or unlisted name is never
+sent. It is a diagnostic observation only and never tolerates or authorizes a
+change.
 
 Optional `targetPresent`, `targetUnique`, `targetKindMatches`,
 `targetFilenameMatches`, `targetSizeMatches`, `targetPathMatches` and

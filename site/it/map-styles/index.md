@@ -7,7 +7,7 @@ Stili di mappa
 
 # Confronta le mappe Garmin gratuite prima di installarle
 
-Guarda come cinque stili di mappa gratuiti disegnano lo stesso luogo. Scegli una zona, un sentiero o una città popolare, poi confronta curve di livello, sentieri, strade ed etichette.
+Guarda come quattro stili di mappa gratuiti disegnano lo stesso luogo. Scegli una zona, un sentiero o una città popolare, poi confronta curve di livello, sentieri, strade ed etichette.
 
 Luogo
 
@@ -15,7 +15,7 @@ Luogo
 
 Stile della mappa a sinistra Stile della mappa a destra
 
-Informazioni sui cinque stili di mappa
+Informazioni sui quattro stili di mappa
 
 ### Freizeitkarte
 
@@ -42,14 +42,6 @@ Per esplorare i sentieri minori a piedi.
 - Le nuove edizioni integrano le modifiche di OpenStreetMap
 
 Alcune etichette della mappa sono in francese.
-
-### BBBike
-
-Per esplorare strade, piste ciclabili e dintorni.
-
-- Stili distinti per strade, piste ciclabili e percorsi pedonali
-- Edifici, parchi e boschi per orientarsi
-- Mappe regionali aggiornate ogni settimana
 
 ### BBBike (Ontrail)
 

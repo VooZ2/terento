@@ -7,7 +7,7 @@ Kartenstile
 
 # Kostenlose Garmin-Karten vor der Installation vergleichen
 
-Sieh, wie fünf kostenlose Kartenstile denselben Ort darstellen. Wähle ein beliebtes Gebiet, einen Weg oder eine Stadt und vergleiche Höhenlinien, Wege, Straßen und Beschriftungen.
+Sieh, wie vier kostenlose Kartenstile denselben Ort darstellen. Wähle ein beliebtes Gebiet, einen Weg oder eine Stadt und vergleiche Höhenlinien, Wege, Straßen und Beschriftungen.
 
 Ort
 
@@ -15,7 +15,7 @@ Ort
 
 Kartenstil links Kartenstil rechts
 
-Über die fünf Kartenstile
+Über die vier Kartenstile
 
 ### Freizeitkarte
 
@@ -42,14 +42,6 @@ Zum Erkunden kleinerer Wege zu Fuß.
 - Neue Ausgaben übernehmen Änderungen aus OpenStreetMap
 
 Einige Kartenbeschriftungen sind auf Französisch.
-
-### BBBike
-
-Zum Erkunden von Straßen, Radwegen und ihrer Umgebung.
-
-- Unterschiedliche Darstellung von Straßen, Rad- und Fußwegen
-- Gebäude, Parks und Wälder zur Orientierung
-- Wöchentlich aktualisierte Regionalkarten
 
 ### BBBike (Ontrail)
 

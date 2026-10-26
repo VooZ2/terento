@@ -77,6 +77,11 @@ def inspect_artifact(row):
         m = inspect_bbbike(url,row['provider_region_id'],row['map_type'])
         return dict(size_bytes=m.download_size_bytes, install_size_bytes=m.install_size_bytes,
                     install_payload_path=m.payload_path,source_proof=m.source_proof,source_updated_at=m.generated_at)
+    if provider == 'osmapa':
+        from .osmapa import inspect_osmapa
+        m = inspect_osmapa(url,*row['provider_region_id'].split('-',1))
+        return dict(size_bytes=m.download_size_bytes, install_size_bytes=m.install_size_bytes,
+                    install_payload_path=m.payload_path,source_proof=m.source_proof,source_updated_at=m.generated_at)
     if provider == 'maprando':
         from .maprando import inspect_maprando_img
         m=inspect_maprando_img(url, fetcher=HTTPRangeFetcher(timeout_seconds=15, max_response_bytes=512, opener=opener))

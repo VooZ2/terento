@@ -74,6 +74,11 @@ struct ProtectedMapInventory: Sendable {
 
     private static let mapSuffixes: Set<String> = ["img", "gma", "unl", "sid"]
 
+    /// A plain file bearing a map suffix, wherever it is stored.
+    static func isMapFile(_ file: DeviceFile) -> Bool {
+        !file.isFolder && mapSuffixes.contains((file.filename as NSString).pathExtension.lowercased())
+    }
+
     init(files: [DeviceFile], forcedLocations: Set<Location> = []) throws {
         var locations: [Location: DeviceFile] = [:]
         var handles = Set<UInt32>()

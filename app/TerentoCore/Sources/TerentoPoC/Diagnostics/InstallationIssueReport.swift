@@ -323,6 +323,7 @@ enum InstallationIssueReport {
             ("Added object count", count(protection?.addedObjectCount)),
             ("Removed object count", count(protection?.removedObjectCount)),
             ("Changed object count", count(protection?.changedObjectCount)),
+            ("Affected folder", protection?.affectedFolder?.rawValue),
             ("Target present", flag(protection?.targetPresent)),
             ("Target unique", flag(protection?.targetUnique)),
             ("Target kind matches", flag(protection?.targetKindMatches)),

@@ -142,8 +142,23 @@ BBBIKE = ProviderDefinition(
     default_status="PAUSED",
 )
 
+OSMAPA = ProviderDefinition(
+    id="osmapa", name="OSMapaPL", adapter_id="osmapa",
+    website="https://osmapa-garmin.las.org.pl/",
+    catalog_url="https://osmapa-garmin.las.org.pl/",
+    # Owner decision 2026-10-26: use is treated as permitted without a written
+    # LAS licence (as MapRando); the source publishes no licence text.
+    license=("Map data © OpenStreetMap contributors (ODbL); OSMapaPL by OSMapa volunteers and "
+             "Fundacja Centrum Badań nad Lasem i Zasobami Przyrodniczymi."),
+    attribution=("Map data © OpenStreetMap contributors (ODbL); OSMapaPL by OSMapa volunteers and "
+                 "Fundacja Centrum Badań nad Lasem i Zasobami Przyrodniczymi"),
+    license_url="https://www.openstreetmap.org/copyright",
+    # Not offered until the hardware activation gate passes.
+    default_status="PAUSED",
+)
+
 KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
-    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE)
+    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE, OSMAPA)
 }
 
 # Main package membership stays independent of optional contour availability.

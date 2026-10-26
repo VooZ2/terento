@@ -22,7 +22,7 @@ class CatalogAPITests(unittest.TestCase):
             response, body = self._request(server, "GET", "/admin/providers.json", headers={"Cookie": cookie})
             self.assertEqual(response.status, 200)
             self.assertEqual({provider["id"] for provider in json.loads(body)["providers"]},
-                             {"freizeitkarte", "opentopomap", "maprando", "bbbike"})
+                             {"freizeitkarte", "opentopomap", "maprando", "bbbike", "osmapa"})
             self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
 
             with patch.object(service, "admin_devices", return_value={"devices": []}):

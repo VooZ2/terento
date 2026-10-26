@@ -14,7 +14,7 @@ MAX_EVENT_BYTES = 16_384
 # `custom` is a local IMG source, not a map provider. It is accepted here so
 # shared custom installs can contribute device compatibility evidence while
 # the client sends only the coarse custom/custom/custom labels.
-SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "maprando", "bbbike", "custom"})
+SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "maprando", "bbbike", "osmapa", "custom"})
 ALLOWED_KEYS = {
     "operationKind", "oldMapPreserved",
     "failureContext", "originalFailureContext", "inventoryMetrics",

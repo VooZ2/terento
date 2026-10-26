@@ -11,7 +11,7 @@ Terento est conçu pour les montres Garmin prenant en charge les cartes. Vous tr
 
 L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
 
-**34** modèles avec des installations réussies**303** installations réussiesDernière installation réussie 25 octobre 2026
+**36** modèles avec des installations réussies**313** installations réussiesDernière installation réussie 26 octobre 2026
 
 Comment fonctionne cette liste
 
@@ -21,7 +21,7 @@ Les résultats d’installation sont partagés avec Terento par les utilisateurs
 
 La version actuelle comprend quatre fournisseurs de cartes. Cette information produit est distincte des résultats d’appareils présentés ici.
 
-34 modèles
+36 modèles
 
 fēnix
 
@@ -29,11 +29,11 @@ fēnix
 
 47 mm, AMOLED
 
-51 installations réussies
+53 installations réussies
 
-App 51
+App 53
 
-Dernière installation réussie 20 octobre 2026
+Dernière installation réussie 26 octobre 2026
 
 Forerunner
 
@@ -157,6 +157,18 @@ Dernière installation réussie 22 octobre 2026
 
 fēnix
 
+### fēnix 8 Pro
+
+51 mm, AMOLED, inReach
+
+9 installations réussies
+
+App 9
+
+Dernière installation réussie 23 octobre 2026
+
+fēnix
+
 ### fēnix 8
 
 51 mm, AMOLED
@@ -202,18 +214,6 @@ Solar, (no Wi-Fi)
 App 6
 
 Dernière installation réussie 12 octobre 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
-
-6 installations réussies
-
-App 6
-
-Dernière installation réussie 16 septembre 2026
 
 fēnix
 
@@ -301,6 +301,18 @@ Dernière installation réussie 23 septembre 2026
 
 fēnix
 
+### fēnix 6 Pro
+
+47 mm, MIP, Historical
+
+3 installations réussies
+
+Web 3
+
+Dernière installation réussie 20 octobre 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 51 mm, MIP, Solar, inReach
@@ -358,6 +370,18 @@ MIP, Solar
 App 2
 
 Dernière installation réussie 23 octobre 2026
+
+fēnix
+
+### fēnix 6X Pro
+
+51 mm, MIP, Historical
+
+2 installations réussies
+
+App 2
+
+Dernière installation réussie 24 octobre 2026
 
 fēnix
 
