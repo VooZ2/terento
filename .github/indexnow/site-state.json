@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "ed0a4dd2770e95b5679978491125a7b75d15e897",
+    "commit": "9d82ea736b9592a88b210a098234d95aa92c8947",
     "pages": [
       {
         "path": "/",
@@ -10,8 +10,8 @@
         "file": "site/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "58b37d7547f2ce5af270785bba7a83f4d585b8792aeac1dda5440c1047ad2f07",
-        "lastmod": "2026-10-17"
+        "fingerprint": "1db024ae01f750c8563f6925e3015e185350fbf862e334e2b2e52e569cfaa3ce",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/about/",
@@ -28,7 +28,7 @@
         "file": "site/compatibility/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "9999180f912a4d7ce34ac127584687e93e6104f366d547bbbdd0a6ea01feb402",
+        "fingerprint": "7481b7bdcdcbc1f5846b41adba7c9e7a38e944ef703d33bed8aa850140cd4866",
         "lastmod": "2026-10-26"
       },
       {
@@ -37,8 +37,8 @@
         "file": "site/cs/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "0f0a0a36b5217780d5fcdcb79e196e1297ae1fe4b641400d775ee4e8d92047bf",
-        "lastmod": "2026-10-17"
+        "fingerprint": "ed794c5248872a02222ea89e2aba58a21594e874df072e858653a4df279d03b7",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/cs/about/",
@@ -55,7 +55,7 @@
         "file": "site/cs/compatibility/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "939aff79d86d3dfa9bc3c8af8b7e8e31826724d64b804048e52f7d5cb34c8cca",
+        "fingerprint": "954c2532b973543ac26178e357426d88cae644e1438768a066b40f07f5627bfa",
         "lastmod": "2026-10-26"
       },
       {
@@ -91,7 +91,7 @@
         "file": "site/cs/map-styles/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "c65127f1567b5faf046987a51967ce8c0743b206733343cb436c7fb542a27677",
+        "fingerprint": "f4751fd326767b1de0ad8677589e3792483a573ff2103b30352a8fd9a42f2d71",
         "lastmod": "2026-10-26"
       },
       {
@@ -100,8 +100,8 @@
         "file": "site/de/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "4210430a67754f7d62b4959cc716b6e4df220001f254418117aacbbaf03d42dd",
-        "lastmod": "2026-10-17"
+        "fingerprint": "c5a3f168dde6886d644a6e1697990caca6a8acdacab38ae9a7201cf8c020a46c",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/de/about/",
@@ -118,7 +118,7 @@
         "file": "site/de/compatibility/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "853fac68bef1b631f8ee8163d9f02e61f6d8c761562ac66e79e5411fabeaa019",
+        "fingerprint": "a5575d21d1f7325cf20fb82a467eef83b61d1fce1cb54376c9b93d14749812ca",
         "lastmod": "2026-10-26"
       },
       {
@@ -154,7 +154,7 @@
         "file": "site/de/map-styles/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "33e3383d867894a2ae1cca25870a1b76dc957d0b3f2c61158988622dc252c389",
+        "fingerprint": "8c1c72ef427ead80df11ed7cd2e14353b9134cb646dadee3566db48e25ae298c",
         "lastmod": "2026-10-26"
       },
       {
@@ -172,8 +172,8 @@
         "file": "site/fr/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "449482d2c1c90c63c9a34d19fed9d7bc834c3e7f6f97934549a377058c557195",
-        "lastmod": "2026-10-17"
+        "fingerprint": "167d8a6dfbe51d03bbcb340dd4f538ef3d2585ef5e47b99dca3696790a25a0c0",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/fr/about/",
@@ -190,7 +190,7 @@
         "file": "site/fr/compatibility/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "23b0b8788e84ebf7c7c44cee404ba0eb6d447927c0b8fc06ab1c76aca4a7d81d",
+        "fingerprint": "b1dda6b3be345057a1d2cdcaff71b36cd83f6c2d6eccdd40e61d748c3584c4af",
         "lastmod": "2026-10-26"
       },
       {
@@ -226,7 +226,7 @@
         "file": "site/fr/map-styles/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "a30d4e9cc9f6078e9a005db8a95961a36cb7f2f97ca06b90696772aab1eb8732",
+        "fingerprint": "5d7a54f78b017061b8a7bd261f1767805e20ee425a512360e2baede18bfcbf98",
         "lastmod": "2026-10-26"
       },
       {
@@ -253,8 +253,8 @@
         "file": "site/it/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "0ece0d783c4dd32ba32707477bd174da5445df42279c89a0f31cd3ba3b6c1891",
-        "lastmod": "2026-10-17"
+        "fingerprint": "053d2eaab6d6ba588467070ac1d92249fd8875fea44b84d02babd23292344624",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/it/about/",
@@ -271,7 +271,7 @@
         "file": "site/it/compatibility/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "f027774aba052ef92c3a9165e6fb1a3aa9528c0f29fb0796371c2ea216f4e9a1",
+        "fingerprint": "c3570e865108425b8650aba7a0e02bb23b187fde39a95aca5becd5357c265388",
         "lastmod": "2026-10-26"
       },
       {
@@ -307,7 +307,7 @@
         "file": "site/it/map-styles/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "8c87eec693828eb8a229e7e99d4f1c93004699e3fbfb0d0b08571602b69a5506",
+        "fingerprint": "af08847ceccb67ff16efd20bfd56f34ac49cf655098dfee8f2ff4f8f7e8cf4c1",
         "lastmod": "2026-10-26"
       },
       {
@@ -316,8 +316,8 @@
         "file": "site/legal/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "ef31054ed0aa81dca3bb4ad653ed30b0a457f04fd8aba55b2ee671b1cd1cb736",
-        "lastmod": "2026-10-15"
+        "fingerprint": "534e44495ae6ffaa90fd7b60e4b5a0ca99b895a4b64d8377f0ddb1d409844b8e",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/map-styles/",
@@ -325,7 +325,7 @@
         "file": "site/map-styles/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "c7e25951e9781f277839b0dfb8ab67b626b6735787f354d80c929d50aba63c72",
+        "fingerprint": "46dd58f142df8aaa1e6c0df0492cb0b94c3d115efe21499b0daab42abe84e85b",
         "lastmod": "2026-10-26"
       },
       {
@@ -334,8 +334,8 @@
         "file": "site/pl/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "75973f476edc26a27c50ea32019c474f7db5a2f5151cf09938b61c27304ab730",
-        "lastmod": "2026-10-17"
+        "fingerprint": "c88ae6b76f82aa4b6fc5fda00beace123475e806b6fff33c9110463c835a639c",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/pl/about/",
@@ -352,7 +352,7 @@
         "file": "site/pl/compatibility/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "d0934a6088a5975b86269d1547e44caeafa5cdab5605ba2a10c6cc1576cf15c4",
+        "fingerprint": "957eba8bffc652b802b6a90941d6eb1a73a7f81f4d0c78920e6ce3da1a256612",
         "lastmod": "2026-10-26"
       },
       {
@@ -388,7 +388,7 @@
         "file": "site/pl/map-styles/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "ee1abfd72a8a8a84ae872488692301bd6791ebb3bfa2fcb42d44e89448604b9e",
+        "fingerprint": "7fc5ca1e4272db2a9f090ab8f9d186c657e4f7880cd193d5d04dfbffee1768c6",
         "lastmod": "2026-10-26"
       },
       {
@@ -397,8 +397,8 @@
         "file": "site/privacy/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "24d6f1cd4c6ce7781c36082a9857ea98d17f69c1040b56246a5c67b90b196720",
-        "lastmod": "2026-10-17"
+        "fingerprint": "d6fec65d9cbfe0d8f35e24673043f2198c8899fb3c6cdc0edf94813a7dac407d",
+        "lastmod": "2026-10-26"
       }
     ]
   },
@@ -3997,21 +3997,141 @@
         "fingerprint": "ee1abfd72a8a8a84ae872488692301bd6791ebb3bfa2fcb42d44e89448604b9e",
         "status": 200,
         "acceptedAt": "2026-10-26T14:23:31Z"
+      },
+      {
+        "url": "https://terento.app/",
+        "fingerprint": "1db024ae01f750c8563f6925e3015e185350fbf862e334e2b2e52e569cfaa3ce",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "7481b7bdcdcbc1f5846b41adba7c9e7a38e944ef703d33bed8aa850140cd4866",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/cs/",
+        "fingerprint": "ed794c5248872a02222ea89e2aba58a21594e874df072e858653a4df279d03b7",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "954c2532b973543ac26178e357426d88cae644e1438768a066b40f07f5627bfa",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/cs/map-styles/",
+        "fingerprint": "f4751fd326767b1de0ad8677589e3792483a573ff2103b30352a8fd9a42f2d71",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/de/",
+        "fingerprint": "c5a3f168dde6886d644a6e1697990caca6a8acdacab38ae9a7201cf8c020a46c",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "a5575d21d1f7325cf20fb82a467eef83b61d1fce1cb54376c9b93d14749812ca",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/de/map-styles/",
+        "fingerprint": "8c1c72ef427ead80df11ed7cd2e14353b9134cb646dadee3566db48e25ae298c",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/fr/",
+        "fingerprint": "167d8a6dfbe51d03bbcb340dd4f538ef3d2585ef5e47b99dca3696790a25a0c0",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "b1dda6b3be345057a1d2cdcaff71b36cd83f6c2d6eccdd40e61d748c3584c4af",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/fr/map-styles/",
+        "fingerprint": "5d7a54f78b017061b8a7bd261f1767805e20ee425a512360e2baede18bfcbf98",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/it/",
+        "fingerprint": "053d2eaab6d6ba588467070ac1d92249fd8875fea44b84d02babd23292344624",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "c3570e865108425b8650aba7a0e02bb23b187fde39a95aca5becd5357c265388",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/it/map-styles/",
+        "fingerprint": "af08847ceccb67ff16efd20bfd56f34ac49cf655098dfee8f2ff4f8f7e8cf4c1",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/legal/",
+        "fingerprint": "534e44495ae6ffaa90fd7b60e4b5a0ca99b895a4b64d8377f0ddb1d409844b8e",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/map-styles/",
+        "fingerprint": "46dd58f142df8aaa1e6c0df0492cb0b94c3d115efe21499b0daab42abe84e85b",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/pl/",
+        "fingerprint": "c88ae6b76f82aa4b6fc5fda00beace123475e806b6fff33c9110463c835a639c",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "957eba8bffc652b802b6a90941d6eb1a73a7f81f4d0c78920e6ce3da1a256612",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/pl/map-styles/",
+        "fingerprint": "7fc5ca1e4272db2a9f090ab8f9d186c657e4f7880cd193d5d04dfbffee1768c6",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/privacy/",
+        "fingerprint": "d6fec65d9cbfe0d8f35e24673043f2198c8899fb3c6cdc0edf94813a7dac407d",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-10-26T14:23:30Z",
-    "lastSuccessfulSubmissionAt": "2026-10-26T14:23:30Z",
+    "lastSubmissionAt": "2026-10-26T22:37:03Z",
+    "lastSuccessfulSubmissionAt": "2026-10-26T22:37:03Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-10-26T14:23:31Z",
+    "at": "2026-10-26T22:37:04Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 6,
-    "accepted": 6,
+    "planned": 20,
+    "accepted": 20,
     "pending": 0,
-    "previousAccepted": 593
+    "previousAccepted": 599
   }
 }
