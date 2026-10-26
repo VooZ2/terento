@@ -156,6 +156,11 @@ runtime dependencies.
 - `GET /internal/operations/report-context` exposes bounded provider catalog
   freshness and release-change metadata to the weekly workflow under the same
   independent bearer secret. It is not a public catalog endpoint.
+- `GET /internal/attention` gives a read-only operator agent the Dashboard
+  Needs attention work (open installation and update problems, open support
+  reports, failed Health checks) as sanitised JSON. It requires a bearer token
+  whose SHA-256 digest is configured as `ADMIN_READ_TOKEN_SHA256` and grants no
+  Admin page or write ([contract](docs/api.md#get-internalattention)).
 - `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
   projection while retaining catalog version 1 fields for existing macOS
   clients. The response includes `ETag`, `Last-Modified`, and cache headers and

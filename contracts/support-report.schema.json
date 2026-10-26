@@ -440,7 +440,8 @@
             "terento_inventory",
             "terento_file_prefix",
             "terento_file_range",
-            "terento_map_write"
+            "terento_map_write",
+            "terento_map_verify"
           ]
         },
         "componentKind": {
