@@ -335,6 +335,8 @@ struct ReviewedProviderURLPolicy: Sendable {
 
     static let mapRando = ReviewedProviderURLPolicy(allowedHosts: ["ravenfeld.fr"])
 
+    static let osmapa = ReviewedProviderURLPolicy(allowedHosts: [OSMapaProviderAdapter.sourceHost])
+
     let allowedHosts: Set<String>
 
     init(allowedHosts: Set<String>) {
@@ -367,6 +369,9 @@ struct ReviewedProviderURLPolicy: Sendable {
                 throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
             }
         }
+        if host == OSMapaProviderAdapter.sourceHost, OSMapaProviderAdapter.reviewedSource(url) == nil {
+            throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+        }
     }
 }
 
@@ -379,7 +384,8 @@ struct ReviewedProviderURLPolicyRegistry: Sendable {
             "freizeitkarte": .freizeitkarte,
             "opentopomap": .openTopoMap,
             "maprando": .mapRando,
-            "bbbike": .bbbike
+            "bbbike": .bbbike,
+            "osmapa": .osmapa
         ]
     )
 
@@ -559,7 +565,9 @@ private final class ReviewedProviderRedirectDelegate: NSObject, URLSessionTaskDe
 
         do {
             try policy.validate(url)
-            guard !policy.allowedHosts.contains("data.bbbike.org") else {
+            // Proof-bound providers are measured without redirects.
+            guard !policy.allowedHosts.contains("data.bbbike.org"),
+                  !policy.allowedHosts.contains(OSMapaProviderAdapter.sourceHost) else {
                 throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
             }
             completionHandler(request)
@@ -1884,6 +1892,10 @@ struct MapPackageAcquirer: Sendable {
            BBBikeProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
             throw MapAcquisitionError.invalidPackage("The BBBike source proof is incomplete. Refresh the catalog.")
         }
+        if MapIdentity.normalizeProvider(acquisitionPackage.providerId) == "osmapa",
+           OSMapaProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
+            throw MapAcquisitionError.invalidPackage("The OSMapaPL source proof is incomplete. Refresh the catalog.")
+        }
         let acquisitionWorkspace: MapAcquisitionWorkspace
         do {
             if let suppliedWorkspace = requestedWorkspace {
@@ -2013,6 +2025,10 @@ struct MapPackageAcquirer: Sendable {
            (format != .zip || downloadSize != package.expectedDownloadSizeBytes) {
             throw MapAcquisitionError.invalidPackage("The BBBike package changed. Refresh the catalog.")
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "osmapa",
+           (format != .zip || downloadSize != package.expectedDownloadSizeBytes) {
+            throw MapAcquisitionError.invalidPackage("The OSMapaPL package changed. Refresh the catalog.")
+        }
         let imgURL: URL
         switch format {
         case .rawIMG:
@@ -2022,6 +2038,16 @@ struct MapPackageAcquirer: Sendable {
             if let proof = package.mainArtifact?.sourceProof, MapIdentity.normalizeProvider(package.providerId) == "bbbike" {
                 try BBBikeArchiveSafety.validate(archiveURL: workspace.downloadURL,
                     expectedPayloadPath: proof.payloadPath, expectedIMGBytes: proof.installSizeBytes)
+            }
+            if MapIdentity.normalizeProvider(package.providerId) == "osmapa" {
+                guard let proof = package.mainArtifact?.osmapaSourceProof else {
+                    throw MapAcquisitionError.invalidPackage("The OSMapaPL source proof is incomplete. Refresh the catalog.")
+                }
+                do {
+                    try OSMapaArchiveSafety.validate(archiveURL: workspace.downloadURL, proof: proof)
+                } catch {
+                    throw MapAcquisitionError.invalidPackage("The OSMapaPL package changed. Refresh the catalog.")
+                }
             }
             try archiveExtractor.extract(
                 archiveURL: workspace.downloadURL,
@@ -2166,6 +2192,12 @@ struct MapPackageAcquirer: Sendable {
                 throw MapAcquisitionError.ambiguousIMG
             }
             return candidates[0].url
+        }
+        if MapIdentity.normalizeProvider(expectedPackage.providerId) == "osmapa" {
+            guard candidates.count == 1,
+                  candidates[0].url.standardizedFileURL == extractionDirectory.appendingPathComponent("gmapsupp.img").standardizedFileURL else {
+                throw MapAcquisitionError.ambiguousIMG
+            }
         }
         let matching = candidates.filter { metadata in
             guard let expectedIdentity = expectedPackage.identity,
@@ -2315,5 +2347,85 @@ extension BBBikeSourceProof {
             return .invalidPackage("The BBBike source did not return the reviewed file.")
         }
         return .providerSourceUpdated(providerId: "bbbike")
+    }
+}
+
+/// Inspects the downloaded OSMapaPL ZIP before extraction: exactly the
+/// reviewed bytes, one deflated `gmapsupp.img` at offset 0 whose size and
+/// CRC-32 equal the catalog proof. The extractor then verifies the data
+/// against that CRC. Nothing in the archive is executed.
+enum OSMapaArchiveSafety {
+    enum Failure: Error { case invalidArchive }
+
+    static func validate(archiveURL: URL, proof: OSMapaSourceProof) throws {
+        let handle = try FileHandle(forReadingFrom: archiveURL)
+        defer { try? handle.close() }
+        let size = try handle.seekToEnd()
+        func require(_ condition: Bool) throws {
+            guard condition else { throw Failure.invalidArchive }
+        }
+        func read(_ offset: UInt64, _ count: UInt64) throws -> [UInt8] {
+            try require(count <= 65_557 && offset <= size && count <= size - offset)
+            try handle.seek(toOffset: offset)
+            let bytes = [UInt8](try handle.read(upToCount: Int(count)) ?? Data())
+            try require(UInt64(bytes.count) == count)
+            return bytes
+        }
+        func number(_ bytes: [UInt8], _ offset: Int, _ count: Int) throws -> UInt64 {
+            try require(offset >= 0 && count <= 8 && offset <= bytes.count && count <= bytes.count - offset)
+            return (0..<count).reduce(UInt64(0)) { $0 | UInt64(bytes[offset + $1]) << ($1 * 8) }
+        }
+        func requireExtraFields(_ extra: [UInt8]) throws {
+            var cursor = 0
+            while cursor < extra.count {
+                let tag = try number(extra, cursor, 2)
+                let length = Int(try number(extra, cursor + 2, 2))
+                // No ZIP64 sizes and no strong encryption header.
+                try require(tag != 0x0001 && tag != 0x9901 && cursor + 4 + length <= extra.count)
+                cursor += 4 + length
+            }
+        }
+        let name = Array("gmapsupp.img".utf8)
+        try require(size == proof.downloadSizeBytes && size >= 22 + 46 + 30 + 2 * UInt64(name.count))
+        let crc = UInt64(proof.crc32, radix: 16)
+        try require(proof.crc32.count == 8 && crc != nil)
+        let tail = try read(size - 22, 22)
+        // One entry and no archive comment, so the end record is the last 22 bytes.
+        try require(try number(tail, 0, 4) == 0x06054b50 && number(tail, 4, 4) == 0
+            && number(tail, 8, 2) == 1 && number(tail, 10, 2) == 1 && number(tail, 20, 2) == 0)
+        let centralSize = try number(tail, 12, 4)
+        let centralOffset = try number(tail, 16, 4)
+        try require(centralSize >= 46 + UInt64(name.count) && centralSize <= 46 + UInt64(name.count) + 256
+            && centralOffset + centralSize == size - 22)
+        let central = try read(centralOffset, centralSize)
+        let flags = try number(central, 8, 2)
+        let centralExtra = Int(try number(central, 30, 2))
+        try require(try number(central, 0, 4) == 0x02014b50 && flags & 0x0041 == 0
+            && number(central, 10, 2) == 8 && number(central, 16, 4) == crc
+            && number(central, 24, 4) == proof.installSizeBytes && number(central, 28, 2) == UInt64(name.count)
+            && number(central, 32, 2) == 0 && number(central, 34, 2) == 0 && number(central, 42, 4) == 0
+            && 46 + name.count + centralExtra == central.count
+            && Array(central[46..<(46 + name.count)]) == name)
+        try requireExtraFields(Array(central[(46 + name.count)...]))
+        let mode = try number(central, 38, 4) >> 16
+        try require(mode & 0xf000 == 0 || mode & 0xf000 == 0x8000)
+        let packed = try number(central, 20, 4)
+        let local = try read(0, 30 + UInt64(name.count))
+        try require(try number(local, 0, 4) == 0x04034b50 && number(local, 6, 2) == flags
+            && number(local, 8, 2) == 8 && number(local, 26, 2) == UInt64(name.count)
+            && Array(local[30...]) == name)
+        let localExtra = try number(local, 28, 2)
+        try require(localExtra <= 256)
+        try requireExtraFields(try read(30 + UInt64(name.count), localExtra))
+        if flags & 8 == 0 {
+            try require(try number(local, 14, 4) == crc && number(local, 18, 4) == packed
+                && number(local, 22, 4) == proof.installSizeBytes)
+        }
+        // The entry fills the archive up to the central directory: no hidden
+        // bytes beyond an optional data descriptor.
+        let dataOffset = 30 + UInt64(name.count) + localExtra
+        try require(dataOffset <= centralOffset && packed <= centralOffset - dataOffset)
+        let gap = centralOffset - dataOffset - packed
+        try require(flags & 8 == 0 ? gap == 0 : (gap == 12 || gap == 16))
     }
 }

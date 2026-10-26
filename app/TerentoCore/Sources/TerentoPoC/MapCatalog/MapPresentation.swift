@@ -88,7 +88,7 @@ enum MapDisplayNameNormalizer: Sendable {
 
         return Dictionary(uniqueKeysWithValues: packages.map { package in
             let base = baseNames[package.id] ?? package.name
-            if MapIdentity.normalizeProvider(package.providerId) == "bbbike" { return (package.id, base) }
+            if ["bbbike", "osmapa"].contains(MapIdentity.normalizeProvider(package.providerId)) { return (package.id, base) }
             guard duplicateProviderNames.contains(duplicateKey(for: package, base: base)) else {
                 return (package.id, base)
             }

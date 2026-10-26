@@ -34,6 +34,13 @@ enum MapSelectionPresentationModel: Sendable {
                    && other.package.mapType != item.package.mapType
                    && (selectedIDs.contains(other.id) || other.comparison.installedMap != nil)
            }) { return false }
+        if !selectedIDs.contains(item.id), MapIdentity.normalizeProvider(item.package.providerId) == "osmapa",
+           let style = OSMapaProviderAdapter.region(item.package.providerRegionId)?.style,
+           items.contains(where: { other in
+               other.id != item.id && MapIdentity.normalizeProvider(other.package.providerId) == "osmapa"
+                   && OSMapaProviderAdapter.region(other.package.providerRegionId)?.style == style
+                   && (selectedIDs.contains(other.id) || other.comparison.installedMap != nil)
+           }) { return false }
 
         let selectedProviderIDs = Set(
             items

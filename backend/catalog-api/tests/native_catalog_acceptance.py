@@ -2,10 +2,12 @@
 
 Mirrors ``MapCatalogLoader.isCompatible`` in
 ``app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapCatalogLoader.swift`` together
-with ``BBBikeProviderAdapter.validIdentity``/``expectedIMGIdentity``,
+with ``BBBikeProviderAdapter``/``OSMapaProviderAdapter`` ``validIdentity`` and
+``expectedIMGIdentity``,
 ``MapPackage.hasUsableMainArtifact`` and the reviewed provider URL policies.
 Released clients reject the *whole* catalog when one package fails, so a
-backend publication must satisfy every rule for every package.
+backend publication must satisfy every rule for every package. OSMapaPL is
+only published in catalog v5, which app 1.0.2 and later read.
 
 Provider-specific IMG identity matching (``MapIdentityMatcher``) is not
 mirrored here; the native released-client gate
@@ -24,6 +26,7 @@ PROVIDER_HOSTS = {
     "opentopomap": {"garmin.opentopomap.org"},
     "maprando": {"ravenfeld.fr"},
     "bbbike": {"data.bbbike.org"},
+    "osmapa": {"osmapa-garmin.las.org.pl"},
 }
 BBBIKE_MAP_TYPES = {"bbbike-latin1", "ontrail-latin1"}
 BBBIKE_PATH = re.compile(
@@ -31,6 +34,10 @@ BBBIKE_PATH = re.compile(
     r"/[a-z0-9]+(?:[-/][a-z0-9]+)*$"
 )
 BBBIKE_EXAMPLE_REGIONS = {"asia/cambodia", "asia/jordan", "europe/luxembourg"}
+OSMAPA_FAMILY_IDS = {"podstawowa": 4, "ogonki": 5, "light": 6, "warstwice": 12}
+OSMAPA_PATH = re.compile(
+    r"^/products/OSMapaPL(ext)?-(PODSTAWOWA|OGONKI|LIGHT|WARSTWICE)-(20[0-9]{6})V([0-9]+\.[0-9]+)_IMG\.zip$")
+OSMAPA_MAXIMUM_IMG_BYTES = 4_294_967_295
 
 
 def _provider(value: Any) -> str:
@@ -97,19 +104,127 @@ def _bbbike_proof_matches(package: dict[str, Any]) -> bool:
         proof.get("sourceURL") == url
         and isinstance(etag, str) and etag.startswith('"') and etag.endswith('"') and len(etag) > 2
         and install_size == package.get("installSizeBytes")
-        and isinstance(install_size, int) and install_size > 0
-        and isinstance(download_size, int) and download_size > 0
-        and bool(re.fullmatch(r"[a-f0-9]{32}", str(proof.get("payloadMD5") or "")))
-        and bool(re.fullmatch(r"[a-f0-9]{64}", str(proof.get("revision") or "")))
+        and _uint(install_size, 2**64 - 1) and install_size > 0
+        and _uint(download_size, 2**64 - 1) and download_size > 0
+        and isinstance(proof.get("payloadMD5"), str) and bool(re.fullmatch(r"[a-f0-9]{32}", proof["payloadMD5"]))
+        and isinstance(proof.get("revision"), str) and bool(re.fullmatch(r"[a-f0-9]{64}", proof["revision"]))
         and proof.get("payloadPath") == f"{leaf}-garmin-{map_type}/gmapsupp.img"
-        and str(proof.get("generatedAt") or "").startswith(version_label + "T")
-        and bool(proof.get("lastModified"))
+        and isinstance(proof.get("generatedAt"), str) and proof["generatedAt"].startswith(version_label + "T")
+        and isinstance(proof.get("lastModified"), str) and proof["lastModified"] != ""
         and region == package.get("providerRegionId")
         and map_type == package.get("mapType")
         and proof.get("sourceIdentity") == f"bbbike:{region}:{map_type}"
         and proof.get("downloadSizeBytes") == expected_size
         and (path == "/osm/garmin/region/" + suffix
              or (region in BBBIKE_EXAMPLE_REGIONS and path == "/osm/garmin/example/" + suffix))
+    )
+
+
+def _osmapa_region(value: Any) -> tuple[str, str] | None:
+    parts = str(value or "").lower().split("-")
+    if len(parts) != 2 or parts[0] not in ("pl", "plext") or parts[1] not in (*OSMAPA_FAMILY_IDS, "szlaki"):
+        return None
+    return parts[0], parts[1]
+
+
+def osmapa_valid_identity(package: dict[str, Any]) -> bool:
+    token = str(package.get("providerRegionId") or "")
+    region = _osmapa_region(token)
+    return (
+        _provider(package.get("providerId")) == "osmapa"
+        and region is not None and region[1] != "szlaki"
+        and token == "-".join(region)
+        and package.get("mapType") == region[1]
+        and package.get("canonicalRegionId") == token.upper()
+        and package.get("region") == token.upper()
+        and package.get("id") == "osmapa-" + token
+        and package.get("countryCodes") == ["PL"]
+        and (package.get("version") or {}).get("day") is not None
+    )
+
+
+def osmapa_reviewed_source(url: Any) -> tuple[str, str, str, str] | None:
+    """Coverage, style, release date and source version named by a reviewed URL."""
+    text = str(url or "")
+    parts = urlsplit(text)
+    try:
+        port = parts.port
+    except ValueError:
+        return None
+    match = OSMAPA_PATH.match(parts.path)
+    if (parts.scheme.lower() != "https" or (parts.hostname or "").lower() != "osmapa-garmin.las.org.pl"
+            or parts.username is not None or parts.password is not None or port not in (None, 443)
+            or parts.query or parts.fragment or "%" in text or "?" in text or "#" in text or not match):
+        return None
+    return ("plext" if match.group(1) else "pl"), match.group(2).lower(), match.group(3), match.group(4)
+
+
+OSMAPA_PROOF_STRINGS = ("sourceURL", "etag", "lastModified", "payloadPath", "crc32", "sourceIdentity", "coverage",
+                        "mapType", "imgTitle", "sourceVersion", "generatedAt", "revision")
+
+
+def _uint(value: Any, maximum: int) -> bool:
+    """Mirror of Swift ``JSONDecoder`` for unsigned integers.
+
+    It accepts an integral number written as ``5.0`` or ``1e1`` and rejects a
+    fraction, a string and JSON ``true``/``false`` (``bool`` is an ``int``
+    subclass in Python, so it is excluded by type).
+    """
+    if type(value) is float and value.is_integer():
+        value = int(value)
+    return type(value) is int and 0 <= value <= maximum
+
+
+def osmapa_proof_decodes(proof: Any) -> bool:
+    """Mirror of decoding ``OSMapaSourceProof``: every field present with its Swift type."""
+    return (
+        isinstance(proof, dict)
+        and all(isinstance(proof.get(key), str) for key in OSMAPA_PROOF_STRINGS)
+        and _uint(proof.get("downloadSizeBytes"), 2**64 - 1)
+        and _uint(proof.get("installSizeBytes"), 2**64 - 1)
+        and _uint(proof.get("familyId"), 2**16 - 1)
+        and type(proof.get("headerIdentityValidated")) is bool
+    )
+
+
+def _osmapa_proof_matches(package: dict[str, Any]) -> bool:
+    main = _main(package) or {}
+    proof = main.get("sourceProof")
+    if not osmapa_proof_decodes(proof) or not osmapa_valid_identity(package):
+        return False
+    coverage, style = _osmapa_region(package.get("providerRegionId"))
+    source = osmapa_reviewed_source(proof.get("sourceURL"))
+    version = package.get("version") or {}
+    version_label = "{:04d}-{:02d}-{:02d}".format(
+        int(version.get("year") or 0), int(version.get("month") or 0), int(version.get("day") or 0))
+    try:
+        datetime.fromisoformat(str(proof.get("generatedAt")).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    etag = proof.get("etag")
+    install_size = proof.get("installSizeBytes")
+    download_size = proof.get("downloadSizeBytes")
+    title = ("OSMapaPLext" if coverage == "plext" else "OSMapaPL") + "-" + style.upper()
+    return (
+        source is not None
+        and proof.get("sourceURL") == _download_url(package)
+        and source[:3] == (coverage, style, version_label.replace("-", ""))
+        and source[3] == proof.get("sourceVersion")
+        and isinstance(etag, str) and etag.startswith('"') and etag.endswith('"') and len(etag) > 2
+        and proof["lastModified"] != ""
+        and proof["generatedAt"].startswith(version_label + "T")
+        and proof.get("sourceIdentity") == f"osmapa:{coverage}:{style}"
+        and proof.get("coverage") == coverage and proof.get("mapType") == style
+        and proof.get("familyId") == OSMAPA_FAMILY_IDS[style]
+        and proof.get("imgTitle") == title
+        and proof.get("headerIdentityValidated") is True
+        and proof.get("payloadPath") == "gmapsupp.img"
+        and download_size == (package.get("downloadSizeBytes") or package.get("sizeBytes"))
+        and install_size == package.get("installSizeBytes")
+        and download_size > 0
+        and 0x1000 <= install_size <= OSMAPA_MAXIMUM_IMG_BYTES
+        and bool(re.fullmatch(r"[0-9a-f]{8}", proof["crc32"]))
+        and bool(re.fullmatch(r"[a-f0-9]{64}", proof["revision"]))
     )
 
 
@@ -126,6 +241,15 @@ def package_rejections(package: dict[str, Any]) -> list[str]:
         if main.get("sourceProof") is not None:
             reasons.append("unavailable bbbike main artifact must not carry sourceProof")
         return reasons
+    if provider == "osmapa" and main is not None and main.get("validationState") == "unavailable":
+        reasons = []
+        if not osmapa_valid_identity(package):
+            reasons.append("osmapa identity")
+        if len(package.get("artifacts") or []) != 1:
+            reasons.append("unavailable osmapa package must have exactly one artifact")
+        if main.get("sourceProof") is not None:
+            reasons.append("unavailable osmapa main artifact must not carry sourceProof")
+        return reasons
     reasons = []
     if provider not in PROVIDER_HOSTS:
         reasons.append("no native adapter")
@@ -138,6 +262,11 @@ def package_rejections(package: dict[str, Any]) -> list[str]:
             reasons.append("bbbike main artifact is not usable")
         if not _bbbike_proof_matches(package):
             reasons.append("bbbike source proof does not establish the IMG identity")
+    elif provider == "osmapa":
+        if main.get("validationState") in ("unavailable", "failed"):
+            reasons.append("osmapa main artifact is not usable")
+        if not _osmapa_proof_matches(package):
+            reasons.append("osmapa source proof does not establish the IMG identity")
     if not str(package.get("providerRegionId") or package.get("identifier") or "").strip():
         reasons.append("missing provider region identity")
     return reasons
@@ -162,6 +291,9 @@ def catalog_rejections(catalog: dict[str, Any]) -> list[str]:
     bbbike = [(p.get("providerRegionId"), p.get("mapType")) for p in packages if _provider(p.get("providerId")) == "bbbike"]
     if len(set(bbbike)) != len(bbbike):
         reasons.append("bbbike identities must be unique")
+    osmapa = [p.get("providerRegionId") for p in packages if _provider(p.get("providerId")) == "osmapa"]
+    if len(set(osmapa)) != len(osmapa):
+        reasons.append("osmapa identities must be unique")
     for package in packages:
         reasons.extend(f"{package.get('id')}: {reason}" for reason in package_rejections(package))
     return reasons

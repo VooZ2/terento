@@ -210,7 +210,7 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
             throw Stage42ArtifactValidationError.sourceSizeMismatch
         }
 
-        if packageProvider == "bbbike" {
+        if packageProvider == "bbbike" || packageProvider == "osmapa" {
             let source = try MapSourceValidator().validate(fileURL: artifact.localIMGURL, expectedPackage: package)
             guard source.sha256 == artifact.sha256 else { throw Stage42ArtifactValidationError.sourceHashMismatch }
         }
@@ -467,6 +467,8 @@ struct MapInstallationCoordinator: Sendable {
                 profile: request.profile,
                 identity: request.identity,
                 deviceFiles: request.beforeDeviceFiles,
+                installedMaps: request.installedMaps,
+                inspectedFiles: request.inspectedFiles,
                 installationAuthorization: request.installationAuthorization
             )
         } catch let error as Stage42TargetPolicyError {

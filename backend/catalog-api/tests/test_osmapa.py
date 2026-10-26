@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from urllib.error import HTTPError, URLError
 
+from native_catalog_acceptance import catalog_rejections
 from terento_catalog.catalog import build_catalog
 from terento_catalog.collectors.freizeitkarte.range_zip import RangeResponse
 from terento_catalog.http_api import CatalogService
@@ -57,6 +58,27 @@ def fixture(source):
     coverage, style, _, _ = source_url(source)
     title = f'OSMapaPL{"ext" if coverage == "plext" else ""}-{style.upper()}'
     return archive(img(title, fid=FAMILY_IDS[style]))
+
+
+def catalog_row(package, status='VALIDATED'):
+    artifact = package.artifacts[0]
+    return dict(provider_id='osmapa', provider_name='OSMapaPL', provider_status='PAUSED',
+        provider_website=OSMAPA.website, provider_attribution=OSMAPA.attribution,
+        provider_license_url=OSMAPA.license_url, provider_license_information=OSMAPA.license,
+        package_id=package.id, provider_region_id=package.provider_region_id,
+        canonical_region_id=package.canonical_region_id, package_name=package.name,
+        package_region=package.region, package_country=package.country, release=package.release,
+        release_id=package.release_id, version_label=package.version_label,
+        generated_at=package.generated_at, package_source_updated_at=package.source_updated_at,
+        availability=package.availability, country_codes=list(package.country_codes),
+        region_kind=package.region_kind, tags=list(package.tags), capabilities=['main'],
+        map_type=package.map_type, geographic_region_id=package.geographic_region_id,
+        artifact_id=artifact.id, artifact_kind='main', artifact_required=True,
+        artifact_source_url=artifact.source_url, artifact_size_bytes=artifact.size_bytes,
+        artifact_install_size_bytes=artifact.install_size_bytes, artifact_content_type=artifact.content_type,
+        artifact_validation_status=status, artifact_source_proof=artifact.source_proof,
+        artifact_install_payload_path='gmapsupp.img' if artifact.source_proof else None,
+        artifact_source_updated_at=artifact.source_updated_at)
 
 
 class MemoryFetcher:
@@ -288,22 +310,7 @@ class OSMapaTests(unittest.TestCase):
         snapshot = OSMapaProviderAdapter(fetcher=MemoryFetcher()).collect()
         package = next(p for p in snapshot.packages if p.id == 'osmapa-plext-ogonki')
         artifact = package.artifacts[0]
-        row = dict(provider_id='osmapa', provider_name='OSMapaPL', provider_status='PAUSED',
-            provider_website=OSMAPA.website, provider_attribution=OSMAPA.attribution,
-            provider_license_url=OSMAPA.license_url, provider_license_information=OSMAPA.license,
-            package_id=package.id, provider_region_id=package.provider_region_id,
-            canonical_region_id=package.canonical_region_id, package_name=package.name,
-            package_region=package.region, package_country=package.country, release=package.release,
-            release_id=package.release_id, version_label=package.version_label,
-            generated_at=package.generated_at, package_source_updated_at=package.source_updated_at,
-            availability=package.availability, country_codes=list(package.country_codes),
-            region_kind=package.region_kind, tags=list(package.tags), capabilities=['main'],
-            map_type=package.map_type, geographic_region_id=package.geographic_region_id,
-            artifact_id=artifact.id, artifact_kind='main', artifact_required=True,
-            artifact_source_url=artifact.source_url, artifact_size_bytes=artifact.size_bytes,
-            artifact_install_size_bytes=artifact.install_size_bytes, artifact_content_type=artifact.content_type,
-            artifact_validation_status='VALIDATED', artifact_source_proof=artifact.source_proof,
-            artifact_install_payload_path='gmapsupp.img', artifact_source_updated_at=artifact.source_updated_at)
+        row = catalog_row(package)
         catalog = build_catalog([row], datetime.now(timezone.utc))
         provider = catalog['providers'][0]
         self.assertEqual((provider['status'], provider['downloadBlockReason']), ('PAUSED', 'PROVIDER_PAUSED'))
@@ -313,6 +320,58 @@ class OSMapaTests(unittest.TestCase):
                          ('ogonki', 'POLAND-WITH-BORDER-AREAS', 'osmapa-ogonki'))
         self.assertEqual(published['artifacts'][0]['sourceProof']['familyId'], 5)
         self.assertEqual(conflict_group('warstwice'), 'osmapa-warstwice')
+
+    def test_published_v5_packages_pass_the_native_acceptance_mirror(self):
+        snapshot = OSMapaProviderAdapter(fetcher=MemoryFetcher()).collect()
+        rows = [catalog_row(package) for package in snapshot.packages]
+        catalog = build_catalog(rows, datetime.now(timezone.utc))
+        self.assertEqual(len(catalog['providers'][0]['maps']), 8)
+        self.assertEqual(catalog_rejections(catalog), [])
+
+        tampering = {
+            'familyId': lambda m, p: p.update(familyId=4),
+            'imgTitle': lambda m, p: p.update(imgTitle='OSMapaPLext-OGONKI'),
+            'weak etag': lambda m, p: p.update(etag='W/"x"'),
+            'crc32': lambda m, p: p.update(crc32='ZZZZZZZZ'),
+            'sourceVersion': lambda m, p: p.update(sourceVersion='2.04'),
+            'url date': lambda m, p: p.update(sourceURL=url('pl', 'OGONKI', '20261023')),
+            'mapType': lambda m, p: m.update(mapType='light'),
+            'szlaki': lambda m, p: m.update(providerRegionId='pl-szlaki'),
+            'lastModified true': lambda m, p: p.update(lastModified=True),
+            'size true': lambda m, p: (p.update(downloadSizeBytes=True), m.update(downloadSizeBytes=True)),
+            'familyId fraction': lambda m, p: p.update(familyId=5.5),
+            'header flag 1': lambda m, p: p.update(headerIdentityValidated=1),
+            'missing field': lambda m, p: p.pop('sourceVersion'),
+        }
+        # Swift JSONDecoder reads an integral 5.0 as the integer 5, so the mirror does too.
+        integral = json.loads(json.dumps(catalog))
+        package = next(m for m in integral['providers'][0]['maps'] if m['id'] == 'osmapa-pl-ogonki')
+        package['artifacts'][0]['sourceProof'].update(familyId=5.0, installSizeBytes=float(package['installSizeBytes']))
+        self.assertEqual(catalog_rejections(integral), [])
+
+        for label, edit in tampering.items():
+            with self.subTest(label):
+                broken = json.loads(json.dumps(catalog))
+                package = next(m for m in broken['providers'][0]['maps'] if m['id'] == 'osmapa-pl-ogonki')
+                edit(package, package['artifacts'][0]['sourceProof'])
+                self.assertTrue(any(r.startswith('osmapa-pl-ogonki:') for r in catalog_rejections(broken)), label)
+
+        adapter = OSMapaProviderAdapter(fetcher=MemoryFetcher({url('pl', 'LIGHT'): archive(img('OSMapaPL-LIGHT', fid=4))}))
+        adapter.set_previous_rows([{'provider_id': 'osmapa', 'package_id': 'osmapa-pl-light',
+            'artifact_source_url': url('pl', 'LIGHT', '20261004'), 'artifact_size_bytes': 400_000_000,
+            'package_source_updated_at': datetime(2026, 10, 4, tzinfo=timezone.utc)}])
+        unavailable = [catalog_row(p, p.artifacts[0].validation_status) for p in adapter.collect().packages]
+        catalog = build_catalog(unavailable, datetime.now(timezone.utc))
+        self.assertEqual(catalog_rejections(catalog), [])
+        light = next(m for m in catalog['providers'][0]['maps'] if m['id'] == 'osmapa-pl-light')
+        self.assertNotIn('sourceProof', light['artifacts'][0])
+        for proof in ({'lastModified': True}, {}, 'proof'):
+            with self.subTest(proof=proof):
+                broken = json.loads(json.dumps(catalog))
+                package = next(m for m in broken['providers'][0]['maps'] if m['id'] == 'osmapa-pl-light')
+                package['artifacts'][0]['sourceProof'] = proof
+                self.assertIn('osmapa-pl-light: unavailable osmapa main artifact must not carry sourceProof',
+                              catalog_rejections(broken))
 
 
 if __name__ == '__main__':

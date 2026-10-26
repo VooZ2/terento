@@ -45,6 +45,19 @@ registered `PAUSED` and every v5 OSMapaPL package carries
 `released-catalog-clients.json` only when it is published; the live
 checkout-client validator adds v5 with that client change, never before.
 
+The 1.0.2 client accepts an OSMapaPL package only with the full source proof
+(reviewed URL whose coverage, style and date match the package, strong ETag,
+family ID, header title, sizes, CRC-32 and revision); an unavailable package
+must carry exactly one artifact and no `sourceProof` at all (JSON `null`
+counts as none; a malformed proof is rejected). Before writing it checks the ZIP
+(one `gmapsupp.img`, deflate, sizes and CRC from the proof) and the IMG (CRC,
+title, date, MDR and MPS family IDs), and blocks a second coverage of the same
+style, an unmanaged or unidentified OSMapaPL map, an unreadable map file and a
+foreign map with the same family ID. The final check before writing repeats
+this content check over the scan of the same inventory, and any map image
+without scan evidence blocks. It never deletes a watch file to resolve a
+conflict.
+
 ## 1.0.1 server-first acceptance
 
 Deploy and verify this API before any 1.0.1 client is published. It adds:

@@ -129,7 +129,15 @@ identity and pre-write safety checks still apply to the continuation.
 
 Freizeitkarte, OpenTopoMap, MapRando and BBBike use the shared lifecycle.
 BBBike and BBBike (Ontrail) are separate map types from one provider; opposite
-same-region types conflict and cannot be installed together. OpenTopoMap
+same-region types conflict and cannot be installed together. OSMapaPL has four
+map types (Podstawowa, Ogonki, Light and standalone Warstwice contour lines),
+each for Poland and Poland with border areas. Both coverages of one type share
+one Garmin map ID, so they are never installed together; any other OSMapaPL
+map of that type, an unreadable map file or another map with the same ID stops
+the install, and nothing is removed automatically. The download must be the
+single `gmapsupp.img` named by the catalog proof; size, CRC-32, header title,
+release date and the MDR and MPS map IDs are checked on the Mac before
+writing. OpenTopoMap
 contours are optional source-validated components, not a Debug-only feature.
 Compatible local IMG imports have no automatic provider update path.
 
@@ -336,7 +344,8 @@ code fix. No new release or API deployment is implied. See
 
 ## Catalog and privacy contracts
 
-The current app uses `/maps/catalog-v4.json`. Legacy v2 and v3 routes retain
+The current app uses `/maps/catalog-v5.json` (1.0.2 and later; 1.0.1 used
+`/maps/catalog-v4.json`). Legacy v2, v3 and v4 routes retain
 provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
 See [shared contracts](../../contracts/README.md).

@@ -97,6 +97,13 @@ private struct PrefixReader: DeviceFileReader {
             providers: catalog.providers, regions: catalog.regions, packages: [unavailable])
         check(MapCatalogClientCompatibilityValidator().isCompatible(disabledCatalog) && !unavailable.hasUsableMainArtifact,
             "metadata-only unavailable source does not poison valid catalog or become installable")
+        for proof in [#"{"etag":true}"#, "{}", #""proof""#] {
+            let json = #"{"id":"unavailable","kind":"main","required":true,"validationState":"unavailable","sourceURL":"https://data.bbbike.org/osm/garmin/example/alias.zip","sourceProof":"# + proof + "}"
+            let artifact = try JSONDecoder().decode(MapArtifact.self, from: Data(json.utf8))
+            let package = andorra[0].withArtifacts([artifact])
+            check(artifact.carriesSourceProof && !MapCatalogClientCompatibilityValidator().isPackageCompatible(package),
+                "unavailable BBBike package with malformed proof \(proof) is rejected, not read as proof-free")
+        }
         let oldCatalogURL = defaultFixture.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json")
         let oldCatalog = try MapCatalogDocumentDecoder().decode(Data(contentsOf: oldCatalogURL))

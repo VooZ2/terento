@@ -29,8 +29,21 @@ class MirrorSanityTests(unittest.TestCase):
         artifact = catalog["providers"][0]["maps"][0]["artifacts"][0]
         artifact.update(validationStatus="UNAVAILABLE", validationState="unavailable")
         self.assertTrue(any("must not carry sourceProof" in reason for reason in catalog_rejections(catalog)))
+        for malformed in ({"etag": True}, {}, "proof"):
+            artifact["sourceProof"] = malformed
+            self.assertTrue(any("must not carry sourceProof" in reason for reason in catalog_rejections(catalog)))
         artifact.pop("sourceProof")
         self.assertEqual(catalog_rejections(catalog), [])
+
+    def test_integral_float_sizes_match_swift_decoding(self):
+        catalog = deepcopy(FIXTURE)
+        proof = catalog["providers"][0]["maps"][0]["artifacts"][0]["sourceProof"]
+        proof["installSizeBytes"] = float(proof["installSizeBytes"])
+        self.assertEqual(catalog_rejections(catalog), [])
+        proof["installSizeBytes"] += 0.5
+        self.assertTrue(catalog_rejections(catalog))
+        proof["installSizeBytes"] = True
+        self.assertTrue(catalog_rejections(catalog))
 
 
 class PublishedCatalogGateTests(PGliteTestCase):

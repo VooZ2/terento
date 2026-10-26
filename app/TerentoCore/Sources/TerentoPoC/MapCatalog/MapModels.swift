@@ -89,6 +89,10 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
     let checksum: String?
     let validationState: MapArtifactValidationState
     let sourceProof: BBBikeSourceProof?
+    let osmapaSourceProof: OSMapaSourceProof?
+    /// The catalog sent a non-null `sourceProof`, even one neither proof type
+    /// could decode. An unavailable artifact must not carry one at all.
+    let carriesSourceProof: Bool
 
     init(
         id: String,
@@ -106,7 +110,9 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         downloadSizeBytes: UInt64? = nil,
         checksum: String? = nil,
         validationState: MapArtifactValidationState = .notValidated,
-        sourceProof: BBBikeSourceProof? = nil
+        sourceProof: BBBikeSourceProof? = nil,
+        osmapaSourceProof: OSMapaSourceProof? = nil,
+        carriesSourceProof: Bool? = nil
     ) {
         self.id = id
         self.source = source
@@ -124,6 +130,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         self.checksum = checksum
         self.validationState = validationState
         self.sourceProof = sourceProof
+        self.osmapaSourceProof = osmapaSourceProof
+        self.carriesSourceProof = carriesSourceProof ?? (sourceProof != nil || osmapaSourceProof != nil)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -163,8 +171,37 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             downloadSizeBytes: try container.decodeIfPresent(UInt64.self, forKey: .downloadSizeBytes),
             checksum: try container.decodeIfPresent(String.self, forKey: .checksum),
             validationState: try container.decodeIfPresent(MapArtifactValidationState.self, forKey: .validationState) ?? .notValidated,
-            sourceProof: try? container.decodeIfPresent(BBBikeSourceProof.self, forKey: .sourceProof)
+            sourceProof: try? container.decodeIfPresent(BBBikeSourceProof.self, forKey: .sourceProof),
+            osmapaSourceProof: try? container.decodeIfPresent(OSMapaSourceProof.self, forKey: .sourceProof),
+            carriesSourceProof: container.contains(.sourceProof) && (try? container.decodeNil(forKey: .sourceProof)) == false
         )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(source, forKey: .source)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(required, forKey: .required)
+        try container.encodeIfPresent(providerId, forKey: .providerId)
+        try container.encodeIfPresent(providerRegionId, forKey: .providerRegionId)
+        try container.encodeIfPresent(canonicalRegionId, forKey: .canonicalRegionId)
+        try container.encodeIfPresent(version, forKey: .version)
+        try container.encodeIfPresent(releaseMetadata, forKey: .releaseMetadata)
+        try container.encodeIfPresent(sourceURL, forKey: .sourceURL)
+        try container.encodeIfPresent(localURL, forKey: .localURL)
+        try container.encodeIfPresent(sizeBytes, forKey: .sizeBytes)
+        try container.encodeIfPresent(downloadSizeBytes, forKey: .downloadSizeBytes)
+        try container.encodeIfPresent(checksum, forKey: .checksum)
+        try container.encode(validationState, forKey: .validationState)
+        if let sourceProof {
+            try container.encode(sourceProof, forKey: .sourceProof)
+        } else if let osmapaSourceProof {
+            try container.encode(osmapaSourceProof, forKey: .sourceProof)
+        } else if carriesSourceProof {
+            // Keep the marker: an undecodable proof re-decodes as carried.
+            try container.encode([String: String](), forKey: .sourceProof)
+        }
     }
 }
 
@@ -318,7 +355,8 @@ struct MapProviderRegistry: Sendable {
         FreizeitkarteProviderAdapter(),
         OpenTopoMapProviderAdapter(),
         MapRandoProviderAdapter(),
-        BBBikeProviderAdapter()
+        BBBikeProviderAdapter(),
+        OSMapaProviderAdapter()
     ])
 
     init(adapters: [any MapProviderAdapter]) {
@@ -889,9 +927,9 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     var hasUsableMainArtifact: Bool {
         guard let mainArtifact else { return false }
         // Existing providers retain their reviewed catalog contract, including
-        // source-unavailable MapRando rows. BBBike unavailable source metadata is
-        // visible but never a usable install artifact.
-        if MapIdentity.normalizeProvider(providerId) == "bbbike",
+        // source-unavailable MapRando rows. BBBike and OSMapaPL unavailable source
+        // metadata is visible but never a usable install artifact.
+        if ["bbbike", "osmapa"].contains(MapIdentity.normalizeProvider(providerId)),
            mainArtifact.validationState == .unavailable || mainArtifact.validationState == .failed { return false }
         return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
     }
@@ -1179,12 +1217,14 @@ enum MapProviderDisplay {
         case "opentopomap": return "OpenTopoMap"
         case "maprando": return "MapRando"
         case "bbbike": return "BBBike"
+        case "osmapa": return "OSMapaPL"
         default: return "The map provider"
         }
     }
 
     static func sourceProviderID(filterID: String) -> String {
         let id = MapIdentity.normalizeProvider(filterID)
+        if OSMapaStyle.installable.contains(where: { $0.filterID == id }) { return "osmapa" }
         return id == "bbbikeontrail" ? "bbbike" : id
     }
     static func filterOptions(providers: [MapProvider]) -> [MapProviderFilterOption] {
@@ -1192,16 +1232,25 @@ enum MapProviderDisplay {
             if MapIdentity.normalizeProvider(provider.id) == "bbbike" {
                 return BBBikeMapType.allCases.map { MapProviderFilterOption(id: $0.filterID, title: $0.title) }
             }
+            if MapIdentity.normalizeProvider(provider.id) == "osmapa" {
+                return OSMapaStyle.installable.map { MapProviderFilterOption(id: $0.filterID, title: $0.title) }
+            }
             return [MapProviderFilterOption(id: MapIdentity.normalizeProvider(provider.id), title: provider.name)]
         }
     }
 
     static func filterID(providerID: String, regionID: String?) -> String {
         let provider = MapIdentity.normalizeProvider(providerID)
+        if provider == "osmapa" {
+            return OSMapaProviderAdapter.region(regionID ?? "")?.style.filterID ?? provider
+        }
         guard provider == "bbbike" else { return provider }
         return MapIdentity.normalizeRegion(regionID ?? "").hasSuffix("ONTRAILLATIN1") ? "bbbikeontrail" : "bbbike"
     }
     static func title(providerID: String, regionID: String?, fallback: String) -> String {
+        if MapIdentity.normalizeProvider(providerID) == "osmapa" {
+            return OSMapaProviderAdapter.region(regionID ?? "")?.style.title ?? fallback
+        }
         guard MapIdentity.normalizeProvider(providerID) == "bbbike" else { return fallback }
         return filterID(providerID: providerID, regionID: regionID) == "bbbikeontrail" ? "BBBike (Ontrail)" : "BBBike"
     }
@@ -1289,5 +1338,186 @@ struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
               Self.isReviewedSourcePath(proof.sourceURL.path, sourceRegion: proof.sourceRegion, type: proof.mapType),
               proof.generatedAt.hasPrefix(package.version.description + "T") else { return nil }
         return package.identity
+    }
+}
+
+/// OSMapaPL publishes every style for Poland and for Poland with border areas.
+enum OSMapaCoverage: String, CaseIterable, Sendable {
+    case pl
+    case plext
+    var titlePrefix: String { self == .pl ? "OSMapaPL" : "OSMapaPLext" }
+    var displayName: String { self == .pl ? "Poland" : "Poland with border areas" }
+}
+
+/// Both coverages of one style share its Garmin family ID and tiles, so they
+/// can never be on one watch together. SZLAKI is recognized on a watch but
+/// not offered by this version.
+enum OSMapaStyle: String, CaseIterable, Sendable {
+    case podstawowa
+    case ogonki
+    case light
+    case warstwice
+    case szlaki
+    static let installable: [OSMapaStyle] = [.podstawowa, .ogonki, .light, .warstwice]
+    var familyID: UInt16 {
+        switch self {
+        case .podstawowa: return 4
+        case .ogonki: return 5
+        case .light: return 6
+        case .warstwice: return 12
+        case .szlaki: return 11
+        }
+    }
+    var headerToken: String { rawValue.uppercased() }
+    var title: String { self == .light ? "OSMapaPL Light" : "OSMapaPL \(rawValue.capitalized)" }
+    var filterID: String { "osmapa" + rawValue }
+}
+
+struct OSMapaSourceProof: Codable, Equatable, Sendable {
+    let sourceURL: URL
+    let etag: String
+    let lastModified: String
+    let downloadSizeBytes: UInt64
+    let installSizeBytes: UInt64
+    let payloadPath: String
+    let crc32: String
+    let sourceIdentity: String
+    let coverage: String
+    let mapType: String
+    let familyId: UInt16
+    let imgTitle: String
+    let sourceVersion: String
+    let generatedAt: String
+    let headerIdentityValidated: Bool
+    let revision: String
+}
+
+/// A recognized OSMapaPL header or managed filename on a watch. An
+/// `OSMapaPL` title that is not exactly one known style with a valid date is
+/// ambiguous and blocks every OSMapaPL install until it is reviewed.
+enum OSMapaMapMarker: Equatable, Sendable {
+    case map(coverage: OSMapaCoverage, style: OSMapaStyle)
+    case ambiguous
+}
+
+struct OSMapaProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "osmapa"
+    static let sourceHost = "osmapa-garmin.las.org.pl"
+    static let sourcePathPattern = #"^/products/OSMapaPL(ext)?-(PODSTAWOWA|OGONKI|LIGHT|WARSTWICE)-(20[0-9]{6})V([0-9]+\.[0-9]+)_IMG\.zip$"#
+    static let maximumIMGBytes: UInt64 = 4_294_967_295
+
+    /// Coverage and style from a catalog region token such as `plext-ogonki`.
+    static func region(_ value: String) -> (coverage: OSMapaCoverage, style: OSMapaStyle)? {
+        let parts = value.lowercased().split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 2, let coverage = OSMapaCoverage(rawValue: String(parts[0])),
+              let style = OSMapaStyle(rawValue: String(parts[1])) else { return nil }
+        return (coverage, style)
+    }
+
+    static func regionToken(coverage: OSMapaCoverage, style: OSMapaStyle) -> String {
+        "\(coverage.rawValue)-\(style.rawValue)"
+    }
+
+    static func displayName(coverage: OSMapaCoverage, style: OSMapaStyle) -> String {
+        coverage.displayName + (style == .warstwice ? " contour lines" : "")
+    }
+
+    /// The reviewed source URL names exactly one coverage, style and release.
+    static func reviewedSource(_ url: URL) -> (coverage: OSMapaCoverage, style: OSMapaStyle, date: String, version: String)? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme?.lowercased() == "https", components.host?.lowercased() == sourceHost,
+              components.user == nil, components.password == nil,
+              components.port == nil || components.port == 443,
+              components.query == nil, components.fragment == nil,
+              !url.absoluteString.contains("%"),
+              let regex = try? NSRegularExpression(pattern: sourcePathPattern) else { return nil }
+        let path = components.path
+        guard let match = regex.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)),
+              let styleRange = Range(match.range(at: 2), in: path),
+              let dateRange = Range(match.range(at: 3), in: path),
+              let versionRange = Range(match.range(at: 4), in: path),
+              let style = OSMapaStyle(rawValue: path[styleRange].lowercased()) else { return nil }
+        return (match.range(at: 1).location == NSNotFound ? .pl : .plext, style,
+                String(path[dateRange]), String(path[versionRange]))
+    }
+
+    static func validIdentity(_ package: MapPackage) -> Bool {
+        guard MapIdentity.normalizeProvider(package.providerId) == "osmapa",
+              let (coverage, style) = region(package.providerRegionId),
+              style != .szlaki,
+              package.providerRegionId == regionToken(coverage: coverage, style: style),
+              package.mapType == style.rawValue,
+              package.canonicalRegionId == package.providerRegionId.uppercased(),
+              package.regionId == package.canonicalRegionId,
+              package.id == "osmapa-" + package.providerRegionId,
+              package.countryCodes == ["PL"],
+              package.version.day != nil else { return false }
+        return true
+    }
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        CanonicalMapRegionIdentity(countryCode: "PL")
+    }
+
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        guard Self.validIdentity(package), let (coverage, style) = Self.region(package.providerRegionId),
+              let proof = package.mainArtifact?.osmapaSourceProof, package.mainArtifact?.sourceProof == nil,
+              proof.sourceURL == package.downloadURL,
+              let source = Self.reviewedSource(proof.sourceURL),
+              source.coverage == coverage, source.style == style,
+              source.date == package.version.description.replacingOccurrences(of: "-", with: ""),
+              source.version == proof.sourceVersion,
+              proof.etag.hasPrefix("\""), proof.etag.hasSuffix("\""), proof.etag.count > 2,
+              !proof.lastModified.isEmpty,
+              ISO8601DateFormatter().date(from: proof.generatedAt) != nil,
+              proof.generatedAt.hasPrefix(package.version.description + "T"),
+              proof.sourceIdentity == "osmapa:\(coverage.rawValue):\(style.rawValue)",
+              proof.coverage == coverage.rawValue, proof.mapType == style.rawValue,
+              proof.familyId == style.familyID,
+              proof.imgTitle == "\(coverage.titlePrefix)-\(style.headerToken)",
+              proof.headerIdentityValidated,
+              proof.payloadPath == "gmapsupp.img",
+              proof.downloadSizeBytes == package.expectedDownloadSizeBytes,
+              proof.installSizeBytes == package.installSizeBytes,
+              proof.downloadSizeBytes > 0, proof.installSizeBytes >= 0x1000,
+              proof.installSizeBytes <= Self.maximumIMGBytes,
+              proof.crc32.range(of: #"^[0-9a-f]{8}$"#, options: .regularExpression) != nil,
+              proof.revision.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { return nil }
+        return package.identity
+    }
+
+    /// Terento names its own files `terento_osmapa_<coverage>_<style>[_date].img`.
+    /// Any other name in that namespace is ambiguous.
+    static func managedFileMarker(_ filename: String) -> OSMapaMapMarker? {
+        let prefix = "terento_osmapa_"
+        guard filename.hasPrefix(prefix), filename.hasSuffix(".img") else { return nil }
+        var token = String(filename.dropFirst(prefix.count).dropLast(4))
+        if let date = token.range(of: #"_[0-9]{4}-[0-9]{2}-[0-9]{2}$"#, options: .regularExpression) {
+            token.removeSubrange(date)
+        }
+        let parts = token.split(separator: "_", omittingEmptySubsequences: false)
+        guard parts.count == 2, let coverage = OSMapaCoverage(rawValue: String(parts[0])),
+              let style = OSMapaStyle(rawValue: String(parts[1])) else { return .ambiguous }
+        return .map(coverage: coverage, style: style)
+    }
+
+    /// Final pre-write boundary: only filenames are known there. A managed
+    /// file of the same style, or an unknown name in Terento's OSMapaPL
+    /// namespace, blocks; the package's own managed file is its update path.
+    static func conflicts(_ package: MapPackage, filename: String) -> Bool {
+        guard MapIdentity.normalizeProvider(package.providerId) == "osmapa",
+              let marker = managedFileMarker(filename) else { return false }
+        guard let (coverage, style) = region(package.providerRegionId),
+              case .map(let fileCoverage, let fileStyle) = marker else { return true }
+        return fileStyle == style && fileCoverage != coverage
+    }
+
+    static func selectionConflictReason(_ packages: [MapPackage]) -> String? {
+        let styles = packages.compactMap { package -> OSMapaStyle? in
+            guard MapIdentity.normalizeProvider(package.providerId) == "osmapa" else { return nil }
+            return region(package.providerRegionId)?.style
+        }
+        guard let style = styles.first(where: { style in styles.filter { $0 == style }.count > 1 }) else { return nil }
+        return "Select either Poland or Poland with border areas for \(style.title). These maps cannot be installed together."
     }
 }
