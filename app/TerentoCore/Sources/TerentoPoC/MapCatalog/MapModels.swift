@@ -1163,13 +1163,27 @@ struct MapCatalog: Equatable, Sendable {
     }
 }
 
-/// One provider, two independent complete maps. This is not an optional component.
+/// One provider, three independent complete maps. This is not an optional component.
+/// All types of one source region share Garmin tile numbers, so at most one may be installed.
 enum BBBikeMapType: String, Codable, CaseIterable, Sendable {
     case bbbike = "bbbike-latin1"
     case ontrail = "ontrail-latin1"
-    var style: String { self == .bbbike ? "bbbike" : "ontrail" }
-    var title: String { self == .bbbike ? "BBBike" : "BBBike (Ontrail)" }
-    var filterID: String { self == .bbbike ? "bbbike" : "bbbikeontrail" }
+    case opentopo = "opentopo-latin1"
+    var style: String { String(rawValue.dropLast("-latin1".count)) }
+    var title: String {
+        switch self {
+        case .bbbike: return "BBBike"
+        case .ontrail: return "BBBike (Ontrail)"
+        case .opentopo: return "BBBike (OpenTopoMap)"
+        }
+    }
+    var filterID: String { self == .bbbike ? "bbbike" : "bbbike" + style }
+    /// The type named by a BBBike region token such as `EUROPE-ANDORRA-ONTRAIL-LATIN1`.
+    init?(regionToken: String) {
+        let region = MapIdentity.normalizeRegion(regionToken)
+        guard let type = Self.allCases.first(where: { region.hasSuffix(MapIdentity.normalizeRegion($0.rawValue)) }) else { return nil }
+        self = type
+    }
 }
 
 struct BBBikeSourceProof: Codable, Equatable, Sendable {
@@ -1225,7 +1239,7 @@ enum MapProviderDisplay {
     static func sourceProviderID(filterID: String) -> String {
         let id = MapIdentity.normalizeProvider(filterID)
         if OSMapaStyle.installable.contains(where: { $0.filterID == id }) { return "osmapa" }
-        return id == "bbbikeontrail" ? "bbbike" : id
+        return BBBikeMapType.allCases.contains { $0.filterID == id } ? "bbbike" : id
     }
     static func filterOptions(providers: [MapProvider]) -> [MapProviderFilterOption] {
         providers.flatMap { provider in
@@ -1245,14 +1259,14 @@ enum MapProviderDisplay {
             return OSMapaProviderAdapter.region(regionID ?? "")?.style.filterID ?? provider
         }
         guard provider == "bbbike" else { return provider }
-        return MapIdentity.normalizeRegion(regionID ?? "").hasSuffix("ONTRAILLATIN1") ? "bbbikeontrail" : "bbbike"
+        return BBBikeMapType(regionToken: regionID ?? "")?.filterID ?? "bbbike"
     }
     static func title(providerID: String, regionID: String?, fallback: String) -> String {
         if MapIdentity.normalizeProvider(providerID) == "osmapa" {
             return OSMapaProviderAdapter.region(regionID ?? "")?.style.title ?? fallback
         }
         guard MapIdentity.normalizeProvider(providerID) == "bbbike" else { return fallback }
-        return filterID(providerID: providerID, regionID: regionID) == "bbbikeontrail" ? "BBBike (Ontrail)" : "BBBike"
+        return BBBikeMapType(regionToken: regionID ?? "")?.title ?? "BBBike"
     }
 }
 
@@ -1268,30 +1282,36 @@ struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
         return path == "/osm/garmin/region/" + suffix
             || (exampleRegions.contains(sourceRegion) && path == "/osm/garmin/example/" + suffix)
     }
-    static let coexistenceReason = "Select either BBBike or BBBike (Ontrail) for the same region. These two map types cannot be installed together."
-    static func installedTypeConflictMessage(for package: MapPackage) -> String {
+    static let coexistenceReason = "Select only one BBBike map type for the same region. BBBike, BBBike (Ontrail) and BBBike (OpenTopoMap) cannot be installed together."
+    static func installedTypeConflictMessage(for package: MapPackage, installedType: BBBikeMapType) -> String {
         guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
-        let installedType: BBBikeMapType = selectedType == .bbbike ? .ontrail : .bbbike
-        return "To install “\(selectedType.title) - \(package.name)”, first remove “\(installedType.title) - \(package.name)” in Manage maps. BBBike and BBBike (Ontrail) cannot be installed together for the same region."
+        return "To install “\(selectedType.title) - \(package.name)”, first remove “\(installedType.title) - \(package.name)” in Manage maps. Only one BBBike map type can be installed for the same region."
     }
-    static func unverifiedTypeConflictMessage(for package: MapPackage) -> String {
+    static func unverifiedTypeConflictMessage(for package: MapPackage, otherType: BBBikeMapType? = nil) -> String {
         guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
-        let otherType: BBBikeMapType = selectedType == .bbbike ? .ontrail : .bbbike
-        return "A possible “\(otherType.title) - \(package.name)” map needs review before installing “\(selectedType.title) - \(package.name)”. Terento has not confirmed ownership of the conflicting file."
+        let other = otherType.map { "A possible “\($0.title) - \(package.name)” map" } ?? "Another BBBike map of \(package.name)"
+        return "\(other) needs review before installing “\(selectedType.title) - \(package.name)”. Terento has not confirmed ownership of the conflicting file."
     }
-    static func conflicts(_ package: MapPackage, provider: String?, region: String?) -> Bool {
+    /// The other BBBike type of the same source region that `region` names, if any.
+    static func conflictingType(_ package: MapPackage, provider: String?, region: String?) -> BBBikeMapType? {
         guard MapIdentity.normalizeProvider(package.providerId) == "bbbike",
-              MapIdentity.normalizeProvider(provider ?? "") == "bbbike", let region else { return false }
-        return BBBikeMapType.allCases.filter { $0.rawValue != package.mapType }.contains {
+              MapIdentity.normalizeProvider(provider ?? "") == "bbbike", let region else { return nil }
+        return BBBikeMapType.allCases.filter { $0.rawValue != package.mapType }.first {
             MapIdentity.normalizeRegion(regionToken(path: package.providerRegionId, type: $0.rawValue)) == MapIdentity.normalizeRegion(region)
         }
     }
-    static func conflicts(_ package: MapPackage, filename: String) -> Bool {
+    static func conflictingType(_ package: MapPackage, filename: String) -> BBBikeMapType? {
         guard MapIdentity.normalizeProvider(package.providerId) == "bbbike",
-              filename.hasPrefix("terento_bbbike_"), filename.hasSuffix(".img") else { return false }
+              filename.hasPrefix("terento_bbbike_"), filename.hasSuffix(".img") else { return nil }
         var token = String(filename.dropFirst("terento_bbbike_".count).dropLast(4))
         if let date = token.range(of: #"_[0-9]{4}-[0-9]{2}(?:-[0-9]{2})?$"#, options: .regularExpression) { token.removeSubrange(date) }
-        return conflicts(package, provider: "bbbike", region: token)
+        return conflictingType(package, provider: "bbbike", region: token)
+    }
+    static func conflicts(_ package: MapPackage, provider: String?, region: String?) -> Bool {
+        conflictingType(package, provider: provider, region: region) != nil
+    }
+    static func conflicts(_ package: MapPackage, filename: String) -> Bool {
+        conflictingType(package, filename: filename) != nil
     }
     static func selectionConflicts(_ packages: [MapPackage]) -> Bool {
         packages.contains { package in packages.contains { other in

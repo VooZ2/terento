@@ -28,7 +28,7 @@ PROVIDER_HOSTS = {
     "bbbike": {"data.bbbike.org"},
     "osmapa": {"osmapa-garmin.las.org.pl"},
 }
-BBBIKE_MAP_TYPES = {"bbbike-latin1", "ontrail-latin1"}
+BBBIKE_MAP_TYPES = {"bbbike-latin1", "ontrail-latin1", "opentopo-latin1"}
 BBBIKE_PATH = re.compile(
     r"^(?:africa|asia|australia-oceania|central-america|europe|north-america|south-america|antarctica)"
     r"/[a-z0-9]+(?:[-/][a-z0-9]+)*$"

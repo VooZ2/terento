@@ -364,7 +364,7 @@ struct ReviewedProviderURLPolicy: Sendable {
                 }
             }
             guard components.query == nil, components.fragment == nil,
-                  (isExactExample || url.path.range(of: #"^/osm/garmin/region/[a-z0-9/-]+/[a-z0-9-]+\.osm\.garmin-(?:bbbike|ontrail)-latin1\.zip$"#, options: .regularExpression) != nil),
+                  (isExactExample || url.path.range(of: #"^/osm/garmin/region/[a-z0-9/-]+/[a-z0-9-]+\.osm\.garmin-(?:bbbike|ontrail|opentopo)-latin1\.zip$"#, options: .regularExpression) != nil),
                   !url.absoluteString.contains("%"), !url.path.contains("..") else {
                 throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
             }
