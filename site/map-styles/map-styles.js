@@ -35,13 +35,14 @@
   let manifest = null;
   let best = D.bestAreas(areas, null);
 
-  // Optional styles are listed only once the manifest lists them; until it
-  // loads, a shared link may still name one.
+  // Optional styles stay hidden until a fetched manifest lists them. A shared
+  // link that names one opens it once the manifest confirms it.
   let styles = [];
   let styleIds = [];
-  const listed = (style) => !style.optional || (manifest
-    ? Array.isArray(manifest.styles) && manifest.styles.some((item) => item && item.id === style.id)
-    : style.id === fromHash.style || style.id === fromHash.compare);
+  const manifestStyleIds = (document) => Array.isArray(document && document.styles)
+    ? document.styles.filter((item) => item && typeof item.id === "string").map((item) => item.id)
+    : [];
+  const listed = (style) => !style.optional || manifestStyleIds(manifest).includes(style.id);
   function updateStyles() {
     styles = allStyles.filter(listed);
     styleIds = styles.map((style) => style.id);
@@ -60,11 +61,16 @@
     query: "",
     split: 50,
   };
+  const initial = {a: state.a, b: state.b};
   function keepSelection() {
     if (!styleIds.includes(state.a)) state.a = "opentopomap";
     if (!styleIds.includes(state.b) || state.b === state.a) state.b = styleIds.find((id) => id !== state.a);
   }
   keepSelection();
+  function openLinkedStyles() {
+    if (state.a === initial.a && fromHash.style !== state.a && styleIds.includes(fromHash.style)) state.a = fromHash.style;
+    if (state.b === initial.b && fromHash.compare !== state.a && styleIds.includes(fromHash.compare)) state.b = fromHash.compare;
+  }
 
   // Maps ----------------------------------------------------------------------
   const mapOptions = {
@@ -548,8 +554,10 @@
     try {
       const document = await fetchJson(data.manifestUrl);
       if (!document || document.schemaVersion !== 1 || !Array.isArray(document.areas)) throw new Error("invalid manifest");
+      const first = !manifest;
       manifest = document;
       updateStyles();
+      if (first) openLinkedStyles();
       keepSelection();
       best = D.bestAreas(areas, manifest);
       if (status(state.a) === "NOT_COVERED") state.a = styleIds.find((id) => status(id) !== "NOT_COVERED") || state.a;
@@ -570,7 +578,8 @@
     try {
       const latest = await fetchJson(data.manifestUrl, "no-cache");
       if (!latest || latest.schemaVersion !== 1 || !Array.isArray(latest.areas)) return;
-      if (latest.release === manifest.release) return;
+      if (latest.release === manifest.release
+        && manifestStyleIds(latest).join(" ") === manifestStyleIds(manifest).join(" ")) return;
       manifest = latest;
       updateStyles();
       keepSelection();

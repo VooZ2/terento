@@ -167,9 +167,14 @@ function testController() {
   // Side by side is the default on every screen; a shared link still chooses its own view.
   assert.match(controller, /mode: fromHash\.mode \|\| "split"/);
   assert.doesNotMatch(controller, /max-width/, "narrow screens do not force another view");
-  // Optional styles (OSMapaPL) are listed only when the manifest lists them, on first load and on a new release.
-  assert.match(controller, /!style\.optional \|\| \(manifest/);
-  assert.equal(controller.split("updateStyles();\n      keepSelection();").length - 1, 2, "both manifest loads refresh the style list");
+  // Optional styles (OSMapaPL) are listed only when a fetched manifest lists them, on first load and on every recheck.
+  const listedLine = controller.split("\n").find((line) => line.includes("const listed = "));
+  assert.match(listedLine, /!style\.optional \|\| manifestStyleIds\(manifest\)\.includes\(style\.id\)/);
+  assert.doesNotMatch(listedLine, /fromHash/, "a shared link cannot list an optional style before the manifest");
+  assert.equal((controller.match(/updateStyles\(\);/g) || []).length, 3, "both manifest loads refresh the style list");
+  assert.match(controller, /if \(first\) openLinkedStyles\(\);/, "a shared link opens its style once the manifest confirms it");
+  assert.match(controller, /latest\.release === manifest\.release\s*&& manifestStyleIds\(latest\)\.join\(" "\) === manifestStyleIds\(manifest\)\.join\(" "\)\) return;/,
+    "a recheck applies style list changes within the same release");
 }
 
 testHelpers();
