@@ -11,7 +11,7 @@ Terento is designed for Garmin smartwatches with map support. Below are exact mo
 
 Not seeing your model does not mean it is unsupported — we may simply not have a successful shared installation for that exact model and variant yet.
 
-**36** models with successful installs**313** successful installsLatest successful install October 26, 2026
+**36** models with successful installs**320** successful installsLatest successful install October 26, 2026
 
 How this list works
 
@@ -77,11 +77,11 @@ epix
 
 51 mm, AMOLED
 
-16 successful installs
+18 successful installs
 
-App 15 Web 1
+App 17 Web 1
 
-Latest successful install October 24, 2026
+Latest successful install October 26, 2026
 
 fēnix
 
@@ -89,11 +89,11 @@ fēnix
 
 Solar, Historical
 
-16 successful installs
+18 successful installs
 
-App 11 Web 5
+App 13 Web 5
 
-Latest successful install October 25, 2026
+Latest successful install October 26, 2026
 
 fēnix
 
@@ -205,6 +205,18 @@ Latest successful install October 23, 2026
 
 fēnix
 
+### fēnix 6 Pro
+
+47 mm, MIP, Historical
+
+6 successful installs
+
+App 3 Web 3
+
+Latest successful install October 26, 2026
+
+fēnix
+
 ### fēnix 7 Pro
 
 Solar, (no Wi-Fi)
@@ -298,18 +310,6 @@ fēnix
 App 4
 
 Latest successful install September 23, 2026
-
-fēnix
-
-### fēnix 6 Pro
-
-47 mm, MIP, Historical
-
-3 successful installs
-
-Web 3
-
-Latest successful install October 20, 2026
 
 fēnix
 

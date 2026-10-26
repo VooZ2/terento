@@ -76,10 +76,10 @@
       "family": "epix",
       "familyName": "epix",
       "imageUrl": "https://res.garmin.com/en/products/010-02804-00/v/cf-lg.jpg",
-      "successfulInstallations": 16,
-      "appSuccessfulInstallations": 15,
+      "successfulInstallations": 18,
+      "appSuccessfulInstallations": 17,
       "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-10-24T01:59:40+00:00"
+      "lastSuccessfulInstallation": "2026-10-26T21:05:30+00:00"
     },
     {
       "model": "fēnix 7X Pro · Historical",
@@ -92,10 +92,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
-      "successfulInstallations": 16,
-      "appSuccessfulInstallations": 11,
+      "successfulInstallations": 18,
+      "appSuccessfulInstallations": 13,
       "webSuccessfulInstallations": 5,
-      "lastSuccessfulInstallation": "2026-10-25T23:23:22+00:00"
+      "lastSuccessfulInstallation": "2026-10-26T14:33:23+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -242,6 +242,22 @@
       "lastSuccessfulInstallation": "2026-10-23T23:36:05+00:00"
     },
     {
+      "model": "fēnix 6 Pro · Historical",
+      "variant": "Historical",
+      "caseSizeMm": 47,
+      "displayType": null,
+      "screenTechnology": "MIP",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02158-22/v/cf-lg-1dc0e640-4559-4402-a7ff-993b25806190-1.jpg",
+      "successfulInstallations": 6,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 3,
+      "lastSuccessfulInstallation": "2026-10-26T17:06:55+00:00"
+    },
+    {
       "model": "fēnix 7 Pro · Solar (no Wi-Fi)",
       "variant": "Solar (no Wi-Fi)",
       "caseSizeMm": null,
@@ -368,22 +384,6 @@
       "appSuccessfulInstallations": 4,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-23T18:33:25+00:00"
-    },
-    {
-      "model": "fēnix 6 Pro · Historical",
-      "variant": "Historical",
-      "caseSizeMm": 47,
-      "displayType": null,
-      "screenTechnology": "MIP",
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02158-22/v/cf-lg-1dc0e640-4559-4402-a7ff-993b25806190-1.jpg",
-      "successfulInstallations": 3,
-      "appSuccessfulInstallations": 0,
-      "webSuccessfulInstallations": 3,
-      "lastSuccessfulInstallation": "2026-10-20T10:04:38+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, Solar, 51 mm",
@@ -578,5 +578,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-26T12:39:25.248805+00:00"
+  "generatedAt": "2026-10-26T22:32:17.431617+00:00"
 }
