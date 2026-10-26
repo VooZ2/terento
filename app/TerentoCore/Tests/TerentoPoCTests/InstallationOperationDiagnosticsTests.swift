@@ -50,6 +50,7 @@ private actor DelayedAuthorizationResponse {
         try await testContextualContours()
         try await testResultsAndPrivacy()
         try await testNativeWriteResultCode()
+        testNativeReadBackResultCode()
         try await testPartialBatchAndPreflight()
         try await testEngineContourPreflightAttribution()
         try await testDisconnectAndCancellation()
@@ -326,6 +327,22 @@ private actor DelayedAuthorizationResponse {
               && events[0].failureContext?.nativeResultCode == -7,
               "the native write result reaches the installation report")
         emittedFixtures += events
+    }
+
+    static func testNativeReadBackResultCode() {
+        let error = MTPMapInstallationTransport.verifyError(
+            result: -11, message: "A sampled map region did not match the validated source")
+        let context = error.failureContext
+        check(context?.boundary == .readback && context?.operation == .readback
+              && context?.classificationSource == .native && context?.resultKind == .nativeError
+              && context?.nativeCodeNamespace == .terentoMapVerify && context?.nativeResultCode == -11
+              && !error.isConfirmedDeviceDisconnected,
+              "a generic native read-back failure keeps its read-back result code")
+        check(MTPMapInstallationTransport.verifyError(
+                result: Int32(TERENTO_MTP_MAP_REMOTE_FILE_MISSING), message: "") == .remoteFileMissing
+              && MTPMapInstallationTransport.verifyError(
+                result: Int32(TERENTO_MTP_MAP_OBJECT_ID_MISMATCH), message: "") == .objectIdentityMismatch,
+              "specific native read-back results keep their own failure and retry behaviour")
     }
 
     @MainActor static func testEngineContourPreflightAttribution() async throws {
