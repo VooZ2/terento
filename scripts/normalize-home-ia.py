@@ -409,7 +409,7 @@ for _locale, (_base_summary, _trail_summary, _base_benefits, _trail_benefits) in
         }
 
 # BBBike (OpenTopoMap) ships hidden like the other BBBike types; provider-list.js
-# shows it once the catalog lists available opentopo-latin1 maps (catalog v5, app 1.0.2).
+# shows it once the catalog lists available opentopo-latin1 maps (catalog v5, app 1.1.0).
 BBBIKE_OPENTOPO_CARD_COPY = {
     "en": ("For hiking and cycling in the familiar OpenTopoMap look, also where other maps are missing.", [
         "OpenTopoMap look: trails, paths and land cover",
