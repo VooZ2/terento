@@ -1,3 +1,34 @@
+# Terento v1.1.0 (build 46)
+
+<!-- DRAFT: unpublished; needs owner approval and the DMG SHA-256 before publication -->
+
+Terento 1.1.0 is an update to Terento 1.0.1, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
+
+This release adds OSMapaPL maps of Poland and the BBBike (OpenTopoMap) style, and makes installations more reliable when the watch is busy. Installed 1.0.x builds are offered it by the in-app update check.
+
+## WHAT'S NEW?
+
+- OSMapaPL maps of Poland, for Poland alone or with border areas, in three styles: Podstawowa (labels without Polish letters), Ogonki (with Polish letters) and Light (uses less storage), plus contour lines. Only one area of the same style can be on the watch at a time; remove the other one in Manage maps first.
+- BBBike (OpenTopoMap), a new BBBike map style based on OpenTopoMap. Only one BBBike style can be installed for the same region.
+- Install maps also lists the maps already on the watch, marked "Already installed", so you can see which installed map blocks another one.
+
+## WHAT'S FIXED?
+
+- When the watch is still busy as an installation starts, Terento waits for it for up to about 12 seconds instead of stopping at once.
+- When Terento can't read the maps on the watch, it now saves a problem report that you can send from the Help menu.
+- Problem reports now include the exact cause when the check after writing a map fails, and name the watch folder that changed when the watch changes one of its own files during an installation. File names are never sent.
+
+## KNOWN ISSUES
+
+- Checked on a real watch: installing each OSMapaPL map, installing BBBike (OpenTopoMap) and the one-style-per-region block, and the installed maps in Install maps. The waiting for a busy watch and the new problem-report details have not yet been checked on a real watch.
+- Updating an OSMapaPL map has not yet been confirmed on a real watch, because no newer OSMapaPL release has been published since it was added.
+- Map Update has not yet been confirmed on a real watch for Freizeitkarte and OpenTopoMap maps.
+- The recovery fixes from rc.3 and the faster Update checks from rc.1 have not yet been confirmed on a real watch. Of the connection messages from rc.2, only the busy-watch message has been checked on a real watch.
+- Updating or removing a map installed with an earlier version still uses the full check and can stay at a high displayed percentage for a while before it finishes.
+- Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
+- A watch connected to a phone over Bluetooth may not connect over USB. Turn off Bluetooth on the phone, wait until the watch shows that the phone is disconnected, then connect the watch again ([issue #257](https://github.com/VooZ2/terento/issues/257)).
+- Garmin Edge devices remain outside the current supported scope. This release does not broaden device compatibility claims.
+
 # Terento v1.0.1 (build 45)
 
 Terento 1.0.1 is a fix release for Terento 1.0.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.

@@ -346,7 +346,7 @@ code fix. No new release or API deployment is implied. See
 
 ## Catalog and privacy contracts
 
-The current app uses `/maps/catalog-v5.json` (1.0.2 and later; 1.0.1 used
+The current app uses `/maps/catalog-v5.json` (1.1.0 and later; 1.0.1 used
 `/maps/catalog-v4.json`). Legacy v2, v3 and v4 routes retain
 provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
