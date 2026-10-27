@@ -519,11 +519,11 @@ struct Stage45MapSelectionTests {
 
         expect(
             installedRows.map(\.title) == ["Germany"]
-                && availableRows.map(\.title) == ["France"]
-                && !availableRows.contains(where: { $0.title == "Germany" })
+                && availableRows.map(\.title) == ["France", "Germany"]
+                && availableRows.filter({ $0.title == "Germany" }).allSatisfy({ !$0.isSelectable })
                 && MapSelectionPresentationModel.available(items, query: "Germany").map(\.title) == ["Germany"]
                 && MapSelectionPresentationModel.available(items, query: "Germany").allSatisfy({ !$0.isSelectable }),
-            "installed catalog maps are excluded from normal browsing but appear as non-selectable search results"
+            "installed catalog maps appear as non-selectable rows when browsing and searching"
         )
     }
 
