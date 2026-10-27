@@ -44,10 +44,10 @@
       "family": "forerunner",
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
-      "successfulInstallations": 24,
-      "appSuccessfulInstallations": 24,
+      "successfulInstallations": 26,
+      "appSuccessfulInstallations": 26,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-24T09:58:49+00:00"
+      "lastSuccessfulInstallation": "2026-10-27T19:12:50+00:00"
     },
     {
       "model": "fēnix 9 Pro · 51 mm",
@@ -578,5 +578,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-26T22:32:17.431617+00:00"
+  "generatedAt": "2026-10-27T22:01:25.194079+00:00"
 }
